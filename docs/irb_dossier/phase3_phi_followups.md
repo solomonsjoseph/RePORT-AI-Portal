@@ -1,24 +1,67 @@
 # PHI Handling — Comprehensive Implementation Plan (Phase 2.x Polish + Phase 3)
 
-**Audit dates:** 2026-04-27 (initial) + 2026-04-27 (deeper exhaustive sweep)
+**Audit dates:** 2026-04-27 (three passes: initial / deeper sweep / extraction-pipeline + scrub-internals + PR re-verify)
 **Author of plan:** in-house security audit
-**Scope:** every PHI / data-handling surface in the codebase as of v0.17.1.
+**Closure status as of v0.17.2:** PRs #10 + #11 close 17 of 23 actionable items (P1a-f + P2-P6 + N1-N3 + N5 + N11-N12). Remaining items are Phase 3 architectural work documented below.
 
 ---
 
 ## Executive answer
 
-> **Is PHI complete + fully functional with zero security flaw as of v0.17.1?**
+> **Is PHI complete + fully functional with zero security flaw as of v0.17.2?**
 
-**No.** The PHI architecture is solid (4-tier zone model enforced; 8-action scrub catalog implemented; HMAC pseudonymization with mode-0600 sidecar; agent-boundary input/output gates; redacted conversations; subprocess-isolated sandbox; pip-audit clean) — but two passes of audit found:
+**Closer, but not yet.** v0.17.2 closes 17 small/MEDIUM items across permissions, pattern coverage, scrub-config gating, lineage auditability, and zone assertions. The remaining items are **architectural** — mandatory k-anonymity on row-returning tools, l-diversity, PDF redaction before LLM upload, traceback sanitiser, parallel-run lock — and need their own focused PRs in Phase 3.
 
-- **9 verified items that are BLOCKERS for any Phase 3 / external / multi-tenant deployment**
-- **6 MEDIUM-severity polish items**
-- **5 LOW-severity / nice-to-have items**
+For the **current Phase 2 scope** (single-operator, single-study Indo-VAP, IRB-approved internal use), the remaining items are MEDIUM/HIGH not BLOCKER — the operator is the trusted recipient, no external party sees raw outputs, and the operator is expected to use FileVault / LUKS for at-rest protection. For **any external collaboration / multi-tenant / cloud-hosted scope**, the architectural Phase 3 items must close.
 
-For the **current Phase 2 scope** (single-operator, single-study Indo-VAP, IRB-approved internal use), the BLOCKERs are MEDIUM/HIGH not BLOCKER — the operator is the trusted recipient, no external party sees raw outputs, and the operator is expected to use FileVault / LUKS for at-rest protection. For **any external collaboration / multi-tenant / cloud-hosted scope**, all 9 BLOCKERs must be closed.
+The honest current statement is: *"PHI architecture is Phase-2-ready for single-operator IRB-approved scope; Phase 3 architectural PRs (k-anon mandatory, PDF redaction, traceback sanitiser) needed before external deployment or multi-tenant use."*
 
-The honest current statement is: *"PHI architecture is Phase-2-ready for single-operator IRB-approved scope; Phase 3 work needed before external deployment or multi-tenant use."*
+---
+
+## Closure status (as of v0.17.2)
+
+### ✅ Closed by PR #10 (`fix/phi-phase2-polish`)
+
+| Item | Closes |
+|---|---|
+| **P1a** | `conversations.py` × 3 sites — `chmod(0o600)` after every JSON write |
+| **P1b** | `telemetry.py` event sink — `chmod(0o600)` after every append |
+| **P1c** | sandbox per-call `spec.json` — `chmod(0o600)` after write |
+| **P1d** | sandbox-persisted `run_*.py` + `code/` dir — `chmod(0o700)` dir + `chmod(0o600)` files |
+| **P1e** | snapshot directory tree — recursive `_harden_tree_modes` (dirs 0o700, files 0o600) |
+| **P1f** | 12 sensitive runtime dirs — `ensure_directories` chmod 0o700 |
+| **P2** | Aadhaar regex `[\s\-\.]?` — catches dot-separated form |
+| **P3** | `cli.py` adds NVIDIA AI Endpoints as option 5 |
+| **P4** | smoke test parametrizes NVIDIA |
+| **P5** | both `install_phi_redactor` callers wired with `SUBJECT_ID_PATTERNS` |
+| **P6** | `_safe_rmtree` symlink guard for snapshot deletion |
+
+### ✅ Closed by PR #11 (`fix/phi-pipeline-polish`)
+
+| Item | Closes |
+|---|---|
+| **N1** | `run_scrub` fails closed when `phi_scrub.yaml` is absent (was: silent disabled). Dev override: `REPORTALIN_ALLOW_DISABLED_SCRUB=1` |
+| **N2** | `_publish_leg` uses `secure_remove_tree` for old trio_bundle (was: plain `shutil.rmtree`) |
+| **N3** | Lineage manifest carries `phi_key_fingerprint` (SHA-256 of HMAC key) |
+| **N5** | `main.py` zone-asserts `pdf_extractions_dir` at the inlet |
+| **N11** | Indo-VAP `IS_SCRNNUM`/`IC_SCRNNUM` covered by `id_fields` rule |
+| **N12** | Sandbox `_sandbox_result.json` manifest chmod'd 0o600 (PR #10 missed this) |
+
+### 🚧 Remaining for Phase 3 (architectural)
+
+- **3.A** Mandatory k-anonymity on row-returning tools (`query_dataset`, `cross_reference_variables`)
+- **3.B** l-diversity check (kanon_gate.py docstring tracks this gap)
+- **3.F + 3.G + 3.H** PDF redaction pipeline (vision API)
+- **3.I** Error traceback PHI sanitisation
+- **N4** Parallel `main.py` execution race (file-lock design)
+- **N6** Atomic publish copytree fallback (proper atomic-write pattern)
+- **3.C** Encrypt logs at rest (defer until shared-host deployment)
+- **3.D** Auto-reaper for orphaned staging
+- **3.E** Narrative NER (Presidio rejected; design choice between custom regex / drop-only)
+- **3.J** Streamlit hot-reload session-state hygiene
+- **3.K** fcntl-locked log/telemetry writes
+- **3.L** 4 IRB operator runbooks (non-code)
+- **N7-N10** Doc/tidy items (lineage timing, zone assertions on inputs, etc.)
 
 ---
 
