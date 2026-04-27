@@ -311,7 +311,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_create = sub.add_parser(
         "create",
-        help="Copy output/{STUDY}/trio_bundle/ → output/{STUDY}/agent/snapshots/<name>/",
+        help="Copy output/{STUDY}/trio_bundle/ → output/{STUDY}/agent/restore_points/<name>/",
     )
     p_create.add_argument(
         "--name",

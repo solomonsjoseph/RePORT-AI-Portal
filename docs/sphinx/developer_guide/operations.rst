@@ -64,7 +64,10 @@ Individual Steps
    * - ``make bundle``
      - Re-assemble the trio bundle from already-scrubbed staging artifacts
    * - ``make snapshot``
-     - Snapshot the current trio bundle into ``output/{STUDY}/agent/snapshots/``
+     - Save a restore point of the current trio bundle to
+       ``output/{STUDY}/agent/restore_points/`` (gitignored). The
+       version-controlled tracked baseline at ``snapshots/{STUDY}/`` is
+       maintainer-curated by hand — see ``snapshots/README.md``.
    * - ``make chat``
      - Launch the Streamlit research-assistant UI (with setup wizard)
    * - ``make chat-cli``

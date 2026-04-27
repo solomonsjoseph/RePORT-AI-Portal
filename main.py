@@ -183,10 +183,13 @@ off-limits to the agent.
   read its own prior events structurally, by directory. Hard-rejected by
   `validate_agent_read`.
 - `agent/` — Per-session state. `analysis/` holds deterministic epidemiology
-  outputs, `conversations/` holds chat transcripts, and `snapshots/` holds
-  restore-ready copies of the trio bundle (the "Use Existing Data" restore
-  target). Readable by the LLM agent so it can recall its own prior results
-  and restore the bundle; `analysis/` is also its sandbox write zone (the
+  outputs, `conversations/` holds chat transcripts, and `restore_points/` holds
+  multi-named operator restore copies of the trio bundle (crash-recovery
+  target; gitignored). The version-controlled tracked baseline lives at
+  `snapshots/{study}/` at the repo root and is intentionally OUTSIDE
+  `agent/` — the LLM cannot read it. Readable parts of `agent/` (analysis,
+  conversations, restore_points) feed the agent's own session memory;
+  `analysis/` is also its sandbox write zone (the
   narrower `validate_sandbox_write` — other `agent/` subdirs are read-only
   to LLM-generated code).
 

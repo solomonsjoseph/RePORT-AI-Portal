@@ -146,5 +146,5 @@ def describe_allowlist() -> str:
         "Loading or reloading study data requires a high-capability model: "
         "Claude **Opus ≥ 4.6**, Gemini **Pro ≥ 3.1**, GPT **≥ 5.3**, "
         "or any local **Ollama** model. "
-        "\"Use Existing Data\" is always available regardless of model."
+        "\"Use Existing Study\" is always available regardless of model."
     )

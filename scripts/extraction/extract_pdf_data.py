@@ -110,8 +110,8 @@ INTER_PDF_DELAY: float = config.PDF_EXTRACTION_INTER_DELAY
 #                     capable-LLM call + snapshot fallback per-PDF when the
 #                     LLM can't handle a form).
 #   2. ``snapshot`` — skip the LLM entirely and publish the human-verified
-#                     baseline JSONs from
-#                     ``output/{STUDY}/agent/snapshots/initial/pdfs/``.
+#                     baseline JSONs from ``snapshots/{STUDY}/pdfs/`` (the
+#                     repo-tracked baseline; LLM-invisible).
 #
 # When :data:`_PDF_EXTRACTION_MODE_ENV` is unset, ``extract_pdfs_to_jsonl``
 # falls back to the legacy raw-PDF API path (gated by the two-part
@@ -795,10 +795,10 @@ def _run_snapshot_mode(
     """Publish the verified baseline JSONs verbatim — no LLM call.
 
     For each annotated PDF, copy the matching
-    ``{stem}_variables.json`` from
-    ``output/{STUDY}/agent/snapshots/initial/pdfs/`` into ``dest_dir``.
-    A missing snapshot is reported as an error (the form will simply be
-    absent from the published bundle); it is NOT a fatal failure.
+    ``{stem}_variables.json`` from ``snapshots/{STUDY}/pdfs/`` (the
+    repo-tracked baseline; LLM-invisible) into ``dest_dir``. A missing
+    snapshot is reported as an error (the form will simply be absent
+    from the published bundle); it is NOT a fatal failure.
     """
     snapshot_dir = _initial_snapshot_pdfs_dir()
     log.info("PDF extraction: snapshot mode — using %s", snapshot_dir)

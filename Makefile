@@ -111,10 +111,11 @@ help:
 	@printf "  $(C)make chat$(N)             Launch Streamlit web UI (with setup wizard)\n"
 	@printf "  $(C)make build-variables$(N)  Build variables.json from all annotation sources\n"
 	@printf "\n"
-	@printf "$(B)$(G)  Snapshots$(N)  $(Y)(output/{STUDY}/agent/snapshots/ — gitignored)$(N)\n"
-	@printf "  $(C)make snapshot$(N)         Copy output/{STUDY}/trio_bundle/ → agent/snapshots/<ts>/\n"
-	@printf "  $(C)make list-snapshots$(N)   List available snapshots (newest first)\n"
-	@printf "  $(C)make restore-study$(N)    Restore a snapshot back into trio_bundle/ (SNAPSHOT=<name>)\n"
+	@printf "$(B)$(G)  Restore Points$(N)  $(Y)(output/{STUDY}/agent/restore_points/ — gitignored)$(N)\n"
+	@printf "  $(C)make snapshot$(N)         Copy output/{STUDY}/trio_bundle/ → agent/restore_points/<ts>/\n"
+	@printf "  $(C)make list-snapshots$(N)   List available restore points (newest first)\n"
+	@printf "  $(C)make restore-study$(N)    Restore a point back into trio_bundle/ (SNAPSHOT=<name>)\n"
+	@printf "  $(Y)Note: tracked-baseline snapshots/{STUDY}/ is curated by hand — see snapshots/README.md$(N)\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Quality$(N)\n"
 
@@ -233,12 +234,15 @@ build-variables:
 	@printf "$(G)✓ variables.json built$(N)\n"
 
 # ═══════════════════════════════════════════════════════════════════════
-# SNAPSHOTS — trio_bundle backup / restore
+# RESTORE POINTS — trio_bundle backup / restore (gitignored, multi-named)
 # ═══════════════════════════════════════════════════════════════════════
-# SNAPSHOT=<name>   (optional) explicit snapshot name
+# Lands in ``output/{STUDY}/agent/restore_points/`` — DISTINCT from the
+# tracked baseline at ``snapshots/{STUDY}/`` (which is maintainer-curated
+# by hand; see ``snapshots/README.md``).
+# SNAPSHOT=<name>   (optional) explicit restore-point name
 #                   default for snapshot-study: UTC timestamp
 #                   required   for restore-study
-# FORCE=1           allow overwriting an existing snapshot of the same name
+# FORCE=1           allow overwriting an existing restore point of the same name
 
 snapshot-study:
 	@$(PYTHON) -m scripts.utils.snapshots create \
