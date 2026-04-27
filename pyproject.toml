@@ -138,6 +138,14 @@ ai_assistant = [
     # GHSA-fv5p-p927-qmxr (April 2026 audit). Pinning <2.0 within the 1.x
     # line so future minor bumps are auto-allowed while major API changes
     # still go through review.
+    # ``langchain`` (the meta-package) provides the ``langchain.chat_models``
+    # router used by ``scripts.ai_assistant.agent_graph._build_llm`` to
+    # instantiate any provider via ``init_chat_model``. Before PR #6 it
+    # was pulled in transitively via ``langchain-community``; that dep was
+    # removed in PR #6 and the live LLM flow broke (ModuleNotFoundError on
+    # ``from langchain.chat_models import init_chat_model``). Pinned
+    # explicitly here so the regression cannot recur.
+    "langchain>=1.0.0,<2.0.0",
     "langchain-core>=1.0.0,<2.0.0",
     # langchain-community removed — unused in our codebase, and its 1.x line
     # is still in alpha (pinning to 0.x would block langchain-core 1.x). If
