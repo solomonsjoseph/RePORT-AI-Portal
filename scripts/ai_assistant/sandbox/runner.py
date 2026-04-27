@@ -251,7 +251,13 @@ def _emit_manifest(
         "code_paths": code_paths or [],
         "truncated": truncated,
     }
-    (output_dir / "_sandbox_result.json").write_text(json.dumps(manifest), encoding="utf-8")
+    manifest_path = output_dir / "_sandbox_result.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    # The manifest carries figure / code paths and exit-status flags. PR #10
+    # chmod'd the saved .py files but missed this manifest — closing that
+    # gap so the manifest is owner-only too.
+    with contextlib.suppress(OSError):
+        manifest_path.chmod(0o600)
 
 
 def main(spec_path: str) -> int:

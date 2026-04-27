@@ -1128,8 +1128,27 @@ def run_scrub(study_name: str | None = None) -> None:
 
     cfg = load_scrub_config()
     if cfg is None:
-        logger.info(
-            "phi_scrub: config not found at %s — no-op for this study",
+        # Missing scrub config = no rule application = raw PHI flows to
+        # ``trio_bundle/``. That is unsafe for any production run; require
+        # an explicit opt-in env var to acknowledge the risk in dev/test.
+        allow_disabled = os.environ.get("REPORTALIN_ALLOW_DISABLED_SCRUB", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
+        if not allow_disabled:
+            raise PHIScrubError(
+                "phi_scrub: config not found at "
+                f"{config.PHI_SCRUB_CONFIG_PATH}. Refusing to publish a trio "
+                "bundle without rule application — raw PHI would flow through "
+                "unredacted. Either provision the YAML or set "
+                "``REPORTALIN_ALLOW_DISABLED_SCRUB=1`` to acknowledge the risk "
+                "(dev / test only)."
+            )
+        logger.warning(
+            "phi_scrub: config not found at %s — running in DISABLED mode "
+            "(REPORTALIN_ALLOW_DISABLED_SCRUB=1). Raw PHI may flow through.",
             config.PHI_SCRUB_CONFIG_PATH,
         )
         _emit_audit(

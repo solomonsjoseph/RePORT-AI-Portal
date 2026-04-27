@@ -282,7 +282,10 @@ def _publish_leg(staging_dir: Path, trio_dir: Path, leg_name: str) -> bool:
 
     trio_dir.parent.mkdir(parents=True, exist_ok=True)
     if trio_dir.exists():
-        shutil.rmtree(trio_dir)
+        # Use secure_remove_tree (zero-fill + symlink-aware via assert_write_zone)
+        # instead of plain shutil.rmtree so a republish doesn't leave PHI-adjacent
+        # forensic blocks recoverable from the disk.
+        secure_remove_tree(trio_dir)
 
     try:
         staging_dir.rename(trio_dir)
@@ -817,6 +820,13 @@ For detailed documentation, see the Sphinx docs or README.md
     # Propagation runs, otherwise prune_pdfs has nothing to prune and the
     # resulting trio_bundle/pdfs/ would still reference dataset-dropped vars.
     pdf_extractions_dir = Path(config.STAGING_PDFS_DIR)
+    # Defensive zone assertion: misconfigured ``STAGING_PDFS_DIR`` (e.g.,
+    # pointing into a third-party path) must be caught at the earliest
+    # possible moment, before any PDF write touches the disk. The publish-
+    # time assertion is a backstop, not the primary guard.
+    from scripts.security.secure_env import assert_write_zone
+
+    assert_write_zone(pdf_extractions_dir)
 
     if args.build_bundle or args.pipeline:
         pdf_source: str | None = args.pdf_source
@@ -1023,6 +1033,8 @@ For detailed documentation, see the Sphinx docs or README.md
     # single artifact an IRB/IEC reviewer inspects to verify the full
     # raw → scrub → publish chain without reading any row contents.
     def run_lineage() -> None:
+        import hashlib as _hashlib
+
         try:
             from scripts.security.phi_scrub import load_scrub_config
 
@@ -1030,6 +1042,14 @@ For detailed documentation, see the Sphinx docs or README.md
             posture = scrub_cfg.compliance_posture if scrub_cfg is not None else "disabled"
         except Exception:
             posture = "unknown"
+
+        # PHI key fingerprint — gives IRB reviewers a verifiable handle
+        # without exposing the key itself. SHA-256 of the raw HMAC key.
+        phi_key_fp: str | None = None
+        try:
+            phi_key_fp = _hashlib.sha256(_load_phi_key()).hexdigest()
+        except (PHIKeyMissingError, PHIKeyPermissionError, PHIScrubError):
+            phi_key_fp = None  # leave manifest free of the field
 
         audit_dir = Path(config.STUDY_AUDIT_DIR)
         audit_dir.mkdir(parents=True, exist_ok=True)
@@ -1047,6 +1067,7 @@ For detailed documentation, see the Sphinx docs or README.md
             pipeline_version=__version__,
             compliance_posture=posture,
             manifest_path=audit_dir / "lineage_manifest.json",
+            phi_key_fingerprint=phi_key_fp,
         )
 
     run_step("Step 4: Emit Lineage Manifest", run_lineage)

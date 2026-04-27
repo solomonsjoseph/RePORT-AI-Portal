@@ -120,6 +120,7 @@ def emit_lineage_manifest(
     pipeline_version: str,
     compliance_posture: str,
     manifest_path: Path,
+    phi_key_fingerprint: str | None = None,
 ) -> dict[str, Any]:
     """Assemble + atomically write the lineage manifest for this run.
 
@@ -171,6 +172,12 @@ def emit_lineage_manifest(
         "outputs": outputs,
         "steps": steps,
     }
+    # The PHI key fingerprint (SHA-256 of the HMAC key bytes) lets an IRB
+    # reviewer verify that the pseudonyms in trio_bundle/ were generated
+    # with the claimed key — without exposing the key itself. Optional so
+    # legacy callers without a key still emit a valid manifest.
+    if phi_key_fingerprint is not None:
+        manifest["phi_key_fingerprint"] = phi_key_fingerprint
 
     atomic_write_json(manifest_path, manifest)
     logger.info(

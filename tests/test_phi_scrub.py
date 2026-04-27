@@ -320,8 +320,13 @@ class TestRunScrub:
         monkeypatch_config: Path,
         sidecar_key: Path,
         scrub_config_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        # no config file at scrub_config_path → module no-ops
+        # no config file at scrub_config_path → module no-ops, but ONLY when
+        # the explicit env override is set. Without the override, run_scrub
+        # raises (closes the silent-disabled-scrub gap).
+        monkeypatch.setenv("REPORTALIN_ALLOW_DISABLED_SCRUB", "1")
+
         rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
         src = _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
@@ -333,6 +338,22 @@ class TestRunScrub:
         # Row is unchanged
         loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
         assert loaded == rows
+
+    def test_no_config_without_override_raises_phi_scrub_error(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The default behavior is fail-closed: missing yaml + no env override
+        raises ``PHIScrubError`` so a misconfigured production run cannot
+        silently publish raw PHI."""
+        monkeypatch.delenv("REPORTALIN_ALLOW_DISABLED_SCRUB", raising=False)
+        rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+        with pytest.raises(phi_scrub.PHIScrubError, match="config not found"):
+            phi_scrub.run_scrub(study_name="TEST")
 
     def test_safe_harbor_drops_birthdate(
         self,

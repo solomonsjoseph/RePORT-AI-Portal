@@ -210,6 +210,11 @@ id_fields:
   - {pattern: "^SUBJID$", label: "SUBJ"}
   - {pattern: "^NC_SUBJID$", label: "SUBJ"}
   - {pattern: "(?:patient|subject|participant)[-_]?(?:id|num|no)", label: "SUBJ"}
+  # ── Screening / enrolment numbers (Indo-VAP and similar TB studies) ───────
+  # Index Case (IC_*) and Index Subject (IS_*) screen numbers are linkable
+  # back to enrolment registers; pseudonymise rather than let them flow raw.
+  - {pattern: "^I[CS]_SCRNNUM$", label: "SCRN"}
+  - {pattern: "(?:scrn|screen|enrol(?:l)?)num", label: "SCRN"}
   # ── Family / household IDs ────────────────────────────────────────────────
   - {pattern: "^FID$", label: "FAM"}
   - {pattern: "^FID\\d+$", label: "FAM"}
