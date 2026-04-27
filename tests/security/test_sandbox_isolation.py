@@ -63,11 +63,18 @@ def trio_dataset(tmp_path: Path) -> dict[str, str]:
 
 
 def _run(code: str, output_dir: Path, df_paths: dict[str, str], **kwargs):
-    """Wrap ``run_in_subprocess`` with sensible test defaults."""
+    """Wrap ``run_in_subprocess`` with sensible test defaults.
+
+    ``max_memory_mb`` is set to 2048 because Linux's ``RLIMIT_AS`` counts
+    the entire address space — pandas + numpy + plotly imports alone reserve
+    ~700 MB of vmap on a typical Linux runner. macOS does not enforce
+    ``RLIMIT_AS`` so any value works there. Tests that explicitly want to
+    trip the OOM cap (like ``test_memory_rlimit_kills_oom``) override this.
+    """
     kwargs.setdefault("timeout_s", 10)
-    kwargs.setdefault("max_memory_mb", 256)
+    kwargs.setdefault("max_memory_mb", 2048)
     kwargs.setdefault("max_procs", 32)
-    kwargs.setdefault("max_files", 32)
+    kwargs.setdefault("max_files", 64)
     return run_in_subprocess(
         code, df_paths=df_paths, output_dir=output_dir, **kwargs
     )
@@ -216,14 +223,15 @@ def test_memory_rlimit_kills_oom(
     output_dir: Path, trio_dataset: dict[str, str]
 ) -> None:
     """Allocating well past the memory cap must trip ``RLIMIT_AS`` and kill
-    the child cleanly."""
+    the child cleanly. Cap raised here to 1.5 GB so numpy can import (~700 MB
+    of vmap) and the test allocation (8 GB) is unambiguously above it."""
     code = (
         "import numpy as np\n"
-        # 4 GB of float64s — far above the 256 MB test cap
-        "x = np.zeros((1024, 1024, 1024, 4), dtype=np.float64)\n"
+        # 8 GB of float64s — well above the 1.5 GB test cap below.
+        "x = np.zeros((1024, 1024, 1024), dtype=np.float64)\n"
         "print('should not reach here')\n"
     )
-    result = _run(code, output_dir, trio_dataset, max_memory_mb=256)
+    result = _run(code, output_dir, trio_dataset, max_memory_mb=1500)
     assert result.exit_code != 0
     assert "should not reach here" not in result.stdout
 
