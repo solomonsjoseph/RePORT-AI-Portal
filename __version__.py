@@ -28,7 +28,7 @@ __all__ = ["__version__", "__version_info__"]
 # Semantic Versioning normal version: X.Y.Z with no leading zeroes except zero itself.
 _SEMVER_CORE_RE = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 
-__version__: str = "0.19.0"
+__version__: str = "0.20.0"
 """Canonical repository version in ``MAJOR.MINOR.PATCH`` form."""
 
 _match = _SEMVER_CORE_RE.fullmatch(__version__)

@@ -189,12 +189,19 @@ runs::
     make list-snapshots                         # newest first
     make restore-study SNAPSHOT=indovap-2026q1  # overwrites live trio_bundle/
 
-Snapshots live under ``output/{STUDY_NAME}/agent/snapshots/<name>/`` and
-are fully gitignored along with the rest of ``output/``. They are
+Restore points live under ``output/{STUDY_NAME}/agent/restore_points/<name>/``
+and are fully gitignored along with the rest of ``output/``. They are
 byte-for-byte copies of the PHI-scrubbed trio bundle and contain no
-audit logs, telemetry, or conversations. The wizard's "Use Existing
-Data" button and the future "Load existing study data" flow read from
-this tree.
+audit logs, telemetry, or conversations. They support crash-recovery
+during dev (rolling back ``trio_bundle/`` to a prior cohort) and are
+distinct from the version-controlled tracked baseline at
+``snapshots/{STUDY_NAME}/`` (maintainer-curated, used by the pipeline's
+PDF orchestrator as a fallback). See ``snapshots/README.md``.
+
+The wizard's step-2 "Use Existing Study" button skips the pipeline and
+trusts the live ``trio_bundle/``; "Load Study" runs the pipeline (with
+the tracked snapshot baseline as PDF fallback when the LLM tier is
+unavailable).
 
 Next Steps
 ----------

@@ -29,9 +29,14 @@ Three extraction legs (dictionary, datasets, PDFs) write into a transient stagin
 **World 2 — AI Assistant** (`scripts/ai_assistant/`):
 LangGraph ReAct agent with 12 tools for querying study data. Never accesses raw data.
 
-**Output structure**: `output/{STUDY_NAME}/trio_bundle/{datasets,pdfs,dictionary,variables.json}`, `audit/{dataset,dictionary,pdfs}_cleanup_report.json` + `audit/phi_scrub_report.json` + `audit/lineage_manifest.json` + `audit/telemetry/events.jsonl`, `agent/{analysis,conversations,snapshots}/`; transient staging sibling: `tmp/{STUDY_NAME}/{datasets,dictionary,pdfs}/` (+ `quarantine/` for rows with missing subject_id).
+**Output structure**: `output/{STUDY_NAME}/trio_bundle/{datasets,pdfs,dictionary,variables.json}`, `audit/{dataset,dictionary,pdfs}_cleanup_report.json` + `audit/phi_scrub_report.json` + `audit/lineage_manifest.json` + `audit/telemetry/events.jsonl`, `agent/{analysis,conversations,restore_points}/`; transient staging sibling: `tmp/{STUDY_NAME}/{datasets,dictionary,pdfs}/` (+ `quarantine/` for rows with missing subject_id).
 
-**Snapshots**: byte-for-byte restore-ready copies of the trio bundle live under `output/{STUDY_NAME}/agent/snapshots/<name>/` — gitignored along with the rest of `output/`. They are the restore target for the "Use Existing Data" wizard path when a fresh pipeline run fails. Entry points: library `scripts.utils.snapshots.{create_snapshot, list_snapshots, restore_snapshot, resolve_snapshot_name, SnapshotError}`, CLI `python -m scripts.utils.snapshots {create,list,restore}`, Makefile `make snapshot [SNAPSHOT=<label>] [FORCE=1]` / `make list-snapshots` / `make restore-study SNAPSHOT=<name>`. UI code must consume this surface, never re-scan the filesystem directly.
+**Two snapshot tiers** (PR #18 split):
+
+1. **Tracked baseline** at `snapshots/{STUDY_NAME}/{datasets,dictionary,pdfs,variables.json}` — version-controlled, maintainer-curated, single per-study cleaned trio bundle. The pipeline's PDF orchestrator reads it as the per-PDF fallback when the LLM tier is unavailable. **LLM is forbidden from reading it** — the LLM read zone is `trio_bundle/` + `agent/` only. Maintainer protocol: see `snapshots/README.md`.
+2. **Operator restore points** at `output/{STUDY_NAME}/agent/restore_points/<name>/` — gitignored, multi-named, agent-writable. Used for crash recovery during dev; never read by the pipeline. Library `scripts.utils.snapshots.{create_snapshot, list_snapshots, restore_snapshot, resolve_snapshot_name, SnapshotError}`, CLI `python -m scripts.utils.snapshots {create,list,restore}`, Makefile `make snapshot [SNAPSHOT=<label>] [FORCE=1]` / `make list-snapshots` / `make restore-study SNAPSHOT=<name>`.
+
+**Wizard step 2 flow** (PR #18 rewrite): two top-level buttons — *Use Existing Study* (skip pipeline; trust the live `trio_bundle/`) and *Load Study* (run the pipeline subprocess; orchestrator falls back to the tracked snapshot baseline per-PDF when the LLM tier is unavailable).
 
 **PHI key**: sidecar at `~/.config/report_ai_portal/phi_key` (resolved via `config.PHI_KEY_PATH`, overridable with `XDG_CONFIG_HOME`). Mode must be `0600`. Missing = hard-fail. Bootstrap via `python -m scripts.security.phi_scrub bootstrap-key`. Key rotation = full re-ingestion.
 

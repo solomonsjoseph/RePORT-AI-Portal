@@ -158,8 +158,9 @@ Utilities
      - ``scripts/utils/telemetry.py``
    * - Step cache (incremental-run manifest + skip semantics)
      - ``scripts/utils/step_cache.py``
-   * - Snapshots (trio-bundle copy/restore library + CLI; live under
-       ``output/{STUDY}/agent/snapshots/``, gitignored)
+   * - Restore points (trio-bundle copy/restore CLI; live under
+       ``output/{STUDY}/agent/restore_points/``, gitignored). Distinct
+       from the version-controlled tracked baseline at ``snapshots/{STUDY}/``.
      - ``scripts/utils/snapshots.py`` + ``python -m scripts.utils.snapshots``
    * - Artifact versioning
      - ``scripts/artifact_versions.py``

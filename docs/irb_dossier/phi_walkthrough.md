@@ -334,8 +334,15 @@ Yes, load-bearing. `main.py` runs **Step 1.6 PHI scrub** *before* **Step 1.7 dat
 ### Q24. Are older, less-capable LLMs allowed?
 Not remotely. `model_policy.py` maintains a minimum-capability allowlist; remote models below the floor are rejected at load time. Ollama is version-floor-exempt because the operator controls the inference runtime. This prevents accidental use of an older, less-safety-tuned cloud model with study data.
 
-### Q25. Can `step_cache` or `snapshots` let stale PHI-bearing artifacts surface?
-No. `scripts/utils/step_cache.py` records a `.manifest.json` of input SHA-256 + artifact versions; a fresh-cache decision skips re-computation only when every input hash still matches. If any input changed, the step is re-run with the current scrub catalog — so a scrub-rule update cannot be silently bypassed. `scripts/utils/snapshots.py` copies only the **already-scrubbed trio_bundle** into `output/{STUDY}/agent/snapshots/` — restoring a snapshot overwrites the trio with a pre-scrubbed copy, not with raw data. Neither path is a bypass.
+### Q25. Can `step_cache` or restore points / snapshots let stale PHI-bearing artifacts surface?
+No. `scripts/utils/step_cache.py` records a `.manifest.json` of input SHA-256 + artifact versions; a fresh-cache decision skips re-computation only when every input hash still matches. If any input changed, the step is re-run with the current scrub catalog — so a scrub-rule update cannot be silently bypassed.
+
+There are two snapshot tiers (PR #18 split):
+
+1. **Operator restore points** — `scripts/utils/snapshots.py` copies only the **already-scrubbed trio_bundle** into `output/{STUDY}/agent/restore_points/` (gitignored). Restoring overwrites the live trio with a pre-scrubbed copy, never with raw data.
+2. **Tracked baseline** — `snapshots/{STUDY}/` at the repo root holds a maintainer-curated cleaned trio bundle, used by the pipeline's PDF orchestrator as a per-PDF fallback. The LLM is forbidden from reading it (its read zone is `trio_bundle/` + `agent/` only). Maintainer protocol requires the baseline to come from a verified scrubbed run; see `snapshots/README.md`.
+
+Neither path is a bypass.
 
 ### Q26. What stops a researcher from jailbreaking the agent to dump raw data?
 Four compounding controls, any one of which blocks the attack; the attack has to defeat all four.

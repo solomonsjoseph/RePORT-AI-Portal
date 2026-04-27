@@ -251,11 +251,12 @@ AI Assistant
   make chat                Launch Streamlit web UI
   make chat-cli            Start interactive AI Assistant chat (terminal)
 
-Snapshots — output/{STUDY}/agent/snapshots/ (gitignored, under output/)
-  make snapshot            Copy output/{STUDY}/trio_bundle/ → agent/snapshots/<ts>/
+Restore Points — output/{STUDY}/agent/restore_points/ (gitignored)
+  make snapshot            Copy output/{STUDY}/trio_bundle/ → agent/restore_points/<ts>/
                            SNAPSHOT=<name> for an explicit label; FORCE=1 to overwrite
-  make list-snapshots      List available snapshots (newest first)
-  make restore-study       Restore a snapshot back into trio_bundle/ (SNAPSHOT=<name>)
+  make list-snapshots      List available restore points (newest first)
+  make restore-study       Restore a point back into trio_bundle/ (SNAPSHOT=<name>)
+  Note: tracked-baseline snapshots/{STUDY}/ is curated by hand — see snapshots/README.md
 
 Quality
   make test                Run pytest suite
@@ -494,10 +495,10 @@ uv run python main.py --version
 
 | Commit Message | Version Bump | Example |
 |----------------|--------------|---------|
-| `fix: ...` | **Patch** | 0.19.0 → 0.19.1 |
-| `feat: ...` | **Minor** | 0.19.0 → 0.20.0 |
-| `feat!: ...` or `BREAKING CHANGE:` | **Major** | 0.19.0 → 1.0.0 |
-| Other (docs, chore, refactor, style, test) | **No bump** | 0.19.0 (unchanged) |
+| `fix: ...` | **Patch** | 0.20.0 → 0.20.1 |
+| `feat: ...` | **Minor** | 0.20.0 → 0.21.0 |
+| `feat!: ...` or `BREAKING CHANGE:` | **Major** | 0.20.0 → 1.0.0 |
+| Other (docs, chore, refactor, style, test) | **No bump** | 0.20.0 (unchanged) |
 
 **Via Git hooks (automatic):** commit normally — the post-commit hook analyses
 the message and bumps the version automatically:
@@ -659,4 +660,4 @@ details.
 
 ---
 
-**Version**: 0.19.0 | **Status**: Beta (Active Development — Single-Study Mode)
+**Version**: 0.20.0 | **Status**: Beta (Active Development — Single-Study Mode)
