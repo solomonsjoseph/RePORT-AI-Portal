@@ -2,7 +2,7 @@
 
 **Audit dates:** 2026-04-27 (three passes: initial / deeper sweep / extraction-pipeline + scrub-internals + PR re-verify)
 **Author of plan:** in-house security audit
-**Closure status as of v0.17.2:** PRs #10 + #11 close 17 of 23 actionable items (P1a-f + P2-P6 + N1-N3 + N5 + N11-N12). Remaining items are Phase 3 architectural work documented below.
+**Closure status as of v0.18.0:** PRs #10, #11, and #13 close 19 of 23 actionable items (P1a-f + P2-P6 + N1-N3 + N5 + N11-N12 + 3.A + 3.B). Remaining items are Phase 3 architectural work (3.F-H PDF redaction, 3.I traceback sanitiser, N4 parallel-run lock, N6 atomic publish) plus deferred items (3.C/D/E/J/K) plus operator runbooks (3.L).
 
 ---
 
@@ -47,11 +47,16 @@ The honest current statement is: *"PHI architecture is Phase-2-ready for single-
 | **N11** | Indo-VAP `IS_SCRNNUM`/`IC_SCRNNUM` covered by `id_fields` rule |
 | **N12** | Sandbox `_sandbox_result.json` manifest chmod'd 0o600 (PR #10 missed this) |
 
+### ✅ Closed by PR #13 (`feat/phase3-kanon-l-diversity`)
+
+| Item | Closes |
+|---|---|
+| **3.A** | Mandatory k-anonymity on row-returning tools — `query_dataset` now invokes `guard_rows_with_kanon_and_ldiv` before serializing. When blocked, response carries a `kanon_violation` envelope; rows never surface. `cross_reference_variables` uses `mask_small_cell` on per-dataset counts (counts < 5 → `"<5"` label, completeness % recomputed against masked numerator) |
+| **3.B** | l-diversity check — new `l_diversity_check(rows, sensitive_attributes, l_threshold=2)` in `kanon_gate.py`; integrated into `guard_rows_with_kanon_and_ldiv` so a k-anonymous class that's homogeneous on outcome (e.g., 5 rows all `OUTCOME=DIED`) is also blocked. Default sensitive set: `EE_DIED`, `TB_DX`, `OUTCOME`, `DEATHCAUSE`, etc. |
+
 ### 🚧 Remaining for Phase 3 (architectural)
 
-- **3.A** Mandatory k-anonymity on row-returning tools (`query_dataset`, `cross_reference_variables`)
-- **3.B** l-diversity check (kanon_gate.py docstring tracks this gap)
-- **3.F + 3.G + 3.H** PDF redaction pipeline (vision API)
+- **3.F + 3.G + 3.H** PDF redaction pipeline (vision API) — next priority
 - **3.I** Error traceback PHI sanitisation
 - **N4** Parallel `main.py` execution race (file-lock design)
 - **N6** Atomic publish copytree fallback (proper atomic-write pattern)
