@@ -4,6 +4,15 @@
 **Author of plan:** in-house security audit
 **Closure status as of v0.18.0:** PRs #10, #11, and #13 close 19 of 23 actionable items (P1a-f + P2-P6 + N1-N3 + N5 + N11-N12 + 3.A + 3.B). Remaining items are Phase 3 architectural work (3.F-H PDF redaction, 3.I traceback sanitiser, N4 parallel-run lock, N6 atomic publish) plus deferred items (3.C/D/E/J/K) plus operator runbooks (3.L).
 
+**Closure status update as of v0.20.0:**
+
+- **3.F + 3.G + 3.H (PDF redaction)** — CLOSED by PR #15 (`scripts/extraction/pdf_pipeline.py`). The two-way orchestrator runs `pdfplumber` first, redacts extracted text via `phi_patterns.BLOCKING_PATTERNS` before any LLM call, re-scrubs the LLM response via `phi_safe.guard_text`, merges with the code candidate, and falls back to the version-controlled `snapshots/{STUDY}/pdfs/` baseline per-PDF. Idempotent cache keyed on `SHA-256(pdf_bytes || provider || model || phi_scrub.yaml hash)`. Wizard exposure (PR #16/#18 wizard rewrite) and integration into `extract_pdfs_to_jsonl` dispatch landed alongside.
+- **N4 (parallel-run lock)** — REASSESSED by PR #18. `main.py` now executes the three extraction legs (Dictionary / Datasets / PDFs) on a 3-worker `ThreadPoolExecutor` *within a single process*. The original concern was concurrent invocations of `main.py` racing on `tmp/{STUDY}/`. Status remaining: still need an OS-level file lock on the staging root for safety against the user double-clicking "Load Study" or running `make pipeline` twice.
+- **Snapshot tier split (PR #18, not previously listed):** the LLM read zone is now strictly `trio_bundle/` + `agent/`; the version-controlled baseline at `snapshots/{STUDY}/` is OUTSIDE that zone. Tightens the audit posture vs. the prior `agent/snapshots/` arrangement.
+- **Wizard two-button rewrite (PR #18):** "Use Existing Study" + "Load Study" — replaces the per-PDF mode radio that was briefly introduced in PR #16. Operator surface simplified.
+
+Remaining as of v0.20.0: 3.I traceback sanitiser, N4 file-lock, N6 atomic publish, 3.C/D/E/J/K (deferred), 3.L operator runbooks.
+
 ---
 
 ## Executive answer

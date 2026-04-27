@@ -234,3 +234,58 @@ code module or audit artifact.
      trail).
      **How.** Produced by ``_publish_staging`` in ``main.py`` via atomic
      per-leg rename of the AMBER staging directories.
+
+   snapshot baseline
+     **What.** A version-controlled, maintainer-curated cleaned trio
+     bundle at ``snapshots/{STUDY_NAME}/`` (repo root). Tracked in git;
+     never written by the runtime.
+     **Why.** Provides a deterministic per-PDF fallback for the PDF
+     orchestrator when the LLM tier is unavailable, and lets a
+     network-isolated host populate ``trio_bundle/pdfs/`` without an
+     API key. **The LLM is forbidden from reading this directory** —
+     it sits outside the agent's read zone (``trio_bundle/`` +
+     ``agent/``) so a stale baseline can never be served as live data.
+     **How.** Maintainer protocol: ``cp -r output/{STUDY}/trio_bundle/
+     snapshots/{STUDY}/`` after a verified run, then commit. See
+     ``snapshots/README.md``. Config: ``config.STUDY_SNAPSHOTS_DIR``.
+
+   restore point
+     **What.** A multi-named copy of the trio bundle under
+     ``output/{STUDY_NAME}/agent/restore_points/<name>/``. Gitignored;
+     created by the operator-restore CLI for crash recovery during dev.
+     **Why.** Distinct concern from the snapshot baseline: restore
+     points are scratch storage for rolling back ``trio_bundle/`` to
+     a prior cohort during local experimentation; the snapshot baseline
+     is the authoritative source-controlled fallback.
+     **How.** ``python -m scripts.utils.snapshots {create,list,restore}``
+     or ``make snapshot`` / ``make list-snapshots`` /
+     ``make restore-study``. Config: ``config.STUDY_RESTORE_POINTS_DIR``.
+
+   KeyStore
+     **What.** An in-memory registry
+     (:mod:`scripts.ai_assistant.keystore`) for LLM API keys.
+     **Why.** Keeps keys out of the parent process's ``os.environ``
+     for the lifetime of the app. The Streamlit wizard pastes the key
+     into the KeyStore directly; the corresponding ``*_API_KEY`` env
+     variable is scrubbed. Keys are re-injected only into the
+     short-lived pipeline subprocess via
+     :meth:`KeyStore.env_for_subprocess`.
+     **How.** Shipped in PR #3 (v0.17.0). Every LLM client constructor
+     takes an explicit ``api_key=`` kwarg sourced from the KeyStore —
+     no environment lookup at construction time.
+
+   PDF orchestrator
+     **What.** The two-way PDF extraction module
+     :mod:`scripts.extraction.pdf_pipeline` (PR #15). Always runs
+     ``pdfplumber`` for the code-path text extraction; pairs the
+     result with a redacted-text LLM call when a capable provider is
+     configured; falls back to the snapshot baseline per-PDF.
+     **Why.** Closes Phase 3.F/3.G/3.H — no raw PDF bytes leave the
+     host, the LLM response is re-scrubbed, and the pipeline has an
+     idempotent cache keyed on
+     ``SHA-256(pdf_bytes || provider || model || phi_scrub.yaml hash)``.
+     **How.** The wizard's "Load Study" button selects this path; CLI
+     users opt in via ``REPORTALIN_PDF_EXTRACTION_MODE=llm``.
+     Capability gate:
+     :func:`scripts.utils.llm_capabilities.is_capable_model` AND
+     :data:`scripts.extraction.pdf_pipeline.ORCHESTRATOR_SUPPORTED_PROVIDERS`.

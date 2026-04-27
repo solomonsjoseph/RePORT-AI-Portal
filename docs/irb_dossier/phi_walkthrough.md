@@ -311,7 +311,12 @@ It covers every class in the HIPAA §164.514(b)(2) list + India government IDs. 
 No tool accepts birthdate as an output field — the column was dropped. The agent will answer "this study does not publish birthdates."
 
 ### Q17. What about the PDF leg — can PDFs leak PHI to Anthropic / Google?
-Refused by default. Two-factor operator attestation required: `REPORTALIN_PDF_PHI_FREE=1` env flag **and** non-empty `authorities/phi_free_pdfs.md` attestation note. Both are enforced at `scripts/extraction/extract_pdf_data.py:260-331`. The Stage-3 roadmap replaces the external path with pdfplumber deterministic + local-Ollama multimodal fallback.
+**Two co-existing paths as of v0.20.0:**
+
+- **Two-way orchestrator** (`scripts/extraction/pdf_pipeline.py`, PR #15 — the wizard's "Load Study" button selects this path). The `pdfplumber` code path always runs first; extracted text is PHI-redacted via `phi_patterns.BLOCKING_PATTERNS` BEFORE any byte leaves the host, with a defensive `_assert_no_raw_phi_in_payload` re-check that raises if any blocking pattern survives. The LLM receives only the redacted text. Response is re-scrubbed via `phi_safe.guard_text` and merged with the code candidate. Per-PDF fallback to the version-controlled `snapshots/{STUDY}/pdfs/` baseline when the LLM tier is unavailable. **No raw PDF bytes leave the host.** Idempotent cache keyed on `SHA-256(pdf_bytes || provider || model || phi_scrub.yaml hash)`.
+- **Legacy raw-PDF API path** (`scripts/extraction/extract_pdf_data.py`, the CLI default) is refused unless the operator opts in via two-factor attestation: `REPORTALIN_PDF_PHI_FREE=1` env flag **and** non-empty `authorities/phi_free_pdfs.md` note. Both are enforced at `extract_pdf_data.py:260-331`.
+
+The Stage-3 roadmap that previously planned this work has been delivered.
 
 ### Q18. Can an attacker replay a stale `lineage_manifest.json` to make a re-run look identical?
 The manifest records SHA-256 of the runtime inputs *and* outputs. Replay would require matching both, which implies no content change. If an attacker changes inputs/outputs and re-emits the manifest, `sha256sum` against the trio files would detect the tamper at audit time.
@@ -361,21 +366,24 @@ Remaining vectors:
 - **Variable-definition strings from the dictionary.** Short, controlled vocabulary — low injection likelihood, but the same output-gate fallback applies.
 
 ### Q28. Can `run_python_analysis` be exploited to escape the sandbox?
-`scripts/ai_assistant/agent_tools.py:615-658 + 663-725`. The tool has layered sandboxing:
+`scripts/ai_assistant/agent_tools.py`. As of PR #2 (v0.17.0) the tool runs LLM-generated code in an **isolated subprocess** with OS-level resource limits, on top of the original AST guards. Layered protections:
 
 | Layer | What it does |
 |---|---|
-| AST parse | Code is parsed with `ast.parse()` before execution; syntax errors caught early |
-| Import whitelist | Only `pandas`, `numpy`, `scipy.stats`, `statsmodels.api`, `statsmodels.formula.api`, `plotly.express`, `plotly.graph_objects`, `matplotlib.pyplot`, `collections`, `math`, `statistics`, `re`, `json` allowed. Any other `import` / `from … import …` node fails |
-| Blocked dunders | `__subclasses__`, `__bases__`, `__mro__`, `__class__`, `__globals__`, `__code__`, `__closure__`, `__builtins__`, `__loader__`, `__spec__`, `__import__` — any `node.attr` match returns a "not allowed" error |
-| Blocked builtins | Direct calls to `open`, `exec`, `eval`, `compile` are rejected at AST walk |
-| Wall-clock timeout | `_EXEC_TIMEOUT_SECONDS = 30`; enforced by `signal.alarm` (POSIX) |
-| Output cap | `_MAX_OUTPUT_BYTES = 50_000` |
-| Figure cap | `_MAX_FIGURES = 5` |
-| Data surface | Pre-loaded DataFrames come from `config.TRIO_DATASETS_DIR` only (GREEN zone). No raw data accessible. No filesystem reads from user code |
-| Output-side gate | Tool is decorated `@tool` + `@phi_safe_return` — return text passes the PHI gate |
+| **Subprocess isolation** | The generated `.py` file is executed in a fresh `subprocess.run()` child — never in the agent's own interpreter. The child gets a sanitised env (no `*_API_KEY` from the parent KeyStore; no inherited Streamlit session state) and read-only access to `config.TRIO_BUNDLE_DIR` only. |
+| **rlimits** | `RLIMIT_AS` (address space) clamped to `config.SANDBOX_MAX_MEMORY_MB` (default 2 GiB); `RLIMIT_NPROC` (process count) clamped to `config.SANDBOX_MAX_PROCS`; `RLIMIT_CPU` enforces wall-clock alongside the timeout. Strong on Linux; best-effort on macOS. |
+| **Code persistence** | The generated `.py` file is saved to `output/{STUDY}/agent/analysis/{ts}.py` so the operator can copy + reproduce externally. No hidden code path. |
+| AST parse | Code is parsed with `ast.parse()` before execution; syntax errors caught early. |
+| Import whitelist | Only `pandas`, `numpy`, `scipy.stats`, `statsmodels.api`, `statsmodels.formula.api`, `plotly.express`, `plotly.graph_objects`, `matplotlib.pyplot`, `collections`, `math`, `statistics`, `re`, `json` allowed. Any other `import` / `from … import …` node fails. |
+| Blocked dunders | `__subclasses__`, `__bases__`, `__mro__`, `__class__`, `__globals__`, `__code__`, `__closure__`, `__builtins__`, `__loader__`, `__spec__`, `__import__` — any `node.attr` match returns a "not allowed" error. |
+| Blocked builtins | Direct calls to `open`, `exec`, `eval`, `compile` are rejected at AST walk. |
+| Wall-clock timeout | `_EXEC_TIMEOUT_SECONDS = 30`; enforced by `signal.alarm` (POSIX) AND by the `RLIMIT_CPU` rlimit. |
+| Output cap | `_MAX_OUTPUT_BYTES = 50_000`. |
+| Figure cap | `_MAX_FIGURES = 5`. |
+| Data surface | Pre-loaded DataFrames come from `config.TRIO_DATASETS_DIR` only (GREEN zone). No raw data accessible. No filesystem reads from user code. |
+| Output-side gate | Tool is decorated `@tool` + `@phi_safe_return` — return text passes the PHI gate. |
 
-An attacker-controlled LLM would need to: (a) craft code that passes AST + import + dunder + builtin checks, (b) within that surface reach raw data, (c) produce an output that passes the PHI gate. The combination is not a trivial escape; the sandbox is deliberate, not ornamental. No known bypass today.
+An attacker-controlled LLM would need to: (a) craft code that passes AST + import + dunder + builtin checks, (b) survive the subprocess + rlimits envelope, (c) within that surface reach raw data, (d) produce an output that passes the PHI gate. The combination is not a trivial escape; the sandbox is deliberate, not ornamental. No known bypass today.
 
 ---
 

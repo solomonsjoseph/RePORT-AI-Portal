@@ -64,6 +64,17 @@ All paths are derived from ``BASE_DIR`` in ``config.py``:
    * - ``TRIO_BUNDLE_DIR``
      - ``output/{STUDY}/trio_bundle/``
      - Clean evidence (clean zone)
+   * - ``STUDY_SNAPSHOTS_DIR``
+     - ``snapshots/{STUDY}/``
+     - **Tracked baseline** at the repo root (version-controlled,
+       LLM-INVISIBLE). Used by the PDF orchestrator's per-PDF fallback
+       when the LLM tier is unavailable. Maintainer-curated by hand —
+       see ``snapshots/README.md``.
+   * - ``STUDY_RESTORE_POINTS_DIR``
+     - ``output/{STUDY}/agent/restore_points/``
+     - Operator-restore tier (gitignored, multi-named runs). Created /
+       restored via ``python -m scripts.utils.snapshots {create,list,restore}``.
+       Distinct from the tracked baseline above.
 
 LLM Configuration
 -----------------
@@ -89,6 +100,20 @@ LLM Configuration
    * - ``OLLAMA_BASE_URL``
      - ``http://localhost:11434``
      - Ollama server URL
+
+.. note::
+
+   **API keys never persist in the parent process's** ``os.environ``.
+   When the wizard's step-1 form is submitted, the key is routed into
+   :mod:`scripts.ai_assistant.keystore` (an in-memory ``KeyStore``
+   registry) and the corresponding ``*_API_KEY`` variable is scrubbed
+   from ``os.environ``. The key is re-injected only into the
+   short-lived pipeline subprocess via
+   ``KeyStore.env_for_subprocess(...)``. Operators using the CLI may
+   still ``export`` keys before invoking ``main.py``; the parent shell
+   retains them, but the in-process app does not. This change shipped
+   in PR #3 (v0.17.0) and is the reason no test or runtime path reads
+   ``os.environ`` for credentials any more.
 
 PHI-Safety Configuration
 ------------------------

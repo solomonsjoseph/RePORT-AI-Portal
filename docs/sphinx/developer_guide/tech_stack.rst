@@ -80,15 +80,19 @@ version that supports ``.xls``).
 PyPDF / pdfplumber
 ~~~~~~~~~~~~~~~~~~
 
-**What.** PDF parsing libraries. ``pypdf`` is the active lightweight
-text extractor; ``pdfplumber`` is the planned richer per-character /
-bounding-box extractor (not yet imported in the runtime — see ADR-006).
-**Why.** Annotated CRFs contain both flat text and form-field layout
-info; ``pdfplumber`` will handle the layout when the Stage-3 local-only
-hybrid path ships. Until then, ``pypdf`` is the sole runtime backend.
-**How.** ``pypdf`` is used in :mod:`scripts.extraction.extract_pdf_data`
-when the external-API path is disabled. ``pdfplumber`` is declared in
-``pyproject.toml`` as a planned dependency and will be wired in Stage 3.
+**What.** PDF parsing libraries. Both are wired into the runtime as
+of v0.20.0.
+**Why.** Annotated CRFs contain both flat text and form-field layout.
+``pypdf`` powers the legacy raw-PDF API path (gated by the two-part
+``REPORTALIN_PDF_PHI_FREE`` attestation). ``pdfplumber`` powers the
+always-on code path inside the two-way PDF orchestrator
+(``scripts.extraction.pdf_pipeline``, PR #15) — extracted text is
+PHI-redacted before any LLM call, paired with the LLM response via
+the ``_merge`` step.
+**How.** Legacy path: :mod:`scripts.extraction.extract_pdf_data`.
+Orchestrator path: :mod:`scripts.extraction.pdf_pipeline` (the wizard's
+"Load Study" flow always selects this path; CLI users can opt in via
+``REPORTALIN_PDF_EXTRACTION_MODE=llm``).
 
 PyYAML
 ~~~~~~

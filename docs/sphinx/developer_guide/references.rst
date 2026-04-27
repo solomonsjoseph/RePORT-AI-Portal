@@ -182,8 +182,11 @@ l-diversity — Machanavajjhala et al. 2007
 * **Paper.** https://dl.acm.org/doi/10.1145/1217299.1217302
 * **What we use it for.** Complement to k-anonymity for sensitive
   attribute homogeneity; relevant when a small equivalence class
-  happens to all share the same outcome. Currently informative only —
-  we enforce k-anon; l-diversity is a design hook for future work.
+  happens to all share the same outcome. As of v0.18.0
+  (PR #13, Phase 3.B) we enforce **k-anon (k=5) AND l-diversity (l=2)**
+  on every row-returning agent tool — see
+  :func:`scripts.security.kanon_gate.l_diversity_check` and
+  :func:`scripts.security.kanon_gate.guard_rows_with_kanon_and_ldiv`.
 
 HMAC (RFC 2104)
 ~~~~~~~~~~~~~~~

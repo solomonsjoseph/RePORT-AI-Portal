@@ -217,9 +217,14 @@ JSON, skip the PDF leg entirely).
 **Alternatives.**
 
 * **Local-only PDF extraction** (pdfplumber primary + local-Ollama
-  multimodal fallback). The intended long-term path (see the design
-  notes) but not yet built — pdfplumber alone cannot robustly parse
-  form-field extraction for varied CRF layouts.
+  multimodal fallback). **Superseded by PR #15 (v0.19.0):**
+  ``scripts/extraction/pdf_pipeline.py`` ships pdfplumber as the
+  always-on code path, paired with a redacted-text LLM call (capable
+  cloud or local model) via ``_merge``, and a per-PDF snapshot
+  baseline fallback at ``snapshots/{STUDY}/pdfs/``. No raw PDF bytes
+  leave the host on the orchestrator path. The original ADR-006
+  external-API gate remains as the legacy fallback for operators who
+  cannot run the orchestrator.
 * **Keep external-API default with an "I acknowledge PHI" banner**.
   Rejected — banners are not operator assertions. An env flag creates
   a durable audit trail.
