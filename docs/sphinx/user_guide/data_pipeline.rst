@@ -1,322 +1,318 @@
 Data Pipeline
 =============
 
-RePORT AI Portal processes clinical study data through a **4-tier honest-broker pipeline**
-(see :doc:`../developer_guide/phi_architecture` and
-``docs/irb_dossier/conformance_matrix.md``):
+Rewritten 2026-04-27 against the v0.20.0 code state. This page
+describes what ``python main.py --pipeline`` (or the wizard's "Load
+Study" button) actually does, in operator terms. For the deep
+architecture see :doc:`../developer_guide/architecture` and
+:doc:`../developer_guide/phi_architecture`.
 
-1. **RED — raw extraction** from ``data/raw/{STUDY}/`` (read-only by the extraction leg).
-2. **AMBER — secure staging** in ``tmp/{STUDY}/`` with mode 0700 + umask 0077 +
-   zero-fill teardown; all transformations (extract / scrub / cleanup / propagation)
-   happen here before anything reaches the permanent output surface.
-3. **GREEN — trio bundle** at ``output/{STUDY}/trio_bundle/`` — PHI-free by
-   construction, plus ``audit/lineage_manifest.json`` as the single IRB-review artifact.
-4. **GREEN-PROTECT — agent boundary** — every LLM tool return passes through the
-   regex-first PHI gate + k-anonymity gate before the response reaches the user.
-
-.. contents:: On this page
-   :local:
-   :depth: 2
-
-Pipeline Architecture
----------------------
+Top-Level Flow
+--------------
 
 .. code-block:: text
 
-   data/raw/{STUDY}/                      snapshots/{STUDY}/
-   +-- data_dictionary/    --+            (tracked baseline; LLM-INVISIBLE;
-   +-- datasets/           --+            used by PDF orchestrator fallback)
-   +-- annotated_pdfs/     --+
-            |  Phase 1: PARALLEL extraction (3-worker ThreadPoolExecutor;
-            |  Dictionary | Datasets | PDFs run concurrently — PR #18)
-            v (all three legs write here first; join before cleanup)
-   tmp/{STUDY}/              [transient — removed on success]
-   +-- datasets/
-   +-- dictionary/
-   +-- pdfs/
-   +-- quarantine/           [rows missing subject_id, from phi_scrub]
-            |
-            v phi_scrub → dataset cleanup → propagation → atomic publish
-   output/{STUDY}/trio_bundle/
-   +-- dictionary/
-   +-- datasets/
-   +-- pdfs/
-   output/{STUDY}/audit/              # dataset-only (PHI-bearing leg)
-   +-- phi_scrub_report.json
-   +-- dataset_cleanup_report.json
-            |
-            v
-   Agent: --chat / --web             Phase 2: ReAct agent + 12 tools
+   data/raw/{STUDY}/                          snapshots/{STUDY}/
+   ├── datasets/                              ├── datasets/    (tracked baseline,
+   ├── data_dictionary/                       ├── dictionary/   LLM-INVISIBLE,
+   └── annotated_pdfs/                        ├── pdfs/         per-PDF fallback
+                                              └── variables.json   for the
+                                                                  PDF orchestrator)
+            │
+            │   STEP 0/1/1.5: PARALLEL extraction (3-worker ThreadPoolExecutor — PR #18)
+            │     ├── Dictionary leg → tmp/{STUDY}/dictionary/
+            │     ├── Datasets leg   → tmp/{STUDY}/datasets/
+            │     └── PDFs leg       → tmp/{STUDY}/pdfs/   (orchestrator: pdfplumber
+            │                                              code path + redacted-text
+            │                                              LLM merge + per-PDF
+            │                                              snapshot fallback)
+            │   (join: cleanup chain runs serially after all three legs land)
+            ▼
+   tmp/{STUDY}/   (AMBER zone — mode 0700, umask 0077, optional tmpfs)
+            │
+            │   STEP 1.6: PHI scrub (datasets only — 8-action catalog)
+            │     date jitter (SANT) + HMAC-SHA256 ID pseudonymization +
+            │     drop / cap / generalize / suppress_small_cell / birthdate / keep
+            │     ↓ emits output/{STUDY}/audit/phi_scrub_report.json
+            │
+            │   STEP 1.7: Dataset cleanup (junk removal + duplicate merge)
+            │     ↓ emits output/{STUDY}/audit/dataset_cleanup_report.json
+            │
+            │   STEP 1.8: Cleanup propagation (dataset drops mirror into dict + PDF legs)
+            │     ↓ emits output/{STUDY}/audit/{dictionary,pdfs}_cleanup_report.json
+            ▼
+   STEP 2: Atomic publish (per-leg rename) → output/{STUDY}/trio_bundle/
+            ├── datasets/             ← LLM read zone (1 of 2; the other is
+            ├── dictionary/             output/{STUDY}/agent/)
+            └── pdfs/
+            │
+            │   STEP 3: Build variables.json (variables_reference.py reads
+            │   the published trio_bundle/ — must come AFTER publish)
+            ▼
+   output/{STUDY}/trio_bundle/variables.json
+            │
+            │   STEP 4: Lineage manifest (raw SHA-256 ↔ published SHA-256 pairs +
+            │   PHI-key fingerprint + compliance posture)
+            │     ↓ emits output/{STUDY}/audit/lineage_manifest.json
+            ▼
+   STEP 5: Output signpost (regenerate output/{STUDY}/README.md)
+            │
+            ▼
+   AMBER cleanup: secure_remove_tree(tmp/{STUDY}/) on success
+   (preserved on failure for forensic inspection)
 
-Running the Pipeline
+The agent reads ``output/{STUDY}/trio_bundle/`` (and
+``output/{STUDY}/agent/``) — and **only** those two. Audit, telemetry,
+staging, raw, and the snapshot baseline at ``snapshots/{STUDY}/`` are
+hard-rejected by
+:func:`scripts.ai_assistant.file_access.validate_agent_read`.
+
+Running the pipeline
 --------------------
 
 Full pipeline:
 
 .. code-block:: bash
 
-   make pipeline
+   python main.py --pipeline             # CLI
+   make pipeline                         # Makefile alias
+   make chat                             # Streamlit wizard → click "Load Study"
 
-Individual phases:
-
-.. code-block:: bash
-
-   make dictionary
-   make extract-datasets
-   make pdf-extract
-
-Quick start (sync + full pipeline):
+Selective skip:
 
 .. code-block:: bash
 
-   make quickstart
+   python main.py --pipeline --skip-dictionary  # only datasets + PDFs
+   python main.py --pipeline --skip-datasets    # only dictionary + PDFs
 
-Phase 1: Extract & Promote
---------------------------
+Force re-run (bypass step-cache):
 
-Dictionary Extraction
-~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: bash
 
-Discovers and parses all data dictionary and mapping files.
+   python main.py --pipeline --force
 
-- **Input:** ``data/raw/{STUDY}/data_dictionary/`` (``.xlsx``, ``.xls``, ``.csv``)
-- **Staging output:** ``tmp/{STUDY}/dictionary/``
-- **Final output:** ``output/{STUDY}/trio_bundle/dictionary/`` (after publish)
-- **Process:** Auto-discover files, read every sheet, detect multi-table
-  boundaries, inject provenance metadata (``__sheet__``, ``__table__``,
-  ``__source_file__``), write one JSONL per table into the staging workspace
-- **Command:** ``make dictionary``
+Step-by-step
+------------
 
-Dataset Extraction
-~~~~~~~~~~~~~~~~~~
+Step 0 — Dictionary loading
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Extracts structured data from Excel/CSV datasets into JSONL.
+Reads ``data/raw/{STUDY}/data_dictionary/*.xlsx`` and writes per-file
+``*.json`` files into ``tmp/{STUDY}/dictionary/``. Carries no PHI.
+Implementation: :func:`scripts.extraction.load_dictionary.load_study_dictionary`.
 
-- **Input:** ``data/raw/{STUDY}/datasets/``
-- **Staging output:** ``tmp/{STUDY}/datasets/``
-- **Final output:** ``output/{STUDY}/trio_bundle/datasets/`` (after publish)
-- **Process:** Extraction into the staging workspace; dataset cleanup then runs
-  against staged artifacts (junk removal, duplicate merge) and emits
-  ``output/{STUDY}/audit/dataset_cleanup_report.json``
-- **Command:** ``make extract-datasets``
+Step 1 — Dataset extraction (with hash-based step cache)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-See :doc:`../developer_guide/data_extraction_datasets` for details.
+Walks ``data/raw/{STUDY}/datasets/*.xlsx`` and converts each row to a
+JSON record in ``tmp/{STUDY}/datasets/``. Records that fail validation
+are recorded as "dropped events" so Step 1.8 can mirror them into the
+dictionary + PDF legs.
 
-PDF Extraction
-~~~~~~~~~~~~~~
+Skip semantics: a hash-based manifest at
+``output/{STUDY}/audit/manifests/dataset_processing.json`` records
+``SHA-256`` of every input file; if the hashes are unchanged AND
+``trio_bundle/datasets/`` still has output, this step is skipped.
 
-Extracts variable definitions from annotated CRF PDF forms. Two paths
-co-exist as of v0.20.0:
+Implementation: :func:`scripts.extraction.dataset_pipeline.process_datasets`.
 
-* **Two-way orchestrator** (``scripts/extraction/pdf_pipeline.py``,
-  shipped in PR #15; default for the wizard's Load Study button). The
-  pdfplumber code path always runs first; extracted text is
-  PHI-redacted and sent to a capable LLM (anthropic, google) for a
-  schema-aware merge with the code candidate. The orchestrator falls
-  back to the version-controlled snapshot baseline at
-  ``snapshots/{STUDY}/pdfs/`` per-PDF when the LLM tier is
-  unavailable. No raw PDF bytes leave the host.
-* **Legacy raw-PDF API path** (``scripts/extraction/extract_pdf_data.py``)
-  remains the CLI default and is gated by the two-part
-  ``REPORTALIN_PDF_PHI_FREE`` operator attestation.
+Step 1.5 — PDF preparation (three branches)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- **Input:** ``data/raw/{STUDY}/annotated_pdfs/``
-- **Staging output:** ``tmp/{STUDY}/pdfs/``
-- **Final output:** ``output/{STUDY}/trio_bundle/pdfs/`` (after publish)
-- **Process:** code-path text extraction → optional redacted-text LLM
-  merge → snapshot fallback per-PDF → atomic-write JSON to staging.
-- **Command:** ``make pdf-extract``
+The most failure-prone leg, with the most diagnostics:
 
-See :doc:`../developer_guide/data_extraction_pdfs` for details.
+* **--pdf-source <path>** — the operator points at a directory of
+  pre-extracted JSON files (e.g. snapshots from another study run).
+  ``main.py`` runs ``assert_not_raw()`` to confirm the source is not
+  in RED, then atomic-copies each ``*_variables.json`` into
+  ``tmp/{STUDY}/pdfs/``. No LLM call.
+* **Automatic** (no ``--pdf-source``, ``data/raw/{STUDY}/annotated_pdfs/*.pdf``
+  present): :func:`scripts.extraction.extract_pdf_data.extract_pdfs_to_jsonl`
+  dispatches based on ``REPORTALIN_PDF_EXTRACTION_MODE``:
 
-PHI Scrub (Step 1.6) — 8-Action Honest-Broker Catalog
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - ``llm`` (the wizard's "Load Study" default) — runs the
+    :mod:`scripts.extraction.pdf_pipeline` orchestrator. pdfplumber
+    code path + redacted-text LLM call merged via ``_merge`` + per-PDF
+    fallback to ``snapshots/{STUDY}/pdfs/`` when LLM unavailable.
+  - ``snapshot`` — skip the LLM entirely; publish the snapshot
+    baseline verbatim.
+  - unset (CLI default for back-compat) — legacy raw-PDF API path.
+    Refused unless the operator opts in via ``REPORTALIN_PDF_PHI_FREE=1``
+    *and* a non-empty attestation note at ``authorities/phi_free_pdfs.md``.
 
-Applies a deterministic PHI pass over staged datasets **before** any audit
-output is written — so raw PHI never leaves ``tmp/`` into ``output/``. Eight
-action classes evaluated in strict priority order (first match wins per field).
+* **No PDFs available** — log a detailed diagnostic (missing dir vs
+  empty dir vs all-failed) and continue without a PDF leg. The
+  operator can pass ``--pdf-source`` next time.
 
-- **Input:** ``tmp/{STUDY}/datasets/*.jsonl`` (scrubbed in place)
-- **Audit output:** ``output/{STUDY}/audit/phi_scrub_report.json`` (counts only)
-- **Quarantine:** ``tmp/{STUDY}/quarantine/*.jsonl`` (rows missing ``subject_id``)
-- **Key:** sidecar HMAC-SHA256 key at ``~/.config/report_ai_portal/phi_key``
-  (mode ``0600``, outside the repo). Bootstrap with
-  ``python -m scripts.security.phi_scrub bootstrap-key``.
-- **Catalog:** ``scripts/security/phi_scrub.yaml`` ships ~200
-  Indo-VAP-calibrated rules — 80 keep allowlist + 93 drop + 3 cap + 3
-  generalize + 3 suppress_small_cell + 25 date + 20 id patterns.
+PHI scrub does NOT run on PDFs — the orchestrator path redacts before
+the LLM call, and the legacy gated path attests PHI-free.
 
-**Priority dispatch** (``_scrub_row`` in ``scripts/security/phi_scrub.py``):
+Step 1.6 — PHI scrub (datasets only)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-1. **keep** — allowlist short-circuits every other rule (clinical lab /
-   medication / time-of-day / categorical indicators).
-2. **birthdate** — posture-dependent: ``safe_harbor`` drops the field;
-   ``limited_dataset`` falls through to rule 7 (date jitter) and requires
-   ``authorities/phi_limited_dataset.md``.
-3. **drop** — field removed entirely (names, Aadhaar / ABHA / PAN / voter /
-   passport / DL / ration / ESIC / PM-JAY / Nikshay, contact info, exact
-   geography, system timestamps, narrative / specify / comment fields, staff
-   identifiers, batch / scan metadata).
-4. **cap** — numeric values greater than threshold replaced with label
-   (default age > 89 → ``"90+"``, HIPAA §164.514(b)(2)(i)(C)).
-5. **generalize** — value-level categorical mapping (marital status →
-   Married / Single / Other; facility type → Government / Private / Other).
-6. **suppress_small_cell** — household-contact counts clamped to the
-   configured threshold (default 5, ICMR §11.7 k-anonymity).
-7. **date jitter** — per-subject deterministic SANT offset in
-   ``[-max_jitter_days, +max_jitter_days]``; preserves every intra-subject
-   interval exactly (survival / incidence / person-time analyses unaffected).
-8. **id pseudonymize** — ``HMAC-SHA256(key, id)[:12]`` → ``SUBJ_<12hex>``.
-   Deterministic cross-file linkage preserved; non-reversible without key.
+Operates on ``tmp/{STUDY}/datasets/*.jsonl`` BEFORE Step 1.7 cleanup.
+Eight action classes evaluated in strict priority order:
 
-Scrubbed rows carry ``_phi_scrubbed: "v1"``; sentinel
-``tmp/{STUDY}/.phi_scrub_complete`` prevents accidental double-scrubbing on
-restart. See :doc:`../developer_guide/architecture` for the full module
-contract and ``docs/irb_dossier/conformance_matrix.md`` for the test evidence.
+1. **keep** — pass through (only for confirmed non-PHI columns)
+2. **birthdate** — replace with ``birthyear`` only
+3. **drop** — null out
+4. **cap** — clamp at a quantile
+5. **generalize** — bucket into ranges (e.g. age → age band)
+6. **suppress_small_cell** — null when the cohort cell has < N rows
+7. **date_jitter** — per-subject deterministic SANT date jitter so
+   within-subject visit intervals are preserved but absolute dates
+   are shifted
+8. **hmac_pseudonymize** — replace IDs with
+   ``HMAC-SHA256(key, value)`` truncated; key lives at
+   ``~/.config/report_ai_portal/phi_key`` (mode ``0600``, outside the
+   repo, never committed)
 
-Cleanup Propagation and Publish
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The scrub writes its sanitised JSONL back into ``tmp/{STUDY}/datasets/``
+in place. Audit at ``output/{STUDY}/audit/phi_scrub_report.json``
+contains counts only — no row contents.
 
-After all three extraction legs complete and dataset cleanup has run, the
-pipeline propagates variable-drop decisions across legs and atomically
-publishes staging to ``trio_bundle/``.
+Implementation: :func:`scripts.security.phi_scrub.run_scrub`.
 
-Steps (sequential, executed by ``main.py``):
+Step 1.7 — Dataset cleanup
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-1. **Propagation** (``cleanup_propagation.run_propagation``):
+Operates on the now-scrubbed staging tree. Removes junk rows, merges
+duplicate records, records every action in
+``output/{STUDY}/audit/dataset_cleanup_report.json``.
 
-   - Reads ``output/{STUDY}/audit/dataset_cleanup_report.json``.
-   - Computes the pruning set: variables removed from datasets that no longer
-     survive in any remaining dataset (case-insensitive; provenance fields
-     such as ``__sheet__``, ``__source_file__`` are excluded).
-   - Rewrites ``tmp/{STUDY}/dictionary/`` JSONL, dropping entries for pruned
-     variables (side-effect only — no audit report, dictionary carries no PHI).
-   - Rewrites ``tmp/{STUDY}/pdfs/`` JSONL, dropping entries for pruned
-     variables (side-effect only — no audit report, PDFs carry no PHI).
+Implementation: :func:`scripts.extraction.dataset_cleanup.clean_trio_datasets`.
 
-2. **Publish** (``_publish_staging``):
-
-   - Iterates the three staging legs (datasets, dictionary, pdfs).
-   - For each leg, attempts an atomic ``os.rename``; falls back to
-     ``shutil.copytree`` when source and destination span filesystems.
-   - ``trio_bundle/`` is fully consistent only after all three legs publish
-     successfully.
-
-3. **Variables reference** (``build_variables_reference``):
-
-   - Runs after publish, reading the now-complete ``trio_bundle/``.
-
-4. **Lineage manifest** (``emit_lineage_manifest`` — Step 4):
-
-   - Walks raw inputs + published trio bundle + audit directory, recording
-     SHA-256 + size + mtime per file, plus per-leg audit-report references
-     and compliance posture.
-   - Emits ``output/{STUDY}/audit/lineage_manifest.json`` — the single
-     regulator-facing evidence artifact pairing every raw input hash with
-     every published trio artifact hash.
-
-5. **Staging cleanup** (``_cleanup_staging``):
-
-   - **Securely** removes ``tmp/{STUDY}/`` on success — each staging file
-     is overwritten with random bytes and fsynced before unlink to resist
-     filesystem forensics.
-   - On failure, ``tmp/{STUDY}/`` is **left in place** for operator inspection
-     before the next run.
-
-**Audit report schema** (all three reports share the same envelope):
-
-.. code-block:: json
-
-   {
-     "study": "STUDY_NAME",
-     "generated_utc": "2024-01-01T00:00:00Z",
-     "leg": "datasets",
-     "removed": [
-       {
-         "scope": "column",
-         "name": "VAR_X",
-         "file": "source_dataset.jsonl",
-         "sheet": "Sheet1",
-         "reason": "junk_column",
-         "kept": false
-       }
-     ]
-   }
-
-The ``leg`` field is one of ``"datasets"``, ``"dictionary"``, or ``"pdfs"``.
-
-Phase 2: Agent (Query-Time)
-----------------------------
-
-At query time, the ReAct agent uses 12 structured-data tools to answer
-questions directly from the trio bundle. No chunking, embedding, or
-vector index is needed. The canonical list lives in
-:data:`scripts.ai_assistant.agent_tools.ALL_TOOLS`.
-
-- **Tools:** ``search_variables``, ``find_variable_candidates``,
-  ``get_variable_details``, ``list_forms``, ``get_form_variables``,
-  ``query_dataset``, ``get_dataset_stats``, ``get_study_overview``,
-  ``run_python_analysis``, ``cross_reference_variables``,
-  ``run_study_analysis``, ``search_pdf_context``
-- **Code runner:** Sandboxed Python runner with pandas, numpy, scipy, statsmodels,
-  matplotlib
-- **Interfaces:** CLI (``--chat``) and Streamlit web UI (``--web``)
-
-PDF Extraction PHI-Safety Gate
+Step 1.8 — Cleanup propagation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-External-API PDF extraction (Anthropic Claude / Google Gemini) is treated as
-a network egress of PHI by default. ``scripts/extraction/extract_pdf_data.py``
-refuses to initialise an external client unless the operator explicitly
-sets ``REPORTALIN_PDF_PHI_FREE=1`` attesting the source PDFs are PHI-free
-(blank CRFs, protocol, MOP, annotation-only pages). Remediation paths:
+Whatever variables Step 1.7 dropped get mirrored into the dictionary
+leg and the PDF leg in staging. Keeps the published trio bundle
+internally consistent — no dictionary entry or PDF form variable
+referencing a column that was dropped from the dataset.
 
-- Set ``REPORTALIN_PDF_PHI_FREE=1`` (your signed assertion for the IRB).
-- Use pre-extracted PHI-free JSON via ``--pdf-source <path>`` (no LLM call).
-- Skip the PDF leg entirely — the pipeline succeeds without it.
+Implementation: :func:`scripts.extraction.cleanup_propagation.run_propagation`.
 
-Runtime Invariants
+Step 2 — Publish (atomic per-leg rename)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For each leg:
+
+1. Call :func:`scripts.security.secure_env.assert_output_zone` — the
+   destination MUST be under ``output/{STUDY}/``.
+2. If the existing ``trio_bundle/<leg>/`` exists,
+   :func:`scripts.utils.secure_staging.secure_remove_tree` (zero-fill
+   + ``fsync`` + unlink). Republishing must not leave forensically
+   recoverable old bytes.
+3. **Atomic rename** ``staging_dir`` → ``trio_dir``. Same-filesystem
+   = a single inode swap. Cross-filesystem (e.g. tmpfs staging + disk
+   trio) falls back to ``shutil.copytree`` + ``shutil.rmtree``.
+4. Empty staging legs leave the existing trio leg untouched.
+
+Step 3 — Build variables.json
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Walks the published ``trio_bundle/`` and produces
+``trio_bundle/variables.json`` — the consolidated variable schema the
+agent's ``cohort_builder`` uses to validate variable names in
+queries. **Must run after Step 2** because it scans the *published*
+tree, not staging.
+
+Implementation:
+:func:`scripts.extraction.build_variables_reference.build_variables_reference`.
+
+Step 4 — Lineage manifest
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Pairs the SHA-256 of every raw input with the SHA-256 of every
+published artifact, plus the PHI-scrub posture, plus a SHA-256
+fingerprint of the HMAC PHI key. **The single artifact an IRB / IEC
+reviewer reads to verify the entire raw → scrub → publish chain
+without seeing any patient data.**
+
+Output: ``output/{STUDY}/audit/lineage_manifest.json``.
+
+Step 5 — Output signpost + secure cleanup
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Re-emits a plain-English ``output/{STUDY}/README.md`` describing the
+layout for someone who opens the directory cold (sysadmin, auditor,
+future maintainer). Then runs ``secure_remove_tree`` over the AMBER
+``tmp/{STUDY}/`` workspace. **If any earlier step exited non-zero,
+this cleanup is skipped on purpose** so staging is preserved for
+forensic inspection.
+
+Output structure on success
+---------------------------
+
+.. code-block:: text
+
+   data/raw/{STUDY}/      # untouched (RED)
+   tmp/{STUDY}/           # gone (securely deleted)
+   output/{STUDY}/
+   ├── trio_bundle/                      # GREEN — LLM read zone
+   │   ├── datasets/*.jsonl              # PHI-scrubbed
+   │   ├── dictionary/*.json
+   │   ├── pdfs/*_variables.json         # tier: merged | snapshot | empty
+   │   └── variables.json                # consolidated schema
+   ├── audit/                            # GREEN-PROTECT — counts only
+   │   ├── lineage_manifest.json
+   │   ├── phi_scrub_report.json
+   │   ├── dataset_cleanup_report.json
+   │   ├── dictionary_cleanup_report.json
+   │   ├── pdfs_cleanup_report.json
+   │   └── telemetry/events.jsonl
+   ├── agent/                            # agent-owned operational state
+   │   ├── analysis/                     # generated .py + outputs
+   │   ├── conversations/
+   │   └── restore_points/               # gitignored multi-named bundle copies
+   └── README.md                         # output signpost
+
+Plus the version-controlled tracked baseline at
+``snapshots/{STUDY}/`` (LLM-invisible — not under ``output/``, not
+inside any LLM-readable zone) that the orchestrator's per-PDF
+fallback reads.
+
+The audit envelope
 ------------------
 
-These hold at every pipeline boundary:
+The ``output/{STUDY}/audit/`` tree is the single point of contact
+between the runtime and the IRB-reviewer-facing world. Properties:
 
-1. **Zone guards** enforce the four-tier boundary: raw → AMBER staging → GREEN
-   trio bundle → GREEN-PROTECT agent. Pipeline-side guards
-   (``scripts/security/secure_env.py``: ``assert_not_raw``, ``assert_write_zone``,
-   ``assert_output_zone``, ``assert_trio_bundle_zone``) apply at ingest,
-   staging, and publish. Agent-side guards
-   (``scripts/ai_assistant/file_access.py``: ``validate_agent_read``,
-   ``validate_agent_write``, ``validate_sandbox_write``) apply at every
-   tool-code file read or write. Both layers use ``os.path.realpath`` +
-   ``os.path.commonpath`` containment so symlinks and ``..`` traversal
-   cannot escape. Violations raise ``ZoneViolationError`` (a
-   ``PermissionError`` subclass).
-2. **PHI scrub runs before any audit emission** so the dataset cleanup and
-   propagation audits never contain raw subject IDs or raw dates.
-3. **Every agent tool return passes through ``phi_gate_check``** — blocking
-   findings trigger a redaction message rather than leaking raw PHI tokens.
-4. **k-anonymity ≥ 5** is enforced on row-level responses via
-   ``scripts/security/kanon_gate.py`` — equivalence classes smaller than the
-   threshold suppress to ``"<5"``.
-5. **Per-run integrity chain** — every raw input hashed to SHA-256; the hash
-   rides in every row's ``_provenance`` + the lineage manifest.
-6. **Log PHI hygiene** — ``scripts/utils/log_hygiene.install_phi_redactor``
-   redacts subject IDs + Aadhaar / PAN / phone / email / pincode / SSN / dates
-   from every log record before emit.
+* **Counts-only.** No row contents, no before/after pairs, no subject
+  identifiers. Every report file records aggregate counts and per-rule
+  applications.
+* **LLM-invisible.** ``validate_agent_read`` rejects any path under
+  ``audit/``.
+* **Hash-anchored.**
+  ``output/{STUDY}/audit/lineage_manifest.json`` cryptographically
+  links every raw input to every published artifact.
 
-Step Cache
-----------
+Failure semantics
+-----------------
 
-Each pipeline step is cached. Re-running a step with unchanged inputs
-is a no-op. To force re-execution:
+* Any extraction-leg crash that is NOT the PDF leg fails the run
+  immediately (``sys.exit(1)``). Cleanup chain doesn't run; AMBER
+  staging is preserved.
+* PDF leg crash is logged at WARNING and the run proceeds without
+  PDF outputs. The detailed log line names the failure mode (missing
+  source dir, empty dir, all-files-failed with per-file errors,
+  exception trace).
+* PHI scrub failure (e.g., missing key, malformed YAML config)
+  fails the run immediately.
+* Publish step assertion failure (e.g., misconfigured destination
+  outside ``output/``) fails immediately.
+* On any non-zero exit, AMBER staging at ``tmp/{STUDY}/`` is
+  preserved — operator inspects, fixes, re-runs.
 
-.. code-block:: bash
+Where To Go Next
+----------------
 
-   make clean    # Remove all outputs
-   make pipeline # Full re-run
-
-Next Steps
-----------
-
-- :doc:`configuration` for environment and config settings
-- :doc:`../developer_guide/operations` for operational runbook
+* :doc:`../developer_guide/architecture` — full system architecture.
+* :doc:`../developer_guide/data_extraction_pdfs` — deep dive on the
+  PDF orchestrator (PR #15).
+* :doc:`configuration` — env flags, including
+  ``REPORTALIN_PDF_EXTRACTION_MODE`` and the PHI-safety three.
+* :doc:`../developer_guide/operations` — operational playbook,
+  including the snapshot-baseline maintenance protocol.
+* ``docs/irb_dossier/phi_walkthrough.md`` (outside the Sphinx tree)
+  — the IRB-grade walkthrough with regulatory mapping.
