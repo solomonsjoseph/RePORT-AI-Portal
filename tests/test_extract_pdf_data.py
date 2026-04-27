@@ -176,3 +176,201 @@ class TestExtractPdfsToJsonlDefaultOutput:
         assert explicit.exists()
         # Staging must NOT have been used when caller is explicit.
         assert not config.STAGING_PDFS_DIR.exists()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# extract_pdfs_to_jsonl — REPORTALIN_PDF_EXTRACTION_MODE dispatch (PR #16)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestPdfExtractionModeDispatch:
+    """The wizard's PDF-extraction-source radio sets
+    ``REPORTALIN_PDF_EXTRACTION_MODE`` to ``llm`` or ``snapshot``;
+    ``extract_pdfs_to_jsonl`` dispatches to the matching helper.
+
+    Both helpers must NEVER call ``_resolve_pdf_provider`` (it lives on
+    the legacy raw-PDF API path; it has its own two-part PHI-free
+    attestation gate that the new modes intentionally bypass — the
+    orchestrator redacts text before any byte leaves the host, the
+    snapshot mode never makes an LLM call at all).
+    """
+
+    def _seed_snapshot(self, monkeypatch_config: Path, stem: str, payload: dict) -> Path:
+        snap_dir = monkeypatch_config / "agent" / "snapshots" / "initial" / "pdfs"
+        snap_dir.mkdir(parents=True, exist_ok=True)
+        out = snap_dir / f"{stem}_variables.json"
+        out.write_text(json.dumps(payload), encoding="utf-8")
+        return out
+
+    def test_snapshot_mode_publishes_baseline_verbatim(
+        self,
+        tmp_path: Path,
+        monkeypatch_config: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        pdf_src = tmp_path / "annotated_pdfs"
+        pdf_src.mkdir()
+        (pdf_src / "form_x.pdf").write_bytes(b"%PDF-1.4\n%EOF\n")
+
+        self._seed_snapshot(
+            monkeypatch_config,
+            "form_x",
+            {
+                "form_name": "Form X",
+                "source_pdf": "form_x.pdf",
+                "variables": {"AAA": {"description": "alpha"}},
+            },
+        )
+
+        # Provider must NOT be touched in snapshot mode.
+        def _boom() -> None:
+            raise AssertionError(
+                "_resolve_pdf_provider must not be invoked when mode=snapshot"
+            )
+
+        monkeypatch.setattr(epd, "_resolve_pdf_provider", _boom)
+        monkeypatch.setenv("REPORTALIN_PDF_EXTRACTION_MODE", "snapshot")
+
+        result = extract_pdfs_to_jsonl(pdf_dir=pdf_src)
+
+        assert result["errors"] == [], result["errors"]
+        assert result["files_created"] == 1
+        out = config.STAGING_PDFS_DIR / "form_x_variables.json"
+        assert out.is_file()
+        data = json.loads(out.read_text(encoding="utf-8"))
+        assert data["variables"] == {"AAA": {"description": "alpha"}}
+        # Tier marker is stamped onto the published JSON for traceability.
+        assert data.get("extraction_tier") == "snapshot"
+
+    def test_snapshot_mode_records_error_on_missing_baseline(
+        self,
+        tmp_path: Path,
+        monkeypatch_config: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        pdf_src = tmp_path / "annotated_pdfs"
+        pdf_src.mkdir()
+        (pdf_src / "form_missing.pdf").write_bytes(b"%PDF-1.4\n%EOF\n")
+        # Snapshot dir exists but is empty for this PDF.
+        (monkeypatch_config / "agent" / "snapshots" / "initial" / "pdfs").mkdir(
+            parents=True, exist_ok=True
+        )
+
+        monkeypatch.setattr(epd, "_resolve_pdf_provider", lambda: (_ for _ in ()).throw(
+            AssertionError("provider must not be called")
+        ))
+        monkeypatch.setenv("REPORTALIN_PDF_EXTRACTION_MODE", "snapshot")
+
+        result = extract_pdfs_to_jsonl(pdf_dir=pdf_src)
+
+        assert result["files_created"] == 0
+        errors = result["errors"]
+        assert errors and "No snapshot for form_missing.pdf" in errors[0]["error"]
+
+    def test_llm_mode_delegates_to_orchestrator(
+        self,
+        tmp_path: Path,
+        monkeypatch_config: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        pdf_src = tmp_path / "annotated_pdfs"
+        pdf_src.mkdir()
+        (pdf_src / "form_y.pdf").write_bytes(b"%PDF-1.4\n%EOF\n")
+
+        # Stub the orchestrator so we don't fire a real LLM call. The dispatch
+        # contract is what we're pinning here.
+        from scripts.extraction import pdf_pipeline as pp
+
+        captured: dict[str, object] = {}
+
+        def _fake_extract(pdf_path: Path, **kw: object):  # type: ignore[no-untyped-def]
+            captured["pdf_path"] = pdf_path
+            captured.update(kw)
+            return pp.ExtractionResult(
+                pdf_name=pdf_path.name,
+                tier="merged",
+                data={
+                    "form_name": "Form Y",
+                    "source_pdf": pdf_path.name,
+                    "variables": {"BBB": {"description": "beta"}},
+                    "extraction_tier": "merged",
+                },
+                llm_succeeded=True,
+                code_succeeded=True,
+            )
+
+        monkeypatch.setattr(pp, "extract_pdf", _fake_extract)
+        monkeypatch.setattr(epd, "_resolve_pdf_provider", lambda: (_ for _ in ()).throw(
+            AssertionError("provider must not be called")
+        ))
+
+        # Wizard subprocess env injection emulation.
+        monkeypatch.setenv("REPORTALIN_PDF_EXTRACTION_MODE", "llm")
+        monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+        monkeypatch.setenv("LLM_MODEL", "claude-opus-4-7")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+
+        result = extract_pdfs_to_jsonl(pdf_dir=pdf_src)
+
+        assert result["errors"] == [], result["errors"]
+        assert result["files_created"] == 1
+        # Credentials must have been forwarded to the orchestrator.
+        assert captured.get("provider") == "anthropic"
+        assert captured.get("model") == "claude-opus-4-7"
+        assert captured.get("api_key") == "sk-ant-test"
+        # Cache + snapshot dirs are forwarded so the orchestrator can use them.
+        assert captured.get("cache_dir") is not None
+        # Output written verbatim from orchestrator's `data` field.
+        out = config.STAGING_PDFS_DIR / "form_y_variables.json"
+        assert out.is_file()
+        data = json.loads(out.read_text(encoding="utf-8"))
+        assert data["variables"] == {"BBB": {"description": "beta"}}
+
+    def test_unset_mode_falls_back_to_legacy_path(
+        self,
+        tmp_path: Path,
+        monkeypatch_config: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When the env var is unset, ``_resolve_pdf_provider`` must still
+        be the entry point (preserves CLI back-compat for users not running
+        the wizard)."""
+        pdf_src = tmp_path / "annotated_pdfs"
+        pdf_src.mkdir()
+        (pdf_src / "legacy.pdf").write_bytes(b"%PDF-1.4\n%EOF\n")
+
+        sentinel = {"called": False}
+
+        def _boom() -> None:
+            sentinel["called"] = True
+            raise ImportError("no provider in tests")
+
+        monkeypatch.setattr(epd, "_resolve_pdf_provider", _boom)
+        monkeypatch.delenv("REPORTALIN_PDF_EXTRACTION_MODE", raising=False)
+
+        extract_pdfs_to_jsonl(pdf_dir=pdf_src)
+        assert sentinel["called"] is True
+
+    def test_unrecognised_mode_falls_back_to_legacy_path(
+        self,
+        tmp_path: Path,
+        monkeypatch_config: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A garbage value behaves like ``unset`` rather than crashing —
+        avoids surprising operators who fat-finger the env var."""
+        pdf_src = tmp_path / "annotated_pdfs"
+        pdf_src.mkdir()
+        (pdf_src / "garbage.pdf").write_bytes(b"%PDF-1.4\n%EOF\n")
+
+        sentinel = {"called": False}
+
+        def _boom() -> None:
+            sentinel["called"] = True
+            raise ImportError("no provider in tests")
+
+        monkeypatch.setattr(epd, "_resolve_pdf_provider", _boom)
+        monkeypatch.setenv("REPORTALIN_PDF_EXTRACTION_MODE", "wibble")
+
+        extract_pdfs_to_jsonl(pdf_dir=pdf_src)
+        assert sentinel["called"] is True
