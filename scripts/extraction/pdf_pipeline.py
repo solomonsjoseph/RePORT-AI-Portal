@@ -1,43 +1,43 @@
-"""Three-tier PDF extraction pipeline (Phase 3.F + 3.G + 3.H).
+"""Two-way PDF extraction pipeline (Phase 3.F + 3.G + 3.H).
 
 Closes the audit findings 3.F (raw PDF bytes shipped to vision API),
 3.G (LLM response not scanned for echoed PHI), and 3.H (no idempotent
 retry caching) from ``docs/irb_dossier/phase3_phi_followups.md``.
 
-The pipeline runs three tiers per PDF, in order, and merges what they
-produce so the load-study UI step never fails on a single PDF:
+The pipeline has exactly **two acceptable output paths** per PDF —
+either the LLM tier succeeds (paired with the code-extracted text),
+or we fall back to a human-verified snapshot. The load-study UI step
+never fails on a single PDF.
 
-1. **Code path (always runs)** — ``pdfplumber`` extracts text and tables
-   into a structured candidate. Fast, deterministic, never makes a
-   network call. Handles simple CRFs well; struggles on heavily
-   formatted or image-overlay layouts.
+**Way 1 — LLM + code (merged):**
 
-2. **LLM path (only when capable model configured)** — Uses
-   :func:`scripts.utils.llm_capabilities.is_capable_model` to decide.
-   When eligible:
+The code path always runs first (pdfplumber → text + heuristic
+variable candidate). When a *capable* LLM is configured (per
+:func:`scripts.utils.llm_capabilities.is_capable_model`), the LLM
+tier runs **paired** with the code path:
 
-   - The PDF text (already extracted in tier 1) is **redacted in-place**
-     using the existing PHI catalog (``phi_patterns.BLOCKING_PATTERNS``)
-     so any direct identifier in form headers (subject names, phones,
-     Aadhaar) becomes ``<LABEL>`` before any byte leaves the host.
-   - The redacted text is sent to the LLM with the same schema prompt
-     as the legacy bytes-based path. **No PDF bytes** transit the API
-     — only the redacted text plus the schema prompt.
-   - The LLM response is parsed, then every string field is scrubbed
-     through :func:`scripts.ai_assistant.phi_safe.guard_text` to catch
-     any identifier the LLM echoed back.
+- The code-extracted text is **redacted in place** using the existing
+  PHI catalog (``phi_patterns.BLOCKING_PATTERNS``) so identifiers in
+  form headers become ``<LABEL>`` markers before any byte leaves the
+  host. **No raw PDF bytes** transit the API.
+- The redacted text is sent to the LLM with the schema prompt. The
+  LLM response is parsed and every string field is re-scrubbed
+  through :func:`scripts.ai_assistant.phi_safe.guard_text` to catch
+  echoed identifiers.
+- The LLM response is **merged** with the code-tier candidate: LLM
+  wins on field-level conflicts (it's more accurate on complex CRFs);
+  the code candidate fills in vars the LLM missed.
 
-3. **Merge** — when both tiers produce valid candidates, the LLM
-   candidate wins on conflict (it's more accurate on complex CRFs);
-   the code candidate fills in fields the LLM missed (defense in
-   depth). When only one tier produces output, that one is used as-is.
+**Way 2 — Snapshot:**
 
-4. **Backup snapshot fallback** — when both tiers return nothing valid
-   (LLM unavailable AND code path empty, or both errored), the
-   pipeline copies a human-verified ``initial`` snapshot from
-   ``output/{STUDY}/agent/snapshots/initial/pdfs/<form>.json`` into
-   staging. The UI's load-study step never breaks; it just falls back
-   to the verified baseline.
+When the LLM tier is unavailable for any reason (no capable model
+configured, no API key, image-only PDF, LLM call error), the pipeline
+falls back to a human-verified snapshot at
+``output/{STUDY}/agent/snapshots/initial/pdfs/<form>.json``. **A
+code-only result is NEVER an acceptable output** — heuristic
+extraction without LLM oversight is too unreliable to publish, so
+we'd rather use a verified baseline than ship potentially-wrong
+metadata into ``trio_bundle/``.
 
 Idempotent caching: the LLM tier keys on
 ``SHA-256(pdf_bytes) || provider || model || PHI_SCRUB_CONFIG_HASH``
@@ -79,8 +79,11 @@ class ExtractionResult:
     """Outcome of one PDF run through the three-tier pipeline.
 
     ``tier`` reports which path produced the surfaced ``data``:
-    ``"code"``, ``"llm"``, ``"merged"``, ``"snapshot"``, or
-    ``"empty"`` (all tiers failed and no snapshot was available).
+    ``"merged"`` (LLM succeeded, paired with code-extracted text),
+    ``"llm"`` (LLM succeeded but code-path text was empty so there
+    was nothing to merge with), ``"snapshot"`` (LLM unavailable;
+    fell back to verified baseline), or ``"empty"`` (both unavailable
+    and no snapshot — UI will see an empty form).
 
     ``llm_skipped_reason`` documents why the LLM tier did not run
     (capability gate, provider unavailable, etc.) for operator
@@ -418,7 +421,23 @@ def extract_pdf(
     snapshot_dir: Path | None = None,
     cache_dir: Path | None = None,
 ) -> ExtractionResult:
-    """Run the three-tier pipeline for a single PDF.
+    """Run the two-way pipeline for a single PDF.
+
+    There are exactly **two** acceptable output paths:
+
+    1. **LLM + code (merged)** — when a capable LLM is configured AND the
+       LLM call succeeds, the LLM response is merged with the
+       code-extracted heuristic candidate (LLM wins on field-level
+       conflicts; code fills in vars the LLM missed). The code path
+       contributes both the extracted text used as the LLM input AND a
+       baseline candidate for merge — they are paired.
+    2. **Snapshot** — when the LLM tier is unavailable for any reason
+       (no capable model, no API key, image-only PDF, LLM call error),
+       fall back to a human-verified ``initial`` snapshot. Code-only
+       output is **never** an acceptable result; heuristic-only metadata
+       is too unreliable to publish without LLM oversight, so we'd
+       rather use a verified baseline than ship potentially-wrong
+       extraction.
 
     All keyword args are optional. When ``provider`` / ``model`` /
     ``api_key`` are all set AND :func:`is_capable_model` returns True,
@@ -440,7 +459,9 @@ def extract_pdf(
     cache_hit = False
     skipped: str | None = None
 
-    # Tier 1: code path
+    # Tier 1: code path — extracts text + a baseline candidate. The
+    # candidate is ONLY useful as input to the merge step (paired with
+    # the LLM result); it's never returned standalone.
     text = _extract_text_via_pdfplumber(pdf_path)
     if text:
         code_data = _candidate_from_text(pdf_name, text)
@@ -473,12 +494,27 @@ def extract_pdf(
             elif cache_dir is not None:
                 _cache_put(cache_dir, _cache_key(pdf_path, provider, model), llm_data)  # type: ignore[arg-type]
 
-    # Tier 3: merge
-    merged = _merge(code_data, llm_data)
+    # Decide path: LLM+code (merged) OR snapshot. Code-only is NEVER
+    # a valid output (per the user's 2026-04-27 directive: heuristic
+    # extraction without LLM oversight is too unreliable to publish).
+    merged: dict[str, Any] | None = None
     snapshot_used = False
-    if merged is None and snapshot_dir is not None:
-        merged = _load_snapshot_for(pdf_name, snapshot_dir)
-        snapshot_used = merged is not None
+    if llm_data is not None:
+        # Way 1: LLM succeeded → merge with code-tier candidate.
+        merged = _merge(code_data, llm_data)
+    else:
+        # Way 2: LLM unavailable / failed → discard any code-only
+        # candidate and fall back to the human-verified snapshot.
+        if code_data is not None:
+            logger.info(
+                "pdf_pipeline: %s — discarding code-only candidate (LLM "
+                "tier unavailable: %s); falling back to snapshot",
+                pdf_name,
+                skipped,
+            )
+        if snapshot_dir is not None:
+            merged = _load_snapshot_for(pdf_name, snapshot_dir)
+            snapshot_used = merged is not None
 
     if merged is None:
         return ExtractionResult(

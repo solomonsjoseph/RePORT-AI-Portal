@@ -209,16 +209,46 @@ def test_cache_key_invariants(tmp_path: Path) -> None:
 # ── Top-level orchestrator (without real LLM) ──────────────────────────────
 
 
-def test_extract_pdf_runs_code_only_when_no_llm_configured(tmp_path: Path) -> None:
-    """Without a capable model configured, only the code path runs.
-    A simple PDF with no text → empty tier; with text → code tier."""
-    pdf = _make_pdf(tmp_path, content=b"%PDF-1.4\nempty")  # pdfplumber returns ""
-    result = extract_pdf(pdf)  # no provider/model
+def test_extract_pdf_returns_empty_when_no_llm_and_no_snapshot(tmp_path: Path) -> None:
+    """Per the 2026-04-27 directive: code-only is NEVER an acceptable
+    output. Without a capable model AND without a snapshot, the result
+    is the explicit empty-tier marker — the load-study UI will see an
+    empty form and the operator must either provision an LLM or seed a
+    snapshot."""
+    pdf = _make_pdf(tmp_path, content=b"%PDF-1.4\nempty")
+    result = extract_pdf(pdf)  # no provider/model, no snapshot_dir
     assert isinstance(result, ExtractionResult)
-    # Without text, we get the empty-tier fallback (no snapshot dir set).
     assert result.tier == "empty"
     assert result.llm_skipped_reason is not None
     assert "not on capable allowlist" in result.llm_skipped_reason
+
+
+def test_extract_pdf_discards_code_only_falls_back_to_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Even when the code path produces a valid candidate, if the LLM
+    tier is unavailable the pipeline DISCARDS the code-only result and
+    uses the snapshot instead (paired-tier rule from 2026-04-27)."""
+    pdf = _make_pdf(tmp_path, name="3A_Visit.pdf")
+    snapshot_dir = tmp_path / "snapshots" / "initial" / "pdfs"
+    snapshot_dir.mkdir(parents=True)
+    (snapshot_dir / "3A_Visit_variables.json").write_text(
+        json.dumps({"form_name": "3A_VISIT", "variables": {"V1": {"name": "V1"}}}),
+        encoding="utf-8",
+    )
+
+    # Force the code path to return a non-trivial candidate.
+    import scripts.extraction.pdf_pipeline as pp
+
+    monkeypatch.setattr(pp, "_extract_text_via_pdfplumber", lambda _p: _crf_text())
+
+    # No provider/model → LLM tier unavailable → snapshot wins, not code.
+    result = extract_pdf(pdf, snapshot_dir=snapshot_dir)
+    assert result.tier == "snapshot"
+    assert result.snapshot_used is True
+    # The snapshot's variable wins, not the code path's IS_AGE/IS_SEX heuristics.
+    assert "V1" in result.data["variables"]
+    assert "IS_AGE" not in result.data["variables"]
 
 
 def test_extract_pdf_uses_snapshot_when_all_tiers_empty(tmp_path: Path) -> None:
