@@ -88,12 +88,8 @@ def test_sandbox_init_chmods_spec_json() -> None:
 
 def test_sandbox_runner_chmods_persisted_code() -> None:
     src = Path("scripts/ai_assistant/sandbox/runner.py").read_text(encoding="utf-8")
-    assert "code_dir.chmod(0o700)" in src, (
-        "runner.py must chmod the code/ subdir to 0o700"
-    )
-    assert "path.chmod(0o600)" in src, (
-        "runner.py must chmod each persisted run_*.py to 0o600"
-    )
+    assert "code_dir.chmod(0o700)" in src, "runner.py must chmod the code/ subdir to 0o700"
+    assert "path.chmod(0o600)" in src, "runner.py must chmod each persisted run_*.py to 0o600"
 
 
 # ── P1e — snapshots ─────────────────────────────────────────────────────────
@@ -134,7 +130,8 @@ def test_snapshots_module_uses_safe_rmtree_with_symlink_guard() -> None:
     # Only count actual call sites (``shutil.rmtree(``) — exclude comments
     # AND docstring mentions of the symbol.
     call_sites = [
-        line for line in src.splitlines()
+        line
+        for line in src.splitlines()
         if "shutil.rmtree(" in line and not line.lstrip().startswith("#")
     ]
     # Exactly one allowed call: the implementation inside _safe_rmtree.

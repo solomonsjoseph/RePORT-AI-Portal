@@ -1,4 +1,5 @@
 """Session-state bootstrap and conversation helpers for RePORT AI Portal chat UI."""
+
 from __future__ import annotations
 
 from typing import Any, cast
@@ -61,14 +62,13 @@ def init_state() -> None:
 
 def _new_id() -> str:
     import uuid
+
     return str(uuid.uuid4())
 
 
 def _pipeline_output_exists() -> bool:
     try:
-        return config.TRIO_BUNDLE_DIR.exists() and any(
-            config.TRIO_DATASETS_DIR.glob("*.jsonl")
-        )
+        return config.TRIO_BUNDLE_DIR.exists() and any(config.TRIO_DATASETS_DIR.glob("*.jsonl"))
     except Exception:
         return False
 

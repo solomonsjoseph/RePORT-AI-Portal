@@ -129,15 +129,13 @@ class TestCleanDuplicateColumns:
         df = pd.DataFrame(
             {
                 "SUBJID": [1, 2, 3],
-                "SUBJID2": [1, 2, 3],            # duplicate of SUBJID
+                "SUBJID2": [1, 2, 3],  # duplicate of SUBJID
                 "NAME": ["a", "b", "c"],
-                "NAME_2": [None, None, None],   # null, base NAME exists
-                "AGE": [20, 30, 40],             # untouched
+                "NAME_2": [None, None, None],  # null, base NAME exists
+                "AGE": [20, 30, 40],  # untouched
             }
         )
-        cleaned, events = clean_duplicate_columns(
-            df, source_file="mixed.jsonl", sheet="S1"
-        )
+        cleaned, events = clean_duplicate_columns(df, source_file="mixed.jsonl", sheet="S1")
         # The cleaned frame keeps base columns + AGE
         assert set(cleaned.columns) == {"SUBJID", "NAME", "AGE"}
         # One event per dropped column, in encounter order
@@ -161,9 +159,7 @@ class TestCleanDuplicateColumns:
 
     def test_every_event_has_required_keys(self) -> None:
         df = pd.DataFrame({"SUBJID": [1, 2], "SUBJID2": [1, 2]})
-        _cleaned, events = clean_duplicate_columns(
-            df, source_file="demo.jsonl", sheet=None
-        )
+        _cleaned, events = clean_duplicate_columns(df, source_file="demo.jsonl", sheet=None)
         required = {"scope", "name", "file", "sheet", "reason", "kept"}
         for event in events:
             assert required <= set(event.keys())

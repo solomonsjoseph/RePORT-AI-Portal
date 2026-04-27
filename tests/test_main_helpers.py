@@ -241,9 +241,7 @@ class TestEmitOutputSignpost:
 
         assert __version__ in body
 
-    def test_is_idempotent_and_overwrites_stale_content(
-        self, monkeypatch_config: Path
-    ) -> None:
+    def test_is_idempotent_and_overwrites_stale_content(self, monkeypatch_config: Path) -> None:
         import config
 
         readme = Path(config.STUDY_OUTPUT_DIR) / "README.md"

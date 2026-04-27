@@ -8,11 +8,15 @@ import pytest
 
 from scripts.extraction.io.file_discovery import (
     DEFAULT_JUNK_FILENAMES,
+    SUPPORTED_TABULAR_EXTENSIONS,
     discover_files,
 )
 
 
 class TestDiscoverFiles:
+    def test_supported_tabular_extensions_are_xlsx_and_csv_only(self) -> None:
+        assert SUPPORTED_TABULAR_EXTENSIONS == (".xlsx", ".csv")
+
     def test_finds_xlsx_files(self, tmp_path: Path) -> None:
         (tmp_path / "data.xlsx").write_bytes(b"fake")
         (tmp_path / "info.csv").write_bytes(b"fake")

@@ -226,11 +226,7 @@ def composer(assistant_slot: Any | None = None) -> None:
     if question and not pending_stream:
         guard = guard_user_prompt(question)
         user_idx = len(ss.messages)
-        user_content = (
-            question
-            if guard.ok
-            else "[PHI-REFUSED — content redacted]"
-        )
+        user_content = question if guard.ok else "[PHI-REFUSED — content redacted]"
         ss.messages.append({"role": "user", "content": user_content})
         meta: dict[str, Any] = {
             "timestamp": datetime.now(UTC).isoformat(),
@@ -405,9 +401,7 @@ def _render_model_pill() -> None:
 
         if not more_open:
             cur_name = html.escape(_pretty_model_label(current_model))
-            cur_desc = html.escape(
-                _model_description(current_model, is_local=is_local) or ""
-            )
+            cur_desc = html.escape(_model_description(current_model, is_local=is_local) or "")
             st.markdown(
                 '<div class="rpln-current-model">'
                 '<div class="rpln-current-model-text">'
@@ -447,9 +441,7 @@ def _render_model_pill() -> None:
 
             st.markdown('<hr class="rpln-popover-sep" />', unsafe_allow_html=True)
 
-            if st.button(
-                "More models  \u203a", key="rpln_more_models_toggle", width="stretch"
-            ):
+            if st.button("More models  \u203a", key="rpln_more_models_toggle", width="stretch"):
                 st.session_state.rpln_model_more_open = True
                 st.rerun()
         else:

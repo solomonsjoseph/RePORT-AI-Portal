@@ -138,9 +138,7 @@ def test_guard_blocks_on_kanon() -> None:
 
 def test_guard_blocks_on_ldiv_after_kanon_passes() -> None:
     """k-anon passes (5 rows, single class) but homogeneity blocks."""
-    rows = [
-        {"AGE": "65+", "SEX": "M", "OUTCOME": "DIED"} for _ in range(5)
-    ]
+    rows = [{"AGE": "65+", "SEX": "M", "OUTCOME": "DIED"} for _ in range(5)]
     surfaced, kanon, ldiv = guard_rows_with_kanon_and_ldiv(
         rows,
         quasi_identifiers=("AGE", "SEX"),
@@ -169,7 +167,9 @@ def test_guard_skips_ldiv_when_no_sensitive_attributes() -> None:
 # ── query_dataset integration ───────────────────────────────────────────────
 
 
-def _seed_trio_with_rows(tmp_path: Path, rows: list[dict[str, Any]], dataset: str = "1A_ICScreening") -> None:
+def _seed_trio_with_rows(
+    tmp_path: Path, rows: list[dict[str, Any]], dataset: str = "1A_ICScreening"
+) -> None:
     """Write *rows* to a tmp trio_bundle/datasets/{dataset}.jsonl + monkeypatch
     config to point at it."""
     ds_dir = tmp_path / "trio_bundle" / "datasets"
@@ -188,15 +188,10 @@ def test_query_dataset_blocks_when_a_filter_returns_a_small_class(
     import config
 
     rows = [
-        {"SUBJID": f"SUBJ-{i}", "AGEY": 30, "IS_SEX": "F", "OUTCOME": "CURED"}
-        for i in range(20)
-    ] + [
-        {"SUBJID": "SUBJ-99", "AGEY": 88, "IS_SEX": "M", "OUTCOME": "DIED"}
-    ]
+        {"SUBJID": f"SUBJ-{i}", "AGEY": 30, "IS_SEX": "F", "OUTCOME": "CURED"} for i in range(20)
+    ] + [{"SUBJID": "SUBJ-99", "AGEY": 88, "IS_SEX": "M", "OUTCOME": "DIED"}]
     _seed_trio_with_rows(tmp_path, rows)
-    monkeypatch.setattr(
-        config, "TRIO_DATASETS_DIR", tmp_path / "trio_bundle" / "datasets"
-    )
+    monkeypatch.setattr(config, "TRIO_DATASETS_DIR", tmp_path / "trio_bundle" / "datasets")
     # Patch the zone marker so the unit test isn't fighting the
     # frozen-at-import production zone (the actual zone enforcement is
     # exercised by tests/test_secure_env.py + tests/test_file_access.py).
@@ -230,14 +225,9 @@ def test_query_dataset_passes_through_safe_rows(
     import config
 
     # 20 rows, all in the same QI class — k-anon class size = 20, passes.
-    rows = [
-        {"SUBJID": f"SUBJ-{i:03d}", "AGEY": 30, "IS_SEX": "F"}
-        for i in range(20)
-    ]
+    rows = [{"SUBJID": f"SUBJ-{i:03d}", "AGEY": 30, "IS_SEX": "F"} for i in range(20)]
     _seed_trio_with_rows(tmp_path, rows, dataset="2A_Demographics")
-    monkeypatch.setattr(
-        config, "TRIO_DATASETS_DIR", tmp_path / "trio_bundle" / "datasets"
-    )
+    monkeypatch.setattr(config, "TRIO_DATASETS_DIR", tmp_path / "trio_bundle" / "datasets")
     import scripts.ai_assistant.agent_tools as ag
 
     monkeypatch.setattr(ag, "assert_trio_bundle_zone", lambda _p: None)

@@ -126,7 +126,7 @@ Dictionary Loader
 
 * **Module:** :func:`scripts.extraction.load_dictionary.load_study_dictionary`
 * **Step:** Step 0
-* **Reads:** ``data/raw/{STUDY}/data_dictionary/*.xlsx``
+* **Reads:** ``data/raw/{STUDY}/data_dictionary/*.{xlsx,csv}``
 * **Writes:** ``tmp/{STUDY}/dictionary/*.json``
 * **PHI posture:** Carries no PHI by design (the dictionary defines
   variables, not subject values).

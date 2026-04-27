@@ -48,9 +48,7 @@ BLOCKING_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("URL", re.compile(r"\bhttps?://[^\s/$.?#].[^\s]*\b", re.I)),
     (
         "INDIAN_PIN",
-        re.compile(
-            r"(?i:pin\s*(?:code)?|postal\s*code|zip)\s*[:=\-]?\s*\b(\d{6})\b"
-        ),
+        re.compile(r"(?i:pin\s*(?:code)?|postal\s*code|zip)\s*[:=\-]?\s*\b(\d{6})\b"),
     ),
     # ── US identifier shapes (cross-site collaboration hedge) ────────────
     ("SSN", re.compile(r"\b\d{3}-\d{2}-\d{4}\b")),

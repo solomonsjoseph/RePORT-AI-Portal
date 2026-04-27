@@ -30,7 +30,7 @@ Data Flow
 
 .. code-block:: text
 
-   data/raw/{STUDY}/datasets/*.xlsx
+   data/raw/{STUDY}/datasets/*.{xlsx,csv}
                  │
                  ▼
    dataset_pipeline.py  →  tmp/{STUDY}/datasets/*.jsonl   (staging)
@@ -42,7 +42,7 @@ Source
 ------
 
 - **Path:** ``data/raw/{STUDY_NAME}/datasets/``
-- **Formats:** ``.xlsx``, ``.xls``, ``.csv``
+- **Formats:** ``.xlsx``, ``.csv``
 - Auto-discovered — no manual file list needed
 
 Output

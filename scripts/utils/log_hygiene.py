@@ -125,9 +125,7 @@ class PHIRedactingFilter(logging.Filter):
 
     def _redact_subject_match(self, match: re.Match[str]) -> str:
         raw = match.group(0)
-        tag = hmac.new(self._hmac_key, raw.encode("utf-8"), hashlib.sha256).hexdigest()[
-            :8
-        ]
+        tag = hmac.new(self._hmac_key, raw.encode("utf-8"), hashlib.sha256).hexdigest()[:8]
         return f"<SUBJ_{tag}>"
 
     def _redact_text(self, text: str) -> str:
@@ -187,9 +185,7 @@ def install_phi_redactor(
     return flt
 
 
-def attach_to_logger(
-    logger: logging.Logger, filter_instance: PHIRedactingFilter
-) -> None:
+def attach_to_logger(logger: logging.Logger, filter_instance: PHIRedactingFilter) -> None:
     """Attach *filter_instance* to a specific named *logger* (belt-and-braces).
 
     ``logging.Filter`` is evaluated by the handler on the logger where it

@@ -171,12 +171,31 @@ _MIN_QUERY_LENGTH = 3
 
 _CONVERSATIONAL_STOPLIST: frozenset[str] = frozenset(
     {
-        "hi", "hello", "hey", "yo", "sup",
-        "hii", "heyy", "hola",
-        "thanks", "thank you", "ty", "thx",
-        "ok", "okay", "cool", "nice", "got it",
-        "help", "test", "try", "again", "no",
-        "yes", "y", "n",
+        "hi",
+        "hello",
+        "hey",
+        "yo",
+        "sup",
+        "hii",
+        "heyy",
+        "hola",
+        "thanks",
+        "thank you",
+        "ty",
+        "thx",
+        "ok",
+        "okay",
+        "cool",
+        "nice",
+        "got it",
+        "help",
+        "test",
+        "try",
+        "again",
+        "no",
+        "yes",
+        "y",
+        "n",
     }
 )
 
@@ -198,8 +217,8 @@ def _query_looks_conversational(query: str) -> bool:
 
 _CONVERSATIONAL_REFUSAL_MESSAGE = (
     "That looks like a greeting rather than a study question — ask about a "
-    "variable, form, dataset, cohort, or analysis (e.g. \"show me TB outcome "
-    "variables\" or \"how many subjects completed treatment?\")."
+    'variable, form, dataset, cohort, or analysis (e.g. "show me TB outcome '
+    'variables" or "how many subjects completed treatment?").'
 )
 
 
@@ -1240,10 +1259,10 @@ def _score_variable(var: dict[str, Any], query_terms: list[str], query_phrase: s
     Kept identical to ``search_variables`` weights so behaviour stays consistent
     when tools are chained.
     """
-    name = (var.get("variable_name") or "")
-    desc = (var.get("description") or "")
-    form = (var.get("form_name") or "")
-    section = (var.get("section") or "")
+    name = var.get("variable_name") or ""
+    desc = var.get("description") or ""
+    form = var.get("form_name") or ""
+    section = var.get("section") or ""
 
     def _norm(value: str) -> str:
         term = re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
@@ -1343,7 +1362,11 @@ def find_variable_candidates(description: str, k: int = 3) -> str:
             scored.append((score, var))
 
     scored.sort(
-        key=lambda x: (-x[0], len(x[1].get("variable_name") or ""), x[1].get("variable_name") or ""),
+        key=lambda x: (
+            -x[0],
+            len(x[1].get("variable_name") or ""),
+            x[1].get("variable_name") or "",
+        ),
     )
     top = scored[:k]
 
@@ -1524,7 +1547,23 @@ def search_pdf_context(query: str, k: int = 5) -> str:
     if not snippets:
         return "No extracted PDF context found. Run the PDF extraction pipeline first."
 
-    stop = {"the", "a", "an", "of", "for", "and", "in", "is", "to", "or", "on", "what", "how", "does", "do"}
+    stop = {
+        "the",
+        "a",
+        "an",
+        "of",
+        "for",
+        "and",
+        "in",
+        "is",
+        "to",
+        "or",
+        "on",
+        "what",
+        "how",
+        "does",
+        "do",
+    }
     words = [w for w in query.split() if w.lower() not in stop] or query.split()
     query_terms: list[str] = []
     for w in words:
@@ -1556,9 +1595,7 @@ def search_pdf_context(query: str, k: int = 5) -> str:
         text = snip["text"]
         if len(text) > 600:
             text = text[:600].rstrip() + "…"
-        safe_text = sanitise_untrusted_snippet(
-            text, source_label=f"PDF {snip['source_pdf']}"
-        )
+        safe_text = sanitise_untrusted_snippet(text, source_label=f"PDF {snip['source_pdf']}")
         out.append(
             {
                 "rank": rank,

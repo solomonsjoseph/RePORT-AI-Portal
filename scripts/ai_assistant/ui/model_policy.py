@@ -72,9 +72,7 @@ def _normalise(name: str) -> str:
     return name.strip().lower()
 
 
-def is_model_allowed_for_study_load(
-    *, provider: str, model: str
-) -> ModelGateResult:
+def is_model_allowed_for_study_load(*, provider: str, model: str) -> ModelGateResult:
     """Return whether ``provider``/``model`` may trigger a study load/reload.
 
     Rules:
@@ -116,17 +114,11 @@ def is_model_allowed_for_study_load(
         if version >= floor:
             return ModelGateResult(
                 allowed=True,
-                reason=(
-                    f"{model} is at or above the {family_label} "
-                    f"{floor[0]}.{floor[1]} floor."
-                ),
+                reason=(f"{model} is at or above the {family_label} {floor[0]}.{floor[1]} floor."),
             )
         return ModelGateResult(
             allowed=False,
-            reason=(
-                f"{model} is below the {family_label} "
-                f"{floor[0]}.{floor[1]} floor."
-            ),
+            reason=(f"{model} is below the {family_label} {floor[0]}.{floor[1]} floor."),
         )
 
     return ModelGateResult(
@@ -146,5 +138,5 @@ def describe_allowlist() -> str:
         "Loading or reloading study data requires a high-capability model: "
         "Claude **Opus ≥ 4.6**, Gemini **Pro ≥ 3.1**, GPT **≥ 5.3**, "
         "or any local **Ollama** model. "
-        "\"Use Existing Study\" is always available regardless of model."
+        '"Use Existing Study" is always available regardless of model.'
     )

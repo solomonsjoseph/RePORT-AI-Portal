@@ -63,7 +63,7 @@ class TestGetCheckpointer:
 
 class TestGetAgent:
     @patch("scripts.ai_assistant.agent_graph._init_llm")
-    @patch("scripts.ai_assistant.agent_graph.create_react_agent")
+    @patch("scripts.ai_assistant.agent_graph.create_agent")
     def test_creates_agent_with_all_tools(self, mock_create, mock_llm):
         mock_llm.return_value = MagicMock()
         mock_create.return_value = MagicMock()
@@ -77,7 +77,7 @@ class TestGetAgent:
         assert kwargs["tools"] is ALL_TOOLS
 
     @patch("scripts.ai_assistant.agent_graph._init_llm")
-    @patch("scripts.ai_assistant.agent_graph.create_react_agent")
+    @patch("scripts.ai_assistant.agent_graph.create_agent")
     def test_agent_is_singleton(self, mock_create, mock_llm):
         mock_llm.return_value = MagicMock()
         mock_create.return_value = MagicMock()
@@ -87,18 +87,18 @@ class TestGetAgent:
         assert mock_create.call_count == 1
 
     @patch("scripts.ai_assistant.agent_graph._init_llm")
-    @patch("scripts.ai_assistant.agent_graph.create_react_agent")
+    @patch("scripts.ai_assistant.agent_graph.create_agent")
     def test_agent_receives_system_prompt(self, mock_create, mock_llm):
         mock_llm.return_value = MagicMock()
         mock_create.return_value = MagicMock()
         get_agent()
         _, kwargs = mock_create.call_args
-        assert "prompt" in kwargs
-        assert isinstance(kwargs["prompt"], str)
-        assert len(kwargs["prompt"]) > 100  # non-trivial system prompt
+        assert "system_prompt" in kwargs
+        assert isinstance(kwargs["system_prompt"], str)
+        assert len(kwargs["system_prompt"]) > 100  # non-trivial system prompt
 
     @patch("scripts.ai_assistant.agent_graph._init_llm")
-    @patch("scripts.ai_assistant.agent_graph.create_react_agent")
+    @patch("scripts.ai_assistant.agent_graph.create_agent")
     def test_agent_receives_checkpointer(self, mock_create, mock_llm):
         mock_llm.return_value = MagicMock()
         mock_create.return_value = MagicMock()
@@ -123,7 +123,7 @@ class TestGetAgent:
 
 class TestResetAgent:
     @patch("scripts.ai_assistant.agent_graph._init_llm")
-    @patch("scripts.ai_assistant.agent_graph.create_react_agent")
+    @patch("scripts.ai_assistant.agent_graph.create_agent")
     def test_reset_clears_singleton(self, mock_create, mock_llm):
         mock_llm.return_value = MagicMock()
         mock_create.side_effect = [MagicMock(), MagicMock()]
@@ -134,7 +134,7 @@ class TestResetAgent:
         assert mock_create.call_count == 2
 
     @patch("scripts.ai_assistant.agent_graph._init_llm")
-    @patch("scripts.ai_assistant.agent_graph.create_react_agent")
+    @patch("scripts.ai_assistant.agent_graph.create_agent")
     def test_reset_clears_checkpointer(self, mock_create, mock_llm):
         mock_llm.return_value = MagicMock()
         mock_create.return_value = MagicMock()
@@ -152,7 +152,7 @@ class TestResetAgent:
 
 class TestInvokeQuery:
     @patch("scripts.ai_assistant.agent_graph._init_llm")
-    @patch("scripts.ai_assistant.agent_graph.create_react_agent")
+    @patch("scripts.ai_assistant.agent_graph.create_agent")
     def test_returns_ai_message_content(self, mock_create, mock_llm):
         from langchain_core.messages import AIMessage
 
@@ -164,7 +164,7 @@ class TestInvokeQuery:
         assert result == "Test answer"
 
     @patch("scripts.ai_assistant.agent_graph._init_llm")
-    @patch("scripts.ai_assistant.agent_graph.create_react_agent")
+    @patch("scripts.ai_assistant.agent_graph.create_agent")
     def test_returns_last_ai_message(self, mock_create, mock_llm):
         from langchain_core.messages import AIMessage, HumanMessage
 
@@ -182,7 +182,7 @@ class TestInvokeQuery:
         assert result == "final answer"
 
     @patch("scripts.ai_assistant.agent_graph._init_llm")
-    @patch("scripts.ai_assistant.agent_graph.create_react_agent")
+    @patch("scripts.ai_assistant.agent_graph.create_agent")
     def test_no_ai_message_returns_fallback(self, mock_create, mock_llm):
         mock_llm.return_value = MagicMock()
         mock_agent = MagicMock()
@@ -192,7 +192,7 @@ class TestInvokeQuery:
         assert result == "(No response generated.)"
 
     @patch("scripts.ai_assistant.agent_graph._init_llm")
-    @patch("scripts.ai_assistant.agent_graph.create_react_agent")
+    @patch("scripts.ai_assistant.agent_graph.create_agent")
     def test_thread_id_isolation(self, mock_create, mock_llm):
         mock_llm.return_value = MagicMock()
         mock_agent = MagicMock()
@@ -221,7 +221,7 @@ class TestInvokeQuery:
 
 class TestStreamQuery:
     @patch("scripts.ai_assistant.agent_graph._init_llm")
-    @patch("scripts.ai_assistant.agent_graph.create_react_agent")
+    @patch("scripts.ai_assistant.agent_graph.create_agent")
     def test_returns_iterator(self, mock_create, mock_llm):
         mock_llm.return_value = MagicMock()
         mock_agent = MagicMock()
@@ -232,7 +232,7 @@ class TestStreamQuery:
         assert len(chunks) == 1
 
     @patch("scripts.ai_assistant.agent_graph._init_llm")
-    @patch("scripts.ai_assistant.agent_graph.create_react_agent")
+    @patch("scripts.ai_assistant.agent_graph.create_agent")
     def test_passes_callbacks(self, mock_create, mock_llm):
         mock_llm.return_value = MagicMock()
         mock_agent = MagicMock()
@@ -332,8 +332,7 @@ class TestInitLlmOomLadder:
     @staticmethod
     def _oom(size_g: float = 5.5, avail_g: float = 2.9) -> Exception:
         return RuntimeError(
-            f"model requires more system memory ({size_g} GiB) than "
-            f"is available ({avail_g} GiB)"
+            f"model requires more system memory ({size_g} GiB) than is available ({avail_g} GiB)"
         )
 
     def test_first_rung_ok_skips_ladder(self, monkeypatch: pytest.MonkeyPatch) -> None:

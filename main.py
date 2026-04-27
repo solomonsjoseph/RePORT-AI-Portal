@@ -156,6 +156,7 @@ def _install_log_redactor_best_effort() -> None:
     # so SUBJ_*, SC_*, FID_* identifiers in log messages get tagged
     # ``<SUBJ_*>``. Without this, only the generic catalog redactions run.
     from scripts.security.phi_patterns import SUBJECT_ID_PATTERNS
+
     install_phi_redactor(hmac_key=key, subject_id_patterns=list(SUBJECT_ID_PATTERNS))
 
 
@@ -421,9 +422,7 @@ def _run_dataset_leg(*, force: bool, run_extraction: bool) -> dict[str, Any]:
     audit_dir = Path(config.STUDY_AUDIT_DIR)
     trio_datasets_dir = Path(config.TRIO_DATASETS_DIR)
 
-    trio_bundle_has_jsonl = trio_datasets_dir.is_dir() and any(
-        trio_datasets_dir.glob("*.jsonl")
-    )
+    trio_bundle_has_jsonl = trio_datasets_dir.is_dir() and any(trio_datasets_dir.glob("*.jsonl"))
 
     if (
         not force

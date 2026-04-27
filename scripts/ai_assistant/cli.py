@@ -61,9 +61,7 @@ def _select_llm() -> None:
             slug = provider_slug_for(provider_id)
             # "Set" means: KeyStore has it OR the user pre-exported it in their
             # shell. We never write to ``os.environ`` ourselves anymore.
-            has_key = (slug is not None and keystore.has(slug)) or bool(
-                os.environ.get(env_key, "")
-            )
+            has_key = (slug is not None and keystore.has(slug)) or bool(os.environ.get(env_key, ""))
             key_status = " (key set)" if has_key else " (key needed)"
         print(f"  {num}. {label}{key_status}{marker}")
 
@@ -86,10 +84,7 @@ def _select_llm() -> None:
     # API key — stored in the KeyStore (in-process memory), never in os.environ.
     if env_key:
         slug = provider_slug_for(provider_id)
-        existing_key = (
-            (slug is not None and keystore.get(slug))
-            or os.environ.get(env_key, "")
-        )
+        existing_key = (slug is not None and keystore.get(slug)) or os.environ.get(env_key, "")
         if existing_key:
             print(f"  {env_key} is already set.")
             try:

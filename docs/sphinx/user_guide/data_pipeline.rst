@@ -97,14 +97,14 @@ Step-by-step
 Step 0 — Dictionary loading
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Reads ``data/raw/{STUDY}/data_dictionary/*.xlsx`` and writes per-file
-``*.json`` files into ``tmp/{STUDY}/dictionary/``. Carries no PHI.
+Reads ``data/raw/{STUDY}/data_dictionary/*.{xlsx,csv}`` and writes
+per-file ``*.jsonl`` files into ``tmp/{STUDY}/dictionary/``. Carries no PHI.
 Implementation: :func:`scripts.extraction.load_dictionary.load_study_dictionary`.
 
 Step 1 — Dataset extraction (with hash-based step cache)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Walks ``data/raw/{STUDY}/datasets/*.xlsx`` and converts each row to a
+Walks ``data/raw/{STUDY}/datasets/*.{xlsx,csv}`` and converts each row to a
 JSON record in ``tmp/{STUDY}/datasets/``. Records that fail validation
 are recorded as "dropped events" so Step 1.8 can mirror them into the
 dictionary + PDF legs.

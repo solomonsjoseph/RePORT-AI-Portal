@@ -34,10 +34,7 @@ def test_sandbox_runner_chmods_sandbox_result_manifest() -> None:
     src = Path("scripts/ai_assistant/sandbox/runner.py").read_text(encoding="utf-8")
     assert "manifest_path.chmod(0o600)" in src or (
         "manifest_path = output_dir" in src and "chmod(0o600)" in src
-    ), (
-        "_sandbox_result.json must be chmod'd 0o600 in _emit_manifest "
-        "(see runner.py:_emit_manifest)"
-    )
+    ), "_sandbox_result.json must be chmod'd 0o600 in _emit_manifest (see runner.py:_emit_manifest)"
 
 
 # ── N5 — PDF staging zone assertion ─────────────────────────────────────────
@@ -138,8 +135,6 @@ def test_phi_scrub_yaml_pseudonymises_indovap_screen_numbers() -> None:
     cfg = load_scrub_config()
     assert cfg is not None, "phi_scrub.yaml failed to load"
     matched = any(rule.pattern.match("IS_SCRNNUM") for rule in cfg.id_patterns)
-    assert matched, (
-        "No id_patterns rule actually matches the literal column 'IS_SCRNNUM'"
-    )
+    assert matched, "No id_patterns rule actually matches the literal column 'IS_SCRNNUM'"
     matched_ic = any(rule.pattern.match("IC_SCRNNUM") for rule in cfg.id_patterns)
     assert matched_ic, "No id_patterns rule matches 'IC_SCRNNUM'"

@@ -77,9 +77,7 @@ def test_run_pipeline_does_not_leak_session_state_extras(
 
     monkeypatch.setattr(wizard, "_ensure_phi_key", lambda: None)
     # Pre-existing PR-#16-era key shouldn't change behaviour.
-    monkeypatch.setattr(
-        wizard.st, "session_state", {"pdf_extraction_mode": "snapshot"}
-    )
+    monkeypatch.setattr(wizard.st, "session_state", {"pdf_extraction_mode": "snapshot"})
 
     captured: dict[str, Any] = {}
     monkeypatch.setattr(wizard.subprocess, "run", _stub_subprocess_run(captured))

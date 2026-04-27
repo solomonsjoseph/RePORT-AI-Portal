@@ -1,4 +1,5 @@
 """Shell: CSS injection, JS bridge, topbar, sidebar."""
+
 from __future__ import annotations
 
 import html as _html
@@ -97,8 +98,8 @@ def topbar() -> None:
                 (
                     '<div class="rpln-topbar-title-overlay" aria-hidden="true" '
                     f'title="{_html.escape(title, quote=True)}">'
-                    f'{_html.escape(title_label)}'
-                    '</div>'
+                    f"{_html.escape(title_label)}"
+                    "</div>"
                 ),
                 unsafe_allow_html=True,
             )
@@ -187,14 +188,13 @@ def topbar() -> None:
                 else:
                     st.caption("Start a chat to enable conversation actions.")
 
-        with st.container(key="rpln_topbar_share"), st.popover(
-            "Share",
-            width="content",
-            disabled=not has_messages,
-            help=(
-                "Share and export"
-                if has_messages
-                else "Start a chat to enable sharing"
+        with (
+            st.container(key="rpln_topbar_share"),
+            st.popover(
+                "Share",
+                width="content",
+                disabled=not has_messages,
+                help=("Share and export" if has_messages else "Start a chat to enable sharing"),
             ),
         ):
             if conv_id and has_messages:
@@ -297,9 +297,8 @@ def sidebar() -> None:
         visible_pins = pinned_conversations[:_SIDEBAR_PIN_LIMIT]
         remaining_slots = max(0, _SIDEBAR_VISIBLE_CHAT_LIMIT - len(visible_pins))
         visible_recent = recent_conversations[:remaining_slots]
-        hidden_conversation_count = (
-            max(0, len(pinned_conversations) - len(visible_pins))
-            + max(0, len(recent_conversations) - len(visible_recent))
+        hidden_conversation_count = max(0, len(pinned_conversations) - len(visible_pins)) + max(
+            0, len(recent_conversations) - len(visible_recent)
         )
 
         rendered_any = False
@@ -394,9 +393,9 @@ def _render_group(group_name: str, label: str, convs: list[dict]) -> None:
                           title="{escaped_full_title}" aria-label="{escaped_full_title}">{title}</span>
               <button class="rpln-row-close" type="button"
                                             data-rpln-action="pin-conv" data-rpln-conv-id="{cid}"
-                                            title="{'Unpin' if group_name == 'pinned' else 'Pin'}">
+                                            title="{"Unpin" if group_name == "pinned" else "Pin"}">
                                 <span class="material-symbols-rounded">
-                                    {'close' if group_name == 'pinned' else 'push_pin'}
+                                    {"close" if group_name == "pinned" else "push_pin"}
                                 </span>
               </button>
               <div class="rpln-row-menu-wrap">
@@ -415,9 +414,9 @@ def _render_group(group_name: str, label: str, convs: list[dict]) -> None:
                   <button type="button" data-rpln-action="pin-conv"
                           data-rpln-conv-id="{cid}">
                     <span class="material-symbols-rounded">
-                      {'keep_off' if group_name == 'pinned' else 'keep'}
+                      {"keep_off" if group_name == "pinned" else "keep"}
                     </span>
-                    <span>{'Unpin' if group_name == 'pinned' else 'Pin'}</span>
+                    <span>{"Unpin" if group_name == "pinned" else "Pin"}</span>
                   </button>
                   <button type="button" data-rpln-action="delete-conv"
                           data-rpln-conv-id="{cid}" class="rpln-row-menu-danger">
@@ -438,7 +437,7 @@ def _render_group(group_name: str, label: str, convs: list[dict]) -> None:
             <span>{label}</span>
           </div>
           <div class="rpln-conv-list">
-            {''.join(rows_html)}
+            {"".join(rows_html)}
           </div>
         </div>
         """

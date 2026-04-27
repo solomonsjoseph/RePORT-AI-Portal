@@ -788,9 +788,7 @@ class TestScrubRowPriority:
             keep_fields=["^KEEP_ME$"],
             drop_fields=["^KEEP_ME$"],
         )
-        rows: list[dict[str, object]] = [
-            {"SUBJID": "S1", "KEEP_ME": "value-should-survive"}
-        ]
+        rows: list[dict[str, object]] = [{"SUBJID": "S1", "KEEP_ME": "value-should-survive"}]
         src = _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
         out = [json.loads(line) for line in src.read_text().splitlines() if line]

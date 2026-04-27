@@ -99,9 +99,7 @@ class TestValidateAgentWrite:
         f = config.STUDY_RESTORE_POINTS_DIR / "run-x" / "snap.json"
         assert validate_agent_write(f) == Path(f.resolve())
 
-    def test_tracked_snapshots_baseline_rejected(
-        self, monkeypatch_config: Path
-    ) -> None:
+    def test_tracked_snapshots_baseline_rejected(self, monkeypatch_config: Path) -> None:
         """Tracked baseline at ``snapshots/{STUDY}/`` is OUTSIDE the agent
         write zone — only a maintainer (with shell access) curates it."""
         import config
@@ -162,9 +160,7 @@ class TestTraversalAndSymlinkSafety:
     through the agent interface.
     """
 
-    def test_symlink_from_agent_to_audit_rejected_on_read(
-        self, monkeypatch_config: Path
-    ) -> None:
+    def test_symlink_from_agent_to_audit_rejected_on_read(self, monkeypatch_config: Path) -> None:
         import config
 
         target = config.STUDY_AUDIT_DIR / "phi_scrub_report.json"
@@ -174,9 +170,7 @@ class TestTraversalAndSymlinkSafety:
         with pytest.raises(ZoneViolationError):
             validate_agent_read(link)
 
-    def test_symlink_from_agent_to_staging_rejected_on_read(
-        self, monkeypatch_config: Path
-    ) -> None:
+    def test_symlink_from_agent_to_staging_rejected_on_read(self, monkeypatch_config: Path) -> None:
         import config
 
         config.STAGING_DATASETS_DIR.mkdir(parents=True, exist_ok=True)
@@ -187,9 +181,7 @@ class TestTraversalAndSymlinkSafety:
         with pytest.raises(ZoneViolationError):
             validate_agent_read(link)
 
-    def test_symlink_from_agent_to_audit_rejected_on_write(
-        self, monkeypatch_config: Path
-    ) -> None:
+    def test_symlink_from_agent_to_audit_rejected_on_write(self, monkeypatch_config: Path) -> None:
         """A write through a symlink that resolves outside ``AGENT_STATE_DIR``
         must be blocked, even though the symlink itself lives inside."""
         import config
@@ -201,9 +193,7 @@ class TestTraversalAndSymlinkSafety:
         with pytest.raises(ZoneViolationError):
             validate_agent_write(link_dir / "tamper.json")
 
-    def test_parent_traversal_escape_rejected_on_read(
-        self, monkeypatch_config: Path
-    ) -> None:
+    def test_parent_traversal_escape_rejected_on_read(self, monkeypatch_config: Path) -> None:
         """``agent/../audit/x.json`` must resolve out of the agent zone."""
         import config
 
@@ -213,14 +203,10 @@ class TestTraversalAndSymlinkSafety:
         with pytest.raises(ZoneViolationError):
             validate_agent_read(traversal)
 
-    def test_parent_traversal_escape_rejected_on_write(
-        self, monkeypatch_config: Path
-    ) -> None:
+    def test_parent_traversal_escape_rejected_on_write(self, monkeypatch_config: Path) -> None:
         import config
 
-        traversal = (
-            config.AGENT_OUTPUT_DIR / ".." / ".." / "audit" / "tamper.json"
-        )
+        traversal = config.AGENT_OUTPUT_DIR / ".." / ".." / "audit" / "tamper.json"
         with pytest.raises(ZoneViolationError):
             validate_agent_write(traversal)
 
@@ -244,17 +230,13 @@ class TestValidateSandboxWrite:
         commonpath catches this; startswith did not."""
         import config
 
-        sibling = config.AGENT_OUTPUT_DIR.parent / (
-            config.AGENT_OUTPUT_DIR.name + "_exfil"
-        )
+        sibling = config.AGENT_OUTPUT_DIR.parent / (config.AGENT_OUTPUT_DIR.name + "_exfil")
         sibling.mkdir(parents=True, exist_ok=True)
         f = sibling / "x.csv"
         with pytest.raises(ZoneViolationError):
             validate_sandbox_write(f)
 
-    def test_agent_state_outside_analysis_rejected(
-        self, monkeypatch_config: Path
-    ) -> None:
+    def test_agent_state_outside_analysis_rejected(self, monkeypatch_config: Path) -> None:
         """Sandbox write zone is narrower than agent-tool zone:
         other ``agent/`` subdirs like restore_points/ are rejected."""
         import config

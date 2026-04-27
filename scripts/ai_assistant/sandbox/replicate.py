@@ -102,9 +102,7 @@ def main(path_str: str) -> int:
     try:
         # ``e``+``xec`` literal split to avoid a static-analysis hook
         # misfire on this source file; behavior is identical.
-        getattr(builtins, "e" + "xec")(
-            compile(code, str(path), "e" + "xec"), namespace
-        )
+        getattr(builtins, "e" + "xec")(compile(code, str(path), "e" + "xec"), namespace)
     except Exception as exc:
         print(f"Error during replication: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1

@@ -27,7 +27,7 @@ Who should use RePORT AI Portal?
 What data formats does it support?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* **Input**: PDF (annotated case report forms), Excel (.xlsx, .xls), CSV
+* **Input**: PDF (annotated case report forms), Excel ``.xlsx``, CSV
 * **Output**: JSONL (JSON Lines)
 
 Installation & Setup

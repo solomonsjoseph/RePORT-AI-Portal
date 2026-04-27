@@ -54,10 +54,9 @@ Pytest
 
 **What.** Test runner. **Why.** Mature ecosystem, ``conftest.py``
 fixtures, deterministic markers. **How.**
-:doc:`testing` covers the test-file conventions. As of v0.20.0
-``make test`` runs 841 deterministic tests; ``make test-all`` runs
-the full 913 (the difference is LLM-construction smokes that need
-``langchain`` installed).
+:doc:`testing` covers the test-file conventions. ``make test`` runs
+the deterministic subset that excludes the AI Assistant construction
+smokes; ``make test-all`` runs the full suite.
 
 Runtime — pipeline
 ------------------
@@ -78,14 +77,6 @@ openpyxl
 **What.** Excel ``.xlsx`` reader/writer. **Why.** pandas's default
 ``.xlsx`` engine. **How.** Used implicitly by ``pd.read_excel`` for
 the dictionary + dataset legs.
-
-xlrd 1.2.0 (legacy ``.xls`` only)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**What.** Legacy ``.xls`` reader. **Why.** pandas dropped ``xlrd``
-support in 1.2 for ``.xlsx`` but kept it for legacy ``.xls``. We need
-both because some study data is still in ``.xls``. **How.** Pinned
-via ``xlrd==1.2.0`` (the last version that supports ``.xls``).
 
 pypdf
 ~~~~~
@@ -223,13 +214,6 @@ future phase; for now standard logging is sufficient.
 Development
 -----------
 
-pytest-cov
-~~~~~~~~~~
-
-**What.** Coverage measurement. **Why.** Optional; enabled when
-running ``make test-coverage``. **How.** Configured in
-``pyproject.toml`` (``[tool.pytest.ini_options]``).
-
 pip-audit
 ~~~~~~~~~
 
@@ -270,8 +254,6 @@ Pinning policy
   the agent talks to (LangChain, Anthropic, Google) — e.g.
   ``langchain>=1.0.0,<2.0.0``. Reason: provider APIs evolve; we
   catch the v2 break in CI before it reaches production.
-* **Exact version pin** for ``xlrd==1.2.0`` (the only non-broken
-  ``.xls`` reader).
 * **Streamlit pinned to ``>=1.38, <2.0``** because
   ``st.session_state`` semantics changed materially across major
   versions.

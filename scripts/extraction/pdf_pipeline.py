@@ -237,9 +237,7 @@ def _scrub_llm_response(data: dict[str, Any]) -> dict[str, Any]:
 
     walked = _walk(data)
     if not isinstance(walked, dict):
-        raise TypeError(
-            f"_scrub_llm_response received non-dict input: {type(data).__name__}"
-        )
+        raise TypeError(f"_scrub_llm_response received non-dict input: {type(data).__name__}")
     return walked
 
 
@@ -316,7 +314,9 @@ def _extract_via_llm(
 # ── Merge ───────────────────────────────────────────────────────────────────
 
 
-def _merge(code_data: dict[str, Any] | None, llm_data: dict[str, Any] | None) -> dict[str, Any] | None:
+def _merge(
+    code_data: dict[str, Any] | None, llm_data: dict[str, Any] | None
+) -> dict[str, Any] | None:
     """Merge code-tier + LLM-tier candidates. LLM wins on field-level
     conflicts within a variable; code-tier fills in variables the LLM
     missed."""
@@ -366,9 +366,7 @@ def _load_snapshot_for(pdf_name: str, snapshot_dir: Path) -> dict[str, Any] | No
                     data["extraction_tier"] = "snapshot"
                     return data
             except (json.JSONDecodeError, OSError) as exc:
-                logger.warning(
-                    "pdf_pipeline: snapshot %s unreadable: %s", path, exc
-                )
+                logger.warning("pdf_pipeline: snapshot %s unreadable: %s", path, exc)
     return None
 
 
@@ -479,7 +477,9 @@ def extract_pdf(
         code_data = _candidate_from_text(pdf_name, text)
 
     # Tier 2: LLM path (only when capable AND configured)
-    if not is_capable_model(provider, model):
+    if provider is None or model is None:
+        skipped = "provider/model not configured"
+    elif not is_capable_model(provider, model):
         skipped = f"model {provider}/{model} not on capable allowlist"
     elif not api_key:
         skipped = "no API key in KeyStore for selected provider"
@@ -488,7 +488,7 @@ def extract_pdf(
     else:
         # Cache lookup
         if cache_dir is not None:
-            key = _cache_key(pdf_path, provider, model)  # type: ignore[arg-type]
+            key = _cache_key(pdf_path, provider, model)
             cached = _cache_get(cache_dir, key)
             if cached is not None:
                 llm_data = cached
@@ -499,12 +499,15 @@ def extract_pdf(
         if llm_data is None:
             redacted = _redact_text_for_llm(text)
             llm_data = _extract_via_llm(
-                redacted, provider=provider, model=model, api_key=api_key  # type: ignore[arg-type]
+                redacted,
+                provider=provider,
+                model=model,
+                api_key=api_key,
             )
             if llm_data is None:
                 skipped = "LLM call failed or returned invalid JSON"
             elif cache_dir is not None:
-                _cache_put(cache_dir, _cache_key(pdf_path, provider, model), llm_data)  # type: ignore[arg-type]
+                _cache_put(cache_dir, _cache_key(pdf_path, provider, model), llm_data)
 
     # Decide path: LLM+code (merged) OR snapshot. Code-only is NEVER
     # a valid output (per the user's 2026-04-27 directive: heuristic

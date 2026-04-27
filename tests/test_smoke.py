@@ -87,4 +87,3 @@ def test_dmy_variables_set() -> None:
     assert isinstance(DMY_VARIABLES, frozenset)
     assert "IC_VISDAT" in DMY_VARIABLES
     assert "IT_IGRADAT" in DMY_VARIABLES
-

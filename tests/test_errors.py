@@ -1,4 +1,5 @@
 """Tests for the RePORTError structured envelope."""
+
 from __future__ import annotations
 
 import json
@@ -32,9 +33,7 @@ def test_wrap_can_suppress_traceback() -> None:
     try:
         raise RuntimeError("boom")
     except Exception as exc:
-        err = errors.wrap(
-            exc, stage="test", operation="op", include_traceback=False
-        )
+        err = errors.wrap(exc, stage="test", operation="op", include_traceback=False)
     assert err.traceback is None
 
 

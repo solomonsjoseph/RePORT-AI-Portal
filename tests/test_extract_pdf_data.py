@@ -228,9 +228,7 @@ class TestPdfExtractionModeDispatch:
 
         # Provider must NOT be touched in snapshot mode.
         def _boom() -> None:
-            raise AssertionError(
-                "_resolve_pdf_provider must not be invoked when mode=snapshot"
-            )
+            raise AssertionError("_resolve_pdf_provider must not be invoked when mode=snapshot")
 
         monkeypatch.setattr(epd, "_resolve_pdf_provider", _boom)
         monkeypatch.setenv("REPORTALIN_PDF_EXTRACTION_MODE", "snapshot")
@@ -256,13 +254,13 @@ class TestPdfExtractionModeDispatch:
         pdf_src.mkdir()
         (pdf_src / "form_missing.pdf").write_bytes(b"%PDF-1.4\n%EOF\n")
         # Snapshot dir exists but is empty for this PDF.
-        (Path(config.STUDY_SNAPSHOTS_DIR) / "pdfs").mkdir(
-            parents=True, exist_ok=True
-        )
+        (Path(config.STUDY_SNAPSHOTS_DIR) / "pdfs").mkdir(parents=True, exist_ok=True)
 
-        monkeypatch.setattr(epd, "_resolve_pdf_provider", lambda: (_ for _ in ()).throw(
-            AssertionError("provider must not be called")
-        ))
+        monkeypatch.setattr(
+            epd,
+            "_resolve_pdf_provider",
+            lambda: (_ for _ in ()).throw(AssertionError("provider must not be called")),
+        )
         monkeypatch.setenv("REPORTALIN_PDF_EXTRACTION_MODE", "snapshot")
 
         result = extract_pdfs_to_jsonl(pdf_dir=pdf_src)
@@ -304,9 +302,11 @@ class TestPdfExtractionModeDispatch:
             )
 
         monkeypatch.setattr(pp, "extract_pdf", _fake_extract)
-        monkeypatch.setattr(epd, "_resolve_pdf_provider", lambda: (_ for _ in ()).throw(
-            AssertionError("provider must not be called")
-        ))
+        monkeypatch.setattr(
+            epd,
+            "_resolve_pdf_provider",
+            lambda: (_ for _ in ()).throw(AssertionError("provider must not be called")),
+        )
 
         # Wizard subprocess env injection emulation.
         monkeypatch.setenv("REPORTALIN_PDF_EXTRACTION_MODE", "llm")

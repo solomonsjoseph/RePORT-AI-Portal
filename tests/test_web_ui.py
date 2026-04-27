@@ -102,8 +102,12 @@ def test_theme_includes_hidden_end_chat_and_model_pill() -> None:
     chat_source = (_PROJECT_ROOT / "scripts/ai_assistant/ui/chat.py").read_text(encoding="utf-8")
     shell_source = (_PROJECT_ROOT / "scripts/ai_assistant/ui/shell.py").read_text(encoding="utf-8")
     web_ui_source = (_PROJECT_ROOT / "scripts/ai_assistant/web_ui.py").read_text(encoding="utf-8")
-    wizard_source = (_PROJECT_ROOT / "scripts/ai_assistant/ui/wizard.py").read_text(encoding="utf-8")
-    streaming_source = (_PROJECT_ROOT / "scripts/ai_assistant/ui/streaming.py").read_text(encoding="utf-8")
+    wizard_source = (_PROJECT_ROOT / "scripts/ai_assistant/ui/wizard.py").read_text(
+        encoding="utf-8"
+    )
+    streaming_source = (_PROJECT_ROOT / "scripts/ai_assistant/ui/streaming.py").read_text(
+        encoding="utf-8"
+    )
     assert ".st-key-rpln_end_chat_hidden" in css
     assert "rpln_composer_dock" in chat_source
     assert '[class*="st-key-rpln_composer_dock"]' in css
@@ -174,7 +178,9 @@ def test_theme_prunes_stale_pre_dock_composer_css() -> None:
 def test_streaming_loader_keeps_label_and_morphs_submit_icon() -> None:
     css = _CSS_PATH.read_text(encoding="utf-8")
     chat_source = (_PROJECT_ROOT / "scripts/ai_assistant/ui/chat.py").read_text(encoding="utf-8")
-    streaming_source = (_PROJECT_ROOT / "scripts/ai_assistant/ui/streaming.py").read_text(encoding="utf-8")
+    streaming_source = (_PROJECT_ROOT / "scripts/ai_assistant/ui/streaming.py").read_text(
+        encoding="utf-8"
+    )
     assert streaming_source.index("status = st.empty()") < streaming_source.index(
         "placeholder = st.empty()"
     )
@@ -272,7 +278,9 @@ def test_memory_branch_wins_against_conn_for_all_rungs_runtime_error() -> None:
     assert any(kw in all_rungs_fail_msg for kw in _MEMORY_KEYWORDS)
 
     # The actual classifier in streaming.py must therefore check MEMORY first.
-    streaming_source = (_PROJECT_ROOT / "scripts/ai_assistant/ui/streaming.py").read_text(encoding="utf-8")
+    streaming_source = (_PROJECT_ROOT / "scripts/ai_assistant/ui/streaming.py").read_text(
+        encoding="utf-8"
+    )
     mem_idx = streaming_source.index("elif any(kw in low for kw in _MEMORY_KEYWORDS):")
     conn_idx = streaming_source.index("elif any(kw in low for kw in _conn_keywords):")
     assert mem_idx < conn_idx, (
@@ -293,7 +301,9 @@ def test_error_card_persists_after_rerun() -> None:
     assistant answer, while setting a small session flag so ``chat.py`` can
     mark the saved assistant message as an error."""
 
-    streaming_src = (_PROJECT_ROOT / "scripts/ai_assistant/ui/streaming.py").read_text(encoding="utf-8")
+    streaming_src = (_PROJECT_ROOT / "scripts/ai_assistant/ui/streaming.py").read_text(
+        encoding="utf-8"
+    )
     chat_src = (_PROJECT_ROOT / "scripts/ai_assistant/ui/chat.py").read_text(encoding="utf-8")
 
     assert 'st.session_state["_rpln_stream_error"] = True' in streaming_src
@@ -320,7 +330,9 @@ def test_sanitize_file_refs_strips_paths_extensions_and_markers() -> None:
 
 
 def test_chat_message_renderer_has_no_artifact_download_panel() -> None:
-    streaming_src = (_PROJECT_ROOT / "scripts/ai_assistant/ui/streaming.py").read_text(encoding="utf-8")
+    streaming_src = (_PROJECT_ROOT / "scripts/ai_assistant/ui/streaming.py").read_text(
+        encoding="utf-8"
+    )
 
     assert "def _render_artifacts_panel" not in streaming_src
     assert "_append_artifact_bundle" not in streaming_src
