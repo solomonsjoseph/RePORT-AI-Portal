@@ -109,6 +109,10 @@ def _save_conversation() -> None:
     }
     try:
         fpath.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        # Conversations may contain redacted user prompts + tool returns.
+        # Tighten file mode to owner-only so the file isn't world-readable
+        # if process umask is the typical 0o022.
+        fpath.chmod(0o600)
         st.session_state.current_conversation_title = title
     except OSError:
         logger.warning("Failed to save conversation %s", conv_id)
@@ -241,6 +245,7 @@ def _rename_conversation(conv_id: str, new_title: str) -> None:
         # in the agent zone (matches _save_conversation policy).
         data["title"] = redact_phi_in_text(new_title.strip())[:100]
         fpath.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        fpath.chmod(0o600)
         if st.session_state.get("current_conversation_id") == conv_id:
             st.session_state.current_conversation_title = data["title"]
     except (json.JSONDecodeError, OSError):
@@ -257,6 +262,7 @@ def _toggle_pin(conv_id: str) -> None:
         data["pinned"] = not data.get("pinned", False)
         data["updated_at"] = datetime.now(UTC).isoformat()
         fpath.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        fpath.chmod(0o600)
     except (json.JSONDecodeError, OSError):
         logger.warning("Failed to toggle pin for conversation %s", conv_id)
 

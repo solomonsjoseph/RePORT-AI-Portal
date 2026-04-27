@@ -208,6 +208,11 @@ def _persist_code(
     """
     code_dir = output_dir / "code"
     code_dir.mkdir(parents=True, exist_ok=True)
+    # LLM-generated code may hardcode pseudonyms or quasi-identifiers, so the
+    # code/ directory and every saved .py file must be owner-only — not
+    # world-readable as the default umask 0o022 would leave them.
+    with contextlib.suppress(OSError):
+        code_dir.chmod(0o700)
     safe_ts = timestamp.replace(":", "-")
     path = code_dir / f"run_{safe_ts}_{short_uuid}.py"
     df_listing = ", ".join(df_names) if df_names else "(none)"
@@ -226,6 +231,8 @@ def _persist_code(
         "# === LLM-generated analysis code below ===\n"
     )
     path.write_text(header + code, encoding="utf-8")
+    with contextlib.suppress(OSError):
+        path.chmod(0o600)
     return path
 
 

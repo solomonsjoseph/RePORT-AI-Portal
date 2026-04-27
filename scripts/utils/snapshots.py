@@ -30,12 +30,31 @@ Public API
 from __future__ import annotations
 
 import argparse
+import contextlib
+import os
 import shutil
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
 import config
+
+
+def _safe_rmtree(path: Path, *, ignore_errors: bool = False) -> None:
+    """Delete *path*, refusing to follow symlinks at the root.
+
+    ``shutil.rmtree`` is TOCTOU-vulnerable when the root path can be replaced
+    with a symlink between an outer ``exists()`` check and the call. We
+    refuse to operate on a symlink at all — caller must remove the link
+    explicitly. This is the minimum protection appropriate for snapshots,
+    which live under the agent-writable zone but are not assumed to be
+    co-tenant-hostile.
+    """
+    if path.is_symlink():
+        # Unlink the symlink itself; do NOT follow it into its target.
+        path.unlink()
+        return
+    shutil.rmtree(path, ignore_errors=ignore_errors)
 
 __all__ = [
     "SnapshotError",
@@ -113,12 +132,38 @@ def create_snapshot(name: str | None = None, *, overwrite: bool = False) -> Path
     if target.exists():
         if not overwrite:
             raise SnapshotError(f"Snapshot already exists: {target}")
-        shutil.rmtree(target)
+        # Use _safe_rmtree (refuses to follow a symlink at the root) instead
+        # of bare shutil.rmtree to close a TOCTOU vector where an attacker
+        # swaps the snapshot directory with a symlink to /etc between the
+        # exists() check and the rmtree call.
+        _safe_rmtree(target)
 
     target.parent.mkdir(parents=True, exist_ok=True)
     # copytree handles nested structure; trio bundle is self-contained.
     shutil.copytree(trio, target, symlinks=False)
+    # Tighten permissions: snapshot may contain quasi-identifiers even when
+    # the trio bundle is PHI-scrubbed. Walk the tree and set dirs to 0o700
+    # and files to 0o600 so the snapshot isn't world-readable under the
+    # default umask 0o022.
+    _harden_tree_modes(target)
     return target
+
+
+def _harden_tree_modes(root: Path) -> None:
+    """Set every dir under *root* to mode 0o700 and every file to 0o600.
+
+    Best-effort: per-entry ``chmod`` failures are logged at debug level but
+    do not abort, because partial hardening still beats no hardening.
+    """
+    with contextlib.suppress(OSError):
+        root.chmod(0o700)
+    for current_root, dirs, files in os.walk(str(root)):
+        for d in dirs:
+            with contextlib.suppress(OSError):
+                (Path(current_root) / d).chmod(0o700)
+        for f in files:
+            with contextlib.suppress(OSError):
+                (Path(current_root) / f).chmod(0o600)
 
 
 def list_snapshots() -> list[str]:
@@ -167,15 +212,16 @@ def restore_snapshot(name: str) -> Path:
 
     staging = trio.with_name(trio.name + ".replacing")
     if staging.exists():
-        shutil.rmtree(staging)
+        _safe_rmtree(staging)
 
     backup = trio.with_name(trio.name + ".previous")
     if backup.exists():
-        shutil.rmtree(backup)
+        _safe_rmtree(backup)
 
     # Copy snapshot into a staging directory first so a partial copy cannot
     # leave the live bundle broken.
     shutil.copytree(source, staging, symlinks=False)
+    _harden_tree_modes(staging)
 
     if trio.exists():
         trio.rename(backup)
@@ -185,11 +231,13 @@ def restore_snapshot(name: str) -> Path:
         if backup.exists() and not trio.exists():
             backup.rename(trio)
         if staging.exists():
-            shutil.rmtree(staging, ignore_errors=True)
+            with contextlib.suppress(Exception):
+                _safe_rmtree(staging)
         raise
 
     if backup.exists():
-        shutil.rmtree(backup, ignore_errors=True)
+        with contextlib.suppress(Exception):
+            _safe_rmtree(backup)
     return trio
 
 

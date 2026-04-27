@@ -75,6 +75,12 @@ def _append_event(event: dict[str, Any]) -> None:
         with open(sink_path, "a", encoding="utf-8") as fh:
             fh.write(line)
 
+        # Tighten file mode after every append. The first append creates the
+        # file with the process umask (typically 0o644 → world-readable);
+        # subsequent appends are no-ops on permissions but the chmod is
+        # idempotent so we keep it simple.
+        sink_path.chmod(0o600)
+
         os.unlink(tmp_path)
     except Exception:
         # Cleanup temp on failure

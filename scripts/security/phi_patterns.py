@@ -32,7 +32,9 @@ __all__ = [
 
 BLOCKING_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     # ── Indian government IDs ────────────────────────────────────────────
-    ("AADHAAR", re.compile(r"\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b")),
+    # Allow space, dash, OR dot as separators — real Aadhaar numbers
+    # appear with all three formats in clinical PDFs and pasted prompts.
+    ("AADHAAR", re.compile(r"\b\d{4}[\s\-\.]?\d{4}[\s\-\.]?\d{4}\b")),
     ("PAN", re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b")),
     ("INDIAN_VOTER_ID", re.compile(r"\b[A-Z]{3}\d{7}\b")),
     ("INDIAN_DL", re.compile(r"\b[A-Z]{2}\d{2}\s?\d{4}\d{7}\b")),
