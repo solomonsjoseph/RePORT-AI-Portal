@@ -150,6 +150,27 @@ against the IRB dossier.
        (:mod:`scripts.security.phi_ner`). Setting this today is a no-op
        because the implementation is a design stub pending prompt
        calibration against the Indo-VAP narrative corpus.
+   * - ``REPORTALIN_PDF_EXTRACTION_MODE``
+     - (unset)
+     - Selects the PDF extraction path inside
+       ``extract_pdfs_to_jsonl``. ``llm`` runs the orchestrator
+       (``scripts/extraction/pdf_pipeline.py``, PR #15) — pdfplumber
+       code path + redacted-text LLM merge + per-PDF snapshot fallback.
+       ``snapshot`` skips the LLM entirely and publishes the
+       ``snapshots/{STUDY}/pdfs/`` baseline verbatim. Unset (the CLI
+       default) keeps the legacy raw-PDF API path with its two-part
+       PHI-free attestation gate. The wizard's "Load Study" button
+       always sets this to ``llm``.
+   * - ``REPORTALIN_PDF_LLM_CAPABLE_MODELS``
+     - (empty)
+     - Comma-separated lowercase model-name prefixes that the PDF
+       orchestrator's capability gate
+       (:func:`scripts.utils.llm_capabilities.is_capable_model`) treats
+       as capable. **Replaces** (not extends) the hardcoded default
+       allowlist (Claude Opus/Sonnet 4.6+, GPT-5+, Gemini 2.5 Pro,
+       Llama 3.3 405B). Operator opt-in for validated local Ollama
+       models — without this override, Ollama is excluded by default
+       regardless of model name.
 
 PHI key (out-of-repo sidecar)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

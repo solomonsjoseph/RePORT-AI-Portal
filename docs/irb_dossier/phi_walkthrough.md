@@ -314,7 +314,7 @@ No tool accepts birthdate as an output field — the column was dropped. The age
 **Two co-existing paths as of v0.20.0:**
 
 - **Two-way orchestrator** (`scripts/extraction/pdf_pipeline.py`, PR #15 — the wizard's "Load Study" button selects this path). The `pdfplumber` code path always runs first; extracted text is PHI-redacted via `phi_patterns.BLOCKING_PATTERNS` BEFORE any byte leaves the host, with a defensive `_assert_no_raw_phi_in_payload` re-check that raises if any blocking pattern survives. The LLM receives only the redacted text. Response is re-scrubbed via `phi_safe.guard_text` and merged with the code candidate. Per-PDF fallback to the version-controlled `snapshots/{STUDY}/pdfs/` baseline when the LLM tier is unavailable. **No raw PDF bytes leave the host.** Idempotent cache keyed on `SHA-256(pdf_bytes || provider || model || phi_scrub.yaml hash)`.
-- **Legacy raw-PDF API path** (`scripts/extraction/extract_pdf_data.py`, the CLI default) is refused unless the operator opts in via two-factor attestation: `REPORTALIN_PDF_PHI_FREE=1` env flag **and** non-empty `authorities/phi_free_pdfs.md` note. Both are enforced at `extract_pdf_data.py:260-331`.
+- **Legacy raw-PDF API path** (`scripts/extraction/extract_pdf_data.py`, the CLI default) is refused unless the operator opts in via two-factor attestation: `REPORTALIN_PDF_PHI_FREE=1` env flag **and** non-empty `authorities/phi_free_pdfs.md` note. Both are enforced inside `_resolve_pdf_provider` (currently `scripts/extraction/extract_pdf_data.py:305-433`; see `_pdf_phi_free_opt_in` and `_pdf_phi_free_authority_present` for the individual checks).
 
 The Stage-3 roadmap that previously planned this work has been delivered.
 
