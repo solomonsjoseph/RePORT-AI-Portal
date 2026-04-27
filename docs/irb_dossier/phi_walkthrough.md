@@ -275,7 +275,7 @@ Pseudonyms become reversible to whoever holds the key + access to the original r
 No per-value branches in the hot path; `pseudo_id` and `date_offset_days` use constant-time HMAC. No user-supplied input controls scrub timing. Not a practical concern.
 
 ### Q5. How are quasi-identifier combinations defended?
-k=5 equivalence-class check at the agent boundary (`guard_rows_with_kanon`). `l-diversity` and `t-closeness` are road-mapped layers, not default.
+k=5 equivalence-class check AND l-diversity (l=2) at the agent boundary (`guard_rows_with_kanon_and_ldiv` — PR #13, v0.18.0). Both gates fire on every row-returning tool. `t-closeness` remains road-mapped.
 
 ### Q6. Can an insider re-identify from the published bundle alone?
 Not without the HMAC key. The bundle has: pseudonyms, SANT-shifted dates, dropped identifiers, capped ages, generalised categories, suppressed small cells. An insider with no key faces the same re-identification barrier as an outsider.
@@ -557,11 +557,11 @@ From [conformance_matrix.md](conformance_matrix.md):
 |---|---|---|---|
 | 1.6 | District pop ≥ 20k lookup table | ✅ drop rule ships; pop table missing | Operator-owned YAML |
 | 2.1 | Per-tool agent integration | ✅ primitives, 12 tools wrapped (canonical: `agent_tools.py::ALL_TOOLS`); new tools need discipline | CI lint + convention |
-| 4.2 | Local-only PDF hybrid (pdfplumber + Ollama) | ✅ gate enforced; hybrid deferred | Stage 3 |
+| 4.2 | Local-only PDF hybrid (pdfplumber + LLM merge) | ✅ shipped — `scripts/extraction/pdf_pipeline.py` (PR #15) | v0.19.0 |
 | 5.3 | Explicit breach-alert emission channel | ✅ detection; alert sink deferred | Operator runbook |
 | 5.5 | `config/consent_scope.yaml` | ✅ de-facto via scrub catalog; explicit file deferred | Future extension |
 | — | Per-session query budget (drill-down attack) | ⚠ stateless today | Future layer |
-| — | l-diversity / t-closeness | ⚠ k-anon only | Road-mapped |
+| — | l-diversity / t-closeness | ✅ l-diversity (l=2) shipped — `kanon_gate.l_diversity_check` (PR #13); t-closeness still road-mapped | v0.18.0 |
 | — | Four runbooks (key mgmt / breach / retention / DPDPA transition) | ⚠ stubs | Operator authors before first production ingest |
 | — | `docs/irb_dossier/phi_limited_dataset.template.md` not shipped | ⚠ code path tested; template absent | Add template alongside `phi_free_pdfs.template.md` |
 | — | CI does not gate on `ruff S` (bandit) or `pip-audit` as separate steps | ⚠ rules configured in `pyproject.toml` but not partitioned in CI | Partition a security-lint job |
@@ -833,7 +833,12 @@ That is not a computer problem; that is a human problem. The research team's eth
 On success, every working-room file is overwritten with random bytes before being deleted — so that even specialist recovery tools cannot piece the file back together. This is the single-pass random-overwrite standard in NIST Special Publication 800-88. Multi-pass wipes (the old "overwrite 7 times" or "35 times" recipes) provide no additional security on modern hard drives and SSDs and are not used.
 
 ### "What about the PDF forms — those have handwriting and signatures!"
-Correct. The PDFs are treated as **sensitive by default**. The pipeline **refuses** to send any PDF byte to an outside AI service unless the operator attests — twice, once with an environment setting and once with a signed text file — that the PDFs have been reviewed and are verified PHI-free. Either attestation alone is not enough. The long-term plan is to stop using outside AI services for PDFs entirely and use a local AI running on the researcher's own machine; that upgrade is underway and is tracked as Stage 3 of the roadmap.
+Correct. The PDFs are treated as **sensitive by default**. Two co-existing extraction paths as of v0.20.0:
+
+1. **The new orchestrator path** (`scripts/extraction/pdf_pipeline.py`, shipped in PR #15, the wizard's "Load Study" default). The PDF text is extracted locally with `pdfplumber`, then **scrubbed to remove every identifier the catalog knows about** — Aadhaar, PAN, MRN, phone, email, dates — *before* anything goes to the outside AI. A defensive re-check raises an error if any blocking pattern survives. Only the redacted text reaches the LLM, the response is re-scrubbed, and a per-PDF fallback to the version-controlled snapshot baseline kicks in if the LLM is unavailable. **No raw PDF bytes leave the host.**
+2. **The legacy raw-PDF API path** (the CLI default) **refuses** to send any PDF byte to an outside AI service unless the operator attests — twice, once with an environment setting and once with a signed text file — that the PDFs have been reviewed and are verified PHI-free. Either attestation alone is not enough.
+
+The Stage 3 roadmap that previously promised this work has been delivered.
 
 ---
 
@@ -960,9 +965,9 @@ There are two flavours of the attack to consider:
 - The only data available inside the sandbox is the already-cleaned published room — the raw folder is not mounted.
 - The output of the code still passes the final output checkpoint.
 
-**Honest gaps worth naming** (both already in the main gap list):
-- Today we do not refuse an injecting user prompt outright; we rely on the downstream controls above. A future hardening would refuse such prompts at the input side.
-- The PDF-text surface does not yet strip instruction-voice tokens. Low-likelihood since PDFs are authored protocol documents, but a future hardening is planned.
+**Honest gaps worth naming** — both have since been closed:
+- Refusing an injecting user prompt at the input side. **Closed (patch-2026-04-23a).** `scripts/ai_assistant/phi_safe.py::guard_user_prompt` is wired at both UI (`ui/chat.py`) and CLI (`cli.py`) entry points; PHI-bearing prompts are refused before the LLM sees them. See conformance matrix Pillar 2.5.
+- Stripping instruction-voice tokens from PDF text shown to the LLM. **Closed (patch-2026-04-23a).** `scripts/ai_assistant/phi_safe.py::sanitise_untrusted_snippet` wraps PDF snippets returned by `search_pdf_context` in a spotlighting envelope and redacts imperative-voice tokens. See conformance matrix Pillar 2.6.
 
 **Where this maps to the industry standard (OWASP LLM Top-10).** The ten-item list covers prompt injection, output handling, data poisoning, denial of service, supply chain, sensitive information disclosure, plugin design, excessive agency, overreliance, and model theft. The system handles the first eight items through a combination of the controls above; items 9 (overreliance) and 10 (model theft) are outside the code — (9) is researcher-training, (10) is irrelevant because the default AI runs locally and is not a secret.
 

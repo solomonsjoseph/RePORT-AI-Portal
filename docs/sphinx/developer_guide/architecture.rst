@@ -404,8 +404,13 @@ Core Libraries
 * **pandas**: tabular parsing and transformation
 * **openpyxl**: Excel workbook handling
 * **xlrd**: legacy ``.xls`` handling
-* **pypdf**: lightweight PDF text/metadata path
-* **pdfplumber**: (planned) detailed PDF layout/table extraction — deferred to Stage 3 (ADR-006)
+* **pypdf**: lightweight PDF text/metadata path (legacy raw-PDF API path in
+  ``scripts/extraction/extract_pdf_data.py``)
+* **pdfplumber**: shipped in PR #15 (v0.19.0) — the always-on code path
+  inside the two-way PDF orchestrator
+  (``scripts/extraction/pdf_pipeline.py``); paired with a redacted-text
+  LLM call merged via ``_merge``, with per-PDF fallback to
+  ``snapshots/{STUDY}/pdfs/``
 
 Retrieval / Agent
 ~~~~~~~~~~~~~~~~~~~~
