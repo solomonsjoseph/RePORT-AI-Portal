@@ -90,8 +90,8 @@ def main(path_str: str) -> int:
     except ImportError:
         pass
     try:
-        import plotly.express as px
-        import plotly.graph_objects as go
+        import plotly.express as px  # type: ignore
+        import plotly.graph_objects as go  # type: ignore
 
         namespace["px"] = px
         namespace["go"] = go

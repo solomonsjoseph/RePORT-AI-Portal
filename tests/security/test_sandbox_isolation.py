@@ -73,8 +73,8 @@ def _run(code: str, output_dir: Path, df_paths: dict[str, str], **kwargs):
     """
     kwargs.setdefault("timeout_s", 10)
     kwargs.setdefault("max_memory_mb", 2048)
-    kwargs.setdefault("max_procs", 32)
-    kwargs.setdefault("max_files", 64)
+    kwargs.setdefault("max_procs", 4096)
+    kwargs.setdefault("max_files", 256)
     return run_in_subprocess(
         code, df_paths=df_paths, output_dir=output_dir, **kwargs
     )
