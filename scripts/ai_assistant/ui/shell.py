@@ -104,7 +104,7 @@ def topbar() -> None:
             )
             with st.popover(
                 title_label,
-                use_container_width=False,
+                width="content",
                 disabled=not has_messages,
                 help=(
                     title
@@ -140,7 +140,7 @@ def topbar() -> None:
                         if save_col.button(
                             "Save",
                             key=f"rpln_topbar_rename_save_{conv_id}",
-                            use_container_width=True,
+                            width="stretch",
                         ):
                             new_title = (ss.get(rename_key) or "").strip()
                             if new_title:
@@ -151,7 +151,7 @@ def topbar() -> None:
                         if cancel_col.button(
                             "Cancel",
                             key=f"rpln_topbar_rename_cancel_{conv_id}",
-                            use_container_width=True,
+                            width="stretch",
                         ):
                             ss[rename_mode_key] = "menu"
                             st.rerun()
@@ -163,14 +163,14 @@ def topbar() -> None:
                         if st.button(
                             "Rename",
                             key=f"rpln_topbar_rename_open_{conv_id}",
-                            use_container_width=True,
+                            width="stretch",
                         ):
                             ss[rename_mode_key] = "rename"
                             st.rerun()
                         if st.button(
                             ("\u2605 Unstar" if is_pinned else "\u2606 Star"),
                             key=f"rpln_topbar_pin_{conv_id}",
-                            use_container_width=True,
+                            width="stretch",
                         ):
                             _toggle_pin(conv_id)
                             ss[rename_mode_key] = "menu"
@@ -178,7 +178,7 @@ def topbar() -> None:
                         if st.button(
                             "Delete",
                             key=f"rpln_topbar_delete_{conv_id}",
-                            use_container_width=True,
+                            width="stretch",
                         ):
                             _delete_conversation(conv_id)
                             ss[rename_mode_key] = "menu"
@@ -189,7 +189,7 @@ def topbar() -> None:
 
         with st.container(key="rpln_topbar_share"), st.popover(
             "Share",
-            use_container_width=False,
+            width="content",
             disabled=not has_messages,
             help=(
                 "Share and export"
@@ -213,7 +213,7 @@ def topbar() -> None:
                     file_name=f"{conv_id[:8]}.md",
                     mime="text/markdown",
                     key=f"rpln_share_export_md_{conv_id}",
-                    use_container_width=True,
+                    width="stretch",
                 )
                 st.download_button(
                     "Plain text (.txt)",
@@ -221,7 +221,7 @@ def topbar() -> None:
                     file_name=f"{conv_id[:8]}.txt",
                     mime="text/plain",
                     key=f"rpln_share_export_txt_{conv_id}",
-                    use_container_width=True,
+                    width="stretch",
                 )
             else:
                 st.caption("Start a chat to enable sharing.")
