@@ -37,7 +37,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -85,6 +85,47 @@ _INTERNAL_COLUMNS = frozenset(
         "_ingestion_ts",
     }
 )
+
+
+# Conservative default quasi-identifier columns for Indo-VAP. The k-anon
+# gate uses any of these that are actually present in the query result;
+# missing columns are silently skipped (no false-positive blocking on
+# datasets that don't carry that QI). Phase 4 will elevate this to a
+# per-dataset entry in the data dictionary.
+_DEFAULT_QUASI_IDENTIFIERS: tuple[str, ...] = (
+    "AGE",
+    "AGEY",
+    "AGEM",
+    "SEX",
+    "IS_SEX",
+    "IC_SEX",
+    "HHC_SEX",
+    "HC_SEX",
+    "DISTRICT",
+    "DIST",
+    "IS_DIST",
+    "IC_DIST",
+)
+
+# Conservative default sensitive attributes for l-diversity. Outcome /
+# diagnosis columns whose value (e.g., "DIED", "TB+") could re-identify
+# a small homogeneous equivalence class.
+_DEFAULT_SENSITIVE_ATTRIBUTES: tuple[str, ...] = (
+    "EE_DIED",
+    "EE_DIEDTB",
+    "TB_DX",
+    "TBSTATUS",
+    "OUTCOME",
+    "DEATHCAUSE",
+)
+
+
+def _present_columns(rows: list[dict[str, Any]], candidates: tuple[str, ...]) -> tuple[str, ...]:
+    """Return the subset of *candidates* that actually appears in any row."""
+    seen: set[str] = set()
+    for row in rows[:50]:  # sample is enough; column set is stable across rows
+        seen.update(row.keys())
+    return tuple(c for c in candidates if c in seen)
 
 
 def _read_jsonl(path: Path, *, max_records: int = 0) -> list[dict[str, Any]]:
@@ -486,14 +527,55 @@ def query_dataset(
         else:
             results.append({k: v for k, v in rec.items() if k not in _INTERNAL_COLUMNS})
 
+    # k-anonymity + l-diversity gate (Phase 3.A + 3.B). Run on the
+    # projected ``results`` (post-column-filter, post-row-filter) using
+    # whichever default QI / sensitive columns are present. If blocked,
+    # surface aggregate-only metadata + a clear refusal so the LLM can
+    # respond with bands rather than rows.
+    from scripts.ai_assistant.phi_safe import guard_rows_with_kanon_and_ldiv
+
+    qi_present = _present_columns(results, _DEFAULT_QUASI_IDENTIFIERS)
+    sens_present = _present_columns(results, _DEFAULT_SENSITIVE_ATTRIBUTES)
+
+    safe_records: list[Mapping[str, Any]] = list(results)
+    kanon_violation: dict[str, Any] | None = None
+
+    if qi_present and results:
+        gated, kanon_res, ldiv_res = guard_rows_with_kanon_and_ldiv(
+            results,
+            quasi_identifiers=qi_present,
+            sensitive_attributes=sens_present or None,
+            tool_name="query_dataset",
+        )
+        if kanon_res.blocked or (ldiv_res is not None and ldiv_res.blocked):
+            safe_records = []
+            kanon_violation = {
+                "gate": "kanon" if kanon_res.blocked else "l_diversity",
+                "k": 5,
+                "l": 2 if ldiv_res is not None else None,
+                "smallest_class_size": kanon_res.smallest_class_size,
+                "smallest_diversity": ldiv_res.smallest_diversity if ldiv_res else None,
+                "quasi_identifiers": list(qi_present),
+                "sensitive_attributes": list(sens_present),
+                "message": (
+                    "Row-level surface suppressed: an equivalence class of size "
+                    f"{kanon_res.smallest_class_size} would be re-identifiable. "
+                    "Re-query with broader bins (age band / district) or aggregate "
+                    "via get_dataset_stats / cross_reference_variables."
+                ),
+            }
+        else:
+            safe_records = list(gated)
+
     return json.dumps(
         {
             "dataset": matched_file.stem,
             "total_records": real_total,
             "rows_matching_filter": len(filtered) if filter_column else real_total,
-            "returned": len(results),
+            "returned": len(safe_records),
             "available_columns": all_columns,
-            "records": results,
+            "records": safe_records,
+            "kanon_violation": kanon_violation,
         },
         indent=2,
         ensure_ascii=False,
@@ -921,13 +1003,29 @@ def cross_reference_variables(variable_name: str) -> str:
             except OSError:
                 continue
 
+            # Apply small-cell suppression (Phase 3.A) so a population /
+            # completeness pair smaller than k=5 is not surfaced as an
+            # exact count — it becomes the suppressed label "<5". The
+            # completeness percentage is recomputed against the masked
+            # numerator so it doesn't reveal the suppressed count via
+            # arithmetic.
+            from scripts.security.kanon_gate import mask_small_cell
+
+            populated_safe = mask_small_cell(populated, k=5)
+            total_safe = mask_small_cell(total, k=5)
+            completeness_pct: Any
+            if isinstance(populated_safe, int) and isinstance(total_safe, int) and total_safe:
+                completeness_pct = round(populated_safe / total_safe * 100, 1)
+            else:
+                completeness_pct = "<5"
+
             dataset_presence.append(
                 {
                     "dataset": f.stem,
                     "matching_columns": matching_cols,
-                    "total_records": total,
-                    "populated_records": populated,
-                    "completeness_pct": round(populated / total * 100, 1) if total else 0.0,
+                    "total_records": total_safe,
+                    "populated_records": populated_safe,
+                    "completeness_pct": completeness_pct,
                 }
             )
 

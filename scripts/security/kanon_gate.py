@@ -33,7 +33,9 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "KAnonResult",
+    "LDiversityResult",
     "kanon_check",
+    "l_diversity_check",
     "mask_small_cell",
     "suppress_small_cells",
 ]
@@ -104,6 +106,88 @@ def kanon_check(
         blocked=blocked,
         smallest_class_size=smallest,
         violating_keys=tuple(violating),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class LDiversityResult:
+    """Outcome of an l-diversity check.
+
+    A row set passes l-diversity (l ≥ 2) when every equivalence class
+    (defined by the quasi-identifier tuple) contains at least *l*
+    distinct values for each sensitive attribute. l = 2 is the
+    smallest meaningful threshold; higher values resist homogeneity
+    attacks more strongly.
+
+    ``blocked`` is ``True`` when at least one (class, sensitive_attr)
+    pair has fewer than *l* distinct values. ``violating_classes``
+    enumerates which equivalence classes failed and on which attribute.
+    """
+
+    blocked: bool
+    smallest_diversity: int
+    violating_classes: tuple[tuple[str, str], ...]
+    """Tuples of ``(equivalence_class_key, sensitive_attribute_name)``
+    whose distinct-value count fell below *l*."""
+
+
+def l_diversity_check(
+    rows: Iterable[Mapping[str, Any]],
+    *,
+    quasi_identifiers: tuple[str, ...],
+    sensitive_attributes: tuple[str, ...],
+    l_threshold: int = 2,
+) -> LDiversityResult:
+    """Verify that every equivalence class has ≥ ``l_threshold`` distinct
+    values for every sensitive attribute.
+
+    Use AFTER :func:`kanon_check` — k-anonymity ensures classes are
+    large enough; l-diversity ensures they aren't homogeneous on the
+    outcomes that matter (e.g., all 5+ subjects in a class share
+    ``outcome=DIED``). Empty input returns ``blocked=False``.
+
+    Raises ``ValueError`` if either tuple is empty or ``l_threshold < 1``.
+    """
+    if l_threshold < 1:
+        raise ValueError(f"l_threshold must be >= 1, got {l_threshold}")
+    if not quasi_identifiers:
+        raise ValueError("quasi_identifiers must be non-empty")
+    if not sensitive_attributes:
+        raise ValueError("sensitive_attributes must be non-empty")
+
+    classes: dict[tuple[Any, ...], dict[str, set[Any]]] = {}
+    for row in rows:
+        key = tuple(row.get(col) for col in quasi_identifiers)
+        bucket = classes.setdefault(key, {attr: set() for attr in sensitive_attributes})
+        for attr in sensitive_attributes:
+            bucket[attr].add(row.get(attr))
+
+    if not classes:
+        return LDiversityResult(blocked=False, smallest_diversity=0, violating_classes=())
+
+    smallest = l_threshold
+    violations: list[tuple[str, str]] = []
+    for key, bucket in classes.items():
+        for attr, values in bucket.items():
+            div = len(values)
+            if div < smallest:
+                smallest = div
+            if div < l_threshold:
+                violations.append((_key_to_str(key), attr))
+
+    blocked = bool(violations)
+    if blocked:
+        logger.warning(
+            "l_diversity_check: smallest diversity %d < l=%d (%d violating "
+            "(class, attribute) pairs)",
+            smallest,
+            l_threshold,
+            len(violations),
+        )
+    return LDiversityResult(
+        blocked=blocked,
+        smallest_diversity=smallest,
+        violating_classes=tuple(sorted(violations)),
     )
 
 

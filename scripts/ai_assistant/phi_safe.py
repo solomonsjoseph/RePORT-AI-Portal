@@ -39,7 +39,12 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any, TypeVar, cast
 
-from scripts.security.kanon_gate import KAnonResult, kanon_check
+from scripts.security.kanon_gate import (
+    KAnonResult,
+    LDiversityResult,
+    kanon_check,
+    l_diversity_check,
+)
 from scripts.security.phi_gate import PHIGateResult, phi_gate_check
 
 logger = logging.getLogger(__name__)
@@ -48,6 +53,7 @@ __all__ = [
     "PHISafetyError",
     "UserPromptGuardResult",
     "guard_rows_with_kanon",
+    "guard_rows_with_kanon_and_ldiv",
     "guard_text",
     "guard_user_prompt",
     "phi_safe_return",
@@ -156,6 +162,63 @@ def guard_rows_with_kanon(
         )
         return [], result
     return rows_list, result
+
+
+def guard_rows_with_kanon_and_ldiv(
+    rows: Iterable[Mapping[str, Any]],
+    *,
+    quasi_identifiers: tuple[str, ...],
+    sensitive_attributes: tuple[str, ...] | None = None,
+    k: int = 5,
+    l_threshold: int = 2,
+    tool_name: str = "<unknown>",
+) -> tuple[
+    list[Mapping[str, Any]],
+    KAnonResult,
+    LDiversityResult | None,
+]:
+    """Run k-anonymity then (when ``sensitive_attributes`` is provided)
+    l-diversity. Returns ``(rows_to_surface, kanon_result, ldiv_result)``.
+
+    Either gate blocking sets ``rows_to_surface`` to an empty list. When
+    ``sensitive_attributes`` is ``None``, l-diversity is skipped and the
+    third return value is ``None`` — equivalent to the legacy
+    :func:`guard_rows_with_kanon` semantics with a richer return shape.
+
+    Phase 3.A + 3.B: this is the gate every row-returning tool should
+    call before serialising rows to the LLM. See
+    ``docs/irb_dossier/phase3_phi_followups.md``.
+    """
+    rows_list = list(rows)
+    kanon_res = kanon_check(rows_list, quasi_identifiers=quasi_identifiers, k=k)
+    if kanon_res.blocked:
+        logger.warning(
+            "phi_safe: tool %s k-anon blocked — smallest class %d < k=%d",
+            tool_name,
+            kanon_res.smallest_class_size,
+            k,
+        )
+        return [], kanon_res, None
+
+    ldiv_res: LDiversityResult | None = None
+    if sensitive_attributes:
+        ldiv_res = l_diversity_check(
+            rows_list,
+            quasi_identifiers=quasi_identifiers,
+            sensitive_attributes=sensitive_attributes,
+            l_threshold=l_threshold,
+        )
+        if ldiv_res.blocked:
+            logger.warning(
+                "phi_safe: tool %s l-diversity blocked — smallest "
+                "diversity %d < l=%d",
+                tool_name,
+                ldiv_res.smallest_diversity,
+                l_threshold,
+            )
+            return [], kanon_res, ldiv_res
+
+    return rows_list, kanon_res, ldiv_res
 
 
 # ---------------------------------------------------------------------------
