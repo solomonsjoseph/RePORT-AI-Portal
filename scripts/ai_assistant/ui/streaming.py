@@ -314,7 +314,7 @@ def _render_markdown_table(table_lines: list[str], *, key: str) -> None:
             file_name=f"table_result_{key}.csv",
             mime="text/csv",
         )
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width="stretch", hide_index=True)
     except Exception:
         # Fallback to markdown rendering
         st.markdown("\n".join(table_lines))
@@ -340,7 +340,7 @@ def _render_plotly_figure(fig_path: Path, *, msg_idx: int = 0, fig_idx: int = 0)
             file_name=f"interactive_chart_{fig_idx}.json",
             mime="application/json",
         )
-        st.plotly_chart(fig, use_container_width=True, key=f"plotly_{msg_idx}_{fig_idx}")
+        st.plotly_chart(fig, width="stretch", key=f"plotly_{msg_idx}_{fig_idx}")
     except Exception as _chart_exc:
         st.warning(
             f"**Chart render failed** (`{type(_chart_exc).__name__}`): {_chart_exc}",
@@ -850,7 +850,7 @@ def _render_message_content(
                     file_name=file_name,
                     mime=mime,
                 )
-                st.image(str(artifact_path), use_container_width=True)
+                st.image(str(artifact_path), width="stretch")
             else:
                 st.warning(
                     "**Figure file not found.**  \n"

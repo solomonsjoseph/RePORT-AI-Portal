@@ -136,7 +136,7 @@ def composer(assistant_slot: Any | None = None) -> None:
                 )
                 submitted = st.form_submit_button(
                     _submit_glyph,
-                    use_container_width=False,
+                    width="content",
                     disabled=bool(pending_stream),
                     help=("Response in progress" if pending_stream else None),
                 )
@@ -395,7 +395,7 @@ def _render_model_pill() -> None:
                 '<div class="rpln-adaptive-sentinel-on" style="display:none;"></div>',
                 unsafe_allow_html=True,
             )
-        pop = st.popover(_pretty_model_label_compact(current_model), use_container_width=False)
+        pop = st.popover(_pretty_model_label_compact(current_model), width="content")
     more_open = bool(st.session_state.get("rpln_model_more_open", False))
     with pop:
         st.markdown(
@@ -448,12 +448,12 @@ def _render_model_pill() -> None:
             st.markdown('<hr class="rpln-popover-sep" />', unsafe_allow_html=True)
 
             if st.button(
-                "More models  \u203a", key="rpln_more_models_toggle", use_container_width=True
+                "More models  \u203a", key="rpln_more_models_toggle", width="stretch"
             ):
                 st.session_state.rpln_model_more_open = True
                 st.rerun()
         else:
-            if st.button("\u2039  Models", key="rpln_more_models_back", use_container_width=True):
+            if st.button("\u2039  Models", key="rpln_more_models_back", width="stretch"):
                 st.session_state.rpln_model_more_open = False
                 st.rerun()
             st.markdown('<hr class="rpln-popover-sep" />', unsafe_allow_html=True)
@@ -461,7 +461,7 @@ def _render_model_pill() -> None:
                 if model == current_model:
                     continue
                 name = _pretty_model_label(model)
-                if st.button(name, key=f"model_pill_{model}", use_container_width=True):
+                if st.button(name, key=f"model_pill_{model}", width="stretch"):
                     _set_chat_model(model)
                     st.session_state.rpln_model_more_open = False
                     st.rerun()
@@ -471,15 +471,15 @@ def _render_composer_plus_menu() -> None:
     """Render the `+` popover (Upload file / Upload folder)."""
     with (
         st.container(key="rpln_composer_plus"),
-        st.popover("+", use_container_width=False),
+        st.popover("+", width="content"),
     ):
         st.markdown(
             '<div class="rpln-plus-menu-header">Attach</div>',
             unsafe_allow_html=True,
         )
-        if st.button("Upload file", key="rpln_plus_upload_file", use_container_width=True):
+        if st.button("Upload file", key="rpln_plus_upload_file", width="stretch"):
             st.session_state["rpln_plus_upload_mode"] = "file"
-        if st.button("Upload folder", key="rpln_plus_upload_folder", use_container_width=True):
+        if st.button("Upload folder", key="rpln_plus_upload_folder", width="stretch"):
             st.session_state["rpln_plus_upload_mode"] = "folder"
 
     mode = st.session_state.get("rpln_plus_upload_mode")

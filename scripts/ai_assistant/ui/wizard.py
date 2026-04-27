@@ -317,7 +317,7 @@ def render_setup_page() -> None:
                     "Next →",
                     type="primary",
                     disabled=not key_ok,
-                    use_container_width=True,
+                    width="stretch",
                 ):
                     st.session_state.llm_provider_label = provider_label
                     st.session_state.api_key_saved = api_key
@@ -360,7 +360,7 @@ def render_setup_page() -> None:
                 if st.button(
                     run_label,
                     type="secondary" if pipeline_ready else "primary",
-                    use_container_width=True,
+                    width="stretch",
                 ):
                     with st.spinner("Loading study data — this may take a minute…"):
                         result = run_pipeline()
@@ -375,7 +375,7 @@ def render_setup_page() -> None:
                 if (
                     output_exists
                     and not pipeline_ready
-                    and st.button("Use Existing Data", use_container_width=True)
+                    and st.button("Use Existing Data", width="stretch")
                 ):
                     st.session_state.pipeline_ready = True
                     st.rerun()
@@ -388,7 +388,7 @@ def render_setup_page() -> None:
 
                 col_back, col_next = st.columns(2)
                 with col_back:
-                    if st.button("← Back", use_container_width=True):
+                    if st.button("← Back", width="stretch"):
                         st.session_state.wizard_step = 1
                         st.rerun()
                 with col_next:
@@ -396,7 +396,7 @@ def render_setup_page() -> None:
                         "Next →",
                         type="primary",
                         disabled=not st.session_state.pipeline_ready,
-                        use_container_width=True,
+                        width="stretch",
                     ):
                         st.session_state.wizard_step = 3
                         st.rerun()
@@ -419,13 +419,13 @@ def render_setup_page() -> None:
                 if st.button(
                     "Start Chatting →",
                     type="primary",
-                    use_container_width=True,
+                    width="stretch",
                 ):
                     st.session_state.setup_complete = True
                     # WP-F.05.01 — flip redesign gate on wizard exit.
                     st.session_state.chat_started = True
                     st.rerun()
 
-                if st.button("← Back", use_container_width=True):
+                if st.button("← Back", width="stretch"):
                     st.session_state.wizard_step = 2
                     st.rerun()

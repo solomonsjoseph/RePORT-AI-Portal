@@ -214,7 +214,7 @@ def _render_search_modal() -> None:
             with st.container(key=f"rpln_search_row_{cid}"):
                 col_title, col_ts = st.columns([8, 2], gap="small")
                 with col_title:
-                    if st.button(title, key=f"rpln_search_result_{cid}", use_container_width=True):
+                    if st.button(title, key=f"rpln_search_result_{cid}", width="stretch"):
                         _save_conversation()
                         # _load_conversation populates session state directly +
                         # resets the agent on success; nothing further to do.
@@ -484,7 +484,7 @@ def _render_export_submenu(conv_id: str) -> None:
     """Popover with export download buttons for a conversation."""
     import importlib.util
 
-    with st.popover("↓", use_container_width=False):
+    with st.popover("↓", width="content"):
         st.markdown("**Export**")
         st.download_button(
             "Download as .txt",
