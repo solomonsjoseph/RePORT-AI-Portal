@@ -274,7 +274,7 @@ def _sanitize_file_refs(text: str) -> str:
 
 def _strip_internal_markers(text: str) -> str:
     """Replace internal render markers with generic placeholders."""
-    return re.sub(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS):[^>]+>", "[Artifact]", text)
+    return re.sub(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>", "[Artifact]", text)
 
 
 # ---------------------------------------------------------------------------
@@ -805,12 +805,12 @@ def _render_message_content(
                         _from_narrative=True,
                     )
 
-    # Split content on all figure markers (Plotly JSON and matplotlib PNG)
-    artifact_pattern = re.compile(r"<RPLN_(?:FIGURE|PLOTLY):([^>]+)>")
+    # Split content on all artifact markers — figures (Plotly JSON, matplotlib
+    # PNG) and saved analysis code (.py file from the sandbox).
+    artifact_pattern = re.compile(r"<RPLN_(?:FIGURE|PLOTLY|CODE):([^>]+)>")
     python_block_re = re.compile(r"```python\n(.*?)```", re.DOTALL)
 
-    # Find all markers with their types
-    marker_re = re.compile(r"<RPLN_(FIGURE|PLOTLY):([^>]+)>")
+    marker_re = re.compile(r"<RPLN_(FIGURE|PLOTLY|CODE):([^>]+)>")
     markers: list[tuple[str, str]] = marker_re.findall(content)
     segments = artifact_pattern.split(content)
     marker_idx = 0
@@ -823,7 +823,6 @@ def _render_message_content(
                 if j % 2 == 0:
                     text = _sanitize_file_refs(part.strip())
                     if text:
-                        # Render markdown tables as interactive dataframes
                         remaining = _render_analysis_tables(text, key_prefix=f"{msg_idx}_{i}_{j}")
                         if remaining.strip():
                             st.markdown(remaining)
@@ -831,12 +830,13 @@ def _render_message_content(
                     with st.expander("⟨/⟩ View code", expanded=False, key=f"code_{msg_idx}_{j}"):
                         st.code(part.strip(), language="python")
         else:
-            # Artifact path segment — determine type from markers list
             artifact_path = Path(seg.strip())
             kind = markers[marker_idx][0] if marker_idx < len(markers) else "FIGURE"
             marker_idx += 1
 
-            if kind == "PLOTLY" and artifact_path.exists():
+            if kind == "CODE":
+                _render_saved_code(artifact_path, msg_idx=msg_idx, code_idx=marker_idx)
+            elif kind == "PLOTLY" and artifact_path.exists():
                 _render_plotly_figure(artifact_path, msg_idx=msg_idx, fig_idx=marker_idx)
             elif artifact_path.exists():
                 data, file_name, mime = _artifact_file_download(
@@ -858,6 +858,35 @@ def _render_message_content(
                     icon="🖼",
                 )
                 logger.warning("Figure file missing: path=%s", artifact_path)
+
+
+def _render_saved_code(path: Path, *, msg_idx: int, code_idx: int) -> None:
+    """Render a saved analysis ``.py`` file with copy-friendly code block + download.
+
+    The user can read the code in-place, copy it from the rendered block, or
+    download the ``.py`` file (which already includes a docstring header
+    describing how to replicate the run via
+    ``python -m scripts.ai_assistant.sandbox.replicate <file>``).
+    """
+    if not path.exists():
+        st.caption(f"⟨/⟩ Saved code not found: `{path.name}` (cleanup may have removed it).")
+        return
+    text = path.read_text(encoding="utf-8")
+    label = f"⟨/⟩ Generated code — `{path.name}` (click to expand)"
+    with st.expander(label, expanded=False):
+        st.caption(
+            "This is the exact Python the agent ran. Copy it from the block "
+            "below, or download the `.py` file — the header explains how to "
+            "replicate the run on your own machine."
+        )
+        st.code(text, language="python")
+        st.download_button(
+            "Download .py",
+            data=text.encode("utf-8"),
+            file_name=path.name,
+            mime="text/x-python",
+            key=f"rpln_code_dl_{msg_idx}_{code_idx}",
+        )
 
 
 # ---------------------------------------------------------------------------

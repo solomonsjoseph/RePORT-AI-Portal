@@ -344,7 +344,7 @@ def _export_conversation_as_text(conv_id: str) -> str:
     for msg in data.get("messages", []):
         role = "You" if msg.get("role") == "user" else "RePORT AI Portal"
         content = re.sub(
-            r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS):[^>]+>",
+            r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>",
             "[Artifact]",
             msg.get("content", ""),
         )
@@ -376,7 +376,7 @@ def _export_conversation_as_md(conv_id: str) -> str:
             lines.append(f"**You**\n\n{msg.get('content', '')}\n")
         else:
             content = re.sub(
-                r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS):[^>]+>",
+                r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>",
                 "[Artifact]",
                 msg.get("content", ""),
             )
