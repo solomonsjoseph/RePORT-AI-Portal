@@ -133,14 +133,27 @@ llm = [
 
 ai_assistant = [
     "kaleido>=1.0.0,<2.0",
-    "langchain-core>=0.3.0,<1.0.0",
-    "langchain-community>=0.3.0,<1.0.0",
-    "langchain-openai>=0.3.0,<1.0.0",
-    "langchain-anthropic>=0.3.0,<1.0.0",
-    "langchain-google-genai>=2.0.0,<3.0.0",
-    "langchain-ollama>=0.3.0,<1.0.0",
-    "langchain-nvidia-ai-endpoints>=0.3.0,<1.0.0",
-    "langgraph>=0.3.0,<1.0.0",
+    # LangChain 1.x family bumped together for security: closes
+    # langchain-openai GHSA-r7w7-9xr2-qq2r and langchain-text-splitters
+    # GHSA-fv5p-p927-qmxr (April 2026 audit). Pinning <2.0 within the 1.x
+    # line so future minor bumps are auto-allowed while major API changes
+    # still go through review.
+    "langchain-core>=1.0.0,<2.0.0",
+    # langchain-community removed — unused in our codebase, and its 1.x line
+    # is still in alpha (pinning to 0.x would block langchain-core 1.x). If
+    # a langchain-community import returns later, re-add explicitly.
+    "langchain-openai>=1.1.14,<2.0.0",
+    "langchain-anthropic>=1.0.0,<2.0.0",
+    "langchain-google-genai>=3.0.0,<4.0.0",
+    "langchain-ollama>=1.0.0,<2.0.0",
+    "langchain-nvidia-ai-endpoints>=1.0.0,<2.0.0",
+    "langchain-text-splitters>=1.1.2,<2.0.0",
+    # LangGraph 1.x — closes CVE-2026-28277 (langgraph) and CVE-2026-27794
+    # (langgraph-checkpoint, transitive). Migration kept narrow because the
+    # only public-API surface used is MemorySaver / CompiledStateGraph /
+    # create_react_agent — all three remain in 1.x.
+    "langgraph>=1.0.10,<2.0.0",
+    "langgraph-checkpoint>=4.0.0,<5.0.0",
 ]
 
 web = [
