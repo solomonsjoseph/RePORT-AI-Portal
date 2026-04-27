@@ -494,10 +494,10 @@ uv run python main.py --version
 
 | Commit Message | Version Bump | Example |
 |----------------|--------------|---------|
-| `fix: ...` | **Patch** | 0.16.0 → 0.16.1 |
-| `feat: ...` | **Minor** | 0.16.0 → 0.17.0 |
-| `feat!: ...` or `BREAKING CHANGE:` | **Major** | 0.16.0 → 1.0.0 |
-| Other (docs, chore, refactor, style, test) | **No bump** | 0.16.0 (unchanged) |
+| `fix: ...` | **Patch** | 0.16.1 → 0.16.2 |
+| `feat: ...` | **Minor** | 0.16.1 → 0.17.0 |
+| `feat!: ...` or `BREAKING CHANGE:` | **Major** | 0.16.1 → 1.0.0 |
+| Other (docs, chore, refactor, style, test) | **No bump** | 0.16.1 (unchanged) |
 
 **Via Git hooks (automatic):** commit normally — the post-commit hook analyses
 the message and bumps the version automatically:
