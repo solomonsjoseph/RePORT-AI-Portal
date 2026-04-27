@@ -139,7 +139,7 @@ def _initial_snapshot_pdfs_dir() -> Path:
     ``trio_bundle/pdfs/`` (one ``{stem}_variables.json`` per form).
 
     NOTE: this is the *baseline* snapshot, NOT the operator restore-point
-    tier (``STUDY_RESTORE_POINTS_DIR``). See ``snapshots/README.md`` for
+    tier (``STUDY_RESTORE_POINTS_DIR``). See ``docs/sphinx/developer_guide/operations.rst`` (Trio-Bundle Snapshot Maintenance) for
     the maintenance protocol."""
     return Path(config.STUDY_SNAPSHOTS_DIR) / "pdfs"
 

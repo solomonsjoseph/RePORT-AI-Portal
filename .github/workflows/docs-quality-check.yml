@@ -9,7 +9,6 @@ on:
     paths:
       - 'docs/**'
       - 'README.md'
-      - 'AGENTS.md'
       - 'scripts/lint_doc_freshness.py'
       - 'scripts/ai_assistant/agent_tools.py'
       - 'scripts/security/phi_scrub.yaml'
@@ -19,7 +18,6 @@ on:
     paths:
       - 'docs/**'
       - 'README.md'
-      - 'AGENTS.md'
       - 'scripts/lint_doc_freshness.py'
       - 'scripts/ai_assistant/agent_tools.py'
       - 'scripts/security/phi_scrub.yaml'

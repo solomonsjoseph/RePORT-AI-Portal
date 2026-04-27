@@ -345,7 +345,7 @@ No. `scripts/utils/step_cache.py` records a `.manifest.json` of input SHA-256 + 
 There are two snapshot tiers (PR #18 split):
 
 1. **Operator restore points** — `scripts/utils/snapshots.py` copies only the **already-scrubbed trio_bundle** into `output/{STUDY}/agent/restore_points/` (gitignored). Restoring overwrites the live trio with a pre-scrubbed copy, never with raw data.
-2. **Tracked baseline** — `snapshots/{STUDY}/` at the repo root holds a maintainer-curated cleaned trio bundle, used by the pipeline's PDF orchestrator as a per-PDF fallback. The LLM is forbidden from reading it (its read zone is `trio_bundle/` + `agent/` only). Maintainer protocol requires the baseline to come from a verified scrubbed run; see `snapshots/README.md`.
+2. **Tracked baseline** — `snapshots/{STUDY}/` at the repo root holds a maintainer-curated cleaned trio bundle, used by the pipeline's PDF orchestrator as a per-PDF fallback. The LLM is forbidden from reading it (its read zone is `trio_bundle/` + `agent/` only). Maintainer protocol requires the baseline to come from a verified scrubbed run; see [docs/sphinx/developer_guide/operations.rst Trio-Bundle Snapshot Maintenance section](../sphinx/developer_guide/operations.rst).
 
 Neither path is a bypass.
 

@@ -101,7 +101,7 @@ Making Changes
 
    The linter compares live source-of-truth values (tool count, version,
    scrub-action count) against prose in ``README.md`` /
-   ``AGENTS.md`` / ``docs/sphinx/`` / ``docs/irb_dossier/`` and
+   ``docs/sphinx/`` / ``docs/irb_dossier/`` and
    rejects forbidden phrases that indicate retired architecture (see
    ``FORBIDDEN`` in ``scripts/lint_doc_freshness.py`` for the full
    pattern catalog and the canonical replacement guidance). It is

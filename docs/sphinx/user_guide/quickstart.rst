@@ -196,7 +196,7 @@ audit logs, telemetry, or conversations. They support crash-recovery
 during dev (rolling back ``trio_bundle/`` to a prior cohort) and are
 distinct from the version-controlled tracked baseline at
 ``snapshots/{STUDY_NAME}/`` (maintainer-curated, used by the pipeline's
-PDF orchestrator as a fallback). See ``snapshots/README.md``.
+PDF orchestrator as a fallback). See :doc:`../developer_guide/operations` (Trio-Bundle Snapshot Maintenance).
 
 The wizard's step-2 "Use Existing Study" button skips the pipeline and
 trusts the live ``trio_bundle/``; "Load Study" runs the pipeline (with
