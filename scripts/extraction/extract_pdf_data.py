@@ -133,11 +133,15 @@ def _pdf_extraction_mode() -> str:
 
 
 def _initial_snapshot_pdfs_dir() -> Path:
-    """``output/{STUDY}/agent/snapshots/initial/pdfs/`` — the canonical
-    location of the human-verified baseline PDF JSONs the snapshot mode
-    publishes verbatim. Layout matches ``trio_bundle/pdfs/`` (one
-    ``{stem}_variables.json`` per form)."""
-    return Path(config.STUDY_SNAPSHOTS_DIR) / "initial" / "pdfs"
+    """``snapshots/{STUDY}/pdfs/`` (repo-root, version-controlled) — the
+    canonical location of the human-verified baseline PDF JSONs the
+    snapshot fallback publishes verbatim. Layout matches
+    ``trio_bundle/pdfs/`` (one ``{stem}_variables.json`` per form).
+
+    NOTE: this is the *baseline* snapshot, NOT the operator restore-point
+    tier (``STUDY_RESTORE_POINTS_DIR``). See ``snapshots/README.md`` for
+    the maintenance protocol."""
+    return Path(config.STUDY_SNAPSHOTS_DIR) / "pdfs"
 
 
 __all__ = [

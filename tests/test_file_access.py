@@ -91,11 +91,24 @@ class TestValidateAgentWrite:
         f = config.AGENT_OUTPUT_DIR / "new_output.csv"
         assert validate_agent_write(f) == Path(f.resolve())
 
-    def test_agent_snapshots_allowed(self, monkeypatch_config: Path) -> None:
+    def test_agent_restore_points_allowed(self, monkeypatch_config: Path) -> None:
+        """Operator restore-point tier (``output/{STUDY}/agent/restore_points/``)
+        is agent-writable — the CLI tool needs to drop named runs there."""
         import config
 
-        f = config.STUDY_SNAPSHOTS_DIR / "snap.json"
+        f = config.STUDY_RESTORE_POINTS_DIR / "run-x" / "snap.json"
         assert validate_agent_write(f) == Path(f.resolve())
+
+    def test_tracked_snapshots_baseline_rejected(
+        self, monkeypatch_config: Path
+    ) -> None:
+        """Tracked baseline at ``snapshots/{STUDY}/`` is OUTSIDE the agent
+        write zone — only a maintainer (with shell access) curates it."""
+        import config
+
+        f = config.STUDY_SNAPSHOTS_DIR / "pdfs" / "evil.json"
+        with pytest.raises(ZoneViolationError):
+            validate_agent_write(f)
 
     def test_trio_bundle_rejected(self, monkeypatch_config: Path) -> None:
         """Agent may read trio bundle but must NOT write into it."""
@@ -243,10 +256,10 @@ class TestValidateSandboxWrite:
         self, monkeypatch_config: Path
     ) -> None:
         """Sandbox write zone is narrower than agent-tool zone:
-        other ``agent/`` subdirs like snapshots/ are rejected."""
+        other ``agent/`` subdirs like restore_points/ are rejected."""
         import config
 
-        f = config.STUDY_SNAPSHOTS_DIR / "tamper.json"
+        f = config.STUDY_RESTORE_POINTS_DIR / "tamper.json"
         with pytest.raises(ZoneViolationError):
             validate_sandbox_write(f)
 

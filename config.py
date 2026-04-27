@@ -185,20 +185,44 @@ DICTIONARY_JSON_OUTPUT_DIR = TRIO_BUNDLE_DIR / "dictionary"
 PDF_EXTRACTIONS_DIR = TRIO_BUNDLE_DIR / "pdfs"
 
 # ----------------------------------------------------------------------------
-# AGENT STATE TIER (per-session state + restore snapshots, NOT study output)
+# AGENT STATE TIER (per-session state, NOT study output)
 # ----------------------------------------------------------------------------
-# All non-trio-bundle, non-audit artefacts that the AI Assistant produces
-# live here. Snapshots sit alongside analysis / conversations because they
-# are agent-owned operational state — the restore target when a pipeline
-# run fails or when the operator picks "Use Existing Data" in the wizard.
-# Telemetry lives under STUDY_AUDIT_DIR instead (see below) so the LLM's
-# permitted agent/** zone stays free of operator-audit bytes. Keeping
-# everything inside the fully-gitignored ``output/`` tree keeps PHI-scrubbed
-# cohort bytes out of git by default.
+# Per-session, agent-owned operational state — analysis runs, conversation
+# transcripts. Telemetry lives under STUDY_AUDIT_DIR so the LLM's permitted
+# agent/** zone stays free of operator-audit bytes. Everything inside the
+# fully-gitignored ``output/`` tree keeps PHI-scrubbed cohort bytes out of
+# git by default.
 AGENT_STATE_DIR: Path = STUDY_OUTPUT_DIR / "agent"
 AGENT_OUTPUT_DIR: Path = AGENT_STATE_DIR / "analysis"
 CONVERSATIONS_DIR: Path = AGENT_STATE_DIR / "conversations"
-STUDY_SNAPSHOTS_DIR: Path = AGENT_STATE_DIR / "snapshots"
+
+# Operator-managed restore points — multi-named bundle backups produced by
+# ``python -m scripts.utils.snapshots create``. Lives under the
+# fully-gitignored ``output/`` tree because its contents include freshly
+# scrubbed cohort data that must never reach version control. This path
+# is distinct from :data:`STUDY_SNAPSHOTS_DIR` (the tracked baseline).
+STUDY_RESTORE_POINTS_DIR: Path = AGENT_STATE_DIR / "restore_points"
+
+# ----------------------------------------------------------------------------
+# SNAPSHOT TIER (version-controlled gold-master baseline; LLM-INVISIBLE)
+# ----------------------------------------------------------------------------
+# Snapshots are SEPARATE from the agent tier and SEPARATE from the live
+# trio bundle. They hold a cleaned-and-verified trio bundle (datasets /
+# dictionary / pdfs / variables.json) committed to version control so the
+# pipeline has a deterministic baseline to fall back on when fresh
+# extraction is unavailable (no LLM, no API key, network-isolated host).
+#
+# Read posture:
+#   - The pipeline's PDF orchestrator reads ``snapshots/{STUDY}/pdfs/`` as
+#     the per-PDF fallback when the LLM tier cannot produce extractions.
+#   - The wizard's "Load Study" subprocess is the ONLY caller. The LLM
+#     agent's read zone is restricted to ``trio_bundle/`` + ``agent/``;
+#     ``snapshots/`` is intentionally outside that zone so the LLM cannot
+#     accidentally read a stale baseline as if it were live data.
+#
+# Path: repo root (next to ``data/``, ``scripts/``), NOT under ``output/``,
+# so it is committed to git. .gitignore is configured to track this path.
+STUDY_SNAPSHOTS_DIR: Path = BASE_DIR / "snapshots" / STUDY_NAME
 
 # Staging workspace — per-study tree inside TMP_DIR. Managed per-run by
 # main.py's _prepare_staging() / _publish_staging(); NOT created eagerly by
@@ -409,7 +433,12 @@ def ensure_directories() -> None:
         AGENT_OUTPUT_DIR,
         CONVERSATIONS_DIR,
         TELEMETRY_DIR,
-        STUDY_SNAPSHOTS_DIR,
+        STUDY_RESTORE_POINTS_DIR,
+        # NOTE: ``STUDY_SNAPSHOTS_DIR`` is intentionally NOT in this list.
+        # It is a tracked, version-controlled baseline at the repo root
+        # (``snapshots/{STUDY}/``) that maintainers populate by hand from a
+        # verified ``trio_bundle/`` run. Auto-creating it would risk a
+        # blank-baseline commit; chmod-ing it would fight version control.
     ]
     for path in [OUTPUT_DIR, TMP_DIR, *sensitive_paths]:
         path.mkdir(parents=True, exist_ok=True)

@@ -362,4 +362,7 @@ docs/prompts/
 docs/superpowers/
 # Test output and snapshot placeholders
 test-results/
-snapshots/
+# NOTE: ``snapshots/`` (repo root) is intentionally TRACKED — it holds the
+# version-controlled cleaned + verified trio bundle baseline used as the
+# "Load Study" fallback. The LLM is forbidden from reading it (zone guards
+# permit only ``trio_bundle/`` + ``output/{STUDY}/agent/``).

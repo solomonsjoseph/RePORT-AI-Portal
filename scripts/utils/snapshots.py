@@ -1,30 +1,35 @@
-"""Snapshot and restore helpers for the published trio_bundle.
+"""Operator restore-point helpers for the published trio_bundle.
 
-A *snapshot* is a full copy of ``output/{STUDY}/trio_bundle/`` saved under
-``output/{STUDY}/agent/snapshots/<name>/``. Snapshots intentionally
-contain **only** the LLM-readable trio bundle (datasets, dictionary, pdfs,
-variables.json) — never audit logs, telemetry, or conversations. This
-mirrors the read zone enforced by
+A *restore point* is a full copy of ``output/{STUDY}/trio_bundle/`` saved
+under ``output/{STUDY}/agent/restore_points/<name>/``. Restore points
+intentionally contain **only** the LLM-readable trio bundle (datasets,
+dictionary, pdfs, variables.json) — never audit logs, telemetry, or
+conversations. This mirrors the read zone enforced by
 :func:`scripts.security.assert_trio_bundle_zone`.
 
-Snapshots live under the agent-state tier (beside ``analysis/``,
+Restore points live under the agent-state tier (beside ``analysis/``,
 ``conversations/``, ``telemetry/``) because they are agent-owned
-operational state: the agent's restore target when a pipeline run
-fails or when the operator picks "Use Existing Data" in the wizard.
-Keeping them inside the fully-gitignored ``output/`` tree keeps
+operational state: the operator's recovery target when a pipeline run
+fails. Keeping them inside the fully-gitignored ``output/`` tree keeps
 PHI-scrubbed cohort bytes out of git by default.
 
-The "Use Existing Data" / "Load existing study data" UI flow reads
-from this tree, listing available
-``output/{STUDY}/agent/snapshots/<name>/`` entries and restoring the
-chosen one into ``output/{STUDY}/trio_bundle/``.
+This is *distinct* from :data:`config.STUDY_SNAPSHOTS_DIR` (the
+version-controlled baseline at ``snapshots/{STUDY}/`` at the repo root).
+Restore points are gitignored, scratch, multi-named; snapshots are
+tracked, manually-curated, single-baseline. The pipeline's PDF
+orchestrator only reads the *snapshot* baseline; this CLI module is for
+operator recovery only.
 
 Public API
 ----------
-- :func:`create_snapshot` — copy the current trio bundle into a named snapshot.
-- :func:`list_snapshots` — return available snapshot names, newest first.
-- :func:`restore_snapshot` — overwrite the live trio bundle with a snapshot.
+- :func:`create_snapshot` — copy the current trio bundle into a named restore point.
+- :func:`list_snapshots` — return available restore-point names, newest first.
+- :func:`restore_snapshot` — overwrite the live trio bundle with a restore point.
 - :func:`latest_snapshot_name` — convenience picker for auto-restore flows.
+
+The ``snapshot`` terminology is preserved in function names for back-compat
+with existing CLI invocations (``python -m scripts.utils.snapshots``); the
+underlying storage path is :data:`config.STUDY_RESTORE_POINTS_DIR`.
 """
 
 from __future__ import annotations
@@ -72,7 +77,13 @@ class SnapshotError(RuntimeError):
 
 
 def _snapshots_root() -> Path:
-    return Path(config.STUDY_SNAPSHOTS_DIR)
+    """Return the operator restore-point root, NOT the tracked baseline.
+
+    Functions in this module create/list/restore *named runs*. Those land
+    in ``output/{STUDY}/agent/restore_points/`` (gitignored) — never in
+    ``snapshots/{STUDY}/`` (tracked baseline; the pipeline's PDF orchestrator
+    fallback reads from there and a multi-run dump would corrupt it)."""
+    return Path(config.STUDY_RESTORE_POINTS_DIR)
 
 
 def _trio_root() -> Path:

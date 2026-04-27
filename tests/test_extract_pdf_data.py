@@ -196,7 +196,11 @@ class TestPdfExtractionModeDispatch:
     """
 
     def _seed_snapshot(self, monkeypatch_config: Path, stem: str, payload: dict) -> Path:
-        snap_dir = monkeypatch_config / "agent" / "snapshots" / "initial" / "pdfs"
+        # PR #18 relocated the baseline to ``snapshots/{STUDY}/pdfs/``
+        # (tracked, repo-root). The test conftest patches
+        # ``config.STUDY_SNAPSHOTS_DIR`` to a tmp_path-anchored location,
+        # so we read it from there rather than hardcoding the layout.
+        snap_dir = Path(config.STUDY_SNAPSHOTS_DIR) / "pdfs"
         snap_dir.mkdir(parents=True, exist_ok=True)
         out = snap_dir / f"{stem}_variables.json"
         out.write_text(json.dumps(payload), encoding="utf-8")
@@ -252,7 +256,7 @@ class TestPdfExtractionModeDispatch:
         pdf_src.mkdir()
         (pdf_src / "form_missing.pdf").write_bytes(b"%PDF-1.4\n%EOF\n")
         # Snapshot dir exists but is empty for this PDF.
-        (monkeypatch_config / "agent" / "snapshots" / "initial" / "pdfs").mkdir(
+        (Path(config.STUDY_SNAPSHOTS_DIR) / "pdfs").mkdir(
             parents=True, exist_ok=True
         )
 

@@ -161,7 +161,8 @@ def _ensure_phi_key() -> None:
 
 
 def run_pipeline() -> dict[str, Any]:
-    """Run the data-extraction pipeline as a subprocess.
+    """Run the data-extraction pipeline as a subprocess (the "Load Study"
+    flow's worker).
 
     The pipeline's PDF-extraction step needs ``ANTHROPIC_API_KEY`` /
     ``GOOGLE_API_KEY`` in its env to call vision APIs. Rather than leak
@@ -170,10 +171,13 @@ def run_pipeline() -> dict[str, Any]:
     KeyStore's ``env_for_subprocess`` helper. The parent's env stays
     clean before, during, and after the call.
 
-    The operator's PDF-extraction-mode choice (radio in step 2) is
-    propagated through ``REPORTALIN_PDF_EXTRACTION_MODE`` so the
-    subprocess's ``extract_pdfs_to_jsonl`` dispatcher can pick the
-    snapshot or orchestrator path.
+    The PDF orchestrator inside ``main.py`` always tries the LLM path
+    first (when a capable provider is configured) and falls back to the
+    repo-tracked ``snapshots/{STUDY}/pdfs/`` baseline per-PDF when the
+    LLM tier cannot produce extractions. The operator no longer chooses
+    snapshot-vs-LLM at the per-PDF level — they pick "Load Study" (run
+    the pipeline, with snapshot fallback) or "Use Existing Study" (skip
+    the pipeline and use the live trio_bundle as-is).
     """
     import os
 
@@ -188,10 +192,10 @@ def run_pipeline() -> dict[str, Any]:
     subprocess_env.update(
         get_keystore().env_for_subprocess(list(ENV_VAR_BY_PROVIDER))
     )
-
-    selected_mode = str(st.session_state.get("pdf_extraction_mode", "snapshot")).strip().lower()
-    if selected_mode in {"llm", "snapshot"}:
-        subprocess_env["REPORTALIN_PDF_EXTRACTION_MODE"] = selected_mode
+    # The orchestrator's capability+provider gate decides per-PDF whether
+    # the LLM tier runs; setting the env var to "llm" only signals that
+    # this is a fresh-extraction run (vs. the legacy raw-PDF API path).
+    subprocess_env["REPORTALIN_PDF_EXTRACTION_MODE"] = "llm"
 
     result = subprocess.run(  # noqa: S603
         [sys.executable, str(config.BASE_DIR / "main.py"), "--pipeline"],
@@ -202,48 +206,6 @@ def run_pipeline() -> dict[str, Any]:
     )
     combined = (result.stdout + "\n" + result.stderr).strip()
     return {"success": result.returncode == 0, "output": combined}
-
-
-def _resolve_pdf_mode_options() -> tuple[list[str], bool, str, str]:
-    """Return ``(options, llm_capable, provider_id, model_id)`` for the
-    PDF-extraction radio in step 2.
-
-    Snapshot is always available. The LLM option is offered only when
-    BOTH:
-
-    1. The configured model is on the ``llm_capabilities`` allowlist
-       (rules out small / unreliable models even from supported
-       providers — e.g. claude-haiku-3, gemini-flash).
-    2. The provider's LLM tier is actually wired in
-       :data:`pdf_pipeline.ORCHESTRATOR_SUPPORTED_PROVIDERS` (currently
-       anthropic + google). Otherwise the operator would silently get
-       a snapshot fallback after picking "fresh LLM" — a regression vs
-       the legacy raw-PDF API path which raised an explicit error.
-    """
-    from scripts.extraction.pdf_pipeline import ORCHESTRATOR_SUPPORTED_PROVIDERS
-    from scripts.utils.llm_capabilities import is_capable_model
-
-    label = st.session_state.get("llm_provider_label", _default_provider_label())
-    cfg = _PROVIDER_CONFIG.get(label, {})
-    provider_id = str(cfg.get("provider") or "")
-    model_id = str(st.session_state.get("llm_model", "") or "")
-    # Orchestrator capability uses ``google`` (not ``google-genai``).
-    capability_provider = "google" if provider_id == "google-genai" else provider_id
-
-    capable = (
-        is_capable_model(capability_provider, model_id)
-        and provider_id in ORCHESTRATOR_SUPPORTED_PROVIDERS
-    )
-    options = ["snapshot"]
-    if capable:
-        options.append("llm")
-    return options, capable, provider_id, model_id
-
-
-_PDF_MODE_LABELS: dict[str, str] = {
-    "snapshot": "Use existing study data (verified snapshot)",
-    "llm": "Generate fresh PDF extraction (LLM-assisted)",
-}
 
 
 def _pipeline_output_exists() -> bool:
@@ -462,63 +424,67 @@ def render_setup_page() -> None:
                 output_exists = _pipeline_output_exists()
                 pipeline_ready: bool = st.session_state.pipeline_ready
 
-                # ── PDF-extraction mode radio (Phase 3 PR #16) ─────────────
-                # Operator choice: regenerate extraction with an LLM
-                # (only when a vision-capable model is configured) or
-                # publish the verified initial snapshot verbatim.
-                mode_options, llm_capable, _prov_id, _model_id = (
-                    _resolve_pdf_mode_options()
-                )
-                if st.session_state.get("pdf_extraction_mode") not in mode_options:
-                    st.session_state.pdf_extraction_mode = mode_options[0]
-                st.radio(
-                    "PDF extraction source",
-                    options=mode_options,
-                    format_func=lambda v: _PDF_MODE_LABELS.get(v, v),
-                    horizontal=True,
-                    key="pdf_extraction_mode",
-                )
-                if not llm_capable:
-                    st.caption(
-                        "💡 Fresh LLM extraction needs a vision-capable model "
-                        "from a wired provider (Anthropic Claude Opus/Sonnet 4.6+ "
-                        "or Google Gemini 2.5 Pro). Pick one in step 1 to unlock "
-                        "that option."
-                    )
-
                 if pipeline_ready:
                     st.success("Study data loaded — ready for querying.", icon="✅")
                 elif output_exists:
                     st.info(
-                        "Processed data found in `output/`. Use it directly or reload to refresh.",
+                        "Existing study data detected at `output/`. "
+                        "You can use it directly or run a fresh load to refresh.",
+                        icon=":material/info:",
+                    )
+                else:
+                    st.info(
+                        "No existing study data on disk yet. Run a fresh load to "
+                        "produce ``trio_bundle/`` from your raw study inputs.",
                         icon=":material/info:",
                     )
 
-                run_label = (
-                    "Reload Study" if (pipeline_ready or output_exists) else "Load Study"
-                )
-                if st.button(
-                    run_label,
-                    type="secondary" if pipeline_ready else "primary",
-                    width="stretch",
-                ):
-                    with st.spinner("Loading study data — this may take a minute…"):
-                        result = run_pipeline()
-                    st.session_state.pipeline_log = result["output"]
-                    if result["success"]:
+                # ── Two-button flow (PR #18) ─────────────────────────────
+                # Use Existing Study: trust whatever is already published in
+                #   ``output/{STUDY}/trio_bundle/`` — no pipeline run, no
+                #   network egress, instant. Disabled when the bundle is
+                #   absent.
+                # Load Study: run the full pipeline subprocess. The PDF
+                #   orchestrator falls back to ``snapshots/{STUDY}/pdfs/``
+                #   per-PDF when the LLM tier is unavailable, so this works
+                #   without an API key on a network-isolated host as long
+                #   as the maintainer has populated the snapshots baseline.
+                col_use, col_load = st.columns(2)
+                with col_use:
+                    if st.button(
+                        "Use Existing Study",
+                        type="primary" if output_exists and not pipeline_ready else "secondary",
+                        width="stretch",
+                        disabled=not output_exists,
+                        help=(
+                            "Skip the pipeline and use the trio bundle already "
+                            "published at output/{STUDY}/trio_bundle/."
+                            if output_exists
+                            else "No published trio_bundle on disk yet — run "
+                            "Load Study first."
+                        ),
+                    ):
                         st.session_state.pipeline_ready = True
-                        st.toast("Study data loaded successfully.", icon="✅")
+                        st.toast("Using existing study data.", icon="✅")
                         st.rerun()
-                    else:
-                        st.error("Study load failed. Review the log below.")
-
-                if (
-                    output_exists
-                    and not pipeline_ready
-                    and st.button("Use Existing Data", width="stretch")
-                ):
-                    st.session_state.pipeline_ready = True
-                    st.rerun()
+                with col_load:
+                    load_label = "Reload Study" if pipeline_ready or output_exists else "Load Study"
+                    if st.button(
+                        load_label,
+                        type="primary" if not output_exists else "secondary",
+                        width="stretch",
+                    ):
+                        with st.spinner(
+                            "Loading study data — this may take a minute…"
+                        ):
+                            result = run_pipeline()
+                        st.session_state.pipeline_log = result["output"]
+                        if result["success"]:
+                            st.session_state.pipeline_ready = True
+                            st.toast("Study data loaded successfully.", icon="✅")
+                            st.rerun()
+                        else:
+                            st.error("Study load failed. Review the log below.")
 
                 if st.session_state.pipeline_log:
                     with st.expander(

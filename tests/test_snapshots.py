@@ -1,4 +1,11 @@
-"""Tests for trio_bundle snapshot / restore helpers."""
+"""Tests for the operator restore-point CLI (``scripts.utils.snapshots``).
+
+Pins the contract that ``scripts.utils.snapshots`` writes to
+``STUDY_RESTORE_POINTS_DIR`` (gitignored, agent-writable, multi-named
+runs) — *not* to ``STUDY_SNAPSHOTS_DIR`` (the tracked baseline at
+``snapshots/{STUDY}/`` that the pipeline's PDF orchestrator falls back
+to). The two paths intentionally hold different things.
+"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,7 +33,7 @@ def _isolated_trio(
     )
 
     monkeypatch.setattr(config, "TRIO_BUNDLE_DIR", trio)
-    monkeypatch.setattr(config, "STUDY_SNAPSHOTS_DIR", snaps)
+    monkeypatch.setattr(config, "STUDY_RESTORE_POINTS_DIR", snaps)
     return trio, snaps
 
 
