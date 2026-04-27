@@ -162,8 +162,9 @@ unfiltered, write files to their working directory, and interact
 with figures normally.
 
 The Streamlit UI surfaces saved code through a new ``<RPLN_CODE:...>``
-marker rendered as a collapsible code block plus a download button
-(see :doc:`../user_guide/agent_features` for the user-side view).
+marker rendered as a collapsible code block plus a download button —
+the user can copy the source from the rendered block or download the
+``.py`` file directly.
 
 Where the Code is *Not* Saved
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
