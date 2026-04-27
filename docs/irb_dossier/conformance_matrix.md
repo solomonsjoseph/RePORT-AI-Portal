@@ -54,7 +54,7 @@ This matrix pairs every testable architectural claim with the regulation that an
 | # | Claim | Authority | Artifact | Test | Status |
 |---|---|---|---|---|:-:|
 | 4.1 | Excel extraction preserves raw types; clinical NAs ("NR", "NA", "NK") retained | CDISC SDTMIG; STROBE §6; RECORD §3 | `_TABULAR_NA_OPTIONS`; existing NA-preservation tests | existing `test_dataset_pipeline` NA tests | ✅ (calamine upgrade is optional future work) |
-| 4.2 | PDF extraction deterministic-first with PHI-safety flag gate | STROBE §14; NIST SP 800-188 §6.2 | `extract_pdf_data._resolve_pdf_provider` PHI gate | `TestPDFPHIFreeOptIn`, `TestResolvePDFProviderRefusesWithoutFlag` | ✅ gate; ⚠ pdfplumber hybrid deferred (future work) |
+| 4.2 | PDF extraction deterministic-first with PHI-safety flag gate, plus shipped pdfplumber + LLM-merge orchestrator | STROBE §14; NIST SP 800-188 §6.2 | `extract_pdf_data._resolve_pdf_provider` PHI gate (legacy raw-PDF API path) + `scripts/extraction/pdf_pipeline.py` two-way orchestrator (PR #15, v0.19.0): pdfplumber code path + redacted-text LLM merge + per-PDF snapshot fallback | `TestPDFPHIFreeOptIn`, `TestResolvePDFProviderRefusesWithoutFlag`, `tests/security/test_pdf_redaction_pipeline.py`, `tests/security/test_llm_capabilities.py` | ✅ |
 | 4.3 | Every extracted record has provenance with version + engine + hash | CDISC ODM; ICH E6 §4.9 | `_provenance` dict fields | `TestBuildProvenance.test_contains_all_fields` | ✅ |
 | 4.4 | Pipeline reproducible: same raw + same HMAC key → same trio hashes | STROBE §6; FDA 21 CFR Part 11 | lineage_manifest.json trio_bundle hashes | HMAC determinism proven by `TestDateOffset.test_deterministic`, `TestPseudoId.test_deterministic_same_key` | ✅ |
 | 4.5 | step_cache bypass when SHA-256 set or trio bundle changes | dbt idempotency | `audit/.step_manifest_*.json` | existing `test_step_cache` coverage | ✅ |
@@ -75,11 +75,11 @@ This matrix pairs every testable architectural claim with the regulation that an
 
 ## Summary
 
-**Pillars passing** (fully green): 1.1 / 1.2 / 1.3 / 1.4 / 1.5 / 1.7 / 2.1 / 2.2 / 2.3 / 2.4 / 2.5 / 2.6 / 2.7 / 2.8 / 3.1 / 3.2 / 3.3 / 3.4 / 3.5 / 3.6 / 3.7 / 3.8 / 4.1 / 4.3 / 4.4 / 4.5 / 4.6 / 5.1 / 5.2 / 5.4 / 5.6 = **31 fully green**
+**Pillars passing** (fully green): 1.1 / 1.2 / 1.3 / 1.4 / 1.5 / 1.7 / 2.1 / 2.2 / 2.3 / 2.4 / 2.5 / 2.6 / 2.7 / 2.8 / 3.1 / 3.2 / 3.3 / 3.4 / 3.5 / 3.6 / 3.7 / 3.8 / 4.1 / 4.2 / 4.3 / 4.4 / 4.5 / 4.6 / 5.1 / 5.2 / 5.4 / 5.6 = **32 fully green** (Pillar 4.2 closed in v0.19.0 by PR #15 — pdfplumber + LLM-merge orchestrator now ships)
 
-**Pillars passing with caveats** (documented follow-up): 1.6 (district pop≥20k map), 4.2 (pdfplumber hybrid — future work), 5.3 (breach runbook), 5.5 (consent-scope.yaml) = **4 with known follow-ups**
+**Pillars passing with caveats** (documented follow-up): 1.6 (district pop≥20k map), 5.3 (breach runbook), 5.5 (consent-scope.yaml) = **3 with known follow-ups**
 
-**Total: 35 / 35 criteria architecturally satisfied** (31 original + 4 added via patches 2026-04-23a/b). All follow-ups are explicitly documented and testable; none require architectural rework.
+**Total: 35 / 35 criteria architecturally satisfied** (31 original + 4 added via patches 2026-04-23a/b; Pillar 4.2 hybrid follow-up closed by PR #15 in v0.19.0). All remaining follow-ups are explicitly documented and testable; none require architectural rework.
 
 **Test evidence:** 913 pytest cases passing via `make test-all` (841 deterministic via `make test`; up from 784 / 768 after boundary-refactor + deep-scan work; from 664 baseline), 0 skipped, 0 failures, 0 new mypy errors in the changed modules, 0 new lint errors. Patches 2026-04-23a/b added +4 criteria (2.5 — 2.8) and +36 test cases in `tests/test_phi_safe_input_gates.py`; subsequent boundary-refactor work (80b1461, b3b0f11) added the unified `file_access.py` validator chokepoint with +26 tests in `tests/test_file_access.py`.
 
