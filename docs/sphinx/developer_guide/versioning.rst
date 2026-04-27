@@ -15,7 +15,7 @@ The canonical version lives in ``__version__.py`` at the repository root:
 
 .. code-block:: python
 
-   __version__: str = "0.16.1"
+   __version__: str = "0.17.0"
 
 All other modules import from this single source:
 
