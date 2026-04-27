@@ -274,8 +274,8 @@ verify a claim:
 1. Clone the repository and install the development environment:
    `uv sync --all-groups`.
 2. Run the full test suite: `make test-all`. The expected result is
-   "775 passed, 0 skipped, 0 failed". (`make test` runs the
-   deterministic, network-free subset and reports "703 passed".)
+   "913 passed, 0 skipped, 0 failed". (`make test` runs the
+   deterministic, network-free subset and reports "841 passed".)
 3. Pick a claim from the conformance matrix and grep for the named
    test: `grep -r "TestCatalogCoverage" tests/`. Run just that test:
    `uv run pytest tests/test_phi_scrub.py::TestCatalogCoverage`.
