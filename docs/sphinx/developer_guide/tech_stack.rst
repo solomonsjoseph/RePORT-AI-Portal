@@ -1,256 +1,283 @@
 Tech Stack
 ==========
 
-**What.** Every runtime and development dependency in the project,
-grouped by role, with a sentence on why it was chosen and how the
-project uses it.
+Rewritten 2026-04-27 against the v0.20.0 code state. Every runtime and
+development dependency, grouped by role, with one paragraph each on
+**what** it is, **why** it was chosen, and **how** the project uses
+it. Pinned versions and rationale live in ``pyproject.toml``.
 
-**Why.** A new contributor reading ``pyproject.toml`` sees a flat list of
-package names. That doesn't tell them which deps they can swap, which
-are load-bearing for PHI guarantees, and which are there for
-developer ergonomics. This page is the rationale layer.
-
-**How.** Grouped by role (runtime / extraction / LLM / UI / testing /
-linting / documentation). Each entry: What it is, Why we picked it, How
-we use it. Version policy at the end.
-
-.. contents:: On this page
-   :local:
-   :depth: 2
-
-Runtime Core
-------------
+Runtime — language and tooling
+------------------------------
 
 Python 3.11+
 ~~~~~~~~~~~~
 
-**What.** The language runtime.
-**Why.** 3.11 brings ``zoneinfo`` / faster interpreter / better error
-messages; all of :mod:`scripts.security` relies on ``from __future__
-import annotations`` which is stable from 3.7 but the rest of the stack
-needs 3.11 at minimum (pandas 2.x, langchain 0.3, etc.).
-**How.** Pinned at the ``pyproject.toml`` ``requires-python = ">=3.11"``
-line. CI runs against 3.11 and 3.12.
+**What.** The host language. **Why.** Required for
+:mod:`concurrent.futures` clean shutdown semantics, ``asyncio.timeout``,
+and the ``X | Y`` union syntax used throughout the codebase. **How.**
+``pyproject.toml`` pins ``requires-python = ">=3.11"``; CI matrix
+runs against 3.11 / 3.12 / 3.13.
 
-uv (package manager)
-~~~~~~~~~~~~~~~~~~~~
+uv
+~~
 
-**What.** Fast Rust-based Python package manager by Astral.
-**Why.** Replaces pip/pip-tools/virtualenv/venv with one tool; lockfile
-(``uv.lock``) is reproducible across macOS / Linux / Windows; ``uv
-sync --all-groups`` is 10× faster than ``pip install -r requirements``.
-**How.** Every dev-facing command runs through ``uv`` (``uv run pytest``,
-``uv run ruff check``, ``uv run mypy``). ``make`` targets call
-``uv run`` under the hood.
+**What.** A Rust-based pip / poetry / pipx replacement.
+**Why.** 10-100× faster lockfile resolution; reproducible
+environments. **How.** Project-wide convention: ``uv sync
+--all-groups`` to install, ``uv run`` to invoke. The Makefile assumes
+``uv``; CI installs it via the official ``astral-sh/setup-uv@v3``
+action.
 
-Extraction + Transformation
----------------------------
+Ruff
+~~~~
+
+**What.** A fast Rust-based Python linter + formatter.
+**Why.** Single tool that replaces flake8, isort, pyupgrade, and
+includes ``S`` (flake8-bandit) security rules. **How.** Configuration
+at ``pyproject.toml:215-241`` (the ``[tool.ruff.lint]`` section).
+``S101`` (assert) is per-file-ignored for ``tests/`` since pytest
+idiom; ``S603`` (subprocess) is whitelisted at our hardened
+``subprocess.run`` callsites with ``# noqa: S603``.
+
+mypy
+~~~~
+
+**What.** Static type checker. **Why.** Catches a class of LLM-flow
+bugs (e.g., the v0.18.0 PR #15 type errors I caught at PR-prep time:
+``Anthropic`` vs ``Client`` cross-binding). **How.**
+``pyproject.toml`` configures ``ignore_missing_imports = true`` so
+optional deps don't block; custom stubs live in ``typings/`` for
+``google.genai`` and ``anthropic``.
+
+Pytest
+~~~~~~
+
+**What.** Test runner. **Why.** Mature ecosystem, ``conftest.py``
+fixtures, deterministic markers. **How.**
+:doc:`testing` covers the test-file conventions. As of v0.20.0
+``make test`` runs 841 deterministic tests; ``make test-all`` runs
+the full 913 (the difference is LLM-construction smokes that need
+``langchain`` installed).
+
+Runtime — pipeline
+------------------
 
 pandas
 ~~~~~~
 
-**What.** Tabular data library.
-**Why.** Standard Python answer to "read a spreadsheet, normalize rows,
-write JSONL". The ``itertuples()`` + ``to_json(orient='records', lines=True)``
-combination drives the extraction path.
-**How.** :mod:`scripts.extraction.dataset_pipeline` uses
-``pd.read_excel`` / ``pd.read_csv`` with carefully chosen NA-handling
-options (clinical strings like "NR" / "NA" must NOT be coerced to
-``NaN``). ``_TABULAR_NA_OPTIONS`` centralises the NA policy.
+**What.** Tabular dataframe library. **Why.** Excel reading, JSONL
+output, dataset cleanup, k-anonymity equivalence-class lookups all
+ride on pandas. **How.**
+:mod:`scripts.extraction.dataset_pipeline` reads the raw Excel into
+a DataFrame; per-row records are serialised to JSONL with the
+provenance dict.
 
 openpyxl
 ~~~~~~~~
 
-**What.** Python reader for Excel 2007+ ``.xlsx`` files.
-**Why.** Pandas backend of choice for ``.xlsx`` on macOS / Linux (no
-Excel required). Alternatives considered: ``xlsx2csv`` (lossy), ``xlrd``
-(abandoned for ``.xlsx``).
-**How.** Used implicitly via ``pd.read_excel(engine='openpyxl')``.
+**What.** Excel ``.xlsx`` reader/writer. **Why.** pandas's default
+``.xlsx`` engine. **How.** Used implicitly by ``pd.read_excel`` for
+the dictionary + dataset legs.
 
-xlrd
-~~~~
+xlrd 1.2.0 (legacy ``.xls`` only)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**What.** Legacy Excel 97-2004 ``.xls`` reader.
-**Why.** Some Indian clinical study datasets still ship as ``.xls``;
-pandas dropped ``xlrd`` support in 1.2 for ``.xlsx`` but kept it for
-legacy ``.xls``. We need both.
-**How.** Pinned via ``xlrd==1.2.0`` in ``pyproject.toml`` (the last
-version that supports ``.xls``).
+**What.** Legacy ``.xls`` reader. **Why.** pandas dropped ``xlrd``
+support in 1.2 for ``.xlsx`` but kept it for legacy ``.xls``. We need
+both because some study data is still in ``.xls``. **How.** Pinned
+via ``xlrd==1.2.0`` (the last version that supports ``.xls``).
 
-PyPDF / pdfplumber
-~~~~~~~~~~~~~~~~~~
+pypdf
+~~~~~
 
-**What.** PDF parsing libraries. Both are wired into the runtime as
-of v0.20.0.
-**Why.** Annotated CRFs contain both flat text and form-field layout.
-``pypdf`` powers the legacy raw-PDF API path (gated by the two-part
-``REPORTALIN_PDF_PHI_FREE`` attestation). ``pdfplumber`` powers the
-always-on code path inside the two-way PDF orchestrator
-(``scripts.extraction.pdf_pipeline``, PR #15) — extracted text is
-PHI-redacted before any LLM call, paired with the LLM response via
-the ``_merge`` step.
-**How.** Legacy path: :mod:`scripts.extraction.extract_pdf_data`.
-Orchestrator path: :mod:`scripts.extraction.pdf_pipeline` (the wizard's
-"Load Study" flow always selects this path; CLI users can opt in via
-``REPORTALIN_PDF_EXTRACTION_MODE=llm``).
+**What.** Lightweight PDF text extractor. **Why.** Powers the legacy
+raw-PDF API path. **How.** Used in
+:mod:`scripts.extraction.extract_pdf_data` when the operator opts
+into the gated raw-PDF API path with the two-part attestation.
+
+pdfplumber
+~~~~~~~~~~
+
+**What.** Layout-aware PDF extractor. **Why.** Per-character bounding
+boxes give better structure recovery than ``pypdf`` for complex
+multi-section CRFs. **How.** As of PR #15 (v0.19.0), pdfplumber is
+the **always-on code path** inside the two-way PDF orchestrator
+(:mod:`scripts.extraction.pdf_pipeline`). Extracted text is
+PHI-redacted before any LLM call; the LLM response is merged with
+the code candidate via ``_merge``.
 
 PyYAML
 ~~~~~~
 
-**What.** YAML parser.
-**Why.** ``scripts/security/phi_scrub.yaml`` is YAML for two reasons:
-(a) humans read + review rule catalogs more comfortably than Python
-literals, (b) catalog changes don't require Python edits (just YAML).
-``config/config.yaml`` and ``config/study_knowledge.yaml`` are also YAML.
-**How.** :func:`scripts.security.phi_scrub.load_scrub_config` +
-:func:`config._load_yaml_config`.
+**What.** YAML parser. **Why.** The PHI scrub catalog
+(``scripts/security/phi_scrub.yaml``) and the study-knowledge
+overlay (``config/study_knowledge.yaml``) ship as YAML so domain
+experts can edit without touching code. **How.** Loaded once at
+import time; cached.
 
-LLM Integration
+Runtime — agent
 ---------------
 
 LangChain + LangGraph
 ~~~~~~~~~~~~~~~~~~~~~
 
-**What.** LangChain orchestrates tool-using LLMs;
-LangGraph is the state-machine layer for ReAct agents.
-**Why.** ``create_react_agent`` gives us a provider-agnostic ReAct
-implementation across Anthropic / OpenAI / Google / Ollama without
-per-provider glue. The tool decorator (``@tool``) is the idiomatic
-wrapper for the 12 structured-data tools the agent uses
-(canonical list: :data:`scripts.ai_assistant.agent_tools.ALL_TOOLS`).
-**How.** :mod:`scripts.ai_assistant.agent_graph` builds the graph;
-:mod:`scripts.ai_assistant.agent_tools` holds the ``@tool``-decorated
-functions (every one wrapped by ``@phi_safe_return`` via
-:mod:`scripts.ai_assistant.phi_safe`).
+**What.** LLM-agent framework. **Why.** ``init_chat_model`` gives
+provider-agnostic construction (Anthropic / OpenAI / Google / Ollama
+/ NVIDIA all behind one API); LangGraph's ReAct prebuilt is the
+agent topology. **How.** :mod:`scripts.ai_assistant.agent_graph` is
+the only module that constructs an LLM client; every client takes
+``api_key=`` as an explicit kwarg sourced from the in-memory
+KeyStore (PR #3) — no ``os.environ`` lookup at construction time.
 
-``init_chat_model`` (from langchain-core)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LangChain provider packages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**What.** Unified chat-model constructor across providers.
-**Why.** One line per provider — ``init_chat_model("claude-sonnet-4",
-model_provider="anthropic")`` — instead of per-provider import and
-config.
-**How.** The agent startup reads ``config.LLM_PROVIDER`` + ``config.LLM_MODEL``
-and hands them to ``init_chat_model`` once.
+**What.** Per-provider LangChain integrations: ``langchain-anthropic``,
+``langchain-openai``, ``langchain-google-genai``,
+``langchain-ollama``, ``langchain-nvidia-ai-endpoints``. **Why.**
+Each provider has its own client + auth + retry semantics; the
+LangChain wrappers normalise them. **How.** All five are declared
+runtime dependencies; ``init_chat_model("anthropic:claude-...")``
+dispatches to the right wrapper based on the provider prefix.
 
-User Interface
---------------
+anthropic, google-genai (raw SDKs)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Streamlit
-~~~~~~~~~
+**What.** Provider raw SDKs. **Why.** The PDF orchestrator's
+``_extract_via_llm`` calls the raw SDK directly because the
+orchestrator's contract is a single non-streaming JSON response
+with PHI-redacted text — heavier LangChain machinery is overkill
+here. **How.**
+:func:`scripts.extraction.pdf_pipeline._extract_via_llm` dispatches
+on ``provider`` ∈ ``{anthropic, google, gemini, google-genai}``.
 
-**What.** Python web-app framework.
-**Why.** Researchers are not web developers; Streamlit gives us a
-chat + plot + table UI with ``streamlit run`` and zero build step. The
-dev feedback loop (edit Python → reload page) matches the agent-tool
-dev loop.
-**How.** :mod:`scripts.ai_assistant.web_ui` is the entry point; UI
-helpers are split across ``scripts/ai_assistant/ui/``.
+Streamlit ≥ 1.38, < 2.0
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+**What.** Web UI framework. **Why.** Fast prototyping; built-in
+``session_state``, file uploaders, chat widgets. **How.**
+``scripts/ai_assistant/web_ui.py`` is the entry; UI primitives
+factored into ``scripts/ai_assistant/ui/{wizard,chat,conversations,
+streaming,...}.py``. Theme + bridge JS in
+``scripts/ai_assistant/ui/assets/``.
 
 Plotly + Kaleido
 ~~~~~~~~~~~~~~~~
 
-**What.** Interactive plotting library + static-image exporter.
-**Why.** Researcher audience wants both in-browser interactive plots
-(Plotly HTML) and publication-ready static PNG/SVG (via Kaleido).
-**How.** :mod:`scripts.ai_assistant.analytical_engine` returns Plotly
-figures; the UI renders them interactively and offers a Kaleido export
-for publication handoff.
+**What.** Interactive charts (Plotly) + headless export (Kaleido).
+**Why.** ``run_python_analysis`` renders model output as Plotly
+figures; Kaleido exports them as PNG so the persisted analysis
+``.py`` file produces reproducible images on a fresh run. **How.**
+Used inside the sandbox subprocess child only — the agent's parent
+process does not ``import plotly``.
 
-Testing + Quality
+Runtime — security
+------------------
+
+scripts.security.* (in-tree)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**What.** The PHI handling surface lives entirely in-tree:
+
+* :mod:`scripts.security.phi_scrub` — 8-action honest-broker catalog
+* :mod:`scripts.security.phi_patterns` — shared regex catalog
+* :mod:`scripts.security.phi_allowlist` — clinical-phrase exemption
+* :mod:`scripts.security.phi_gate` — agent-output gate
+* :mod:`scripts.security.kanon_gate` — k-anon (k=5) + l-diversity (l=2)
+* :mod:`scripts.security.secure_env` — zone guards
+* :mod:`scripts.security.phi_ner` — local-Ollama narrative NER design
+  stub (feature-flagged, raises until implemented)
+
+**Why.** No external dependency for PHI handling — auditors can read
+every line of the security surface without trusting an upstream maintainer.
+**How.** See :doc:`phi_architecture` for the full architecture.
+
+cryptography (HMAC + secure_zero_fill)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**What.** Standard library wrapper for HMAC-SHA256 and secure
+random. **Why.** Used for per-subject SANT date jitter and ID
+pseudonymization. **How.** :func:`scripts.security.phi_scrub.pseudo_id`,
+:func:`scripts.security.phi_scrub.date_offset_days`.
+
+Runtime — observability
+-----------------------
+
+Python ``logging`` (with custom redactor)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**What.** Standard logging. **Why.** Familiar API; the redactor is a
+single ``logging.Filter`` so we don't need a logging-framework
+dependency. **How.**
+:func:`scripts.utils.log_hygiene.install_phi_redactor` attaches a
+filter to the root logger that scrubs API keys + PHI patterns from
+every log line at format time.
+
+structlog (deferred)
+~~~~~~~~~~~~~~~~~~~~
+
+**What.** Not currently used. **Why mentioned.** Open question
+whether to migrate to ``structlog`` for structured logging in a
+future phase; for now standard logging is sufficient.
+
+Development
+-----------
+
+pytest-cov
+~~~~~~~~~~
+
+**What.** Coverage measurement. **Why.** Optional; enabled when
+running ``make test-coverage``. **How.** Configured in
+``pyproject.toml`` (``[tool.pytest.ini_options]``).
+
+pip-audit
+~~~~~~~~~
+
+**What.** Dependency vulnerability scanner. **Why.** Catches known
+CVEs in pinned dependencies before they reach production. **How.**
+Runs on demand (``make security``); not yet a dedicated CI job
+(documented gap in ``docs/irb_dossier/conformance_matrix.md``,
+outside the Sphinx tree).
+
+Sphinx + sphinx-rtd-theme + myst-parser
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**What.** Documentation generator. **Why.** RST + autodoc gives
+free API reference from docstrings; mature toctree semantics. **How.**
+``make docs`` builds; ``make docs-quality`` runs the doc-freshness
+lint and a ``-W`` (warnings as errors) Sphinx rebuild. CI gate at
+``.github/workflows/docs-quality-check.yml``.
+
+Custom type stubs
 -----------------
 
-pytest
-~~~~~~
+``typings/`` ships in-tree stubs for two providers whose upstream
+typing is incomplete:
 
-**What.** Test runner.
-**Why.** Industry-standard Python test framework; fixtures + parametrize
-are idiomatic; rich plugin ecosystem.
-**How.** 775 tests in ``tests/``, organised by module. ``make test``
-runs the 703-test deterministic subset (excludes agent-tools, agent-graph,
-CLI, and telemetry tests); ``make test-all`` runs the full 775.
+* ``typings/anthropic/`` — covers the raw SDK's
+  ``messages.create`` / ``messages.stream`` surface used by the PDF
+  orchestrator + legacy raw-PDF path.
+* ``typings/google/`` — covers the
+  ``google.genai.Client.models.generate_content`` surface.
 
-ruff
-~~~~
+The ``mypy`` config picks up ``typings/`` automatically via
+``mypy_path``.
 
-**What.** Rust-based linter + formatter.
-**Why.** Replaces flake8 / isort / black with one tool, 50-100× faster.
-Catches SIM / RUF / BLE / S-class issues in addition to formatting.
-**How.** ``pyproject.toml [tool.ruff]`` config pins line-length=100
-and the enabled rule set. ``make lint`` is ``ruff check + ruff format``.
-
-MyPy
-~~~~
-
-**What.** Static type checker.
-**Why.** Catches ``None``-deref / type-mismatch / missing-key bugs
-before runtime. The PHI-scrub catalogue in particular benefits because
-a type error in the priority dispatch would silently fail on a new row
-shape.
-**How.** ``pyproject.toml [tool.mypy]`` with
-``ignore_missing_imports=True`` (we cannot stub every LangChain version).
-
-Custom type stubs (``typings/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**What.** Hand-written ``.pyi`` files for ``google`` / ``anthropic``.
-**Why.** The vendor libraries ship incomplete type hints or change API
-shape between releases; local stubs give us stable types for the
-narrow surface we actually use.
-**How.** Referenced via ``mypy_path`` in ``pyproject.toml``.
-
-Documentation
--------------
-
-Sphinx
-~~~~~~
-
-**What.** Python documentation generator.
-**Why.** RST + autodoc + intersphinx are the stable idiom for Python
-library docs. The ``sphinx-rtd-theme`` renders cleanly on GitHub Pages.
-**How.** ``docs/sphinx/conf.py`` + ``make docs``. Build output under
-``docs/sphinx/_build/html``.
-
-Scientific Stack
-----------------
-
-The analytical engine uses a focused scientific-Python subset:
-
-* **numpy** — the array primitive. Everything downstream builds on it.
-* **scipy** — statistics (t-tests, chi-square, distributions).
-* **statsmodels** — logistic regression, survival analysis, Cox
-  models. Chosen over ``scikit-learn`` because ``statsmodels`` exposes
-  standard epi output (coefficients, confidence intervals, p-values)
-  directly rather than requiring post-hoc extraction.
-* **matplotlib** — still the de-facto Python plotting library; used for
-  static publication plots alongside Plotly for interactive UI plots.
-
-Version Policy
+Pinning policy
 --------------
 
-* **Runtime-critical** deps (pandas, langchain, statsmodels, pyyaml) are
-  pinned to a tested version range in ``pyproject.toml``. Upgrades
-  require a PR, a full ``make ci`` green, and a note in the commit
-  message if any public behaviour shifts.
-* **Dev tooling** (ruff, mypy, pytest) tracks latest-stable. A ruff or
-  mypy version bump can be a chore-commit if no code changes are needed.
-* **LLM providers** (anthropic, openai, google-generativeai) are pinned
-  conservatively because provider SDKs have a history of breaking
-  changes at minor-version bumps. Upgrades wait for a user-facing need.
-* **Security patches** across all of the above are fast-tracked —
-  ``uv lock --upgrade-package <name>`` + re-run CI + merge.
+* **Major versions pinned with caret semantics** for runtime deps that
+  the agent talks to (LangChain, Anthropic, Google) — e.g.
+  ``langchain>=1.0.0,<2.0.0``. Reason: provider APIs evolve; we
+  catch the v2 break in CI before it reaches production.
+* **Exact version pin** for ``xlrd==1.2.0`` (the only non-broken
+  ``.xls`` reader).
+* **Streamlit pinned to ``>=1.38, <2.0``** because
+  ``st.session_state`` semantics changed materially across major
+  versions.
+* **All other deps** pinned with ``>=`` only; ``uv.lock`` records
+  the resolved versions reproducibly.
 
-Dependencies Intentionally NOT in the Stack
--------------------------------------------
-
-* **presidio-analyzer** — see :doc:`decisions` ADR-004.
-* **cryptography / pycryptodome** — not needed; HMAC-SHA256 is in the
-  stdlib ``hmac`` + ``hashlib`` modules, and we deliberately do NOT
-  use AES at rest (see ADR-002).
-* **dvc / git-lfs** — the pipeline does not track raw data in git; the
-  raw tree lives under ``.gitignore``.
-* **airflow / prefect** — the pipeline runs locally via
-  ``make pipeline``; no orchestration framework needed for a single-
-  study local-first runtime.
-* **docker** — the stack runs in a ``uv`` virtualenv. Dockerisation is
-  a deployment concern left to the operator's site.
+Where this is enforced: ``pyproject.toml`` (top-level + dev /
+test / docs optional groups). The lockfile (``uv.lock``) is the
+source of truth for the installed tree.

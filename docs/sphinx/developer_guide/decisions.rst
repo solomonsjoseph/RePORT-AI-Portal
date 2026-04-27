@@ -1,10 +1,13 @@
 Architecture Decisions (ADRs)
 =============================
 
-**What.** One record per major architectural decision made during the
-2026-04 PHI-handling work. Each record states what was decided, why,
-how it was implemented, what alternatives were considered, and what
-consequences to expect if the decision ages poorly.
+**What.** One record per major architectural decision. ADRs 001–009
+were authored during the 2026-04 PHI-handling work (Phase 2 +
+Phase 3.A/B). ADRs 010–015 capture decisions shipped between
+v0.18.0 and v0.20.0 (PRs #2, #3, #13, #15, #18). Each record states
+what was decided, why, how it was implemented, what alternatives were
+considered, and what consequences to expect if the decision ages
+poorly.
 
 **Why.** Commit messages and Claude-memory files capture decisions at
 the moment of authorship but are invisible to a new contributor who
@@ -321,3 +324,270 @@ audit.
 **Consequences.** Audit reports are thin on evidence by design. The
 counts suffice for IRB acceptance; deeper debugging requires live
 staging inspection.
+
+ADR-010 — Subprocess + rlimits sandbox for ``run_python_analysis``
+------------------------------------------------------------------
+
+**What.** LLM-generated Python from the ``run_python_analysis`` tool
+runs in a fresh OS subprocess with ``RLIMIT_AS`` / ``RLIMIT_NPROC``
+/ ``RLIMIT_CPU`` clamps + a sanitised env + read-only access to the
+trio bundle. The original AST guards remain as defense-in-depth
+inside the child.
+
+**Why.** AST guards alone don't stop CPython gadget escapes
+(hand-crafted ``__class__.__bases__[0]`` traversals, ``co_consts``
+poisoning, etc.). An OS-level isolation boundary defangs every
+in-process escape: even a perfectly-jailbroken interpreter inside the
+subprocess cannot exceed the rlimits, cannot read the parent's
+KeyStore, cannot write outside ``trio_bundle/``, cannot fork beyond
+``RLIMIT_NPROC``.
+
+**How.** Shipped in PR #2 (v0.17.0) under
+:mod:`scripts.ai_assistant.sandbox.replicate` (public API),
+:mod:`scripts.ai_assistant.sandbox.runner` (child entry point), and
+:mod:`scripts.ai_assistant.sandbox.limits` (rlimits helpers). The
+generated ``.py`` file is persisted to
+``output/{STUDY}/agent/analysis/{ts}.py`` so the operator can copy
++ reproduce externally — no hidden code path.
+
+**Alternatives.**
+
+* **AST guards only** (the pre-PR-#2 design). Rejected — known
+  CPython escape gadgets defeat AST-level filtering.
+* **``nsjail`` / ``firejail``** profile. Considered as a future
+  high-assurance option for cloud deployments; not shipped because
+  the deployment target is the operator's laptop and ``nsjail``
+  needs root + Linux-specific kernel features.
+* **WebAssembly** (Pyodide). Considered; rejected because pandas /
+  numpy / scipy / statsmodels don't run there cleanly, and the
+  capability surface ``run_python_analysis`` needs is exactly those
+  libraries.
+
+**Consequences.** Subprocess startup is ~75 % of per-call latency
+on macOS — acceptable for the analytical-question-per-second
+workload but would need parquet + ``mmap`` if call rate increased
+materially. Tracked as future work in :doc:`sandbox`.
+
+ADR-011 — KeyStore (in-memory API-key registry)
+-----------------------------------------------
+
+**What.** API keys never persist in the parent process's
+``os.environ`` for the lifetime of the app. The Streamlit wizard
+routes the key into an in-memory ``KeyStore`` registry; the
+corresponding ``*_API_KEY`` env variable is scrubbed from
+``os.environ``. Keys are re-injected only into the short-lived
+pipeline subprocess via ``KeyStore.env_for_subprocess``.
+
+**Why.** ``os.environ`` is a process-wide global. A single
+``logger.info(f"env={dict(os.environ)}")`` debug-print, an exception
+traceback rendered with ``locals()``, or a third-party library
+helpfully echoing config — any of these can leak ``ANTHROPIC_API_KEY``
+into the log file and from there into the audit envelope or the
+operator's terminal scrollback. Removing the keys from ``os.environ``
+once they're loaded into the in-memory registry shrinks the leak
+surface materially.
+
+**How.** Shipped in PR #3 (v0.17.0) as
+:mod:`scripts.ai_assistant.keystore`. Every LLM client constructor
+(``ChatAnthropic``, ``ChatOpenAI``, ``ChatGoogleGenerativeAI``,
+``ChatNVIDIA``, ``ChatOllama``) takes an explicit ``api_key=`` kwarg
+sourced from the KeyStore — no environment lookup at construction
+time. Tested by ``tests/test_keystore.py``,
+``tests/test_log_hygiene_keys.py``,
+``tests/test_no_keys_in_parent_environ.py``.
+
+**Alternatives.**
+
+* **OS keyring** (``keyring`` package). Considered for persistence
+  across sessions; rejected because the operator already has the
+  ``.env`` file as their persistence layer, and adding keyring would
+  introduce platform-specific behaviour (macOS Keychain vs Linux
+  libsecret vs Windows Credential Vault).
+* **Encrypted on-disk vault**. Rejected — adds a master-key bootstrap
+  problem on top of the existing PHI-key bootstrap problem.
+
+**Consequences.** Operators using the CLI (``python main.py
+--pipeline`` directly without the wizard) still rely on the env-var
+path. The CLI ``main.py`` reads ``LLM_PROVIDER`` / ``ANTHROPIC_API_KEY``
+from env; this is intentional for back-compat with existing
+shell-script invocations. The KeyStore posture only applies to the
+in-app (Streamlit/CLI-REPL) lifetimes.
+
+ADR-012 — Two-way PDF orchestrator (pdfplumber + redacted-text LLM merge)
+-------------------------------------------------------------------------
+
+**What.** PDF extraction has two co-existing paths. The default path
+(``scripts/extraction/pdf_pipeline.py``, the wizard's "Load Study"
+selection) extracts text locally with ``pdfplumber``, redacts the
+text via ``phi_patterns.BLOCKING_PATTERNS`` *before* any LLM call,
+sends only the redacted text to a capable LLM, re-scrubs the
+response, and merges with the code candidate. Per-PDF fallback to
+the version-controlled snapshot baseline at ``snapshots/{STUDY}/pdfs/``
+when the LLM tier is unavailable. **No raw PDF bytes leave the host
+on this path.**
+
+**Why.** ADR-006 refused external-API PDF extraction by default
+because raw PDF bytes carry PHI risk. The two-part attestation gate
+in the legacy path is a workable but operator-friction-heavy
+posture. The orchestrator path replaces "ship raw bytes after
+attestation" with "redact text first, then ship". The redaction
+catalog is the same one the agent-output PHI gate uses, so the
+audit story is internally consistent.
+
+**How.** Shipped in PR #15 (v0.19.0) under
+:mod:`scripts.extraction.pdf_pipeline`. Capability gate via
+:func:`scripts.utils.llm_capabilities.is_capable_model` (Claude Opus
+4.6+, Sonnet 4.6+, GPT-5+, Gemini 2.5 Pro, Llama 3.3 405B; Ollama
+excluded by default). Provider gate via
+:data:`scripts.extraction.pdf_pipeline.ORCHESTRATOR_SUPPORTED_PROVIDERS`
+(anthropic + google only — where ``_extract_via_llm`` has client
+wiring). Idempotent cache keyed on
+``SHA-256(pdf_bytes || provider || model || phi_scrub.yaml hash)``.
+
+**Alternatives.**
+
+* **Local-only PDF extraction** (pdfplumber + local-Ollama
+  multimodal). Considered; rejected as primary because Ollama
+  models don't reliably produce the JSON-schema response on a
+  30-page CRF. The snapshot fallback covers this case.
+* **Keep ADR-006's attestation gate as the only path.** Rejected
+  because operator friction effectively meant the PDF leg was
+  skipped for most runs; the orchestrator unblocks the leg without
+  weakening the egress posture.
+
+**Consequences.** ADR-006 is now a *fallback* path, not the primary
+path. The attestation gate remains in the legacy
+``extract_pdf_data._resolve_pdf_provider``. PR #15 introduced a
+``snapshots/{STUDY}/`` baseline tier — see ADR-013.
+
+ADR-013 — Two-tier snapshot model (tracked baseline + restore points)
+---------------------------------------------------------------------
+
+**What.** Two distinct copy-of-the-trio-bundle tiers, on different
+paths, with different lifecycles:
+
+1. **Tracked baseline** at ``snapshots/{STUDY}/`` (repo root,
+   version-controlled, maintainer-curated, single per-study cleaned
+   trio bundle). Read by the PDF orchestrator's per-PDF fallback.
+2. **Operator restore points** at
+   ``output/{STUDY}/agent/restore_points/`` (gitignored, multi-named
+   runs). Created via ``python -m scripts.utils.snapshots create``.
+   Crash-recovery only; never read by the pipeline.
+
+**Why.** The PDF orchestrator (ADR-012) needs a deterministic,
+reviewable baseline to fall back on when the LLM tier fails. The
+operator-restore CLI (which predates the orchestrator) creates
+multi-named runs for local rollback. Putting both on the same path
+would either (a) pollute the tracked baseline with multi-run dumps
+(violating the "one verified baseline" property) or (b) make the
+restore-CLI multi-name behaviour fight git ignore rules. Splitting
+them onto different paths preserves both properties.
+
+**How.** Shipped in PR #18 (v0.20.0). ``config.STUDY_SNAPSHOTS_DIR``
+points at the repo-root tracked baseline. ``config.STUDY_RESTORE_POINTS_DIR``
+points at the gitignored operator-restore tier. The
+:mod:`scripts.utils.snapshots` CLI uses the latter; the orchestrator
+uses the former.
+
+**Crucially:** the LLM agent's read zone is strictly
+``trio_bundle/`` + ``agent/``. Both snapshot paths are intentionally
+*outside* the LLM read zone. A stale baseline can never be served
+as live data because the agent simply cannot read it.
+
+**Alternatives.**
+
+* **One snapshot path** with mode bits to distinguish baseline vs
+  scratch. Rejected — too fragile to rely on filesystem mode for an
+  audit-critical distinction.
+* **Don't track the baseline; require operators to seed via env
+  var or a separate repo.** Rejected — version-controlled baseline
+  is the cleanest IRB story (any change is a commit; the diff is
+  reviewable).
+
+**Consequences.** Maintainers who follow the snapshot-baseline
+maintenance protocol (see :doc:`operations`) must run a manual
+``cp -r output/{STUDY}/trio_bundle/ snapshots/{STUDY}/`` after a
+verified production run. The whole value of a snapshot is the human
+verification step; auto-generation from ``--force`` runs is a foot-gun
+the protocol explicitly forbids.
+
+ADR-014 — Parallel extraction phase (3-worker ThreadPoolExecutor)
+-----------------------------------------------------------------
+
+**What.** ``main.py``'s extraction phase runs Dictionary / Datasets /
+PDFs in parallel on a 3-worker ``concurrent.futures.ThreadPoolExecutor``.
+The cleanup chain (PHI scrub / dataset cleanup / cleanup propagation),
+publish, and ``variables.json`` build run sequentially after the
+join.
+
+**Why.** The three legs are fully decoupled — different RED inputs,
+different AMBER staging subdirs, no shared mutable state. The PDF
+leg's HTTP latency (orchestrator LLM calls) is amortised against
+the dataset leg's Excel-parsing CPU. Cleanup chain stays sequential
+because it has hard data dependencies (PHI scrub needs all dataset
+records; propagation needs the cleanup audit; publish needs
+propagation; ``variables.json`` needs publish to have landed).
+
+**How.** Shipped in PR #18 (v0.20.0). Each leg is wrapped in a
+helper (``_run_dict_leg``, ``_run_dataset_leg``, ``_run_pdf_leg``)
+that returns a result dict; futures are gathered via
+``as_completed`` so a fast leg can short-circuit while a slow one
+runs.
+
+**Alternatives.**
+
+* **``multiprocessing.Pool``** for true parallelism. Rejected — the
+  PDF leg's HTTP calls release the GIL, so threads are sufficient;
+  ``multiprocessing`` would multiply the staging-tree write
+  contention.
+* **``asyncio``**. Rejected — the existing extraction code is sync
+  pandas + openpyxl; converting to async would be a much bigger
+  change.
+
+**Consequences.**
+:class:`scripts.utils.logging_system.VerboseLogger`'s ``_indent``
+attribute is mutated by overlapping ``file_processing`` context
+managers; under ``--verbose`` mode tree-output indentation may
+interleave when extraction legs overlap. Cosmetic only — log
+emissions are correct. Tracked as a known gap in the PR #18
+description.
+
+ADR-015 — l-diversity (l=2) on row-returning tools
+---------------------------------------------------
+
+**What.** Every row-returning agent tool runs the result through
+:func:`scripts.security.kanon_gate.guard_rows_with_kanon_and_ldiv`.
+The gate enforces both k-anonymity (k=5; ADR-008 / Pillar 2.4) AND
+l-diversity (l=2 distinct sensitive-attribute values per
+equivalence class).
+
+**Why.** k-anonymity alone is insufficient when every row in a
+small equivalence class shares the same sensitive attribute (the
+"homogeneity attack" of Machanavajjhala et al. 2007). If five
+rows match on all quasi-identifiers AND all five share the
+diagnosis ``HIV+``, the k=5 check passes but the cohort is just as
+re-identifying as a k=1 disclosure. l-diversity guards against this
+by also requiring at least ``l`` distinct values of the sensitive
+attribute.
+
+**How.** Shipped in PR #13 (v0.18.0). Default sensitive attributes
+are configured in ``_DEFAULT_SENSITIVE_ATTRIBUTES`` of
+:mod:`scripts.security.kanon_gate`. Tested by
+``tests/security/test_kanon_l_diversity.py``.
+
+**Alternatives.**
+
+* **t-closeness.** Considered; deferred. t-closeness checks the
+  *distribution* of the sensitive attribute against the population
+  baseline, which needs population-level priors that aren't always
+  available. l-diversity gives the bulk of the protection without
+  that requirement; t-closeness can be added later as a third
+  gate.
+* **Differential privacy**. Out of scope for the row-returning-tool
+  use case; would change the contract from "exact rows when allowed"
+  to "noisy aggregate".
+
+**Consequences.** Some legitimate cohort queries return aggregate
+substitutes (``"≥5 subjects, all sharing diagnosis X"``) instead
+of row-level data. The agent's prompt explains this to the user
+when the gate fires.

@@ -1,366 +1,394 @@
 PHI Architecture
 ================
 
-**What.** The canonical developer-facing description of the full PHI
-handling story — the four-tier honest-broker zones, the eight-action
-scrub catalog, the agent-boundary gates, the integrity chain, the log
-hygiene layer, and the PDF PHI-safety gate. One page so a new
-contributor can understand every defence before touching any module.
+Rewritten 2026-04-27 against the v0.20.0 code state. The canonical
+developer-facing description of the full PHI-handling story — the
+four zones, the eight-action scrub catalog, the integrity chain, the
+log redactor, the PDF orchestrator's redact-then-call posture, and
+the agent-boundary three-gate stack. For the IRB-grade walkthrough
+see ``docs/irb_dossier/phi_walkthrough.md`` (outside the Sphinx
+tree); for the architectural decisions behind these mechanisms see
+:doc:`decisions`.
 
-**Why.** Before this page the PHI story was split across
-``architecture.rst``, ``operations.rst``, ``data_extraction_datasets.rst``,
-the IRB dossier, and commit messages. A new contributor could read any
-subset and have a consistent-but-incomplete picture. This page is the
-single place to look.
+The Four Zones (plus one out-of-zone tier)
+------------------------------------------
 
-**How.** Top-down: zones → transformations → gates → integrity →
-observability. Every section names the module that implements the
-behaviour so you can jump from doc to code in one click.
+Every artifact lives in exactly one of four zones. The fifth path
+(``snapshots/{STUDY}/`` at the repo root) is *not* a zone in the
+honest-broker sense — it's a version-controlled baseline, intentionally
+outside every LLM-readable surface.
 
-.. contents:: On this page
-   :local:
-   :depth: 2
+.. list-table::
+   :header-rows: 1
+   :widths: 14 30 56
 
-The Four Tiers
---------------
+   * - Zone
+     - Path
+     - PHI posture
+   * - **RED**
+     - ``data/raw/{STUDY}/``
+     - Raw clinical inputs. Presumed PHI-bearing. Read-only by the
+       extraction subprocess; the agent and the LLM never touch this
+       zone.
+   * - **AMBER**
+     - ``tmp/{STUDY}/``
+     - Per-run scratch. Mode ``0700`` under umask ``0077``. PHI is
+       present here for the duration of one pipeline run; on success
+       the entire tree is overwritten with random bytes + ``fsync``-ed
+       + unlinked. On failure preserved for forensic inspection.
+   * - **GREEN**
+     - ``output/{STUDY}/trio_bundle/`` + ``output/{STUDY}/agent/``
+     - PHI-free published artifacts + agent's own state.
+       :func:`scripts.ai_assistant.file_access.validate_agent_read`
+       admits paths in this zone only.
+   * - **GREEN-PROTECT**
+     - ``output/{STUDY}/audit/``
+     - Counts-only IRB envelope: lineage manifest, scrub report,
+       cleanup report, telemetry. Same ``output/`` tree as GREEN but
+       hard-rejected by the agent's read-zone validator.
 
-.. code-block:: text
+The fifth path:
 
-   ┌─ Tier 0 RED ────────────────────────────────────────────────────┐
-   │ data/raw/{STUDY}/{datasets, data_dictionary, annotated_pdfs}/   │
-   │ • Zone guard: assert_not_raw                                    │
-   │ • Read-only by the extraction leg                               │
-   │ • Hash every input file → SHA-256 in provenance                 │
-   └────────────┬────────────────────────────────────────────────────┘
-                │ deterministic extraction (Phase 0.a)
-                ▼
-   ┌─ Tier 1 AMBER — secure channel ─────────────────────────────────┐
-   │ tmp/{STUDY}/ (or /dev/shm/{STUDY}/ on Linux tmpfs)              │
-   │ • mode 0700, umask 0077 (via scripts/utils/secure_staging.py)   │
-   │ • Step 1.6 phi_scrub: 8-action priority dispatch                │
-   │ • Step 1.7 dataset_cleanup + Step 1.8 cleanup_propagation       │
-   │ • Zero-fill + fsync + unlink on success                         │
-   │ • Never read by the LLM agent                                   │
-   └────────────┬────────────────────────────────────────────────────┘
-                │ atomic per-leg publish
-                ▼
-   ┌─ Tier 2 GREEN — trio_bundle ────────────────────────────────────┐
-   │ output/{STUDY}/trio_bundle/{datasets, pdfs, dictionary,         │
-   │                              variables.json}                    │
-   │ • PHI-free by construction                                      │
-   │ • Post-publish SHA-256 manifest → audit/lineage_manifest.json   │
-   │ • LLM agent read zone (1/2); the other is output/{STUDY}/agent/ │
-   └────────────┬────────────────────────────────────────────────────┘
-                │ every @tool guarded + gated
-                ▼
-   ┌─ Tier 3 GREEN-PROTECT — agent boundary ─────────────────────────┐
-   │ scripts/ai_assistant/agent_tools.py                             │
-   │ • file_access.validate_agent_read/write on every file I/O       │
-   │   (unified chokepoint: trio_bundle + agent/ only; audit +       │
-   │    telemetry + staging + raw are hard-rejected)                 │
-   │ • phi_gate_check on every text return (phi_safe.phi_safe_return)│
-   │ • kanon_check on row-level returns (kanon_gate)                 │
-   │ • Telemetry _mask_phi on LLM tool previews                      │
-   └─────────────────────────────────────────────────────────────────┘
+* **``snapshots/{STUDY}/``** (repo root) — version-controlled
+  cleaned trio bundle baseline used by the PDF orchestrator's per-PDF
+  fallback. **The LLM cannot read it.** The path is outside the GREEN
+  + GREEN-PROTECT trees so a stale baseline can never be served as
+  live data. Maintainer-curated by hand; see :doc:`operations`.
 
-RED zone — ``data/raw/{STUDY_NAME}/``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Zone enforcement
+~~~~~~~~~~~~~~~~
 
-**What.** The unscrubbed study tree.
-**Why.** Contains PHI by definition. Every access outside the extraction
-leg is a potential breach.
-**How.** :func:`scripts.security.secure_env.assert_not_raw` raises
-``ZoneViolationError`` when any path under ``data/raw/`` reaches a
-non-extraction module. The extraction leg itself uses the zone guard
-indirectly via ``config.RAW_DATA_DIR`` and reads files read-only.
+Two complementary chokepoints:
 
-AMBER zone — ``tmp/{STUDY_NAME}/`` (or ``/dev/shm/{STUDY}/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* :mod:`scripts.security.secure_env` — pipeline-side directory-level
+  early-reject. Functions: ``assert_not_raw``, ``assert_output_zone``,
+  ``assert_write_zone``, ``assert_trio_bundle_zone``. Used at
+  pipeline boundaries (e.g. before the publish-step rename, before
+  ``--pdf-source`` copy).
+* :mod:`scripts.ai_assistant.file_access` — agent-runtime path
+  validator. Functions: ``validate_agent_read``,
+  ``validate_agent_write``, ``validate_sandbox_write``,
+  ``is_agent_readable``. Resolves every path with
+  ``os.path.realpath`` and verifies containment with
+  ``os.path.commonpath``. Reads accept ``trio_bundle/`` ∪ ``agent/``
+  (plus ``config/study_knowledge.yaml`` via an explicit allowlist for
+  the StudyKnowledge helper). Agent-tool writes accept ``agent/`` only;
+  ``exec_python`` sandbox writes narrow further to
+  ``agent/analysis/``. Audit, telemetry, staging, raw, and the
+  snapshot baseline are hard-rejected with ``ZoneViolationError``.
 
-**What.** The transient staging workspace where extraction writes,
-Step 1.6 scrubs, Step 1.7 cleans up, and Step 1.8 propagates cleanup
-decisions to the dictionary + pdfs legs.
-**Why.** Nothing in output/ can change until AMBER is PHI-free. Keeping
-PHI-bearing data in a short-lived, permission-restricted, optionally
-in-memory workspace minimises the window and blast radius of exposure.
-**How.** :func:`scripts.utils.secure_staging.prepare_staging` sets mode
-0700 and runs every write under ``umask 0077`` so files land mode 0600.
-When ``REPORTALIN_TMPFS_STAGING=1`` AND ``/dev/shm`` is writable
-(Linux), the staging root redirects to tmpfs and never hits physical
-disk on the extraction host. On success, ``secure_remove_tree``
-overwrites each staging file with ``secrets.token_bytes`` of matching
-size, fsyncs, and unlinks — resistant to filesystem forensics.
+The Eight-Action Scrub Catalog (Step 1.6)
+-----------------------------------------
 
-GREEN zone — ``output/{STUDY_NAME}/trio_bundle/``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+:func:`scripts.security.phi_scrub.run_scrub` is invoked between the
+parallel extraction phase and the dataset cleanup. It operates on
+``tmp/{STUDY}/datasets/*.jsonl`` in place. Eight action classes,
+evaluated in strict priority order against ~200 Indo-VAP-calibrated
+rules in ``scripts/security/phi_scrub.yaml``:
 
-**What.** The PHI-free published bundle. One of two zones the agent
-reads; the other is ``output/{STUDY}/agent/`` (:data:`config.AGENT_STATE_DIR`).
-**Why.** Every claim about "the agent cannot see PHI" resolves to this
-zone being PHI-free by construction. If a field leaks into GREEN, it
-leaks everywhere downstream.
-**How.** The ``_publish_staging`` function in ``main.py`` atomically
-renames each AMBER leg (``datasets``, ``dictionary``, ``pdfs``) into
-``trio_bundle/`` only after scrub + cleanup + propagation succeed. Per-leg
-``assert_output_zone`` wraps every write. Publish is the AMBER → GREEN
-transition — there is no intermediate state where the agent could see
-partial output.
+1. **keep** — pass through (only for confirmed non-PHI columns)
+2. **birthdate** — replace with ``birthyear`` only (HIPAA Safe
+   Harbor §164.514(b)(2)(i))
+3. **drop** — null out
+4. **cap** — clamp at a quantile (the "age > 89" rule)
+5. **generalize** — bucket into ranges (e.g. age → 5-year bands)
+6. **suppress_small_cell** — null when the cohort cell has fewer
+   than the configured threshold
+7. **date_jitter (SANT)** — per-subject deterministic shift via
+   ``HMAC-SHA256(key, subject_id)[:4] mod (2*max_days+1) - max_days``.
+   Within-subject visit intervals are preserved exactly; absolute
+   dates are obscured.
+8. **hmac_pseudonymize** — replace IDs with
+   ``SUBJ_<HMAC-SHA256(key, value)[:12]>``. Non-reversible without
+   the key, deterministic with it.
 
-GREEN-PROTECT — the agent-tool boundary
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The HMAC key lives at ``~/.config/report_ai_portal/phi_key`` (mode
+``0600``, outside the repo, never committed). Path resolution:
+``$XDG_CONFIG_HOME/report_ai_portal/phi_key`` if set, else
+``~/.config/report_ai_portal/phi_key``.
 
-**What.** A defence-in-depth layer between GREEN and the LLM.
-**Why.** If the offline scrub (Step 1.6) misses any PHI token — because
-a new field shape slipped past the catalog or because a narrative field
-carries a regex-matchable identifier — the query-time gate catches it
-before the string reaches the model.
-**How.** Every ``@tool`` in ``scripts/ai_assistant/agent_tools.py`` starts
-with :func:`scripts.security.secure_env.assert_trio_bundle_zone` for any
-file I/O. Return values run through :func:`scripts.security.phi_gate.phi_gate_check`
-via the :func:`scripts.ai_assistant.phi_safe.phi_safe_return` decorator.
-Row-level responses also run through :func:`scripts.security.kanon_gate.kanon_check`
-to enforce k-anonymity ≥ 5.
+Posture flags
+~~~~~~~~~~~~~
 
-The Eight-Action Scrub Catalog
-------------------------------
+The scrub config supports two "compliance posture" modes:
 
-Every PHI transformation at Step 1.6 resolves to one of eight named
-action classes, evaluated in a strict priority order for each field of
-each row:
+* **Default (Safe Harbor / NIST SP 800-188)** — ``birthdate`` ⇒
+  ``birthyear``, drop precise dates, jitter within-subject, etc.
+* **Limited Dataset (HIPAA §164.514(e))** — ``birthdate`` and
+  precise dates retained because a Data Use Agreement is in place.
+  Activated by ``compliance_posture: limited_dataset`` in
+  ``phi_scrub.yaml`` AND a non-empty
+  ``authorities/phi_limited_dataset.md`` attestation note.
 
-1. ``keep`` — allowlist; short-circuits every other rule. 80 rules in
-   ``phi_scrub.yaml`` cover clinical lab / medication / time-of-day /
-   categorical indicator columns that must survive the scrub.
-2. ``birthdate`` — posture-dependent. ``safe_harbor`` drops the field
-   entirely; ``limited_dataset`` falls through to rule 7 and requires
-   ``authorities/phi_limited_dataset.md``.
-3. ``drop`` — field removed from every row. 93 rules cover names, Indian
-   government IDs, contact info, exact geography, system timestamps,
-   narrative / specify / comment fields, staff identifiers, batch/scan
-   metadata.
-4. ``cap`` — numeric > threshold replaced with a label (default age > 89
-   → ``"90+"``, HIPAA §164.514(b)(2)(i)(C)).
-5. ``generalize`` — value-level categorical mapping (marital status →
-   Married / Single / Other; facility type → Government / Private /
-   Other).
-6. ``suppress_small_cell`` — numeric > threshold clamped to the threshold
-   (ICMR §11.7 k-anonymity proxy for household-contact counts).
-7. ``date`` (jitter) — per-subject deterministic offset ∈
-   ``[-max_jitter_days, +max_jitter_days]``. Offset = HMAC-SHA256(key,
-   subject_id)[:4] mod (2*N+1) - N. SANT method preserves every
-   per-subject interval exactly.
-8. ``id`` (pseudonymize) — ``"SUBJ_" + hmac_sha256(key, raw_id)[:12]``.
-   Deterministic cross-file linkage; non-reversible without key.
+Both pillars must hold. A YAML edit alone or an attestation note
+alone is insufficient.
 
-Rule catalog ships in ``scripts/security/phi_scrub.yaml`` (Indo-VAP-
-calibrated) and is consumed by :class:`scripts.security.phi_scrub.PHIScrubConfig`
-via :func:`scripts.security.phi_scrub.load_scrub_config`. The priority
-dispatch lives in :func:`scripts.security.phi_scrub._scrub_row`.
+The Agent-Boundary Three-Gate Stack
+-----------------------------------
+
+Every tool return string passes through three gates before reaching
+the LLM:
+
+Gate 1 — PHI regex catalog (``phi_gate_check`` / ``guard_text``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Module: :mod:`scripts.security.phi_gate` and
+:mod:`scripts.ai_assistant.phi_safe`. Pattern catalog:
+:mod:`scripts.security.phi_patterns`. Allowlist:
+:mod:`scripts.security.phi_allowlist`.
+
+Blocking patterns: Aadhaar (12-digit + Verhoeff check), PAN
+(``[A-Z]{5}[0-9]{4}[A-Z]``), email, phone (Indian mobile patterns
++ international), precise dates (``\d{1,2}[/-]\d{1,2}[/-]\d{2,4}``,
+ISO ``\d{4}-\d{2}-\d{2}``), MRN-shaped tokens. When a blocking
+pattern fires, the response is replaced with a redaction
+message; the LLM sees the redaction notice, not the raw text.
+
+The clinical-phrase allowlist exempts strings like "INH 5 mg/kg" or
+"VL 300 copies/mL" from numeric-id false positives.
+
+Gate 2 — k-anonymity (k=5) (``guard_rows_with_kanon``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Module: :mod:`scripts.security.kanon_gate`. Function:
+:func:`scripts.security.kanon_gate.kanon_check` (used as a
+primitive by ``guard_rows_with_kanon_and_ldiv`` below).
+
+When a tool would surface row-level data, the gate computes the
+equivalence class of each row over the configured quasi-identifiers
+(``_DEFAULT_QUASI_IDENTIFIERS``: typically ``age_band``, ``sex``,
+``district``). If any equivalence class has fewer than 5 members, the
+gate suppresses the response and returns an aggregate or an explicit
+"too-few-records" message.
+
+Gate 3 — l-diversity (l=2) (``guard_rows_with_kanon_and_ldiv``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Shipped in PR #13 (v0.18.0). Function:
+:func:`scripts.security.kanon_gate.l_diversity_check` (used as a
+primitive by ``guard_rows_with_kanon_and_ldiv``).
+
+When a k-anon-passing equivalence class shares the same sensitive
+attribute (e.g. all 5 rows have ``hiv_status = positive``), the gate
+also fires. l=2 means the class must contain at least 2 distinct
+values of the sensitive attribute. See ADR-015 in :doc:`decisions`
+for the rationale.
+
+The PDF Orchestrator's Redact-Then-Call Posture
+-----------------------------------------------
+
+ADR-012 (v0.19.0 / PR #15). The wizard's "Load Study" button
+selects this path. Per PDF:
+
+1. **Code path always runs.** ``pdfplumber`` extracts text + a
+   heuristic candidate via
+   :func:`scripts.extraction.pdf_pipeline._candidate_from_text`.
+2. **Capability + provider gate.**
+   :func:`scripts.utils.llm_capabilities.is_capable_model` enforces
+   the model allowlist;
+   :data:`scripts.extraction.pdf_pipeline.ORCHESTRATOR_SUPPORTED_PROVIDERS`
+   restricts to anthropic + google.
+3. **Redact-then-call.** Extracted text is scrubbed via
+   :func:`scripts.extraction.pdf_pipeline._redact_text_for_llm`
+   (which uses ``phi_patterns.BLOCKING_PATTERNS``). A defensive
+   ``_assert_no_raw_phi_in_payload`` re-checks and raises if any
+   blocking pattern survives. Only the redacted text reaches the
+   LLM.
+4. **Re-scrub the response.** The LLM response is parsed and every
+   string field is re-scrubbed through
+   :func:`scripts.ai_assistant.phi_safe.guard_text` before merge.
+5. **Merge.** :func:`scripts.extraction.pdf_pipeline._merge`
+   reconciles LLM + code candidates.
+6. **Per-PDF snapshot fallback.** When the LLM tier is unavailable,
+   the orchestrator publishes ``snapshots/{STUDY}/pdfs/{stem}_variables.json``
+   instead. **Code-only output is never published** — heuristic-only
+   metadata without LLM oversight is too unreliable for IRB-grade
+   work.
+
+**No raw PDF bytes leave the host on the orchestrator path.** The
+legacy raw-PDF API path
+(:func:`scripts.extraction.extract_pdf_data._resolve_pdf_provider`)
+remains as the back-compat fallback gated by the two-part
+attestation (``REPORTALIN_PDF_PHI_FREE=1`` + non-empty
+``authorities/phi_free_pdfs.md``).
 
 The Integrity Chain
 -------------------
 
-**What.** Cryptographic linkage from every raw input file to every
-published trio artifact.
-**Why.** An auditor must be able to verify "these GREEN artifacts came
-from those RED inputs, processed by this code version, under this
-compliance posture." Hashes make the claim falsifiable without access
-to the raw data.
-**How.** Three layers:
+Three artifacts cryptographically link the raw inputs to the
+published outputs:
 
-* **Per-row**. Every JSONL row carries ``_provenance.raw_sha256`` (set
-  by :func:`scripts.extraction.dataset_pipeline._build_provenance`),
-  plus ``pipeline_version`` and ``extraction_engine`` strings.
-* **Per-stage**. Every raw input is hashed at extract-time (via
-  :func:`scripts.utils.integrity.hash_file`). Scrub preserves the
-  provenance dict as-is (scrub acts on values, not metadata).
-* **Per-run**. Step 4 emits ``output/{STUDY}/audit/lineage_manifest.json``
-  via :func:`scripts.utils.lineage.emit_lineage_manifest` — a single
-  JSON file pairing inputs and outputs by SHA-256 + size + mtime, plus
-  per-leg audit references and the compliance posture used.
+1. **Per-row provenance dict** — every JSONL record in
+   ``trio_bundle/datasets/`` carries a ``_provenance`` field with
+   ``raw_sha256``, ``pipeline_version``, ``extraction_engine``,
+   ``source_file``, ``sheet_name``, ``row_index``, ``study_name``,
+   ``extraction_utc``. Traceability per row.
+2. **Step-cache manifests** at
+   ``output/{STUDY}/audit/manifests/{step}.json``. Each step (e.g.
+   ``dataset_processing``) records the SHA-256 of every input file
+   it consumed; the next run hashes inputs again and skips the step
+   if all hashes match. Implementation:
+   :mod:`scripts.utils.step_cache`.
+3. **Lineage manifest** at
+   ``output/{STUDY}/audit/lineage_manifest.json`` — Step 4 of the
+   pipeline. Records:
+
+   * Per-input hash: ``{path, sha256, size_bytes, mtime_utc}`` for
+     every file under ``data/raw/{STUDY}/``.
+   * Per-output hash: same shape for every file under
+     ``trio_bundle/``.
+   * Per-leg audit pointer: paths to ``phi_scrub_report.json``,
+     ``dataset_cleanup_report.json``, etc.
+   * **PHI-key fingerprint**: SHA-256 of the HMAC key bytes (so
+     IRB reviewers can verify the same key was used as expected
+     without ever seeing the key itself).
+   * **Compliance posture**: ``default`` / ``limited_dataset`` /
+     ``disabled`` / ``unknown``.
+   * Pipeline version + emit timestamp.
+
+   Implementation: :mod:`scripts.utils.lineage`.
+
+Every audit report is **counts-only** (per ADR-009). No row contents,
+no before/after pairs, no subject identifiers. The auditor reads
+counts; if values are needed for debugging, the operator inspects
+the live AMBER staging files (which only exist for the duration of
+the run).
 
 Log Hygiene
 -----------
 
-**What.** A ``logging.Filter`` that redacts PHI-like substrings from
-every log record before the handler formats it.
-**Why.** Raw subject IDs, dates, emails, and Aadhaar numbers must not
-land in ``.logs/*.log``. A log file leak is the same breach as a dataset
-leak; both must be closed.
-**How.** :class:`scripts.utils.log_hygiene.PHIRedactingFilter` runs two
-passes — first a per-subject HMAC-tagged replacement of configured
-subject-ID regex matches, then the shared BLOCKING + WARN pattern
-catalog from :mod:`scripts.security.phi_patterns`. Install once per
-process via :func:`scripts.utils.log_hygiene.install_phi_redactor`; the
-function is idempotent.
+:func:`scripts.utils.log_hygiene.install_phi_redactor` attaches a
+``logging.Filter`` to the root logger. Every log line goes through
+the filter at format time. Patterns covered:
 
-PDF PHI-Safety Gate
--------------------
+* API keys (``sk-ant-…``, ``sk-…``)
+* Aadhaar, PAN, MRN-shaped tokens
+* Phone, email
+* Precise dates
 
-**What.** A refusal at ``_resolve_pdf_provider`` when external-API PDF
-extraction is attempted without the operator's explicit PHI-free
-attestation.
-**Why.** Sending raw PDF bytes to Anthropic / Google Gemini is a
-network egress of PHI unless the source PDFs are verified PHI-free
-(blank CRFs / protocol / MOP). Without this gate the pipeline would
-silently leak PHI to a third-party LLM API.
-**How.** The operator must set ``REPORTALIN_PDF_PHI_FREE=1`` to
-authorize the external-API path. The flag is an explicit assertion
-recorded against the IRB dossier. Alternatives that do not trigger the
-gate: ``--pdf-source <path>`` with pre-extracted JSON, or skipping the
-PDF leg entirely.
+The redactor is installed once in ``main.py`` (``_install_log_redactor_best_effort``)
+and once in the AI Assistant entry points so both worlds emit
+scrubbed logs.
+
+KeyStore (PR #3)
+----------------
+
+ADR-011. API keys never persist in the parent process's
+``os.environ``. The Streamlit wizard's step 1 routes the pasted key
+into :mod:`scripts.ai_assistant.keystore` (an in-memory
+``KeyStore`` registry); the corresponding ``*_API_KEY`` env variable
+is scrubbed. Every LLM client takes ``api_key=`` as an explicit
+kwarg sourced from the KeyStore. Keys are re-injected only into
+the short-lived pipeline subprocess via
+``KeyStore.env_for_subprocess``.
+
+Subprocess Sandbox (PR #2)
+--------------------------
+
+ADR-010. ``run_python_analysis`` runs in a fresh ``subprocess.run``
+child with ``RLIMIT_AS`` / ``RLIMIT_NPROC`` / ``RLIMIT_CPU`` clamps,
+a sanitised env (no ``*_API_KEY`` from the parent KeyStore), and
+read-only access to ``trio_bundle/`` only. AST + import + dunder +
+builtin guards remain inside the child as defence-in-depth. See
+:doc:`sandbox` for the full layered story.
 
 Module Map
 ----------
 
-Cross-reference of every module involved in PHI handling:
-
 .. list-table::
    :header-rows: 1
-   :widths: 35 15 50
+   :widths: 38 62
 
    * - Module
-     - Tier
-     - Responsibility
-   * - :mod:`scripts.security.secure_env`
-     - all
-     - Zone-guard assertions (``assert_not_raw``,
-       ``assert_write_zone``, ``assert_output_zone``,
-       ``assert_trio_bundle_zone``).
+     - Role
    * - :mod:`scripts.security.phi_scrub`
-     - AMBER
-     - 8-action priority dispatch at Step 1.6; HMAC key management;
-       posture enforcement; orphan quarantine; audit emission.
-   * - ``scripts/security/phi_scrub.yaml``
-     - AMBER
-     - Indo-VAP-calibrated rule catalog (keep / drop / cap / generalize
-       / suppress / date / id / birthdate).
+     - Eight-action scrub catalog driver. Reads
+       ``scripts/security/phi_scrub.yaml``.
    * - :mod:`scripts.security.phi_patterns`
-     - AMBER + GREEN-PROTECT
-     - Shared regex catalog (BLOCKING / WARN / SUBJECT_ID) consumed by
-       the agent gate AND the log redactor.
+     - Shared regex catalog (``BLOCKING_PATTERNS``, ``WARN_PATTERNS``).
+       Used by the agent-output gate, the PDF orchestrator's
+       redaction step, and the log redactor.
    * - :mod:`scripts.security.phi_allowlist`
-     - GREEN-PROTECT
-     - Clinical-phrase allowlist — suppresses false-positive warnings
-       on verbatim like "Treatment Completed" or "patient expired".
+     - Clinical-phrase exemption (e.g. "INH 5 mg/kg" not flagged
+       as a numeric ID).
    * - :mod:`scripts.security.phi_gate`
-     - GREEN-PROTECT
-     - ``phi_gate_check`` — regex + allowlist; blocking hits replace the
-       tool response with a redaction message.
+     - Agent-output PHI gate. ``phi_gate_check`` returns blocked /
+       allowed.
    * - :mod:`scripts.security.kanon_gate`
-     - GREEN-PROTECT
-     - ``kanon_check`` for equivalence-class k-anonymity;
-       ``mask_small_cell`` / ``suppress_small_cells`` for aggregate
-       cross-tabs.
+     - k-anonymity (k=5) + l-diversity (l=2). ``kanon_check``,
+       ``l_diversity_check``, ``guard_rows_with_kanon_and_ldiv``.
+   * - :mod:`scripts.security.secure_env`
+     - Pipeline-side directory-level zone guards.
    * - :mod:`scripts.security.phi_ner`
-     - GREEN-PROTECT
-     - Stage-5 design stub for a local-Ollama narrative NER sweep;
-       feature-flagged via ``REPORTALIN_OLLAMA_NER``.
+     - Local-Ollama narrative NER design stub
+       (``REPORTALIN_OLLAMA_NER=1``).
    * - :mod:`scripts.ai_assistant.file_access`
-     - GREEN-PROTECT
-     - Unified agent-world file I/O chokepoint. ``validate_agent_read``
-       / ``validate_agent_write`` / ``validate_sandbox_write`` /
-       ``is_agent_readable`` resolve each path with ``os.path.realpath``
-       and verify containment with ``os.path.commonpath``. Reads accept
-       ``trio_bundle/`` ∪ ``agent/`` (plus the repo-tracked
-       ``config/study_knowledge.yaml`` read-allowlist); agent-tool
-       writes accept ``agent/`` only; ``exec_python`` sandbox writes
-       narrow further to ``agent/analysis/``. Audit, telemetry,
-       staging, raw, and arbitrary filesystem paths raise
-       ``ZoneViolationError``. Symlinks and ``..`` traversal are
-       neutralised by the realpath + commonpath pair.
+     - Agent-runtime path validator (``validate_agent_read`` etc.).
    * - :mod:`scripts.ai_assistant.phi_safe`
-     - GREEN-PROTECT
-     - Output-side: ``@phi_safe_return`` decorator + ``guard_text`` /
-       ``guard_rows_with_kanon``. Input-side (added 2026-04-23):
-       ``guard_user_prompt`` refuses PHI-bearing researcher prompts at
-       chat / CLI entry; ``sanitise_untrusted_snippet`` wraps
-       PDF-extracted text in a spotlighting envelope and redacts
-       imperative-voice injection phrases. At-rest:
-       ``redact_phi_in_text`` for conversation persistence + exports;
-       ``sanitise_traceback`` for error surfaces fed back to the LLM
-       or the UI.
-   * - :mod:`scripts.utils.secure_staging`
-     - AMBER
-     - ``prepare_staging`` hardens mode + umask; ``secure_remove_tree``
-       zero-fills on teardown; ``resolve_staging_root`` switches to
-       tmpfs when opted in.
-   * - :mod:`scripts.utils.lineage`
-     - GREEN
-     - ``emit_lineage_manifest`` produces the one-page IRB evidence
-       artifact pairing raw-hash with trio-hash.
+     - Agent-side PHI helpers: ``phi_safe_return``, ``guard_text``,
+       ``guard_user_prompt``, ``sanitise_untrusted_snippet``,
+       ``redact_phi_in_text``, ``sanitise_traceback``.
+   * - :mod:`scripts.ai_assistant.keystore`
+     - In-memory API-key registry (PR #3).
    * - :mod:`scripts.utils.log_hygiene`
-     - all
-     - ``PHIRedactingFilter`` + ``install_phi_redactor`` — runtime log
-       redaction using the shared regex catalog.
-   * - :mod:`scripts.utils.integrity`
-     - all
-     - ``hash_file`` / ``hash_bytes`` streaming SHA-256 helpers; single
-       source of truth for the integrity chain.
-   * - :mod:`scripts.extraction.dataset_pipeline`
-     - RED → AMBER
-     - Reads raw, writes staged JSONL with full provenance (incl.
-       ``raw_sha256``).
-   * - :mod:`scripts.extraction.extract_pdf_data`
-     - RED → AMBER
-     - PDF extraction with the ``REPORTALIN_PDF_PHI_FREE`` gate on the
-       external-API path.
+     - Logging filter for API-key + PHI redaction.
+   * - :mod:`scripts.utils.lineage`
+     - Lineage manifest emitter (Step 4).
+   * - :mod:`scripts.utils.secure_staging`
+     - AMBER staging prep + secure-zero-fill teardown.
+   * - :mod:`scripts.utils.step_cache`
+     - Per-step hash manifests for skip semantics.
+   * - :mod:`scripts.extraction.pdf_pipeline`
+     - PDF orchestrator with redact-then-call (PR #15).
 
 IRB Benchmark Cross-Reference
 -----------------------------
 
-Every claim in the 31-criterion benchmark (plus four follow-ups added in
-patches 2026-04-23a/b, totalling 35 architecturally satisfied) at
-``docs/irb_dossier/conformance_matrix.md`` maps to at least one module
-above. Pillar 1 (Minimization & De-ID) is satisfied by phi_scrub +
-phi_scrub.yaml + phi_allowlist. Pillar 2 (Zone Isolation) is satisfied
-by secure_env + the per-tool assertions. Pillar 3 (Secure Channel +
-Integrity) is satisfied by secure_staging + integrity + lineage +
-log_hygiene. Pillar 4 (Extraction Accuracy + Reproducibility) is
-satisfied by dataset_pipeline provenance + the PDF PHI-safety gate.
-Pillar 5 (Governance + Retention + Breach) is satisfied by the
-counts-only audit contract + HMAC key rotation semantics.
+The 35-criterion conformance matrix (31 original + 4 added via patches 2026-04-23a/b) lives at
+``docs/irb_dossier/conformance_matrix.md`` (outside the Sphinx tree).
+Pillar mapping:
+
+* **Pillar 1 — PHI scrub catalog**: ``phi_scrub.py`` + ``phi_scrub.yaml``,
+  the 8 action classes documented above.
+* **Pillar 2 — Zone isolation + agent access**: ``file_access.py`` +
+  ``secure_env.py`` + the three agent-output gates.
+* **Pillar 3 — Secure channel + integrity**: ``secure_staging.py`` +
+  ``lineage.py`` + ``step_cache.py``.
+* **Pillar 4 — Extraction safety**: ``dataset_pipeline.py`` +
+  ``pdf_pipeline.py`` (PR #15) + ``extract_pdf_data.py``.
+* **Pillar 5 — Governance + retention + breach**: ``phi_scrub.bootstrap_key``
+  + ``_cleanup_staging`` + audit envelope.
 
 When You Touch This Code
 ------------------------
 
-* **Adding a PHI rule** — declare it in ``phi_scrub.yaml`` under the
-  matching action section (``drop_fields`` / ``cap_fields`` / etc.).
-  Add a case to the catalog-coverage tests in ``tests/test_phi_scrub.py``.
-  Do NOT add inline regex in Python.
-* **Adding a new agent tool** — start the function body with
-  ``validate_agent_read(path)`` (for reads) or ``validate_agent_write(path)``
-  (for writes) from :mod:`scripts.ai_assistant.file_access` for any file
-  I/O. The validator is the unified chokepoint: it accepts only
-  ``trio_bundle/`` + ``agent/`` paths and rejects audit, telemetry, staging,
-  raw, and arbitrary filesystem paths with ``ZoneViolationError``. Wrap
-  with ``@phi_safe_return`` so the gate runs on the return value. If the
-  tool surfaces row-level data, call ``guard_rows_with_kanon`` first.
-  If the tool surfaces text from outside the trio bundle (PDF extract,
-  remote metadata, vocabulary file), wrap that text with
-  ``sanitise_untrusted_snippet`` before returning it.
-* **Adding a new user-input entry point** — call
-  ``guard_user_prompt(text)`` before invoking the agent. If it returns
-  ``ok=False``, display the refusal message and persist a category-
-  tagged placeholder (never the raw prompt). See chat.py + cli.py for
-  the pattern.
-* **Adding a new persistence / export surface** — route user-facing
-  text through ``redact_phi_in_text`` before write. Route exception
-  traces through ``sanitise_traceback`` before any return that the LLM
-  or UI can read.
-* **Adding a new PHI class regex** — declare it in
-  :mod:`scripts.security.phi_patterns` under ``BLOCKING_PATTERNS`` (high
-  confidence) or ``WARN_PATTERNS`` (low-confidence heuristic). Both the
-  agent gate and the log redactor pick up new patterns automatically.
-* **Rotating the HMAC key** — delete ``~/.config/report_ai_portal/phi_key``,
-  re-bootstrap, and re-run the pipeline from scratch. Every prior
-  pseudonym + date offset is invalidated; there is no gradual
-  migration path by design.
+Every diff that touches anything under ``scripts/security/``,
+``scripts/ai_assistant/{file_access,phi_safe,keystore}.py``, or
+``scripts/extraction/pdf_pipeline.py`` should:
+
+1. Run ``make test-all`` locally — the 22 PHI-critical test modules
+   listed in ``docs/irb_dossier/phi_walkthrough.md`` Q21 must all
+   pass.
+2. Run ``make doc-freshness`` — the lint compares live source-of-
+   truth values (tool count, scrub-action count, version) against
+   prose in this page and the IRB dossier.
+3. If you change the scrub catalog (the YAML), the
+   ``phi_scrub.yaml`` SHA-256 changes — which invalidates the PDF
+   orchestrator's idempotent cache by design (the cache key
+   includes ``phi_scrub.yaml`` hash). Confirmed by
+   ``tests/security/test_pdf_redaction_pipeline.py::test_cache_key_invariants``.
+4. If you add a new pattern to ``BLOCKING_PATTERNS``, add a positive
+   test (the pattern fires) AND a negative test (the
+   clinical-phrase allowlist still passes legitimate
+   strings).
 
 See Also
 --------
 
-* :doc:`decisions` — the "why" for every major PHI-architecture choice.
-* :doc:`references` — every cited regulation and standard with URLs.
-* :doc:`architecture` — the non-PHI-specific runtime architecture.
-* :doc:`operations` — operational runbook.
+* :doc:`architecture` — full system architecture.
+* :doc:`decisions` — ADRs (especially 010-015 which cover the
+  v0.19.0 / v0.20.0 PHI work).
+* :doc:`sandbox` — subprocess sandbox.
+* :doc:`operations` — snapshot-baseline maintenance protocol.
+* ``docs/irb_dossier/phi_walkthrough.md`` — the IRB-grade
+  walkthrough with regulatory mapping.
