@@ -4,7 +4,7 @@
 
 app:
   name: RePORT AI Portal
-  version: "0.16.1"
+  version: "0.17.0"
   mode: user
   log_level: INFO
 
