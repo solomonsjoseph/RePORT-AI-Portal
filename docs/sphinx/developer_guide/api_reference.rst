@@ -65,6 +65,22 @@ PDF Extraction
    :undoc-members:
    :show-inheritance:
 
+PDF Orchestrator (two-way pipeline — PR #15)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: scripts.extraction.pdf_pipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+LLM Capability Gate (PR #15)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: scripts.utils.llm_capabilities
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Security Modules
 ----------------
 
@@ -194,6 +210,14 @@ Dataset Cleanup
 
 AI Assistant Modules
 --------------------
+
+KeyStore (in-memory API-key registry — PR #3)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: scripts.ai_assistant.keystore
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Agent Graph
 ~~~~~~~~~~~
@@ -368,6 +392,88 @@ Step Cache
 ~~~~~~~~~~
 
 .. automodule:: scripts.utils.step_cache
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Artifact Version Registry
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: scripts.artifact_versions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Sandbox Subprocess (PR #2 — OS-isolated ``run_python_analysis``)
+----------------------------------------------------------------
+
+The sandbox subpackage executes LLM-generated code in a fresh
+subprocess with OS-level rlimits and an in-child AST guard. See
+:doc:`sandbox` for the conceptual overview.
+
+Sandbox Public API
+~~~~~~~~~~~~~~~~~~
+
+.. automodule:: scripts.ai_assistant.sandbox.replicate
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Sandbox Resource Limits
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: scripts.ai_assistant.sandbox.limits
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Sandbox Child Runner
+~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: scripts.ai_assistant.sandbox.runner
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Extraction I/O Helpers
+----------------------
+
+Clinical Date Parsing
+~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: scripts.extraction.io.clinical_dates
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+File Discovery
+~~~~~~~~~~~~~~
+
+.. automodule:: scripts.extraction.io.file_discovery
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+File I/O Primitives
+~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: scripts.extraction.io.file_io
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+JSONL Reader
+~~~~~~~~~~~~
+
+.. automodule:: scripts.extraction.io.jsonl_reader
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Doc-Freshness Linter
+~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: scripts.lint_doc_freshness
    :members:
    :undoc-members:
    :show-inheritance:
