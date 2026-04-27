@@ -6,7 +6,7 @@ with the same layout as the live `output/{STUDY}/trio_bundle/`:
 
 ```
 snapshots/
-└── {STUDY_NAME}/             # e.g. snapshots/IndoVAP/
+└── {STUDY_NAME}/             # e.g. snapshots/Indo-VAP/ — must match config.STUDY_NAME exactly
     ├── datasets/             # *.jsonl scrubbed datasets (PHI already removed)
     ├── dictionary/           # *.json data dictionary
     ├── pdfs/                 # *_variables.json PDF extractions

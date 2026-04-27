@@ -34,8 +34,8 @@ Step 1 — Install ``uv`` and clone the repo
 .. code-block:: bash
 
    curl -LsSf https://astral.sh/uv/install.sh | sh
-   git clone https://github.com/solomonsjoseph/RePORTaLiN-RAG.git
-   cd RePORTaLiN-RAG
+   git clone https://github.com/solomonsjoseph/RePORT-AI-Portal.git
+   cd RePORT-AI-Portal
    uv sync --all-groups
 
 Expected: ``uv sync`` prints a handful of package resolutions and

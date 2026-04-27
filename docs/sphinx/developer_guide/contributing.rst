@@ -15,14 +15,14 @@ Setting Up Your Development Environment
 
    .. code-block:: bash
 
-      git clone https://github.com/your-username/RePORTaLiN-RAG.git
-      cd RePORTaLiN-RAG
+      git clone https://github.com/your-username/RePORT-AI-Portal.git
+      cd RePORT-AI-Portal
 
 3. **Add the upstream remote:**
 
    .. code-block:: bash
 
-      git remote add upstream https://github.com/solomonsjoseph/RePORTaLiN-RAG.git
+      git remote add upstream https://github.com/solomonsjoseph/RePORT-AI-Portal.git
 
 4. **Install uv (if not already installed):**
 

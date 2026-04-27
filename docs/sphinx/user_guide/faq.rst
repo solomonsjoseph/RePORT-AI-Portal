@@ -50,8 +50,8 @@ How do I install RePORT AI Portal?
    curl -LsSf https://astral.sh/uv/install.sh | sh
 
    # Clone and setup
-   git clone https://github.com/solomonsjoseph/RePORTaLiN-RAG.git
-   cd RePORTaLiN-RAG
+   git clone https://github.com/solomonsjoseph/RePORT-AI-Portal.git
+   cd RePORT-AI-Portal
    make quickstart    # Syncs dependencies and launches the app
 
 Or manually:
@@ -422,7 +422,7 @@ Open an issue on GitHub with:
 Where can I get help?
 ~~~~~~~~~~~~~~~~~~~~~
 
-* **GitHub Issues**: https://github.com/solomonsjoseph/RePORTaLiN-RAG/issues
+* **GitHub Issues**: https://github.com/solomonsjoseph/RePORT-AI-Portal/issues
 
 Performance & Scaling
 ---------------------
