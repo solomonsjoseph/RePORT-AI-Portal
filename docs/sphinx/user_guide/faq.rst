@@ -83,6 +83,16 @@ It depends on the LLM provider you choose.
   Note: using a hosted provider for PDF extraction also requires setting
   ``REPORTALIN_PDF_PHI_FREE=1`` — see :doc:`configuration`.
 
+  .. note::
+
+     The Streamlit wizard's step 1 routes the pasted key into an
+     in-memory ``KeyStore`` (``scripts/ai_assistant/keystore.py``,
+     PR #3) and scrubs the corresponding ``*_API_KEY`` from
+     ``os.environ`` for the lifetime of the app. Keys are re-injected
+     only into the short-lived pipeline subprocess via
+     ``KeyStore.env_for_subprocess``. CLI users invoking ``main.py``
+     directly use the env var path normally.
+
 Using the Pipeline
 ------------------
 
