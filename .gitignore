@@ -354,6 +354,8 @@ scripts/archive/
 scripts/ai_assistant/dev/
 # Internal planning workflow artifacts — design docs are in docs/sphinx/
 docs/plan/
+# Internal audit / review notes (kept locally, not committed)
+audit/
 # Development prompt templates
 docs/prompts/
 # Tool-generated planning artifacts

@@ -659,4 +659,4 @@ details.
 
 ---
 
-**Version**: 1.0.0 | **Status**: Beta (Active Development — Single-Study Mode)
+**Version**: 0.16.1 | **Status**: Beta (Active Development — Single-Study Mode)
