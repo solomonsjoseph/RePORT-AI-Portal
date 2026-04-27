@@ -31,8 +31,9 @@ import json
 import sys
 import traceback
 import uuid
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 # ── Import allowlist ────────────────────────────────────────────────────────
 
@@ -87,14 +88,14 @@ _BLOCKED_DUNDERS: frozenset[str] = frozenset(
 )
 
 
-class SandboxRejection(Exception):
+class SandboxRejectionError(Exception):
     """Code rejected by AST/runtime guards before or during execution."""
 
 
 def _ast_pre_check(code: str) -> None:
     """Reject disallowed imports, blocked-builtin calls, and dunder access.
 
-    Raises ``SandboxRejection`` with a human-readable reason on rejection;
+    Raises ``SandboxRejectionError`` with a human-readable reason on rejection;
     raises ``SyntaxError`` if the code does not parse.
     """
     tree = ast.parse(code)
@@ -102,18 +103,18 @@ def _ast_pre_check(code: str) -> None:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 if alias.name not in _ALLOWED_IMPORTS:
-                    raise SandboxRejection(f"Import not allowed: {alias.name}")
+                    raise SandboxRejectionError(f"Import not allowed: {alias.name}")
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
             top = module.split(".")[0]
             if top not in _ALLOWED_IMPORTS and module not in _ALLOWED_IMPORTS:
-                raise SandboxRejection(f"Import not allowed: {module}")
+                raise SandboxRejectionError(f"Import not allowed: {module}")
         elif isinstance(node, ast.Attribute) and node.attr in _BLOCKED_DUNDERS:
-            raise SandboxRejection(f"Access to `{node.attr}` is not allowed in the sandbox.")
+            raise SandboxRejectionError(f"Access to `{node.attr}` is not allowed in the sandbox.")
         elif isinstance(node, ast.Call):
             func = node.func
             if isinstance(func, ast.Name) and func.id in _BLOCKED_BUILTINS:
-                raise SandboxRejection(f"`{func.id}()` is not allowed in the sandbox.")
+                raise SandboxRejectionError(f"`{func.id}()` is not allowed in the sandbox.")
 
 
 def _make_zone_guarded_open(*, allowed_read_paths: Iterable[Path], output_dir: Path) -> Any:
@@ -188,7 +189,7 @@ def _load_dataframes(df_paths: dict[str, str]) -> dict[str, Any]:
         try:
             out[var_name] = pd.read_json(path_str, lines=True)
         except Exception as exc:
-            raise SandboxRejection(
+            raise SandboxRejectionError(
                 f"Could not load DataFrame {var_name} from {path_str}: {exc}"
             ) from exc
     return out
@@ -263,7 +264,7 @@ def main(spec_path: str) -> int:
         print(f"Syntax error: {e}", file=sys.stderr)
         _emit_manifest(output_dir, exit_code=2)
         return 2
-    except SandboxRejection as e:
+    except SandboxRejectionError as e:
         print(str(e), file=sys.stderr)
         _emit_manifest(output_dir, exit_code=2)
         return 2
@@ -277,7 +278,7 @@ def main(spec_path: str) -> int:
 
     try:
         dataframes = _load_dataframes(df_paths)
-    except SandboxRejection as e:
+    except SandboxRejectionError as e:
         print(str(e), file=sys.stderr)
         _emit_manifest(output_dir, exit_code=2)
         return 2
@@ -307,7 +308,7 @@ def main(spec_path: str) -> int:
         pass
 
     stdout_buf = io.StringIO()
-    timestamp = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    timestamp = _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     short_uuid = uuid.uuid4().hex[:12]
 
     try:

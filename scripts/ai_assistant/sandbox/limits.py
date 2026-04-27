@@ -17,7 +17,7 @@ the dev-vs-prod gap is documented in
 from __future__ import annotations
 
 import sys
-from typing import Callable
+from collections.abc import Callable
 
 
 def make_preexec_fn(
@@ -37,36 +37,27 @@ def make_preexec_fn(
         return None
 
     def _apply() -> None:
+        import contextlib
         import resource
 
         # Always-safe on Unix-like systems
-        try:
+        with contextlib.suppress(ValueError, OSError):
             resource.setrlimit(resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds))
-        except (ValueError, OSError):
-            pass
-        try:
+        with contextlib.suppress(ValueError, OSError):
             resource.setrlimit(resource.RLIMIT_NOFILE, (max_files, max_files))
-        except (ValueError, OSError):
-            pass
 
         if sys.platform == "linux":
             # Strong on Linux: address-space cap reliably triggers OOM kill.
-            try:
+            with contextlib.suppress(ValueError, OSError):
                 bytes_cap = memory_mb * 1024 * 1024
                 resource.setrlimit(resource.RLIMIT_AS, (bytes_cap, bytes_cap))
-            except (ValueError, OSError):
-                pass
-            try:
+            with contextlib.suppress(ValueError, OSError):
                 resource.setrlimit(resource.RLIMIT_NPROC, (max_procs, max_procs))
-            except (ValueError, OSError):
-                pass
         elif sys.platform == "darwin":
             # macOS: RLIMIT_AS is unreliable; RLIMIT_DATA is the best we can
             # do and it's still advisory. NOT a security boundary on Darwin.
-            try:
+            with contextlib.suppress(ValueError, OSError):
                 bytes_cap = memory_mb * 1024 * 1024
                 resource.setrlimit(resource.RLIMIT_DATA, (bytes_cap, bytes_cap))
-            except (ValueError, OSError):
-                pass
 
     return _apply

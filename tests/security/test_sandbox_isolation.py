@@ -24,13 +24,12 @@ project's production deployment target is Linux. See
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 
 import pytest
 
-from scripts.ai_assistant.sandbox import SandboxResult, run_in_subprocess
+from scripts.ai_assistant.sandbox import run_in_subprocess
 
 LINUX_ONLY = pytest.mark.skipif(
     sys.platform != "linux",

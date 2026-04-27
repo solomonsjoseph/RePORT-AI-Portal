@@ -47,7 +47,6 @@ import config
 from scripts.ai_assistant.file_access import (
     validate_agent_read,
     validate_agent_write,
-    validate_sandbox_write,
 )
 from scripts.ai_assistant.phi_safe import (
     phi_safe_return,
@@ -706,7 +705,7 @@ def _safe_import_check(code: str) -> str | None:
     direct call to a sandbox bypass would not skip it.
     """
     from scripts.ai_assistant.sandbox.runner import (
-        SandboxRejection,
+        SandboxRejectionError,
         _ast_pre_check,
     )
 
@@ -714,7 +713,7 @@ def _safe_import_check(code: str) -> str | None:
         _ast_pre_check(code)
     except SyntaxError as exc:
         return f"Syntax error in code: {exc}"
-    except SandboxRejection as exc:
+    except SandboxRejectionError as exc:
         return str(exc)
     return None
 
@@ -823,8 +822,7 @@ def _format_sandbox_result_for_agent(result: Any) -> str:
         parts.extend(f"\n<RPLN_PLOTLY:{p}>" for p in plotly_paths)
         parts.extend(f"\n<RPLN_FIGURE:{p}>" for p in matplotlib_paths)
 
-    for code_path in result.code_paths:
-        parts.append(f"\n<RPLN_CODE:{code_path}>")
+    parts.extend(f"\n<RPLN_CODE:{code_path}>" for code_path in result.code_paths)
 
     if not parts:
         parts.append("Code executed successfully (no output).")

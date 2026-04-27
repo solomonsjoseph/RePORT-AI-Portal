@@ -80,9 +80,10 @@ def _read_manifest(output_dir: Path) -> dict | None:
     if not manifest_path.exists():
         return None
     try:
-        return json.loads(manifest_path.read_text(encoding="utf-8"))
+        loaded = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return None
+    return loaded if isinstance(loaded, dict) else None
 
 
 def _validate_paths_inside(paths: list[str], parent: Path) -> list[Path]:

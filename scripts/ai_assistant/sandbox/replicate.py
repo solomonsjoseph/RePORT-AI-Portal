@@ -22,11 +22,10 @@ from typing import Any
 
 import config
 from scripts.ai_assistant.sandbox.runner import (
-    SandboxRejection,
+    SandboxRejectionError,
     _ast_pre_check,
     _load_dataframes,
 )
-
 
 _HEADER_MARKER = "# === LLM-generated analysis code below ==="
 
@@ -65,7 +64,7 @@ def main(path_str: str) -> int:
     except SyntaxError as exc:
         print(f"Syntax error in saved code: {exc}", file=sys.stderr)
         return 2
-    except SandboxRejection as exc:
+    except SandboxRejectionError as exc:
         print(f"Saved code violates the AST allow-list: {exc}", file=sys.stderr)
         print("Refusing to run. Inspect the file and either edit it or run", file=sys.stderr)
         print("manually if you trust it.", file=sys.stderr)
