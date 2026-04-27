@@ -169,6 +169,11 @@ def run_pipeline() -> dict[str, Any]:
     we inject them only into this single subprocess call via the
     KeyStore's ``env_for_subprocess`` helper. The parent's env stays
     clean before, during, and after the call.
+
+    The operator's PDF-extraction-mode choice (radio in step 2) is
+    propagated through ``REPORTALIN_PDF_EXTRACTION_MODE`` so the
+    subprocess's ``extract_pdfs_to_jsonl`` dispatcher can pick the
+    snapshot or orchestrator path.
     """
     import os
 
@@ -184,6 +189,10 @@ def run_pipeline() -> dict[str, Any]:
         get_keystore().env_for_subprocess(list(ENV_VAR_BY_PROVIDER))
     )
 
+    selected_mode = str(st.session_state.get("pdf_extraction_mode", "snapshot")).strip().lower()
+    if selected_mode in {"llm", "snapshot"}:
+        subprocess_env["REPORTALIN_PDF_EXTRACTION_MODE"] = selected_mode
+
     result = subprocess.run(  # noqa: S603
         [sys.executable, str(config.BASE_DIR / "main.py"), "--pipeline"],
         capture_output=True,
@@ -193,6 +202,48 @@ def run_pipeline() -> dict[str, Any]:
     )
     combined = (result.stdout + "\n" + result.stderr).strip()
     return {"success": result.returncode == 0, "output": combined}
+
+
+def _resolve_pdf_mode_options() -> tuple[list[str], bool, str, str]:
+    """Return ``(options, llm_capable, provider_id, model_id)`` for the
+    PDF-extraction radio in step 2.
+
+    Snapshot is always available. The LLM option is offered only when
+    BOTH:
+
+    1. The configured model is on the ``llm_capabilities`` allowlist
+       (rules out small / unreliable models even from supported
+       providers — e.g. claude-haiku-3, gemini-flash).
+    2. The provider's LLM tier is actually wired in
+       :data:`pdf_pipeline.ORCHESTRATOR_SUPPORTED_PROVIDERS` (currently
+       anthropic + google). Otherwise the operator would silently get
+       a snapshot fallback after picking "fresh LLM" — a regression vs
+       the legacy raw-PDF API path which raised an explicit error.
+    """
+    from scripts.extraction.pdf_pipeline import ORCHESTRATOR_SUPPORTED_PROVIDERS
+    from scripts.utils.llm_capabilities import is_capable_model
+
+    label = st.session_state.get("llm_provider_label", _default_provider_label())
+    cfg = _PROVIDER_CONFIG.get(label, {})
+    provider_id = str(cfg.get("provider") or "")
+    model_id = str(st.session_state.get("llm_model", "") or "")
+    # Orchestrator capability uses ``google`` (not ``google-genai``).
+    capability_provider = "google" if provider_id == "google-genai" else provider_id
+
+    capable = (
+        is_capable_model(capability_provider, model_id)
+        and provider_id in ORCHESTRATOR_SUPPORTED_PROVIDERS
+    )
+    options = ["snapshot"]
+    if capable:
+        options.append("llm")
+    return options, capable, provider_id, model_id
+
+
+_PDF_MODE_LABELS: dict[str, str] = {
+    "snapshot": "Use existing study data (verified snapshot)",
+    "llm": "Generate fresh PDF extraction (LLM-assisted)",
+}
 
 
 def _pipeline_output_exists() -> bool:
@@ -410,6 +461,30 @@ def render_setup_page() -> None:
 
                 output_exists = _pipeline_output_exists()
                 pipeline_ready: bool = st.session_state.pipeline_ready
+
+                # ── PDF-extraction mode radio (Phase 3 PR #16) ─────────────
+                # Operator choice: regenerate extraction with an LLM
+                # (only when a vision-capable model is configured) or
+                # publish the verified initial snapshot verbatim.
+                mode_options, llm_capable, _prov_id, _model_id = (
+                    _resolve_pdf_mode_options()
+                )
+                if st.session_state.get("pdf_extraction_mode") not in mode_options:
+                    st.session_state.pdf_extraction_mode = mode_options[0]
+                st.radio(
+                    "PDF extraction source",
+                    options=mode_options,
+                    format_func=lambda v: _PDF_MODE_LABELS.get(v, v),
+                    horizontal=True,
+                    key="pdf_extraction_mode",
+                )
+                if not llm_capable:
+                    st.caption(
+                        "💡 Fresh LLM extraction needs a vision-capable model "
+                        "from a wired provider (Anthropic Claude Opus/Sonnet 4.6+ "
+                        "or Google Gemini 2.5 Pro). Pick one in step 1 to unlock "
+                        "that option."
+                    )
 
                 if pipeline_ready:
                     st.success("Study data loaded — ready for querying.", icon="✅")

@@ -66,9 +66,21 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "ORCHESTRATOR_SUPPORTED_PROVIDERS",
     "ExtractionResult",
     "extract_pdf",
 ]
+
+
+# Provider IDs whose LLM tier is wired in :func:`_extract_via_llm`.
+# Sources of truth in one place so the wizard's radio gate and the
+# orchestrator's runtime dispatch can never disagree — the wizard offers
+# the ``llm`` choice ONLY when the configured provider is in this set
+# AND the model passes the capability allowlist. Otherwise the operator
+# would silently get a snapshot fallback after picking "fresh LLM".
+ORCHESTRATOR_SUPPORTED_PROVIDERS: frozenset[str] = frozenset(
+    {"anthropic", "google", "google-genai", "gemini"}
+)
 
 
 # ── Result shape ────────────────────────────────────────────────────────────

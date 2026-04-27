@@ -99,6 +99,47 @@ RESULT_PROCESSING_TIME: str = "processing_time"
 
 INTER_PDF_DELAY: float = config.PDF_EXTRACTION_INTER_DELAY
 
+
+# ---------------------------------------------------------------------------
+# Extraction mode selector (Phase 3 PR #16)
+# ---------------------------------------------------------------------------
+# The wizard surfaces a binary choice to the operator:
+#
+#   1. ``llm``      — generate fresh PDF extraction via the orchestrator in
+#                     ``scripts.extraction.pdf_pipeline`` (text redaction +
+#                     capable-LLM call + snapshot fallback per-PDF when the
+#                     LLM can't handle a form).
+#   2. ``snapshot`` — skip the LLM entirely and publish the human-verified
+#                     baseline JSONs from
+#                     ``output/{STUDY}/agent/snapshots/initial/pdfs/``.
+#
+# When :data:`_PDF_EXTRACTION_MODE_ENV` is unset, ``extract_pdfs_to_jsonl``
+# falls back to the legacy raw-PDF API path (gated by the two-part
+# ``REPORTALIN_PDF_PHI_FREE`` + attestation note). The legacy path remains
+# the CLI default so existing automation does not change behaviour.
+_PDF_EXTRACTION_MODE_ENV: str = "REPORTALIN_PDF_EXTRACTION_MODE"
+_PDF_EXTRACTION_MODE_LLM: str = "llm"
+_PDF_EXTRACTION_MODE_SNAPSHOT: str = "snapshot"
+_PDF_EXTRACTION_MODES: frozenset[str] = frozenset(
+    {_PDF_EXTRACTION_MODE_LLM, _PDF_EXTRACTION_MODE_SNAPSHOT}
+)
+
+
+def _pdf_extraction_mode() -> str:
+    """Return the configured extraction mode (``"llm"`` / ``"snapshot"``),
+    or ``""`` when the env var is unset / unrecognised (legacy path)."""
+    raw = os.environ.get(_PDF_EXTRACTION_MODE_ENV, "").strip().lower()
+    return raw if raw in _PDF_EXTRACTION_MODES else ""
+
+
+def _initial_snapshot_pdfs_dir() -> Path:
+    """``output/{STUDY}/agent/snapshots/initial/pdfs/`` — the canonical
+    location of the human-verified baseline PDF JSONs the snapshot mode
+    publishes verbatim. Layout matches ``trio_bundle/pdfs/`` (one
+    ``{stem}_variables.json`` per form)."""
+    return Path(config.STUDY_SNAPSHOTS_DIR) / "initial" / "pdfs"
+
+
 __all__ = [
     "clean_existing_jsons",
     "extract_pdfs_to_jsonl",
@@ -741,6 +782,194 @@ def _empty_result(
 # --- Main orchestration ---
 
 
+def _run_snapshot_mode(
+    pdf_files: list[Path],
+    dest_dir: Path,
+    *,
+    force: bool,
+) -> tuple[int, int, int, list[dict[str, str]]]:
+    """Publish the verified baseline JSONs verbatim — no LLM call.
+
+    For each annotated PDF, copy the matching
+    ``{stem}_variables.json`` from
+    ``output/{STUDY}/agent/snapshots/initial/pdfs/`` into ``dest_dir``.
+    A missing snapshot is reported as an error (the form will simply be
+    absent from the published bundle); it is NOT a fatal failure.
+    """
+    snapshot_dir = _initial_snapshot_pdfs_dir()
+    log.info("PDF extraction: snapshot mode — using %s", snapshot_dir)
+
+    if not snapshot_dir.is_dir():
+        msg = (
+            f"Snapshot directory not found: {snapshot_dir}. "
+            "Run --pipeline once with REPORTALIN_PDF_EXTRACTION_MODE=llm "
+            "or seed initial snapshots."
+        )
+        log.error(msg)
+        return 0, 0, 0, [{"file": "", "error": msg}]
+
+    total_vars, files_created, files_skipped = 0, 0, 0
+    errors: list[dict[str, str]] = []
+
+    for idx, pdf_path in enumerate(pdf_files, 1):
+        stem = pdf_path.stem
+        json_out = dest_dir / f"{stem}{JSON_VARIABLES_SUFFIX}"
+
+        if not force and json_out.exists() and check_json_integrity(json_out):
+            files_skipped += 1
+            log.info(
+                "  [%d/%d] Skipping %s (valid output exists)",
+                idx,
+                len(pdf_files),
+                pdf_path.name,
+            )
+            continue
+
+        snap_path = snapshot_dir / f"{stem}{JSON_VARIABLES_SUFFIX}"
+        if not snap_path.is_file():
+            alt = snapshot_dir / f"{stem}.json"
+            snap_path = alt if alt.is_file() else snap_path
+
+        if not snap_path.is_file():
+            msg = f"No snapshot for {pdf_path.name}: expected {snap_path.name}"
+            log.warning(msg)
+            errors.append({"file": pdf_path.name, "error": msg})
+            continue
+
+        try:
+            data = json.loads(snap_path.read_text(encoding=FILE_ENCODING))
+        except (json.JSONDecodeError, OSError) as exc:
+            errors.append({"file": pdf_path.name, "error": f"snapshot unreadable: {exc}"})
+            continue
+
+        if not isinstance(data, dict):
+            errors.append({"file": pdf_path.name, "error": "snapshot is not a JSON object"})
+            continue
+
+        data["extraction_tier"] = "snapshot"
+        atomic_write_json(json_out, data, prefix=NAMED_TEMP_PREFIX)
+        files_created += 1
+        total_vars += len(data.get("variables", {}) or {})
+        log.info("  [%d/%d] %s ← snapshot", idx, len(pdf_files), pdf_path.name)
+
+    return total_vars, files_created, files_skipped, errors
+
+
+def _resolve_orchestrator_credentials() -> tuple[str | None, str | None, str | None]:
+    """Pull provider/model/api_key from the subprocess env (the wizard
+    populates ``ANTHROPIC_API_KEY``/``GOOGLE_API_KEY`` via the KeyStore's
+    ``env_for_subprocess`` helper before spawning ``main.py``).
+
+    Unlike :func:`_resolve_pdf_provider`, no PHI-free attestation gate is
+    required: the orchestrator redacts PHI from extracted text before any
+    byte leaves the host (it never sends raw PDF bytes), so the audit
+    posture is fundamentally different.
+
+    Returns ``(provider, model, api_key)``; any element may be ``None``,
+    in which case :func:`pdf_pipeline.extract_pdf` will skip the LLM tier
+    for that PDF and fall back to the snapshot.
+    """
+    provider = os.environ.get("LLM_PROVIDER", "").strip().lower()
+    if provider == "google-genai":
+        provider = "google"
+    if not provider:
+        return None, None, None
+
+    model = os.environ.get("LLM_MODEL", "").strip() or None
+
+    api_key_env = {
+        "anthropic": "ANTHROPIC_API_KEY",
+        "google": "GOOGLE_API_KEY",
+    }.get(provider)
+    api_key = (
+        os.environ.get(api_key_env, "").strip() if api_key_env else ""
+    ) or None
+
+    return provider, model, api_key
+
+
+def _run_orchestrator_mode(
+    pdf_files: list[Path],
+    dest_dir: Path,
+    *,
+    force: bool,
+) -> tuple[int, int, int, list[dict[str, str]]]:
+    """Run the two-way orchestrator (``pdf_pipeline.extract_pdf``) per PDF.
+
+    Each form goes through redacted-text → capable-LLM-call → merge with
+    code candidate, and falls back to the verified ``initial`` snapshot
+    when the LLM tier is unavailable. The orchestrator's idempotent cache
+    lives under ``tmp/{STUDY}/.pdf_cache/``.
+    """
+    from scripts.extraction.pdf_pipeline import extract_pdf
+
+    provider, model, api_key = _resolve_orchestrator_credentials()
+    snapshot_dir = _initial_snapshot_pdfs_dir()
+    cache_dir = Path(config.STUDY_STAGING_DIR) / ".pdf_cache"
+    log.info(
+        "PDF extraction: orchestrator mode — provider=%s model=%s "
+        "snapshot_dir=%s cache_dir=%s",
+        provider,
+        model,
+        snapshot_dir,
+        cache_dir,
+    )
+
+    total_vars, files_created, files_skipped = 0, 0, 0
+    errors: list[dict[str, str]] = []
+
+    with vlog.file_processing("PDF extraction (orchestrator)", total_records=len(pdf_files)):
+        for idx, pdf_path in enumerate(pdf_files, 1):
+            stem = pdf_path.stem
+            json_out = dest_dir / f"{stem}{JSON_VARIABLES_SUFFIX}"
+
+            if not force and json_out.exists() and check_json_integrity(json_out):
+                files_skipped += 1
+                log.info(
+                    "  [%d/%d] Skipping %s (valid output exists)",
+                    idx,
+                    len(pdf_files),
+                    pdf_path.name,
+                )
+                continue
+
+            try:
+                result = extract_pdf(
+                    pdf_path,
+                    provider=provider,
+                    model=model,
+                    api_key=api_key,
+                    snapshot_dir=snapshot_dir if snapshot_dir.is_dir() else None,
+                    cache_dir=cache_dir,
+                )
+            except Exception as exc:  # never let one PDF crash the run
+                errors.append({"file": pdf_path.name, "error": str(exc)})
+                log.error("orchestrator failed for %s: %s", pdf_path.name, exc)
+                continue
+
+            if result.tier == "empty":
+                msg = (
+                    f"orchestrator produced no extractable variables "
+                    f"(llm_skipped={result.llm_skipped_reason!r})"
+                )
+                errors.append({"file": pdf_path.name, "error": msg})
+                continue
+
+            atomic_write_json(json_out, result.data, prefix=NAMED_TEMP_PREFIX)
+            files_created += 1
+            total_vars += len(result.data.get("variables", {}) or {})
+            log.info(
+                "  [%d/%d] %s ← %s%s",
+                idx,
+                len(pdf_files),
+                pdf_path.name,
+                result.tier,
+                " (cache hit)" if result.cache_hit else "",
+            )
+
+    return total_vars, files_created, files_skipped, errors
+
+
 def extract_pdfs_to_jsonl(
     pdf_dir: Path | None = None,
     output_dir: Path | None = None,
@@ -748,8 +977,18 @@ def extract_pdfs_to_jsonl(
 ) -> dict[str, Any]:
     """Extract all annotated PDFs into structured JSON outputs.
 
-    Discovers PDFs, initializes one LLM client, and writes per-form
-    structured JSON (``_variables.json``) files.
+    Discovers PDFs and writes per-form structured JSON
+    (``_variables.json``) files. The actual extraction strategy depends
+    on the :data:`_PDF_EXTRACTION_MODE_ENV` env var, which the wizard
+    sets per the operator's choice:
+
+    - ``llm``      — :func:`_run_orchestrator_mode` (text-redacted LLM
+                     call paired with code path; snapshot fallback per-PDF).
+    - ``snapshot`` — :func:`_run_snapshot_mode` (publish verified baseline
+                     JSONs verbatim; no LLM call).
+    - unset        — legacy raw-PDF API path
+                     (:func:`_resolve_pdf_provider`-gated). Preserves
+                     existing CLI behaviour.
 
     .. note::
        Despite its name (kept for backward compatibility), this function now
@@ -794,55 +1033,68 @@ def extract_pdfs_to_jsonl(
 
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    # Initialize LLM provider
-    try:
-        provider, client, model, extras = _resolve_pdf_provider()
-        log.info("PDF extraction: provider=%s, model=%s", provider, model)
-    except Exception as e:
-        msg = f"Failed to initialize LLM client: {e}"
-        log.error(msg)
-        return _empty_result(
-            files_found=len(pdf_files),
-            errors=[{"file": "", "error": msg}],
+    # Mode dispatch ─────────────────────────────────────────────────────
+    mode = _pdf_extraction_mode()
+
+    if mode == _PDF_EXTRACTION_MODE_SNAPSHOT:
+        total_vars, files_created, files_skipped, errors = _run_snapshot_mode(
+            pdf_files, dest_dir, force=force
         )
-
-    total_vars, files_created, files_skipped = 0, 0, 0
-    errors: list[dict[str, str]] = []
-
-    with vlog.file_processing("PDF extraction", total_records=len(pdf_files)):
-        for idx, pdf_path in enumerate(pdf_files, 1):
-            json_out = dest_dir / f"{pdf_path.stem}{JSON_VARIABLES_SUFFIX}"
-
-            if not force and json_out.exists() and check_json_integrity(json_out):
-                files_skipped += 1
-                log.info(
-                    "  [%d/%d] Skipping %s (valid output exists)",
-                    idx,
-                    len(pdf_files),
-                    pdf_path.name,
-                )
-                continue
-
-            log.info("  [%d/%d] Extracting %s", idx, len(pdf_files), pdf_path.name)
-
-            success, count, error_msg = process_single_pdf(
-                pdf_path,
-                dest_dir,
-                client,
-                model,
-                provider=provider,
-                **extras,
+    elif mode == _PDF_EXTRACTION_MODE_LLM:
+        total_vars, files_created, files_skipped, errors = _run_orchestrator_mode(
+            pdf_files, dest_dir, force=force
+        )
+    else:
+        # Legacy raw-PDF API path (CLI default; gated by the two-part
+        # PHI-free attestation in ``_resolve_pdf_provider``).
+        try:
+            provider, client, model, extras = _resolve_pdf_provider()
+            log.info("PDF extraction: provider=%s, model=%s", provider, model)
+        except Exception as e:
+            msg = f"Failed to initialize LLM client: {e}"
+            log.error(msg)
+            return _empty_result(
+                files_found=len(pdf_files),
+                errors=[{"file": "", "error": msg}],
             )
 
-            if success:
-                files_created += 1
-                total_vars += count
-            elif error_msg:
-                errors.append({"file": pdf_path.name, "error": error_msg})
+        total_vars, files_created, files_skipped = 0, 0, 0
+        errors = []
 
-            # Rate-limit between API calls
-            if idx < len(pdf_files):
-                time.sleep(INTER_PDF_DELAY)
+        with vlog.file_processing("PDF extraction", total_records=len(pdf_files)):
+            for idx, pdf_path in enumerate(pdf_files, 1):
+                json_out = dest_dir / f"{pdf_path.stem}{JSON_VARIABLES_SUFFIX}"
+
+                if not force and json_out.exists() and check_json_integrity(json_out):
+                    files_skipped += 1
+                    log.info(
+                        "  [%d/%d] Skipping %s (valid output exists)",
+                        idx,
+                        len(pdf_files),
+                        pdf_path.name,
+                    )
+                    continue
+
+                log.info("  [%d/%d] Extracting %s", idx, len(pdf_files), pdf_path.name)
+
+                success, count, error_msg = process_single_pdf(
+                    pdf_path,
+                    dest_dir,
+                    client,
+                    model,
+                    provider=provider,
+                    **extras,
+                )
+
+                if success:
+                    files_created += 1
+                    total_vars += count
+                elif error_msg:
+                    errors.append({"file": pdf_path.name, "error": error_msg})
+
+                # Rate-limit between API calls
+                if idx < len(pdf_files):
+                    time.sleep(INTER_PDF_DELAY)
 
     # Post-extraction: cross-form duplicate variable removal
     duplicates_removed = 0
