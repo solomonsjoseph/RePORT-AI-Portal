@@ -359,6 +359,22 @@ ANALYSIS_TIMEOUT: int = _get_env_int("ANALYSIS_TIMEOUT", 300)
 ANALYSIS_MAX_OUTPUT: int = _get_env_int("ANALYSIS_MAX_OUTPUT", 200_000)
 ANALYSIS_MAX_FIGURES: int = _get_env_int("ANALYSIS_MAX_FIGURES", 20)
 
+# Sandbox subprocess limits — operational tunables (safe to lower; lowering
+# only tightens the security envelope). The trust boundary itself
+# (import allowlist, env-var blocklist, AST guards) is hardcoded in
+# ``scripts.ai_assistant.sandbox`` and is not configurable from here.
+#
+# Defaults sized for production runs of the typical pandas+numpy+plotly
+# stack: numpy alone reserves ~700 MB of address space on Linux when loaded
+# (RLIMIT_AS is whole-vmap, not RSS). RLIMIT_NPROC is per-user not per-tree
+# on Linux, so a small cap conflicts with whatever else the host user is
+# running — 4096 is high enough to coexist with shared CI environments
+# while still preventing runaway fork bombs.
+SANDBOX_MAX_MEMORY_MB: int = _get_env_int("SANDBOX_MAX_MEMORY_MB", 2048)
+SANDBOX_MAX_PROCS: int = _get_env_int("SANDBOX_MAX_PROCS", 4096)
+SANDBOX_MAX_FILES: int = _get_env_int("SANDBOX_MAX_FILES", 256)
+SANDBOX_PERSIST_CODE: bool = _get_env("SANDBOX_PERSIST_CODE", "true").lower() in ("1", "true", "yes", "on")
+
 # Orchestration mode: "auto" | "single-agent" | "multi-agent"
 AGENT_ORCHESTRATION_MODE: str = _get_env(
     "AGENT_ORCHESTRATION_MODE",

@@ -47,6 +47,7 @@ Contents
    data_extraction_datasets
    data_extraction_pdfs
    operations
+   sandbox
    versioning
 
 .. toctree::

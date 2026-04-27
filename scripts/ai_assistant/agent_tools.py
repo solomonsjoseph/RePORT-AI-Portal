@@ -47,7 +47,6 @@ import config
 from scripts.ai_assistant.file_access import (
     validate_agent_read,
     validate_agent_write,
-    validate_sandbox_write,
 )
 from scripts.ai_assistant.phi_safe import (
     phi_safe_return,
@@ -636,41 +635,22 @@ def get_study_overview() -> str:
 # Tool 8: run_python_analysis — sandboxed execution
 # ============================================================================
 
-# ── Sandbox security boundaries (hardcoded intentionally) ──────────────
-# These limits are security controls, NOT tuneable config.  Expanding the
-# import allowlist or raising limits requires a security review.
-_ALLOWED_IMPORTS = frozenset(
-    {
-        "pandas",
-        "numpy",
-        "scipy",
-        "statsmodels",
-        "matplotlib",
-        "plotly",
-        "plotly.express",
-        "plotly.graph_objects",
-        "plotly.subplots",
-        "collections",
-        "math",
-        "statistics",
-        "re",
-        "json",
-        "matplotlib.pyplot",
-        "scipy.stats",
-        "statsmodels.api",
-        "statsmodels.formula.api",
-    }
-)
-
-_MAX_OUTPUT_BYTES = 50_000  # prevent memory exhaustion from large outputs
-_MAX_FIGURES = 5  # cap matplotlib figure count per execution
-_EXEC_TIMEOUT_SECONDS = 30  # hard wall-clock limit on sandboxed code
+# Sandbox security boundaries (hardcoded import allowlist + dunder block list)
+# now live in ``scripts/ai_assistant/sandbox/runner.py`` so they stay co-located
+# with the code that enforces them. Operational tunables (timeout, memory,
+# figure count, persistence toggle) come from ``config.ANALYSIS_*`` and
+# ``config.SANDBOX_*``.
 
 
 def _load_dataframes() -> dict[str, Any]:
     """Pre-load JSONL datasets as pandas DataFrames.
 
     Returns a dict mapping ``df_{stem}`` names to DataFrames.
+
+    Retained for callers that need the in-memory DataFrames directly (e.g.,
+    ``run_study_analysis``). The sandboxed ``run_python_analysis`` now uses
+    :func:`_discover_trio_dataframe_paths` instead — the child process loads
+    the DataFrames itself from the path manifest.
     """
     import pandas as pd
 
@@ -692,49 +672,49 @@ def _load_dataframes() -> dict[str, Any]:
     return frames
 
 
+def _discover_trio_dataframe_paths() -> dict[str, str]:
+    """Discover trio JSONL files and return ``{var_name: path}`` for the sandbox.
+
+    The sandbox child process loads the DataFrames itself; this avoids
+    serialising/deserialising potentially large DataFrames across the subprocess
+    boundary. Each path is validated through ``validate_agent_read`` before
+    being included so that an unexpected symlink or sibling-prefix file in
+    ``TRIO_DATASETS_DIR`` cannot leak into the sandbox's read allow-list.
+    """
+    datasets_dir = config.TRIO_DATASETS_DIR
+    if not datasets_dir.is_dir():
+        return {}
+    out: dict[str, str] = {}
+    for f in sorted(datasets_dir.glob("*.jsonl")):
+        try:
+            validate_agent_read(f)
+            var_name = "df_" + re.sub(r"[^a-zA-Z0-9_]", "_", f.stem)
+            out[var_name] = str(f.resolve())
+        except Exception:
+            logger.debug("Skipping %s (failed validate_agent_read)", f.name)
+            continue
+    return out
+
+
 def _safe_import_check(code: str) -> str | None:
-    """Return an error message if code imports disallowed modules, else None."""
-    import ast
+    """Return an error message if ``code`` violates the sandbox AST guards.
 
-    try:
-        tree = ast.parse(code)
-    except SyntaxError as exc:
-        return f"Syntax error in code: {exc}"
-
-    # Dangerous dunder attributes that enable sandbox escapes
-    blocked_dunders = frozenset(
-        {
-            "__subclasses__",
-            "__bases__",
-            "__mro__",
-            "__class__",
-            "__globals__",
-            "__code__",
-            "__closure__",
-            "__builtins__",
-            "__loader__",
-            "__spec__",
-            "__import__",
-        }
+    Thin shim over :func:`scripts.ai_assistant.sandbox.runner._ast_pre_check`.
+    Kept for backward compatibility with ``tests/test_agent_tools.py``; the
+    canonical guard now runs inside the sandbox subprocess so that even a
+    direct call to a sandbox bypass would not skip it.
+    """
+    from scripts.ai_assistant.sandbox.runner import (
+        SandboxRejectionError,
+        _ast_pre_check,
     )
 
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name not in _ALLOWED_IMPORTS:
-                    return f"Import not allowed: {alias.name}. Allowed: {', '.join(sorted(_ALLOWED_IMPORTS))}"
-        elif isinstance(node, ast.ImportFrom):
-            module = node.module or ""
-            # Check top-level module
-            top = module.split(".")[0]
-            if top not in _ALLOWED_IMPORTS and module not in _ALLOWED_IMPORTS:
-                return (
-                    f"Import not allowed: {module}. Allowed: {', '.join(sorted(_ALLOWED_IMPORTS))}"
-                )
-        # Block direct attribute access to dangerous dunders
-        elif isinstance(node, ast.Attribute) and node.attr in blocked_dunders:
-            return f"Access to `{node.attr}` is not allowed in the sandbox."
-
+    try:
+        _ast_pre_check(code)
+    except SyntaxError as exc:
+        return f"Syntax error in code: {exc}"
+    except SandboxRejectionError as exc:
+        return str(exc)
     return None
 
 
@@ -743,320 +723,119 @@ def _safe_import_check(code: str) -> str | None:
 def run_python_analysis(code: str) -> str:
     """Execute Python code for statistical analysis on study datasets.
 
-    Runs in a restricted sandbox with pre-loaded DataFrames from the
-    study's de-identified datasets. Use ``print()`` to output results.
+    Runs in an isolated subprocess sandbox with pre-loaded DataFrames from
+    the study's de-identified trio bundle. The sandbox cannot read API keys
+    from ``os.environ``, cannot escape its narrow output directory, and is
+    wall-clock and (on Linux) memory bounded. See
+    ``docs/sphinx/developer_guide/sandbox.rst`` for the full threat model.
 
     **Available DataFrames** (named ``df_<dataset>``, e.g. ``df_1A_ICScreening``):
     Call ``print(list(locals().keys()))`` to see all available DataFrames.
 
     **Allowed imports:** pandas, numpy, scipy, statsmodels, plotly,
-    matplotlib, collections, math, statistics, re, json.
+    matplotlib, collections, math, statistics, re, json, datetime, itertools.
 
     **Pre-imported:** ``pd`` (pandas), ``np`` (numpy), ``px`` (plotly.express),
     ``go`` (plotly.graph_objects).
 
-    **Prefer Plotly** for interactive charts: ``fig = px.bar(...); fig.show()``
+    **Prefer Plotly** for interactive charts: ``fig = px.bar(...); fig.show()``.
     Matplotlib is available as a fallback for static plots.
 
-    **Limits:** 30s timeout, 50KB output, 5 figures max.
+    **Limits:** ``ANALYSIS_TIMEOUT`` seconds wall-clock, ``ANALYSIS_MAX_OUTPUT``
+    bytes of stdout, ``ANALYSIS_MAX_FIGURES`` figures, ``SANDBOX_MAX_MEMORY_MB``
+    address-space cap (Linux). All configurable via env vars.
+
+    **Persistence:** when ``SANDBOX_PERSIST_CODE`` is true (default), the
+    executed code is also saved as a runnable ``.py`` file under
+    ``output/{STUDY}/agent/analysis/code/`` with a header explaining how to
+    re-run it locally — surfaced to the UI via ``<RPLN_CODE:...>`` markers.
 
     Args:
         code: Python code to execute. Use print() for output.
             Call fig.show() for Plotly figures or just create matplotlib figures.
     """
-    import io
-    import signal
+    from scripts.ai_assistant import sandbox
 
-    # 1. Validate imports
-    import_err = _safe_import_check(code)
-    if import_err:
-        return f"**Import Error:** {import_err}"
+    output_dir = config.AGENT_OUTPUT_DIR
+    assert_output_zone(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 2. Block dangerous builtins (AST-based to avoid false positives on substrings)
-    blocked = {
-        "open",
-        "exec",
-        "eval",
-        "compile",
-        "__import__",
-        "breakpoint",
-        "exit",
-        "quit",
-        "input",
-        "globals",
-    }
+    df_paths = _discover_trio_dataframe_paths()
 
-    import ast as _ast_check
-
-    try:
-        _tree = _ast_check.parse(code)
-    except SyntaxError:
-        pass  # _safe_import_check already reported syntax errors above
-    else:
-        for _node in _ast_check.walk(_tree):
-            if isinstance(_node, _ast_check.Call):
-                func = _node.func
-                # Direct call: eval(...), exec(...), etc.
-                if isinstance(func, _ast_check.Name) and func.id in blocked:
-                    return f"**Security Error:** `{func.id}()` is not allowed in the sandbox."
-
-    # 3. Build sandbox namespace
-    import builtins
-
-    safe_builtins = {
-        k: v for k, v in vars(builtins).items() if k not in blocked and not k.startswith("_")
-    }
-
-    # Restricted __import__ that only allows pre-approved modules
-    def _restricted_import(name: str, *args: Any, **kwargs: Any) -> Any:
-        top = name.split(".")[0]
-        if top not in _ALLOWED_IMPORTS and name not in _ALLOWED_IMPORTS:
-            msg = f"Import not allowed: {name}"
-            raise ImportError(msg)
-        return __import__(name, *args, **kwargs)
-
-    safe_builtins["__import__"] = _restricted_import
-    safe_builtins["print"] = print  # will be redirected via stdout
-
-    # Guard getattr to block dunder attribute access at runtime.
-    # This prevents bypass via getattr(obj, chr(95)*2 + "globals" + chr(95)*2).
-    runtime_blocked_dunders = frozenset(
-        {
-            "__subclasses__",
-            "__bases__",
-            "__mro__",
-            "__class__",
-            "__globals__",
-            "__code__",
-            "__closure__",
-            "__builtins__",
-            "__loader__",
-            "__spec__",
-            "__import__",
-            "__qualname__",
-        }
+    result = sandbox.run_in_subprocess(
+        code,
+        df_paths=df_paths,
+        output_dir=output_dir,
+        timeout_s=config.ANALYSIS_TIMEOUT,
+        max_memory_mb=config.SANDBOX_MAX_MEMORY_MB,
+        max_procs=config.SANDBOX_MAX_PROCS,
+        max_files=config.SANDBOX_MAX_FILES,
+        persist_code=config.SANDBOX_PERSIST_CODE,
+        max_output_bytes=config.ANALYSIS_MAX_OUTPUT,
+        max_figures=config.ANALYSIS_MAX_FIGURES,
     )
-    _real_getattr = getattr
 
-    def _safe_getattr(obj: Any, name: str, *default: Any) -> Any:
-        if name in runtime_blocked_dunders:
-            msg = f"Access to `{name}` is not allowed in the sandbox."
-            raise AttributeError(msg)
-        return _real_getattr(obj, name, *default)
+    return _format_sandbox_result_for_agent(result)
 
-    safe_builtins["getattr"] = _safe_getattr
 
-    # Guard vars() to strip dangerous dunder keys from returned dicts.
-    # Without this, vars(module).__builtins__.__import__ escapes the sandbox.
-    _real_vars = vars
+def _format_sandbox_result_for_agent(result: Any) -> str:
+    """Format a :class:`SandboxResult` into the marker-bearing string the
+    streaming UI parses (``<RPLN_PLOTLY:>``, ``<RPLN_FIGURE:>``, ``<RPLN_CODE:>``).
 
-    def _safe_vars(*args: Any) -> dict[str, Any]:
-        result = _real_vars(*args)
-        return {k: v for k, v in result.items() if k not in runtime_blocked_dunders}
+    Friendly error envelopes preserve the previous tone: ``**Import Error:**``,
+    ``**Security Error:**``, ``**Timeout:**``, ``**Runtime Error:**``.
+    """
+    # Pre-execution rejection (AST guard, blocked import, blocked builtin).
+    if result.exit_code == 2:
+        first_line = (result.stderr or "").splitlines()[0] if result.stderr else "rejected"
+        if "Import not allowed" in first_line:
+            return f"**Import Error:** {first_line}"
+        if "not allowed in the sandbox" in first_line:
+            return f"**Security Error:** {first_line}"
+        if "Syntax error" in first_line:
+            return f"**Syntax Error:** {first_line}"
+        return f"**Sandbox Rejection:** {first_line}"
 
-    safe_builtins["vars"] = _safe_vars
+    if result.timed_out:
+        return f"**Timeout:** Code execution exceeded {config.ANALYSIS_TIMEOUT}s limit."
 
-    # Zone-guarded open() — prevents pandas/numpy from reading/writing outside
-    # the output zone.  All file I/O (pd.read_csv, np.loadtxt, df.to_csv, etc.)
-    # ultimately calls builtins.open(), so intercepting it here is sufficient.
-    _real_open = builtins.open
+    if result.oom_killed:
+        return f"**Memory Exceeded:** Code exceeded {config.SANDBOX_MAX_MEMORY_MB}MB cap."
 
-    def _zone_guarded_open(file: Any, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
-        import pathlib
+    if result.exit_code != 0:
+        # Runtime error inside user code: stderr ends with the traceback.
+        tail = "\n".join((result.stderr or "").splitlines()[-3:]).strip()
+        if not tail:
+            tail = f"sandbox exited with code {result.exit_code}"
+        return f"**Runtime Error:** {tail}"
 
-        _path = pathlib.Path(str(file)).resolve()
-        _reading = not any(c in mode for c in "wxa+")
-        try:
-            if _reading:
-                # Reads: delegate to the unified validator (trio + agent).
-                validate_agent_read(_path)
-            else:
-                # Writes: the exec_python sandbox runs LLM-generated code,
-                # which is a strictly narrower threat model than tool-code.
-                # Keep writes scoped to AGENT_OUTPUT_DIR (analysis/) — not
-                # the full agent/** zone. ``validate_sandbox_write`` uses
-                # commonpath-based containment (symlink-safe, immune to
-                # sibling-prefix escapes like ``agent/analysis_exfil/``).
-                validate_sandbox_write(_path)
-        except PermissionError:
-            raise
-        except Exception as exc:  # ZoneViolationError is a PermissionError subclass
-            msg = (
-                f"File access denied: {file}\n"
-                "Sandbox can only read from trio_bundle/ + agent/ "
-                "and write to agent/analysis/."
-            )
-            raise PermissionError(msg) from exc
-        return _real_open(file, mode, *args, **kwargs)
-
-    safe_builtins["open"] = _zone_guarded_open
-
-    namespace: dict[str, Any] = {"__builtins__": safe_builtins}
-
-    # Pre-load DataFrames
-    dataframes = _load_dataframes()
-    namespace.update(dataframes)
-
-    # Pre-import common modules for convenience
-    try:
-        import numpy as np
-        import pandas as pd
-
-        namespace["pd"] = pd
-        namespace["np"] = np
-    except ImportError:
-        pass
-
-    try:
-        import plotly.express as px
-        import plotly.graph_objects as go
-
-        namespace["px"] = px
-        namespace["go"] = go
-
-        # Monkeypatch fig.show() to collect figures instead of opening a browser
-        _plotly_figs: list[Any] = []
-        namespace["_rpln_plotly_figs"] = _plotly_figs
-        _orig_show = go.Figure.show
-
-        def _capture_show(self: Any, *args: Any, **kwargs: Any) -> None:
-            _plotly_figs.append(self)
-
-        go.Figure.show = _capture_show  # type: ignore[assignment]
-    except ImportError:
-        _orig_show = None
-
-    # 4. Capture stdout
-    stdout_capture = io.StringIO()
-
-    # 5. Timeout handler (Unix, main-thread only)
-    # Python's signal module restricts signal.signal() to the main thread of
-    # the main interpreter; attempting to install a handler from a worker
-    # thread (e.g. Streamlit's ScriptRunner) raises ValueError. See
-    # https://docs.python.org/3/library/signal.html -- "Python signal handlers
-    # are always executed in the main Python thread of the main interpreter".
-    # We install the alarm when possible and fall back to an unguarded run
-    # otherwise; the _MAX_OUTPUT_BYTES cap and sandboxed namespace remain as
-    # secondary bounds.
-    def _timeout_handler(signum: int, frame: Any) -> None:
-        msg = f"Execution timed out after {_EXEC_TIMEOUT_SECONDS}s"
-        raise TimeoutError(msg)
-
-    import threading
-
-    _alarm_installed = False
-    old_handler: Any = None
-    if threading.current_thread() is threading.main_thread():
-        try:
-            old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
-            signal.alarm(_EXEC_TIMEOUT_SECONDS)
-            _alarm_installed = True
-        except (ValueError, OSError) as _alarm_exc:
-            logger.warning(
-                "SIGALRM-based timeout unavailable (%s); proceeding without wall-clock guard",
-                _alarm_exc,
-            )
-
-    import sys
-
-    old_stdout = sys.stdout
-    try:
-        sys.stdout = stdout_capture  # type: ignore[assignment]
-        exec(compile(code, "<analysis>", "exec"), namespace)  # noqa: S102
-    except TimeoutError:
-        return f"**Timeout:** Code execution exceeded {_EXEC_TIMEOUT_SECONDS}s limit."
-    except Exception as exc:
-        from scripts.utils import errors as _rpln_err
-
-        err = _rpln_err.wrap(
-            exc,
-            stage="agent.tool",
-            operation="run_python_analysis",
-            hint="Check the generated code; figures must be written under AGENT_OUTPUT_DIR.",
-        )
-        logger.error(err.as_log_block())
-        return f"**Runtime Error:** {type(exc).__name__}: {exc}"
-    finally:
-        if _alarm_installed:
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, old_handler)
-        sys.stdout = old_stdout
-        # Restore Plotly's original show() method
-        try:
-            import plotly.graph_objects as _go_restore
-
-            if _orig_show is not None:
-                _go_restore.Figure.show = _orig_show  # type: ignore[assignment]
-        except (ImportError, NameError):
-            pass
-
-    # 7. Collect output
-    output = stdout_capture.getvalue()
-    if len(output) > _MAX_OUTPUT_BYTES:
-        output = output[:_MAX_OUTPUT_BYTES] + f"\n\n[Output truncated at {_MAX_OUTPUT_BYTES} bytes]"
-
-    # 8. Capture Plotly figures — save as JSON for interactive rendering
-    import uuid as _uuid
-
-    fig_dir = config.AGENT_OUTPUT_DIR / "figures"
-    assert_output_zone(fig_dir)
-    fig_dir.mkdir(parents=True, exist_ok=True)
-    plotly_paths: list[str] = []
-    try:
-        import plotly.io as _pio
-
-        # Collect Plotly figures stored by user code via px or go
-        # Convention: sandbox code calls fig.show() which we monkeypatch to collect
-        collected_figs: list[Any] = namespace.get("_rpln_plotly_figs", [])
-        for fig_obj in collected_figs[:_MAX_FIGURES]:
-            fig_id = _uuid.uuid4().hex[:12]
-            fig_path = fig_dir / f"plotly_{fig_id}.json"
-            fig_path.write_text(_pio.to_json(fig_obj), encoding="utf-8")
-            plotly_paths.append(str(fig_path))
-    except ImportError:
-        pass
-
-    # 9. Capture matplotlib figures — save to output zone as fallback static images
-    figure_paths: list[str] = []
-    try:
-        import matplotlib.pyplot as plt
-
-        fig_nums = plt.get_fignums()
-        for fig_num in fig_nums[:_MAX_FIGURES]:
-            fig = plt.figure(fig_num)
-            buf = io.BytesIO()
-            fig.savefig(buf, format="png", bbox_inches="tight", dpi=150)
-            buf.seek(0)
-            fig_id = _uuid.uuid4().hex[:12]
-            fig_path = fig_dir / f"fig_{fig_id}.png"
-            fig_path.write_bytes(buf.read())
-            figure_paths.append(str(fig_path))
-            plt.close(fig)
-        # Close any remaining figures
-        plt.close("all")
-    except ImportError:
-        pass
-
-    # 10. Build result — text output, then RPLN_PLOTLY / RPLN_FIGURE markers
+    # Success path — stdout + figure + code markers.
     parts: list[str] = []
-    if output.strip():
-        parts.append(output.strip())
-    total_figs = len(plotly_paths) + len(figure_paths)
+    if result.stdout.strip():
+        parts.append(result.stdout.strip())
+
+    plotly_paths = [p for p in result.figure_paths if p.suffix == ".json"]
+    matplotlib_paths = [p for p in result.figure_paths if p.suffix == ".png"]
+    total_figs = len(plotly_paths) + len(matplotlib_paths)
     if total_figs:
         parts.append(f"\n[{total_figs} figure(s) generated]")
-        parts.extend(f"\n<RPLN_PLOTLY:{fpath}>" for fpath in plotly_paths)
-        parts.extend(f"\n<RPLN_FIGURE:{fpath}>" for fpath in figure_paths)
+        parts.extend(f"\n<RPLN_PLOTLY:{p}>" for p in plotly_paths)
+        parts.extend(f"\n<RPLN_FIGURE:{p}>" for p in matplotlib_paths)
+
+    parts.extend(f"\n<RPLN_CODE:{code_path}>" for code_path in result.code_paths)
+
     if not parts:
         parts.append("Code executed successfully (no output).")
 
-    result = "\n".join(parts)
+    formatted = "\n".join(parts)
     logger.info(
-        "run_python_analysis: %d chars output, %d plotly, %d matplotlib",
-        len(output),
+        "run_python_analysis: %d chars stdout, %d plotly, %d matplotlib, %d code-saved",
+        len(result.stdout),
         len(plotly_paths),
-        len(figure_paths),
+        len(matplotlib_paths),
+        len(result.code_paths),
     )
-    return result
+    return formatted
 
 
 # ============================================================================
