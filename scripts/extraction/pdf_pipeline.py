@@ -247,28 +247,31 @@ def _extract_via_llm(
         "Do not invent variables — only return ones present in the text."
     )
 
+    text: str = ""
     try:
         if provider == "anthropic":
             from anthropic import Anthropic
 
-            client = Anthropic(api_key=api_key)
-            resp = client.messages.create(
+            anthropic_client = Anthropic(api_key=api_key)
+            anthropic_resp = anthropic_client.messages.create(
                 model=model,
                 max_tokens=8192,
                 temperature=0.0,
                 system=prompt,
                 messages=[{"role": "user", "content": redacted_text}],
             )
-            text = resp.content[0].text  # type: ignore[union-attr]
+            text = anthropic_resp.content[0].text  # type: ignore[union-attr]
         elif provider in ("google", "google-genai", "gemini"):
             from google import genai
 
-            client = genai.Client(api_key=api_key)
-            resp = client.models.generate_content(
+            google_client = genai.Client(api_key=api_key)
+            # google-genai SDK typing is loose; ``models.generate_content``
+            # is the supported entry point per official docs.
+            google_resp = google_client.models.generate_content(  # type: ignore[attr-defined]
                 model=model,
-                contents=[prompt, redacted_text],
+                contents=[prompt, redacted_text],  # type: ignore[arg-type]
             )
-            text = resp.text or ""
+            text = google_resp.text or ""
         else:
             logger.warning(
                 "pdf_pipeline: provider %r not wired for LLM extraction "
