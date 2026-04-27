@@ -57,10 +57,22 @@ def _build_llm(provider: str, model: str) -> Any:
     Factored out of :func:`_init_llm` so the ladder walker can re-construct
     the client with different model names without duplicating the NVIDIA
     / init_chat_model fork.
+
+    The API key is passed as an explicit ``api_key=`` kwarg from the
+    KeyStore — the SDK auto-pickup from ``os.environ`` is no longer
+    relied on, because PR #3 keeps keys out of the parent's env.
     """
     from langchain.chat_models import init_chat_model  # type: ignore[import-untyped]
 
+    from scripts.ai_assistant.keystore import (
+        get_keystore,
+        provider_slug_for,
+    )
+
     logger.debug("Initialising LLM: provider=%s, model=%s", provider, model)
+
+    slug = provider_slug_for(provider)
+    api_key = get_keystore().get(slug) if slug else None
 
     # NVIDIA AI Endpoints requires langchain_nvidia_ai_endpoints.ChatNVIDIA.
     # init_chat_model does not support the NVIDIA provider directly and the
@@ -74,20 +86,26 @@ def _build_llm(provider: str, model: str) -> Any:
                 "langchain-nvidia-ai-endpoints is not installed. "
                 "Run: uv add langchain-nvidia-ai-endpoints"
             ) from exc
-        return ChatNVIDIA(
-            model=model,
-            max_tokens=config.AGENT_MAX_TOKENS,
-            temperature=1,
-            top_p=1,
-        )
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "max_tokens": config.AGENT_MAX_TOKENS,
+            "temperature": 1,
+            "top_p": 1,
+        }
+        if api_key:
+            kwargs["api_key"] = api_key
+        return ChatNVIDIA(**kwargs)
 
     try:
-        return init_chat_model(
-            model=model,
-            model_provider=provider,
-            max_tokens=config.AGENT_MAX_TOKENS,
-            timeout=config.AGENT_TIMEOUT,
-        )
+        kwargs = {
+            "model": model,
+            "model_provider": provider,
+            "max_tokens": config.AGENT_MAX_TOKENS,
+            "timeout": config.AGENT_TIMEOUT,
+        }
+        if api_key:
+            kwargs["api_key"] = api_key
+        return init_chat_model(**kwargs)
     except Exception as exc:
         # Wrap with context so callers get a clear actionable message.
         raise RuntimeError(
