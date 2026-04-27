@@ -138,11 +138,18 @@ by the agent — no vector index, no chunking, no embedding step.
 * extract tables or form-field-like structures when available
 * write flat JSONL outputs to ``output/{STUDY_NAME}/trio_bundle/pdfs/``
 
-**Backend (current runtime):**
+**Backend (current runtime, v0.20.0):**
 
-* ``pypdf`` is the active text and metadata extraction backend
-* ``pdfplumber`` is planned as the detailed layout-aware backend in Stage 3
-  (see :doc:`decisions` ADR-006); it is not yet imported in the runtime
+* The legacy raw-PDF API path (``scripts/extraction/extract_pdf_data.py``)
+  uses ``pypdf`` for text extraction when the
+  ``REPORTALIN_PDF_PHI_FREE`` two-part attestation gate is satisfied.
+* The two-way PDF orchestrator
+  (``scripts/extraction/pdf_pipeline.py``, shipped in PR #15) uses
+  ``pdfplumber`` as the always-on code path. Extracted text is
+  PHI-redacted before any LLM call; the LLM response is merged with
+  the code candidate. When the LLM tier is unavailable, the orchestrator
+  falls back to the version-controlled snapshot baseline at
+  ``snapshots/{STUDY}/pdfs/`` per-PDF.
 
 Dataset Promotion
 ~~~~~~~~~~~~~~~~~
@@ -313,11 +320,16 @@ End-to-End Runtime Flow
 
 .. code-block:: text
 
-   data/raw/{STUDY_NAME}/data_dictionary/ ──┐
-                                            ├──→ load_dictionary ────────┐
-   data/raw/{STUDY_NAME}/datasets/ ─────────┼──→ dataset_pipeline ────────┤
-                                            │                            │
-   data/raw/{STUDY_NAME}/annotated_pdfs/ ───┴──→ extract_pdf_data ───────┤
+   data/raw/{STUDY_NAME}/data_dictionary/ ──┐  ┐
+                                            ├──→ load_dictionary ────────┐ │
+   data/raw/{STUDY_NAME}/datasets/ ─────────┼──→ dataset_pipeline ────────┤ ├ Phase 1 PARALLEL
+                                            │                            │ │ (3-worker pool;
+   data/raw/{STUDY_NAME}/annotated_pdfs/ ───┴──→ pdf_pipeline ───────────┤ ┘ join → cleanup)
+                                              (orchestrator: pdfplumber  │
+                                              code path + redacted-text  │
+                                              LLM merge + snapshot       │
+                                              fallback at                │
+                                              snapshots/{STUDY}/pdfs/)   │
                                                                          │
                                                (all legs → staging)      ▼
                                           tmp/{STUDY_NAME}/{datasets,dictionary,pdfs}/
@@ -427,6 +439,12 @@ Expected source tree:
    ├── annotated_pdfs/
    └── data_dictionary/
 
+   snapshots/{STUDY_NAME}/                     # tracked baseline
+   ├── datasets/                               # cleaned + verified, version-controlled,
+   ├── dictionary/                             # LLM-INVISIBLE; PDF orchestrator reads
+   ├── pdfs/                                   # ``pdfs/{stem}_variables.json`` as
+   └── variables.json                          # per-PDF fallback (PR #18)
+
 Expected processed tree:
 
 .. code-block:: text
@@ -438,7 +456,7 @@ Expected processed tree:
    │   ├── phi_scrub_report.json
    │   └── telemetry/
    │       └── events.jsonl
-   └── agent/                                  # analysis / conversations / snapshots
+   └── agent/                                  # analysis / conversations / restore_points
 
 Transient staging root (not a durable artifact):
 

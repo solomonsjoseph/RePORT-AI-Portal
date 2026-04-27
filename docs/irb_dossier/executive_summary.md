@@ -190,17 +190,54 @@ remains as a directory-level early-reject at pipeline boundaries),
 which raises a `ZoneViolationError` (a `PermissionError` subclass)
 if any file path falls outside the agent's allowed zone.
 
-Every tool return string additionally passes through two gates:
+**Explicitly out-of-zone (PR #18):** `snapshots/{STUDY}/` at the repo
+root holds the version-controlled cleaned-trio-bundle baseline used
+by the PDF orchestrator's per-PDF fallback. The LLM agent is
+forbidden from reading it — a stale baseline must never be served as
+live data. The previous `output/{STUDY}/agent/snapshots/` path (which
+*was* inside the agent zone) has been retired; operator restore points
+now live at `output/{STUDY}/agent/restore_points/` (gitignored).
+
+Every tool return string additionally passes through three gates:
 
 - A regex-based PHI gate with a clinical-phrase allowlist. Blocking
   patterns (Aadhaar, PAN, email, phone, precise dates, etc.) replace
   the response with a redaction message. Low-confidence warn patterns
   (short numeric IDs, generic name-like pairs) are audit-logged but
   allowed through unless the clinical allowlist also matches.
-- A k-anonymity check. If the response would surface row-level data
-  whose quasi-identifier equivalence class has fewer than 5 members,
-  the gate suppresses the response and returns an aggregate or an
-  explicit "too-few-records" message.
+- A k-anonymity check (k=5). If the response would surface row-level
+  data whose quasi-identifier equivalence class has fewer than 5
+  members, the gate suppresses the response and returns an aggregate
+  or an explicit "too-few-records" message.
+- An l-diversity check (l=2, shipped in v0.18.0 PR #13). When the
+  k-anon class passes the size threshold but every row carries the
+  same sensitive attribute (e.g. all five rows have the same
+  diagnosis), the gate also suppresses the response. See
+  `scripts/security/kanon_gate.py::guard_rows_with_kanon_and_ldiv`.
+
+**API keys are kept out of `os.environ`** (PR #3, v0.17.0). The
+wizard routes the operator's pasted key into an in-memory
+`KeyStore` registry and re-injects it only into the short-lived
+pipeline subprocess via `KeyStore.env_for_subprocess`. Every LLM
+client constructor takes an explicit `api_key=` kwarg sourced from
+the KeyStore; nothing in the runtime reads `os.environ` for
+credentials.
+
+**`run_python_analysis` runs in an isolated subprocess** (PR #2,
+v0.17.0) with `RLIMIT_AS` / `RLIMIT_NPROC` / `RLIMIT_CPU` clamps,
+a sanitised env (no `*_API_KEY`), and read-only access to
+`config.TRIO_BUNDLE_DIR`. The generated `.py` is persisted to
+`output/{STUDY}/agent/analysis/{ts}.py` for operator reproduction.
+
+**PDF leg.** As of PR #15 (v0.19.0) the PDF extraction tier has a
+two-way orchestrator (`scripts/extraction/pdf_pipeline.py`). The
+`pdfplumber` code path always runs first; extracted text is
+PHI-redacted via `phi_patterns.BLOCKING_PATTERNS` BEFORE any LLM
+call, with a defensive `_assert_no_raw_phi_in_payload` re-check.
+The LLM response is re-scrubbed and merged with the code candidate.
+Per-PDF fallback to the version-controlled snapshot baseline at
+`snapshots/{STUDY}/pdfs/` when the LLM tier is unavailable. **No raw
+PDF bytes leave the host on the orchestrator path.**
 
 ## 7. What the Operator Sees in the Audit Directory
 

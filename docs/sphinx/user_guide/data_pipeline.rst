@@ -23,12 +23,13 @@ Pipeline Architecture
 
 .. code-block:: text
 
-   data/raw/{STUDY}/
-   +-- data_dictionary/     --+
-   +-- datasets/            --+-- Phase 1: Extract into staging
-   +-- annotated_pdfs/      --+
-            |
-            v (all three legs write here first)
+   data/raw/{STUDY}/                      snapshots/{STUDY}/
+   +-- data_dictionary/    --+            (tracked baseline; LLM-INVISIBLE;
+   +-- datasets/           --+            used by PDF orchestrator fallback)
+   +-- annotated_pdfs/     --+
+            |  Phase 1: PARALLEL extraction (3-worker ThreadPoolExecutor;
+            |  Dictionary | Datasets | PDFs run concurrently — PR #18)
+            v (all three legs write here first; join before cleanup)
    tmp/{STUDY}/              [transient — removed on success]
    +-- datasets/
    +-- dictionary/
@@ -104,14 +105,26 @@ See :doc:`../developer_guide/data_extraction_datasets` for details.
 PDF Extraction
 ~~~~~~~~~~~~~~
 
-Extracts variable definitions from annotated CRF PDF forms using
-``pypdf`` / ``pdfplumber`` (no LLM involved).
+Extracts variable definitions from annotated CRF PDF forms. Two paths
+co-exist as of v0.20.0:
+
+* **Two-way orchestrator** (``scripts/extraction/pdf_pipeline.py``,
+  shipped in PR #15; default for the wizard's Load Study button). The
+  pdfplumber code path always runs first; extracted text is
+  PHI-redacted and sent to a capable LLM (anthropic, google) for a
+  schema-aware merge with the code candidate. The orchestrator falls
+  back to the version-controlled snapshot baseline at
+  ``snapshots/{STUDY}/pdfs/`` per-PDF when the LLM tier is
+  unavailable. No raw PDF bytes leave the host.
+* **Legacy raw-PDF API path** (``scripts/extraction/extract_pdf_data.py``)
+  remains the CLI default and is gated by the two-part
+  ``REPORTALIN_PDF_PHI_FREE`` operator attestation.
 
 - **Input:** ``data/raw/{STUDY}/annotated_pdfs/``
 - **Staging output:** ``tmp/{STUDY}/pdfs/``
 - **Final output:** ``output/{STUDY}/trio_bundle/pdfs/`` (after publish)
-- **Process:** Text extraction, form-field parsing, variable identification,
-  deduplication, clean-PDF-variable normalization into the staging workspace
+- **Process:** code-path text extraction → optional redacted-text LLM
+  merge → snapshot fallback per-PDF → atomic-write JSON to staging.
 - **Command:** ``make extract-pdf``
 
 See :doc:`../developer_guide/data_extraction_pdfs` for details.
