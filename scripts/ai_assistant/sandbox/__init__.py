@@ -169,13 +169,20 @@ def run_in_subprocess(
         if preexec is not None:
             proc_kwargs["preexec_fn"] = preexec
 
+        # Invoke the runner via its file path rather than ``-m`` so that the
+        # child does NOT execute ``scripts/ai_assistant/__init__.py`` — that
+        # chain imports langchain / langgraph / every LLM SDK and reserves
+        # multi-GB of vmap before any user code runs, which trips RLIMIT_AS
+        # on Linux at any reasonable cap. Direct path invocation gives the
+        # child only what ``runner.py`` itself imports (stdlib + pandas/numpy
+        # via lazy ``_load_dataframes``).
+        runner_path = Path(__file__).parent / "runner.py"
         try:
             completed = subprocess.run(  # noqa: S603
                 [
                     sys.executable,
                     "-I",
-                    "-m",
-                    "scripts.ai_assistant.sandbox.runner",
+                    str(runner_path),
                     str(spec_path),
                 ],
                 **proc_kwargs,
