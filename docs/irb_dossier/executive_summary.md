@@ -76,13 +76,21 @@ The architecture documented below answers each of these.
 ## 4. End-to-End Data Flow
 
 ```
-   Raw study data (PHI-bearing)
-   data/raw/{STUDY}/
-       ├─ datasets/            (Excel / CSV)
-       ├─ data_dictionary/     (Excel)
-       └─ annotated_pdfs/      (CRF templates / protocol)
+   Raw study data (PHI-bearing)            Tracked snapshot baseline
+   data/raw/{STUDY}/                       snapshots/{STUDY}/
+       ├─ datasets/                            ├─ datasets/    (LLM-INVISIBLE,
+       ├─ data_dictionary/                     ├─ dictionary/   version-controlled
+       └─ annotated_pdfs/                      ├─ pdfs/         per-PDF fallback
+                 │                              └─ variables.json   for the PDF
+                 │                                                  orchestrator —
+                 │                                                  PR #18.)
                  │
-                 │   (1) Extraction leg reads raw, writes to AMBER staging
+                 │   (1) PARALLEL extraction phase: Dictionary | Datasets | PDFs
+                 │       run on a 3-worker ThreadPoolExecutor (PR #18). The PDF
+                 │       leg uses the two-way orchestrator (PR #15) — pdfplumber
+                 │       code path + redacted-text LLM call merged via _merge,
+                 │       with per-PDF snapshot fallback. No raw PDF bytes leave
+                 │       the host on the orchestrator path.
                  ▼
    Transient staging (PHI-bearing, short-lived)
    tmp/{STUDY}/             (mode 0700, umask 0077;
@@ -90,7 +98,7 @@ The architecture documented below answers each of these.
        ├─ dictionary/
        ├─ pdfs/
        └─ quarantine/
-                 │
+                 │   (join: cleanup chain runs serially after all three legs land)
                  │   (2) PHI scrub runs over staging datasets
                  │       BEFORE any audit artifact is written
                  ▼
@@ -102,8 +110,8 @@ The architecture documented below answers each of these.
    Published trio bundle (PHI-free, durable)
    output/{STUDY}/trio_bundle/
        ├─ datasets/              <-- LLM read zone (1 of 2; the other is `output/{STUDY}/agent/`)
-       ├─ dictionary/
-       ├─ pdfs/
+       ├─ dictionary/                NOTE: snapshots/{STUDY}/ above is intentionally
+       ├─ pdfs/                       OUTSIDE this zone — the LLM cannot read the baseline.
        └─ variables.json
    output/{STUDY}/audit/
        ├─ phi_scrub_report.json
@@ -112,13 +120,19 @@ The architecture documented below answers each of these.
        ├─ pdfs_cleanup_report.json
        └─ lineage_manifest.json
                  │
-                 │   (4) Researcher asks the AI agent a question
+                 │   (4) Researcher asks the AI agent a question. API keys live
+                 │       in an in-memory KeyStore (PR #3); ``os.environ`` does
+                 │       NOT carry them. The pipeline subprocess is the only
+                 │       place the keys ever appear, and only for the duration
+                 │       of the child run.
                  ▼
    AI agent (LLM) queries trio_bundle via structured tools
-                 │
-                 │   (5) Every tool response passes through
-                 │       a PHI gate + a k-anonymity check before
-                 │       reaching the LLM
+                 │   (``run_python_analysis`` runs in an isolated subprocess
+                 │    with RLIMIT_AS / RLIMIT_NPROC / RLIMIT_CPU clamps — PR #2.)
+                 │   (5) Every tool response passes through three gates:
+                 │       PHI regex gate, k-anonymity check (k=5), and
+                 │       l-diversity check (l=2). See
+                 │       scripts/security/kanon_gate.py.
                  ▼
    Answer to the researcher
 ```
