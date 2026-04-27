@@ -1,0 +1,429 @@
+"""Central runtime configuration for RePORT AI Portal.
+
+**What.** All path constants, environment-variable resolution, study
+detection, LLM provider inference, staging-directory management,
+and directory creation in one place.
+
+**Why.** 138 call sites across the pipeline, agent, UI, and test suite
+use ``import config`` — a single canonical location prevents scattered
+``os.getenv`` and ``Path(...)`` literals throughout the codebase.
+
+**How.** All values are resolved at import time. ``STUDY_NAME`` is
+determined by the ``$STUDY_NAME`` env var or a filesystem scan of
+``data/raw/``. LLM provider is inferred from model-name prefix unless
+overridden by ``$LLM_PROVIDER``. Staging directories are NOT created
+eagerly; call :func:`ensure_directories` after startup.
+"""
+# config.py
+from __future__ import annotations
+
+import logging
+import os
+from pathlib import Path
+from typing import Any, overload
+
+import yaml
+
+# ----------------------------------------------------------------------------
+# ENV HELPERS (centralized, validated access)
+# ----------------------------------------------------------------------------
+
+
+@overload
+def _get_env(key: str, default: str) -> str: ...
+@overload
+def _get_env(key: str, default: None = None) -> str | None: ...
+def _get_env(key: str, default: str | None = None) -> str | None:
+    value = os.getenv(key)
+    return default if value is None or value == "" else value
+
+
+def _get_env_int(key: str, default: int) -> int:
+    raw = _get_env(key)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{key} must be an integer") from exc
+
+
+def _get_env_bool(key: str, default: bool) -> bool:
+    value = str(_get_env(key, str(default))).lower()
+    return value in {"1", "true", "yes", "on"}
+
+
+# ----------------------------------------------------------------------------
+# YAML CONFIG (config/config.yaml — optional overlay)
+# ----------------------------------------------------------------------------
+
+CONFIG_YAML_PATH = Path(__file__).resolve().parent / "config" / "config.yaml"
+
+
+def _load_yaml_config() -> dict[str, Any]:
+    """Load config.yaml if it exists; return empty dict otherwise."""
+    if CONFIG_YAML_PATH.is_file():
+        with CONFIG_YAML_PATH.open() as fh:
+            data = yaml.safe_load(fh)
+            return data if isinstance(data, dict) else {}
+    return {}
+
+
+_YAML_CFG: dict[str, Any] = _load_yaml_config()
+
+
+def yaml_get(*keys: str, default: Any = None) -> Any:
+    """Retrieve a nested key from the loaded YAML config.
+
+    >>> yaml_get("app", "log_level", default="INFO")
+    'INFO'
+    """
+    node: Any = _YAML_CFG
+    for k in keys:
+        if isinstance(node, dict):
+            node = node.get(k)
+        else:
+            return default
+    return node if node is not None else default
+
+
+# ----------------------------------------------------------------------------
+# VERSION
+# ----------------------------------------------------------------------------
+
+try:
+    from __version__ import __version__
+except ImportError:
+    __version__ = "0.0.0"
+
+DEFAULT_DATASET_NAME = "Indo-VAP"
+DEFAULT_LOG_LEVEL = "INFO"
+
+LOG_NAME = "report_ai_portal"
+LOG_LEVEL = _get_env("LOG_LEVEL", yaml_get("app", "log_level", default=DEFAULT_LOG_LEVEL))
+logger = logging.getLogger(LOG_NAME)
+
+
+# ----------------------------------------------------------------------------
+# BASE PATHS
+# ----------------------------------------------------------------------------
+
+BASE_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
+DATA_DIR = BASE_DIR / "data"
+RAW_DATA_DIR = DATA_DIR / "raw"
+
+OUTPUT_DIR = BASE_DIR / "output"
+LOGS_DIR = BASE_DIR / ".logs"
+TMP_DIR = BASE_DIR / "tmp"
+
+
+# ----------------------------------------------------------------------------
+# STUDY DETECTION
+# ----------------------------------------------------------------------------
+
+
+def detect_study_name() -> str:
+    if not RAW_DATA_DIR.exists():
+        logger.warning("RAW_DATA_DIR missing → using default: %s", DEFAULT_DATASET_NAME)
+        return DEFAULT_DATASET_NAME
+
+    try:
+        exclude = {".backup", ".DS_Store", "output"}
+
+        candidates = [
+            p.name
+            for p in RAW_DATA_DIR.iterdir()
+            if p.is_dir() and not p.name.startswith(".") and p.name not in exclude
+        ]
+
+        for candidate in sorted(candidates):
+            if (RAW_DATA_DIR / candidate / "datasets").is_dir():
+                return candidate
+
+        logger.warning("No valid study found → using default: %s", DEFAULT_DATASET_NAME)
+        return DEFAULT_DATASET_NAME
+
+    except Exception:
+        logger.warning("Study detection failed → fallback to default")
+        return DEFAULT_DATASET_NAME
+
+
+# ENV override ALWAYS wins
+STUDY_NAME = _get_env("STUDY_NAME", detect_study_name())
+
+
+# ----------------------------------------------------------------------------
+# STUDY PATHS
+# ----------------------------------------------------------------------------
+
+STUDY_DATA_DIR = RAW_DATA_DIR / STUDY_NAME
+STUDY_OUTPUT_DIR = OUTPUT_DIR / STUDY_NAME
+
+# Raw study subdirectories (under data/raw/<study>/)
+DATASETS_DIR = STUDY_DATA_DIR / "datasets"
+ANNOTATED_PDFS_DIR = STUDY_DATA_DIR / "annotated_pdfs"
+DATA_DICTIONARY_DIR = STUDY_DATA_DIR / "data_dictionary"
+
+# Trio bundle is the single consolidated clean-output tree.
+# Everything that was formerly split across clean/jsonl/* now lives here.
+TRIO_BUNDLE_DIR = STUDY_OUTPUT_DIR / "trio_bundle"
+TRIO_DATASETS_DIR = TRIO_BUNDLE_DIR / "datasets"
+
+STUDY_AUDIT_DIR = STUDY_OUTPUT_DIR / "audit"
+
+# Audit-report paths (written by the cleanup/dedup pipeline).
+# Only the dataset leg produces audit reports — dictionary and PDF legs carry
+# no PHI, so their cleanup is side-effect-only (pruning without a report).
+# Step-cache manifests for dataset_processing also land under STUDY_AUDIT_DIR
+# so the LLM-visible trio_bundle/ stays content-only.
+AUDIT_DATASET_REPORT_PATH: Path = STUDY_AUDIT_DIR / "dataset_cleanup_report.json"
+AUDIT_SCRUB_REPORT_PATH: Path = STUDY_AUDIT_DIR / "phi_scrub_report.json"
+
+# Dictionary and PDF extraction artifacts live inside the trio bundle so
+# the LLM agent can read them alongside the canonical datasets.
+DICTIONARY_JSON_OUTPUT_DIR = TRIO_BUNDLE_DIR / "dictionary"
+PDF_EXTRACTIONS_DIR = TRIO_BUNDLE_DIR / "pdfs"
+
+# ----------------------------------------------------------------------------
+# AGENT STATE TIER (per-session state + restore snapshots, NOT study output)
+# ----------------------------------------------------------------------------
+# All non-trio-bundle, non-audit artefacts that the AI Assistant produces
+# live here. Snapshots sit alongside analysis / conversations because they
+# are agent-owned operational state — the restore target when a pipeline
+# run fails or when the operator picks "Use Existing Data" in the wizard.
+# Telemetry lives under STUDY_AUDIT_DIR instead (see below) so the LLM's
+# permitted agent/** zone stays free of operator-audit bytes. Keeping
+# everything inside the fully-gitignored ``output/`` tree keeps PHI-scrubbed
+# cohort bytes out of git by default.
+AGENT_STATE_DIR: Path = STUDY_OUTPUT_DIR / "agent"
+AGENT_OUTPUT_DIR: Path = AGENT_STATE_DIR / "analysis"
+CONVERSATIONS_DIR: Path = AGENT_STATE_DIR / "conversations"
+STUDY_SNAPSHOTS_DIR: Path = AGENT_STATE_DIR / "snapshots"
+
+# Staging workspace — per-study tree inside TMP_DIR. Managed per-run by
+# main.py's _prepare_staging() / _publish_staging(); NOT created eagerly by
+# ensure_directories() so a stale workspace from a crashed previous run is
+# always purged explicitly before reuse.
+STUDY_STAGING_DIR: Path = TMP_DIR / STUDY_NAME
+STAGING_DATASETS_DIR: Path = STUDY_STAGING_DIR / "datasets"
+STAGING_DICTIONARY_DIR: Path = STUDY_STAGING_DIR / "dictionary"
+STAGING_PDFS_DIR: Path = STUDY_STAGING_DIR / "pdfs"
+
+# Unified variables reference (built from dictionary + PDF extractions)
+VARIABLES_JSON_PATH: Path = TRIO_BUNDLE_DIR / "variables.json"
+# ----------------------------------------------------------------------------
+# PHI SCRUB
+# ----------------------------------------------------------------------------
+# Narrow PHI handling: per-subject deterministic date jitter (SANT method) +
+# HMAC-SHA256 ID pseudonymization. See scripts/security/phi_scrub.py.
+#
+# Config file lives alongside the module so study-specific regex patterns can
+# be edited without touching code.
+PHI_SCRUB_CONFIG_PATH: Path = BASE_DIR / "scripts" / "security" / "phi_scrub.yaml"
+
+
+def _phi_key_path() -> Path:
+    """Resolve the sidecar PHI HMAC key path.
+
+    Uses ``$XDG_CONFIG_HOME/report_ai_portal/phi_key`` when the env var is set,
+    otherwise falls back to ``~/.config/report_ai_portal/phi_key``. The key lives
+    OUTSIDE the repo tree and is never read by the agent or committed to git.
+    """
+    xdg = os.getenv("XDG_CONFIG_HOME")
+    base = Path(xdg) if xdg else Path.home() / ".config"
+    return base / "report_ai_portal" / "phi_key"
+
+
+PHI_KEY_PATH: Path = _phi_key_path()
+
+
+# ----------------------------------------------------------------------------
+# EXTRACTION CONFIG (centralized — used by all extraction modules)
+# ----------------------------------------------------------------------------
+
+# Temporary-file prefixes for atomic writes.  Each module uses its own prefix
+# so crash-leftover temp files can be attributed to their source.
+TEMP_PREFIX_DATASET: str = "report_ai_portal_dataset_"
+TEMP_PREFIX_PDF: str = "report_ai_portal_pdf_extract_"
+TEMP_PREFIX_DICT: str = "report_ai_portal_dict_"
+TEMP_PREFIX_TRIO_BUNDLE: str = "report_ai_portal_trio_bundle_"
+TEMP_PREFIX_DEDUP: str = "report_ai_portal_dedup_"
+
+# Secure temp workspace — the prefix is intentionally generic+randomised so
+# the directory name leaks no information about what pipeline stage created it.
+SECURE_TEMP_PREFIX: str = "rpln_"
+
+# PDF extraction — rate-limit settings
+PDF_EXTRACTION_INTER_DELAY: float = float(_get_env("PDF_INTER_DELAY", "10.0"))
+PDF_EXTRACTION_MAX_TOKENS: int = _get_env_int("PDF_MAX_TOKENS", 64000)
+
+# Duplicate-column detection regex for dataset extraction
+DUPLICATE_COLUMN_PATTERN: str = r"^(.+?)_?(\d+)$"
+
+
+# ----------------------------------------------------------------------------
+# LLM PROVIDER INFERENCE
+# ----------------------------------------------------------------------------
+
+
+def _infer_provider(model_name: str) -> str:
+    """Infer LangChain provider string from model name prefix.
+
+    Recognised patterns:
+        llama*, mistral*, phi*, gemma*, qwen* (incl. qwen3:8b), deepseek*,
+        codellama*, tinyllama*, vicuna*, falcon*, orca*  → "ollama"
+        claude*                               → "anthropic"
+        gpt-*, o1*, o3*, o4*, text-davinci*   → "openai"
+        gemini*                               → "google-genai"
+
+    Falls back to ``"ollama"`` (local inference, no API key needed).
+    """
+    m = model_name.lower()
+    _ollama_prefixes = (
+        "llama",
+        "mistral",
+        "phi3",
+        "phi-3",
+        "gemma",
+        "qwen",
+        "deepseek",
+        "codellama",
+        "tinyllama",
+        "vicuna",
+        "falcon",
+        "orca",
+    )
+    if m.startswith(_ollama_prefixes):
+        return "ollama"
+    if m.startswith("claude"):
+        return "anthropic"
+    if m.startswith(("gpt-", "o1", "o3", "o4", "text-davinci")):
+        return "openai"
+    if m.startswith("gemini"):
+        return "google-genai"
+    # NVIDIA-hosted models use "org/model" slug format
+    _nvidia_orgs = ("moonshotai/", "nvidia/", "mistralai/", "deepseek-ai/", "qwen/", "meta/")
+    if any(m.startswith(prefix) for prefix in _nvidia_orgs):
+        return "nvidia-ai-endpoints"
+    return "ollama"  # safe default — local inference, no key needed
+
+
+LLM_MODEL = _get_env("LLM_MODEL", yaml_get("ai_assistant", "llm_model", default="qwen3:8b"))
+# LLM_PROVIDER: explicit env var wins; otherwise infer from model name.
+LLM_PROVIDER: str = _get_env("LLM_PROVIDER") or _infer_provider(LLM_MODEL)
+
+# Qwen3 downgrade ladder — descending parameter count. When Ollama refuses
+# a rung with "requires more system memory", _init_llm walks this list to
+# find the largest rung that actually loads. Only applies to qwen3:* models;
+# other models (Claude, GPT, custom Ollama) pass through unchanged.
+QWEN3_DOWNGRADE_LADDER: tuple[str, ...] = ("qwen3:8b", "qwen3:4b", "qwen3:1.7b")
+
+
+def preferred_or_installed_downgrade(model: str) -> list[str]:
+    """Return the sequence of model names to try starting at ``model``.
+
+    For qwen3 rungs in :data:`QWEN3_DOWNGRADE_LADDER`, returns the ladder
+    from the given rung downward. For any other model, returns a one-element
+    list — we only auto-step qwen3 because the three rungs are behaviourally
+    compatible (same family, same tool-use format, same thinking convention).
+    """
+    if model in QWEN3_DOWNGRADE_LADDER:
+        start = QWEN3_DOWNGRADE_LADDER.index(model)
+        return list(QWEN3_DOWNGRADE_LADDER[start:])
+    return [model]
+
+# ----------------------------------------------------------------------------
+# AI Assistant / AGENT
+# ----------------------------------------------------------------------------
+
+# Telemetry lives under STUDY_AUDIT_DIR (not AGENT_STATE_DIR) to keep the
+# LLM's permitted agent/** zone clear of operator-audit bytes. Per the PHI
+# rule, LLM must never read telemetry; parking it under audit/ — the same
+# zone that holds phi_scrub_report.json and dataset_cleanup_report.json —
+# makes that boundary structural, not a per-file carve-out.
+TELEMETRY_DIR = STUDY_AUDIT_DIR / "telemetry"
+TELEMETRY_SINK = TELEMETRY_DIR / "events.jsonl"
+
+# Chat / agent
+AGENT_MAX_TOKENS: int = _get_env_int("AGENT_MAX_TOKENS", 16384)
+AGENT_TIMEOUT: int = _get_env_int("AGENT_TIMEOUT", 300)
+# Watchdog on the agent stream: raise TimeoutError if no chunk is produced
+# for this many seconds. Measures inter-chunk idle time, NOT total wall
+# clock — so slow-but-steady streams (long tool runs) stay alive. The E3
+# benchmark stall went 6+ minutes of total silence with no stop signal;
+# 180s is ~10x the p99 of a healthy routing step.
+AGENT_STREAM_IDLE_TIMEOUT: int = _get_env_int("AGENT_STREAM_IDLE_TIMEOUT", 180)
+
+# Analytical engine limits
+ANALYSIS_TIMEOUT: int = _get_env_int("ANALYSIS_TIMEOUT", 300)
+ANALYSIS_MAX_OUTPUT: int = _get_env_int("ANALYSIS_MAX_OUTPUT", 200_000)
+ANALYSIS_MAX_FIGURES: int = _get_env_int("ANALYSIS_MAX_FIGURES", 20)
+
+# Orchestration mode: "auto" | "single-agent" | "multi-agent"
+AGENT_ORCHESTRATION_MODE: str = _get_env(
+    "AGENT_ORCHESTRATION_MODE",
+    yaml_get("ai_assistant", "agent", "orchestration_mode", default="auto"),
+)
+
+# Enforce LangChain tracing OFF by default (privacy-first)
+os.environ.setdefault("LANGCHAIN_TRACING_V2", "false")
+
+
+# ----------------------------------------------------------------------------
+# DIRECTORY CREATION
+# ----------------------------------------------------------------------------
+
+
+def ensure_directories() -> None:
+    for path in [
+        OUTPUT_DIR,
+        LOGS_DIR,
+        TMP_DIR,
+        TRIO_BUNDLE_DIR,
+        TRIO_DATASETS_DIR,
+        DICTIONARY_JSON_OUTPUT_DIR,
+        PDF_EXTRACTIONS_DIR,
+        STUDY_AUDIT_DIR,
+        AGENT_STATE_DIR,
+        AGENT_OUTPUT_DIR,
+        CONVERSATIONS_DIR,
+        TELEMETRY_DIR,
+        STUDY_SNAPSHOTS_DIR,
+    ]:
+        path.mkdir(parents=True, exist_ok=True)
+
+
+# ----------------------------------------------------------------------------
+# VALIDATION
+# ----------------------------------------------------------------------------
+
+
+def validate_config() -> None:
+    # --- PATH VALIDATION ---
+    required_paths = [
+        RAW_DATA_DIR,
+        STUDY_DATA_DIR,
+        DATASETS_DIR,
+        DATA_DICTIONARY_DIR,
+    ]
+
+    for path in required_paths:
+        if not path.exists():
+            raise FileNotFoundError(f"Missing required path: {path}")
+
+    # PDF source is optional — the pipeline handles its absence gracefully
+    if not ANNOTATED_PDFS_DIR.exists():
+        logger.warning(
+            "Annotated PDFs directory not found: %s — PDF extraction will be skipped",
+            ANNOTATED_PDFS_DIR,
+        )
+
+    # Ensure the dictionary directory contains at least one file
+    if DATA_DICTIONARY_DIR.is_dir() and not any(DATA_DICTIONARY_DIR.iterdir()):
+        raise FileNotFoundError(f"Dictionary directory is empty: {DATA_DICTIONARY_DIR}")
+
+    # --- LOG FINAL STATE ---
+    logger.info(
+        "Config loaded | study=%s",
+        STUDY_NAME,
+    )

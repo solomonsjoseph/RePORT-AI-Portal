@@ -1,0 +1,521 @@
+# PHI Scrub — study-specific config for scripts/security/phi_scrub.py
+# ---------------------------------------------------------------------------
+# This file configures the PHI scrubber that runs as Step 1.6 of the pipeline
+# (between dataset extraction and dataset cleanup). Removing this file makes
+# the module a no-op for this study.
+#
+# Scope — structural field transforms only:
+#   (a) HMAC-SHA256 pseudonymization — id_fields (one-way, deterministic)
+#   (b) Per-subject deterministic date jitter (SANT) — date_fields
+#   (c) DROP — field removed entirely (drop_fields)
+#   (d) CAP — numeric value above threshold collapsed to label (cap_fields)
+#   (e) GENERALIZE — value-level mapping to broad category (generalize_fields)
+#   (f) SUPPRESS_SMALL_CELL — numeric clamped to threshold to resist k-anon attacks
+#   (g) KEEP — explicit allowlist that wins over broader patterns (keep_fields)
+#
+# Free-text PHI (narrative verbatim) is handled via the drop rule on the
+# specific narrative fields listed in drop_fields. A local-Ollama NER sweep
+# is reserved as future work (see scripts/security/phi_ner.py); until then,
+# narrative whole-value drop is the honest-safe default.
+#
+# Rule priority (first match wins within the scrubber):
+#   1. keep_fields  — explicit allowlist (short-circuits every other rule)
+#   2. birthdate_field
+#   3. drop_fields
+#   4. cap_fields
+#   5. generalize_fields
+#   6. suppress_small_cell_fields
+#   7. date_fields  — jitter
+#   8. id_fields    — pseudonymize
+#
+# All regex patterns are compiled with re.IGNORECASE. Field-name matching
+# uses re.search (not fullmatch) — anchor with ^…$ for exact-column-name
+# intent; leave unanchored for substring-in-column-name intent.
+#
+# IRB-grade benchmark anchors (see docs/irb_dossier/):
+#   HIPAA §164.514(b)(2), ICMR §11, SPDI Rule 3, Aadhaar Act §29,
+#   DPDPA 2023 §2(t), NIST SP 800-188, RePORT India Common Protocol.
+#
+# Provenance: rule catalog ported from scripts/archive/phi_rules.py (1033-line
+# IN-jurisdiction field-rule registry), Indo-VAP-calibrated.
+# ---------------------------------------------------------------------------
+
+# ── Compliance posture ────────────────────────────────────────────────────
+#   "safe_harbor"     — drops birthdate_field entirely (default).
+#                        Age fidelity is lost. No IRB/DUA paperwork needed.
+#   "limited_dataset" — shifts birthdate_field with the same per-subject
+#                        offset as other dates (SANT method), preserving
+#                        age-at-event. REQUIRES authorities/phi_limited_dataset.md
+#                        with IRB approval + Data Use Agreement citations.
+compliance_posture: "safe_harbor"
+
+# ── Subject-ID resolution (keys the per-subject date offset) ──────────────
+# Column names used to key the per-subject deterministic date offset.
+# Must be literal column names (not regex). Candidates are tried in order;
+# the first non-empty value wins. For Indo-VAP, per-subject forms use
+# SUBJID and household-contact forms (e.g. 10_TST) use FID.
+# If a row has NONE of these fields populated, the row is quarantined.
+subject_id_fields:
+  - "SUBJID"
+  - "FID"
+
+# ── Jitter envelope (days). Per-subject offset ∈ [-max, +max] inclusive. ──
+# SANT recommendation: 30 days preserves weekly/monthly clinical interval
+# structure while obscuring exact event dates.
+max_jitter_days: 30
+
+# ── Orphan row handling ───────────────────────────────────────────────────
+# A row whose subject_id_field is missing / blank / null gets moved to
+# tmp/{STUDY}/quarantine/{file}.jsonl. If more than this many orphans
+# per file, the pipeline hard-fails.
+orphan_quarantine_threshold: 10
+
+# ── Age cap (HIPAA §164.514(b)(2)(i)(C) — ages > 89 aggregated) ───────────
+age_cap:
+  threshold: 89
+  label: "90+"
+
+# ── Small-cell suppression threshold (k-anonymity proxy; ICMR §11.7) ──────
+# Contact / household counts ≥ this value are clamped to this value.
+small_cell_threshold: 5
+
+# ──────────────────────────────────────────────────────────────────────────
+# KEEP FIELDS (allowlist — wins over every other rule)
+# ──────────────────────────────────────────────────────────────────────────
+# Explicit keep rules prevent clinical / lab / medication / time-of-day
+# fields from being swept up by broader drop or date patterns. These are
+# evaluated FIRST by _scrub_row. An exact match → field passes through
+# unchanged, no audit event.
+keep_fields:
+  # ── Age-adjacent clinical indicators (not person age) ──
+  - "(?:AGEEST|AGEY|TXESTIMATE)"
+  - "GESTAGE"
+  - "MENSESAGE"
+  - "PTBage"
+  - "PTBmarried"
+  # ── Death indicators (boolean flags, not dates) ──
+  - "^EE_DIED$"
+  - "^EE_DIEDTB$"
+  - "^EE_NUMDIED$"
+  # ── Marital indicator (binary flag, not status string) ──
+  - "(?:EVRMARRIED)"
+  # ── False-positive guards for time-of-day vs. date ──
+  - "(?:_TIM\\d*$|_TIME$|_TMON$|BLDTIM|MBTIM|STTIM|RCTIM|ENTIM)"
+  - "(?:TIMA$|TIMB$|TIMb$)"
+  - "RECTIM"
+  - "(?:SPUTIM|WBTIM|cbctim|helmtim|HELMTIM|QUANTIM)"
+  - "TRVTIM"
+  - "HHTBTIME"
+  - "NDREATIM"
+  - "MBRECTIM"
+  # ── False-positive guards for "urine" (not a URL) ──
+  - "URIN(?:E|A|B)"
+  # ── False-positive guards for clinical lab specimen ID indicators ──
+  - "^(?:CX_LABID|ZN_MBLABID\\d*|CM_MBLABID\\d*|DST_XLABID\\d*)$"
+  - "^CBC_HBAND$"
+  # ── Visit labels (categorical) ──
+  - "[-_]VISIT"
+  - "^VISIT$"
+  # ── Sex (essential clinical variable) ──
+  - "(?:^IS_SEX$|^HHC_SEX$|^HC_SEX$|^IC_SEX$|_SEX$)"
+  - "^SexContact$"
+  # ── Ration card CATEGORY (coded, not card number) ──
+  - "^IC_RATION$"
+  # ── TB card + dose-grid + PHC-indicator clinical fields ──
+  - "^TC_ETBSITE$"
+  - "^TC_CARDLOC$"
+  - "^TC_[CI]DOSES\\d*$"
+  - "(?:DOSES|DOSAGE|COMPLIANCE)[-_]?\\d*$"
+  - "^PHC$"
+  - "WEIGHT_?ESTIMATE"
+  - "^Image_Seq$"
+  - "STORAGE\\d*$"
+  - "BIDI"
+  - "PRIORBID"
+  - "STEROID"
+  - "ANTACID"
+  - "^EE_FRIDGE$"
+  # ── MEDF_CCBLOCK — "CC block" is clinical medication block, NOT geography ──
+  - "^(?:MEDF?_)?CCBLOCK$"
+  # ── Collection type (clinical) ──
+  - "COLLTYP"
+  # ── Clinical indicator groups (large lab/medication/AE/EE/TC/TB blocks) ──
+  - "^CBC_"
+  - "^CXR_"
+  - "^cxr_"
+  - "^CX_(?:DST|GROWTH|ISOLATE|LALIQUOT|LIQTTD|LRECON|MB(?:ND|SPMETH|SPSETT)|MEDIA|MTB|ND|PROCVOL|REASON|RECREFR|SOL|COLLVOL)"
+  - "^DST_(?:DST|ALI|ISOLATE|MB(?:ND|SPMETH|SPSETT)|XVISIT)"
+  - "^ZN_(?:AFB|LIQ(?:CONTM|MTBNEG|MTBPOS|ND|NMTBPOS|TTDD)|MB(?:ND|SPMETH)|SOL(?:CONTM|MTBNEG|MTBPOS|ND|NMTBPOS|QNCAT|QNND|QUAN)|SPMETH)"
+  - "^CM_(?:AFB|FEVER|MBND|SVOLM)"
+  - "^CC_(?:ALC|ARM|ARRACK|CGR|CHDRN|CIG|CNCT|CURV|DEP|DIET|DM|DRNK|DRRH|FRST|HEIGHT|HELM|HIV|HNDWSH|HOO|KNEE|LMBS|LST|LUMPS|MED|MENSES|MNET|NAUS|NOPREG|NOPRGTEST|OBS|PREG|RBS|RSH|SHOES|SMK|SWL|THRST|TOILET|TRV|URINE|VIST|WEIGHT|WHZNG|WORMS|WSH|WTR|ABDISC)"
+  - "^EE_(?:ACRES|AGLAND|AIRFLOW|BATH|BEDRM|BEDS|BICYCLE|BOAT|BULL|BWTV|CAR|CENTS|CHAIR|CK|CLOCK|COLOR|COOKER|COT|DIN|DOORS|DPW|EFAN|EX(?:DOOR|WALL|WND)|FLOOR|FUEL|KIT|LEFT|LIGHT|LIV|LRG|MATTRESS|MDW|MOPED|MOTOR|MULTI|NEW|NUM|OPEN|OTHER(?:LAND|UNITS)|OTH?RM|OWN|PUMP|RADIO|RES|ROOF|ROOMS|RUP|SCL|SCOOTER|SEW|SMK|SML|TABLE|THRESH|TOIL|TOT|TRACTOR|TYP|WATER|WIND|WND)"
+  - "^MEDF?_(?:ART(?:MED|ONGO|STUNK|CURR|ND)|BDIOLAT|DIA(?:CHG|ND|OTHSP|CURR)|DXYCYCL|FLRQNLN|H2RANT|INH(?:CURR|ENUNK|ONGO|STUNK)|INSULIN|METFORM|OCM(?:CHG|ND|CURR)|PPUMP|PROPH(?:ENUNK|ONGO|OTSP|STUNK)|RIF(?:CURR|ENUNK|ONGO|STUNK)|RPT(?:CURR|ENUNK|ONGO|STUNK)|STATIN|SULFON|TBPRO(?:ND|TOCHG|CURR)|THIOGLIT|VITD|WARFN)"
+  - "^AE_(?:EVENT|RELATION|SEVERITY|SEVERITYO|STATUS|SUMMARY|TMAWARE)"
+  - "^EC_(?:AINCLR|ELIG|ELIGCONF)"
+  - "^COE_(?:APPROVE|COENROLL|PROTCOL)"
+  - "^FA_(?:FUCOMPA(?:DC)?|TBALT|TBALTDIAGSP)$"
+  - "^FB_(?:ENRCOHA(?:SP|SPO)?|FUCOMPB)$"
+  - "^NC_(?:COLLND|NDREA|REASON)(?:SP)?"
+  - "^SC_(?:BLD(?:DRW)|CBC|GENO(?:REC(?:GOOD)?|STOR|TYP)|HHCVST|HLMNTH|ICVST|NODRW|PAX(?:CP|GENE|REC(?:GOOD)?|STOR)|PBMC(?:REC(?:GOOD)?|STOR|TOT|VIAB|VOL)|PLASMA(?:REC(?:GOOD)?|STOR)|PROCSIG|PTCPT|QTF(?:REC(?:GOOD)?|STOR)|RECGOOD|SALIVA|SLV(?:REC(?:GOOD)?|STOR)|STORALIQ|Sputum|URINE|URN(?:REC(?:GOOD)?|STOR))"
+  - "^ST_(?:COMMENT|LALIQUOT|LINPRESV|LOUTPRESV|LRECON|LRECVIAL|PBMC|QUANT|REPOSCOND|shipvial)"
+  - "^TBE_(?:ND|OTHLIV|OTHWHN|SPDAYS|TBTREAT)"
+  - "^TC_(?:CARD|CHANGE(?:SP)?|CMONTH|DOSEFREQ|DOSNUM|EXTROT|EXTRPULM|MONTH|NOCARD|NOCARDSP|PHASE|WEIGHT|chestxna)"
+  - "^(?:CGRYN|CHEWING|CIGYN|SMOYN|SNUFF|OSMOYN)$"
+  - "^(?:Cigarettes|Clothes|Mosquito|Oinject|Oralmed|Other|Private|Removstom|Shortbreath|Silicosis|Touch|Unknown|Utensils)$"
+  - "^TBKNOW"
+  - "^EXTR"
+  - "^F1$"
+  - "^Remote_Cmp$"
+  - "^(?:Kidneyfail|COPD|Asthma|Cancer|Cough|Diet)$"
+  - "^Constr_\\d+$"
+  - "^RE_(?:CXR|HHTB|SPUTUM|TBDIAG|TBMED|TBSYMP|SEEKCARE|SEEKCARENA|DOTSNA|DOTSOTH)$"
+  - "^TST_PPDSOURCE$"
+  - "^TST_SPLACE\\d+$"
+  - "^TST_(?:BLIST|COUGH|INDUR|STREN|STRENOTH|SUBST|ND|PPDOTHER|TU)\\d*$"
+  - "^TST_TUOTHER$"
+
+# ──────────────────────────────────────────────────────────────────────────
+# DATE FIELDS (jittered with per-subject constant offset)
+# ──────────────────────────────────────────────────────────────────────────
+date_fields:
+  # ── Specific clinical-date catalog (Indo-VAP CRF-tuned) ──────────────────
+  - "(?:VISDAT|ICFDT|COMPDAT|COMPDTE|TBTXDT|ENRDT|SCRDT|RANDDT|ONSDT|ENDDT|ADMDT|DISDT|RXSTDT|RXENDT|FOLDT|VISTDAT|BLDDAT|RECDAT|HIVDAT|IGRADAT|CXRDAT|PREGOUTDAT|MBDAT|STDAT|ENDAT|DSTDAT|GIVEDAT|ARTDAT|HBAND|HBADAT|HEMDAT|EVENTDAT|AWAREDAT|WOUTDAT|WITHDAT|RLPSDAT|PREGDAT|PROCD|MBRECDAT|PROCDAT|COLLDAT|LINDAT|LOUTDAT|GENOPROCDAT|GENORECDAT|PAXPROCDAT|PAXRECDAT|PBMCPROCDAT|PBMCRECDAT|PLASMAPROCDAT|PLASMARECDAT|QTFGITPROCDAT|QTFGITRECDAT|SLVPROCDAT|SLVRECDAT|URNPROCDAT|URNRECDAT|ARTSTDAT|ARTENDAT|INHSTDAT|INHENDAT|RIFSTDAT|RIFENDAT|PROPHSTDAT|PROPHENDAT|RPTSTDAT|RPTENDAT|COMPDATE|xraydat|PREGOUTDAT_2|COMPDAT_2|MBDAT2|SC_URNPROC80DAT|CAREDAT|TBDIAGDAT|ENROLLDAT|CD4DAT|LNDAT|LNDATND|GENOPROC80DAT|PAXPROC80DAT|PBMCPROC80DAT|PLASMAPROC80DAT|QTFGITPROC80DAT|SLVPROC80DAT|URNPROC80DAT|LIQENDAT|LIQSTDAT|SOLENDAT|SOLSTDAT|MBDATNR|MBDATNR2|RECDAT2|BatchRDate)"
+  # ── Generic date-suffix catch-alls ────────────────────────────────────────
+  - "(?:_?DAT\\d*$|_DT$|DATE\\d*$|_date$)"
+  - "^TST_DAT\\d+$"
+  - "^TST_ENDAT\\d+$"
+  - "DATND\\d*$"
+
+# ──────────────────────────────────────────────────────────────────────────
+# ID FIELDS (HMAC-SHA256 pseudonymized with domain-separated labels)
+# ──────────────────────────────────────────────────────────────────────────
+# Output format: ``<LABEL>_<hmac12hex>``. The label is used TWICE:
+#   1. As the HMAC domain separator: ``HMAC-SHA256(key, f"{label}:{value}")``.
+#      Same raw value under different labels → different pseudonyms
+#      (prevents cross-category correlation attacks — RFC 5869 §3.2 /
+#      HKDF info-param rationale).
+#   2. As the visible output prefix, so an IRB reviewer reading the audit
+#      can distinguish ``FAM_`` (family) from ``LAB_`` (lab accession)
+#      from ``SUBJ_`` (subject) at a glance instead of seeing every ID
+#      flattened under one prefix.
+#
+# First-match wins — list specific patterns BEFORE generic ones so
+# ``^SUBJID$`` with label SUBJ binds before a fallback
+# ``(?:patient|subject|participant)[-_]?id`` catch-all.
+#
+# Label convention: 3–5 uppercase chars, ASCII only. Keep stable across
+# studies so agent tools can canonicalize cross-study joins on the prefix.
+id_fields:
+  # ── Subject IDs ───────────────────────────────────────────────────────────
+  - {pattern: "^SUBJID$", label: "SUBJ"}
+  - {pattern: "^NC_SUBJID$", label: "SUBJ"}
+  - {pattern: "(?:patient|subject|participant)[-_]?(?:id|num|no)", label: "SUBJ"}
+  # ── Family / household IDs ────────────────────────────────────────────────
+  - {pattern: "^FID$", label: "FAM"}
+  - {pattern: "^FID\\d+$", label: "FAM"}
+  - {pattern: "^(?:[A-Z]{1,4}[-_])?FID\\d*$", label: "FAM"}
+  - {pattern: "(?:family|household)[-_]?(?:id|num|no)", label: "FAM"}
+  # ── Facility / site / clinic IDs ──────────────────────────────────────────
+  - {pattern: "^PHCID$", label: "FAC"}
+  - {pattern: "^ICTC$", label: "FAC"}
+  - {pattern: "(?:facility|center|site|clinic|hospital)[-_]?(?:id|code|num|no)", label: "FAC"}
+  # ── Co-enrollment cross-reference ────────────────────────────────────────
+  - {pattern: "COENRL(?:ID)?\\d*$", label: "CRL"}
+  # ── Case-tracking IDs ────────────────────────────────────────────────────
+  - {pattern: "^CSID$", label: "CASE"}
+  # ── ID-change tracking (link-to-subject-identity fields) ─────────────────
+  - {pattern: "[-_]IDNA$", label: "IDCH"}
+  - {pattern: "[-_]IDCHG(?:NA)?$", label: "IDCH"}
+  # ── TB incidence cross-reference ─────────────────────────────────────────
+  - {pattern: "TBINCID", label: "TBIN"}
+  # ── Medication cross-reference IDs ───────────────────────────────────────
+  - {pattern: "(?:ARTIDN|DIAIDN|OCMIDN|TBPROIDN)", label: "MED"}
+  # ── Lab reference / specimen IDs ─────────────────────────────────────────
+  - {pattern: "(?:LABID|REFID|MBREFID|CX_LABID|XLABID|MBLABID)", label: "LAB"}
+  # ── Study / protocol cross-reference (co-enrollment metadata) ────────────
+  - {pattern: "COE_(?:PROTOCOL|SPONSOR)\\d*$", label: "STDY"}
+  # ── Specimen / sample / accession IDs ────────────────────────────────────
+  - {pattern: "(?:specimen|sample|accession)[-_]?(?:id|num|no|number)", label: "SPEC"}
+
+# ──────────────────────────────────────────────────────────────────────────
+# BIRTHDATE (posture-dependent)
+# ──────────────────────────────────────────────────────────────────────────
+# safe_harbor     → field dropped entirely from every row.
+# limited_dataset → field treated as a normal date (jittered with same offset).
+birthdate_field: "(?:IS_BIRTHDAT|IC_BIRTHDAT|HHC_BRTHDAT|HC_BRTHDAT|birth|dob|bday|brthdat)"
+
+# ──────────────────────────────────────────────────────────────────────────
+# DROP FIELDS (entire column removed from every row)
+# ──────────────────────────────────────────────────────────────────────────
+# Archive catalog: 93 rules across 14 categories. HIPAA §164.514(b)(2)(i)(A-R)
+# coverage + DPDPA §2(t) identifier categories + India-government-ID catalog.
+# Each rule drops fields where the column NAME matches; values are removed
+# from every row. Former FREE_TEXT_PHI whole-hash rules converted to DROP
+# because whole-value hashing of narrative strings did not remove
+# embedded PHI tokens — it only obscured the containing string.
+drop_fields:
+  # ── Duplicate/redundant subject IDs (Excel artefacts) ────────────────────
+  - "^SUBJID\\d+(?:_\\d+)?$"
+  - "^SUBJID_\\d+$"
+  # ── Site IDs / treatment-unit IDs ─────────────────────────────────────────
+  - "[-_]?TUID(?:CHG)?$"
+  - "[-_]?DMCID(?:CHG)?$"
+  # ── Form / CRF tracking IDs (system artefacts) ───────────────────────────
+  - "^Form[-_]?ID"
+  - "^Form_Id$"
+  - "^Form[-_]?Id(?:Mthd)?$"
+  - "^FormIDMthd$"
+  - "^Remote[-_]?(?:Bid|Uid)(?:_PRESENT)?$"
+  - "^Remote[-_]?(?:Bid|Uid)$"
+  - "^HHC\\d+$"
+  # ── Batch/scan metadata (no clinical value) ──────────────────────────────
+  - "^Batch"
+  - "^Verify_Wks$"
+  - "^Suspense_File$"
+  - "^Remote_(?:Fax|Phn|User)$"
+  - "^Route_To$"
+  - "^OrigPgSeq$"
+  - "^Orig_File$"
+  # ── Person initials (staff identifiers) ──────────────────────────────────
+  - "[-_]INIT(?:IAL)?S?(?:[-_]?\\d+)?$"
+  - "^(?:[A-Z]{1,4}[-_])?INIT(?:IAL)?S?(?:[-_]?\\d+)?$"
+  - "^TC_INITIAL(?:[-_]?\\d+)?$"
+  # ── Signatures / sign IDs (staff) ────────────────────────────────────────
+  - "[-_]SIGN(?:[-_]?\\d+)?$"
+  - "^(?:[A-Z]{1,4}[-_])?SIGN(?:[-_]?\\d+)?$"
+  - "COLLSIGN(?:[-_]?\\d+)?$"
+  - "(?:COLLSIG|LINSIG|LOUTSIG|REPOSINSIG)(?:[-_]?\\d+)?$"
+  - "^SC_.*PROCSIG$"
+  # ── Staff / personnel identifiers ────────────────────────────────────────
+  - "(?:created|modified|updated|entered|verified)[-_]?by"
+  - "(?:data[-_]?entry|crf)[-_]?(?:clerk|operator|tech|user)"
+  - "(?:monitor|auditor|reviewer)[-_]?(?:name|id|initials?)"
+  - "(?:site[-_]?)?(?:coordinator|investigator|pi)[-_]?(?:name|id|init)"
+  - "(?:interviewer|assessor|examiner)[-_]?(?:name|id|initials?)"
+  - "(?:nurse|physician|clinician|doctor)[-_]?(?:name|id|initials?)"
+  - "staff[-_]?(?:name|id|initials?)"
+  # ── Lab technician / collector identifiers ───────────────────────────────
+  - "(?:lab|laboratory)[-_]?(?:tech|technician)[-_]?(?:name|id|initials?)"
+  - "(?:LINTTECH|LOUTTECH|REPOSINTECH)"
+  - "COLLTID"
+  - "COLLTNUM"
+  - "COLLTMG"
+  - "SC_.*PROCID"
+  - "^SC_PROCID$"
+  # ── Lab accession / tracking numbers ─────────────────────────────────────
+  - "LBACCID$"
+  - "SC_.*LBACCID"
+  - "^ST_LACCNUM$"
+  - "^ST_LOUTTRAC$"
+  - "^chestxno$"
+  # ── SSN / MRN (HIPAA #7/#8) ──────────────────────────────────────────────
+  - "(?:ssn|social_?security)"
+  - "(?:mrn|medical_?record)"
+  # ── Person names (all variants) ──────────────────────────────────────────
+  - "(?:patient|subject|participant)[-_]?name"
+  - "(?:first|last|middle|given|family|sur)[-_]?name"
+  - "^First_Name$"
+  - "(?:father|mother|spouse|guardian|next[-_]?of[-_]?kin|caregiver|relative)[-_]?name"
+  - "(?:emergency|contact)[-_]?(?:person|name)"
+  - "^SC_NAME$"
+  - "CLINNAME"
+  - "[-_]NAME$"
+  # ── DOB / death dates (HIPAA §164.514(b)(2)(i)(C)) ───────────────────────
+  # (birthdate is in birthdate_field; this catches death dates + any remaining)
+  - "(?:DTH|DEATH)[-_]?(?:DAT|DATE)"
+  - "^(?:FA_DTHDAT|FB_DTHDAT|AE_DEATHDAT)$"
+  # ── Place of death / death cause source ──────────────────────────────────
+  - "(?:PLACE_?OF_?DEATH|DEATH_?PLACE)"
+  - "(?:DTHSRC|DTHSRCSP|DTHCAUSSP)$"
+  # ── System timestamps (no clinical value) ────────────────────────────────
+  - "^time_?stamp$"
+  - "(?:created|modified|updated|entered|verified)[-_]?(?:at|on|date|time|ts|timestamp)"
+  - "(?:system|server|db|database)[-_]?(?:time|timestamp|date|ts)"
+  - "(?:upload|import|export)[-_]?(?:time|timestamp|date|ts)"
+  - "(?:last[-_]?)?(?:login|access|sync)[-_]?(?:time|timestamp|date|ts)"
+  # ── Internal CRF workflow tracking ───────────────────────────────────────
+  - "(?:audit[-_]?)?trail"
+  - "^(?:row|record)[-_]?(?:id|num|number)$"
+  - "(?:session|transaction)[-_]?id"
+  - "(?:query|discrepancy)[-_]?(?:status|note|comment)"
+  - "(?:lock|freeze|sign[-_]?off)[-_]?(?:status|date|by)"
+  - "(?:sdv|source[-_]?doc)[-_]?(?:status|date|by)"
+  # ── Specimen tracking timestamps ─────────────────────────────────────────
+  - "(?:LINTIM|LOUTTIM|REPOSINTIM|COLLTIM)$"
+  - "^ST_RESPOSINDAT$"
+  # ── Religion / caste / tribe / community / language (sensitive) ──────────
+  - "RELIG"
+  - "(?:CASTE|TRIBE|COMMUNITY)"
+  - "(?:^IC_LANGUAGE$|LANGUAGESP$|MOTHER_?TONGUE)"
+  - "(?:^[A-Z]{1,4}[-_]LANGUAGE$)"
+  # ── Education level (HIPAA+DPDPA identifier when combined) ──────────────
+  - "(?:SCHOOLINF)$"
+  - "(?:SCHOOL|EDUC|LITERACY)"
+  - "^EE_SCLDK$"
+  # ── Job / occupation ─────────────────────────────────────────────────────
+  - "(?:IC_JOB$|IC_JOBSP$)"
+  - "(?:OCCUP|EMPLOY|PROFESSION|DESIGNATION)"
+  # ── Income / wages ───────────────────────────────────────────────────────
+  - "(?:IC_HHINCOME)"
+  - "(?:INCOME|SALARY|EARNING)"
+  - "^EE_WAGE$"
+  # ── Labour hours ─────────────────────────────────────────────────────────
+  - "(?:IC_HOMEHOUR|IC_HOMETIME|IC_HOMETIME_MONTHS)"
+  - "(?:LABOUR_?HOUR|LABOR_?HOUR|HRS_?WORK)"
+  # ── Facility / clinic NAMES (location-identifying) ───────────────────────
+  - "(?:IC_CLINIC$|IC_CLINICSP$|IC_HIVLOC$|IC_HIVLOCSP$)"
+  - "(?:RE_CLINIC$|RE_CLINICNAME$|RE_CLINICOTH$|RE_DOTSCLINIC$)"
+  - "(?:TC_CENTER$|TC_CENTERSP$)"
+  - "(?:CC_HIVLOC$|CC_HIVLOCSP$|HC_HIVLOC$|HC_HIVLOCSP$)"
+  # ── Geography (HIPAA §164.514(b)(2)(i)(B) — sub-state identifying) ───────
+  # NOTE: district-level aggregate fields (computed) retained in trio_bundle;
+  # raw village / hamlet / block / tehsil / pincode / GPS always dropped.
+  - "^IS_MUNIC$"
+  - "(?:VILLAGE|CITY|TOWN|DISTRICT|TALUK|BLOCK|WARD|LOCALITY|PANCHAYAT|MANDAL|TEHSIL|STATE|PROVINCE|REGION|AREA|ZONE)"
+  - "(?:ADDR|ADDRESS|RESIDENCE)"
+  - "^EE_LOC$"
+  - "(?:TBDIAGLOC|TB_?DIAG_?LOC)"
+  - "(?:OTDOTSLOC|DOTSLOC)"
+  - "^TC_OTDOTSLOC$"
+  - "(?:pin_?code|postal|zip)"
+  - "(?:zip_?code|postal)"
+  - "(?:gps|geoloc|latitude|longitude|lat[-_]?long|coordinates)"
+  # ── Phone / email / IP / fax / URL ───────────────────────────────────────
+  - "(?:mobile|phone)[-_]?(?:no|num|number)?$"
+  - "contact[-_](?:no|num|number)"
+  - "(?:phone|fax|telephone)[-_]?(?:no|num|number)?"
+  - "(?:fax)[-_]?(?:no|num|number)?"
+  - "^EE_PHONE$"
+  - "(?:e[-_]?mail|email[-_]?addr)"
+  - "(?:ip[-_]?addr|ip[-_]?address)"
+  - "(?:ip[-_]?address|user[-_]?agent|browser)"
+  - "(?:web[-_]?url|website|homepage|(?<![A-Za-z])uri(?![A-Za-z]))"
+  # ── India government IDs (Aadhaar Act + DPDPA + SPDI) ───────────────────
+  - "(?:aadhaar|aadhar|uid_no)"
+  - "(?:^|[-_])pan(?:[-_]?(?:no|num|number|card))?(?:$|[-_])"
+  - "(?:voter|epic|election)[-_]?(?:id|no|num|card)?"
+  - "(?:passport)[-_]?(?:no|num|number)?"
+  - "(?:ration[-_]?card)[-_]?(?:no|num|number)?"
+  # ── HIPAA catch-alls (#4/#6/#7/#8/#9/#10/#11/#14/#15) ────────────────────
+  - "(?:health[-_]?plan|beneficiary|insurance|policy)[-_]?(?:id|no|num|number)"
+  - "(?:account|bank[-_]?acct)[-_]?(?:no|num|number)"
+  - "(?:certificate|license|licence|registration)[-_]?(?:no|num|number)"
+  - "(?:vehicle|vin|chassis|engine|serial)[-_]?(?:id|no|num|number)"
+  - "(?:vehicle|device|serial)[-_]?(?:id|no|num|number)"
+  - "(?:device|implant|pacemaker)[-_]?(?:id|no|num|serial)"
+  - "(?:biometric|fingerprint|voiceprint|retina|iris[-_]?scan|face[-_]?id)"
+  - "(?:photo|photograph|face[-_]?image|mugshot)[-_]?(?:id|file|path|url)?"
+  - "(?:photo|image|face)[-_]?(?:id|file|path|url)"
+  - "(?:tracking[-_]?id|cookie[-_]?id|browser[-_]?id|ad[-_]?id)"
+  - "(?:username|login[-_]?id|user[-_]?id|screen[-_]?name)"
+  - "(?:cctv|surveillance|camera[-_]?id|footage)"
+  - "(?:medical[-_]?image|xray[-_]?file|ct[-_]?scan[-_]?file|mri[-_]?file|dicom)"
+  - "(?:unique[-_]?id|uid|identification[-_]?number)"
+  # ── Staff-adjacent asha/anm/anganwadi worker identifiers ─────────────────
+  - "(?:asha|anm|anganwadi)[-_]?(?:name|id|worker)"
+  # ── Children's birth years (person-linked DOB) ───────────────────────────
+  - "(?:CHILDY|CHILD_?YEAR|CHILD_?BIRTH)"
+  # ── Narrative / free-text / specify / comment fields ─────────────────────
+  # Whole-field DROP rather than whole-value HMAC: hashing a free-text
+  # value that contains an Aadhaar or a phone number does not remove the
+  # PHI, it just obscures the containing string. Dropping the field is
+  # the honest-safe default until a narrative NER sweep lands.
+  - "(?:WITHDRAWEXPLAIN|WITHDRAW_?EXPLAIN)"
+  - "^FA_FUCOMPADCSP$"
+  - "^CC_NOPREGTESTSP$"
+  - "^CC_CNCTNDSP$"
+  - "(?:^ST_COMMENT$|^sc_COMMENT$)"
+  - "(?:COMMENT|REMARK|NOTE)$"
+
+# ──────────────────────────────────────────────────────────────────────────
+# CAP FIELDS (numeric values above threshold replaced with a label)
+# ──────────────────────────────────────────────────────────────────────────
+# Default: use top-level age_cap for ages. Specific fields override.
+# Per HIPAA §164.514(b)(2)(i)(C) — ages > 89 aggregated to "90+".
+cap_fields:
+  - pattern: "^(?:IS_AGE|IC_AGE|HHC_AGE|HC_AGE|AE_AGE|CC_AGE|NC_AGE)$"
+    # Uses top-level age_cap (threshold=89, label="90+")
+  - pattern: "^(?:[A-Z]{1,4}[-_])?AGE$"
+  - pattern: "^Age$"
+
+# ──────────────────────────────────────────────────────────────────────────
+# GENERALIZE FIELDS (value-level categorical mapping)
+# ──────────────────────────────────────────────────────────────────────────
+generalize_fields:
+  - pattern: "(?:MARISTAT|MARIT|MARITAL)"
+    mapping: "marital"
+  - pattern: "(?:HOSP_?TYPE|HOSPITAL_?TYPE|FACIL_?TYPE|SITE_?TYPE|CENTER_?TYPE|CLINIC_?TYPE)"
+    mapping: "facility"
+  - pattern: "^(?:Govthosp|Munhosp|MedColl|Medshop|Nonallo|CareOther)$"
+    mapping: "facility"
+
+# Value-to-value mappings invoked by generalize_fields
+generalization_maps:
+  marital:
+    # Indo-VAP exact values (compound labels)
+    "married/living together": "Married"
+    "never married": "Single"
+    "widowed": "Other"
+    "separated/divorced": "Other"
+    "not applicable (child)": "Other"
+    # Standard single-word labels
+    "married": "Married"
+    "single": "Single"
+    "unmarried": "Single"
+    "divorced": "Other"
+    "separated": "Other"
+    "widow": "Other"
+    "widower": "Other"
+    "living together": "Married"
+    "cohabiting": "Married"
+  facility:
+    # Indo-VAP coded values
+    "govthosp": "Government"
+    "phc": "Government"
+    "medcoll": "Government"
+    "munhosp": "Government"
+    "private": "Private"
+    "medshop": "Private"
+    "nonallo": "Other"
+    "careother": "Other"
+    # Standard text labels
+    "government": "Government"
+    "govt": "Government"
+    "public": "Government"
+    "chc": "Government"
+    "district hospital": "Government"
+    "sub centre": "Government"
+    "block phc": "Government"
+    "ngo": "Other"
+    "other": "Other"
+
+# ──────────────────────────────────────────────────────────────────────────
+# SUPPRESS_SMALL_CELL FIELDS (numeric clamped to threshold)
+# ──────────────────────────────────────────────────────────────────────────
+# Cap extreme household / contact counts to top-level small_cell_threshold
+# (default 5) to prevent k-anon re-identification via unique household
+# demographics. Values ≥ threshold collapse to threshold.
+suppress_small_cell_fields:
+  - "^IS_CONTACTS$"
+  - "^IS_CONTACTS_(?:TOTAL|6YRS)$"
+  - "(?:contacts?_?(?:total|count|6yrs)?$)"
+
+# ──────────────────────────────────────────────────────────────────────────
+# FILE EXCLUSIONS — DOCUMENTATION ONLY (not consumed by this scrubber)
+# ──────────────────────────────────────────────────────────────────────────
+# These patterns are NOT read by load_scrub_config and have no runtime
+# effect. Extraction-layer junk filtering is enforced by DEFAULT_JUNK_FILENAMES
+# in scripts/extraction/io/file_discovery.py. This section documents the
+# intended exclusion intent for operator reference only.
+file_exclusions:
+  - "~\\$"                          # Excel lock files
+  - "\\.DS_Store$"                  # macOS junk
+  - "Thumbs\\.db$"                  # Windows junk
+  - "^\\."                          # hidden files
+  - "__MACOSX"                      # macOS archive junk
+  - "\\.bak$"                       # backup files
+  - "\\.tmp$"                       # temp files
+  - "staff|personnel|employee"      # staff data files
+  - "contact.*list|phone.*list"     # contact lists
+  - "password|credential"           # credential files
+  - "consent.*form.*signed"         # signed consent images

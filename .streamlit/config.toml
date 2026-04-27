@@ -1,0 +1,13 @@
+[theme]
+# Base dark so Streamlit-native widgets (popover bodies, selects) pick up
+# dark defaults; the app's theme.css still paints the main canvas/cards.
+base = "dark"
+primaryColor = "#C96442"
+backgroundColor = "#262624"
+secondaryBackgroundColor = "#1F1F1E"
+textColor = "#E8E4DE"
+font = "sans serif"
+
+[server]
+headless = true
+enableStaticServing = true

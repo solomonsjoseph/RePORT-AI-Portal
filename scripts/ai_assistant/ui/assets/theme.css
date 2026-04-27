@@ -1,0 +1,4037 @@
+/* =========================================================================
+   RePORT AI Portal Chat UI — theme.css
+   Dark-only. All tokens in :root; never hard-code hex outside this file.
+   ========================================================================= */
+
+/* ---------- Fonts (currently Google-hosted for all three families)
+   Inter and Source Serif 4 WOFF2 files exist in assets/fonts/ but @font-face
+   declarations and Streamlit static-serving config are not yet wired up.
+   JetBrains Mono WOFF2 files are not yet downloaded (Apache-2.0; get from
+   github.com/JetBrains/JetBrainsMono/releases, weights 400/500/600).
+   To self-host all three: enable static serving, add @font-face blocks, then
+   remove JetBrains Mono from the @import below. ---------- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..700,0..1,-50..200&display=block');
+
+/* Material Symbols base class — required for ligatures to resolve */
+.material-symbols-rounded {
+    font-family: 'Material Symbols Rounded';
+    font-weight: 400;
+    font-style: normal;
+    font-size: 18px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'liga';
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    user-select: none;
+}
+
+/* ---------- Design tokens ---------- */
+:root {
+    --rpln-bg:              #121212;
+    --rpln-sidebar-bg:      #1a1a1a;
+    --rpln-surface:         #1e1e1d;
+    --rpln-surface-2:       #242423;
+    --rpln-user-pill:       #2e2e2c;
+    --rpln-accent-orange:   #C96442;
+    --rpln-accent-dim:      #b35e1e;
+    --rpln-accent:          var(--rpln-accent-orange); /* semantic alias; use this, not --rpln-accent-orange */
+    --rpln-text:            #F4EFE8;
+    --rpln-text-muted:      rgba(244, 239, 232, 0.62);
+    --rpln-text-faint:      rgba(244, 239, 232, 0.38);
+    --rpln-hairline:        rgba(244, 239, 232, 0.08);
+    --rpln-hairline-strong: rgba(244, 239, 232, 0.14);
+    --rpln-code-salmon:     #F4A79A;
+    --rpln-good:            #7FB77E;
+    --rpln-bad:             #D97878;
+
+    --rpln-font-ui:         'Inter', system-ui, -apple-system, sans-serif;
+    --rpln-font-prose:      'Source Serif 4', Georgia, serif;
+    --rpln-font-mono:       'JetBrains Mono', ui-monospace, Menlo, monospace;
+
+    --rpln-col-width:       720px;
+    --rpln-sidebar-w:       272px;
+    --rpln-radius-sm:       8px;
+    --rpln-radius-md:       14px;
+    --rpln-radius-lg:       18px;
+    --rpln-radius-pill:     999px;
+
+    --rpln-shadow-sm:       0 1px 2px rgba(0,0,0,0.25);
+    --rpln-shadow-md:       0 6px 24px rgba(0,0,0,0.35);
+
+    /* Spacing scale — 4px base; half-steps for tight UI (7px, 42px stay raw) */
+    --rpln-space-0-5:       2px;
+    --rpln-space-1:         4px;
+    --rpln-space-1-5:       6px;
+    --rpln-space-2:         8px;
+    --rpln-space-3:         12px;
+    --rpln-space-4:         16px;
+    --rpln-space-5:         20px;
+    --rpln-space-6:         24px;
+    --rpln-space-7:         28px;
+    --rpln-space-8:         32px;
+    --rpln-space-9:         40px;
+    --rpln-space-10:        48px;
+
+    /* Type scale — pixel-tuned values (13px, 15px, 17px) intentionally stay raw */
+    --rpln-text-2xs:        10px;
+    --rpln-text-xs:         11px;
+    --rpln-text-sm:         12px;
+    --rpln-text-base:       14px;
+    --rpln-text-md:         16px;
+    --rpln-text-lg:         18px;
+    --rpln-text-xl:         20px;
+    --rpln-text-2xl:        24px;
+    --rpln-text-3xl:        28px;
+    --rpln-text-4xl:        36px;
+    --rpln-text-5xl:        44px;
+
+    /* Line-height scale */
+    --rpln-leading-tight:   1.2;
+    --rpln-leading-snug:    1.35;
+    --rpln-leading-body:    1.6;
+    --rpln-leading-loose:   1.7;
+
+    /* Radius additions (xs for focus ring; bubble for user message pill) */
+    --rpln-radius-xs:       4px;
+    --rpln-radius-bubble:   20px 20px 6px 20px;
+
+    /* Z-index scale */
+    --rpln-z-base:          1;
+    --rpln-z-raise:         10;
+    --rpln-z-topbar:        15;
+    --rpln-z-overlay:       50;
+    --rpln-z-menu:          1000;
+    --rpln-z-popover:       1010;
+
+    /* Easing + transition durations — 120ms / 160ms stay raw (micro-tuned Streamlit overrides) */
+    --rpln-ease-out:        cubic-bezier(0.2, 0.8, 0.2, 1);
+    --rpln-dur-fast:        150ms;
+    --rpln-dur-base:        200ms;
+    --rpln-dur-slow:        280ms;
+}
+
+/* ---------- Base shell ---------- */
+html, body, [data-testid="stAppViewContainer"] {
+    background: var(--rpln-bg) !important;
+    color: var(--rpln-text);
+    font-family: var(--rpln-font-ui);
+}
+html, [data-testid="stMain"], [data-testid="stSidebar"] {
+    scrollbar-gutter: stable;
+}
+
+*:focus-visible {
+    outline: 2px solid var(--rpln-accent-orange);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+::selection {
+    background: rgba(201, 100, 66, 0.35);
+    color: var(--rpln-text);
+}
+
+/* Hide Streamlit chrome */
+#MainMenu, footer, header[data-testid="stHeader"] { display: none !important; }
+[data-testid="stDecoration"] { display: none !important; }
+[data-testid="stToolbar"] { display: none !important; }
+
+/* Smooth sidebar transitions (never `transition: all`) */
+[data-testid="stMain"],
+[data-testid="stAppViewContainer"] {
+    transition: margin-left 0.3s ease,
+                margin-right 0.3s ease,
+                width 0.3s ease !important;
+}
+
+/* ── Sidebar-collapse re-center: when the sidebar collapses, Streamlit drops
+   its negative margin on stMain but the inner block-container sometimes
+   retains stale width/padding from the expanded layout, leaving the thread
+   + composer visually right-aligned. Force main + block-container back to
+   full width + centered padding whenever aria-expanded="false" so the
+   720px track re-centres in the viewport. Paired with bridge.js fallback
+   below (Safari <15.4 lacks `:has()`). */
+body:has([data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stSidebar"],
+body[data-rpln-sidebar-collapsed="true"] [data-testid="stSidebar"] {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  flex-basis: 0 !important;
+  border-right: 0 !important;
+  overflow: visible !important;
+}
+body:has([data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stMain"],
+body[data-rpln-sidebar-collapsed="true"] [data-testid="stMain"] {
+    margin-left: 0 !important;
+    width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 1 100% !important;
+}
+body:has([data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stMainBlockContainer"],
+body[data-rpln-sidebar-collapsed="true"] [data-testid="stMainBlockContainer"] {
+    margin-left: auto !important;
+    margin-right: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+body:has([data-testid="stSidebar"][aria-expanded="false"]) .rpln-column,
+body[data-rpln-sidebar-collapsed="true"] .rpln-column,
+body:has([data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stChatMessage"],
+body[data-rpln-sidebar-collapsed="true"] [data-testid="stChatMessage"],
+body:has([data-testid="stSidebar"][aria-expanded="false"]) [class*="st-key-rpln_composer_shell"],
+body[data-rpln-sidebar-collapsed="true"] [class*="st-key-rpln_composer_shell"] {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* ---------- Main column ---------- */
+[data-testid="stMain"] {
+    background: var(--rpln-bg);
+}
+[data-testid="stMain"] .block-container {
+    max-width: 100% !important;
+    padding: 0 !important;
+}
+[data-testid="stMain"]:has([class*="st-key-rpln_thread_shell"]) {
+  height: 100vh !important;
+  overflow: hidden !important;
+}
+[data-testid="stMain"]:has([class*="st-key-rpln_thread_shell"]) .block-container {
+  height: 100vh !important;
+  display: block !important;
+  min-height: 100vh !important;
+  overflow: hidden !important;
+  padding-bottom: 0 !important;
+}
+[class*="st-key-rpln_thread_shell"] {
+  height: calc(100vh - 64px) !important;
+  min-height: 0 !important;
+  max-height: calc(100vh - 64px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 0 clamp(24px, 10vw, 80px) 220px;
+  box-sizing: border-box !important;
+  scroll-padding-bottom: 220px;
+  scrollbar-gutter: stable;
+}
+/* Intentionally NOT forcing min-height:100% on the inner block — that
+   stretches a short conversation to the full scroll viewport and leaves
+   a large empty band between the last message and the composer. Let the
+   thread block size to its content; thread_shell stays scrollable via
+   its own overflow-y:auto. */
+
+/* The chat column is always a 720px centered track */
+.rpln-column {
+    max-width: var(--rpln-col-width);
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 24px;
+    box-sizing: border-box;
+}
+
+/* ---------- Top bar ---------- */
+.rpln-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 44px;
+    padding: 10px 20px 10px;
+    background: linear-gradient(to bottom, var(--rpln-bg) 72%, transparent);
+}
+.rpln-topbar .rpln-mobile-menu-btn {
+    position: relative;
+    flex: 0 0 auto;
+}
+.rpln-topbar-btn {
+    width: 37px;
+    height: 35px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--rpln-hairline);
+    border-radius: 12px;
+    background: rgba(30, 30, 29, 0.66);
+    color: var(--rpln-text);
+    box-shadow: none;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+.rpln-topbar-btn:hover {
+    background: rgba(244, 239, 232, 0.05);
+    border-color: var(--rpln-hairline-strong);
+}
+.rpln-topbar-btn .material-symbols-rounded {
+    font-size: 18px;
+}
+
+/* Topbar controls — title dropdown fills the header track; Share is a
+   separate outlined control on the right. */
+[class*="st-key-rpln_topbar_shell"] {
+  position: absolute !important;
+  top: 8px !important;
+  left: 16px !important;
+  z-index: 16 !important;
+}
+
+[class*="st-key-rpln_topbar_shell"] .rpln-topbar {
+  position: static !important;
+  width: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  transform: none !important;
+  z-index: auto !important;
+  pointer-events: none;
+}
+
+[class*="st-key-rpln_topbar_shell"] .rpln-mobile-menu-btn {
+  pointer-events: auto;
+}
+
+[class*="st-key-rpln_topbar_title_menu"] {
+  position: absolute !important;
+  top: 8px !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  width: auto !important;
+  max-width: calc(100% - 188px) !important;
+  z-index: 16 !important;
+}
+[class*="st-key-rpln_topbar_title_menu"] .rpln-topbar-title-overlay {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  right: 44px;
+  transform: translateY(-50%);
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--rpln-text);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  text-align: left;
+}
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stElementContainer"]:has(.rpln-topbar-title-overlay) {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 40px !important;
+  margin: 0 !important;
+  z-index: 2 !important;
+}
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stMarkdown"]:has(.rpln-topbar-title-overlay),
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stMarkdownContainer"]:has(.rpln-topbar-title-overlay) {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .stDownloadButton > button p,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .stDownloadButton > button div,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel) .stButton > button p,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel) .stButton > button div {
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+}
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stPopover"],
+[class*="st-key-rpln_topbar_title_menu"] > div {
+  width: auto !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stPopoverButton"] {
+  width: auto !important;
+  min-width: 240px !important;
+  max-width: min(680px, calc(100vw - 188px)) !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  justify-content: flex-start !important;
+  padding: 0 42px 0 16px !important;
+  border-radius: 16px !important;
+  border: 1px solid var(--rpln-hairline) !important;
+  background: rgba(30, 30, 29, 0.96) !important;
+  color: var(--rpln-text) !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+  text-align: left !important;
+  box-shadow: none !important;
+  position: relative !important;
+}
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stPopoverButton"]::after {
+  content: "expand_more";
+  font-family: "Material Symbols Rounded";
+  font-size: 20px;
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding-left: 12px;
+  border-left: 1px solid var(--rpln-hairline);
+  color: var(--rpln-text-muted);
+  line-height: 1;
+}
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stPopoverButton"] > div,
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stPopoverButton"] p {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: fit-content !important;
+  max-width: calc(100% - 46px) !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  line-height: 1.2 !important;
+  text-align: left !important;
+}
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stPopoverButton"] p,
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stPopoverButton"] [data-testid="stMarkdownContainer"] {
+  color: transparent !important;
+}
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stPopoverButton"] [data-testid="stMarkdownContainer"],
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stPopoverButton"] span {
+  width: fit-content !important;
+  max-width: 100% !important;
+}
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stPopoverButton"] [data-testid="stIconMaterial"],
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stPopoverButton"] svg {
+  display: none !important;
+}
+[class*="st-key-rpln_topbar_share"] {
+    position: absolute !important;
+  top: 8px !important;
+    right: 20px !important;
+    z-index: 16 !important;
+    width: auto !important;
+}
+[class*="st-key-rpln_topbar_share"] [data-testid="stPopover"],
+[class*="st-key-rpln_topbar_share"] > div {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+[class*="st-key-rpln_topbar_share"] [data-testid="stPopoverButton"] {
+  min-width: 72px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 14px !important;
+    border: 1px solid var(--rpln-hairline) !important;
+  border-radius: 14px !important;
+  background: rgba(30, 30, 29, 0.66) !important;
+    color: var(--rpln-text) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: none !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+    transition: background 0.15s ease, border-color 0.15s ease !important;
+}
+[class*="st-key-rpln_topbar_share"] [data-testid="stPopoverButton"]:hover:not(:disabled),
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stPopoverButton"]:hover:not(:disabled) {
+    background: rgba(244, 239, 232, 0.05) !important;
+    border-color: var(--rpln-hairline-strong) !important;
+}
+[class*="st-key-rpln_topbar_share"] [data-testid="stPopoverButton"]:disabled,
+[class*="st-key-rpln_topbar_share"] [data-testid="stPopoverButton"][disabled],
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stPopoverButton"]:disabled,
+[class*="st-key-rpln_topbar_title_menu"] [data-testid="stPopoverButton"][disabled] {
+    opacity: 0.45 !important;
+    cursor: not-allowed !important;
+}
+[class*="st-key-rpln_topbar_share"] [data-testid="stPopoverButton"] > div,
+[class*="st-key-rpln_topbar_share"] [data-testid="stPopoverButton"] p {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+}
+[class*="st-key-rpln_topbar_share"] [data-testid="stPopoverButton"] [data-testid="stIconMaterial"],
+[class*="st-key-rpln_topbar_share"] [data-testid="stPopoverButton"] svg {
+  display: none !important;
+}
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel),
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) {
+  width: 296px !important;
+  min-width: 296px !important;
+  background: var(--rpln-menu-bg, var(--rpln-sidebar-bg)) !important;
+  border: 1px solid var(--rpln-menu-border, var(--rpln-hairline)) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--rpln-shadow-md) !important;
+  padding: 10px !important;
+}
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel) [data-testid="stTextInput"] input {
+  height: 40px !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--rpln-hairline) !important;
+  background: var(--rpln-surface) !important;
+  color: var(--rpln-text) !important;
+  font-size: 14px !important;
+}
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel) .stButton > button,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel) .stDownloadButton > button,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .stDownloadButton > button {
+  width: 100% !important;
+  min-height: 40px !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--rpln-hairline) !important;
+  background: transparent !important;
+  color: var(--rpln-text) !important;
+  text-align: left !important;
+  justify-content: flex-start !important;
+  box-shadow: none !important;
+}
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel) .stButton > button:hover,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel) .stDownloadButton > button:hover,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .stDownloadButton > button:hover {
+  background: rgba(244, 239, 232, 0.06) !important;
+  border-color: var(--rpln-hairline-strong) !important;
+}
+[class*="st-key-rpln_topbar_delete_"] button {
+  color: #e8625f !important;
+  border-color: rgba(232, 98, 95, 0.24) !important;
+}
+[class*="st-key-rpln_topbar_delete_"] button:hover {
+  background: rgba(232, 98, 95, 0.12) !important;
+  border-color: rgba(232, 98, 95, 0.34) !important;
+}
+.rpln-topbar-menu-head {
+  display: grid;
+  gap: 4px;
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+.rpln-topbar-menu-eyebrow,
+.rpln-topbar-menu-section {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rpln-text-faint);
+}
+.rpln-topbar-menu-title {
+  color: var(--rpln-text);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+}
+.rpln-topbar-menu-section {
+  margin: 10px 0 6px;
+}
+
+.rpln-topbar-share-lead {
+  margin: 4px 0 10px;
+  color: var(--rpln-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.rpln-topbar-share-note {
+  margin: -2px 0 10px;
+  color: var(--rpln-text-faint);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .stDownloadButton > button {
+  background: linear-gradient(180deg, rgba(244,239,232,0.06), rgba(244,239,232,0.02)) !important;
+  border-color: rgba(244, 239, 232, 0.12) !important;
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+}
+
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .stDownloadButton > button:hover {
+  background: linear-gradient(180deg, rgba(244,239,232,0.09), rgba(244,239,232,0.04)) !important;
+}
+
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .stDownloadButton > button p,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .stDownloadButton > button div,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel) .stButton > button p,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel) .stButton > button div {
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+}
+
+body:has([data-testid="stSidebar"][aria-expanded="false"]) [class*="st-key-rpln_topbar_title_menu"],
+body[data-rpln-sidebar-collapsed="true"] [class*="st-key-rpln_topbar_title_menu"] {
+  left: 50% !important;
+  right: auto !important;
+  width: auto !important;
+  max-width: calc(100% - 168px) !important;
+}
+
+body:has([data-testid="stSidebar"][aria-expanded="false"]) .rpln-profile-root,
+body[data-rpln-sidebar-collapsed="true"] .rpln-profile-root {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* ---------- Sidebar ---------- */
+[data-testid="stSidebar"] {
+    background: var(--rpln-sidebar-bg) !important;
+    border-right: 1px solid var(--rpln-hairline);
+}
+[data-testid="stSidebarHeader"] { display: none !important; }
+[data-testid="stSidebarContent"] {
+    padding-top: 0 !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+}
+/* Profile-dock anchoring is handled under body.rpln-redesign — see the
+   stSidebarContent flex column + stSidebarUserContent flex:1 pattern
+   later in this file. Keep this base rule minimal. */
+[data-testid="stSidebarUserContent"] {
+    position: relative !important;
+}
+
+/* Sidebar top rail (burger + search + new) */
+.rpln-side-head {
+    display: flex; align-items: center; gap: 6px;
+    padding: 12px 4px 6px;
+}
+.rpln-side-head .rpln-brand {
+    display: flex; align-items: center; gap: 10px;
+    flex: 1; min-width: 0;
+}
+.rpln-brand-mark {
+    width: 28px; height: 28px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--rpln-accent-orange), #8A3E26);
+    display: grid; place-items: center;
+    color: #1a1a1a;
+    font-family: var(--rpln-font-prose);
+    font-weight: 600;
+    font-size: 15px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.rpln-brand-name {
+    font-weight: 600; font-size: 14px;
+    letter-spacing: -0.01em;
+    color: var(--rpln-text);
+}
+.rpln-brand-sub {
+    font-size: 10px;
+    color: var(--rpln-text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 1px;
+}
+.rpln-icon-btn {
+    width: 32px; height: 32px;
+    border: 0; border-radius: 8px;
+    background: transparent;
+    color: var(--rpln-text-muted);
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.rpln-icon-btn:hover { background: rgba(244,239,232,0.06); color: var(--rpln-text); }
+.rpln-icon-btn .material-symbols-rounded { font-size: 18px; }
+
+/* "New chat" primary action in sidebar */
+.rpln-new-chat {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    margin: 6px 0 14px;
+    border-radius: 10px;
+    background: var(--rpln-surface);
+    border: 1px solid var(--rpln-hairline);
+    color: var(--rpln-text);
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+.rpln-new-chat:hover { background: var(--rpln-surface-2); border-color: var(--rpln-hairline-strong); }
+.rpln-new-chat .material-symbols-rounded {
+    font-size: 18px; color: var(--rpln-accent-orange);
+}
+
+.rpln-side-search {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--rpln-text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    margin-bottom: 6px;
+}
+.rpln-side-search:hover { background: rgba(244,239,232,0.04); color: var(--rpln-text); }
+.rpln-side-search .material-symbols-rounded { font-size: 16px; }
+
+/* Group header (Pinned / Recents) */
+.rpln-group {
+    margin-top: 10px;
+}
+.rpln-group-header {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--rpln-text-muted);
+    cursor: pointer;
+    user-select: none;
+    border-radius: 6px;
+    transition: color 0.15s;
+}
+.rpln-group-header:hover { color: var(--rpln-text); }
+.rpln-group-header .rpln-chev {
+    font-size: 11px;
+    opacity: 0.85;
+    transition: transform 0.15s ease;
+    display: inline-block;
+}
+.rpln-group[data-open="1"] .rpln-chev { transform: rotate(90deg); }
+.rpln-group[data-open="0"] .rpln-conv-list { display: none; }
+
+.rpln-conv-list {
+    display: flex; flex-direction: column;
+    gap: 1px;
+    padding: 2px 0 8px;
+}
+.rpln-conv-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    color: var(--rpln-text-muted);
+    font-size: 13.5px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    position: relative;
+}
+.rpln-conv-row:hover { background: rgba(244,239,232,0.05); color: var(--rpln-text); }
+.rpln-conv-row[data-rpln-active="1"] {
+    background: var(--rpln-user-pill);
+    color: var(--rpln-text);
+}
+.rpln-conv-row[data-rpln-active="1"]::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: var(--rpln-accent-orange);
+    border-radius: 2px;
+}
+.rpln-conv-row .rpln-conv-title {
+    flex: 1; min-width: 0;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.rpln-conv-row .rpln-kebab {
+    opacity: 0;
+    width: 22px; height: 22px;
+    display: grid; place-items: center;
+    border-radius: 5px;
+    color: var(--rpln-text-muted);
+    transition: opacity 0.15s, background 0.15s;
+}
+.rpln-conv-row:hover .rpln-kebab,
+.rpln-conv-row:focus-within .rpln-kebab { opacity: 1; }
+.rpln-conv-row .rpln-kebab:hover { background: rgba(244,239,232,0.08); color: var(--rpln-text); }
+.rpln-conv-row .rpln-kebab .material-symbols-rounded { font-size: 16px; }
+.rpln-conv-row .rpln-pin-mark {
+    color: var(--rpln-accent-orange);
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+/* v0-parity row affordances: close (×) + kebab (⋯) revealed on hover/active. */
+.rpln-conv-row .rpln-row-close,
+.rpln-conv-row .rpln-row-kebab {
+    opacity: 0;
+    width: 22px; height: 22px;
+    display: grid; place-items: center;
+    border-radius: 5px;
+    border: 0;
+    background: transparent;
+    color: var(--rpln-text-muted);
+    cursor: pointer;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+    padding: 0;
+}
+.rpln-conv-row:hover .rpln-row-close,
+.rpln-conv-row:focus-within .rpln-row-close,
+.rpln-conv-row[data-rpln-active="1"] .rpln-row-close,
+.rpln-conv-row:hover .rpln-row-kebab,
+.rpln-conv-row:focus-within .rpln-row-kebab,
+.rpln-conv-row[data-rpln-active="1"] .rpln-row-kebab,
+.rpln-row-menu-wrap.open .rpln-row-kebab { opacity: 1; }
+.rpln-conv-row .rpln-row-close:hover,
+.rpln-conv-row .rpln-row-kebab:hover {
+    background: rgba(244,239,232,0.08); color: var(--rpln-text);
+}
+.rpln-conv-row .rpln-row-close .material-symbols-rounded,
+.rpln-conv-row .rpln-row-kebab .material-symbols-rounded { font-size: 16px; }
+
+.rpln-row-menu-wrap {
+    position: relative;
+    display: inline-flex;
+}
+.rpln-row-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    min-width: 148px;
+    background: var(--rpln-menu-bg, var(--rpln-surface, #1e1e1d));
+    border: 1px solid var(--rpln-menu-border, var(--rpln-hairline, rgba(255,255,255,0.08)));
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    padding: 4px;
+    z-index: var(--rpln-z-menu);
+}
+.rpln-row-menu-wrap.open .rpln-row-menu { display: block; }
+.rpln-row-menu button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 10px;
+    border: 0;
+    background: transparent;
+    color: var(--rpln-text);
+    font-size: 13px;
+    text-align: left;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.rpln-row-menu button:hover { background: rgba(244,239,232,0.07); }
+.rpln-row-menu button .material-symbols-rounded {
+    font-size: 16px; color: var(--rpln-text-muted);
+}
+.rpln-row-menu button.rpln-row-menu-danger { color: #e8625f; }
+.rpln-row-menu button.rpln-row-menu-danger .material-symbols-rounded { color: #e8625f; }
+
+[data-testid="stSidebar"] .rpln-empty-recents {
+    color: var(--rpln-text-muted);
+    font-size: 12px;
+    padding: 8px 16px;
+    margin: 0;
+    font-style: italic;
+}
+
+/* Profile dock pinned to sidebar bottom */
+.rpln-profile-dock {
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0; right: 0;
+    padding: 12px 14px;
+    border-top: 1px solid var(--rpln-hairline);
+    background: var(--rpln-sidebar-bg);
+    display: flex; align-items: center; gap: 10px;
+}
+.rpln-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--rpln-accent-orange);
+    color: #1a1a1a;
+    display: grid; place-items: center;
+    font-weight: 600;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+.rpln-profile-text {
+    flex: 1; min-width: 0;
+}
+.rpln-profile-name {
+    font-size: 14px; font-weight: 500; color: var(--rpln-text);
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.rpln-profile-role {
+    font-size: 11px; color: var(--rpln-text-muted);
+}
+
+/* Collapsed-sidebar rail (Streamlit's stSidebarCollapsedControl) */
+[data-testid="stSidebarCollapsedControl"] {
+    padding: 12px !important;
+}
+.st-key-expand_sidebar button,
+[data-testid="stSidebarCollapsedControl"] button {
+    width: 37px !important;
+    height: 35px !important;
+    border: 1px solid var(--rpln-hairline) !important;
+    border-radius: var(--rpln-radius-md) !important;
+    background: transparent !important;
+    color: var(--rpln-text) !important;
+}
+.st-key-expand_sidebar button:hover,
+[data-testid="stSidebarCollapsedControl"] button:hover {
+    background: rgba(244,239,232,0.05) !important;
+}
+
+/* ---------- Welcome hero ---------- */
+.rpln-hero {
+    min-height: 56vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    padding-top: 40px;
+}
+.rpln-hero-divider {
+    width: 60%;
+    height: 1px;
+    background: var(--rpln-hairline);
+    margin: 0 auto 40px;
+}
+.rpln-hero h1 {
+    font-family: var(--rpln-font-prose);
+    font-size: 32px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    color: var(--rpln-text);
+    text-align: center;
+    margin: 0 0 28px;
+}
+.rpln-hero-sub {
+    text-align: center;
+    color: var(--rpln-text-muted);
+    font-size: 14px;
+    margin: -20px 0 32px;
+}
+
+/* Hero inner elements — matches tmp/Test 2/RePORTaLiN Chat.html structure.
+   Four-element stack: icon (logo slot) / title with decorative underline /
+   uppercase study-name eyebrow / lede paragraph. */
+.rpln-hero-icon {
+    font-size: 44px;
+    line-height: 1;
+    margin: 0 auto 18px;
+    text-align: center;
+    user-select: none;
+}
+.rpln-hero-title-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+.rpln-hero-title {
+    position: relative;
+    display: inline-block;
+    padding: 0 0 10px;
+    font-family: var(--rpln-font-prose);
+    font-size: 34px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--rpln-text);
+    margin: 0;
+    text-align: center;
+}
+.rpln-hero-title::after {
+    content: "";
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(
+        to right,
+        transparent,
+        var(--rpln-accent-orange) 20%,
+        var(--rpln-accent-orange) 80%,
+        transparent
+    );
+    opacity: 0.85;
+}
+.rpln-hero-tagline {
+    text-align: center;
+    font-size: 11px;
+    color: var(--rpln-text-muted);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin: 2px 0 24px;
+    font-weight: 500;
+    user-select: none;
+}
+.rpln-hero-desc {
+    max-width: 560px;
+    margin: 0 auto 28px;
+    font-size: 15.5px;
+    line-height: 1.65;
+    color: var(--rpln-text-muted);
+    font-family: var(--rpln-font-ui);
+    text-align: center;
+}
+
+/* ---------- Chat thread ---------- */
+.rpln-thread {
+    padding-bottom: 8px;
+}
+[class*="st-key-rpln_stream_anchor"] {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0;
+  box-sizing: border-box;
+}
+[class*="st-key-rpln_stream_anchor"] [data-testid="stChatMessage"] {
+  margin: 0 !important;
+  padding: 0 !important;
+  max-width: 100% !important;
+}
+[class*="st-key-rpln_stream_anchor"] [data-testid="stChatMessageContent"] {
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+/* Streamlit chat message wrappers → force them to our column */
+[data-testid="stChatMessage"] {
+    max-width: var(--rpln-col-width) !important;
+  margin: 0 0 12px 0 !important;
+    padding: 0 24px !important;
+    background: transparent !important;
+    border: 0 !important;
+}
+[data-testid="chatAvatarIcon-user"],
+[data-testid="chatAvatarIcon-assistant"] {
+    display: none !important;
+}
+
+/* User bubble row */
+.rpln-msg-user {
+    display: flex; justify-content: flex-end;
+    flex-direction: column;
+    align-items: flex-end;
+}
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) {
+    display: flex !important;
+    justify-content: flex-end !important;
+}
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"])
+    [data-testid="stChatMessageContent"] {
+    margin: 0 !important;
+    background: transparent !important;
+    padding: 0 !important;
+}
+.rpln-user-bubble {
+    background: var(--rpln-user-pill);
+    color: var(--rpln-text);
+    font-family: var(--rpln-font-ui);
+    font-size: 17px;
+    line-height: 1.55;
+    padding: 14px 18px;
+    border-radius: 18px;
+    max-width: 72%;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    border: 1px solid rgba(244,239,232,0.04);
+}
+.rpln-edited-badge {
+    font-size: 11px;
+    color: var(--rpln-text-muted);
+    padding: 2px 10px 4px 0;
+    text-align: right;
+}
+.rpln-user-rail {
+    opacity: 0;
+    display: flex; gap: 2px;
+    padding: 6px 2px 0;
+    align-self: flex-end;
+    transition: opacity 0.15s ease;
+}
+.rpln-msg-user:hover .rpln-user-rail,
+.rpln-user-rail:focus-within { opacity: 1; }
+.rpln-rail-btn {
+    width: 28px; height: 28px;
+    border: 0; border-radius: 7px;
+    background: transparent;
+    color: var(--rpln-text-muted);
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.rpln-rail-btn:hover { background: rgba(244,239,232,0.08); color: var(--rpln-text); }
+.rpln-rail-btn:disabled,
+.rpln-rail-btn[disabled] {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+.rpln-rail-btn .material-symbols-rounded { font-size: 15px; }
+
+/* Assistant row */
+.rpln-msg-assistant {
+    display: flex; flex-direction: column;
+    align-items: flex-start;
+}
+.rpln-assistant-prose {
+    font-family: var(--rpln-font-prose);
+    font-size: 18px;
+    line-height: 1.7;
+    color: var(--rpln-text);
+    max-width: 100%;
+}
+[data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] * {
+    font-family: inherit;
+}
+.rpln-assistant-prose h1,
+.rpln-assistant-prose h2,
+.rpln-assistant-prose h3 {
+    font-family: var(--rpln-font-ui);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 1.4em 0 0.5em;
+}
+.rpln-assistant-prose h1 { font-size: 22px; }
+.rpln-assistant-prose h2 { font-size: 18px; }
+.rpln-assistant-prose h3 { font-size: 16px; }
+.rpln-assistant-prose p { margin: 0.7em 0; }
+.rpln-assistant-prose p:first-child { margin-top: 0; }
+.rpln-assistant-prose ul, .rpln-assistant-prose ol { padding-left: 1.4em; margin: 0.7em 0; }
+.rpln-assistant-prose li { margin: 0.3em 0; }
+.rpln-assistant-prose strong { font-weight: 600; }
+.rpln-assistant-prose blockquote {
+    border-left: 2px solid var(--rpln-hairline-strong);
+    padding: 0.1em 0 0.1em 14px;
+    color: var(--rpln-text-muted);
+    margin: 0.8em 0;
+}
+.rpln-assistant-prose a {
+    color: var(--rpln-accent-orange);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* Inline code pill (salmon) */
+.rpln-assistant-prose code:not(pre code),
+.rpln-user-bubble code {
+    font-family: var(--rpln-font-mono);
+    color: var(--rpln-code-salmon);
+    background: rgba(244,167,154,0.12);
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 0.88em;
+    border: 1px solid rgba(244,167,154,0.08);
+}
+
+/* Code block */
+.rpln-assistant-prose pre {
+    background: var(--rpln-surface);
+    border: 1px solid var(--rpln-hairline);
+    border-radius: var(--rpln-radius-md);
+    padding: 0;
+    margin: 1em 0;
+    overflow: hidden;
+}
+.rpln-assistant-prose pre code {
+    display: block;
+    font-family: var(--rpln-font-mono);
+    font-size: 13.5px;
+    line-height: 1.55;
+    padding: 14px 16px;
+    color: var(--rpln-text);
+    background: transparent;
+    overflow-x: auto;
+    border: 0;
+}
+
+/* Assistant rail (always-visible, muted) */
+.rpln-assistant-rail {
+    display: flex; align-items: center; gap: 2px;
+    margin-top: 8px;
+    color: var(--rpln-text-muted);
+}
+.rpln-pager {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px;
+    color: var(--rpln-text-faint);
+    padding: 0 8px;
+    user-select: none;
+}
+
+.rpln-jump-latest {
+  position: fixed;
+  right: 24px;
+  bottom: 126px;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--rpln-hairline-strong);
+  border-radius: 999px;
+  background: rgba(30, 30, 29, 0.94);
+  color: var(--rpln-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--rpln-shadow-md);
+  cursor: pointer;
+  z-index: 24;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease, background 0.15s ease;
+}
+.rpln-jump-latest.rpln-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.rpln-jump-latest:hover {
+  background: rgba(36, 36, 35, 0.98);
+}
+.rpln-jump-latest .material-symbols-rounded {
+  font-size: 20px;
+}
+
+/* Force composer textarea placeholder visibility */
+[class*="st-key-rpln_composer_textarea"] textarea::placeholder {
+    color: var(--rpln-text-faint, rgba(255,255,255,0.32)) !important;
+    opacity: 1 !important;
+}
+
+/* Hide only bridge-backed Streamlit widgets. A broad `st-key-rpln_` hide
+   suppresses real UI too, including the Streamlit composer form and the
+   hoisted model-pill host. */
+.stElementContainer.st-key-rpln_open_search,
+.stElementContainer.st-key-rpln_new_chat,
+.stElementContainer.st-key-rpln_profile_logoff,
+.stElementContainer.st-key-rpln_profile_settings_btn,
+.stElementContainer.st-key-rpln_profile_logout_btn,
+.stElementContainer[class*="st-key-rpln_switch_"],
+.stElementContainer[class*="st-key-rpln_del_"],
+.stElementContainer[class*="st-key-rpln_pin_"] {
+  display: none !important;
+}
+
+/* Hidden iframe bridge hosts must contribute zero layout height, otherwise
+   Streamlit injects measurable spacer boxes that can trap the main scrollport
+   mid-page. Keep the iframe alive for script execution but fully collapsed. */
+[class*="st-key-rpln_ui_bridge_"],
+[class*="st-key-rpln_ui_bridge_"] > div,
+[class*="st-key-rpln_ui_bridge_"] [data-testid="stElementContainer"],
+[class*="st-key-rpln_ui_bridge_"] [data-testid="stVerticalBlock"],
+[class*="st-key-rpln_ui_bridge_"] [data-testid="stIFrame"],
+[class*="st-key-rpln_ui_bridge_"] iframe {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+[class*="st-key-rpln_ui_bridge_"] [data-testid="stIFrame"],
+[class*="st-key-rpln_ui_bridge_"] iframe {
+  min-width: 0 !important;
+  max-width: 0 !important;
+  width: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* ---------- Goodbye ---------- */
+.rpln-goodbye {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 70vh;
+    gap: 20px; text-align: center;
+    padding: 0 24px;
+}
+.rpln-goodbye-mark {
+    font-family: var(--rpln-font-prose);
+    font-size: 64px;
+    color: var(--rpln-accent-orange);
+    line-height: 1;
+}
+.rpln-goodbye h1 {
+    font-family: var(--rpln-font-prose);
+    font-size: 28px;
+    font-weight: 400;
+    margin: 0;
+}
+.rpln-goodbye p {
+    color: var(--rpln-text-muted);
+    max-width: 480px;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* ---------- Native widget tweaks (popovers, selects) ---------- */
+[data-baseweb="popover"] [data-baseweb="block"],
+[data-baseweb="menu"] {
+    background: var(--rpln-surface) !important;
+    border: 1px solid var(--rpln-hairline) !important;
+    border-radius: var(--rpln-radius-md) !important;
+    box-shadow: var(--rpln-shadow-md) !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: rgba(244,239,232,0.10);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(244,239,232,0.18);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+}
+
+/* ==========================================================================
+   PRODUCTION SUPPLEMENT
+   Token compatibility bridge + sections not covered by the design base CSS.
+   All rules here are additive — they do not override design base rules.
+   ========================================================================== */
+
+/* ── Backward-compat: old token names used by production CSS sections below ── */
+:root {
+  --bg-page:             var(--rpln-bg, #121212);
+  --bg-surface:          var(--rpln-surface, #1e1e1d);
+  --bg-sidebar:          var(--rpln-sidebar-bg, #1a1a1a);
+  --bg-sidebar-row-hover: rgba(255,255,255,0.07);
+  --bg-sidebar-row-active: rgba(0,0,0,0.45);
+  --bg-menu-card:        rgba(26,26,26,0.98);
+  --bg-composer:         var(--rpln-surface, #1e1e1d);
+  --bg-user-bubble:      var(--rpln-user-pill, #2e2e2c);
+  --bg-code:             #1a1a1a;
+  --bg-primary:          var(--rpln-bg, #121212);
+  --bg-primary-rgb:      18,18,18;
+  --bg-user-msg:         var(--rpln-user-pill, #2e2e2c);
+  --bg-sidebar-hover:    rgba(255,255,255,0.07);
+  --bg-sidebar-active:   rgba(0,0,0,0.45);
+  --text-primary:        var(--rpln-text, #F4EFE8);
+  --text-secondary:      rgba(244,239,232,0.62);
+  --text-tertiary:       rgba(244,239,232,0.38);
+  --text-danger:         #E55E53;
+  --text-on-accent:      #FFFFFF;
+  --text-warm:           var(--rpln-text, #F4EFE8);
+  --text-on-dark:        var(--rpln-text, #F4EFE8);
+  --text-on-dark-2:      rgba(244,239,232,0.62);
+  --text-code:           #D4D4D4;
+  --text-code-hint:      #888888;
+  --border-subtle:       var(--rpln-hairline, rgba(244,239,232,0.08));
+  --border-default:      rgba(244,239,232,0.10);
+  --border-strong:       rgba(244,239,232,0.16);
+  --border:              rgba(244,239,232,0.10);
+  --border-dark:         rgba(244,239,232,0.10);
+  --border-dark-s:       var(--rpln-hairline, rgba(244,239,232,0.08));
+  --font-sans:           var(--rpln-font-ui, 'Inter', system-ui, sans-serif);
+  --font-serif:          var(--rpln-font-prose, 'Source Serif 4', Georgia, serif);
+  --font-mono:           var(--rpln-font-mono, 'JetBrains Mono', monospace);
+  /* @deprecated — use --rpln-text-* instead (--fs-sm=13px vs --rpln-text-sm=12px) */
+  --fs-xs: 11px; --fs-sm: 13px; --fs-base: 14px; --fs-md: 15px;
+  --fs-lg: 17px; --fs-xl: 22px; --fs-2xl: 28px; --fs-3xl: 36px;
+  /* @deprecated — use --rpln-radius-* instead */
+  --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 18px; --r-2xl: 24px; --r-pill: 9999px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.20);
+  --shadow-md: 0 6px 20px rgba(0,0,0,0.28);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.40);
+  /* @deprecated — use --rpln-space-* instead */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
+  --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px; --sp-16: 64px;
+  /* alias of --rpln-ease-out; preserved for backward-compat */
+  --ease-out: var(--rpln-ease-out);
+  /* @deprecated — use --rpln-dur-* instead (values differ: fast=150ms, slow=280ms) */
+  --dur-fast: 120ms; --dur-base: 200ms; --dur-slow: 320ms;
+  --accent:              var(--rpln-accent-orange, #C96442);
+  --accent-hover:        #B05636;
+  --accent-muted:        rgba(201,100,66,0.18);
+  --accent-subtle:       rgba(201,100,66,0.08);
+  /* Popover / menu tokens */
+  --rpln-menu-bg:          var(--rpln-sidebar-bg, #1a1a1a);
+  --rpln-menu-border:      rgba(244,239,232,0.10);
+  --rpln-menu-hover:       rgba(244,239,232,0.06);
+  --rpln-menu-active:      rgba(244,239,232,0.08);
+  --rpln-menu-text:        var(--rpln-text, #F4EFE8);
+  --rpln-menu-text-muted:  rgba(244,239,232,0.38);
+  --rpln-menu-sep:         rgba(244,239,232,0.08);
+  /* Source chip tokens */
+  --rpln-bubble-bg:        #f4f3ef;
+  --rpln-bubble-border:    #e6e4dc;
+  --rpln-bubble-hover:     #ede9de;
+  --rpln-bubble-text:      #1f1f1e;
+  --rpln-source-pill-fg:   #4a4a46;
+  /* Chat prose tokens */
+  --rpln-assistant-text:   var(--rpln-text, #F4EFE8);
+  --rpln-assistant-marker: rgba(244,239,232,0.38);
+  --rpln-selection-bg:     rgba(201,100,66,0.15);
+  --rpln-focus-ring:       rgba(201,100,66,0.4);
+  /* Composer tokens */
+  --rpln-send-empty-fg:    rgba(244,239,232,0.38);
+  --rpln-send-filled-bg:   var(--rpln-surface, #1e1e1d);
+  --rpln-send-filled-fg:   #F4EFE8;
+  --rpln-new-chat-border:  rgba(244,239,232,0.10);
+  --rpln-profile-border:   rgba(244,239,232,0.08);
+  --rpln-toggle-track:     #6b6866;
+}
+
+/* ── WP-F.04.18d scrollbar-gutter stable ── */
+html,
+[data-testid="stMain"],
+[data-testid="stSidebar"] > div:first-child {
+    scrollbar-gutter: stable;
+}
+
+/* ── WP-F.04.20 sidebar-sync transition ── */
+[data-testid="stMain"],
+[data-testid="stAppViewContainer"] {
+    transition:
+        margin-left 0.3s ease,
+        margin-right 0.3s ease,
+        width 0.3s ease !important;
+}
+
+/* ── rpln-thinking bouncing-dots (streaming.py uses this class name) ── */
+.rpln-thinking {
+  display: inline-flex !important;
+  gap: 8px;
+  padding: 9px 14px;
+  align-items: center;
+  width: fit-content;
+  max-width: min(100%, 420px);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
+    var(--rpln-surface, #1e1e1d);
+  border: 1px solid rgba(244,239,232,0.12);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
+  white-space: nowrap;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative;
+  z-index: 1;
+}
+.rpln-thinking-label {
+  display: inline-block !important;
+  width: auto;
+  height: auto;
+  flex: 0 0 auto;
+  color: var(--text-primary, #F4EFE8) !important;
+  font: 600 12px var(--rpln-font-ui, Inter, sans-serif);
+  line-height: 1.2;
+  letter-spacing: 0.015em;
+  animation: none;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+.rpln-thinking-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.rpln-thinking-dots span {
+  width: 6px;
+  height: 6px;
+  background: var(--rpln-accent-orange, #C96442);
+  border-radius: var(--r-pill);
+  animation: rpln-dot 1.2s infinite ease-in-out both;
+}
+.rpln-thinking-dots span:nth-child(2) { animation-delay: 0.15s; }
+.rpln-thinking-dots span:nth-child(3) { animation-delay: 0.30s; }
+@keyframes rpln-dot {
+  0%, 80%, 100% { opacity: 0.25; transform: scale(0.9); }
+  40%            { opacity: 1;    transform: scale(1);   }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rpln-thinking-dots span {
+    animation: none !important;
+    opacity: 0.5 !important;
+    transform: none !important;
+  }
+}
+/* ── Model pill popover chrome ── */
+[data-testid="stPopoverBody"]:has(.rpln-model-menu-header),
+div[role="dialog"]:has(.rpln-model-menu-header) {
+    background: var(--bg-sidebar) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.45) !important;
+    padding: 8px !important;
+    width: 320px !important;
+    min-width: 320px !important;
+    max-width: 320px !important;
+    opacity: 1 !important;
+    max-height: calc(100vh - 180px) !important;
+    overflow-y: auto !important;
+}
+body > [data-baseweb="popover"]:has(.rpln-model-menu-header),
+body > div:has(> [data-baseweb="popover"] .rpln-model-menu-header),
+[data-baseweb="popover"]:has(.rpln-model-menu-header) {
+    z-index: var(--rpln-z-popover) !important;
+    opacity: 1 !important;
+    background: var(--rpln-menu-bg, var(--bg-sidebar)) !important;
+    background-color: var(--rpln-menu-bg, var(--bg-sidebar)) !important;
+}
+[data-baseweb="popover"]:has(.rpln-model-menu-header) [data-testid="stPopoverBody"] {
+    width: 380px !important;
+    max-width: 380px !important;
+    background: var(--rpln-menu-bg, var(--bg-sidebar)) !important;
+    border: 1px solid var(--rpln-menu-border, var(--border-default)) !important;
+    border-radius: 14px !important;
+    padding: 8px !important;
+    opacity: 1 !important;
+    max-height: 70vh !important;
+    overflow-y: auto !important;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.45) !important;
+}
+[data-testid="stPopoverBody"]:has(.rpln-model-menu-header) * {
+    background: transparent !important;
+}
+[data-testid="stPopoverBody"]:has(.rpln-model-menu-header) .stButton > button[kind="primary"] {
+    background-color: var(--rpln-menu-active, rgba(255,255,255,0.08)) !important;
+    color: var(--rpln-menu-text, var(--text-primary)) !important;
+}
+[data-testid="stPopoverBody"]:has(.rpln-model-menu-header) .stButton > button:hover {
+    background-color: var(--rpln-menu-hover, rgba(255,255,255,0.06)) !important;
+}
+[data-testid="stPopoverBody"]:has(.rpln-model-menu-header) .stButton > button,
+[data-testid="stPopoverBody"]:has(.rpln-model-menu-header) .stButton > button p,
+[data-testid="stPopoverBody"]:has(.rpln-model-menu-header) .stButton > button div {
+    color: var(--rpln-menu-text, var(--text-primary)) !important;
+}
+.rpln-model-menu-header {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(168,162,158,0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 8px 12px 4px;
+    margin: 0;
+}
+/* Model rows in popover */
+[data-testid="stPopoverBody"]:not(:has(.rpln-topbar-menu-sentinel)):not(:has(.rpln-topbar-share-sentinel)) .stButton > button,
+div[role="dialog"]:not(:has(.rpln-topbar-menu-sentinel)):not(:has(.rpln-topbar-share-sentinel)) .stButton > button {
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-radius: 10px !important;
+    color: rgba(244,239,232,0.7) !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    white-space: pre-line !important;
+    line-height: 1.35 !important;
+    font-size: 0.86rem !important;
+    font-weight: 400 !important;
+    padding: 7px 12px !important;
+    min-height: 0 !important;
+    box-shadow: none !important;
+}
+  [data-testid="stPopoverBody"]:not(:has(.rpln-topbar-menu-sentinel)):not(:has(.rpln-topbar-share-sentinel)) .stButton > button:hover,
+  div[role="dialog"]:not(:has(.rpln-topbar-menu-sentinel)):not(:has(.rpln-topbar-share-sentinel)) .stButton > button:hover {
+    background-color: rgba(255,255,255,0.06) !important;
+    border-color: transparent !important;
+    color: var(--text-on-dark) !important;
+}
+/* Model pill button (composer) */
+[class*="st-key-rpln_composer_model"] {
+    display: flex !important;
+    justify-content: flex-end !important;
+}
+[class*="st-key-rpln_composer_model"] [data-testid="stPopoverButton"] {
+    background: transparent !important;
+    border: 1px solid var(--rpln-hairline, rgba(244,239,232,0.08)) !important;
+    border-radius: 20px !important;
+    padding: 5px 10px 5px 12px !important;
+    font-family: var(--rpln-font-ui, 'Inter', sans-serif) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--rpln-text, #F4EFE8) !important;
+    gap: 5px !important;
+    box-shadow: none !important;
+    height: 30px !important;
+    min-height: 0 !important;
+    white-space: nowrap !important;
+}
+[class*="st-key-rpln_composer_model"] [data-testid="stPopoverButton"] p {
+    color: var(--rpln-text, #F4EFE8) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    margin: 0 !important;
+}
+[class*="st-key-rpln_composer_model"] [data-testid="stPopoverButton"]:hover {
+    background: rgba(244,239,232,0.06) !important;
+    border-color: rgba(244,239,232,0.14) !important;
+    color: var(--rpln-text, #F4EFE8) !important;
+}
+/* Current model display row inside popover */
+.rpln-current-model {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    gap: 10px;
+}
+.rpln-current-model-name {
+    font-weight: 600;
+    font-size: 0.94rem;
+    color: var(--rpln-text, #F4EFE8);
+}
+.rpln-current-model-desc {
+    font-size: 0.8rem;
+    color: rgba(244,239,232,0.5);
+    margin-top: 2px;
+}
+.rpln-model-check-active {
+    color: var(--rpln-accent-orange, #C96442);
+    font-size: 1rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.rpln-popover-sep {
+    border: none;
+    border-top: 1px solid rgba(244,239,232,0.08);
+    margin: 4px 0;
+}
+/* Adaptive section in popover */
+.rpln-adaptive-text .rpln-title {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--rpln-text, #F4EFE8);
+}
+.rpln-adaptive-text .rpln-sub {
+    font-size: 0.75rem;
+    color: rgba(244,239,232,0.45);
+    margin-top: 2px;
+}
+.rpln-adaptive-text .rpln-beta-tag {
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--rpln-accent-orange, #C96442);
+    border: 1px solid var(--rpln-accent-orange, #C96442);
+    border-radius: 4px;
+    padding: 0px 4px;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+[data-testid="stPopoverBody"]:has(.rpln-model-menu-header)
+    [data-testid="stCheckbox"] label > div:first-child {
+    position: relative !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 20px !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    background: rgba(244,239,232,0.14) !important;
+    box-shadow: none !important;
+}
+[data-testid="stPopoverBody"]:has(.rpln-model-menu-header)
+    [data-testid="stCheckbox"] label:has(input[aria-checked="true"]) > div:first-child {
+    background: #5B9EE8 !important;
+}
+[data-testid="stPopoverBody"]:has(.rpln-model-menu-header)
+    [data-testid="stCheckbox"] label > div:first-child > div {
+    position: absolute !important;
+    top: 2px !important;
+    left: 0 !important;
+    width: 16px !important;
+    height: 16px !important;
+    border-radius: 50% !important;
+    background: #fff !important;
+    transform: translateX(2px) !important;
+    transition: transform 0.18s var(--ease-out) !important;
+}
+[data-testid="stPopoverBody"]:has(.rpln-model-menu-header)
+    [data-testid="stCheckbox"] label:has(input[aria-checked="true"]) > div:first-child > div {
+    transform: translateX(16px) !important;
+}
+[data-testid="stPopoverBody"]:has(.rpln-model-menu-header)
+    [data-testid="stCheckbox"] label p {
+    display: none !important;
+}
+[class*="st-key-rpln_adaptive_section"] [data-testid="stToggle"] {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ── Setup Wizard CSS ── */
+.rpln-wizard-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+    max-width: 560px;
+    margin: 0 auto;
+    padding-top: 0;
+    gap: var(--sp-2, 8px);
+}
+.rpln-wizard-wordmark {
+    font-family: var(--font-serif, 'Source Serif 4', Georgia, serif);
+    font-weight: 600;
+    font-size: 56px;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    color: var(--text-primary, #F4EFE8);
+    margin: 0;
+}
+.rpln-wizard-tagline {
+    font-family: var(--font-sans, 'Inter', sans-serif);
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-tertiary);
+    margin: 4px 0 0;
+    letter-spacing: 0.01em;
+}
+.rpln-wizard-head .step-pills {
+    margin-top: clamp(14px, 2.5vh, 28px);
+    margin-bottom: 0;
+}
+.st-key-rpln_wizard_card,
+.rpln-wizard-card {
+    max-width: 560px;
+    margin: 32px auto 0;
+    padding: 24px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    background: var(--bg-surface, transparent);
+    box-shadow: none;
+}
+.rpln-ready-model {
+    color: var(--text-secondary);
+    background: transparent;
+    font-family: var(--font-sans);
+    border: none;
+    padding: 0;
+}
+/* Step pills */
+.step-pills {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.step-pill {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: var(--bg-sidebar, rgba(255,255,255,0.05));
+    color: var(--text-tertiary);
+    border: 1px solid var(--border-subtle);
+}
+.step-pill.active {
+    background: var(--accent, #C96442);
+    color: #fff;
+    border-color: transparent;
+}
+.step-pill.done {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: var(--border-subtle);
+}
+/* Wizard welcome labels */
+.welcome-title {
+    font-family: var(--font-sans);
+    font-size: var(--fs-xl, 22px);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 8px;
+}
+.welcome-desc {
+    font-family: var(--font-sans);
+    font-size: var(--fs-sm, 13px);
+    color: var(--text-tertiary);
+    line-height: 1.55;
+    margin: 0 0 20px;
+}
+.welcome-icon {
+    font-size: 36px;
+    margin: 0 auto 8px;
+    display: block;
+    text-align: center;
+}
+
+/* ── Beta note — T&C-scale caption on wizard step 2 ─────────────────── */
+.rpln-beta-note {
+    display: inline-block;
+    font-size: 10px !important;
+    line-height: 1.3 !important;
+    color: rgba(244, 239, 232, 0.52) !important;
+    letter-spacing: 0.02em !important;
+    margin-top: 4px !important;
+}
+.rpln-beta-note em {
+    font-style: italic !important;
+}
+
+/* ── stChatMessage user/assistant rules (streaming.py uses st.chat_message) ── */
+/* Hide avatars */
+[data-testid="stChatMessage"] > div:first-child:not([data-testid]) { display: none !important; }
+[data-testid="chatAvatarIcon-user"],
+[data-testid="chatAvatarIcon-assistant"],
+[data-testid="stChatMessageAvatarUser"],
+[data-testid="stChatMessageAvatarAssistant"],
+[data-testid="stChatMessageAvatarCustom"] { display: none !important; }
+
+/* Assistant turn — zero chrome, 720px centered column */
+[data-testid="stChatMessage"]:has(
+    [data-testid="stChatMessageContent"][aria-label*="assistant" i]
+) {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: 720px !important;
+    margin: 0 0 16px 0 !important;
+}
+[data-testid="stChatMessageContent"][aria-label*="assistant" i] > *:first-child { margin-top: 0 !important; }
+[data-testid="stChatMessageContent"][aria-label*="assistant" i] > *:last-child { margin-bottom: 0 !important; }
+/* Assistant prose typography */
+[data-testid="stChatMessageContent"][aria-label*="assistant" i] {
+    font-family: var(--font-serif, 'Source Serif 4', Georgia, serif) !important;
+    font-size: 16px !important;
+    line-height: 1.65 !important;
+    letter-spacing: -0.003em !important;
+    color: var(--rpln-assistant-text, var(--text-primary)) !important;
+}
+[data-testid="stChatMessageContent"][aria-label*="assistant" i] p { margin: 0 0 1em 0 !important; }
+[data-testid="stChatMessageContent"][aria-label*="assistant" i] ul,
+[data-testid="stChatMessageContent"][aria-label*="assistant" i] ol { padding-left: 1.3em !important; }
+[data-testid="stChatMessageContent"][aria-label*="assistant" i] li { margin-bottom: 0.35em !important; }
+[data-testid="stChatMessageContent"][aria-label*="assistant" i] strong { font-weight: 600 !important; }
+/* Headings in assistant prose */
+[data-testid="stChatMessageContent"][aria-label*="assistant" i] h2 {
+    font-size: 18px !important; font-weight: 700 !important; margin: 1.2em 0 0.4em !important;
+}
+[data-testid="stChatMessageContent"][aria-label*="assistant" i] h3 {
+    font-size: 16px !important; font-weight: 700 !important; margin: 1em 0 0.3em !important;
+}
+/* Links in assistant prose */
+[data-testid="stChatMessageContent"][aria-label*="assistant" i] a {
+    color: var(--rpln-accent-orange, #C96442) !important;
+    text-decoration: none !important;
+}
+[data-testid="stChatMessageContent"][aria-label*="assistant" i] a:hover {
+    text-decoration: underline !important;
+    text-underline-offset: 3px !important;
+}
+
+/* User turn — right-aligned pill, 720px centered column */
+[data-testid="stChatMessage"]:has(
+    [data-testid="stChatMessageContent"][aria-label*="user" i]
+) {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: 720px !important;
+    margin: 0 0 40px 0 !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+}
+[data-testid="stChatMessageContent"][aria-label*="user" i] {
+    background: var(--rpln-user-pill, #2e2e2c) !important;
+    border: 1px solid transparent !important;
+    border-radius: 18px !important;
+    padding: 12px 18px !important;
+    max-width: 560px !important;
+    width: auto !important;
+    flex: 0 0 auto !important;
+    align-self: flex-end !important;
+    margin: 0 !important;
+    font-family: var(--rpln-font-ui, 'Inter', sans-serif) !important;
+    font-size: 17px !important;
+    line-height: 1.45 !important;
+    color: var(--rpln-text, #F4EFE8) !important;
+    box-sizing: border-box !important;
+}
+[data-testid="stChatMessageContent"][aria-label*="user" i] p { margin: 0 !important; }
+
+/* Inline code in chat */
+[data-testid="stChatMessage"] code:not(pre code) {
+    background: rgba(255,255,255,0.05) !important;
+    color: #F4A79A !important;
+    padding: 1px 5px !important;
+    border-radius: 6.4px !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+    font-size: 0.9em !important;
+}
+
+/* ── Source chips (streaming.py renders these) ── */
+.sources-section { margin-top: 20px !important; padding-top: 0 !important; border-top: none !important; }
+.sources-header {
+    font-size: 11px !important; font-weight: 600 !important;
+    text-transform: uppercase !important; letter-spacing: 0.08em !important;
+    color: var(--rpln-menu-text-muted, var(--text-tertiary)) !important;
+    margin-bottom: 8px !important;
+}
+.sources-list { display: flex !important; flex-wrap: wrap !important; gap: 8px !important; }
+.source-pill {
+    display: inline-flex !important; align-items: center !important;
+    gap: 6px !important; height: 32px !important; padding: 0 10px 0 12px !important;
+    background: var(--rpln-bubble-bg, #f4f3ef) !important;
+    border: 1px solid var(--rpln-bubble-border, #e6e4dc) !important;
+    border-radius: 10px !important; font-size: 12px !important;
+    color: var(--rpln-source-pill-fg, #4a4a46) !important;
+    white-space: nowrap !important; max-width: 280px !important;
+    overflow: hidden !important; text-overflow: ellipsis !important;
+    cursor: default !important;
+}
+.source-pill:hover {
+    background: var(--rpln-bubble-hover, #ede9de) !important;
+    border-color: var(--border-strong) !important;
+}
+.source-pill::after {
+    content: "\203A"; display: inline-block; margin-left: 4px;
+    color: var(--rpln-menu-text-muted, var(--text-tertiary)); font-size: 14px;
+}
+
+/* ── Footer disclaimers ── */
+.rpln-footer-disclaimer {
+    font-family: var(--rpln-font-ui, 'Inter', sans-serif) !important;
+    font-size: 11px !important;
+    color: var(--rpln-text-faint, rgba(244,239,232,0.38)) !important;
+    text-align: center !important;
+    margin: 4px 0 8px !important;
+    padding: 0 !important;
+}
+.rpln-welcome-caption {
+    font-family: var(--rpln-font-ui, 'Inter', sans-serif) !important;
+    font-size: 11px !important;
+    color: var(--rpln-text-faint, rgba(244,239,232,0.38)) !important;
+    text-align: center !important;
+    margin: 0 !important;
+}
+
+/* ── Artifact panel ── */
+.rpln-artifacts-header {
+    display: flex; align-items: center; gap: 6px;
+    margin: 14px 4px 6px;
+    font-size: 0.72rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    color: rgba(244,239,232,0.45);
+}
+[class*="st-key-art_"] .stButton > button {
+    background: transparent !important; border: none !important;
+    padding: 6px 10px !important; border-radius: 10px !important;
+    text-align: left !important; color: rgba(244,239,232,0.78) !important;
+    font-size: 0.82rem !important; min-height: 30px !important;
+    justify-content: flex-start !important; box-shadow: none !important;
+}
+[class*="st-key-art_"] .stButton > button:hover {
+    background: rgba(255,255,255,0.05) !important; color: var(--text-warm) !important;
+}
+.rpln-artifact-badge {
+    font-size: var(--fs-xs, 11px); color: var(--text-tertiary);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    margin: var(--sp-4, 16px) 0 var(--sp-2, 8px);
+}
+[class*="st-key-rpln_artifact_bar_"] {
+    margin: var(--sp-4, 16px) 0 var(--sp-2, 8px);
+}
+[class*="st-key-rpln_artifact_bar_"] .rpln-artifact-badge {
+    margin: 0;
+}
+[class*="st-key-rpln_artifact_download_"] [data-testid="stDownloadButton"] button,
+[class*="st-key-rpln_artifact_download_"] button {
+    min-height: 30px !important;
+    padding: 4px 8px !important;
+    border-radius: 8px !important;
+    color: var(--text-secondary) !important;
+}
+[class*="st-key-rpln_artifact_download_"] [data-testid="stDownloadButton"] button:hover,
+[class*="st-key-rpln_artifact_download_"] button:hover {
+    background: rgba(244,239,232,0.08) !important;
+    color: var(--text-primary) !important;
+}
+.rpln-export-sep {
+    margin: 8px 4px 4px; font-size: 0.68rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: rgba(244,239,232,0.45);
+    border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;
+}
+
+/* ── Plus-menu popover ── */
+[data-testid="stPopoverBody"]:has(.rpln-plus-menu-header) {
+    width: 220px !important; min-width: 220px !important;
+    background: var(--rpln-menu-bg, var(--rpln-sidebar-bg)) !important;
+    border: 1px solid var(--rpln-menu-border, var(--border-default)) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35) !important;
+    padding: 6px !important;
+}
+[data-testid="stPopoverBody"]:has(.rpln-plus-menu-header) [data-testid="stBaseButton-secondary"] {
+    padding: 10px 12px !important; border-radius: 8px !important;
+    background: transparent !important; border: none !important;
+    color: var(--rpln-menu-text, var(--rpln-text)) !important;
+    font-size: 14px !important; font-weight: 500 !important;
+    text-align: left !important; justify-content: flex-start !important;
+    box-shadow: none !important;
+}
+[data-testid="stPopoverBody"]:has(.rpln-plus-menu-header) [data-testid="stBaseButton-secondary"]:hover {
+    background: var(--rpln-menu-hover) !important;
+}
+.rpln-plus-menu-header {
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip: rect(0,0,0,0);
+}
+
+/* ── Search modal ── */
+div[role="dialog"]:has([data-testid="stTextInput"][id*="rpln_search_modal"]),
+div[role="dialog"]:has(.rpln-search-group) {
+    max-width: 720px !important;
+    width: min(720px, 92vw) !important;
+    background: var(--rpln-menu-bg, var(--rpln-bg)) !important;
+    border: 1px solid var(--rpln-menu-border, var(--border-default)) !important;
+    border-radius: 14px !important;
+    padding: 18px 20px !important;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.45) !important;
+}
+div[role="dialog"]:has(.rpln-search-group) [data-testid="stTextInput"] input {
+    width: 100% !important; height: 40px !important;
+    border-radius: 8px !important; border: 1px solid var(--border-default) !important;
+    background: var(--bg-surface) !important; color: var(--text-primary) !important;
+    font-size: 14px !important; padding: 8px 12px !important;
+}
+.rpln-search-group {
+    font-size: 11px !important; font-weight: 600 !important;
+    letter-spacing: 0.08em !important; text-transform: uppercase !important;
+    color: var(--rpln-menu-text-muted, var(--text-tertiary)) !important;
+    padding: 12px 4px 4px !important; display: block !important;
+}
+[class*="st-key-rpln_search_result_"] button {
+    width: 100% !important; background: transparent !important;
+    border: none !important; box-shadow: none !important;
+    text-align: left !important; justify-content: flex-start !important;
+    padding: 10px 34px 10px 34px !important; border-radius: 8px !important;
+    color: var(--text-primary) !important; font-size: 14px !important;
+    white-space: nowrap !important; overflow: hidden !important;
+    text-overflow: ellipsis !important; min-height: 38px !important;
+    position: relative !important;
+}
+/* Speech-bubble prefix icon (Claude-parity) */
+[class*="st-key-rpln_search_result_"] button::before {
+    content: "" !important;
+    position: absolute !important;
+    left: 10px !important; top: 50% !important;
+    width: 16px !important; height: 16px !important;
+    transform: translateY(-50%) !important;
+    background: currentColor !important;
+    opacity: 0.55 !important;
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/></svg>") center/contain no-repeat !important;
+            mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/></svg>") center/contain no-repeat !important;
+}
+[class*="st-key-rpln_search_result_"] button:hover {
+    background: var(--bg-sidebar-row-hover, rgba(255,255,255,0.06)) !important;
+}
+/* Enter-glyph hint on hover (Claude-parity) */
+[class*="st-key-rpln_search_result_"] button:hover::after,
+[class*="st-key-rpln_search_result_"] button:focus-visible::after {
+    content: "\21A9" !important; /* ↩ */
+    position: absolute !important;
+    right: 12px !important; top: 50% !important;
+    transform: translateY(-50%) !important;
+    font-size: 14px !important;
+    color: var(--text-tertiary) !important;
+    opacity: 0.7 !important;
+}
+/* Right-align timestamp chip alongside result */
+.rpln-search-ts {
+    font-size: 12px !important;
+    color: var(--text-tertiary) !important;
+    text-align: right !important;
+    padding: 10px 4px 0 0 !important;
+    white-space: nowrap !important;
+}
+
+/* Controls row + textarea wrappers */
+[class*="st-key-rpln_composer_shell"] [class*="st-key-rpln_composer_controls"] {
+    margin-top: 0 !important; padding: 0 !important;
+}
+[class*="st-key-rpln_composer_shell"] [class*="st-key-rpln_composer_controls"]
+    [data-testid="stHorizontalBlock"] {
+    align-items: center !important; min-height: 36px !important; gap: 8px !important;
+}
+[class*="st-key-rpln_composer_shell"] [data-testid="stTextArea"] > div,
+[class*="st-key-rpln_composer_shell"] [data-testid="stTextArea"] [data-baseweb="base-input"],
+[class*="st-key-rpln_composer_shell"] [data-testid="stTextArea"] [data-baseweb="textarea"] {
+    background: transparent !important; border: none !important; box-shadow: none !important;
+}
+[class*="st-key-rpln_composer_shell"] [data-testid="InputInstructions"] {
+  display: none !important;
+}
+[data-testid="stBottom"]:empty { display: none !important; }
+
+/* ── Goodbye page (design already has this but we reinforce with old tokens) ── */
+[class*='st-key-rpln_settings_panel'] {
+    max-width: 720px !important; margin: 0 auto !important;
+    padding: 32px 24px !important;
+}
+.rpln-settings-title {
+    font-family: var(--font-serif, 'Source Serif 4', Georgia, serif);
+    font-size: 28px; color: var(--text-primary);
+    display: block; margin-bottom: 16px;
+}
+
+/* ── Bridge / compat hidden buttons ─────────────────────────────────────── */
+[class*=" st-key-rpln_end_chat_hidden "],
+.st-key-rpln_end_chat_hidden { display: none !important; }
+[class*=" st-key-rpln_model_pill "],
+.st-key-rpln_model_pill { display: contents; }
+
+
+/* ===================================================================== *
+   Merged from theme_redesign.css (formerly WP-F.05.01 overlay).
+   Rules scoped to body.rpln-redesign — active only after chat-start.
+   See web_ui.py _inject_redesign_css() which now only hydrates the body
+   class + per-user data-* appearance attributes.
+   ===================================================================== */
+
+/* =======================================================================
+   theme_redesign.css — WP-F.05.01
+   -----------------------------------------------------------------------
+   Token layer + 8-theme registry for the merged-design chat UI.
+   Scoped under `body.rpln-redesign` so legacy screens stay untouched.
+   Reference: docs/plan/chat-ui-redesign/merged-design.md
+              docs/plan/chat-ui-redesign/DECISIONS.md
+   ======================================================================= */
+
+/* ---------------------------------------------------------------------
+   Base dark-only tokens (DECISIONS.md Q1 — dark-only, no light theme)
+   Default theme = graphite (matches current committed palette the
+   closest so the switch is visually neutral until user picks a theme).
+   --------------------------------------------------------------------- */
+body.rpln-redesign {
+  /* Surface layers */
+  --bg-page: #1C1C1C;
+  --bg-surface: #262626;
+  --bg-sidebar: #161616;
+  --bg-composer: #262626;
+  --bg-user-bubble: #2E2E2E;
+  --bg-code: #141414;
+
+  /* Text */
+  --text-primary: #E6E5E2;
+  --text-secondary: #B5B3AE;
+  --text-tertiary: #807D76;
+  --text-muted: rgba(230, 229, 226, 0.62);
+
+  /* Accent — graphite default, overridden by theme swatches below */
+  --accent: #A8A29E;
+  --accent-hover: #94908B;
+  --accent-muted: rgba(168, 162, 158, 0.18);
+  --accent-subtle: rgba(168, 162, 158, 0.08);
+
+  /* Status */
+  --status-ready: #6EE7A0;
+  --code-salmon: #F4A79A;
+  --text-danger: #E55E53;
+
+  /* Borders */
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.04);
+
+  /* Typography */
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-prose: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Geometry */
+  --col-w: 720px;
+  --sidebar-w: 272px;
+  --topbar-h: 52px;
+  --composer-h: 80px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  color-scheme: dark;
+}
+
+/* ---------------------------------------------------------------------
+   8-theme registry — each entry re-skins the whole palette via
+   `body.rpln-redesign[data-theme="<id>"]`. The accent-derived tokens
+   (hover/muted/subtle) follow the accent via rgba-in-color approximations
+   chosen to match the v1 mockup values.
+   --------------------------------------------------------------------- */
+
+/* Terracotta — v0 exact */
+body.rpln-redesign[data-theme="terracotta"] {
+  --bg-page: #121212;
+  --bg-surface: #1e1e1d;
+  --bg-sidebar: #1a1a1a;
+  --bg-composer: #1e1e1d;
+  --bg-user-bubble: #2e2e2c;
+  --bg-code: #121212;
+  --text-primary: #F4EFE8;
+  --text-secondary: rgba(244,239,232,0.62);
+  --text-tertiary: rgba(244,239,232,0.38);
+  --accent: #C96442;
+  --accent-hover: #D87450;
+  --accent-muted: rgba(201, 100, 66, 0.18);
+  --accent-subtle: rgba(201, 100, 66, 0.08);
+}
+
+/* Graphite — v0 exact */
+body.rpln-redesign[data-theme="graphite"] {
+  --bg-page: #141414;
+  --bg-surface: #1f1f1f;
+  --bg-sidebar: #1b1b1b;
+  --bg-composer: #1f1f1f;
+  --bg-user-bubble: #2b2b2b;
+  --bg-code: #141414;
+  --text-primary: #E8E8E6;
+  --text-secondary: rgba(232,232,230,0.62);
+  --text-tertiary: rgba(232,232,230,0.38);
+  --accent: #A8A29E;
+  --accent-hover: #BCB5B0;
+  --accent-muted: rgba(168, 162, 158, 0.18);
+  --accent-subtle: rgba(168, 162, 158, 0.08);
+}
+
+/* Midnight — v0 exact */
+body.rpln-redesign[data-theme="midnight"] {
+  --bg-page: #0E111C;
+  --bg-surface: #1A1F32;
+  --bg-sidebar: #141827;
+  --bg-composer: #1A1F32;
+  --bg-user-bubble: #262B3F;
+  --bg-code: #0E111C;
+  --text-primary: #DCE3F2;
+  --text-secondary: rgba(220,227,242,0.62);
+  --text-tertiary: rgba(220,227,242,0.38);
+  --accent: #7AA2F7;
+  --accent-hover: #8FB4FF;
+  --accent-muted: rgba(122, 162, 247, 0.18);
+  --accent-subtle: rgba(122, 162, 247, 0.08);
+}
+
+/* Forest — v0 exact */
+body.rpln-redesign[data-theme="forest"] {
+  --bg-page: #121A14;
+  --bg-surface: #1E2922;
+  --bg-sidebar: #18221B;
+  --bg-composer: #1E2922;
+  --bg-user-bubble: #2C3830;
+  --bg-code: #121A14;
+  --text-primary: #E4E8DF;
+  --text-secondary: rgba(228,232,223,0.62);
+  --text-tertiary: rgba(228,232,223,0.38);
+  --accent: #8AA878;
+  --accent-hover: #9FBB8C;
+  --accent-muted: rgba(138, 168, 120, 0.18);
+  --accent-subtle: rgba(138, 168, 120, 0.08);
+}
+
+/* Plum — v0 exact */
+body.rpln-redesign[data-theme="plum"] {
+  --bg-page: #17121C;
+  --bg-surface: #241D2B;
+  --bg-sidebar: #1D1722;
+  --bg-composer: #241D2B;
+  --bg-user-bubble: #352D3E;
+  --bg-code: #17121C;
+  --text-primary: #E5DFE8;
+  --text-secondary: rgba(229,223,232,0.62);
+  --text-tertiary: rgba(229,223,232,0.38);
+  --accent: #B69AD6;
+  --accent-hover: #C5ACE0;
+  --accent-muted: rgba(182, 154, 214, 0.18);
+  --accent-subtle: rgba(182, 154, 214, 0.08);
+}
+
+/* Rose — v0 exact */
+body.rpln-redesign[data-theme="rose"] {
+  --bg-page: #1A1015;
+  --bg-surface: #2A1C22;
+  --bg-sidebar: #22161B;
+  --bg-composer: #2A1C22;
+  --bg-user-bubble: #3A2D32;
+  --bg-code: #1A1015;
+  --text-primary: #EBDFE3;
+  --text-secondary: rgba(235,223,227,0.62);
+  --text-tertiary: rgba(235,223,227,0.38);
+  --accent: #D98A9F;
+  --accent-hover: #E49DB1;
+  --accent-muted: rgba(217, 138, 159, 0.18);
+  --accent-subtle: rgba(217, 138, 159, 0.08);
+}
+
+/* Sand — v0 exact */
+body.rpln-redesign[data-theme="sand"] {
+  --bg-page: #17130E;
+  --bg-surface: #251F18;
+  --bg-sidebar: #1E1814;
+  --bg-composer: #251F18;
+  --bg-user-bubble: #393226;
+  --bg-code: #17130E;
+  --text-primary: #EBE4D6;
+  --text-secondary: rgba(235,228,214,0.62);
+  --text-tertiary: rgba(235,228,214,0.38);
+  --accent: #D9B77A;
+  --accent-hover: #E4C68C;
+  --accent-muted: rgba(217, 183, 122, 0.18);
+  --accent-subtle: rgba(217, 183, 122, 0.08);
+}
+
+/* Ocean — v0 exact */
+body.rpln-redesign[data-theme="ocean"] {
+  --bg-page: #0E1821;
+  --bg-surface: #1A2733;
+  --bg-sidebar: #141F2A;
+  --bg-composer: #1A2733;
+  --bg-user-bubble: #263440;
+  --bg-code: #0E1821;
+  --text-primary: #DFE7EC;
+  --text-secondary: rgba(223,231,236,0.62);
+  --text-tertiary: rgba(223,231,236,0.38);
+  --accent: #6FB3C3;
+  --accent-hover: #82C3D2;
+  --accent-muted: rgba(111, 179, 195, 0.18);
+  --accent-subtle: rgba(111, 179, 195, 0.08);
+}
+
+/* ---------------------------------------------------------------------
+   Proof-of-life marker — a single visible application of the tokens so
+   Playwright can confirm the theme is live. Scopes to the Streamlit app
+   root only; subsequent sub-PRs (.02+) layer shell/thread/composer on
+   top of this foundation.
+   --------------------------------------------------------------------- */
+body.rpln-redesign [data-testid="stApp"] {
+  background-color: var(--bg-page) !important;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+}
+body.rpln-redesign [data-testid="stSidebar"] {
+  background-color: var(--bg-sidebar) !important;
+}
+
+/* =======================================================================
+   WP-F.05.02 — Shell restyle (sidebar + topbar)
+   -----------------------------------------------------------------------
+   Overlays on top of legacy theme.css. Everything is scoped under
+   `body.rpln-redesign` so the legacy path stays untouched. Targets are
+   the stable `st-key-*` class hooks already emitted by _render_sidebar()
+   and the `data-rpln-*` attributes already present on section headers.
+   Reference mockup: `tmp/img/v2-default.png`.
+   ======================================================================= */
+
+/* Sidebar width pinned to the token (legacy uses inline Streamlit width). */
+body.rpln-redesign [data-testid="stSidebar"] {
+  min-width: var(--sidebar-w) !important;
+  max-width: var(--sidebar-w) !important;
+  width: var(--sidebar-w) !important;
+  border-right: 1px solid var(--border-subtle) !important;
+  /* WP-F.05.09b.2 \u2014 Stack sidebar above the chat canvas so mid-stream
+     thinking chips and late-rendered overflow never paint on top of it. */
+  z-index: 10 !important;
+}
+
+/* Sidebar row padding — keep the content column tight and evenly gapped. */
+body.rpln-redesign [data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+  padding: 12px 12px 0 12px !important;
+}
+
+/* Section headers (PINNED / RECENTS) — tertiary uppercase eyebrow. */
+body.rpln-redesign [data-testid="stSidebar"] .rpln-sidebar-header {
+  color: var(--text-tertiary) !important;
+  font-family: var(--font-ui) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  padding: 10px 6px 4px 6px !important;
+}
+
+/* Conv rows — selected state mirrors the user-bubble token. */
+body.rpln-redesign [data-testid="stSidebar"] [class*="st-key-conv_"] button {
+  color: var(--text-secondary) !important;
+  background: transparent !important;
+  border-radius: var(--radius-sm) !important;
+  font-weight: 400 !important;
+  padding: 6px 8px !important;
+}
+body.rpln-redesign [data-testid="stSidebar"] [class*="st-key-conv_"] button:hover {
+  background-color: var(--accent-subtle) !important;
+  color: var(--text-primary) !important;
+}
+/* Selected row — Streamlit tags the button with `kind="primary"` attr. */
+body.rpln-redesign [data-testid="stSidebar"] [class*="st-key-conv_"] button[kind="primary"],
+body.rpln-redesign [data-testid="stSidebar"] [class*="st-key-conv_"] button[data-testid="baseButton-primary"] {
+  background-color: var(--bg-user-bubble) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Profile dock — anchored above the fold with token surfaces. */
+body.rpln-redesign .st-key-rpln_profile_dock {
+  background-color: var(--bg-surface) !important;
+  border-top: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 8px 10px !important;
+  margin: 8px 4px 8px 4px !important;
+}
+body.rpln-redesign .st-key-rpln_profile_dock button {
+  color: var(--text-primary) !important;
+  background: transparent !important;
+}
+
+/* Topbar — slim 52px with hairline under. Targets the Streamlit stHeader
+   since the redesign hasn't rebuilt the topbar in isolation yet. */
+body.rpln-redesign [data-testid="stHeader"] {
+  background-color: var(--bg-page) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  height: var(--topbar-h) !important;
+}
+
+/* Collapsed-rail hamburger + open-sidebar burger — neutral on the page bg. */
+body.rpln-redesign .st-key-collapse_sidebar button {
+  color: var(--text-secondary) !important;
+  background: transparent !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-sm) !important;
+}
+body.rpln-redesign .st-key-collapse_sidebar button:hover {
+  border-color: var(--accent-muted) !important;
+  color: var(--text-primary) !important;
+}
+
+/* =======================================================================
+   WP-F.05.03 — Thread + message restyle
+   -----------------------------------------------------------------------
+   User vs assistant roles come off the `aria-label` that Streamlit sets
+   on `stChatMessageContent` ("Chat message from user" / "from assistant").
+   We keep the existing bubble/row machinery (720px shared column from
+   WP-F.04.19, sticky composer from WP-F.04.18a) and only re-skin the
+   colors + typography onto redesign tokens.
+   Reference mockup: `tmp/img/v2-default.png`.
+   ======================================================================= */
+
+/* Assistant prose — serif body, primary text, larger scale. */
+body.rpln-redesign [data-testid="stChatMessageContent"][aria-label*="assistant"] {
+  color: var(--text-primary) !important;
+  font-family: var(--font-prose) !important;
+  font-size: 18px !important;
+  line-height: 1.7 !important;
+}
+body.rpln-redesign [data-testid="stChatMessageContent"][aria-label*="assistant"] p,
+body.rpln-redesign [data-testid="stChatMessageContent"][aria-label*="assistant"] li {
+  color: var(--text-primary) !important;
+  font-family: var(--font-prose) !important;
+}
+body.rpln-redesign [data-testid="stChatMessageContent"][aria-label*="assistant"] strong {
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+}
+
+/* Inline code inside assistant prose — salmon pill from the token. */
+body.rpln-redesign [data-testid="stChatMessageContent"][aria-label*="assistant"] code {
+  color: var(--code-salmon) !important;
+  background-color: var(--accent-subtle) !important;
+  padding: 1px 6px !important;
+  border-radius: 4px !important;
+  font-family: var(--font-mono) !important;
+  font-size: 0.88em !important;
+}
+
+/* Fenced code blocks — dedicated surface. */
+body.rpln-redesign [data-testid="stChatMessageContent"][aria-label*="assistant"] pre {
+  background-color: var(--bg-code) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 12px 14px !important;
+}
+
+.rpln-code-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 10px;
+}
+.rpln-code-card-meta {
+  color: var(--text-tertiary);
+  font: 500 12px var(--font-ui);
+}
+.rpln-code-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: rgba(244, 239, 232, 0.04);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: 600 12px var(--font-ui);
+  min-height: 30px;
+  padding: 5px 10px;
+}
+.rpln-code-copy:hover {
+  background: rgba(244, 239, 232, 0.08);
+  color: var(--text-primary);
+}
+.rpln-code-copy .material-symbols-rounded {
+  font-size: 16px;
+}
+.rpln-code-card textarea {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Headings in assistant prose — px-pinned so Streamlit's 14px html
+   base doesn't silently shrink them (Round-18a rule). */
+body.rpln-redesign [data-testid="stChatMessageContent"][aria-label*="assistant"] h1 { font-size: 22px !important; font-weight: 700 !important; }
+body.rpln-redesign [data-testid="stChatMessageContent"][aria-label*="assistant"] h2 { font-size: 18px !important; font-weight: 700 !important; }
+body.rpln-redesign [data-testid="stChatMessageContent"][aria-label*="assistant"] h3 { font-size: 16px !important; font-weight: 700 !important; }
+
+/* User bubble — solid fill tinted off --bg-user-bubble. Keep the
+   720px column + right-align machinery from WP-F.04.19 by inheriting
+   the parent's `justify-content: flex-end` via :has(). */
+body.rpln-redesign [data-testid="stChatMessageContent"][aria-label*="user"] {
+  background-color: var(--bg-user-bubble) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-ui) !important;
+  font-size: 17px !important;
+  border-radius: var(--radius-lg) !important;
+  padding: 12px 16px !important;
+  max-width: 75% !important;
+  margin: 0 0 0 auto !important;
+}
+body.rpln-redesign [data-testid="stChatMessageContent"][aria-label*="user"] p {
+  color: var(--text-primary) !important;
+  margin: 0 !important;
+}
+
+/* Chat message row — keep the 720px shared column centred. */
+body.rpln-redesign [data-testid="stChatMessage"]:has([aria-label*="user"]) {
+  justify-content: flex-end !important;
+}
+body.rpln-redesign [data-testid="stChatMessage"] {
+  max-width: var(--col-w) !important;
+  margin: 0 auto 24px auto !important;
+}
+
+/* Status-ready dot + thinking disclosure chip — match token palette. */
+body.rpln-redesign .rpln-thinking-chip,
+body.rpln-redesign [data-rpln-thinking-chip] summary {
+  color: var(--text-secondary) !important;
+  background-color: var(--accent-subtle) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 999px !important;
+  font-family: var(--font-ui) !important;
+}
+
+/* Per-message rails (Retry/Edit/Copy, 👍/👎, pager) — token-aligned icons. */
+body.rpln-redesign [data-rpln-action] button,
+body.rpln-redesign [data-rpln-action-row] button {
+  color: var(--text-tertiary) !important;
+  background: transparent !important;
+  border: none !important;
+  transition: color 120ms var(--ease-out) !important;
+}
+body.rpln-redesign [data-rpln-action] button:hover,
+body.rpln-redesign [data-rpln-action-row] button:hover {
+  color: var(--text-primary) !important;
+}
+
+/* =======================================================================
+   WP-F.05.04 — Composer restyle
+   -----------------------------------------------------------------------
+   Shell wrapper already lands at 720px×auto centered (from WP-F.04.19).
+   Re-skin to the token palette and the merged-design pill anchors:
+     .st-key-rpln_composer_shell     → outer rounded card
+     .st-key-rpln_composer_textarea  → inner textarea
+     .st-key-rpln_composer_controls  → +/tools/model-pill/submit row
+     .st-key-rpln_composer_model     → model pill button
+     .st-key-FormSubmitter-rpln_composer_form-- → submit ↑/⏹
+   Reference mockup: `tmp/img/v2-default.png`.
+   ======================================================================= */
+
+/* Composer shell background/border/radius/padding/shadow + 44px textarea
+   clamp live in the unscoped block near the end of this file (search
+   "Composer full v0 parity") so they apply regardless of body class. */
+
+/* Textarea — seamless inside the card, no inner border. */
+body.rpln-redesign .st-key-rpln_composer_textarea,
+body.rpln-redesign .st-key-rpln_composer_textarea [data-testid="stTextArea"],
+body.rpln-redesign .st-key-rpln_composer_textarea textarea {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-ui) !important;
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+}
+body.rpln-redesign .st-key-rpln_composer_textarea textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Submit button — token accent-tinted disk, 36×36. */
+body.rpln-redesign .st-key-FormSubmitter-rpln_composer_form-- button {
+  background-color: var(--accent) !important;
+  color: var(--bg-page) !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 !important;
+  transition: background-color 160ms var(--ease-out) !important;
+}
+body.rpln-redesign .st-key-FormSubmitter-rpln_composer_form-- button:hover {
+  background-color: var(--accent-hover) !important;
+}
+body.rpln-redesign .st-key-FormSubmitter-rpln_composer_form-- button:disabled {
+  background-color: var(--accent-muted) !important;
+  cursor: default !important;
+  opacity: 0.78 !important;
+}
+
+/* Adaptive-thinking toggle row — secondary text, no background. */
+body.rpln-redesign .st-key-rpln_adaptive_section,
+body.rpln-redesign .st-key-rpln_adaptive_toggle {
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+}
+
+/* =======================================================================
+   WP-F.05.05 — Welcome hero + empty-state polish
+   -----------------------------------------------------------------------
+   Hero DOM comes from _render_welcome() and already uses `.rpln-hero-*`
+   anchors. Legacy theme.css pins title to Source Serif 4 40px; we
+   re-skin colors to redesign tokens and lift the tagline into an
+   uppercase eyebrow to match `tmp/img/v2-default.png`. No starter cards
+   (DECISIONS.md B2 — permanently removed).
+   ======================================================================= */
+
+body.rpln-redesign .rpln-hero {
+  font-family: var(--font-ui) !important;
+}
+body.rpln-redesign .rpln-hero-icon {
+  filter: saturate(0.9) !important;
+}
+body.rpln-redesign .rpln-hero-title {
+  color: var(--text-primary) !important;
+  font-family: var(--font-prose) !important;
+  border-bottom-color: var(--border-subtle) !important;
+}
+body.rpln-redesign .rpln-hero-tagline {
+  color: var(--text-tertiary) !important;
+  font-family: var(--font-ui) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.16em !important;
+  text-transform: uppercase !important;
+  margin-top: 10px !important;
+}
+body.rpln-redesign .rpln-hero-desc {
+  color: var(--text-secondary) !important;
+  font-family: var(--font-ui) !important;
+  font-size: 17px !important;
+  line-height: 1.7 !important;
+  max-width: var(--col-w) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+body.rpln-redesign .rpln-welcome-caption {
+  color: var(--text-tertiary) !important;
+  font-family: var(--font-ui) !important;
+  font-size: 12px !important;
+}
+
+/* Empty-state fallback for recents. */
+body.rpln-redesign .rpln-empty-recents {
+  color: var(--text-tertiary) !important;
+  font-family: var(--font-ui) !important;
+  font-size: 12px !important;
+  padding: 6px 8px !important;
+}
+
+/* Goodbye page — keep the prod copy ("Thank you for using RePORT AI Portal")
+   per DECISIONS.md B4, but re-tint to tokens. */
+body.rpln-redesign .rpln-goodbye,
+body.rpln-redesign .rpln-goodbye h1,
+body.rpln-redesign .rpln-goodbye p {
+  color: var(--text-primary) !important;
+  font-family: var(--font-ui) !important;
+}
+
+/* =======================================================================
+   WP-F.05.06 — Profile popover + Settings scrim restyle
+   -----------------------------------------------------------------------
+   Profile dock emits a `.rpln-profile-popover` sibling that's hidden by
+   default; bridge.js adds `.open` on dock click, removes on outside click.
+   Settings view gets a fixed scrim behind the keyed container, emulating
+   a modal without using @st.dialog (which closes on st.rerun).
+   Reference: tmp/Test 2/RePORT AI Portal Chat.html (.profile-menu, .settings-*)
+   ======================================================================= */
+
+/* Root becomes positioning context for the absolute popover. */
+body.rpln-redesign .rpln-profile-root {
+  position: relative;
+}
+
+/* Dock is now a clickable surface — cursor + hover tint. Edge-to-edge
+   (full sidebar width), so no border-radius — a rounded dock at the
+   sidebar's bottom corners would look like a clipped card. */
+body.rpln-redesign .rpln-profile-dock {
+  cursor: pointer;
+  border-radius: 0;
+  transition: background-color 120ms var(--ease-out);
+}
+body.rpln-redesign .rpln-profile-dock:hover {
+  background-color: var(--accent-subtle) !important;
+}
+body.rpln-redesign .rpln-profile-dock .rpln-icon-btn {
+  cursor: pointer;
+}
+
+/* Popover — hidden by default, anchored above the dock. Width matches
+   the dock (flush to sidebar edges) per the change-#6 spec. */
+body.rpln-redesign .rpln-profile-popover {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  padding: 8px;
+  z-index: 42;
+  animation: rpln-popover-in 160ms var(--ease-out);
+}
+body.rpln-redesign .rpln-profile-popover.open {
+  display: block;
+}
+
+@keyframes rpln-popover-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+body.rpln-redesign .rpln-profile-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+}
+body.rpln-redesign .rpln-profile-row:hover {
+  background: var(--accent-subtle);
+}
+body.rpln-redesign .rpln-profile-row-danger {
+  color: var(--text-danger);
+}
+body.rpln-redesign .rpln-profile-row-danger:hover {
+  background: rgba(229, 94, 83, 0.12);
+}
+body.rpln-redesign .rpln-profile-row .material-symbols-rounded {
+  font-size: 18px;
+}
+body.rpln-redesign .rpln-profile-row .rpln-pm-label {
+  flex: 1;
+}
+body.rpln-redesign .rpln-pm-sep {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 6px 8px;
+}
+
+/* Hide the real Streamlit buttons that the bridge clicks. */
+body.rpln-redesign .st-key-rpln_profile_settings_btn,
+body.rpln-redesign .st-key-rpln_profile_logout_btn {
+  display: none !important;
+}
+
+/* Settings scrim — fixed dim backdrop behind the centered card. */
+body.rpln-redesign .rpln-settings-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 40;
+  animation: rpln-fade 180ms var(--ease-out);
+}
+@keyframes rpln-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Settings card — hoisted above the scrim with a rounded surface. */
+body.rpln-redesign .st-key-rpln_settings_panel {
+  max-width: 640px !important;
+  margin: 5vh auto !important;
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55) !important;
+  padding: 20px 24px !important;
+  position: relative;
+  z-index: 41;
+}
+
+/* Settings title — prose font, larger scale. */
+body.rpln-redesign .rpln-settings-title {
+  font-family: var(--font-prose) !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  color: var(--text-primary) !important;
+}
+
+/* Active tab underline — 2px accent bar. */
+body.rpln-redesign .st-key-rpln_settings_panel [role="tablist"] [aria-selected="true"] {
+  border-bottom: 2px solid var(--accent) !important;
+}
+
+/* =======================================================================
+   Appearance knobs — 5 controls inside Settings → General tab
+   -----------------------------------------------------------------------
+   Base: WP-F.05.07 Tweaks panel. Reconciled 2026-04-22 into the Settings
+   modal's General tab (see `project_appearance_sidebar_row.md`). The
+   5 knobs (theme, accent, bubble, aprose, density) persist via
+   ``localStorage.report_ai_portal_appearance_v1`` and apply as ``data-*``
+   body attributes. Accent overrides sit AFTER theme rules in source
+   order so equal-specificity selectors let the accent win.
+   Reference: tmp/Test 2/RePORTaLiN Chat.html:1233-1395 (Tweaks styling);
+              tmp/Test 2/RePORTaLiN Chat v1.html:658-746 (v1 variants).
+   ======================================================================= */
+
+/* ---- Bubble variants --------------------------------------------------- */
+body.rpln-redesign[data-bubble="tail"]
+  [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"])
+  [data-testid="stChatMessageContent"] {
+  border-radius: 20px 20px 6px 20px !important;
+}
+body.rpln-redesign[data-bubble="soft"]
+  [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"])
+  [data-testid="stChatMessageContent"] {
+  border-radius: 18px !important;
+}
+body.rpln-redesign[data-bubble="sharp"]
+  [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"])
+  [data-testid="stChatMessageContent"] {
+  border-radius: 4px !important;
+}
+body.rpln-redesign[data-bubble="flat"]
+  [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"])
+  [data-testid="stChatMessageContent"] {
+  background: transparent !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: 12px !important;
+}
+
+/* ---- Assistant prose variants ------------------------------------------ */
+body.rpln-redesign[data-aprose="serif"]
+  [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"])
+  [data-testid="stChatMessageContent"] {
+  font-family: var(--font-prose) !important;
+  font-size: 18px !important;
+  line-height: 1.7 !important;
+}
+body.rpln-redesign[data-aprose="sans"]
+  [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"])
+  [data-testid="stChatMessageContent"] {
+  font-family: var(--font-ui) !important;
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+}
+
+/* ---- Density variants -------------------------------------------------- */
+body.rpln-redesign[data-density="compact"] [data-testid="stChatMessage"] {
+  margin-bottom: 12px !important;
+}
+body.rpln-redesign[data-density="normal"] [data-testid="stChatMessage"] {
+  margin-bottom: 20px !important;
+}
+body.rpln-redesign[data-density="spacious"] [data-testid="stChatMessage"] {
+  margin-bottom: 32px !important;
+}
+
+/* ---- Accent overrides (MUST be AFTER theme rules) ---------------------- */
+/* Equal-specificity selectors; source order breaks the tie so the user's
+   accent pick beats the theme's default accent. */
+body.rpln-redesign[data-accent="C96442"] {
+  --accent: #C96442;
+  --accent-hover: #B15738;
+  --accent-muted: rgba(201, 100, 66, 0.18);
+  --accent-subtle: rgba(201, 100, 66, 0.08);
+}
+body.rpln-redesign[data-accent="7C9B6E"] {
+  --accent: #7C9B6E;
+  --accent-hover: #6B8A5D;
+  --accent-muted: rgba(124, 155, 110, 0.18);
+  --accent-subtle: rgba(124, 155, 110, 0.08);
+}
+body.rpln-redesign[data-accent="8A7FBE"] {
+  --accent: #8A7FBE;
+  --accent-hover: #786FAE;
+  --accent-muted: rgba(138, 127, 190, 0.18);
+  --accent-subtle: rgba(138, 127, 190, 0.08);
+}
+body.rpln-redesign[data-accent="C48B3F"] {
+  --accent: #C48B3F;
+  --accent-hover: #B37A2E;
+  --accent-muted: rgba(196, 139, 63, 0.18);
+  --accent-subtle: rgba(196, 139, 63, 0.08);
+}
+body.rpln-redesign[data-accent="5E8CA8"] {
+  --accent: #5E8CA8;
+  --accent-hover: #4D7B97;
+  --accent-muted: rgba(94, 140, 168, 0.18);
+  --accent-subtle: rgba(94, 140, 168, 0.08);
+}
+
+/* ---- Appearance container (inside Settings → General tab) ------------- */
+body.rpln-redesign .rpln-appearance {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 8px;
+}
+body.rpln-redesign .rpln-tweaks-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+body.rpln-redesign .rpln-tweaks-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+body.rpln-redesign .rpln-tweaks-options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+body.rpln-redesign .rpln-tweaks-opt {
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 120ms var(--ease-out);
+}
+body.rpln-redesign .rpln-tweaks-opt:hover {
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+body.rpln-redesign .rpln-tweaks-opt[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+body.rpln-redesign .rpln-tweaks-swatches {
+  display: flex;
+  gap: 8px;
+}
+body.rpln-redesign .rpln-tweaks-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 120ms var(--ease-out), transform 120ms var(--ease-out);
+}
+body.rpln-redesign .rpln-tweaks-swatch:hover {
+  transform: scale(1.1);
+}
+body.rpln-redesign .rpln-tweaks-swatch[aria-pressed="true"] {
+  border-color: var(--text-primary);
+}
+
+body.rpln-redesign .rpln-tweaks-themes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+body.rpln-redesign .rpln-tweaks-theme {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: border-color 120ms var(--ease-out), background 120ms var(--ease-out);
+}
+body.rpln-redesign .rpln-tweaks-theme:hover {
+  border-color: var(--border-default);
+  background: rgba(255, 255, 255, 0.06);
+}
+body.rpln-redesign .rpln-tweaks-theme[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.06);
+}
+body.rpln-redesign .rpln-tweaks-theme-chip {
+  height: 22px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+body.rpln-redesign .rpln-tweaks-theme-name {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-align: center;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+}
+body.rpln-redesign .rpln-tweaks-theme[aria-pressed="true"] .rpln-tweaks-theme-name {
+  color: var(--text-primary);
+}
+
+/* Hide the 22 bridge-fired Streamlit buttons. */
+body.rpln-redesign [class*="st-key-rpln_tweak_"] {
+  display: none !important;
+}
+
+/* =======================================================================
+   WP-F.05.08 — Responsive collapse below 840px
+   -----------------------------------------------------------------------
+   Pure CSS media-query plus one bridge.js toggle turns the sidebar into
+   a drawer behind a full-screen scrim and exposes a hamburger button in
+   the topbar. Zero Python state \u2014 DOM state + CSS transitions only.
+   Reference: Chat.html:1416-1425 (@media), 1432/1479/2733-2740 (scrim +
+   handler), merged-design.md:493-519.
+   ======================================================================= */
+
+body.rpln-redesign .rpln-mobile-menu-btn {
+  display: none;
+}
+body.rpln-redesign .rpln-mobile-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 49;
+  animation: rpln-fade 180ms var(--ease-out);
+}
+body.rpln-redesign .rpln-mobile-scrim.rpln-open {
+  display: block;
+}
+
+@media (max-width: 840px) {
+  body.rpln-redesign .rpln-mobile-menu-btn {
+    display: inline-flex;
+  }
+
+  .rpln-jump-latest {
+    right: 16px;
+    bottom: 132px;
+  }
+
+  /* Sidebar floats over the canvas as a slide-in drawer. */
+  body.rpln-redesign [data-testid="stSidebar"] {
+    position: fixed !important;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: min(85vw, 320px) !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    z-index: 50 !important;
+    transform: translateX(-100%);
+    transition: transform 280ms var(--ease-out) !important;
+    box-shadow: none;
+  }
+  body.rpln-redesign [data-testid="stSidebar"].rpln-mobile-open {
+    transform: translateX(0);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Cancel the WP-F.04.20 transition sync on main \u2014 there's no
+     sidebar margin to animate when the drawer floats above the canvas. */
+  body.rpln-redesign .stMain,
+  body.rpln-redesign [data-testid="stAppViewContainer"] {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Composer + thread already centered at 720px; allow them to shrink. */
+  body.rpln-redesign [data-testid="stMainBlockContainer"] {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+}
+
+/* =======================================================================
+   WP-F.05.09a \u2014 Brand status dot + share flash
+   -----------------------------------------------------------------------
+   Small green dot next to the brand name signals pipeline readiness.
+   Visual-only today; future PR can gate on actual pipeline state.
+   Reference: merged-design.md:156, 164-169.
+   ======================================================================= */
+body.rpln-redesign .rpln-brand-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-ready);
+  box-shadow: 0 0 0 3px rgba(110, 231, 160, 0.18);
+  margin-left: 8px;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
+/* =======================================================================
+   WP-F.05.09b.4 \u2014 "edited" badge after an Edit-flow re-submission
+   ======================================================================= */
+body.rpln-redesign .rpln-edited-badge {
+  display: inline-block;
+  margin-left: 6px;
+  margin-top: 2px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent-subtle);
+  color: var(--text-tertiary);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+  font-style: italic;
+  vertical-align: middle;
+}
+
+/* =======================================================================
+   WP-F.05.11a — profile dock pinning + caret rotation
+
+   Round-15 pinned the dock via `position: absolute; bottom: 0` inside
+   `stSidebarUserContent` (the nearest positioned ancestor). That works
+   only when the container fills the sidebar's height — but Streamlit
+   sizes `stSidebarUserContent` to its content (~315 px), so the dock
+   landed mid-sidebar. Stretch the user content via flex so `bottom: 0`
+   lands at the true sidebar bottom. Scoped under `rpln-redesign` so the
+   wizard screen (which shares the same testids) is unaffected.
+
+   Caret rotation mirrors `.profile-dock.menu-open .pd-caret` from
+   tmp/Test 2/RePORT AI Portal Chat.html:1213 — bridge.js toggles `menu-open`
+   on the dock in lockstep with the popover's `open` class.
+   ======================================================================= */
+body.rpln-redesign [data-testid="stSidebarContent"] {
+  display: flex !important;
+  flex-direction: column;
+  min-height: 100%;
+}
+body.rpln-redesign [data-testid="stSidebarUserContent"] {
+  flex: 1 1 auto !important;
+  min-height: 0;
+}
+
+/* Streamlit wraps every `st.html(...)` in an `stElementContainer` that
+   has `position: relative`. That silently steals the offsetParent from
+   the dock. Neutralise it for the profile container so the dock's
+   `position: absolute; bottom: 0` lands on `stSidebarUserContent`. */
+body.rpln-redesign [data-testid="stElementContainer"]:has(.rpln-profile-root) {
+  position: static !important;
+}
+
+body.rpln-redesign .rpln-profile-root {
+  position: absolute !important;
+  left: -6px;
+  right: -18px;
+  bottom: 0;
+}
+body.rpln-redesign .rpln-profile-dock {
+  position: static !important;
+  bottom: auto !important;
+}
+
+/* Final topbar popover typography lock.
+   Must come after the generic popover theme rules so the title/share menus
+   keep their compact sizing instead of inheriting body-sized copy. */
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel) .rpln-topbar-menu-eyebrow,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .rpln-topbar-menu-eyebrow,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel) .rpln-topbar-menu-section,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .rpln-topbar-menu-section {
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+  color: var(--rpln-text-faint) !important;
+}
+
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel) .rpln-topbar-menu-title,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .rpln-topbar-menu-title {
+  font-size: 15px !important;
+  line-height: 1.35 !important;
+  font-weight: 600 !important;
+  color: var(--rpln-text) !important;
+}
+
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .rpln-topbar-share-lead {
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+  color: var(--rpln-text-muted) !important;
+  white-space: normal !important;
+}
+
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .rpln-topbar-share-note {
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+  color: var(--rpln-text-faint) !important;
+  white-space: normal !important;
+}
+
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel) .stButton > button,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .stDownloadButton > button {
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+}
+
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel) .stButton > button p,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-menu-sentinel) .stButton > button div,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .stDownloadButton > button p,
+[data-testid="stPopoverBody"]:has(.rpln-topbar-share-sentinel) .stDownloadButton > button div {
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+  white-space: nowrap !important;
+}
+
+/* =======================================================================
+   Final chat-layout split
+
+   Keep only the welcome hero, composer, and disclaimer on the centered
+   720px track. The thread itself stays left-anchored.
+   ======================================================================= */
+body.rpln-redesign .rpln-column,
+body.rpln-redesign [class*="st-key-rpln_composer_shell"],
+body.rpln-redesign .rpln-footer-disclaimer {
+  width: min(100%, var(--rpln-col-width, 720px)) !important;
+  max-width: var(--rpln-col-width, 720px) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+/* Stable composer dock. Streamlit can change the parent stElementContainer
+   shape after chat messages render, so the fixed positioning belongs on a
+   keyed container we own: rpln_composer_dock. The thread scrolls behind it;
+   composer + disclaimer stay visible. */
+body.rpln-redesign [class*="st-key-rpln_composer_dock"] {
+  position: fixed !important;
+  left: var(--rpln-sidebar-w, 272px) !important;
+  right: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  bottom: 0 !important;
+  z-index: 50 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 0 !important;
+  padding: 0 24px 8px !important;
+  background: linear-gradient(
+    to top,
+    var(--rpln-bg) 0%,
+    var(--rpln-bg) 68%,
+    rgba(18, 18, 18, 0)
+  ) !important;
+  pointer-events: none !important;
+}
+body:has([data-testid="stSidebar"][aria-expanded="false"])
+  [class*="st-key-rpln_composer_dock"],
+body[data-rpln-sidebar-collapsed="true"]
+  [class*="st-key-rpln_composer_dock"] {
+  left: 0 !important;
+}
+body.rpln-redesign [class*="st-key-rpln_composer_dock"] > div,
+body.rpln-redesign
+  [class*="st-key-rpln_composer_dock"]
+  [data-testid="stVerticalBlock"]:not([class*="st-key-rpln_model_pill_host"]):not([class*="st-key-rpln_composer_model"]),
+body.rpln-redesign
+  [class*="st-key-rpln_composer_dock"]
+  [data-testid="stElementContainer"]:not([class*="st-key-FormSubmitter-rpln_composer_form"]) {
+  width: 100% !important;
+  max-width: var(--rpln-col-width, 720px) !important;
+}
+body.rpln-redesign
+  [class*="st-key-rpln_composer_dock"]
+  [data-testid="stElementContainer"]:has(> [class*="st-key-rpln_composer_shell"]),
+body.rpln-redesign
+  [class*="st-key-rpln_composer_dock"]
+  [data-testid="stElementContainer"]:has(> .rpln-footer-disclaimer) {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  z-index: auto !important;
+  display: block !important;
+  justify-content: initial !important;
+  padding: 0 !important;
+  background: transparent !important;
+  pointer-events: auto !important;
+}
+body.rpln-redesign [class*="st-key-rpln_composer_dock"] [class*="st-key-rpln_composer_shell"],
+body.rpln-redesign [class*="st-key-rpln_composer_dock"] .rpln-footer-disclaimer {
+  pointer-events: auto !important;
+}
+
+/* Composer + disclaimer stay on the centered 720px track. */
+[class*="st-key-rpln_composer_shell"] {
+  margin-top: 16px !important;
+}
+body.rpln-redesign .rpln-footer-disclaimer {
+  margin-top: 0 !important;
+  padding: 6px 0 8px !important;
+}
+body.rpln-redesign [data-testid="stChatMessage"] {
+  width: 100% !important;
+  max-width: var(--rpln-col-width, 720px) !important;
+  margin: 0 auto 16px auto !important;
+  padding: 0 24px !important;
+  box-sizing: border-box !important;
+}
+body.rpln-redesign [data-testid="stChatMessage"]:has(
+  [data-testid="stChatMessageContent"][aria-label*="assistant" i]
+) {
+  width: 100% !important;
+  margin: 0 auto 22px auto !important;
+}
+body.rpln-redesign [data-testid="stChatMessageContent"][aria-label*="assistant" i] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+body.rpln-redesign [data-testid="stChatMessage"]:has(
+  [data-testid="stChatMessageContent"][aria-label*="user" i]
+) {
+  width: 100% !important;
+  margin: 0 auto 16px auto !important;
+  justify-content: flex-end !important;
+}
+
+/* No bottom padding — the profile dock is absolutely-positioned at
+   bottom:0 of stSidebarUserContent, so it does not push content. */
+
+body.rpln-redesign .rpln-profile-dock .rpln-pd-caret {
+  transition: transform 160ms var(--ease-out);
+}
+body.rpln-redesign .rpln-profile-dock.menu-open .rpln-pd-caret {
+  transform: rotate(180deg);
+}
+
+/* =======================================================================
+   WP-F.05.11b — toast pill (bottom-center, auto-dismiss)
+
+   Matches reference HTML:1855-1880 (.toast). Fixed bottom-center stack;
+   each toast slides up + fades in, slides down + fades out after 1800 ms.
+   Host is outside `body.rpln-redesign` so toasts survive a rollback.
+   ======================================================================= */
+.rpln-toast-host {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.rpln-toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: var(--bg-surface, #242422);
+  color: var(--text-primary, #F4EFE8);
+  border: 1px solid var(--border-default, rgba(244, 239, 232, 0.12));
+  font-family: var(--font-ui, Inter, system-ui, sans-serif);
+  font-size: 13px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 200ms var(--ease-out, ease-out),
+              transform 200ms var(--ease-out, ease-out);
+}
+.rpln-toast.in {
+  opacity: 1;
+  transform: translateY(0);
+}
+.rpln-toast .material-symbols-rounded {
+  font-size: 18px;
+  color: var(--status-ready, #6EE7A0);
+}
+
+/* =======================================================================
+   WP-F.05.11c — inline conversation rename + composer editing banner
+
+   Rename: click the per-row edit kebab; bridge.js flips the title to
+   contenteditable="plaintext-only" and commits via a hidden text_input.
+   Banner: rendered above the composer form when `rpln_pending_edit` is
+   true; matches reference HTML:832-847.
+   ======================================================================= */
+body.rpln-redesign .rpln-conv-title[contenteditable="plaintext-only"] {
+  outline: none;
+  background: rgba(244, 239, 232, 0.06);
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+  cursor: text;
+  box-shadow: 0 0 0 1px var(--accent, #C96442);
+}
+body.rpln-redesign .rpln-conv-title.rpln-rename-editing {
+  user-select: text;
+}
+body.rpln-redesign .rpln-conv-row:hover .rpln-kebab[data-rpln-action="rename-conv"] {
+  opacity: 1;
+}
+
+body.rpln-redesign .rpln-editing-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-default, rgba(244, 239, 232, 0.12));
+  font-size: 12px;
+  color: var(--text-muted, rgba(244, 239, 232, 0.60));
+}
+body.rpln-redesign .rpln-editing-banner .material-symbols-rounded {
+  font-size: 14px;
+  color: var(--accent, #C96442);
+}
+body.rpln-redesign .rpln-editing-banner .rpln-editing-spacer {
+  flex: 1;
+}
+body.rpln-redesign .rpln-editing-banner button {
+  background: transparent;
+  border: 0;
+  color: var(--text-faint, rgba(244, 239, 232, 0.46));
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+body.rpln-redesign .rpln-editing-banner button:hover {
+  background: rgba(244, 239, 232, 0.06);
+  color: var(--text-primary, #F4EFE8);
+}
+
+/* Hide the hidden rename form + cancel-edit button from the sidebar UI
+   (kept rendered for the JS bridge + Python handler). The rename form
+   is wrapped in st.form so that submit atomically syncs its text_input
+   payload to session_state in the same rerun the submit fires. */
+body.rpln-redesign [data-testid="stSidebar"] .stElementContainer.st-key-rpln_open_search,
+body.rpln-redesign [data-testid="stSidebar"] .stElementContainer.st-key-rpln_new_chat,
+body.rpln-redesign [data-testid="stSidebar"] .stElementContainer.st-key-rpln_profile_settings_btn,
+body.rpln-redesign [data-testid="stSidebar"] .stElementContainer.st-key-rpln_profile_logout_btn,
+body.rpln-redesign [data-testid="stSidebar"] .stElementContainer[class*="st-key-rpln_switch_"],
+body.rpln-redesign [data-testid="stSidebar"] .stElementContainer[class*="st-key-rpln_del_"],
+body.rpln-redesign [data-testid="stSidebar"] .stElementContainer[class*="st-key-rpln_pin_"] {
+  display: none !important;
+}
+
+body.rpln-redesign [data-testid="stSidebar"] [data-testid="stForm"]:has(.st-key-rpln_rename_payload),
+body.rpln-redesign [data-testid="stSidebar"] .st-key-rpln_rename_form,
+body.rpln-redesign .st-key-rpln_cancel_edit {
+  position: absolute !important;
+  left: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+
+/* =======================================================================
+   WP-F.05.11d — native sidebar collapser restored in tune-icon slot
+
+   theme.css:160 hides stSidebarHeader globally. In the redesign scope
+   we un-hide it and float it top-right inside the sidebar so it occupies
+   the slot the removed `Appearance` tune icon used to sit in. The
+   built-in Streamlit collapse button (`keyboard_double_arrow_left`) now
+   toggles the sidebar, matching the reference mockup's expectation
+   ("keep the existing sidebar collapser").
+
+   Dock visual polish (border-top + padding) lives alongside — Round-15's
+   absolute-bottom pinning from .11a is intentionally untouched; only
+   the surface treatment is nudged toward the reference.
+   ======================================================================= */
+
+/* Un-hide the sidebar header Streamlit renders (theme.css:160 hides it
+   globally) so the native collapse button is visible again. */
+body.rpln-redesign [data-testid="stSidebarHeader"] {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-end;
+  position: absolute !important;
+  top: 10px;
+  right: 12px;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+  z-index: 3;
+  background: transparent !important;
+}
+
+/* The logo spacer would push the collapse button off the right edge —
+   collapse it so the button aligns flush with the top-right corner. */
+body.rpln-redesign [data-testid="stLogoSpacer"] {
+  display: none !important;
+}
+
+/* Streamlit hides the collapse button by default and reveals it on
+   sidebar hover. We want it permanently visible so it reads as the
+   canonical affordance (the tune icon we just removed was always
+   visible). Override visibility on the wrapper + the icon span. */
+body.rpln-redesign [data-testid="stSidebarCollapseButton"],
+body.rpln-redesign [data-testid="stSidebarCollapseButton"] [data-testid="stIconMaterial"] {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Style the native collapse button to match `.rpln-icon-btn` (32x32,
+   transparent, hover tint) so it reads as the same affordance the tune
+   icon used to provide. */
+body.rpln-redesign [data-testid="stSidebarCollapseButton"] button,
+body.rpln-redesign [data-testid="stSidebarCollapsedControl"] button {
+  width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: var(--radius-md) !important;
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  transition: background-color 120ms var(--ease-out),
+              color 120ms var(--ease-out);
+}
+body.rpln-redesign [data-testid="stSidebarCollapseButton"] button:hover,
+body.rpln-redesign [data-testid="stSidebarCollapsedControl"] button:hover {
+  background-color: rgba(244, 239, 232, 0.08) !important;
+  color: var(--text-primary) !important;
+}
+body.rpln-redesign [data-testid="stSidebarCollapseButton"] button svg,
+body.rpln-redesign [data-testid="stSidebarCollapsedControl"] button svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Give the brand row its original padding back now that the tune icon
+   is gone — the right side is reserved for the floating collapser. */
+body.rpln-redesign .rpln-side-head {
+  padding-right: 44px;
+}
+
+/* When the sidebar is collapsed, Streamlit hosts the expand-sidebar
+   button inside `stHeader` / `stToolbar`, both of which theme.css:86-88
+   hides globally. Un-hide only when aria-expanded=false so the app keeps
+   its headless look while giving the user a way to reopen the sidebar.
+   The top-bar chrome is kept transparent + click-pass-through so only
+   the expand button is interactive. */
+body.rpln-redesign:has([data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stHeader"],
+body.rpln-redesign:has([data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stToolbar"] {
+  display: block !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  pointer-events: none !important;
+  height: 52px !important;
+  min-height: 52px !important;
+}
+
+/* Hide the Deploy button + any other toolbar actions that get revealed
+   by un-hiding stToolbar above. We only want the expand-sidebar button. */
+body.rpln-redesign [data-testid="stAppDeployButton"],
+body.rpln-redesign [data-testid="stToolbar"] [data-testid="stBaseButton-header"] {
+  display: none !important;
+}
+body.rpln-redesign [data-testid="stExpandSidebarButton"] {
+  pointer-events: auto !important;
+  position: fixed !important;
+  top: 10px !important;
+  left: 12px !important;
+  z-index: 100 !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: var(--radius-md) !important;
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  transition: background-color 120ms var(--ease-out),
+              color 120ms var(--ease-out);
+}
+body.rpln-redesign [data-testid="stExpandSidebarButton"]:hover {
+  background-color: rgba(244, 239, 232, 0.08) !important;
+  color: var(--text-primary) !important;
+}
+body.rpln-redesign [data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"] {
+  visibility: visible !important;
+  opacity: 1 !important;
+  font-size: 20px !important;
+}
+
+/* Profile dock — nudge the surface toward the reference treatment
+   (border-top hairline + tightened padding). Positioning inherits from
+   .11a (absolute, bottom:0) — do NOT reintroduce margin-top:auto. */
+body.rpln-redesign .rpln-profile-dock {
+  padding: 12px 14px !important;
+  border-top: 1px solid var(--border-default) !important;
+  background: var(--bg-sidebar, var(--rpln-sidebar-bg)) !important;
+}
+
+/* =======================================================================
+  Pass-2 checkpoint 5 — composer single-row parity
+   -----------------------------------------------------------------------
+   (a) Hide the real form_submit_button inside the composer form — the
+       visible submit-proxy button in composer-controls forwards its click
+       via bridge.js data-rpln-action="submit-composer". Enter-key submit
+       still triggers the real hidden button (form semantics preserved).
+   (b) Style .rpln-submit-proxy as the circular orange arrow-up (matches
+       the previous formSubmit button visually).
+   (c) Hide Streamlit's native popover chevron on the [+] attach trigger
+       so only the bare [+] glyph shows (reference HTML:896).
+   (d) Rotate Streamlit's model-pill popover chevron 180° so it reads `^`
+       (expand_less) instead of `v` (expand_more) — matches reference.
+   ======================================================================= */
+
+/* (a) Position the real form_submit_button on the textarea row so the send
+   control sits inline with the typing area. */
+[data-testid="stForm"]:has(.st-key-rpln_composer_textarea)
+  [class*="st-key-FormSubmitter-rpln_composer_form"] {
+  position: absolute !important;
+  top: 2px !important;
+  right: 10px !important;
+  left: auto !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  height: auto !important;
+  overflow: visible !important;
+  opacity: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  z-index: 2 !important;
+}
+
+[data-testid="stForm"]:has(.st-key-rpln_composer_textarea) {
+  position: relative !important;
+}
+
+[data-testid="stForm"]:has(.st-key-rpln_composer_textarea)
+  [data-testid="stFormSubmitButton"] button {
+  position: static !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background-color: var(--rpln-surface-2) !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23F4EFE8' stroke-opacity='0.5' stroke-width='2.35' stroke-linecap='round' stroke-linejoin='round'><line x1='12' y1='19' x2='12' y2='5'/><polyline points='5 12 12 5 19 12'/></svg>") !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 18px 18px !important;
+  box-shadow: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+[data-testid="stForm"]:has(.st-key-rpln_composer_textarea)[data-rpln-dirty="true"]
+  [data-testid="stFormSubmitButton"] button:not(:disabled),
+[class*="st-key-rpln_composer_shell"][data-rpln-dirty="true"]
+  [data-testid="stFormSubmitButton"] button:not(:disabled) {
+  background-color: var(--rpln-accent-orange) !important;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%231a1a1a' stroke-width='2.35' stroke-linecap='round' stroke-linejoin='round'><line x1='12' y1='19' x2='12' y2='5'/><polyline points='5 12 12 5 19 12'/></svg>") !important;
+  box-shadow: 0 2px 8px rgba(201, 100, 66, 0.35) !important;
+}
+[data-testid="stForm"]:has(.st-key-rpln_composer_textarea)
+  [data-testid="stFormSubmitButton"] button:hover:not(:disabled) {
+  background-color: #D87450 !important;
+  transform: translateY(-1px) !important;
+}
+[data-testid="stForm"]:has(.st-key-rpln_composer_textarea)
+  [data-testid="stFormSubmitButton"] button:disabled,
+[data-testid="stForm"]:has(.st-key-rpln_composer_textarea)
+  [data-testid="stFormSubmitButton"] button[disabled] {
+  background-color: var(--rpln-surface-2) !important;
+  opacity: 1 !important;
+}
+[data-testid="stForm"]:has(.st-key-rpln_composer_textarea)
+  [data-testid="stFormSubmitButton"] button p {
+  display: none !important;
+}
+
+/* (b) Hide the legacy proxy once the real form submit is positioned inline. */
+.rpln-submit-proxy {
+  display: none !important;
+}
+
+/* Keep the pending state from falling back to the normal orange send arrow.
+   Pending morph = centered stop square, not a spinner. */
+[class*="st-key-rpln_composer_shell"]:has(.rpln-composer-streaming-sentinel)
+  [data-testid="stFormSubmitButton"] button,
+[class*="st-key-rpln_composer_shell"]:has(.rpln-composer-streaming-sentinel)
+  [data-testid="stFormSubmitButton"] button:disabled,
+[class*="st-key-rpln_composer_shell"]:has(.rpln-composer-streaming-sentinel)
+  [data-testid="stFormSubmitButton"] button[disabled] {
+  background-color: #252524 !important;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'><rect x='2.5' y='2.5' width='11' height='11' rx='3.25' fill='%23F4EFE8'/></svg>") !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 16px 16px !important;
+  box-shadow: inset 0 0 0 1px rgba(244,239,232,0.06) !important;
+  cursor: wait !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* (c) Hide the popover-indicator chevron on the [+] attach trigger.
+   Streamlit's popover trigger can emit the chevron as either <svg> or a
+   Material Symbols ligature span (depending on Streamlit version + widget
+   variant). Cover both, plus any trailing stIconMaterial inside the
+   button. Scoped to the composer + button only — other popovers unaffected. */
+.st-key-rpln_composer_plus [data-testid="stPopoverButton"] svg,
+.st-key-rpln_composer_plus [data-testid="stPopoverButton"] [data-testid="stIconMaterial"],
+.st-key-rpln_composer_plus [data-testid="stPopoverButton"] > span:last-child:not(:first-child) {
+    display: none !important;
+}
+/* [+] attach trigger — v0 compact size (~28px square, subtle surface). */
+.st-key-rpln_composer_plus [data-testid="stPopoverButton"] {
+    width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    min-width: 28px !important;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    background: var(--rpln-surface-2, rgba(255,255,255,0.04)) !important;
+    border: 1px solid var(--rpln-hairline, rgba(255,255,255,0.08)) !important;
+    color: var(--rpln-text-muted) !important;
+    font-size: 16px !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.st-key-rpln_composer_plus [data-testid="stPopoverButton"]:hover {
+    background: var(--rpln-surface, rgba(255,255,255,0.07)) !important;
+    color: var(--rpln-text) !important;
+}
+
+/* (d) Rotate the model-pill chevron 180° (v → ^). Reference uses expand_less;
+   Streamlit's popover trigger ships expand_more. Rotation is cheaper than
+   replacing the DOM. Also cover the stIconMaterial variant in case Streamlit
+   swaps between svg and Material-Symbols span. */
+.st-key-rpln_composer_model [data-testid="stPopoverButton"] svg,
+.st-key-rpln_composer_model [data-testid="stPopoverButton"] [data-testid="stIconMaterial"] {
+    transform: rotate(180deg);
+    transition: transform 0.15s ease;
+}
+
+/* (e) Composer full v0 parity with tmp/Test 2/RePORTaLiN Chat.html `.composer`.
+   Target metrics: 720px × ~94px. Layout: 10px top pad + 44px textarea +
+   small gap + 28px controls row + 10px bottom pad. Rules are unscoped
+   (no body.rpln-redesign prefix) so parity holds regardless of body class.
+   Also collapses Streamlit's stForm / block-container / stVerticalBlock
+   wrapper padding that otherwise inflates the card past 94px. */
+[class*="st-key-rpln_composer_shell"] {
+    max-width: var(--rpln-col-width, 720px) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    position: relative !important;
+    background: var(--rpln-surface, #1E1E1D) !important;
+    border: 1px solid var(--rpln-hairline-strong, rgba(244,239,232,0.14)) !important;
+    border-radius: var(--rpln-radius-lg, 18px) !important;
+    padding: 10px 12px !important;
+    box-shadow: var(--rpln-shadow-md, 0 6px 20px rgba(0,0,0,0.28)) !important;
+    box-sizing: border-box;
+}
+[class*="st-key-rpln_composer_shell"]:focus-within,
+[class*="st-key-rpln_composer_shell"][data-rpln-dirty="true"] {
+  border-color: rgba(201, 100, 66, 0.58) !important;
+  box-shadow:
+    0 0 0 1px rgba(201, 100, 66, 0.16),
+    var(--rpln-shadow-md, 0 6px 20px rgba(0,0,0,0.28)) !important;
+}
+/* Collapse Streamlit form/container padding inside the shell so only the
+   10px/12px shell padding counts toward total height. */
+[class*="st-key-rpln_composer_shell"] [data-testid="stForm"] {
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+[class*="st-key-rpln_composer_shell"] [data-testid="stVerticalBlock"] {
+    gap: 4px !important;
+}
+[class*="st-key-rpln_composer_shell"] .block-container {
+    padding: 0 !important;
+}
+/* Textarea clamped to 44px so shell totals ~94px. */
+[class*="st-key-rpln_composer_shell"] [data-testid="stTextArea"],
+[class*="st-key-rpln_composer_shell"] [data-baseweb="textarea"] {
+    min-height: 44px !important;
+}
+[class*="st-key-rpln_composer_shell"] textarea {
+    min-height: 44px !important;
+    height: 44px !important;
+  padding-right: 68px !important;
+  resize: none !important;
+}
+[class*="st-key-rpln_composer_shell"] textarea::-webkit-resizer {
+  display: none !important;
+}
+[class*="st-key-rpln_composer_shell"] [class*="st-key-rpln_composer_controls"],
+[class*="st-key-rpln_composer_shell"] [class*="st-key-rpln_composer_controls"]
+[data-testid="stHorizontalBlock"] {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    min-height: 28px !important;
+    gap: 8px !important;
+}
+
+/* ---------- Adapter B — v1-style composer foot-row (spec §5.8) ---------- */
+/* Matches the v0 reference: chip row under textarea with a retrieval chip
+ * on the left and the model-pill (hoisted by bridge.js) on the right. The
+ * shell container (st-key-rpln_composer_shell) already provides the rounded
+ * card, hairline border, and surface colour — this block styles the new
+ * chip row inside it and the model-pill once hoisted into the pill-slot. */
+[class*="st-key-rpln_composer_shell"] .rpln-composer-foot,
+.rpln-composer-foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  padding: 8px 8px 2px;
+    margin-top: -2px;
+    font: 500 12px var(--rpln-font-ui);
+    color: var(--rpln-text-muted);
+}
+.rpln-composer-foot-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+.rpln-composer-foot .rpln-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    color: var(--rpln-text-muted);
+    font: 500 12px var(--rpln-font-ui);
+    cursor: pointer;
+    transition: color 0.15s ease !important;
+}
+.rpln-composer-foot .rpln-chip:hover {
+    color: var(--rpln-text);
+    background: transparent;
+}
+.rpln-composer-foot .rpln-chip .material-symbols-rounded { font-size: 15px; }
+.rpln-composer-spacer { flex: 1 1 auto; }
+.rpln-composer-pill-slot {
+    display: inline-flex;
+    align-items: center;
+}
+.rpln-composer-pill-slot [data-testid="stPopoverButton"] {
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--rpln-accent-orange) !important;
+  box-shadow: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font: 600 13px var(--rpln-font-ui) !important;
+}
+.rpln-composer-pill-slot [data-testid="stPopoverButton"]:hover:not(:disabled) {
+  background: transparent !important;
+  color: #E37A4F !important;
+}
+.rpln-composer-pill-slot [data-testid="stPopoverButton"] p {
+  margin: 0 !important;
+  color: inherit !important;
+  font: inherit !important;
+}
+.rpln-composer-pill-slot [data-testid="stPopoverButton"] svg,
+.rpln-composer-pill-slot [data-testid="stPopoverButton"] [data-testid="stIconMaterial"] {
+  color: var(--rpln-accent-orange) !important;
+}
+.rpln-composer-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--rpln-text-faint);
+  font: 500 11px var(--rpln-font-ui);
+  white-space: nowrap;
+  transition: opacity 0.15s ease, transform 0.15s ease, max-width 0.15s ease;
+  overflow: hidden;
+}
+.rpln-composer-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--rpln-hairline);
+  background: rgba(244, 239, 232, 0.04);
+  color: var(--rpln-text-muted);
+  font: 500 10px var(--rpln-font-mono);
+}
+.rpln-composer-hint-plus,
+.rpln-composer-hint-sep,
+.rpln-composer-hint-word {
+  color: var(--rpln-text-faint);
+}
+[class*="st-key-rpln_composer_shell"]:has(textarea:not(:placeholder-shown)) .rpln-composer-hint,
+[class*="st-key-rpln_composer_shell"][data-rpln-dirty="true"] .rpln-composer-hint {
+  opacity: 0;
+  transform: translateY(2px);
+  max-width: 0;
+  gap: 0;
+}
+
+/* Pre-hoist: keep the host collapsed until bridge.js moves the
+ * .st-key-rpln_composer_model wrapper into the foot-row slot. */
+[class*="st-key-rpln_model_pill_host"] {
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+}
+[class*="st-key-rpln_model_pill_host"] [data-testid="stElementContainer"],
+[class*="st-key-rpln_model_pill_host"] [data-testid="stVerticalBlock"] {
+  width: fit-content !important;
+  max-width: none !important;
+}
+[class*="st-key-rpln_model_pill_host"] [class*="st-key-rpln_composer_model"] {
+  width: fit-content !important;
+  max-width: none !important;
+}
+
+/* =======================================================================
+   Sidebar recent-list shell
+
+   Keep the conversation stack in its own scroll region, capped to 10 rows,
+   with the footer action and profile dock remaining visible below it.
+   ======================================================================= */
+body.rpln-redesign [data-testid="stSidebarUserContent"] {
+  /* flex sizing already set above (line ~3187): flex:1 1 auto; min-height:0.
+     Only add layout direction + width guard here. */
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  padding-bottom: 0 !important;
+}
+body.rpln-redesign [data-testid="stElementContainer"]:has([class*="st-key-rpln_sidebar_list_shell"]) {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+body.rpln-redesign [class*="st-key-rpln_sidebar_list_shell"] {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  padding-bottom: 12px;
+  scrollbar-gutter: stable;
+}
+body.rpln-redesign .rpln-sidebar-footer {
+  margin-top: 8px;
+  padding: 0 2px 10px;
+}
+body.rpln-redesign .rpln-all-chats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--rpln-text-muted);
+  font: 500 13.5px var(--rpln-font-ui);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out), color 120ms var(--ease-out);
+}
+body.rpln-redesign .rpln-all-chats:hover {
+  background: rgba(244, 239, 232, 0.05);
+  color: var(--rpln-text);
+}
+body.rpln-redesign .rpln-all-chats-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--rpln-hairline);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+body.rpln-redesign .rpln-all-chats-icon .material-symbols-rounded {
+  font-size: 15px;
+}
+body.rpln-redesign .rpln-profile-root {
+  position: absolute !important;
+  left: -6px !important;
+  right: -18px !important;
+  bottom: 0 !important;
+  margin: 0 !important;
+}
+body.rpln-redesign .rpln-profile-dock {
+  position: static !important;
+  bottom: auto !important;
+}

@@ -1,0 +1,109 @@
+name: Build and Deploy Documentation
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'RePORT_India_STUDY_RAG_Focus'
+    paths:
+      - 'docs/sphinx/**'
+      - 'scripts/**'
+      - '__version__.py'
+      - 'main.py'
+      - 'config.py'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/deploy-docs.yml'
+  pull_request:
+    branches:
+      - main
+      - 'RePORT_India_STUDY_RAG_Focus'
+    paths:
+      - 'docs/sphinx/**'
+      - 'scripts/**'
+      - '__version__.py'
+      - 'main.py'
+      - 'config.py'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/deploy-docs.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-docs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        with:
+          python-version: '3.13'
+          enable-cache: true
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make
+
+      - name: Install Python dependencies
+        run: uv sync --frozen --all-groups
+
+      - name: Build documentation with Sphinx (strict — warnings are errors)
+        env:
+          SPHINXOPTS: "-W --keep-going"
+        run: |
+          cd docs/sphinx
+          uv run --frozen make clean
+          uv run --frozen make html
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs/sphinx/_build/html
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && (
+        github.ref == 'refs/heads/main' ||
+        github.ref == 'refs/heads/RePORT_India_STUDY_RAG_Focus'
+      ))
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+      - name: Success notification
+        run: |
+          echo "✅ Documentation deployed successfully!"
+          echo "📚 Available at: ${{ steps.deployment.outputs.page_url }}"
