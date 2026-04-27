@@ -69,7 +69,7 @@ This matrix pairs every testable architectural claim with the regulation that an
 | 5.3 | PHI breach detectable + reportable (72h IRB window) | RePORT Protocol; DPDPA §8(6); ICMR §12 | `phi_gate` block events + `phi_scrub` orphan-overflow | `TestPHIGateCheck` emits blocking events | ✅ detection; ⚠ explicit breach-alert emission channel is a follow-up runbook |
 | 5.4 | Every run captures code version + pipeline version | FDA 21 CFR Part 11 §11.10(e); NIST SP 800-188 §7 | `lineage_manifest.json` + per-row `_provenance.pipeline_version` | `TestBuildProvenance.test_contains_all_fields`, `TestEmitLineageManifest` | ✅ |
 | 5.5 | Consent-scope filter: only IEC-approved fields surface | ICMR §4.3; DPDPA §6 | `phi_scrub.yaml` keep_fields + drop_fields catalog | `TestCatalogCoverage.test_clinical_allowlist_keeps_lab_fields`, `test_sex_preserved` | ✅ catalog enforces; ⚠ operator-owned `config/consent_scope.yaml` is a future extension |
-| 5.6 | Zero runtime imports from `scripts/archive/` | technical-debt separation | grep of `scripts/**/*.py` | ✅ trivially satisfied — `scripts/archive/` was removed in commit `30133c9` (clean-slate cleanup); kept as a regression guard so any reintroduction would re-fail the criterion | ✅ |
+| 5.6 | Zero runtime imports from `scripts/archive/` | technical-debt separation | grep of `scripts/**/*.py` | ✅ trivially satisfied — `scripts/archive/` was removed during a clean-slate cleanup before v0.17.0 and the directory does not exist in the current tree (`ls scripts/`); the criterion is kept as a regression guard so any reintroduction would re-fail the check | ✅ |
 
 ---
 
@@ -81,7 +81,7 @@ This matrix pairs every testable architectural claim with the regulation that an
 
 **Total: 35 / 35 criteria architecturally satisfied** (31 original + 4 added via patches 2026-04-23a/b; Pillar 4.2 hybrid follow-up closed by PR #15 in v0.19.0). All remaining follow-ups are explicitly documented and testable; none require architectural rework.
 
-**Test evidence:** 913 pytest cases passing via `make test-all` (841 deterministic via `make test`; up from 784 / 768 after boundary-refactor + deep-scan work; from 664 baseline), 0 skipped, 0 failures, 0 new mypy errors in the changed modules, 0 new lint errors. Patches 2026-04-23a/b added +4 criteria (2.5 — 2.8) and +36 test cases in `tests/test_phi_safe_input_gates.py`; subsequent boundary-refactor work (80b1461, b3b0f11) added the unified `file_access.py` validator chokepoint with +26 tests in `tests/test_file_access.py`.
+**Test evidence:** 913 pytest cases passing via `make test-all` (841 deterministic via `make test`; up from 784 / 768 after boundary-refactor + deep-scan work; from 664 baseline), 0 skipped, 0 failures, 0 new mypy errors in the changed modules, 0 new lint errors. Patches 2026-04-23a/b added +4 criteria (2.5 — 2.8) and +36 test cases in `tests/test_phi_safe_input_gates.py`; subsequent boundary-refactor work added the unified `scripts/ai_assistant/file_access.py` validator chokepoint with +26 tests in `tests/test_file_access.py`.
 
 **Outstanding design items** (out of scope for this dossier, tracked separately):
 

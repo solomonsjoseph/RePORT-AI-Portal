@@ -218,7 +218,7 @@ Each subsection answers: **what is it, what is the background, why this choice, 
 - **Agent-side chokepoint** (`scripts/ai_assistant/file_access.py`, added 2026-04-24):
   - `validate_agent_read(path)` — path must be under `trio_bundle/` ∪ `agent/` (plus the repo-tracked `config/study_knowledge.yaml` read-allowlist).
   - `validate_agent_write(path)` — path must be under `agent/` only.
-  - `validate_sandbox_write(path)` — narrower variant for the `exec_python` sandbox: writes only to `agent/analysis/`. Threat model is LLM-generated code, so the write zone is tighter than agent-tool code. Uses `commonpath` containment (pre-2026-04-24 the sandbox used `str.startswith` and admitted sibling prefixes like `agent/analysis_exfil/` — closed in commit `b3b0f11`).
+  - `validate_sandbox_write(path)` — narrower variant for the `exec_python` sandbox: writes only to `agent/analysis/`. Threat model is LLM-generated code, so the write zone is tighter than agent-tool code. Uses `commonpath` containment so a sibling prefix like `agent/analysis_exfil/` is rejected (an earlier `str.startswith` implementation admitted such prefixes; the boundary-refactor that introduced `file_access.py` closed that gap — verifiable via the `tests/test_file_access.py::test_sibling_prefix_rejected` regression check).
   - `is_agent_readable(path)` — non-raising sentinel variant.
   - All four resolve with `os.path.realpath` (symlink-safe) then verify containment with `os.path.commonpath`. Audit, telemetry, staging, raw, and arbitrary filesystem paths are hard-rejected. Symlinks inside the agent zone that point outside (e.g. `agent/leak → audit/phi_scrub_report.json`) and `..` traversal escapes are both rejected — covered by `tests/test_file_access.py` (26 cases).
 - **Background.** "Capability-style" runtime zone enforcement. Analogous to Rust's lifetime constraints or seccomp — but at the application layer, so it survives even if the underlying OS is permissive.
@@ -331,7 +331,7 @@ The `+` menu in the chat composer shows "Upload file" / "Upload folder" and moun
 Yes. `.github/workflows/ci.yml` runs on every push to `main` / `develop` and every PR to `main`. Matrix: Python 3.11 / 3.12 / 3.13. Two stages — lint (Ruff + mypy; Ruff `S` flake8-bandit rules enabled in `pyproject.toml`) and tests (full pytest suite via `make test-all`, totalling 913 cases). The PHI-critical subset spans 11 dedicated modules (`test_phi_scrub`, `test_phi_gate`, `test_secure_env`, `test_secure_staging`, `test_log_hygiene`, `test_lineage_manifest`, `test_pdf_phi_flag`, `test_pipeline_provenance`, `test_agent_tools_phi_safe`, `test_phi_safe_input_gates`, `test_file_access`) and runs on every PR. A regression fails the build. See [conformance_matrix.md](conformance_matrix.md) for the authoritative test counts.
 
 ### Q22. Is dependency-vulnerability scanning in CI?
-Partial. `pip-audit` is declared in the `dev` optional-deps group but is not a separate gating step in `.github/workflows/ci.yml`. Ruff `S` rules (hardcoded secrets, command injection, weak crypto) are configured in `pyproject.toml:195-220` and will fire during the lint stage, but there is no partitioned "security lint" job. Listed as a gap in §A.7.
+Partial. `pip-audit` is declared in the `dev` optional-deps group but is not a separate gating step in `.github/workflows/ci.yml`. Ruff `S` rules (hardcoded secrets, command injection, weak crypto) are configured in `pyproject.toml:215-241 (the [tool.ruff.lint] section)` and will fire during the lint stage, but there is no partitioned "security lint" job. Listed as a gap in §A.7.
 
 ### Q23. Does the step ordering matter for audit hygiene?
 Yes, load-bearing. `main.py` runs **Step 1.6 PHI scrub** *before* **Step 1.7 dataset cleanup**, which is the step that emits `dataset_cleanup_report.json`. Therefore the cleanup audit records counts of the post-scrub state and has never seen a raw PHI value. This is deliberate: if the order were reversed, the audit report itself would become a PHI-bearing artifact.
@@ -352,7 +352,7 @@ Neither path is a bypass.
 ### Q26. What stops a researcher from jailbreaking the agent to dump raw data?
 Four compounding controls, any one of which blocks the attack; the attack has to defeat all four.
 1. **No tool reads raw.** The agent has 12 tools (enumerated in `scripts/ai_assistant/agent_tools.py::ALL_TOOLS`); every file-reading tool goes through `scripts.ai_assistant.file_access.validate_agent_read`, which rejects anything outside `trio_bundle/ ∪ agent/`. Even a perfectly-jailbroken LLM cannot call a "read `data/raw/…`" tool because no such tool exists, and constructed paths into audit/telemetry/staging raise `ZoneViolationError` at validator time.
-2. **Bounded capability surface.** No shell, no network, no file-write, no `urllib.request`, no arbitrary-path reads. `run_python_analysis` is the only execution surface, and it is AST-sandboxed (see Q28).
+2. **Bounded capability surface.** No shell, no network, no file-write, no `urllib.request`, no arbitrary-path reads. `run_python_analysis` is the only execution surface, and it is OS-isolated in a subprocess with `RLIMIT_AS` / `RLIMIT_NPROC` / `RLIMIT_CPU` clamps and AST guards inside the child (see Q28).
 3. **Output-side PHI gate.** Every tool return passes `@phi_safe_return → phi_gate_check`. Even if the LLM composed an answer echoing a raw identifier, the regex catalog (Aadhaar, PAN, voter, email, phone, etc.) blocks the response.
 4. **k-anon gate on row-level surfaces.** If the LLM tries to extract uniquely-identifying rows, `guard_rows_with_kanon` suppresses classes of size < 5.
 
@@ -422,7 +422,7 @@ Each step writes a hidden manifest `.<step>.manifest.json` with SHA-256 hashes o
 - Triggers on push to `main`/`develop` + PR to `main` (`paths-ignore: docs/**, *.md`).
 - Python matrix `3.11, 3.12, 3.13`.
 - Two sequential jobs: `lint` (Ruff + mypy) → `test` (pytest).
-- Ruff rules include `S` (flake8-bandit) — hardcoded-secret detection, weak crypto lints — configured in `pyproject.toml:195-220`.
+- Ruff rules include `S` (flake8-bandit) — hardcoded-secret detection, weak crypto lints — configured in `pyproject.toml:215-241 (the [tool.ruff.lint] section)`.
 - Test stage runs the full suite (913 cases via `make test-all`); the PHI-critical subset spans 11 dedicated modules and is included on every PR. See [conformance_matrix.md](conformance_matrix.md) §Test evidence for authoritative totals.
 - Notable tests an IRB reviewer should name-check:
   - `test_agent_tools_phi_safe.py::test_every_tool_decorator_is_followed_by_phi_safe_return` — **source-level gate**. Counts `@tool` and `@phi_safe_return` decorations in `agent_tools.py`; any new tool missing the gate fails CI.

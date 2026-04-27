@@ -85,7 +85,7 @@ Discovers and parses all data dictionary and mapping files.
 - **Process:** Auto-discover files, read every sheet, detect multi-table
   boundaries, inject provenance metadata (``__sheet__``, ``__table__``,
   ``__source_file__``), write one JSONL per table into the staging workspace
-- **Command:** ``make extract-dictionary``
+- **Command:** ``make dictionary``
 
 Dataset Extraction
 ~~~~~~~~~~~~~~~~~~
@@ -125,7 +125,7 @@ co-exist as of v0.20.0:
 - **Final output:** ``output/{STUDY}/trio_bundle/pdfs/`` (after publish)
 - **Process:** code-path text extraction → optional redacted-text LLM
   merge → snapshot fallback per-PDF → atomic-write JSON to staging.
-- **Command:** ``make extract-pdf``
+- **Command:** ``make pdf-extract``
 
 See :doc:`../developer_guide/data_extraction_pdfs` for details.
 

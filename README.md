@@ -2,8 +2,8 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Status](https://img.shields.io/badge/status-beta-blue.svg)](https://github.com/solomonsjoseph/RePORTaLiN-RAG)
-[![Documentation](https://img.shields.io/badge/docs-sphinx-blue.svg)](https://solomonsjoseph.github.io/RePORTaLiN/)
+[![Status](https://img.shields.io/badge/status-beta-blue.svg)](https://github.com/solomonsjoseph/RePORT-AI-Portal)
+[![Documentation](https://img.shields.io/badge/docs-sphinx-blue.svg)](https://solomonsjoseph.github.io/RePORT-AI-Portal/)
 [![Privacy-Aware](https://img.shields.io/badge/Privacy-Aware-blue.svg)](https://www.hhs.gov/hipaa/index.html)
 [![Multi-Regulation Support](https://img.shields.io/badge/Regulations-IN%20%2F%20US-green.svg)](https://gdpr.eu/)
 
@@ -184,7 +184,7 @@ processed artifacts
 - **Deterministic builds** — `uv` lockfile + `__version__.py` as single source
   of truth.
 
-> 📖 **Learn more**: <https://solomonsjoseph.github.io/RePORTaLiN/>
+> 📖 **Learn more**: <https://solomonsjoseph.github.io/RePORT-AI-Portal/>
 
 ## Quick Start
 
@@ -200,7 +200,7 @@ processed artifacts
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 2. Clone and navigate
-git clone https://github.com/solomonsjoseph/RePORTaLiN-RAG.git
+git clone https://github.com/solomonsjoseph/RePORT-AI-Portal.git
 cd "RePORT AI Portal"
 
 # 3. Bootstrap the PHI HMAC key (once per machine)
@@ -634,7 +634,7 @@ open _build/html/index.html   # macOS
 xdg-open _build/html/index.html  # Linux
 ```
 
-Online: <https://solomonsjoseph.github.io/RePORTaLiN/>
+Online: <https://solomonsjoseph.github.io/RePORT-AI-Portal/>
 
 ## Contributing
 
@@ -655,8 +655,8 @@ details.
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/solomonsjoseph/RePORTaLiN-RAG/issues)
-- **Documentation**: <https://solomonsjoseph.github.io/RePORTaLiN/>
+- **Issues**: [GitHub Issues](https://github.com/solomonsjoseph/RePORT-AI-Portal/issues)
+- **Documentation**: <https://solomonsjoseph.github.io/RePORT-AI-Portal/>
 
 ---
 

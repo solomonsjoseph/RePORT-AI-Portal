@@ -32,8 +32,8 @@ Installation Steps
 
 .. code-block:: bash
 
-   git clone https://github.com/solomonsjoseph/RePORTaLiN-RAG.git
-   cd RePORTaLiN-RAG
+   git clone https://github.com/solomonsjoseph/RePORT-AI-Portal.git
+   cd RePORT-AI-Portal
 
 3. Quick Start (Recommended)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
