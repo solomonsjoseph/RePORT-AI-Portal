@@ -40,9 +40,7 @@ logger = logging.getLogger(__name__)
 # Single source of truth for PHI patterns is scripts.security.phi_patterns.
 # Using the shared catalog keeps telemetry aligned with the query-time gate
 # and log_hygiene (which log_hygiene.py itself flags as the correct path).
-_TELEMETRY_MASK_PATTERNS = [pat for _, pat in BLOCKING_PATTERNS] + [
-    pat for _, pat in WARN_PATTERNS
-]
+_TELEMETRY_MASK_PATTERNS = [pat for _, pat in BLOCKING_PATTERNS] + [pat for _, pat in WARN_PATTERNS]
 
 
 def _mask_phi(text: str) -> str:

@@ -6,6 +6,7 @@ runs) — *not* to ``STUDY_SNAPSHOTS_DIR`` (the tracked baseline at
 ``snapshots/{STUDY}/`` that the pipeline's PDF orchestrator falls back
 to). The two paths intentionally hold different things.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -16,9 +17,7 @@ from scripts.utils import snapshots
 
 
 @pytest.fixture
-def _isolated_trio(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> tuple[Path, Path]:
+def _isolated_trio(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]:
     """Build a tiny synthetic trio bundle + snapshot root under ``tmp_path``."""
     import config
 
@@ -28,9 +27,7 @@ def _isolated_trio(
     (trio / "dictionary").mkdir(parents=True)
     (trio / "pdfs").mkdir(parents=True)
     (trio / "variables.json").write_text('{"hello": "world"}', encoding="utf-8")
-    (trio / "datasets" / "1_demo.jsonl").write_text(
-        '{"row": 1}\n', encoding="utf-8"
-    )
+    (trio / "datasets" / "1_demo.jsonl").write_text('{"row": 1}\n', encoding="utf-8")
 
     monkeypatch.setattr(config, "TRIO_BUNDLE_DIR", trio)
     monkeypatch.setattr(config, "STUDY_RESTORE_POINTS_DIR", snaps)
@@ -60,9 +57,7 @@ def test_create_snapshot_rejects_bad_name(_isolated_trio: tuple[Path, Path]) -> 
         snapshots.create_snapshot(".hidden")
 
 
-def test_create_snapshot_requires_trio(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_create_snapshot_requires_trio(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import config
 
     monkeypatch.setattr(config, "TRIO_BUNDLE_DIR", tmp_path / "does-not-exist")
@@ -186,9 +181,7 @@ class TestCli:
         assert len(names) == 1
         assert names[0].startswith("run-")
 
-    def test_create_with_name_override(
-        self, _isolated_trio: tuple[Path, Path]
-    ) -> None:
+    def test_create_with_name_override(self, _isolated_trio: tuple[Path, Path]) -> None:
         _, snaps = _isolated_trio
         rc = snapshots.main(["create", "--name", "cohort-a"])
         assert rc == 0
@@ -207,19 +200,16 @@ class TestCli:
         err = capsys.readouterr().err
         assert "already exists" in err
 
-    def test_create_with_force_overwrites(
-        self, _isolated_trio: tuple[Path, Path]
-    ) -> None:
+    def test_create_with_force_overwrites(self, _isolated_trio: tuple[Path, Path]) -> None:
         trio, snaps = _isolated_trio
         snapshots.main(["create", "--name", "cohort-a"])
         # Modify the trio bundle so the overwrite is observable.
         (trio / "variables.json").write_text('{"hello": "v2"}', encoding="utf-8")
         rc = snapshots.main(["create", "--name", "cohort-a", "--force"])
         assert rc == 0
-        assert (
-            (snaps / "cohort-a" / "variables.json").read_text(encoding="utf-8")
-            == '{"hello": "v2"}'
-        )
+        assert (snaps / "cohort-a" / "variables.json").read_text(
+            encoding="utf-8"
+        ) == '{"hello": "v2"}'
 
     def test_list_empty_and_populated(
         self, _isolated_trio: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
@@ -238,9 +228,7 @@ class TestCli:
         assert "cohort-a" in out
         assert "cohort-b" in out
 
-    def test_restore_round_trip(
-        self, _isolated_trio: tuple[Path, Path]
-    ) -> None:
+    def test_restore_round_trip(self, _isolated_trio: tuple[Path, Path]) -> None:
         trio, _ = _isolated_trio
         snapshots.main(["create", "--name", "baseline"])
         # Corrupt the live trio bundle.

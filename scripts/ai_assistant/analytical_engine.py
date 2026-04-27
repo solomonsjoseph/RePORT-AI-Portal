@@ -275,8 +275,14 @@ class CohortBuilder:
         keep.extend(
             c
             for c in [
-                "age", "sex", "smoking", "diabetes", "alcohol_freq",
-                "bmi", "malnutrition", "hba1c",
+                "age",
+                "sex",
+                "smoking",
+                "diabetes",
+                "alcohol_freq",
+                "bmi",
+                "malnutrition",
+                "hba1c",
             ]
             if c in df.columns
         )

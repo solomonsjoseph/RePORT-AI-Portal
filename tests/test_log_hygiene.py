@@ -32,9 +32,7 @@ class TestPHIRedactingFilterGeneric:
         assert "a.b@example.com" not in out
         assert "<EMAIL>" in out
 
-    def test_indian_phone_redacted(
-        self, flt: log_hygiene.PHIRedactingFilter
-    ) -> None:
+    def test_indian_phone_redacted(self, flt: log_hygiene.PHIRedactingFilter) -> None:
         out = log_hygiene._redact("call +91 9876543210 soon", flt)
         assert "9876543210" not in out
         assert "<INDIAN_PHONE>" in out
@@ -54,9 +52,7 @@ class TestPHIRedactingFilterGeneric:
         assert "560001" not in out
         assert "<INDIAN_PIN>" in out
 
-    def test_clean_text_passthrough(
-        self, flt: log_hygiene.PHIRedactingFilter
-    ) -> None:
+    def test_clean_text_passthrough(self, flt: log_hygiene.PHIRedactingFilter) -> None:
         msg = "Pipeline step completed successfully"
         assert log_hygiene._redact(msg, flt) == msg
 
@@ -65,13 +61,9 @@ class TestPHIRedactingFilterSubjectIds:
     @pytest.fixture()
     def flt(self) -> log_hygiene.PHIRedactingFilter:
         patterns = [re.compile(r"\bSC\d{4}\b"), re.compile(r"\bSUBJ-\d+\b")]
-        return log_hygiene.PHIRedactingFilter(
-            hmac_key=TEST_KEY, subject_id_patterns=patterns
-        )
+        return log_hygiene.PHIRedactingFilter(hmac_key=TEST_KEY, subject_id_patterns=patterns)
 
-    def test_subject_id_replaced_with_hmac_tag(
-        self, flt: log_hygiene.PHIRedactingFilter
-    ) -> None:
+    def test_subject_id_replaced_with_hmac_tag(self, flt: log_hygiene.PHIRedactingFilter) -> None:
         out = log_hygiene._redact("row for SC1234 processed", flt)
         assert "SC1234" not in out
         assert "<SUBJ_" in out
@@ -83,18 +75,14 @@ class TestPHIRedactingFilterSubjectIds:
         tag_a = a.replace("<SUBJ_", "").replace(">", "")
         assert tag_a in b
 
-    def test_different_ids_different_tags(
-        self, flt: log_hygiene.PHIRedactingFilter
-    ) -> None:
+    def test_different_ids_different_tags(self, flt: log_hygiene.PHIRedactingFilter) -> None:
         a = log_hygiene._redact("SC1234", flt)
         b = log_hygiene._redact("SC9999", flt)
         assert a != b
 
 
 class TestInstallPhiRedactor:
-    def test_install_is_idempotent(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_install_is_idempotent(self, monkeypatch: pytest.MonkeyPatch) -> None:
         root = logging.getLogger()
         original_filters = list(root.filters)
 
@@ -103,17 +91,13 @@ class TestInstallPhiRedactor:
             b = log_hygiene.install_phi_redactor(hmac_key=TEST_KEY)
             assert a is b
             # Root logger has exactly one PHIRedactingFilter attached.
-            matching = [
-                f for f in root.filters if isinstance(f, log_hygiene.PHIRedactingFilter)
-            ]
+            matching = [f for f in root.filters if isinstance(f, log_hygiene.PHIRedactingFilter)]
             assert len(matching) == 1
         finally:
             # Restore original filters.
             root.filters = original_filters
 
-    def test_filter_applies_to_log_output(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_filter_applies_to_log_output(self, caplog: pytest.LogCaptureFixture) -> None:
         flt = log_hygiene.PHIRedactingFilter(hmac_key=TEST_KEY)
         logger = logging.getLogger("test_log_hygiene.apply")
         logger.addFilter(flt)
@@ -122,15 +106,11 @@ class TestInstallPhiRedactor:
             logger.info("processing row with email patient@example.com now")
         logger.removeFilter(flt)
         assert any("<EMAIL>" in r.getMessage() for r in caplog.records)
-        assert not any(
-            "patient@example.com" in r.getMessage() for r in caplog.records
-        )
+        assert not any("patient@example.com" in r.getMessage() for r in caplog.records)
 
 
 class TestBestEffortOnFailure:
-    def test_malformed_format_args_do_not_crash(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_malformed_format_args_do_not_crash(self, caplog: pytest.LogCaptureFixture) -> None:
         flt = log_hygiene.PHIRedactingFilter(hmac_key=TEST_KEY)
         logger = logging.getLogger("test_log_hygiene.errors")
         logger.addFilter(flt)

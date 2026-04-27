@@ -86,21 +86,21 @@ class TestSearchVariablesShortCircuit:
         from scripts.ai_assistant.agent_tools import search_variables
 
         # @tool wraps the function; invoke the underlying callable.
-        fn = getattr(search_variables, "func", search_variables)
+        fn: Any = getattr(search_variables, "func", search_variables)
         out = fn("hi")
         assert out == _CONVERSATIONAL_REFUSAL_MESSAGE
 
     def test_hello_returns_refusal_message(self) -> None:
         from scripts.ai_assistant.agent_tools import search_variables
 
-        fn = getattr(search_variables, "func", search_variables)
+        fn: Any = getattr(search_variables, "func", search_variables)
         out = fn("hello")
         assert out == _CONVERSATIONAL_REFUSAL_MESSAGE
 
     def test_empty_returns_refusal_message(self) -> None:
         from scripts.ai_assistant.agent_tools import search_variables
 
-        fn = getattr(search_variables, "func", search_variables)
+        fn: Any = getattr(search_variables, "func", search_variables)
         assert fn("") == _CONVERSATIONAL_REFUSAL_MESSAGE
         assert fn("  ") == _CONVERSATIONAL_REFUSAL_MESSAGE
 

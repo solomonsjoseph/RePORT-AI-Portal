@@ -90,7 +90,7 @@ def _save_conversation() -> None:
         title = _conversation_title(redacted_for_title)
     # Already-saved messages are already redacted on disk; only redact new ones.
     already_saved = existing.get("messages", [])
-    new_messages = messages[len(already_saved):]
+    new_messages = messages[len(already_saved) :]
     redacted_messages = already_saved + [redact_message_content(msg) for msg in new_messages]
     data = {
         "id": conv_id,

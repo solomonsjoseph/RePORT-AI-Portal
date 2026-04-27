@@ -189,9 +189,7 @@ def assert_write_zone(path: str | Path) -> None:
     """
     resolved = _resolve(path)
     if not (_is_within(resolved, _OUTPUT_MARKER) or _is_within(resolved, _TMP_MARKER)):
-        raise ZoneViolationError(
-            f"Only paths under output/ or tmp/ are allowed here. Got: {path}"
-        )
+        raise ZoneViolationError(f"Only paths under output/ or tmp/ are allowed here. Got: {path}")
     if _is_within(resolved, _RAW_MARKER):
         raise ZoneViolationError(
             f"Access to raw data zone is forbidden at this pipeline stage: {path}"
@@ -231,5 +229,3 @@ def validate_paths(
         if deny_data_output:
             assert_output_not_in_data(p)
         assert_output_zone(p)
-
-

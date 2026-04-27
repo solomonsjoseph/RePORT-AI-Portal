@@ -61,6 +61,7 @@ def _safe_rmtree(path: Path, *, ignore_errors: bool = False) -> None:
         return
     shutil.rmtree(path, ignore_errors=ignore_errors)
 
+
 __all__ = [
     "SnapshotError",
     "create_snapshot",
@@ -258,10 +259,7 @@ def restore_snapshot(name: str) -> Path:
 def _cmd_create(args: argparse.Namespace) -> int:
     snap_name = resolve_snapshot_name(args.name)
     target_dir = _snapshots_root() / snap_name
-    print(
-        f"Copying {_trio_root()} → {target_dir}"
-        + (" (overwrite)" if args.force else "")
-    )
+    print(f"Copying {_trio_root()} → {target_dir}" + (" (overwrite)" if args.force else ""))
     try:
         path = create_snapshot(snap_name, overwrite=args.force)
     except SnapshotError as exc:

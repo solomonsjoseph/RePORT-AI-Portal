@@ -153,7 +153,8 @@ def _make_zone_guarded_open(*, allowed_read_paths: Iterable[Path], output_dir: P
 
 def _build_safe_builtins(zone_guarded_open: Any) -> dict[str, Any]:
     safe = {
-        k: v for k, v in vars(builtins).items()
+        k: v
+        for k, v in vars(builtins).items()
         if k not in _BLOCKED_BUILTINS and not k.startswith("_")
     }
 
@@ -300,6 +301,7 @@ def main(spec_path: str) -> int:
     try:
         import numpy as _np
         import pandas as _pd
+
         namespace["pd"] = _pd
         namespace["np"] = _np
     except ImportError:
@@ -310,6 +312,7 @@ def main(spec_path: str) -> int:
     try:
         import plotly.express as _px
         import plotly.graph_objects as _go
+
         namespace["px"] = _px
         namespace["go"] = _go
 
@@ -341,7 +344,9 @@ def main(spec_path: str) -> int:
     captured = stdout_buf.getvalue()
     truncated = len(captured) > max_output_bytes
     if truncated:
-        captured = captured[:max_output_bytes] + f"\n\n[Output truncated at {max_output_bytes} bytes]"
+        captured = (
+            captured[:max_output_bytes] + f"\n\n[Output truncated at {max_output_bytes} bytes]"
+        )
     sys.stdout.write(captured)
 
     fig_dir = output_dir / "figures"

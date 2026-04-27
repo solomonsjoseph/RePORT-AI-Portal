@@ -413,9 +413,7 @@ def _render_thinking_block(
             if body:
                 html_parts.append(f'<div class="thinking-section-body">{body}</div>')
         else:
-            html_parts.append(
-                f'<div class="thinking-section-body">{_html.escape(section)}</div>'
-            )
+            html_parts.append(f'<div class="thinking-section-body">{_html.escape(section)}</div>')
 
     content_html = "\n".join(html_parts)
     thinking_id = f"thinking_{msg_idx}"

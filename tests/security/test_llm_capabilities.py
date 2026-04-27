@@ -42,9 +42,7 @@ def test_gemini_pro_passes_flash_fails() -> None:
 
 
 def test_nvidia_405b_passes_smaller_fails() -> None:
-    assert is_capable_model(
-        "nvidia-ai-endpoints", "meta/llama-3.3-405b-instruct"
-    ) is True
+    assert is_capable_model("nvidia-ai-endpoints", "meta/llama-3.3-405b-instruct") is True
     assert is_capable_model("nvidia-ai-endpoints", "meta/llama-3.3-70b-instruct") is False
     assert is_capable_model("nvidia-ai-endpoints", "meta/llama-3.1-8b-instruct") is False
 

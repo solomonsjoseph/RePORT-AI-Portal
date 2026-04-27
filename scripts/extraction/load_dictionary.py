@@ -4,7 +4,7 @@ Reads dictionary files from ``data/raw/{STUDY_NAME}/data_dictionary/``
 and writes structured JSONL under
 ``output/{STUDY_NAME}/trio_bundle/dictionary/``.
 
-Supports ``.xlsx``, ``.xls``, and ``.csv`` inputs. Detects multiple
+Supports ``.xlsx`` and ``.csv`` inputs. Detects multiple
 logical tables inside Excel sheets, enriches records with provenance
 metadata, and exports deterministic JSONL files.
 
@@ -25,7 +25,7 @@ __all__ = [
 
 import sys
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import pandas as pd
 from tqdm import tqdm
@@ -250,7 +250,9 @@ def _process_and_save_tables(
     return all_ok
 
 
-def process_excel_file(excel_path: Path | str, output_dir: Path | str, preserve_na: bool = True) -> bool:
+def process_excel_file(
+    excel_path: Path | str, output_dir: Path | str, preserve_na: bool = True
+) -> bool:
     """Extract all tables from an Excel file and save as JSONL files."""
     excel_path = Path(excel_path)
     output_dir = Path(output_dir)
@@ -260,9 +262,9 @@ def process_excel_file(excel_path: Path | str, output_dir: Path | str, preserve_
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        _ext = excel_path.suffix.lower()
-        _engine: Literal["openpyxl", "xlrd"] = "openpyxl" if _ext == ".xlsx" else "xlrd"
-        with pd.ExcelFile(excel_path, engine=_engine) as xls:
+        if excel_path.suffix.lower() != ".xlsx":
+            raise ValueError(f"Unsupported dictionary Excel format: {excel_path.suffix}")
+        with pd.ExcelFile(excel_path, engine="openpyxl") as xls:
             log.debug(f"Excel file loaded. Found {len(xls.sheet_names)} sheets: {xls.sheet_names}")
             success = True
 
@@ -340,7 +342,9 @@ def discover_dictionary_files(dictionary_dir: Path | str) -> list[str]:
     return found
 
 
-def process_csv_file(csv_path: Path | str, output_dir: Path | str, preserve_na: bool = True) -> bool:
+def process_csv_file(
+    csv_path: Path | str, output_dir: Path | str, preserve_na: bool = True
+) -> bool:
     """Parse a CSV dictionary file and save as JSONL with provenance metadata."""
     csv_path = Path(csv_path)
     output_dir = Path(output_dir)
@@ -425,7 +429,7 @@ def load_study_dictionary(
     all_ok = True
     for fpath in files:
         ext = Path(fpath).suffix.lower()
-        if ext in (".xlsx", ".xls"):
+        if ext == ".xlsx":
             ok = process_excel_file(
                 excel_path=fpath, output_dir=output_dir, preserve_na=preserve_na
             )

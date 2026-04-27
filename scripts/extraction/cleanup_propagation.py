@@ -116,9 +116,7 @@ def compute_propagation_set(
                             raw, source_path=jsonl_file, line_number=line_no
                         )
                     except JSONLParseError:
-                        logger.debug(
-                            "Skipping malformed line %d in %s", line_no, jsonl_file.name
-                        )
+                        logger.debug("Skipping malformed line %d in %s", line_no, jsonl_file.name)
                         continue
                     for key in row:
                         if isinstance(key, str) and key not in PROVENANCE_FIELDS:
@@ -156,13 +154,9 @@ def prune_dictionary(drop_set: set[str], dict_dir: Path) -> int:
                 if not raw:
                     continue
                 try:
-                    row = load_json_object_line(
-                        raw, source_path=jsonl_file, line_number=line_no
-                    )
+                    row = load_json_object_line(raw, source_path=jsonl_file, line_number=line_no)
                 except JSONLParseError:
-                    logger.debug(
-                        "Skipping malformed line %d in %s", line_no, jsonl_file.name
-                    )
+                    logger.debug("Skipping malformed line %d in %s", line_no, jsonl_file.name)
                     continue
                 var_name = row.get(_DICT_VAR_KEY)
                 if isinstance(var_name, str) and var_name.casefold() in drop_set:

@@ -54,6 +54,17 @@ class TestDiscoverDatasetFiles:
         result = discover_dataset_files(tmp_path)
         assert len(result) == 2
 
+    def test_ignores_legacy_xls_files(self, tmp_path: Path) -> None:
+        (tmp_path / "legacy.xls").write_bytes(b"fake")
+        (tmp_path / "modern.xlsx").write_bytes(b"fake")
+        result = discover_dataset_files(tmp_path)
+        assert [p.name for p in result] == ["modern.xlsx"]
+
+    def test_legacy_xls_only_raises(self, tmp_path: Path) -> None:
+        (tmp_path / "legacy.xls").write_bytes(b"fake")
+        with pytest.raises(ValueError, match=r"Supported extensions: \.csv, \.xlsx"):
+            discover_dataset_files(tmp_path)
+
     def test_skips_lock_files(self, tmp_path: Path) -> None:
         (tmp_path / "~$locked.xlsx").write_bytes(b"fake")
         (tmp_path / "real.xlsx").write_bytes(b"fake")

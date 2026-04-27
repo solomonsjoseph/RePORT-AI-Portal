@@ -1,8 +1,8 @@
 """ReAct agent for RePORT AI Portal AI Assistant.
 
-Uses ``create_react_agent`` from LangGraph prebuilt with ``MemorySaver``
-for session persistence.  The agent autonomously decides which tools to
-call and how to compose answers.
+Uses LangChain's ``create_agent`` (built on LangGraph) with ``MemorySaver``
+for session persistence. The agent autonomously decides which tools to call
+and how to compose answers.
 
 LLM provider is controlled by ``config.LLM_PROVIDER`` / ``config.LLM_MODEL``.
 """
@@ -14,11 +14,11 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any, cast
 
+from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.prebuilt import create_react_agent
 
 import config
 from scripts.ai_assistant.agent_prompts import SYSTEM_PROMPT
@@ -75,9 +75,8 @@ def _build_llm(provider: str, model: str) -> Any:
     api_key = get_keystore().get(slug) if slug else None
 
     # NVIDIA AI Endpoints requires langchain_nvidia_ai_endpoints.ChatNVIDIA.
-    # init_chat_model does not support the NVIDIA provider directly and the
-    # NVIDIA API uses max_tokens (not max_completion_tokens) in the LangChain
-    # integration, so we instantiate ChatNVIDIA explicitly.
+    # init_chat_model does not support the NVIDIA provider directly, so we
+    # instantiate ChatNVIDIA explicitly.
     if provider == "nvidia-ai-endpoints":
         try:
             from langchain_nvidia_ai_endpoints import ChatNVIDIA  # type: ignore[import-untyped]
@@ -88,7 +87,7 @@ def _build_llm(provider: str, model: str) -> Any:
             ) from exc
         kwargs: dict[str, Any] = {
             "model": model,
-            "max_tokens": config.AGENT_MAX_TOKENS,
+            "max_completion_tokens": config.AGENT_MAX_TOKENS,
             "temperature": 1,
             "top_p": 1,
         }
@@ -169,9 +168,7 @@ def _init_llm() -> Any:
             err = str(exc).lower()
             if not any(sig in err for sig in _OLLAMA_OOM_SIGNALS):
                 raise  # Not an OOM error — surface to the caller unchanged.
-            logger.warning(
-                "Ollama OOM on %s: %s — trying next rung in the ladder", rung, exc
-            )
+            logger.warning("Ollama OOM on %s: %s — trying next rung in the ladder", rung, exc)
 
     raise RuntimeError(
         f"All {len(ladder)} qwen3 ladder rungs ({', '.join(ladder)}) were refused "
@@ -200,10 +197,10 @@ def get_agent() -> CompiledStateGraph:
         llm = _init_llm()
         prompt = SYSTEM_PROMPT.format(study_name=config.STUDY_NAME)
 
-        _agent = create_react_agent(
+        _agent = create_agent(
             model=llm,
             tools=ALL_TOOLS,
-            prompt=prompt,
+            system_prompt=prompt,
             checkpointer=get_checkpointer(),
         )
 

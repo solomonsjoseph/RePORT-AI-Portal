@@ -14,6 +14,7 @@ determined by the ``$STUDY_NAME`` env var or a filesystem scan of
 overridden by ``$LLM_PROVIDER``. Staging directories are NOT created
 eagerly; call :func:`ensure_directories` after startup.
 """
+
 # config.py
 from __future__ import annotations
 
@@ -356,6 +357,7 @@ def preferred_or_installed_downgrade(model: str) -> list[str]:
         return list(QWEN3_DOWNGRADE_LADDER[start:])
     return [model]
 
+
 # ----------------------------------------------------------------------------
 # AI Assistant / AGENT
 # ----------------------------------------------------------------------------
@@ -397,7 +399,12 @@ ANALYSIS_MAX_FIGURES: int = _get_env_int("ANALYSIS_MAX_FIGURES", 20)
 SANDBOX_MAX_MEMORY_MB: int = _get_env_int("SANDBOX_MAX_MEMORY_MB", 2048)
 SANDBOX_MAX_PROCS: int = _get_env_int("SANDBOX_MAX_PROCS", 4096)
 SANDBOX_MAX_FILES: int = _get_env_int("SANDBOX_MAX_FILES", 256)
-SANDBOX_PERSIST_CODE: bool = _get_env("SANDBOX_PERSIST_CODE", "true").lower() in ("1", "true", "yes", "on")
+SANDBOX_PERSIST_CODE: bool = _get_env("SANDBOX_PERSIST_CODE", "true").lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
 
 # Orchestration mode: "auto" | "single-agent" | "multi-agent"
 AGENT_ORCHESTRATION_MODE: str = _get_env(

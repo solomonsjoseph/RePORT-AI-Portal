@@ -129,10 +129,7 @@ class TestAuditReportPaths:
         )
 
     def test_scrub_report_path(self) -> None:
-        assert (
-            config.AUDIT_SCRUB_REPORT_PATH
-            == config.STUDY_AUDIT_DIR / "phi_scrub_report.json"
-        )
+        assert config.AUDIT_SCRUB_REPORT_PATH == config.STUDY_AUDIT_DIR / "phi_scrub_report.json"
 
     def test_no_dict_or_pdf_audit_constants_defined(self) -> None:
         assert not hasattr(config, "AUDIT_DICTIONARY_REPORT_PATH")

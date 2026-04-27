@@ -152,7 +152,7 @@ processed artifacts
 
 ### 🤖 AI Assistant
 
-- **ReAct agent** — autonomous `create_react_agent` with 12 structured-data
+- **ReAct agent** — LangChain `create_agent` with 12 structured-data
   tools.
 - **Direct data access** — no chunking, no embedding index; tools query the
   trio bundle directly.
@@ -201,7 +201,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 2. Clone and navigate
 git clone https://github.com/solomonsjoseph/RePORT-AI-Portal.git
-cd "RePORT AI Portal"
+cd RePORT-AI-Portal
 
 # 3. Bootstrap the PHI HMAC key (once per machine)
 uv run python -m scripts.security.phi_scrub bootstrap-key

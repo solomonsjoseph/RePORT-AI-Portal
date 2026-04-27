@@ -50,8 +50,8 @@ Quick reference
 .. code-block:: bash
 
    make sync          # Install all deps (uv sync --all-groups)
-   make test          # ~841 deterministic tests (excludes AI Assistant/LLM tests)
-   make test-all      # Full suite including AI Assistant tests (913 cases at v0.20.0)
+   make test          # Deterministic subset excluding AI Assistant construction smokes
+   make test-all      # Full suite including AI Assistant construction smokes
    make lint          # ruff check + format
    make ci            # lint → typecheck → test
    make chat          # Launch Streamlit web UI
@@ -286,8 +286,8 @@ Web UI
   conversations, providers, session, wizard).
 * Sidebar JS in ``scripts/ai_assistant/ui/assets/bridge.js`` — uses
   ``document`` (not ``window.parent.document``).
-* Use ``st.html()`` for injecting JS/CSS (not deprecated
-  ``st.components.v1.html``).
+* Use ``st.iframe()`` for injected JS bridge surfaces so the hidden
+  bridge stays isolated and compatible with Streamlit's current runtime.
 
 Tests
 ~~~~~

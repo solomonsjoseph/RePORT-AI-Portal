@@ -55,8 +55,7 @@ def trio_dataset(tmp_path: Path) -> dict[str, str]:
     ds_dir.mkdir(parents=True)
     path = ds_dir / "1A_ICScreening.jsonl"
     rows = [
-        {"SUBJID": f"SUBJ-{i:04d}", "AGE": 25 + i, "SEX": "M" if i % 2 else "F"}
-        for i in range(20)
+        {"SUBJID": f"SUBJ-{i:04d}", "AGE": 25 + i, "SEX": "M" if i % 2 else "F"} for i in range(20)
     ]
     path.write_text("\n".join(json.dumps(r) for r in rows))
     return {"df_1A_ICScreening": str(path)}
@@ -75,9 +74,7 @@ def _run(code: str, output_dir: Path, df_paths: dict[str, str], **kwargs):
     kwargs.setdefault("max_memory_mb", 2048)
     kwargs.setdefault("max_procs", 4096)
     kwargs.setdefault("max_files", 256)
-    return run_in_subprocess(
-        code, df_paths=df_paths, output_dir=output_dir, **kwargs
-    )
+    return run_in_subprocess(code, df_paths=df_paths, output_dir=output_dir, **kwargs)
 
 
 # ── 1. Confidentiality: env-var leak ────────────────────────────────────────
@@ -133,10 +130,7 @@ def test_write_outside_output_dir_rejected(
     ``_zone_guarded_open``, regardless of any subprocess-level filesystem
     visibility."""
     target = tmp_path / "escape.txt"
-    code = (
-        f"with open({str(target)!r}, 'w') as f:\n"
-        "    f.write('escaped')\n"
-    )
+    code = f"with open({str(target)!r}, 'w') as f:\n    f.write('escaped')\n"
     result = _run(code, output_dir, trio_dataset)
     assert result.exit_code != 0, "writing outside output_dir should fail"
     assert not target.exists(), "no file should be created outside output_dir"
@@ -159,7 +153,9 @@ def test_manifest_path_traversal_rejected(
     )
     result = _run(code, output_dir, trio_dataset)
     for path in result.figure_paths + result.code_paths:
-        assert output_dir.resolve() in path.resolve().parents or path.resolve() == output_dir.resolve()
+        assert (
+            output_dir.resolve() in path.resolve().parents or path.resolve() == output_dir.resolve()
+        )
 
 
 # ── 3. Confidentiality: read-zone enforcement ───────────────────────────────
@@ -172,10 +168,7 @@ def test_read_outside_trio_bundle_rejected(
     must be blocked by ``validate_agent_read``."""
     raw = tmp_path / "raw_phi.txt"
     raw.write_text("RAW PHI DATA — must not appear in sandbox output")
-    code = (
-        f"with open({str(raw)!r}, 'r') as f:\n"
-        "    print(f.read())\n"
-    )
+    code = f"with open({str(raw)!r}, 'r') as f:\n    print(f.read())\n"
     result = _run(code, output_dir, trio_dataset)
     assert "RAW PHI DATA" not in result.stdout
     assert "RAW PHI DATA" not in result.stderr
@@ -189,9 +182,7 @@ def test_wall_clock_timeout_kills_child() -> None:
     pass  # populated below in test_wall_clock_timeout — kept here for index
 
 
-def test_wall_clock_timeout(
-    output_dir: Path, trio_dataset: dict[str, str]
-) -> None:
+def test_wall_clock_timeout(output_dir: Path, trio_dataset: dict[str, str]) -> None:
     """Infinite loop must be killed promptly. Validates the *contract*
     (bounded execution) without being prescriptive about *which* kill
     mechanism wins — on Linux ``RLIMIT_CPU`` typically fires before the
@@ -212,9 +203,7 @@ def test_wall_clock_timeout(
 
 
 @LINUX_ONLY
-def test_cpu_rlimit_kills_busy_loop(
-    output_dir: Path, trio_dataset: dict[str, str]
-) -> None:
+def test_cpu_rlimit_kills_busy_loop(output_dir: Path, trio_dataset: dict[str, str]) -> None:
     """A pure-CPU spin loop should be killed by ``RLIMIT_CPU`` before the
     wall-clock timeout fires (when ``cpu_seconds < timeout_s``)."""
     code = "x = 0\nwhile True:\n    x += 1\n"
@@ -223,9 +212,7 @@ def test_cpu_rlimit_kills_busy_loop(
 
 
 @LINUX_ONLY
-def test_memory_rlimit_kills_oom(
-    output_dir: Path, trio_dataset: dict[str, str]
-) -> None:
+def test_memory_rlimit_kills_oom(output_dir: Path, trio_dataset: dict[str, str]) -> None:
     """Allocating well past the memory cap must trip ``RLIMIT_AS`` and kill
     the child cleanly. Cap raised here to 1.5 GB so numpy can import (~700 MB
     of vmap) and the test allocation (8 GB) is unambiguously above it."""
@@ -241,9 +228,7 @@ def test_memory_rlimit_kills_oom(
 
 
 @LINUX_ONLY
-def test_fork_bomb_blocked(
-    output_dir: Path, trio_dataset: dict[str, str]
-) -> None:
+def test_fork_bomb_blocked(output_dir: Path, trio_dataset: dict[str, str]) -> None:
     """``import os`` is blocked by the AST guard (primary defense) and any
     workaround would still hit ``RLIMIT_NPROC`` (secondary)."""
     code = "import os\nfor _ in range(10000):\n    os.fork()\n"
@@ -254,15 +239,9 @@ def test_fork_bomb_blocked(
 # ── 8. Network blocked ──────────────────────────────────────────────────────
 
 
-def test_network_socket_import_blocked(
-    output_dir: Path, trio_dataset: dict[str, str]
-) -> None:
+def test_network_socket_import_blocked(output_dir: Path, trio_dataset: dict[str, str]) -> None:
     """``import socket`` is not in the allow-list."""
-    code = (
-        "import socket\n"
-        "s = socket.socket()\n"
-        "s.connect(('1.1.1.1', 80))\n"
-    )
+    code = "import socket\ns = socket.socket()\ns.connect(('1.1.1.1', 80))\n"
     result = _run(code, output_dir, trio_dataset)
     assert result.exit_code != 0
     assert "Import not allowed" in result.stderr or "ImportError" in result.stderr
@@ -271,9 +250,7 @@ def test_network_socket_import_blocked(
 # ── 9-11. Legitimate use ────────────────────────────────────────────────────
 
 
-def test_legitimate_pandas_groupby(
-    output_dir: Path, trio_dataset: dict[str, str]
-) -> None:
+def test_legitimate_pandas_groupby(output_dir: Path, trio_dataset: dict[str, str]) -> None:
     """Sanity: standard pandas analysis on a pre-loaded trio DataFrame works."""
     code = (
         "by_sex = df_1A_ICScreening.groupby('SEX')['AGE'].mean().round(1)\n"
@@ -284,9 +261,7 @@ def test_legitimate_pandas_groupby(
     assert "'M'" in result.stdout or "'F'" in result.stdout
 
 
-def test_legitimate_plotly_save(
-    output_dir: Path, trio_dataset: dict[str, str]
-) -> None:
+def test_legitimate_plotly_save(output_dir: Path, trio_dataset: dict[str, str]) -> None:
     """Plotly figure JSON should be written to ``output_dir`` and reported."""
     code = (
         "import plotly.express as px\n"
@@ -300,9 +275,7 @@ def test_legitimate_plotly_save(
     assert result.ok or len(result.figure_paths) >= 0  # exact contract TBD
 
 
-def test_legitimate_matplotlib_save(
-    output_dir: Path, trio_dataset: dict[str, str]
-) -> None:
+def test_legitimate_matplotlib_save(output_dir: Path, trio_dataset: dict[str, str]) -> None:
     """Matplotlib PNG via ``plt.savefig`` should appear under ``output_dir``."""
     code = (
         "import matplotlib\n"
@@ -321,9 +294,7 @@ def test_legitimate_matplotlib_save(
 # ── 12. Defense in depth: AST guards still active inside child ─────────────
 
 
-def test_ast_guard_blocks_subclasses_lookup(
-    output_dir: Path, trio_dataset: dict[str, str]
-) -> None:
+def test_ast_guard_blocks_subclasses_lookup(output_dir: Path, trio_dataset: dict[str, str]) -> None:
     """Even with subprocess isolation, the in-child AST/runtime guards must
     still reject classic dunder gadgets — defense in depth."""
     code = "x = getattr(int, '__subclasses__')()\nprint(x)\n"
@@ -367,9 +338,7 @@ def test_generated_code_persisted_as_py_file(
     assert saved[0] in result.code_paths
 
 
-def test_persisted_code_marker_in_result(
-    output_dir: Path, trio_dataset: dict[str, str]
-) -> None:
+def test_persisted_code_marker_in_result(output_dir: Path, trio_dataset: dict[str, str]) -> None:
     """``code_paths`` on the result is what the agent_tools formatter turns
     into a ``<RPLN_CODE:...>`` marker for the streaming UI."""
     code = "print('x')\n"
@@ -392,9 +361,7 @@ def test_persisted_code_has_replication_header(
     assert "replicate" in text.lower(), "header should describe how to re-run"
 
 
-def test_persistence_can_be_disabled(
-    output_dir: Path, trio_dataset: dict[str, str]
-) -> None:
+def test_persistence_can_be_disabled(output_dir: Path, trio_dataset: dict[str, str]) -> None:
     """``persist_code=False`` must skip the .py write entirely."""
     code = "print('z')\n"
     result = _run(code, output_dir, trio_dataset, persist_code=False)

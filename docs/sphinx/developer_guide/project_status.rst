@@ -125,7 +125,7 @@ UI memory notes:
 
    * - Component
      - Location
-   * - ReAct agent (create_react_agent + 12 tools, live streaming)
+   * - ReAct agent (LangChain ``create_agent`` + 12 tools, live streaming)
      - ``scripts/ai_assistant/agent_graph.py``
    * - Agent prompts (system prompt with disclosure rules)
      - ``scripts/ai_assistant/agent_prompts.py``

@@ -15,7 +15,7 @@ retired; PHI handling is now fully covered by ``scripts/security/``.
 
 What this module does:
     1. Discover supported dataset files for the active study
-    2. Read ``.xlsx``, ``.xls``, and ``.csv`` files
+    2. Read ``.xlsx`` and ``.csv`` files
     3. Normalize rows into JSONL-safe records
     4. Write extraction output into the staging datasets directory
     5. Surface per-column drop events from duplicate-column cleanup so a
@@ -23,7 +23,6 @@ What this module does:
 
 Supported formats:
     - ``.xlsx`` via ``openpyxl``
-    - ``.xls`` via ``xlrd``
     - ``.csv`` via ``pandas.read_csv`` (single-file load; preserves one output file per input)
 
 Discovery rules:
@@ -398,11 +397,6 @@ def _read_tabular_file(path: Path) -> list[tuple[str, pd.DataFrame]]:
             names: list[str] = [str(n) for n in xls.sheet_names]
             return [(name, xls.parse(name, **_TABULAR_NA_OPTIONS)) for name in names]
 
-    if ext == ".xls":
-        with pd.ExcelFile(path, engine="xlrd") as xls:
-            names = [str(n) for n in xls.sheet_names]
-            return [(name, xls.parse(name, **_TABULAR_NA_OPTIONS)) for name in names]
-
     raise ValueError(f"Unsupported file extension: {ext}")
 
 
@@ -416,9 +410,8 @@ _PROVENANCE_ENGINE = f"pandas={pd.__version__}/openpyxl={_openpyxl.__version__}"
 
 Coarse run-level identifier stamped on every record's provenance regardless
 of source format. For ``.xlsx`` files the engine is openpyxl at the version
-shown. For ``.xls`` files ``xlrd`` is used (version not captured here —
-xlrd is an optional dependency absent from the lockfile). For ``.csv`` files
-no Excel engine is involved; pandas reads them directly.
+shown. For ``.csv`` files no Excel engine is involved; pandas reads them
+directly.
 """
 
 
@@ -537,9 +530,7 @@ def extract_single_dataset(
             continue
 
         # Remove provably-duplicate columns before writing JSONL
-        df, _drop_events = clean_duplicate_columns(
-            df, source_file=file_path.name, sheet=sheet_name
-        )
+        df, _drop_events = clean_duplicate_columns(df, source_file=file_path.name, sheet=sheet_name)
         if _drop_events:
             file_drop_events.extend(_drop_events)
 
@@ -663,9 +654,7 @@ def extract_datasets(
     from scripts.security.secure_env import assert_not_raw
 
     # --- resolve output dir ---
-    _output_dir = (
-        Path(output_dir) if output_dir is not None else Path(config.STAGING_DATASETS_DIR)
-    )
+    _output_dir = Path(output_dir) if output_dir is not None else Path(config.STAGING_DATASETS_DIR)
 
     # Caller-provided or default output must not point into the raw zone.
     assert_not_raw(_output_dir)

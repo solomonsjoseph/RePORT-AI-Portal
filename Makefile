@@ -76,7 +76,7 @@ N := \033[0m
 	pipeline dictionary extract-datasets bundle pdf-extract \
 	chat-cli chat build-variables \
 	snapshot snapshot-study restore-study list-snapshots \
-	test test-all lint typecheck security ci verify docs \
+	test test-all lint typecheck security ci verify docs doc-freshness docs-quality \
 	clean nuke
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -129,6 +129,8 @@ help:
 	@printf "\n"
 	@printf "$(B)$(G)  Docs$(N)\n"
 	@printf "  $(C)make docs$(N)             Build Sphinx HTML docs\n"
+	@printf "  $(C)make doc-freshness$(N)    Run stale-doc lint\n"
+	@printf "  $(C)make docs-quality$(N)     Doc freshness + warnings-as-errors build\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Maintenance$(N)\n"
 	@printf "  $(C)make clean$(N)            Remove caches, sessions, stale logs\n"
@@ -319,12 +321,16 @@ verify:
 # ═══════════════════════════════════════════════════════════════════════
 
 docs:
-	@cd docs/sphinx && $(MAKE) html
+	@cd docs/sphinx && $(MAKE) html SPHINXBUILD="$(UV) run --frozen sphinx-build"
 	@printf "$(G)✓ Docs built → docs/sphinx/_build/html/index.html$(N)\n"
 
 doc-freshness:
 	@printf "$(C)🔍 Doc-freshness lint$(N)\n"
 	@$(UV) run --frozen python scripts/lint_doc_freshness.py
+
+docs-quality: doc-freshness
+	@cd docs/sphinx && $(MAKE) html SPHINXBUILD="$(UV) run --frozen sphinx-build" SPHINXOPTS="-W"
+	@printf "$(G)✓ Docs quality checks passed$(N)\n"
 
 # ═══════════════════════════════════════════════════════════════════════
 # MAINTENANCE

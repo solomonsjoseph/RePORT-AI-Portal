@@ -61,8 +61,7 @@ class KeyStore:
         slug = self._normalise(provider)
         if slug not in ENV_VAR_BY_PROVIDER:
             raise ValueError(
-                f"Unknown provider {provider!r}. "
-                f"Known: {sorted(ENV_VAR_BY_PROVIDER)}."
+                f"Unknown provider {provider!r}. Known: {sorted(ENV_VAR_BY_PROVIDER)}."
             )
         return slug
 

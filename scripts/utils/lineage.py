@@ -66,9 +66,7 @@ def _file_metadata(path: Path) -> dict[str, Any]:
     }
 
 
-def _collect_files(
-    root: Path, *, recursive: bool = True
-) -> list[dict[str, Any]]:
+def _collect_files(root: Path, *, recursive: bool = True) -> list[dict[str, Any]]:
     """Return file-metadata records for every regular file below *root*.
 
     Files are sorted by POSIX path for deterministic manifest output. Dot-

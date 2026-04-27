@@ -220,7 +220,7 @@ def test_extract_pdf_returns_empty_when_no_llm_and_no_snapshot(tmp_path: Path) -
     assert isinstance(result, ExtractionResult)
     assert result.tier == "empty"
     assert result.llm_skipped_reason is not None
-    assert "not on capable allowlist" in result.llm_skipped_reason
+    assert result.llm_skipped_reason == "provider/model not configured"
 
 
 def test_extract_pdf_discards_code_only_falls_back_to_snapshot(
@@ -276,9 +276,7 @@ def test_extract_pdf_uses_snapshot_when_all_tiers_empty(tmp_path: Path) -> None:
     assert "AGE" in result.data["variables"]
 
 
-def test_extract_pdf_with_mocked_llm_path(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_extract_pdf_with_mocked_llm_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify the LLM path is reachable when a capable model is configured.
     Mock the LLM call so we don't make a real API request — the contract
     is that the orchestrator routes through ``_extract_via_llm`` when
@@ -289,9 +287,7 @@ def test_extract_pdf_with_mocked_llm_path(
     # Patch pdfplumber output (no real PDF parsing) AND the LLM call.
     import scripts.extraction.pdf_pipeline as pp
 
-    monkeypatch.setattr(
-        pp, "_extract_text_via_pdfplumber", lambda _p: _crf_text()
-    )
+    monkeypatch.setattr(pp, "_extract_text_via_pdfplumber", lambda _p: _crf_text())
 
     captured_payload: dict[str, str] = {}
 

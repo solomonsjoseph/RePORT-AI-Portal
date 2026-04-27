@@ -150,9 +150,7 @@ def guard_rows_with_kanon(
     we only gate the row-level surface.
     """
     rows_list = list(rows)
-    result = kanon_check(
-        rows_list, quasi_identifiers=quasi_identifiers, k=k
-    )
+    result = kanon_check(rows_list, quasi_identifiers=quasi_identifiers, k=k)
     if result.blocked:
         logger.warning(
             "phi_safe: tool %s k-anon blocked — smallest class %d < k=%d",
@@ -210,8 +208,7 @@ def guard_rows_with_kanon_and_ldiv(
         )
         if ldiv_res.blocked:
             logger.warning(
-                "phi_safe: tool %s l-diversity blocked — smallest "
-                "diversity %d < l=%d",
+                "phi_safe: tool %s l-diversity blocked — smallest diversity %d < l=%d",
                 tool_name,
                 ldiv_res.smallest_diversity,
                 l_threshold,
@@ -300,8 +297,12 @@ def guard_user_prompt(text: str) -> UserPromptGuardResult:
 # mangle legitimate content. Every pattern targets an instruction-flavoured
 # construction that has no place in authored CRF / protocol / MOP text.
 _INJECTION_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"(?i)ignore\s+(?:all\s+)?(?:previous|prior|above|earlier)\s+(?:instructions?|prompts?|rules?|constraints?|directives?)"),
-    re.compile(r"(?i)disregard\s+(?:all\s+|the\s+)?(?:previous|prior|above|earlier|foregoing|instructions?)"),
+    re.compile(
+        r"(?i)ignore\s+(?:all\s+)?(?:previous|prior|above|earlier)\s+(?:instructions?|prompts?|rules?|constraints?|directives?)"
+    ),
+    re.compile(
+        r"(?i)disregard\s+(?:all\s+|the\s+)?(?:previous|prior|above|earlier|foregoing|instructions?)"
+    ),
     re.compile(r"(?i)forget\s+(?:everything|all|your\s+(?:instructions?|training|rules?))"),
     re.compile(r"(?i)you\s+are\s+now\s+(?:a|an|in|the)\b"),
     re.compile(r"(?i)new\s+(?:instructions?|role|system\s*prompt|directives?)\s*[:=]"),

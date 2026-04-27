@@ -22,9 +22,7 @@ class TestHashPath:
 
 
 class TestEmitLineageManifest:
-    def test_full_manifest(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_full_manifest(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         # Override the output-zone marker so tmp_path qualifies.
         from scripts.security import secure_env
 
@@ -52,9 +50,7 @@ class TestEmitLineageManifest:
                     "study": "TEST",
                     "generated_utc": "2026-04-23T12:00:00Z",
                     "compliance_posture": "safe_harbor",
-                    "scrubbed": [
-                        {"scope": "phi-scrub-drop", "field": "STAFF_NAME", "count": 3}
-                    ],
+                    "scrubbed": [{"scope": "phi-scrub-drop", "field": "STAFF_NAME", "count": 3}],
                 }
             )
         )

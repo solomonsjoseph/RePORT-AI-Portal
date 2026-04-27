@@ -28,20 +28,14 @@ class TestHashRawFile:
     def test_empty_file(self, tmp_path: Path) -> None:
         target = tmp_path / "empty.csv"
         target.write_bytes(b"")
-        assert (
-            dataset_pipeline.hash_raw_file(target)
-            == hashlib.sha256(b"").hexdigest()
-        )
+        assert dataset_pipeline.hash_raw_file(target) == hashlib.sha256(b"").hexdigest()
 
     def test_large_chunked(self, tmp_path: Path) -> None:
         # Force multiple chunks through the 64 KiB default.
         content = b"x" * ((1 << 16) * 3 + 1234)
         target = tmp_path / "big.bin"
         target.write_bytes(content)
-        assert (
-            dataset_pipeline.hash_raw_file(target)
-            == hashlib.sha256(content).hexdigest()
-        )
+        assert dataset_pipeline.hash_raw_file(target) == hashlib.sha256(content).hexdigest()
 
 
 class TestBuildProvenance:

@@ -34,7 +34,7 @@ DEFAULT_JUNK_FILENAMES: frozenset[str] = frozenset(
 )
 """Filenames unconditionally skipped during discovery."""
 
-SUPPORTED_TABULAR_EXTENSIONS: tuple[str, ...] = (".xlsx", ".xls", ".csv")
+SUPPORTED_TABULAR_EXTENSIONS: tuple[str, ...] = (".xlsx", ".csv")
 """File extensions recognised as tabular data sources."""
 
 

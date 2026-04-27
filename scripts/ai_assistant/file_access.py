@@ -144,6 +144,5 @@ def validate_sandbox_write(path: str | Path) -> Path:
     if _is_within(resolved, sandbox_root):
         return Path(resolved)
     raise ZoneViolationError(
-        f"Sandbox write denied — exec_python may only write inside "
-        f"agent/analysis/: {path}"
+        f"Sandbox write denied — exec_python may only write inside agent/analysis/: {path}"
     )

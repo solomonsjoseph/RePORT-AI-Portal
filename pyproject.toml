@@ -90,10 +90,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/solomonsjoseph/RePORTaLiN-RAG"
+Homepage = "https://github.com/solomonsjoseph/RePORT-AI-Portal"
 Documentation = "https://solomonsjoseph.github.io/RePORT-AI-Portal/"
-Repository = "https://github.com/solomonsjoseph/RePORTaLiN-RAG"
-Issues = "https://github.com/solomonsjoseph/RePORTaLiN-RAG/issues"
+Repository = "https://github.com/solomonsjoseph/RePORT-AI-Portal"
+Issues = "https://github.com/solomonsjoseph/RePORT-AI-Portal/issues"
 
 [project.scripts]
 report_ai_portal = "main:main"
@@ -157,9 +157,9 @@ ai_assistant = [
     "langchain-nvidia-ai-endpoints>=1.0.0,<2.0.0",
     "langchain-text-splitters>=1.1.2,<2.0.0",
     # LangGraph 1.x — closes CVE-2026-28277 (langgraph) and CVE-2026-27794
-    # (langgraph-checkpoint, transitive). Migration kept narrow because the
-    # only public-API surface used is MemorySaver / CompiledStateGraph /
-    # create_react_agent — all three remain in 1.x.
+    # (langgraph-checkpoint, transitive). Runtime agent construction goes
+    # through LangChain create_agent, but MemorySaver / CompiledStateGraph
+    # still come from LangGraph.
     "langgraph>=1.0.10,<2.0.0",
     "langgraph-checkpoint>=4.0.0,<5.0.0",
 ]

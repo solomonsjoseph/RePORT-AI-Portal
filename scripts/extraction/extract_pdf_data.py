@@ -885,9 +885,7 @@ def _resolve_orchestrator_credentials() -> tuple[str | None, str | None, str | N
         "anthropic": "ANTHROPIC_API_KEY",
         "google": "GOOGLE_API_KEY",
     }.get(provider)
-    api_key = (
-        os.environ.get(api_key_env, "").strip() if api_key_env else ""
-    ) or None
+    api_key = (os.environ.get(api_key_env, "").strip() if api_key_env else "") or None
 
     return provider, model, api_key
 
@@ -911,8 +909,7 @@ def _run_orchestrator_mode(
     snapshot_dir = _initial_snapshot_pdfs_dir()
     cache_dir = Path(config.STUDY_STAGING_DIR) / ".pdf_cache"
     log.info(
-        "PDF extraction: orchestrator mode — provider=%s model=%s "
-        "snapshot_dir=%s cache_dir=%s",
+        "PDF extraction: orchestrator mode — provider=%s model=%s snapshot_dir=%s cache_dir=%s",
         provider,
         model,
         snapshot_dir,

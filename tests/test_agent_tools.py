@@ -213,9 +213,7 @@ class TestSearchPdfContext:
         tool_cache.clear()
         self._write_pdf_fixture(config.PDF_EXTRACTIONS_DIR)
 
-        raw = search_pdf_context.invoke(
-            {"query": "Cohort A eligibility", "k": 3}
-        )
+        raw = search_pdf_context.invoke({"query": "Cohort A eligibility", "k": 3})
         payload = json.loads(raw)
         assert payload["count"] >= 1
         assert payload["snippets"][0]["rank"] == 1
@@ -229,9 +227,7 @@ class TestSearchPdfContext:
         tool_cache.clear()
         self._write_pdf_fixture(config.PDF_EXTRACTIONS_DIR)
 
-        raw = search_pdf_context.invoke(
-            {"query": "household contact same dwelling"}
-        )
+        raw = search_pdf_context.invoke({"query": "household contact same dwelling"})
         top = json.loads(raw)["snippets"][0]
         assert "Household Contact" in top["form_name"]
         assert top["source_pdf"] == "Form 1B.pdf"
@@ -244,9 +240,7 @@ class TestSearchPdfContext:
         tool_cache.clear()
         self._write_pdf_fixture(config.PDF_EXTRACTIONS_DIR)
 
-        raw = search_pdf_context.invoke(
-            {"query": "participant enrollment"}
-        )
+        raw = search_pdf_context.invoke({"query": "participant enrollment"})
         payload = json.loads(raw)
         # low-confidence flag set on weak matches
         assert "low_confidence" in payload

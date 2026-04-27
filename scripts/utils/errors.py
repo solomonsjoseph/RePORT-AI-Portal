@@ -61,9 +61,7 @@ class RePORTError:
     path: str | None = None
     hint: str | None = None
     traceback: str | None = None
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat(timespec="seconds")
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat(timespec="seconds"))
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serialisable representation."""

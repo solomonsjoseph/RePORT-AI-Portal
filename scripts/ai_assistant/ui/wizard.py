@@ -1,4 +1,5 @@
 """Setup wizard: LLM config, pipeline run, 3-step setup flow."""
+
 from __future__ import annotations
 
 import html
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # CSS
 # ---------------------------------------------------------------------------
+
 
 def inject_wizard_css() -> None:
     """Hide sidebar and center the wizard column."""
@@ -61,6 +63,7 @@ def inject_wizard_css() -> None:
 # ---------------------------------------------------------------------------
 # LLM config helpers
 # ---------------------------------------------------------------------------
+
 
 def apply_llm_config(provider_label: str, api_key: str, model: str) -> None:
     """Persist provider/model selection + stash the API key in the KeyStore.
@@ -150,6 +153,7 @@ def ensure_llm_config() -> None:
 # Pipeline
 # ---------------------------------------------------------------------------
 
+
 def _ensure_phi_key() -> None:
     """Bootstrap the PHI HMAC key if it does not yet exist."""
     if config.PHI_KEY_PATH.exists():
@@ -189,9 +193,7 @@ def run_pipeline() -> dict[str, Any]:
     _ensure_phi_key()
 
     subprocess_env = os.environ.copy()
-    subprocess_env.update(
-        get_keystore().env_for_subprocess(list(ENV_VAR_BY_PROVIDER))
-    )
+    subprocess_env.update(get_keystore().env_for_subprocess(list(ENV_VAR_BY_PROVIDER)))
     # The orchestrator's capability+provider gate decides per-PDF whether
     # the LLM tier runs; setting the env var to "llm" only signals that
     # this is a fresh-extraction run (vs. the legacy raw-PDF API path).
@@ -210,9 +212,7 @@ def run_pipeline() -> dict[str, Any]:
 
 def _pipeline_output_exists() -> bool:
     try:
-        return config.TRIO_BUNDLE_DIR.exists() and any(
-            config.TRIO_DATASETS_DIR.glob("*.jsonl")
-        )
+        return config.TRIO_BUNDLE_DIR.exists() and any(config.TRIO_DATASETS_DIR.glob("*.jsonl"))
     except Exception:
         return False
 
@@ -220,6 +220,7 @@ def _pipeline_output_exists() -> bool:
 # ---------------------------------------------------------------------------
 # Wizard header
 # ---------------------------------------------------------------------------
+
 
 def _render_wizard_header(step: int) -> None:
     def _pill(n: int, label: str) -> str:
@@ -241,6 +242,7 @@ def _render_wizard_header(step: int) -> None:
 # ---------------------------------------------------------------------------
 # Main wizard entry point
 # ---------------------------------------------------------------------------
+
 
 def render_setup_page() -> None:
     """Render the 3-step setup wizard."""
@@ -308,9 +310,7 @@ def render_setup_page() -> None:
                 )
                 provider_changed = session_provider != provider_label
                 saved_model = (
-                    ""
-                    if provider_changed
-                    else st.session_state.get("llm_model", config.LLM_MODEL)
+                    "" if provider_changed else st.session_state.get("llm_model", config.LLM_MODEL)
                 )
                 configured_model = (
                     config.LLM_MODEL if cfg["provider"] == config.LLM_PROVIDER else ""
@@ -415,7 +415,7 @@ def render_setup_page() -> None:
                     unsafe_allow_html=True,
                 )
                 st.markdown(
-                    "<span class=\"rpln-beta-note\">"
+                    '<span class="rpln-beta-note">'
                     "<em>PHI handling is in beta — datasets must be pre-scrubbed before extraction.</em>"
                     "</span>",
                     unsafe_allow_html=True,
@@ -460,8 +460,7 @@ def render_setup_page() -> None:
                             "Skip the pipeline and use the trio bundle already "
                             "published at output/{STUDY}/trio_bundle/."
                             if output_exists
-                            else "No published trio_bundle on disk yet — run "
-                            "Load Study first."
+                            else "No published trio_bundle on disk yet — run Load Study first."
                         ),
                     ):
                         st.session_state.pipeline_ready = True
@@ -474,9 +473,7 @@ def render_setup_page() -> None:
                         type="primary" if not output_exists else "secondary",
                         width="stretch",
                     ):
-                        with st.spinner(
-                            "Loading study data — this may take a minute…"
-                        ):
+                        with st.spinner("Loading study data — this may take a minute…"):
                             result = run_pipeline()
                         st.session_state.pipeline_log = result["output"]
                         if result["success"]:
@@ -511,9 +508,7 @@ def render_setup_page() -> None:
             # Step 3 — Confirm and start chatting                               #
             # ---------------------------------------------------------------- #
             elif step == 3:
-                provider_display = html.escape(
-                    str(st.session_state.get("llm_provider_label", ""))
-                )
+                provider_display = html.escape(str(st.session_state.get("llm_provider_label", "")))
                 model_display = html.escape(str(st.session_state.get("llm_model", "")))
                 st.markdown(
                     '<p class="welcome-title">Ready to go!</p>'

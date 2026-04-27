@@ -511,7 +511,5 @@ class TestRunPropagation:
 
         # 8. Dict/PDF legs emit no audit artifact — only the dataset audit
         #    that we seeded in step 1 should exist under STUDY_AUDIT_DIR.
-        audit_files = sorted(
-            p.name for p in config.STUDY_AUDIT_DIR.glob("*.json")
-        )
+        audit_files = sorted(p.name for p in config.STUDY_AUDIT_DIR.glob("*.json"))
         assert audit_files == ["dataset_cleanup_report.json"]

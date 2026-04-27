@@ -17,6 +17,7 @@ from scripts.extraction.load_dictionary import (
     UNNAMED_COLUMN_PREFIX,
     _deduplicate_columns,
     _split_sheet_into_tables,
+    discover_dictionary_files,
     load_study_dictionary,
 )
 
@@ -82,6 +83,22 @@ class TestSplitSheetIntoTables:
         tables = _split_sheet_into_tables(df)
         assert len(tables) == 2
 
+
+class TestDiscoverDictionaryFiles:
+    def test_finds_xlsx_and_csv_only(self, tmp_path: Path) -> None:
+        (tmp_path / "dict.xlsx").write_bytes(b"fake")
+        (tmp_path / "dict.csv").write_bytes(b"fake")
+        (tmp_path / "legacy.xls").write_bytes(b"fake")
+
+        assert [Path(p).name for p in discover_dictionary_files(tmp_path)] == [
+            "dict.csv",
+            "dict.xlsx",
+        ]
+
+    def test_legacy_xls_only_raises(self, tmp_path: Path) -> None:
+        (tmp_path / "legacy.xls").write_bytes(b"fake")
+        with pytest.raises(ValueError, match=r"Supported extensions: \.csv, \.xlsx"):
+            discover_dictionary_files(tmp_path)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

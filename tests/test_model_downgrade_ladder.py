@@ -19,9 +19,7 @@ from scripts.ai_assistant.ui.providers import (
 
 class TestPreferredOrInstalledDowngrade:
     def test_returns_preferred_when_installed(self) -> None:
-        got = preferred_or_installed_downgrade(
-            "qwen3:8b", ["qwen3:8b", "qwen3:4b", "qwen3:1.7b"]
-        )
+        got = preferred_or_installed_downgrade("qwen3:8b", ["qwen3:8b", "qwen3:4b", "qwen3:1.7b"])
         assert got == "qwen3:8b"
 
     def test_latest_tag_matches_bare_tag(self) -> None:
@@ -29,9 +27,7 @@ class TestPreferredOrInstalledDowngrade:
         assert got == "qwen3:8b"
 
     def test_downgrades_from_8b_to_4b_when_only_4b_installed(self) -> None:
-        got = preferred_or_installed_downgrade(
-            "qwen3:8b", ["qwen3:4b", "qwen3:1.7b"]
-        )
+        got = preferred_or_installed_downgrade("qwen3:8b", ["qwen3:4b", "qwen3:1.7b"])
         assert got == "qwen3:4b"
 
     def test_downgrades_from_8b_to_1p7b_when_nothing_else_installed(self) -> None:
@@ -45,15 +41,11 @@ class TestPreferredOrInstalledDowngrade:
         assert got == "qwen3:4b"
 
     def test_returns_none_when_no_qwen3_installed(self) -> None:
-        got = preferred_or_installed_downgrade(
-            "qwen3:8b", ["mistral:latest", "gemma3:9b"]
-        )
+        got = preferred_or_installed_downgrade("qwen3:8b", ["mistral:latest", "gemma3:9b"])
         assert got is None
 
     def test_returns_none_for_non_qwen3_preferred(self) -> None:
-        got = preferred_or_installed_downgrade(
-            "mistral:latest", ["qwen3:8b", "qwen3:1.7b"]
-        )
+        got = preferred_or_installed_downgrade("mistral:latest", ["qwen3:8b", "qwen3:1.7b"])
         assert got is None
 
     def test_empty_inputs(self) -> None:
@@ -76,7 +68,5 @@ class TestPreferredOrInstalledDowngrade:
         ("qwen3:32b", ["qwen3:14b"], "qwen3:14b"),
     ],
 )
-def test_downgrade_parametrised(
-    preferred: str, installed: list[str], expected: str
-) -> None:
+def test_downgrade_parametrised(preferred: str, installed: list[str], expected: str) -> None:
     assert preferred_or_installed_downgrade(preferred, installed) == expected

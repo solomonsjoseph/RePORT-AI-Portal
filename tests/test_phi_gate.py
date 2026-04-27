@@ -40,10 +40,7 @@ class TestClinicalFreeText:
         assert phi_allowlist.is_clinical_free_text("patient expired") is True
 
     def test_died_notation(self) -> None:
-        assert (
-            phi_allowlist.is_clinical_free_text("died on 3/1/2014 due to complications")
-            is True
-        )
+        assert phi_allowlist.is_clinical_free_text("died on 3/1/2014 due to complications") is True
 
     def test_benign_prose_not_flagged(self) -> None:
         assert phi_allowlist.is_clinical_free_text("Enrolled in cohort A") is False
@@ -122,9 +119,7 @@ class TestPHIGateCheck:
     def test_real_name_in_clinical_narrative_still_warns(self) -> None:
         # Per-match allowlist must NOT swallow a real-name bigram just
         # because the surrounding text has clinical vocabulary.
-        result = phi_gate_check(
-            "Subject Rajesh Sharma was diagnosed with pulmonary TB."
-        )
+        result = phi_gate_check("Subject Rajesh Sharma was diagnosed with pulmonary TB.")
         assert result.blocked is False
         assert "PERSON_NAME_GENERIC" in result.findings
 
@@ -133,9 +128,7 @@ class TestPHIGateCheck:
         # bigrams the old whole-text allowlist let through.
         for label in ("Cohort A analysis", "Index Cases enrolled", "Household Contacts"):
             result = phi_gate_check(label)
-            assert "PERSON_NAME_GENERIC" not in result.findings, (
-                f"{label!r} incorrectly flagged"
-            )
+            assert "PERSON_NAME_GENERIC" not in result.findings, f"{label!r} incorrectly flagged"
 
     def test_violin_plot_heading_does_not_warn(self) -> None:
         # Narratives contain section headings like "Violin Plot",
@@ -143,9 +136,7 @@ class TestPHIGateCheck:
         # never produce PERSON_NAME_GENERIC findings.
         for heading in ("Violin Plot", "Multivariate Model", "Interaction Model"):
             result = phi_gate_check(heading)
-            assert "PERSON_NAME_GENERIC" not in result.findings, (
-                f"{heading!r} incorrectly flagged"
-            )
+            assert "PERSON_NAME_GENERIC" not in result.findings, f"{heading!r} incorrectly flagged"
 
 
 # ── kanon_gate ──────────────────────────────────────────────────────────────
@@ -158,9 +149,7 @@ class TestKAnonCheck:
             {"age_band": "45-49", "sex": "F", "district": "D2"},  # unique
             {"age_band": "45-49", "sex": "F", "district": "D2"},  # size 2
         ]
-        result = kanon_check(
-            rows, quasi_identifiers=("age_band", "sex", "district"), k=5
-        )
+        result = kanon_check(rows, quasi_identifiers=("age_band", "sex", "district"), k=5)
         assert result.blocked is True
         assert result.smallest_class_size == 1
 
@@ -263,17 +252,13 @@ class TestPhiSafeReturn:
 class TestGuardRowsWithKanon:
     def test_empty_rows_on_block(self) -> None:
         rows = [{"g": "A"}] * 2  # smaller than k=5
-        surfaced, result = guard_rows_with_kanon(
-            rows, quasi_identifiers=("g",), k=5
-        )
+        surfaced, result = guard_rows_with_kanon(rows, quasi_identifiers=("g",), k=5)
         assert surfaced == []
         assert result.blocked is True
 
     def test_passthrough_on_pass(self) -> None:
         rows = [{"g": "A"}] * 10
-        surfaced, result = guard_rows_with_kanon(
-            rows, quasi_identifiers=("g",), k=5
-        )
+        surfaced, result = guard_rows_with_kanon(rows, quasi_identifiers=("g",), k=5)
         assert len(surfaced) == 10
         assert result.blocked is False
 
