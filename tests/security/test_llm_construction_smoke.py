@@ -46,6 +46,10 @@ def test_langchain_chat_models_init_chat_model_is_importable() -> None:
         ("anthropic", "claude-sonnet-4-6"),
         ("openai", "gpt-4.1"),
         ("google-genai", "gemini-2.5-flash"),
+        # NVIDIA added 2026-04-27 — parity with cli.py + providers.py +
+        # keystore.py. Catches future regressions in the
+        # langchain-nvidia-ai-endpoints integration.
+        ("nvidia-ai-endpoints", "meta/llama-3.3-70b-instruct"),
     ],
 )
 def test_build_llm_constructs_chat_model_for_provider(

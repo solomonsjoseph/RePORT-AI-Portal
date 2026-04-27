@@ -391,10 +391,15 @@ os.environ.setdefault("LANGCHAIN_TRACING_V2", "false")
 
 
 def ensure_directories() -> None:
-    for path in [
-        OUTPUT_DIR,
+    """Create runtime directories. Sensitive dirs (containing PHI-scrubbed
+    data, agent state, conversations, snapshots, audit, or logs) are
+    hardened to mode 0o700 after creation so they're not world-readable
+    under the typical umask 0o022. Dirs that may legitimately need group
+    access (``OUTPUT_DIR`` parent, ``TMP_DIR`` is already 0o700 via
+    secure-staging) are left at default mode."""
+    sensitive_paths = [
+        STUDY_OUTPUT_DIR,
         LOGS_DIR,
-        TMP_DIR,
         TRIO_BUNDLE_DIR,
         TRIO_DATASETS_DIR,
         DICTIONARY_JSON_OUTPUT_DIR,
@@ -405,8 +410,16 @@ def ensure_directories() -> None:
         CONVERSATIONS_DIR,
         TELEMETRY_DIR,
         STUDY_SNAPSHOTS_DIR,
-    ]:
+    ]
+    for path in [OUTPUT_DIR, TMP_DIR, *sensitive_paths]:
         path.mkdir(parents=True, exist_ok=True)
+    import contextlib
+
+    for path in sensitive_paths:
+        # Best-effort: a chmod failure (e.g., not the file owner) is not a
+        # fatal startup error.
+        with contextlib.suppress(OSError):
+            path.chmod(0o700)
 
 
 # ----------------------------------------------------------------------------

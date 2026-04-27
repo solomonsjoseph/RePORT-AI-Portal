@@ -147,6 +147,10 @@ def run_in_subprocess(
         }
         spec_path = tmpdir / "spec.json"
         spec_path.write_text(json.dumps(spec), encoding="utf-8")
+        # The temp dir itself is owner-only by default (TemporaryDirectory),
+        # but the spec file inherits process umask (typically 0o644). Tighten
+        # so a co-tenant can't read the spec during the sandbox window.
+        spec_path.chmod(0o600)
 
         env = _build_clean_env(tmpdir, project_root)
         # CPU rlimit: leave a small margin under wall-clock so RLIMIT_CPU

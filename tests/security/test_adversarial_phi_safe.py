@@ -40,13 +40,12 @@ class TestPHISmugglingThroughFormatting:
     The gate should catch the obvious cases; document the gaps for the
     ones it doesn't, so we don't claim coverage we don't have."""
 
-    def test_aadhaar_with_dot_separators_evades_gate_known_gap(self) -> None:
-        """The AADHAAR regex matches ``\\d{4}[\\s\\-]?\\d{4}[\\s\\-]?\\d{4}``
-        — dots are not in the separator class. This documents that gap;
-        if the gate is later widened, flip this assertion."""
+    def test_aadhaar_with_dot_separators_now_blocked(self) -> None:
+        """The AADHAAR regex separator class now includes ``\\.`` (PR fix
+        for the 2026-04-27 audit). Dot-separated forms are caught."""
         result = guard_user_prompt("subject id 1234.5678.9012 had outcome X")
-        # Known-gap: dot-separated digits don't match. Treat as documented.
-        assert result.ok is True, "if this fails, the gate now catches dot-separated — update the docstring"
+        assert result.ok is False
+        assert "AADHAAR" in result.findings
 
     def test_aadhaar_in_codeblock_still_blocked(self) -> None:
         """Wrapping in a markdown codeblock must NOT bypass the gate —

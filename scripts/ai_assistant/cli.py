@@ -33,6 +33,15 @@ _PROVIDER_CHOICES: dict[str, tuple[str, str, str | None, str]] = {
     "2": ("anthropic", "Anthropic", "ANTHROPIC_API_KEY", "claude-sonnet-4-6"),
     "3": ("openai", "OpenAI", "OPENAI_API_KEY", "gpt-4.1"),
     "4": ("google-genai", "Google Gemini", "GOOGLE_API_KEY", "gemini-2.5-flash"),
+    # Parity with the wizard's provider list. NVIDIA was previously in the
+    # Streamlit UI + KeyStore but not selectable from the CLI; this closes
+    # that surface inconsistency.
+    "5": (
+        "nvidia-ai-endpoints",
+        "NVIDIA AI Endpoints",
+        "NVIDIA_API_KEY",
+        "meta/llama-3.3-70b-instruct",
+    ),
 }
 
 
@@ -336,7 +345,12 @@ def main() -> None:
     # sidecar key is absent so fresh checkouts can still start a REPL;
     # operators will see the fallback warning and know to bootstrap.
     try:
-        install_phi_redactor(hmac_key=_load_phi_key())
+        from scripts.security.phi_patterns import SUBJECT_ID_PATTERNS
+
+        install_phi_redactor(
+            hmac_key=_load_phi_key(),
+            subject_id_patterns=list(SUBJECT_ID_PATTERNS),
+        )
     except (PHIKeyMissingError, PHIKeyPermissionError, PHIScrubError) as exc:
         logger.warning(
             "PHI log redactor NOT installed (%s). Run "

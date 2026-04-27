@@ -150,7 +150,11 @@ def _install_log_redactor_best_effort() -> None:
             type(exc).__name__,
         )
         return
-    install_phi_redactor(hmac_key=key)
+    # Seed the per-subject HMAC pass with the canonical SUBJECT_ID_PATTERNS
+    # so SUBJ_*, SC_*, FID_* identifiers in log messages get tagged
+    # ``<SUBJ_*>``. Without this, only the generic catalog redactions run.
+    from scripts.security.phi_patterns import SUBJECT_ID_PATTERNS
+    install_phi_redactor(hmac_key=key, subject_id_patterns=list(SUBJECT_ID_PATTERNS))
 
 
 _OUTPUT_SIGNPOST_TEMPLATE = """\
