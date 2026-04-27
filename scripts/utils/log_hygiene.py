@@ -58,17 +58,42 @@ __all__ = [
 # on the high-confidence BLOCKING tier. A diverging per-module list is
 # actively dangerous — new PHI classes added to phi_patterns would silently
 # not be redacted in logs.
+API_KEY_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    # Anthropic keys: ``sk-ant-api03-…`` ~108 chars total. Require the
+    # ``api`` segment + a long body so ``sk-ant-foo`` shorthand in docs
+    # is not redacted.
+    ("ANTHROPIC_KEY", re.compile(r"sk-ant-[A-Za-z]+\d*-[A-Za-z0-9_\-]{20,}")),
+    # OpenAI keys: ``sk-…`` ≥40 chars body, optionally with ``proj-`` prefix.
+    ("OPENAI_KEY", re.compile(r"sk-(?:proj-)?[A-Za-z0-9]{40,}")),
+    # NVIDIA NGC keys.
+    ("NVIDIA_KEY", re.compile(r"nvapi-[A-Za-z0-9_\-]{30,}")),
+    # Google API keys (Gemini, GCP). Always start with ``AIza`` + 35 chars.
+    ("GOOGLE_KEY", re.compile(r"AIza[A-Za-z0-9_\-]{35}")),
+]
+"""LLM provider API-key patterns. After PR #3 the keystore keeps keys out
+of ``os.environ`` entirely, so keys never reach the logger via env-var
+dump. But defense in depth: if a key ever lands in a log message —
+through a stack trace, a tool call, or a copy-paste — these patterns
+scrub it before the message is written to ``.logs/``.
+
+Each pattern requires the full provider-specific length so short
+references like ``sk-flag`` or doc literals do NOT false-positive.
+"""
+
+
 _GENERIC_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    *API_KEY_PATTERNS,
     *BLOCKING_PATTERNS,
     *WARN_PATTERNS,
 ]
-"""Redaction catalog — aliased to :data:`phi_patterns.BLOCKING_PATTERNS` +
-:data:`phi_patterns.WARN_PATTERNS`.
+"""Redaction catalog — :data:`API_KEY_PATTERNS` first (so a key embedded
+inside a longer string is caught before any PHI heuristic might claim
+part of it), then :data:`phi_patterns.BLOCKING_PATTERNS` + WARN_PATTERNS.
 
 Applied IN ORDER to every log message by :class:`PHIRedactingFilter`. Each
-match is replaced with ``<CATEGORY>`` (e.g. ``<EMAIL>``). Intentionally
-conservative — false positives here cost legibility only; false negatives
-cost IRB compliance.
+match is replaced with ``<CATEGORY>`` (e.g. ``<EMAIL>``, ``<ANTHROPIC_KEY>``).
+Intentionally conservative — false positives here cost legibility only;
+false negatives cost IRB compliance OR API-key disclosure.
 """
 
 

@@ -41,11 +41,20 @@ def _select_llm() -> None:
     print("\nSelect LLM provider:")
     print(f"  Current: {config.LLM_PROVIDER} / {config.LLM_MODEL}\n")
 
+    from scripts.ai_assistant.keystore import get_keystore, provider_slug_for
+
+    keystore = get_keystore()
+
     for num, (provider_id, label, env_key, _default_model) in _PROVIDER_CHOICES.items():
         marker = " ←" if provider_id == config.LLM_PROVIDER else ""
         key_status = ""
         if env_key:
-            has_key = bool(os.environ.get(env_key, ""))
+            slug = provider_slug_for(provider_id)
+            # "Set" means: KeyStore has it OR the user pre-exported it in their
+            # shell. We never write to ``os.environ`` ourselves anymore.
+            has_key = (slug is not None and keystore.has(slug)) or bool(
+                os.environ.get(env_key, "")
+            )
             key_status = " (key set)" if has_key else " (key needed)"
         print(f"  {num}. {label}{key_status}{marker}")
 
@@ -65,9 +74,13 @@ def _select_llm() -> None:
 
     provider_id, label, env_key, default_model = _PROVIDER_CHOICES[choice]
 
-    # API key
+    # API key — stored in the KeyStore (in-process memory), never in os.environ.
     if env_key:
-        existing_key = os.environ.get(env_key, "")
+        slug = provider_slug_for(provider_id)
+        existing_key = (
+            (slug is not None and keystore.get(slug))
+            or os.environ.get(env_key, "")
+        )
         if existing_key:
             print(f"  {env_key} is already set.")
             try:
@@ -77,8 +90,8 @@ def _select_llm() -> None:
                 return
             if update in ("y", "yes"):
                 new_key = getpass.getpass(f"  {env_key}: ").strip()
-                if new_key:
-                    os.environ[env_key] = new_key
+                if new_key and slug is not None:
+                    keystore.set(slug, new_key)
         else:
             try:
                 new_key = getpass.getpass(f"  {env_key}: ").strip()
@@ -87,8 +100,8 @@ def _select_llm() -> None:
                 return
             if not new_key:
                 print(f"  ⚠ No API key provided for {label}. Queries may fail.")
-            else:
-                os.environ[env_key] = new_key
+            elif slug is not None:
+                keystore.set(slug, new_key)
 
     # Model
     current_model = config.LLM_MODEL if provider_id == config.LLM_PROVIDER else default_model

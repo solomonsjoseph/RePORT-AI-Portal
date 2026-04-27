@@ -63,17 +63,40 @@ def inject_wizard_css() -> None:
 # ---------------------------------------------------------------------------
 
 def apply_llm_config(provider_label: str, api_key: str, model: str) -> None:
-    """Set env var, patch config module, reset agent singleton."""
+    """Persist provider/model selection + stash the API key in the KeyStore.
+
+    The non-secret bits (LLM_PROVIDER, LLM_MODEL) still live in env vars
+    + the config module so the rest of the app can read them at any time.
+    The API key goes into the in-memory ``KeyStore`` only — never into
+    ``os.environ``. ``agent_graph._build_llm`` reads it from there at
+    client-construction time and passes it as ``api_key=`` explicitly.
+    """
     import os
 
+    from scripts.ai_assistant.keystore import (
+        get_keystore,
+        provider_slug_for,
+    )
+
     cfg = _PROVIDER_CONFIG[provider_label]
-    env_var = cfg.get("env_var")
+
+    # Defensive: if a stale ``*_API_KEY`` was left in ``os.environ`` by a
+    # previous build of the app or by the user's shell, scrub it. We keep
+    # the user's *original* shell-set value separately readable through the
+    # password input (see step 1 of the wizard) but we never carry it into
+    # the running process env.
     for _pcfg in _PROVIDER_CONFIG.values():
         _ev = _pcfg.get("env_var")
-        if _ev and _ev != env_var:
+        if _ev:
             os.environ.pop(_ev, None)
-    if env_var and api_key:
-        os.environ[env_var] = api_key
+
+    if cfg["needs_key"] and api_key:
+        slug = provider_slug_for(cfg["provider"])
+        if slug is not None:
+            get_keystore().set(slug, api_key)
+
+    # Non-secret config remains in env + module attribute for compatibility
+    # with code paths that read it directly.
     os.environ["LLM_PROVIDER"] = cfg["provider"]
     os.environ["LLM_MODEL"] = model
     config.LLM_PROVIDER = cfg["provider"]  # type: ignore[attr-defined]
@@ -82,8 +105,20 @@ def apply_llm_config(provider_label: str, api_key: str, model: str) -> None:
 
 
 def ensure_llm_config() -> None:
-    """Re-apply LLM env vars on every rerun (survives hot-reload)."""
+    """Re-apply non-secret LLM env vars on every Streamlit rerun.
+
+    The KeyStore is persisted in ``st.session_state`` so keys survive
+    reruns automatically — this function only refreshes the non-secret
+    LLM_PROVIDER / LLM_MODEL env vars + module attributes. If the user
+    pasted a key on this rerun cycle it has already been routed through
+    :func:`apply_llm_config` → KeyStore.
+    """
     import os
+
+    from scripts.ai_assistant.keystore import (
+        get_keystore,
+        provider_slug_for,
+    )
 
     provider_label = st.session_state.get("llm_provider_label", _default_provider_label())
     api_key = st.session_state.get("api_key_saved", "")
@@ -91,13 +126,20 @@ def ensure_llm_config() -> None:
     if provider_label not in _PROVIDER_CONFIG:
         return
     cfg = _PROVIDER_CONFIG[provider_label]
-    env_var = cfg.get("env_var")
+
     for _pcfg in _PROVIDER_CONFIG.values():
         _ev = _pcfg.get("env_var")
-        if _ev and _ev != env_var:
+        if _ev:
             os.environ.pop(_ev, None)
-    if env_var and api_key:
-        os.environ[env_var] = api_key
+
+    # If the password input held a value but ``apply_llm_config`` was never
+    # called (e.g. coming back from a saved session), copy into the keystore
+    # now so ``agent_graph`` finds it.
+    if cfg["needs_key"] and api_key:
+        slug = provider_slug_for(cfg["provider"])
+        if slug is not None and not get_keystore().has(slug):
+            get_keystore().set(slug, api_key)
+
     os.environ["LLM_PROVIDER"] = cfg["provider"]
     os.environ["LLM_MODEL"] = model
     config.LLM_PROVIDER = cfg["provider"]  # type: ignore[attr-defined]
@@ -119,12 +161,35 @@ def _ensure_phi_key() -> None:
 
 
 def run_pipeline() -> dict[str, Any]:
+    """Run the data-extraction pipeline as a subprocess.
+
+    The pipeline's PDF-extraction step needs ``ANTHROPIC_API_KEY`` /
+    ``GOOGLE_API_KEY`` in its env to call vision APIs. Rather than leak
+    those into the parent's ``os.environ`` for the lifetime of the app,
+    we inject them only into this single subprocess call via the
+    KeyStore's ``env_for_subprocess`` helper. The parent's env stays
+    clean before, during, and after the call.
+    """
+    import os
+
+    from scripts.ai_assistant.keystore import (
+        ENV_VAR_BY_PROVIDER,
+        get_keystore,
+    )
+
     _ensure_phi_key()
+
+    subprocess_env = os.environ.copy()
+    subprocess_env.update(
+        get_keystore().env_for_subprocess(list(ENV_VAR_BY_PROVIDER))
+    )
+
     result = subprocess.run(  # noqa: S603
         [sys.executable, str(config.BASE_DIR / "main.py"), "--pipeline"],
         capture_output=True,
         text=True,
         cwd=str(config.BASE_DIR),
+        env=subprocess_env,
     )
     combined = (result.stdout + "\n" + result.stderr).strip()
     return {"success": result.returncode == 0, "output": combined}
