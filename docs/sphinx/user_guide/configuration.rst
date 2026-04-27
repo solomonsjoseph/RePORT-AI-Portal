@@ -69,7 +69,7 @@ All paths are derived from ``BASE_DIR`` in ``config.py``:
      - **Tracked baseline** at the repo root (version-controlled,
        LLM-INVISIBLE). Used by the PDF orchestrator's per-PDF fallback
        when the LLM tier is unavailable. Maintainer-curated by hand —
-       see ``snapshots/README.md``.
+       see :doc:`../developer_guide/operations` (Trio-Bundle Snapshot Maintenance).
    * - ``STUDY_RESTORE_POINTS_DIR``
      - ``output/{STUDY}/agent/restore_points/``
      - Operator-restore tier (gitignored, multi-named runs). Created /

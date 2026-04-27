@@ -256,7 +256,7 @@ Restore Points — output/{STUDY}/agent/restore_points/ (gitignored)
                            SNAPSHOT=<name> for an explicit label; FORCE=1 to overwrite
   make list-snapshots      List available restore points (newest first)
   make restore-study       Restore a point back into trio_bundle/ (SNAPSHOT=<name>)
-  Note: tracked-baseline snapshots/{STUDY}/ is curated by hand — see snapshots/README.md
+  Note: tracked-baseline snapshots/{STUDY}/ is curated by hand — see docs/sphinx/developer_guide/operations.rst
 
 Quality
   make test                Run pytest suite

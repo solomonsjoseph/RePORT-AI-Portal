@@ -67,7 +67,8 @@ Individual Steps
      - Save a restore point of the current trio bundle to
        ``output/{STUDY}/agent/restore_points/`` (gitignored). The
        version-controlled tracked baseline at ``snapshots/{STUDY}/`` is
-       maintainer-curated by hand — see ``snapshots/README.md``.
+       maintainer-curated by hand — see :ref:`snapshot-baseline-protocol`
+       below.
    * - ``make chat``
      - Launch the Streamlit research-assistant UI (with setup wizard)
    * - ``make chat-cli``
@@ -197,4 +198,107 @@ metadata.
 
     make chat-cli   # CLI interactive REPL (or `python main.py --chat` directly)
     make chat       # Streamlit web UI (or `python main.py --web` directly)
+
+.. _snapshot-baseline-protocol:
+
+Trio-Bundle Snapshot Maintenance
+--------------------------------
+
+This project keeps two distinct copy-of-the-trio-bundle tiers. They
+look similar on disk and the CLI commands sound interchangeable, but
+they serve different purposes and have different lifecycles. **Do not
+confuse the two.**
+
+Tier 1 — Tracked baseline (``snapshots/{STUDY}/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A *snapshot baseline* is a cleaned-and-verified trio bundle committed
+to version control at ``snapshots/{STUDY_NAME}/``. Each
+per-study subdirectory mirrors the layout of the live
+``output/{STUDY}/trio_bundle/``:
+
+.. code-block:: text
+
+   snapshots/
+   └── {STUDY_NAME}/             # e.g. snapshots/Indo-VAP/ — must match
+       ├── datasets/             # config.STUDY_NAME exactly
+       ├── dictionary/
+       ├── pdfs/
+       └── variables.json
+
+**Purpose.** The tracked baseline is the **deterministic fallback
+source** for the pipeline:
+
+1. **PDF orchestrator fallback.** When the wizard's "Load Study"
+   runs and the PDF orchestrator's LLM tier is unavailable for a
+   particular PDF (no API key, image-only PDF, capability gate fails,
+   LLM call errors), the orchestrator reads
+   ``snapshots/{STUDY}/pdfs/{stem}_variables.json`` instead of
+   publishing a code-only heuristic guess.
+2. **Network-isolated runs.** Operators on hardened hosts without
+   LLM access can run ``python main.py --pipeline`` and the
+   pipeline will populate ``trio_bundle/pdfs/`` from these snapshots
+   so the agent has something to answer questions against.
+
+**Read posture.** The LLM agent must NOT read this directory. The
+agent's read zone is restricted to ``output/{STUDY}/trio_bundle/``
+and ``output/{STUDY}/agent/`` only (see
+:func:`scripts.ai_assistant.file_access.validate_agent_read`).
+Putting snapshots outside both zones is intentional — a stale
+snapshot must never be served as live data.
+
+The wizard's "Load Study" subprocess is the only legitimate reader.
+The pipeline's PDF orchestrator imports
+``config.STUDY_SNAPSHOTS_DIR`` and uses it as the snapshot lookup
+root.
+
+**Maintenance protocol.**
+
+* Snapshots are PHI-scrubbed. Only files that have been through the
+  full ``phi_scrub`` + ``kanon_gate`` chain belong here. Adding raw
+  subject IDs or unscrubbed dates to a snapshot would defeat the
+  entire purpose.
+* Update by promoting from a verified production run. A maintainer
+  copies ``output/{STUDY}/trio_bundle/`` →
+  ``snapshots/{STUDY}/`` after manual review, commits, and references
+  the ``lineage_manifest.json`` hash in the commit message for audit
+  trail.
+* Do not generate snapshots from ``--force`` runs without manual
+  review. The whole value of a snapshot is the human verification
+  step.
+
+The repo's ``.gitignore`` explicitly tracks ``snapshots/``. Files
+under this directory ARE committed.
+
+Tier 2 — Operator restore points (``output/{STUDY}/agent/restore_points/``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Multi-named, gitignored, agent-writable copies of the trio bundle
+saved by ``scripts.utils.snapshots.create_snapshot``. Used for
+crash-recovery during dev. Lifecycle:
+
+.. code-block:: bash
+
+   make snapshot                          # save current trio bundle as a restore point
+   make list-snapshots                    # list available restore points
+   make restore-study SNAPSHOT=<name>     # roll trio_bundle/ back to a restore point
+
+Restore points are scratch storage — never read by the pipeline,
+never the source of truth, never committed to git. They sit beside
+``analysis/`` and ``conversations/`` under the agent state tree
+because they are agent-owned operational state.
+
+When NOT to use which
+~~~~~~~~~~~~~~~~~~~~~
+
+* Need a per-PDF fallback for "Load Study" on a network-isolated
+  host? → Tracked baseline (Tier 1).
+* Want to roll back a bad pipeline run during local development? →
+  Restore point (Tier 2).
+* Need an IRB-reviewable provenance reference? → Tracked baseline
+  (Tier 1) plus the corresponding ``lineage_manifest.json`` from the
+  audit envelope.
+
+Bumping the baseline is a maintainer action with audit-trail
+implications. Saving a restore point is a developer convenience.
 

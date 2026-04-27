@@ -247,7 +247,7 @@ code module or audit artifact.
      ``agent/``) so a stale baseline can never be served as live data.
      **How.** Maintainer protocol: ``cp -r output/{STUDY}/trio_bundle/
      snapshots/{STUDY}/`` after a verified run, then commit. See
-     ``snapshots/README.md``. Config: ``config.STUDY_SNAPSHOTS_DIR``.
+     :doc:`../developer_guide/operations` (Trio-Bundle Snapshot Maintenance). Config: ``config.STUDY_SNAPSHOTS_DIR``.
 
    restore point
      **What.** A multi-named copy of the trio bundle under

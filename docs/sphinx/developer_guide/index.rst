@@ -63,6 +63,7 @@ Contents
 
    contributing
    testing
+   agents
 
 Quick Links for Developers
 ---------------------------

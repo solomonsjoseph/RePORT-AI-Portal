@@ -96,7 +96,7 @@ def monkeypatch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     telemetry_dir.mkdir(parents=True, exist_ok=True)
     # Operator-restore "named runs" tier (gitignored, agent-writable).
     # Distinct from the tracked baseline at ``snapshots/{STUDY}/`` —
-    # see ``snapshots/README.md`` and ``config.STUDY_SNAPSHOTS_DIR``.
+    # see ``docs/sphinx/developer_guide/operations.rst`` (Trio-Bundle Snapshot Maintenance section) and ``config.STUDY_SNAPSHOTS_DIR``.
     restore_points = agent_state / "restore_points"
     restore_points.mkdir(exist_ok=True)
     # Tracked-baseline tier — under tmp_path (not the real repo) to keep
