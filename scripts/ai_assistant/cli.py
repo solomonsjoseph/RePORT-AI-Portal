@@ -347,6 +347,10 @@ def main() -> None:
             subject_id_patterns=list(SUBJECT_ID_PATTERNS),
         )
     except (PHIKeyMissingError, PHIKeyPermissionError, PHIScrubError) as exc:
+        if config.production_mode_enabled():
+            raise RuntimeError(
+                "Production startup refused: PHI log redactor could not be installed."
+            ) from exc
         logger.warning(
             "PHI log redactor NOT installed (%s). Use the web UI Load Study flow, "
             "or ask a developer/operator to provision the sidecar PHI key.",

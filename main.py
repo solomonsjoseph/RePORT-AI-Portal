@@ -183,26 +183,31 @@ def _release_pipeline_lock() -> None:
 
 
 def _install_log_redactor_best_effort() -> None:
-    """Attach the PHI log-redaction filter to the root logger when the key exists.
+    """Attach the PHI log-redaction filter, failing closed in production.
 
-    **What.** Loads the sidecar HMAC key and installs the filter; silently
-    skips when the key is absent or unreadable.
+    **What.** Loads the sidecar HMAC key and installs the filter. Local/dev
+    runs warn and continue when the key is absent; production runs stop.
 
     **Why.** The redactor needs the same 32-byte secret that keys pseudonym
     generation, so subject-id HMAC tags in logs stay joinable with the
     on-disk pseudonyms for operators who hold the key. Entry points that
     run before the PHI key exists (fresh checkout / first chat session)
-    should still produce logs rather than hard-fail on a missing key.
+    should still produce logs rather than hard-fail on a missing key. Production
+    services must not run with PHI-capable logging unredacted.
 
     **How.** Calls :func:`scripts.security.phi_scrub.load_key`; on
     :class:`PHIKeyMissingError` / :class:`PHIKeyPermissionError` /
     :class:`PHIScrubError`, logs a one-line warning and returns without
-    installing. Successful installs are idempotent (the install helper
-    no-ops when a filter is already present).
+    installing unless production controls are enabled. Successful installs are
+    idempotent (the install helper no-ops when a filter is already present).
     """
     try:
         key = _load_phi_key()
     except (PHIKeyMissingError, PHIKeyPermissionError, PHIScrubError) as exc:
+        if config.production_mode_enabled():
+            raise RuntimeError(
+                "Production startup refused: PHI log redactor could not be installed."
+            ) from exc
         log.warning(
             "PHI log redactor NOT installed (%s). "
             "Use the web UI Load Study flow, or ask a developer/operator "

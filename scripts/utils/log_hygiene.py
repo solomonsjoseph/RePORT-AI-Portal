@@ -24,10 +24,9 @@ Design constraints:
 * **Fast path for clean messages** — the filter short-circuits if the
   message contains none of the pre-compiled triggers, so the common
   case pays one substring search per record.
-* **Best-effort** — on any exception during redaction, the filter
-  passes the message through **as-is** rather than crashing the
-  pipeline. A raw-PHI leak in the log is bad; dropping all log output
-  is worse during an active extraction run.
+* **Fail-closed per record** — on any exception during redaction, the filter
+  replaces the message with a fixed redaction-failure notice. Logs remain
+  useful for operations without passing raw PHI through.
 
 IRB-grade benchmark anchors:
     * ICMR 2017 §11.5 audit + confidentiality
@@ -152,10 +151,9 @@ class PHIRedactingFilter(logging.Filter):
             # already-interpolated string.
             record.msg = redacted
             record.args = None
-        except Exception:  # noqa: S110 — best-effort: log emit must not abort pipeline
-            # Intentionally swallowed: a raw-PHI leak in a log is bad; aborting
-            # an active extraction run because the redactor crashed is worse.
-            pass
+        except Exception:
+            record.msg = "[PHI LOG REDACTION FAILURE - message suppressed]"
+            record.args = None
         return True
 
 

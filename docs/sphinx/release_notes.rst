@@ -11,6 +11,9 @@ Unreleased
 Added
 ~~~~~
 
+* Added production fail-closed controls for PHI log redaction, app/proxy rate
+  limiting, CSP enforcement, direct virtualenv service execution, and stricter
+  production study resolution.
 * Added production-readiness controls for proxy authentication, healthcheck
   wiring, release tagging, restore-drill automation, and root security/license
   governance files.

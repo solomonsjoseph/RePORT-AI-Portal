@@ -40,6 +40,21 @@ class TestDetectStudyName:
         result = detect_study_name()
         assert result == config.DEFAULT_DATASET_NAME
 
+    def test_strict_missing_raw_dir_raises(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path / "nonexistent")
+        with pytest.raises(RuntimeError, match="RAW_DATA_DIR missing"):
+            detect_study_name(strict=True)
+
+    def test_strict_no_valid_study_raises(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        (tmp_path / "EmptyDir").mkdir()
+        monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path)
+        with pytest.raises(RuntimeError, match="No valid study"):
+            detect_study_name(strict=True)
+
 
 class TestGetEnvInt:
     def test_valid_int(self, monkeypatch: pytest.MonkeyPatch) -> None:
