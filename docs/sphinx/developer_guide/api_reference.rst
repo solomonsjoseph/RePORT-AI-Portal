@@ -65,16 +65,16 @@ PDF Extraction
    :undoc-members:
    :show-inheritance:
 
-PDF Orchestrator (two-way pipeline — PR #15)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+PDF Orchestrator
+~~~~~~~~~~~~~~~~
 
 .. automodule:: scripts.extraction.pdf_pipeline
    :members:
    :undoc-members:
    :show-inheritance:
 
-LLM Capability Gate (PR #15)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LLM Capability Gate
+~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: scripts.utils.llm_capabilities
    :members:
@@ -138,8 +138,8 @@ k-Anonymity Gate
    :undoc-members:
    :show-inheritance:
 
-Narrative NER Stub (future work)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Narrative NER Stub
+~~~~~~~~~~~~~~~~~~
 
 .. automodule:: scripts.security.phi_ner
    :members:
@@ -211,8 +211,8 @@ Dataset Cleanup
 AI Assistant Modules
 --------------------
 
-KeyStore (in-memory API-key registry — PR #3)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+KeyStore
+~~~~~~~~
 
 .. automodule:: scripts.ai_assistant.keystore
    :members:
@@ -404,8 +404,8 @@ Artifact Version Registry
    :undoc-members:
    :show-inheritance:
 
-Sandbox Subprocess (PR #2 — OS-isolated ``run_python_analysis``)
-----------------------------------------------------------------
+Sandbox Subprocess
+------------------
 
 The sandbox subpackage executes LLM-generated code in a fresh
 subprocess with OS-level rlimits and an in-child AST guard. See

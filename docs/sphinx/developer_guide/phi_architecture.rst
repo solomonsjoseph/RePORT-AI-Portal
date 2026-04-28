@@ -1,8 +1,7 @@
 PHI Architecture
 ================
 
-Rewritten 2026-04-27 against the v0.20.0 code state. The canonical
-developer-facing description of the full PHI-handling story — the
+The canonical developer-facing description of the full PHI-handling story — the
 four zones, the eight-action scrub catalog, the integrity chain, the
 log redactor, the PDF orchestrator's redact-then-call posture, and
 the agent-boundary three-gate stack. For the IRB-grade walkthrough
@@ -173,8 +172,7 @@ gate suppresses the response and returns an aggregate or an explicit
 Gate 3 — l-diversity (l=2) (``guard_rows_with_kanon_and_ldiv``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Shipped in PR #13 (v0.18.0). Function:
-:func:`scripts.security.kanon_gate.l_diversity_check` (used as a
+Function: :func:`scripts.security.kanon_gate.l_diversity_check` (used as a
 primitive by ``guard_rows_with_kanon_and_ldiv``).
 
 When a k-anon-passing equivalence class shares the same sensitive
@@ -186,7 +184,7 @@ for the rationale.
 The PDF Orchestrator's Redact-Then-Call Posture
 -----------------------------------------------
 
-ADR-012 (v0.19.0 / PR #15). The wizard's "Load Study" button
+ADR-012. The wizard's "Load Study" button
 selects this path. Per PDF:
 
 1. **Code path always runs.** ``pdfplumber`` extracts text + a
@@ -279,8 +277,8 @@ The redactor is installed once in ``main.py`` (``_install_log_redactor_best_effo
 and once in the AI Assistant entry points so both worlds emit
 scrubbed logs.
 
-KeyStore (PR #3)
-----------------
+KeyStore
+--------
 
 ADR-011. API keys never persist in the parent process's
 ``os.environ``. The Streamlit wizard's step 1 routes the pasted key
@@ -291,8 +289,8 @@ kwarg sourced from the KeyStore. Keys are re-injected only into
 the short-lived pipeline subprocess via
 ``KeyStore.env_for_subprocess``.
 
-Subprocess Sandbox (PR #2)
---------------------------
+Subprocess Sandbox
+------------------
 
 ADR-010. ``run_python_analysis`` runs in a fresh ``subprocess.run``
 child with ``RLIMIT_AS`` / ``RLIMIT_NPROC`` / ``RLIMIT_CPU`` clamps,
@@ -338,7 +336,7 @@ Module Map
        ``guard_user_prompt``, ``sanitise_untrusted_snippet``,
        ``redact_phi_in_text``, ``sanitise_traceback``.
    * - :mod:`scripts.ai_assistant.keystore`
-     - In-memory API-key registry (PR #3).
+     - In-memory API-key registry.
    * - :mod:`scripts.utils.log_hygiene`
      - Logging filter for API-key + PHI redaction.
    * - :mod:`scripts.utils.lineage`
@@ -348,12 +346,12 @@ Module Map
    * - :mod:`scripts.utils.step_cache`
      - Per-step hash manifests for skip semantics.
    * - :mod:`scripts.extraction.pdf_pipeline`
-     - PDF orchestrator with redact-then-call (PR #15).
+     - PDF orchestrator with redact-then-call.
 
 IRB Benchmark Cross-Reference
 -----------------------------
 
-The 35-criterion conformance matrix (31 original + 4 added via patches 2026-04-23a/b) lives at
+The active conformance matrix lives at
 ``docs/irb_dossier/conformance_matrix.md`` (outside the Sphinx tree).
 Pillar mapping:
 
@@ -364,7 +362,7 @@ Pillar mapping:
 * **Pillar 3 — Secure channel + integrity**: ``secure_staging.py`` +
   ``lineage.py`` + ``step_cache.py``.
 * **Pillar 4 — Extraction safety**: ``dataset_pipeline.py`` +
-  ``pdf_pipeline.py`` (PR #15) + ``extract_pdf_data.py``.
+  ``pdf_pipeline.py`` + ``extract_pdf_data.py``.
 * **Pillar 5 — Governance + retention + breach**: ``phi_scrub.bootstrap_key``
   + ``_cleanup_staging`` + audit envelope.
 
@@ -396,7 +394,7 @@ See Also
 
 * :doc:`architecture` — full system architecture.
 * :doc:`decisions` — ADRs (especially 010-015 which cover the
-  v0.19.0 / v0.20.0 PHI work).
+  PHI, PDF, snapshot, and agent-boundary work).
 * :doc:`sandbox` — subprocess sandbox.
 * :doc:`operations` — snapshot-baseline maintenance protocol.
 * ``docs/irb_dossier/phi_walkthrough.md`` — the IRB-grade

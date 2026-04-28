@@ -1,618 +1,180 @@
 Testing
 =======
 
-This guide covers testing practices and procedures for RePORT AI Portal.
+This page documents the test and verification gates that are active in
+the repository today. It intentionally avoids static test counts; the
+authoritative count is the pytest output for the commit under review.
 
-Testing Strategy
-----------------
+Active Commands
+---------------
 
-Test Pyramid
-~~~~~~~~~~~~
+Run these from the repository root:
 
-RePORT AI Portal follows the test pyramid approach:
+.. code-block:: bash
 
-.. code-block:: text
+   make test          # deterministic subset; excludes selected AI Assistant construction tests
+   make test-all      # full pytest suite
+   make lint          # ruff check --fix + ruff format
+   make typecheck     # mypy scripts/ main.py config.py
+   make security      # pip-audit dependency scan
+   make verify        # fast local readiness gate
+   make docs-quality  # doc freshness + Sphinx warnings-as-errors build
 
-                    ▲
-                   ╱ ╲
-                  ╱ E2E╲           End-to-End Tests
-                 ╱Tests╲           (Few, Slow, High Confidence)
-                ╱═══════╲
-               ╱         ╲
-              ╱Integration╲        Integration Tests
-             ╱    Tests    ╲       (Moderate, Medium Speed)
-            ╱═══════════════╲
-           ╱                 ╲
-          ╱   Unit Tests      ╲    Unit Tests
-         ╱                     ╲   (Many, Fast, Focused)
-        ╱═══════════════════════╲
-       ▼                         ▼
+Direct equivalents:
 
-Test Types
-~~~~~~~~~~
+.. code-block:: bash
 
-**Unit Tests**
+   uv run pytest tests/
+   uv run ruff check .
+   uv run ruff format --check .
+   uv run mypy scripts/ main.py config.py --ignore-missing-imports
+   uv run python scripts/lint_doc_freshness.py
 
-* Test individual functions/classes in isolation
-* Fast execution (<1s per test)
-* Mock external dependencies
-* 70-80% of total tests
+Current Test Layout
+-------------------
 
-**Integration Tests**
-
-* Test interaction between components
-* Use real dependencies (databases, files)
-* Moderate execution time (1-10s per test)
-* 15-25% of total tests
-
-**End-to-End Tests**
-
-* Test complete workflows
-* Use real data and services
-* Slow execution (10s-minutes per test)
-* 5-10% of total tests
-
-Test Organization
------------------
-
-Directory Structure
-~~~~~~~~~~~~~~~~~~~
+The suite is intentionally flat except for security-focused tests:
 
 .. code-block:: text
 
    tests/
-   ├── __init__.py
-   ├── conftest.py                    # Shared fixtures
-   ├── fixtures/                      # Test data
-   │   ├── golden/
-   │   └── trio_min/
-   ├── security/                      # Zone guard and prompt injection tests
-   ├── ai_assistant/                           # Agent & CLI tests (planned)
-   └── extraction/                    # Extraction pipeline tests (planned)
+   ├── conftest.py
+   ├── test_agent_graph.py
+   ├── test_agent_tools.py
+   ├── test_dataset_pipeline.py
+   ├── test_extract_pdf_data.py
+   ├── test_load_dictionary.py
+   ├── test_phi_scrub.py
+   ├── test_run_study_analysis.py
+   ├── test_web_ui.py
+   ├── test_*.py
+   └── security/
+       ├── test_adversarial_phi_safe.py
+       ├── test_kanon_l_diversity.py
+       ├── test_keystore.py
+       ├── test_pdf_redaction_pipeline.py
+       ├── test_sandbox_isolation.py
+       └── test_*.py
 
-Naming Conventions
-~~~~~~~~~~~~~~~~~~
+There are no active ``tests/ai_assistant/`` or ``tests/extraction/``
+subpackages. Agent, extraction, UI, and pipeline tests live as
+top-level ``tests/test_*.py`` modules; security regression tests live
+under ``tests/security/``.
 
-* Test files: ``test_<module_name>.py``
-* Test functions: ``test_<function_name>_<scenario>``
-* Test classes: ``Test<ClassName>``
+What Each Gate Proves
+---------------------
 
-Examples:
+``make test``
+   Runs the deterministic pytest subset. Use it for fast local checks
+   when you did not touch LLM construction, CLI provider selection, or
+   telemetry surfaces.
 
-.. code-block:: python
+``make test-all``
+   Runs the full suite. Use it before PRs that touch PHI handling,
+   agent tools, provider construction, pipeline flow, or public docs.
 
-   # tests/test_dataset_extraction.py
+``make verify``
+   Runs the fast local readiness check used by the maintainer workflow:
+   Ruff, mypy, and presence checks for load-bearing security modules.
+   It is not a substitute for ``make test-all`` on high-risk changes.
 
-   def test_extract_excel_success():
-       """Test successful PDF extraction."""
-       pass
+``make docs-quality``
+   Runs ``scripts/lint_doc_freshness.py`` and builds Sphinx with
+   warnings treated as errors. This is required for documentation
+   changes and for code changes that alter public behavior.
 
-   def test_extract_from_pdf_missing_file():
-       """Test extraction with missing file."""
-       pass
+``make security``
+   Runs ``pip-audit`` against the locked environment. It is the local
+   dependency-vulnerability gate; it does not replace code review for
+   application-layer security.
 
-   class TestPDFExtractor:
-       """Tests for PDFExtractor class."""
+PHI-Critical Coverage
+---------------------
 
-       def test_init(self):
-           """Test PDFExtractor initialization."""
-           pass
+PHI and boundary behavior is covered by dedicated tests across the
+normal and security suites:
+
+.. code-block:: text
+
+   tests/test_phi_scrub.py
+   tests/test_phi_gate.py
+   tests/test_phi_safe_input_gates.py
+   tests/test_agent_tools_phi_safe.py
+   tests/test_file_access.py
+   tests/test_secure_env.py
+   tests/test_secure_staging.py
+   tests/test_log_hygiene.py
+   tests/test_lineage_manifest.py
+   tests/test_pdf_phi_flag.py
+   tests/test_pipeline_provenance.py
+   tests/security/test_adversarial_phi_safe.py
+   tests/security/test_kanon_l_diversity.py
+   tests/security/test_keystore.py
+   tests/security/test_llm_capabilities.py
+   tests/security/test_llm_construction_smoke.py
+   tests/security/test_log_hygiene_keys.py
+   tests/security/test_no_keys_in_parent_environ.py
+   tests/security/test_pdf_redaction_pipeline.py
+   tests/security/test_phase2_pipeline_polish.py
+   tests/security/test_phase2_polish_permissions.py
+   tests/security/test_sandbox_isolation.py
+
+The IRB conformance matrix maps each regulated claim to the specific
+test or test family that guards it.
 
 Writing Tests
 -------------
 
-Unit Test Example
-~~~~~~~~~~~~~~~~~
+Use pytest and keep tests close to the behavior they protect.
 
-.. note::
+Naming rules:
 
-   The examples below are schematic illustrations of the testing pattern.
-   Function names match the real module; see ``tests/`` for runnable tests.
+* Test files use ``test_<module_or_behavior>.py``.
+* Test classes use ``Test<Behavior>`` when grouping scenarios adds
+  clarity.
+* Test names describe the behavior and edge case, not the implementation
+  detail.
 
-.. code-block:: python
-
-   # tests/test_dataset_pipeline.py
-
-   import pytest
-   from unittest.mock import Mock, patch
-   from scripts.extraction.dataset_pipeline import clean_record_for_json
-
-
-   def test_clean_record_drops_none_values():
-       """Test that clean_record_for_json drops None fields."""
-       record = {"id": "SUBJ_abc123", "age": 45, "notes": None}
-       result = clean_record_for_json(record)
-       assert "notes" not in result
-
-
-   def test_clean_record_preserves_valid_fields():
-       """Test that clean_record_for_json preserves non-None fields."""
-       record = {"id": "SUBJ_abc123", "age": 45}
-       result = clean_record_for_json(record)
-       assert result["age"] == 45
-
-
-   @pytest.mark.parametrize("field,value,expected_present", [
-       ("age", 45, True),
-       ("missing", None, False),
-   ])
-   def test_clean_record_parametrized(field, value, expected_present):
-       """Test clean_record_for_json with multiple field shapes."""
-       record = {field: value}
-       result = clean_record_for_json(record)
-       assert (field in result) == expected_present
-
-Integration Test Example
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Pattern:
 
 .. code-block:: python
 
-   # tests/integration/test_pipeline_integration.py
-
-   import pytest
-   import pandas as pd
-   from scripts.extraction.load_dictionary import load_study_dictionary
-   from scripts.extraction.dataset_pipeline import extract_datasets
-
-
-   @pytest.fixture
-   def sample_dictionary(tmp_path):
-       """Create a sample data dictionary."""
-       dict_path = tmp_path / "dictionary.xlsx"
-       # Create dictionary file
-       df = pd.DataFrame({
-           "field_name": ["patient_id", "age"],
-           "field_type": ["string", "integer"],
-       })
-       df.to_excel(dict_path, index=False)
-       return dict_path
-
-
-   @pytest.fixture
-   def sample_data(tmp_path):
-       """Create sample data file."""
-       data_path = tmp_path / "data.xlsx"
-       df = pd.DataFrame({
-           "patient_id": ["001", "002"],
-           "age": [25, 30],
-       })
-       df.to_excel(data_path, index=False)
-       return data_path
-
-
-   def test_dictionary_and_extraction_integration(
-       sample_dictionary, sample_data
-   ):
-       """Test integration between dictionary loading and extraction."""
-       # Load dictionary
-       dictionary = load_study_dictionary(sample_dictionary)
-
-       # Extract data (schematic — real call uses extract_single_dataset)
-       # extracted = extract_single_dataset(data_path, dictionary, ...)
-
-       # Verify integration
-       assert dictionary is not None
-
-End-to-End Test Example
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: python
-
-   # tests/e2e/test_full_pipeline.py
-
-   import pytest
-   import os
    from pathlib import Path
 
+   import pandas as pd
 
-   @pytest.mark.e2e
-   def test_full_pipeline_execution(tmp_path):
-       """Test complete pipeline execution."""
-       # Setup test data
-       setup_test_environment(tmp_path)
+   from scripts.extraction.dataset_pipeline import extract_single_dataset
 
-       # Run pipeline
-       result = run_full_pipeline(
-           dict_path=tmp_path / "dictionary",
-           input_path=tmp_path / "input",
-           output_path=tmp_path / "output",
+
+   def test_extract_single_dataset_rejects_unsupported_suffix(tmp_path: Path) -> None:
+       unsupported = tmp_path / "legacy.ods"
+       unsupported.write_bytes(b"fake")
+
+       success, count, error = extract_single_dataset(
+           unsupported,
+           tmp_path / "out",
+           "Indo-VAP",
+           "2026-04-28T00:00:00+00:00",
        )
 
-       # Verify results
-       assert result.success is True
-       assert (tmp_path / "output" / "extracted_data.xlsx").exists()
-
-Fixtures and Mocking
---------------------
-
-Using Fixtures
-~~~~~~~~~~~~~~
-
-Fixtures provide reusable test data and setup:
-
-.. code-block:: python
-
-   # tests/conftest.py
-
-   import pytest
-   import pandas as pd
-
-
-   @pytest.fixture
-   def sample_dataframe():
-       """Provide a sample DataFrame for testing."""
-       return pd.DataFrame({
-           "id": [1, 2, 3],
-           "name": ["Alice", "Bob", "Charlie"],
-           "age": [25, 30, 35],
-       })
-
-
-   @pytest.fixture
-   def temp_directory(tmp_path):
-       """Provide a temporary directory."""
-       test_dir = tmp_path / "test_data"
-       test_dir.mkdir()
-       return test_dir
-
-Mocking External Dependencies
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Use mocks to isolate tests from external services:
-
-.. code-block:: python
-
-   from unittest.mock import Mock, patch, MagicMock
-
-
-   @patch('scripts.extraction.dataset_pipeline.extract_single_dataset')
-   def test_extract_with_llm_mock(mock_llm):
-       """Test extraction with mocked LLM."""
-       # Configure mock
-       mock_llm.return_value = {"patient_id": "12345"}
-
-       # Run test
-       result = extract_from_pdf("sample.pdf")
-
-       # Verify
-       assert result["patient_id"] == "12345"
-       mock_llm.assert_called_once()
-
-Test Coverage
--------------
-
-Measuring Coverage
-~~~~~~~~~~~~~~~~~~
-
-Run tests with coverage:
-
-.. code-block:: bash
-
-   # Run with coverage
-   pytest --cov=scripts --cov-report=html
-
-   # View report
-   open htmlcov/index.html
-
-Coverage Goals
-~~~~~~~~~~~~~~
-
-* **Overall**: >80% coverage
-* **Critical paths**: 100% coverage (extraction, validation)
-* **Utility functions**: >90% coverage
-* **UI/CLI code**: >60% coverage
-
-Continuous Integration
-----------------------
-
-GitHub Actions Workflow
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: yaml
-
-   # .github/workflows/tests.yml
-
-   name: Tests
-
-   on: [push, pull_request]
-
-   jobs:
-     test:
-       runs-on: ubuntu-latest
-
-       steps:
-       - uses: actions/checkout@v4
-
-       - name: Install uv
-         uses: astral-sh/setup-uv@v4
-
-       - name: Set up Python
-         run: uv python install 3.13
-
-       - name: Install dependencies
-         run: uv sync --all-groups
-
-       - name: Run tests
-         run: uv run pytest --cov=scripts --cov-report=xml
-
-       - name: Upload coverage
-         uses: codecov/codecov-action@v4
-
-Pre-commit Hooks
-~~~~~~~~~~~~~~~~
-
-Set up pre-commit hooks:
-
-.. code-block:: yaml
-
-   # .pre-commit-config.yaml
-
-   repos:
-     - repo: https://github.com/astral-sh/ruff-pre-commit
-       rev: v0.9.0
-       hooks:
-         - id: ruff
-           args: [--fix]
-         - id: ruff-format
-
-     - repo: local
-       hooks:
-         - id: pytest
-           name: pytest
-           entry: uv run pytest tests/ -x -q
-           language: system
-           pass_filenames: false
-           always_run: true
-
-Best Practices
---------------
-
-Test Independence
-~~~~~~~~~~~~~~~~~
-
-* Each test should run independently
-* No shared state between tests
-* Use fixtures for setup/teardown
-
-.. code-block:: python
-
-   # Bad: Tests depend on execution order
-   def test_create_user():
-       user = create_user("alice")
-       assert user.name == "alice"
-
-   def test_get_user():
-       user = get_user("alice")  # Assumes previous test ran
-       assert user is not None
-
-   # Good: Tests are independent
-   @pytest.fixture
-   def created_user():
-       user = create_user("alice")
-       yield user
-       delete_user("alice")
-
-   def test_create_user(created_user):
-       assert created_user.name == "alice"
-
-   def test_get_user(created_user):
-       user = get_user("alice")
-       assert user is not None
-
-Clear Test Names
-~~~~~~~~~~~~~~~~
-
-Test names should describe what they test:
-
-.. code-block:: python
-
-   # Bad: Unclear what's being tested
-   def test_1():
-       pass
-
-   def test_extract():
-       pass
-
-   # Good: Clear description
-   def test_extract_patient_id_from_valid_pdf():
-       pass
-
-   def test_extract_returns_none_when_field_missing():
-       pass
-
-Arrange-Act-Assert Pattern
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Structure tests clearly:
-
-.. code-block:: python
-
-   def test_process_data_with_valid_input():
-       # Arrange
-       input_data = pd.DataFrame({"col": [1, 2, 3]})
-       expected_output = pd.DataFrame({"col": [2, 4, 6]})
-
-       # Act
-       result = process_data(input_data)
-
-       # Assert
-       pd.testing.assert_frame_equal(result, expected_output)
-
-Test Data Management
---------------------
-
-Using Test Fixtures
-~~~~~~~~~~~~~~~~~~~
-
-Store test data in ``tests/fixtures/``:
-
-.. code-block:: text
-
-   tests/fixtures/
-   ├── pdfs/
-   │   ├── sample_form.pdf
-   │   └── invalid_form.pdf
-   ├── excel/
-   │   ├── valid_data.xlsx
-   │   └── invalid_data.xlsx
-   └── dictionaries/
-       └── sample_dict.xlsx
-
-Loading Fixtures
-~~~~~~~~~~~~~~~~
-
-.. code-block:: python
-
-   import pytest
-   from pathlib import Path
-
-   FIXTURES_DIR = Path(__file__).parent / "fixtures"
-
-
-   @pytest.fixture
-   def sample_pdf():
-       """Load sample PDF fixture."""
-       return FIXTURES_DIR / "pdfs" / "sample_form.pdf"
-
-
-   def test_extract_from_sample_pdf(sample_pdf):
-       """Test extraction with sample PDF."""
-       result = extract_from_pdf(sample_pdf)
-       assert result is not None
-
-Running Tests
--------------
-
-Basic Test Execution
-~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   # Run all tests
-   pytest
-
-   # Run with verbose output
-   pytest -v
-
-   # Run specific test file
-   pytest tests/test_dataset_extraction.py
-
-   # Run specific test
-   pytest tests/test_dataset_extraction.py::test_extract_excel_success
-
-   # Run tests matching pattern
-   pytest -k "extract"
-
-Test Markers
-~~~~~~~~~~~~
-
-Use markers to categorize tests:
-
-.. code-block:: python
-
-   import pytest
-
-   @pytest.mark.slow
-   def test_large_dataset_processing():
-       """Slow test processing large dataset."""
-       pass
-
-   @pytest.mark.integration
-   def test_database_integration():
-       """Integration test with database."""
-       pass
-
-   @pytest.mark.e2e
-   def test_full_pipeline():
-       """End-to-end pipeline test."""
-       pass
-
-Run tests by marker:
-
-.. code-block:: bash
-
-   # Run only fast tests (skip slow ones)
-   pytest -m "not slow"
-
-   # Run only integration tests
-   pytest -m integration
-
-   # Run e2e tests
-   pytest -m e2e
-
-Debugging Failed Tests
-~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   # Stop on first failure
-   pytest -x
-
-   # Enter debugger on failure
-   pytest --pdb
-
-   # Show local variables on failure
-   pytest -l
-
-   # Increase verbosity
-   pytest -vv
-
-Troubleshooting
----------------
-
-Common Issues
-~~~~~~~~~~~~~
-
-**Import Errors**
-
-Ensure PYTHONPATH is set correctly:
-
-.. code-block:: bash
-
-   export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-
-**Fixture Not Found**
-
-Check ``conftest.py`` is in the correct location and contains the fixture.
-
-**Flaky Tests**
-
-* Check for race conditions
-* Ensure proper cleanup
-* Add retries for external services
-
-Performance Testing
--------------------
-
-Benchmarking
-~~~~~~~~~~~~
-
-Use ``pytest-benchmark`` for performance tests:
-
-.. code-block:: python
-
-   def test_extraction_performance(benchmark):
-       """Benchmark extraction performance."""
-       result = benchmark(extract_from_pdf, "sample.pdf")
-       assert result is not None
-
-Load Testing
-~~~~~~~~~~~~
-
-Test with large datasets:
-
-.. code-block:: python
-
-   @pytest.mark.slow
-   def test_large_batch_processing():
-       """Test processing 1000 records."""
-       data = generate_test_records(1000)
-       result = process_batch(data)
-       assert len(result) == 1000
-
-Next Steps
-----------
-
-* Review :doc:`contributing` for development workflow
-* See :doc:`api_reference` for detailed API documentation
-* Check :doc:`architecture` for system design
+       assert success is False
+       assert count == 0
+       assert error is not None
+
+Prefer real filesystem fixtures for path/zone behavior. Mock only
+network calls, LLM clients, time-sensitive surfaces, and hard-to-trigger
+error branches.
+
+CI Behavior
+-----------
+
+``.github/workflows/ci.yml`` runs Ruff, mypy, and the full pytest suite
+on Python 3.11, 3.12, and 3.13 for code-touching pushes and PRs.
+
+``.github/workflows/docs-quality-check.yml`` runs the doc-freshness
+linter, builds Sphinx, runs linkcheck, and reports size/version drift for
+documentation-touching pushes and PRs.
+
+When a change touches security, PHI boundaries, provider construction, or
+the pipeline publish path, include the local verification transcript in
+the PR description.

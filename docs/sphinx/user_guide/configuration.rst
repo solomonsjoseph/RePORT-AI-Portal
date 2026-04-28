@@ -1,8 +1,7 @@
 Configuration
 =============
 
-Rewritten 2026-04-27 against the v0.20.0 code state. Configuration in
-RePORT AI Portal is split across:
+Configuration in RePORT AI Portal is split across:
 
 * :mod:`config` — central Python module that resolves every path and
   most behaviour flags from env vars + a YAML overlay. Read by every
@@ -135,8 +134,8 @@ LLM configuration
 Capability + model selection for the PDF orchestrator
 -----------------------------------------------------
 
-The PDF orchestrator (PR #15) gates its LLM tier with a model-name
-allowlist; only "capable" models can run the LLM tier. Defaults are
+The PDF orchestrator gates its LLM tier with a model-name allowlist;
+only "capable" models can run the LLM tier. Defaults are
 hardcoded in
 :func:`scripts.utils.llm_capabilities.is_capable_model`:
 
@@ -191,9 +190,9 @@ logged against the IRB dossier.
      - (unset)
      - Selects the PDF extraction path inside
        ``extract_pdfs_to_jsonl``. ``llm`` runs the orchestrator
-       (``scripts/extraction/pdf_pipeline.py``, PR #15) — pdfplumber
-       code path + redacted-text LLM merge + per-PDF snapshot
-       fallback. ``snapshot`` skips the LLM entirely and publishes
+       (``scripts/extraction/pdf_pipeline.py``) — pdfplumber code path
+       + redacted-text LLM merge + per-PDF snapshot fallback.
+       ``snapshot`` skips the LLM entirely and publishes
        the ``snapshots/{STUDY}/pdfs/`` baseline verbatim. Unset
        (the CLI default) keeps the legacy raw-PDF API path with its
        two-part PHI-free attestation gate. The wizard's "Load Study"
@@ -210,8 +209,8 @@ logged against the IRB dossier.
 
 .. _config-keystore:
 
-Credential handling (KeyStore — PR #3)
---------------------------------------
+Credential handling (KeyStore)
+------------------------------
 
 API keys never persist in the parent process's ``os.environ`` for
 the lifetime of the app. The flow is:
@@ -273,8 +272,8 @@ Logging
    * - ``LOG_LEVEL``
      - ``INFO``
      - Root logger level. Set to ``DEBUG`` for tree-style verbose
-       output; the parallel-extraction phase (PR #18) renders
-       per-leg progress in ``--verbose`` mode but the
+       output; the parallel-extraction phase renders per-leg progress
+       in ``--verbose`` mode but the
        ``VerboseLogger`` indent counter is not thread-safe so the
        indentation may interleave (cosmetic only).
    * - ``LOG_VERBOSE``

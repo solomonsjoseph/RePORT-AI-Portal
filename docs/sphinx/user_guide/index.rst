@@ -1,19 +1,44 @@
 User Guide
 ==========
 
-Welcome to the RePORT AI Portal user guide. This side of the docs is
-written for **researchers, data managers, and IRB reviewers** — the
-humans who want answers from the study data, not the humans who want to
-modify the pipeline itself. Contributors looking to extend the runtime
-belong in the :doc:`../developer_guide/index`.
+The user guide is for readers who need to run the portal, ask questions
+of a locked study, or review the PHI protections without changing the
+code. Contributors who need source entry points belong in the
+:doc:`../developer_guide/index`.
 
-.. note::
+Reader Profiles
+---------------
 
-   **Where to start.** If you want to know *why this exists and whether
-   it solves your pain*, start with :doc:`overview`. If you want to
-   **run it once** and see the audit artifacts drop out, jump straight
-   to :doc:`quickstart`. If you've already done both and want to know
-   the full eight-step pipeline, go to :doc:`data_pipeline`.
+.. list-table::
+   :header-rows: 1
+   :widths: 24 38 38
+
+   * - Reader
+     - Goal
+     - Best first page
+   * - Clinical researcher
+     - Ask cohort questions in English against a PHI-free published
+       study bundle.
+     - :doc:`overview`, then :doc:`quickstart`
+   * - Data manager
+     - Understand how raw data stays behind the RED/AMBER boundary and
+       how published artifacts are produced.
+     - :doc:`data_pipeline`, then :doc:`configuration`
+   * - IRB or IEC reviewer
+     - Verify PHI handling, audit evidence, and residual risks.
+     - :doc:`faq`, then ``docs/irb_dossier/``
+   * - Site PI or local operator
+     - Install the stack locally, configure the model and PHI flags, and
+       run a locked study.
+     - :doc:`installation`, then :doc:`quickstart`
+
+How These Pages Are Written
+---------------------------
+
+User pages are task-first. Each procedural page names the reader, lists
+prerequisites, gives concrete commands, shows expected outputs when
+stable, and links to the next operational step. PHI-sensitive pages name
+the file path, audit artifact, or control that proves the claim.
 
 What's in the User Guide
 -------------------------

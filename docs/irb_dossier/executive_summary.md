@@ -82,12 +82,11 @@ The architecture documented below answers each of these.
        ├─ data_dictionary/                     ├─ dictionary/   version-controlled
        └─ annotated_pdfs/                      ├─ pdfs/         per-PDF fallback
                  │                              └─ variables.json   for the PDF
-                 │                                                  orchestrator —
-                 │                                                  PR #18.)
+                 │                                                  orchestrator)
                  │
                  │   (1) PARALLEL extraction phase: Dictionary | Datasets | PDFs
-                 │       run on a 3-worker ThreadPoolExecutor (PR #18). The PDF
-                 │       leg uses the two-way orchestrator (PR #15) — pdfplumber
+                 │       run on a 3-worker ThreadPoolExecutor. The PDF
+                 │       leg uses the two-way orchestrator — pdfplumber
                  │       code path + redacted-text LLM call merged via _merge,
                  │       with per-PDF snapshot fallback. No raw PDF bytes leave
                  │       the host on the orchestrator path.
@@ -121,14 +120,14 @@ The architecture documented below answers each of these.
        └─ lineage_manifest.json
                  │
                  │   (4) Researcher asks the AI agent a question. API keys live
-                 │       in an in-memory KeyStore (PR #3); ``os.environ`` does
+                 │       in an in-memory KeyStore; ``os.environ`` does
                  │       NOT carry them. The pipeline subprocess is the only
                  │       place the keys ever appear, and only for the duration
                  │       of the child run.
                  ▼
    AI agent (LLM) queries trio_bundle via structured tools
                  │   (``run_python_analysis`` runs in an isolated subprocess
-                 │    with RLIMIT_AS / RLIMIT_NPROC / RLIMIT_CPU clamps — PR #2.)
+                 │    with RLIMIT_AS / RLIMIT_NPROC / RLIMIT_CPU clamps.)
                  │   (5) Every tool response passes through three gates:
                  │       PHI regex gate, k-anonymity check (k=5), and
                  │       l-diversity check (l=2). See
@@ -204,8 +203,8 @@ remains as a directory-level early-reject at pipeline boundaries),
 which raises a `ZoneViolationError` (a `PermissionError` subclass)
 if any file path falls outside the agent's allowed zone.
 
-**Explicitly out-of-zone (PR #18):** `snapshots/{STUDY}/` at the repo
-root holds the version-controlled cleaned-trio-bundle baseline used
+**Explicitly out-of-zone:** `snapshots/{STUDY}/` at the repo root holds
+the version-controlled cleaned-trio-bundle baseline used
 by the PDF orchestrator's per-PDF fallback. The LLM agent is
 forbidden from reading it — a stale baseline must never be served as
 live data. The previous `output/{STUDY}/agent/snapshots/` path (which
@@ -223,13 +222,13 @@ Every tool return string additionally passes through three gates:
   data whose quasi-identifier equivalence class has fewer than 5
   members, the gate suppresses the response and returns an aggregate
   or an explicit "too-few-records" message.
-- An l-diversity check (l=2, shipped in v0.18.0 PR #13). When the
+- An l-diversity check (l=2). When the
   k-anon class passes the size threshold but every row carries the
   same sensitive attribute (e.g. all five rows have the same
   diagnosis), the gate also suppresses the response. See
   `scripts/security/kanon_gate.py::guard_rows_with_kanon_and_ldiv`.
 
-**API keys are kept out of `os.environ`** (PR #3, v0.17.0). The
+**API keys are kept out of `os.environ`.** The
 wizard routes the operator's pasted key into an in-memory
 `KeyStore` registry and re-injects it only into the short-lived
 pipeline subprocess via `KeyStore.env_for_subprocess`. Every LLM
@@ -237,14 +236,14 @@ client constructor takes an explicit `api_key=` kwarg sourced from
 the KeyStore; nothing in the runtime reads `os.environ` for
 credentials.
 
-**`run_python_analysis` runs in an isolated subprocess** (PR #2,
-v0.17.0) with `RLIMIT_AS` / `RLIMIT_NPROC` / `RLIMIT_CPU` clamps,
+**`run_python_analysis` runs in an isolated subprocess** with
+`RLIMIT_AS` / `RLIMIT_NPROC` / `RLIMIT_CPU` clamps,
 a sanitised env (no `*_API_KEY`), and read-only access to
 `config.TRIO_BUNDLE_DIR`. The generated `.py` is persisted to
 `output/{STUDY}/agent/analysis/{ts}.py` for operator reproduction.
 
-**PDF leg.** As of PR #15 (v0.19.0) the PDF extraction tier has a
-two-way orchestrator (`scripts/extraction/pdf_pipeline.py`). The
+**PDF leg.** The PDF extraction tier uses a two-way orchestrator
+(`scripts/extraction/pdf_pipeline.py`). The
 `pdfplumber` code path always runs first; extracted text is
 PHI-redacted via `phi_patterns.BLOCKING_PATTERNS` BEFORE any LLM
 call, with a defensive `_assert_no_raw_phi_in_payload` re-check.
@@ -281,8 +280,7 @@ ingest.
 
 ## 8. How an Auditor Verifies a Claim Without Reading Code
 
-Every claim in the 35-criterion conformance matrix (31 original + 4
-added via patches 2026-04-23a/b) pairs with an automated test. To
+Every claim in the active conformance matrix pairs with an automated test. To
 verify a claim:
 
 1. Clone the repository and install the development environment:
@@ -342,7 +340,7 @@ For IEC convenience, the primary anchors are:
 
 Recommended review sequence:
 
-1. Read this document end-to-end.
+1. Review the executive summary end-to-end.
 2. Read [`conformance_matrix.md`](conformance_matrix.md). Each row is
    a testable promise. Spot-check any five rows by running the named
    tests locally.

@@ -1,5 +1,3 @@
-.. RePORT AI Portal documentation root document
-
 RePORT AI Portal Documentation
 ==============================
 
@@ -12,24 +10,36 @@ suppress_small_cell / date jitter / id pseudonymize), and atomically
 published as a PHI-free Trio bundle for the ReAct agent. Every run emits ``audit/lineage_manifest.json`` — the single
 evidence artifact pairing every raw input SHA-256 with every published
 trio artifact SHA-256. See ``docs/irb_dossier/conformance_matrix.md`` for
-the 31-criterion IRB benchmark (plus four follow-ups added in patches
-2026-04-23a/b, totalling 35 architecturally satisfied).
+the active IRB conformance matrix.
 
-This root page is the entry point to two audiences:
+Choose Your Path
+----------------
 
-* **Researchers / data managers / IRB reviewers** — start with the
-  :doc:`user_guide/index`. The user guide opens with the pain this
-  project solves (months-long data-manager queues), walks through a
-  10-minute quickstart, and answers trust / PHI-scope / leak-response
-  questions.
-* **Developers / contributors / security engineers** — start with the
-  :doc:`developer_guide/index`. The developer guide contains the
-  canonical PHI architecture page, the architectural decision records,
-  the regulatory-reference collection, the tech-stack rationale, and
-  the API reference.
+Start with the profile that matches the task:
+
+* **Clinical researcher** — use :doc:`user_guide/overview` to understand
+  the problem solved, then :doc:`user_guide/quickstart` to run the portal.
+* **Data manager or site operator** — use
+  :doc:`user_guide/data_pipeline` and :doc:`user_guide/configuration` to
+  understand custody boundaries, inputs, outputs, and runtime flags.
+* **IRB or IEC reviewer** — use :doc:`user_guide/faq` and the IRB
+  dossier in ``docs/irb_dossier/`` for control evidence and residual
+  risks.
+* **Developer or maintainer** — use :doc:`developer_guide/index` for
+  architecture, source entry points, invariants, and PR gates.
+* **Documentation contributor** — use :doc:`audience_profiles` and
+  :doc:`developer_guide/documentation_style` before changing public docs.
+
+For a profile-by-profile map, see :doc:`audience_profiles`.
 
 Contents
 --------
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Start Here
+
+   audience_profiles
 
 .. toctree::
    :maxdepth: 2

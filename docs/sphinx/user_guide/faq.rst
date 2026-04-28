@@ -87,7 +87,7 @@ It depends on the LLM provider you choose.
 
      The Streamlit wizard's step 1 routes the pasted key into an
      in-memory ``KeyStore`` (``scripts/ai_assistant/keystore.py``,
-     PR #3) and scrubs the corresponding ``*_API_KEY`` from
+     the KeyStore) and scrubs the corresponding ``*_API_KEY`` from
      ``os.environ`` for the lifetime of the app. Keys are re-injected
      only into the short-lived pipeline subprocess via
      ``KeyStore.env_for_subprocess``. CLI users invoking ``main.py``
@@ -192,8 +192,7 @@ suppress_small_cell / date jitter / id pseudonymize — against ~200
 Indo-VAP-calibrated rules in ``scripts/security/phi_scrub.yaml``. A further
 defence-in-depth PHI gate + k-anonymity check runs on every LLM tool return.
 See :doc:`data_pipeline` for the full flow and ``docs/irb_dossier/
-conformance_matrix.md`` for the 31-criterion IRB benchmark (plus four
-follow-ups added in patches 2026-04-23a/b).
+conformance_matrix.md`` for the active IRB conformance matrix.
 
 How do I know this actually works? How do I trust it?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

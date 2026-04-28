@@ -1,9 +1,9 @@
 Overview
 ========
 
-Rewritten 2026-04-27 against the v0.20.0 code state. This page replaces
-an older draft that pre-dated PR #15 (PDF orchestrator) and PR #18
-(parallel extraction + tracked-baseline snapshot tier).
+This page describes the current user-facing behavior of the portal:
+the research bottleneck it removes, the privacy boundary it enforces,
+and the workflow a researcher or data manager sees.
 
 The Pain
 --------
@@ -109,9 +109,9 @@ PDF extraction is a special case because annotated CRF PDFs may carry
 filled-in patient data, handwritten signatures, or example subject IDs
 in annotations. The pipeline ships two co-existing paths:
 
-* **Orchestrator path** (``scripts/extraction/pdf_pipeline.py``,
-  shipped in PR #15, the wizard's "Load Study" default). The
-  ``pdfplumber`` code path always runs first and extracts text
+* **Orchestrator path** (``scripts/extraction/pdf_pipeline.py``, the
+  wizard's "Load Study" default). The ``pdfplumber`` code path always
+  runs first and extracts text
   locally. The text is PHI-redacted via ``phi_patterns.BLOCKING_PATTERNS``
   *before* any byte leaves the host. A defensive
   ``_assert_no_raw_phi_in_payload`` re-check raises if any blocking
@@ -139,7 +139,7 @@ has 12 tools and three independent gates on every tool return:
 2. **k-anonymity gate (k=5)** — equivalence-class size check on
    row-returning tools.
 3. **l-diversity gate (l=2)** — sensitive-attribute homogeneity check
-   added in PR #13 (v0.18.0).
+   for row-level results.
 
 Plus three structural protections:
 
@@ -149,12 +149,12 @@ Plus three structural protections:
   ``trio_bundle/`` ∪ ``agent/`` only. Audit, telemetry, staging, raw,
   and the snapshot baseline are hard-rejected with
   ``ZoneViolationError``.
-* **KeyStore (PR #3)** — API keys never live in the parent process's
+* **KeyStore** — API keys never live in the parent process's
   ``os.environ``. The wizard's step 1 routes the pasted key into an
   in-memory ``KeyStore`` registry; the corresponding ``*_API_KEY``
   env variable is scrubbed. Keys are re-injected only into the
   short-lived pipeline subprocess via ``KeyStore.env_for_subprocess``.
-* **Subprocess sandbox (PR #2)** — ``run_python_analysis`` runs in an
+* **Subprocess sandbox** — ``run_python_analysis`` runs in an
   isolated subprocess with ``RLIMIT_AS`` / ``RLIMIT_NPROC`` /
   ``RLIMIT_CPU`` rlimits, a sanitised env, and read-only access to
   ``trio_bundle/`` only. The generated ``.py`` file is persisted to
@@ -177,7 +177,7 @@ steps:
 1. **LLM** — pick provider + model, paste API key. Key goes straight
    into the in-memory KeyStore; never persisted to disk, never
    leaked into ``os.environ``.
-2. **Data** — two top-level buttons (PR #18 rewrite):
+2. **Data** — two top-level buttons:
 
    * *Use Existing Study* — skip the pipeline, trust whatever's
      published in ``output/{STUDY}/trio_bundle/``. Disabled when no
@@ -203,9 +203,9 @@ Who Benefits
 * **IRB / Institutional Ethics Committee reviewers** who want a single
   evidence artifact (``output/{STUDY}/audit/lineage_manifest.json``)
   pairing every raw input hash with every published trio artifact
-  hash, plus a 35-criterion conformance matrix (31 original + 4 added via patches 2026-04-23a/b) tied to HIPAA, DPDPA,
-  SPDI, Aadhaar Act, ICMR, NIST SP 800-188, and the RePORT India
-  Common Protocol.
+  hash, plus an active conformance matrix tied to HIPAA, DPDPA, SPDI,
+  Aadhaar Act, ICMR, NIST SP 800-188, and the RePORT India Common
+  Protocol.
 * **Epidemiologists** who want reproducible models — the pipeline
   preserves per-subject date intervals exactly under SANT jitter, so
   survival and person-time analyses run on the de-identified bundle
@@ -244,5 +244,5 @@ Where To Go Next
   flags + the KeyStore credential-handling note.
 * :doc:`../developer_guide/index` — for contributors and code reviewers.
 * ``docs/irb_dossier/`` (outside the Sphinx tree) — the IRB-grade
-  evidence package: 35-criterion conformance matrix (31 original + 4 added via patches 2026-04-23a/b), PHI walkthrough,
-  executive summary.
+  evidence package: conformance matrix, PHI walkthrough, and executive
+  summary.

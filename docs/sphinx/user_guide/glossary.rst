@@ -270,13 +270,13 @@ code module or audit artifact.
      variable is scrubbed. Keys are re-injected only into the
      short-lived pipeline subprocess via
      :meth:`KeyStore.env_for_subprocess`.
-     **How.** Shipped in PR #3 (v0.17.0). Every LLM client constructor
+     **How.** Every LLM client constructor
      takes an explicit ``api_key=`` kwarg sourced from the KeyStore —
      no environment lookup at construction time.
 
    PDF orchestrator
      **What.** The two-way PDF extraction module
-     :mod:`scripts.extraction.pdf_pipeline` (PR #15). Always runs
+     :mod:`scripts.extraction.pdf_pipeline`. Always runs
      ``pdfplumber`` for the code-path text extraction; pairs the
      result with a redacted-text LLM call when a capable provider is
      configured; falls back to the snapshot baseline per-PDF.

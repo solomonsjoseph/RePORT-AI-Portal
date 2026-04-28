@@ -203,7 +203,7 @@ Total runtime is ~75 s on macOS (subprocess startup is the bottleneck).
 Future Work
 -----------
 
-Out of scope for the current release (v0.20.0); tracked for later:
+Out of scope for the current runtime; tracked for later:
 
 - Convert trio JSONL → parquet so the child loads DataFrames with
   ``mmap`` instead of re-parsing JSON on every call (~80 % of the
