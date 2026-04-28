@@ -97,8 +97,8 @@ Adding A PHI Rule
    action class.
 2. Add or update coverage in ``tests/test_phi_scrub.py``.
 3. Run ``make test-all``.
-4. Update the PHI architecture or IRB dossier if the public handling
-   story changed.
+4. Update the PHI architecture or IRB/Auditor profile if the public
+   handling story changed.
 
 Adding An Agent Tool
 --------------------

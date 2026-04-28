@@ -1,6 +1,6 @@
 """Phase 2.x polish — permission + wiring regression tests.
 
-Companion to ``docs/irb_dossier/phase3_phi_followups.md``. Each test
+Companion to ``docs/sphinx/irb_auditor/conformance.rst``. Each test
 pins one of the polish items so a future change cannot silently regress
 the file mode / wiring it fixes.
 

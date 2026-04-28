@@ -2,8 +2,8 @@
 
 What. Compares live, source-of-truth values (tool count from
 ``ALL_TOOLS``, repo version from ``__version__``, action-class count from
-``phi_scrub.yaml``) against the prose in README, AGENTS, sphinx user/dev
-guides, and the IRB dossier. Also rejects forbidden phrases that
+``phi_scrub.yaml``) against the prose in README and Sphinx user,
+IRB/auditor, and developer guides. Also rejects forbidden phrases that
 indicate retired architecture (vector DB / RAG / Presidio-as-active /
 "only zone the LLM agent reads" / stale tool counts / stale Make
 targets) or inaccessible link text (``click here`` / ``read this
@@ -20,8 +20,8 @@ How. Two passes:
 
 1. **Live-value comparison** — import ``ALL_TOOLS`` and
    ``__version__``, parse ``phi_scrub.yaml`` for action classes,
-   parse ``conformance_matrix.md`` for the criterion split. For each
-   live value, look for forbidden patterns ("11 structured-data
+   parse the current code-owned values. For each live value, look for
+   forbidden patterns ("11 structured-data
    tools", "12 callables", etc.) that contradict it. Report
    contradictions.
 2. **Forbidden-phrase scan** — a curated list of patterns that should
@@ -49,7 +49,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 TRACKED_FILES: tuple[str, ...] = ("README.md",)
 TRACKED_DIRS: tuple[str, ...] = (
     "docs/sphinx",
-    "docs/irb_dossier",
 )
 TRACKED_GLOBS: tuple[str, ...] = (
     "*.rst",

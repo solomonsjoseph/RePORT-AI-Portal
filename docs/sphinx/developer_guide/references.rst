@@ -2,8 +2,8 @@ References
 ==========
 
 **What.** Every regulation, standard, paper, and external resource cited
-in the RePORT AI Portal codebase or IRB dossier, collected in one place
-with URLs and a line on which pillar / module they back.
+in the RePORT AI Portal codebase or IRB/Auditor profile, collected in
+one place with URLs and a line on which pillar / module they back.
 
 **Why.** Regulatory traceability is a developer concern. If you're
 touching the PHI scrubber's catalog or the agent-boundary gate, you

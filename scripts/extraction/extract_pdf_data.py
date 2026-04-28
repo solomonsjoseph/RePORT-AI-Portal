@@ -254,7 +254,8 @@ attestation note at :data:`_PDF_PHI_FREE_AUTHORITY` recording who
 reviewed the PDFs, when, and what they checked. This mirrors the
 ``authorities/phi_limited_dataset.md`` pattern used by
 :mod:`scripts.security.phi_scrub` for the Limited Dataset posture —
-both are "signed operator assertions" the IRB dossier can reference.
+both are "signed operator assertions" the IRB/Auditor profile can
+reference.
 """
 
 _PDF_PHI_FREE_AUTHORITY = "authorities/phi_free_pdfs.md"
@@ -358,8 +359,8 @@ def _resolve_pdf_provider() -> tuple[str, Any, str, dict[str, Any]]:
             f"  attestation note at {authority} is missing or empty.\n\n"
             "  The env flag is a runtime opt-in; the attestation note is the\n"
             "  durable, version-controlled record of WHO reviewed the PDFs,\n"
-            "  WHEN, and WHAT they checked. Both are required so the IRB\n"
-            "  dossier can reference a concrete signed attestation rather\n"
+            "  WHEN, and WHAT they checked. Both are required so the IRB/\n"
+            "  Auditor profile can reference a concrete signed attestation rather\n"
             "  than an ephemeral environment variable.\n\n"
             "  Create the note with content such as:\n\n"
             "    # PHI-free PDF attestation\n"

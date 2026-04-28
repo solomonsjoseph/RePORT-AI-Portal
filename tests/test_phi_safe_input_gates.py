@@ -1,7 +1,7 @@
 """Coverage for input-side PHI gates.
 
 **What.** Tests the two input-side defences added to close the prompt-
-injection gaps enumerated in ``docs/irb_dossier/phi_walkthrough.md`` §A.9.12:
+injection gaps summarized in ``docs/sphinx/irb_auditor/conformance.rst``:
 
 * :func:`scripts.ai_assistant.phi_safe.guard_user_prompt` — refuses
   researcher prompts that contain blocking-tier PHI before the LLM is

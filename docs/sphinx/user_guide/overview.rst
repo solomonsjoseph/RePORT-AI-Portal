@@ -52,7 +52,8 @@ files. If a user chooses a hosted LLM provider, they are responsible for
 confirming that their local study policy allows that provider.
 
 For the full privacy architecture and control evidence, see
-:doc:`../developer_guide/phi_architecture` and ``docs/irb_dossier/``.
+:doc:`../developer_guide/phi_architecture` and
+:doc:`../irb_auditor/index`.
 
 When to Use It
 --------------

@@ -151,4 +151,5 @@ Where are developer details?
 
 Use the :doc:`../developer_guide/index` for architecture, source files,
 tests, code-level behavior, and contributor workflow. Use
-``docs/irb_dossier/`` for reviewer-facing control evidence.
+:doc:`../irb_auditor/index` for reviewer-facing PHI handling and
+control evidence.

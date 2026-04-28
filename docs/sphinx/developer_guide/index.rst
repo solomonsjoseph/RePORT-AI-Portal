@@ -132,7 +132,7 @@ RePORT AI Portal follows these architectural principles:
    Each component (data extraction, dataset promotion, AI Assistant) is a separate, testable module.
 
 **Privacy-First**
-   The runtime implements a four-tier honest-broker architecture: raw (RED) → secure staging (AMBER) → PHI-free trio bundle (GREEN) → agent boundary with PHI + k-anonymity gates (GREEN-PROTECT). The 8-action PHI scrub (:mod:`scripts.security.phi_scrub`) runs as Step 1.6 on staged datasets before any audit output is written. See ``docs/irb_dossier/conformance_matrix.md`` for the active IRB conformance matrix.
+   The runtime implements a four-tier honest-broker architecture: raw (RED) → secure staging (AMBER) → PHI-free trio bundle (GREEN) → agent boundary with PHI + k-anonymity gates (GREEN-PROTECT). The 8-action PHI scrub (:mod:`scripts.security.phi_scrub`) runs as Step 1.6 on staged datasets before any audit output is written. See :doc:`../irb_auditor/conformance` for the active IRB/Auditor conformance profile.
 
 **Extensibility**
    LLM providers (via ``init_chat_model`` from langchain-core), agent tools

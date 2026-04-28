@@ -73,5 +73,5 @@ The technical detail stays in:
 
 * :doc:`../developer_guide/index` - architecture, source layout, tests,
   operational runbooks, and contributor guidance.
-* ``docs/irb_dossier/`` - reviewer-facing control evidence and
+* :doc:`../irb_auditor/index` - reviewer-facing PHI handling and
   conformance material.

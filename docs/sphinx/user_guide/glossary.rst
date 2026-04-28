@@ -61,6 +61,6 @@ Developer Terms
 ---------------
 
 If you need definitions for code-level privacy controls or pipeline
-internals, use the :doc:`../developer_guide/index` and
-``docs/irb_dossier/``. Those details are intentionally kept out of the
-user guide.
+internals, use the :doc:`../developer_guide/index`. For IRB/IEC or
+auditor review, use :doc:`../irb_auditor/index`. Those details are
+intentionally kept out of the user guide.
