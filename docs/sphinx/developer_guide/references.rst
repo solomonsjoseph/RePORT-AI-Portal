@@ -82,8 +82,8 @@ RePORT India Common Protocol
 * **Project site.** https://www.reportindia.org
 * **What we use it for.** The parent study protocol under which
   Indo-VAP runs. Dictates the 72-hour IRB notification window for PHI
-  breaches (documented in the breach-response runbook stub at
-  ``docs/irb_dossier/breach_response_runbook.md``).
+  breaches, which the study team must encode in its breach-response
+  runbook before production ingest.
 
 Standards & Frameworks
 ----------------------
@@ -219,8 +219,7 @@ i2b2 / n2c2 de-identification shared tasks
 
 * **Site.** https://portal.dbmi.hms.harvard.edu/projects/n2c2-nlp/
 * **What we use it for.** Corpus used to benchmark clinical de-
-  identification systems. Referenced in Stage-5 (Ollama NER)
-  calibration notes.
+  identification systems and justify the current rule-catalog posture.
 
 Tools & Libraries Cited in Decisions
 ------------------------------------
@@ -237,8 +236,7 @@ Ollama
 ~~~~~~
 
 * **Site.** https://ollama.com
-* **What we use it for.** Local LLM runtime used by the agent. Target
-  for Stage-5 narrative NER (see :mod:`scripts.security.phi_ner`).
+* **What we use it for.** Local LLM runtime used by the agent.
 
 Reading Order for a New Contributor
 -----------------------------------

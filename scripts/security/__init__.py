@@ -4,9 +4,8 @@
 pipeline: zone-enforcement helpers (:mod:`.secure_env`), the 8-action PHI
 scrubber (:mod:`.phi_scrub`), the query-time PHI gate and k-anonymity gate
 (:mod:`.phi_gate`, :mod:`.kanon_gate`), the shared regex catalog
-(:mod:`.phi_patterns`), the clinical-phrase allowlist
-(:mod:`.phi_allowlist`), and the Stage-5 local-Ollama NER design stub
-(:mod:`.phi_ner`).
+(:mod:`.phi_patterns`), and the clinical-phrase allowlist
+(:mod:`.phi_allowlist`).
 
 **Why.** A single import surface keeps call sites honest — downstream modules
 write ``from scripts.security import assert_trio_bundle_zone, phi_gate_check``

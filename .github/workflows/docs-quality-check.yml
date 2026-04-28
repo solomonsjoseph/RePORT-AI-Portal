@@ -1,5 +1,4 @@
-
-name: Documentation Quality Check
+name: Documentation Quality
 
 on:
   schedule:
@@ -7,345 +6,74 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'docs/**'
       - 'README.md'
+      - 'docs/**'
       - 'scripts/lint_doc_freshness.py'
       - 'scripts/ai_assistant/agent_tools.py'
       - 'scripts/security/phi_scrub.yaml'
-      - '__version__.py'
+      - 'pyproject.toml'
+      - 'uv.lock'
       - '.github/workflows/docs-quality-check.yml'
   pull_request:
     paths:
-      - 'docs/**'
       - 'README.md'
+      - 'docs/**'
       - 'scripts/lint_doc_freshness.py'
       - 'scripts/ai_assistant/agent_tools.py'
       - 'scripts/security/phi_scrub.yaml'
-      - '__version__.py'
+      - 'pyproject.toml'
+      - 'uv.lock'
       - '.github/workflows/docs-quality-check.yml'
 
 concurrency:
-  group: docs-quality-check-${{ github.ref }}
+  group: docs-quality-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
+env:
+  UV_FROZEN: '1'
+  PYTHONUNBUFFERED: '1'
+
 jobs:
-  quality-check:
+  docs:
+    name: Freshness, strict build, and links
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      issues: write
-      pull-requests: write
+    timeout-minutes: 25
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
       - name: Install uv and Python
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           python-version: '3.13'
           enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
 
-      - name: Install dependencies
-        run: uv sync --frozen --all-groups
+      - name: Sync dependencies
+        run: uv sync --all-groups
 
-      - name: Run doc-freshness linter (fail on stale-doc drift)
-        run: uv run --frozen python scripts/lint_doc_freshness.py
+      - name: Doc freshness
+        run: uv run python scripts/lint_doc_freshness.py
 
-      - name: Run documentation quality checks
-        id: quality_check
+      - name: Strict Sphinx build
+        run: make docs-quality
+
+      - name: Link check
+        working-directory: docs/sphinx
+        run: uv run sphinx-build -b linkcheck . _build/linkcheck
+
+      - name: Documentation metrics
+        if: always()
         shell: bash
         run: |
-          {
-            echo 'Documentation quality check'
-            echo ''
-            echo '- doc_maintenance_toolkit has been removed.'
-            echo '- Sphinx build, linkcheck, version scan, and size checks are the active workflow gates.'
-            echo '- Manual review of content freshness is still recommended.'
-          } > quality_report.txt
-
-          {
-            echo 'report<<EOF'
-            cat quality_report.txt
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Build documentation
-        id: build_docs
-        shell: bash
-        run: |
-          set +e
-          cd docs/sphinx
-          uv run --frozen make clean
-          uv run --frozen make html 2>&1 | tee ../../build_output.txt
-          status=${PIPESTATUS[0]}
-          echo "build_status=$status" >> "$GITHUB_OUTPUT"
-          exit 0
-
-      - name: Check for broken links
-        id: link_check
-        shell: bash
-        run: |
-          set +e
-          cd docs/sphinx
-          uv run --frozen make linkcheck 2>&1 | tee ../../linkcheck_output.txt
-          status=${PIPESTATUS[0]}
-          echo "linkcheck_status=$status" >> "$GITHUB_OUTPUT"
-          exit 0
-
-      - name: Analyze documentation metrics
-        id: metrics
-        shell: bash
-        run: |
-          total_lines=$(find docs/sphinx -type f -name '*.rst' -exec wc -l {} + | tail -n 1 | awk '{print $1}')
-          total_lines=${total_lines:-0}
-          echo "total_lines=$total_lines" >> "$GITHUB_OUTPUT"
-
-          {
-            echo 'largest_files<<EOF'
-            find docs/sphinx -type f -name '*.rst' -exec wc -l {} + | sort -rn | head -10
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
-
-          user_guide_count=$(find docs/sphinx/user_guide -type f -name '*.rst' | wc -l | tr -d ' ')
-          developer_guide_count=$(find docs/sphinx/developer_guide -type f -name '*.rst' | wc -l | tr -d ' ')
-          api_count=0
-          if [ -d docs/sphinx/api ]; then
-            api_count=$(find docs/sphinx/api -type f -name '*.rst' | wc -l | tr -d ' ')
-          fi
-
-          {
-            echo 'file_counts<<EOF'
-            echo "User Guide: ${user_guide_count} files"
-            echo "Developer Guide: ${developer_guide_count} files"
-            echo "API Reference: ${api_count} files"
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Check for outdated version references
-        id: version_check
-        shell: bash
-        run: |
-          outdated=$(grep -R "versionadded:: 0\." docs/sphinx/user_guide docs/sphinx/developer_guide 2>/dev/null | grep -v changelog || true)
-          if [ -n "$outdated" ]; then
-            echo 'found=true' >> "$GITHUB_OUTPUT"
-            {
-              echo 'outdated_refs<<EOF'
-              echo "$outdated"
-              echo 'EOF'
-            } >> "$GITHUB_OUTPUT"
-          else
-            echo 'found=false' >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Check documentation size
-        id: size_check
-        shell: bash
-        run: |
-          total_lines='${{ steps.metrics.outputs.total_lines }}'
-          threshold=20000
-
-          if [ "$total_lines" -gt "$threshold" ]; then
-            echo 'exceeds_limit=true' >> "$GITHUB_OUTPUT"
-            echo "threshold=$threshold" >> "$GITHUB_OUTPUT"
-          else
-            echo 'exceeds_limit=false' >> "$GITHUB_OUTPUT"
-            echo "threshold=$threshold" >> "$GITHUB_OUTPUT"
-          fi
-
-          large_files=$(find docs/sphinx -type f -name '*.rst' -exec wc -l {} + | awk '$1 > 1000 {count++} END {print count+0}')
-          echo "large_file_count=$large_files" >> "$GITHUB_OUTPUT"
-
-      - name: Create or update quality check issue
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-        uses: actions/github-script@v8
-        env:
-          TOTAL_LINES: ${{ steps.metrics.outputs.total_lines }}
-          FILE_COUNTS: ${{ steps.metrics.outputs.file_counts }}
-          LARGEST_FILES: ${{ steps.metrics.outputs.largest_files }}
-          BUILD_STATUS: ${{ steps.build_docs.outputs.build_status }}
-          LINKCHECK_STATUS: ${{ steps.link_check.outputs.linkcheck_status }}
-          OUTDATED_FOUND: ${{ steps.version_check.outputs.found }}
-          OUTDATED_REFS: ${{ steps.version_check.outputs.outdated_refs }}
-          EXCEEDS_LIMIT: ${{ steps.size_check.outputs.exceeds_limit }}
-          THRESHOLD: ${{ steps.size_check.outputs.threshold }}
-          LARGE_FILE_COUNT: ${{ steps.size_check.outputs.large_file_count }}
-        with:
-          script: |
-            const fs = require('fs');
-
-            const totalLines = process.env.TOTAL_LINES || '0';
-            const buildStatus = process.env.BUILD_STATUS || '1';
-            const linkcheckStatus = process.env.LINKCHECK_STATUS || '1';
-            const outdatedFound = process.env.OUTDATED_FOUND || 'false';
-            const outdatedRefs = process.env.OUTDATED_REFS || '';
-            const exceedsLimit = process.env.EXCEEDS_LIMIT || 'false';
-            const threshold = process.env.THRESHOLD || '20000';
-            const largeFileCount = Number(process.env.LARGE_FILE_COUNT || '0');
-            const fileCounts = process.env.FILE_COUNTS || 'No file counts available';
-            const largestFiles = process.env.LARGEST_FILES || 'No file metrics available';
-
-            const hasIssues = (
-              buildStatus !== '0' ||
-              linkcheckStatus !== '0' ||
-              outdatedFound === 'true' ||
-              exceedsLimit === 'true' ||
-              largeFileCount > 3
-            );
-
-            let body = '## 📋 Quarterly Documentation Quality Check\n\n';
-            body += `**Date:** ${new Date().toISOString().split('T')[0]}\n`;
-            body += `**Status:** ${hasIssues ? '⚠️ Issues Found' : '✅ All Checks Passed'}\n\n`;
-
-            body += '### 📊 Documentation Metrics\n\n';
-            body += `- **Total Lines:** ${totalLines}\n`;
-            body += `- **Large Files (>1000 lines):** ${largeFileCount}\n\n`;
-            body += '**File Counts:**\n';
-            body += `${fileCounts}\n\n`;
-            body += '**Largest Files:**\n```\n';
-            body += `${largestFiles}\n`;
-            body += '```\n\n';
-
-            body += '### 🔨 Build Status\n\n';
-            if (buildStatus === '0') {
-              body += '✅ Documentation builds successfully\n\n';
-            } else {
-              body += '❌ Documentation build has warnings/errors\n\n';
-              body += '<details>\n<summary>Build Output</summary>\n\n```\n';
-              try {
-                body += fs.readFileSync('build_output.txt', 'utf8').slice(0, 5000);
-              } catch {
-                body += 'Could not read build output\n';
-              }
-              body += '\n```\n</details>\n\n';
-            }
-
-            body += '### 🔗 Link Validation\n\n';
-            if (linkcheckStatus === '0') {
-              body += '✅ Link check passed\n\n';
-            } else {
-              body += '⚠️ Link check reported issues\n\n';
-            }
-            body += '<details>\n<summary>Link Check Results</summary>\n\n```\n';
-            try {
-              body += fs.readFileSync('linkcheck_output.txt', 'utf8').slice(0, 3000);
-            } catch {
-              body += 'Could not read link check output\n';
-            }
-            body += '\n```\n</details>\n\n';
-
-            body += '### 🔍 Version Reference Check\n\n';
-            if (outdatedFound === 'true') {
-              body += '⚠️ Outdated version references found:\n\n```\n';
-              body += `${outdatedRefs}\n`;
-              body += '```\n\n';
-              body += '**Action Required:** Update these to current version using `|version|` substitution\n\n';
-            } else {
-              body += '✅ No outdated version references found\n\n';
-            }
-
-            body += '### 📏 Size Analysis\n\n';
-            if (exceedsLimit === 'true') {
-              body += `⚠️ Total documentation exceeds recommended limit (${totalLines} > ${threshold} lines)\n\n`;
-              body += '**Action Required:** Consider archiving or consolidating content\n\n';
-            } else {
-              body += `✅ Total documentation size is reasonable (${totalLines} lines)\n\n`;
-            }
-
-            if (largeFileCount > 3) {
-              body += `⚠️ ${largeFileCount} files exceed 1,000 lines\n\n`;
-              body += '**Action Required:** Consider splitting large files into smaller, focused documents\n\n';
-            } else {
-              body += `✅ File sizes are manageable (${largeFileCount} files >1000 lines)\n\n`;
-            }
-
-            body += '### ✅ Quarterly Maintenance Checklist\n\n';
-            body += 'See `docs/sphinx/developer_guide/contributing.rst` for coding and documentation standards:\n\n';
-            body += '- [ ] Review and update outdated version references\n';
-            body += '- [ ] Check for redundant content across files\n';
-            body += '- [ ] Validate all cross-references\n';
-            body += '- [ ] Verify external links are still valid\n';
-            body += '- [ ] Review file organization\n';
-            body += '- [ ] Check style compliance\n';
-            body += '- [ ] Update content freshness (installation, screenshots)\n';
-            body += '- [ ] Consider archiving old verification documents\n';
-            body += '- [ ] Rebuild and verify documentation\n\n';
-
-            body += '---\n\n';
-            body += '_This issue was automatically created by the Documentation Quality Check workflow._\n';
-            body += '_Next scheduled check: First day of next quarter at 9:00 AM UTC_\n';
-
-            const issues = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              labels: 'documentation,automated-check',
-              per_page: 100,
-            });
-
-            const existingIssue = issues.data.find((issue) =>
-              issue.title.includes('Quarterly Documentation Quality Check')
-            );
-
-            if (existingIssue) {
-              await github.rest.issues.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: existingIssue.number,
-                body,
-              });
-
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: existingIssue.number,
-                body: `🔄 Quality check updated: ${new Date().toISOString().split('T')[0]}`,
-              });
-
-              console.log(`Updated existing issue #${existingIssue.number}`);
-            } else if (hasIssues) {
-              const issue = await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: `📋 Quarterly Documentation Quality Check - ${new Date().toISOString().split('T')[0]}`,
-                body,
-                labels: ['documentation', 'automated-check', 'maintenance'],
-              });
-
-              console.log(`Created new issue #${issue.data.number}`);
-            } else {
-              console.log('No issues found - no GitHub issue created');
-            }
-
-      - name: Comment on PR
-        if: github.event_name == 'pull_request'
-        continue-on-error: true
-        uses: actions/github-script@v8
-        env:
-          TOTAL_LINES: ${{ steps.metrics.outputs.total_lines }}
-          FILE_COUNTS: ${{ steps.metrics.outputs.file_counts }}
-          BUILD_STATUS: ${{ steps.build_docs.outputs.build_status }}
-          LINKCHECK_STATUS: ${{ steps.link_check.outputs.linkcheck_status }}
-        with:
-          script: |
-            const totalLines = process.env.TOTAL_LINES || '0';
-            const buildStatus = process.env.BUILD_STATUS || '1';
-            const linkcheckStatus = process.env.LINKCHECK_STATUS || '1';
-            const fileCounts = process.env.FILE_COUNTS || 'No file counts available';
-
-            let comment = '## 📋 Documentation Quality Check\n\n';
-            comment += buildStatus === '0'
-              ? '✅ Documentation builds successfully\n'
-              : '❌ Documentation build has issues - please review\n';
-            comment += linkcheckStatus === '0'
-              ? '✅ Link check passed\n'
-              : '⚠️ Link check reported issues\n';
-            comment += `\n**Total Documentation:** ${totalLines} lines\n`;
-            comment += `\n**File Counts:**\n${fileCounts}\n`;
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: comment,
-            });
+          echo "Documentation line count:"
+          find docs/sphinx -type f -name '*.rst' -exec wc -l {} + | sort -rn | tail -n 20
+          echo
+          echo "Largest documentation files:"
+          find docs/sphinx -type f -name '*.rst' -exec wc -l {} + | sort -rn | head -10

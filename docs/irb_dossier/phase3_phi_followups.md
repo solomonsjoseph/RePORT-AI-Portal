@@ -34,8 +34,6 @@ See `conformance_matrix.md` for the claim-by-claim test inventory and
 | F4 | Consent scoping | `phi_scrub.yaml` is the de-facto field allow/drop catalog. | Optionally add `config/consent_scope.yaml` as an IEC-approved allowlist layered above the scrub catalog. | Study team + engineering |
 | F5 | District population threshold | Geography identifiers are dropped or generalized by catalog rules. | Add a per-study district-population mapping if the site needs population-threshold retention logic. | Study team |
 | F6 | Narrative rescue | High-risk narrative/free-text fields are dropped by default. | Calibrate and implement local narrative NER only if preserving narrative signal becomes scientifically necessary. | Engineering |
-| F7 | Inert chat upload control | The Streamlit upload widget is not wired to disk, agent tools, or provider calls. | Remove the widget or wire it only behind upload-specific PHI checks and explicit operator policy. | Engineering |
-| F8 | Limited Dataset attestation template | Limited Dataset mode requires `authorities/phi_limited_dataset.md`. | Add a template matching the existing PDF PHI-free attestation template. | Documentation |
 
 ## Deployment constraints
 

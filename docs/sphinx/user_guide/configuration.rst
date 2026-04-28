@@ -180,12 +180,6 @@ logged against the IRB dossier.
        verified PHI-free (blank CRFs, protocol, MOP) — and ALSO
        create a non-empty attestation note at
        ``authorities/phi_free_pdfs.md``. Both are required.
-   * - ``REPORTALIN_OLLAMA_NER``
-     - ``0``
-     - Feature flag for the Stage-5 local-Ollama narrative NER sweep
-       (:mod:`scripts.security.phi_ner`). Setting this today is a
-       no-op because the implementation is a design stub pending
-       prompt calibration against the Indo-VAP narrative corpus.
    * - ``REPORTALIN_PDF_EXTRACTION_MODE``
      - (unset)
      - Selects the PDF extraction path inside

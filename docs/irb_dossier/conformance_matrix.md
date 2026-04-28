@@ -83,17 +83,16 @@ This matrix pairs every testable architectural claim with the regulation that an
 
 **Test evidence:** `make test-all` is the authoritative full-suite gate and `make test` is the deterministic subset gate. The IRB packet should attach the current CI or local verification transcript for the submitted commit.
 
-**Outstanding design items** (out of scope for this dossier, tracked separately):
+**Outstanding operator-owned items** (out of scope for this dossier, tracked separately):
 
-* Local-Ollama NER sweep for free-text narrative residuals. Design stub at `scripts/security/phi_ner.py`; feature flag `REPORTALIN_OLLAMA_NER=1`.
 * District-population lookup table — when generalization needs to honour HIPAA-style "pop ≥ 20k" threshold per district code.
 * `config/consent_scope.yaml` — operator-owned allowlist of IEC-approved fields; today's scrub catalog is the de-facto consent scope.
 
 ---
 
-## Runbooks (to be filled in by the operator before IRB submission)
+## Runbooks (operator-owned before IRB submission)
 
-The following runbooks are stubs — the code + architecture supports each, but the operational procedure must be authored by the study team:
+The code and architecture support each procedure below, but the operational content must be authored and approved by the study team:
 
 * `docs/irb_dossier/key_management_runbook.md` — bootstrap, custody, rotation, loss-of-key procedure.
 * `docs/irb_dossier/breach_response_runbook.md` — detection → classification → 72-hour IRB notification → root-cause → remediation.
@@ -112,7 +111,6 @@ Code evidence:
 * `scripts/security/kanon_gate.py` — equivalence-class k-anonymity check + small-cell suppression.
 * `scripts/security/phi_allowlist.py` — is_clinical_phrase / is_clinical_free_text / looks_like_real_name.
 * `scripts/security/phi_patterns.py` — shared blocking / warn / subject-ID regex catalog.
-* `scripts/security/phi_ner.py` — design stub for future work (feature-flagged, raises until implemented).
 * `scripts/ai_assistant/phi_safe.py` — output gates (`phi_safe_return`, `guard_text`, `guard_rows_with_kanon`) + input / at-rest gates added 2026-04-23 (`guard_user_prompt`, `sanitise_untrusted_snippet`, `redact_phi_in_text`, `sanitise_traceback`).
 * `scripts/utils/secure_staging.py` — hardened Phase-0 staging + secure_remove_tree.
 * `scripts/utils/lineage.py` — per-run lineage manifest emitter.

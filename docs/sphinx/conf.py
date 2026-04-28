@@ -84,11 +84,14 @@ html_context: dict[str, bool] = {
 # -- Options for intersphinx extension ---------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html#configuration
 
-intersphinx_mapping: dict[str, tuple[str, None]] = {
-    "python": ("https://docs.python.org/3", None),
-    "pandas": ("https://pandas.pydata.org/docs/", None),
-    "numpy": ("https://numpy.org/doc/stable/", None),
-}
+if os.environ.get("SPHINX_OFFLINE", "").lower() in {"1", "true", "yes", "on"}:
+    intersphinx_mapping: dict[str, tuple[str, None]] = {}
+else:
+    intersphinx_mapping = {
+        "python": ("https://docs.python.org/3", None),
+        "pandas": ("https://pandas.pydata.org/docs/", None),
+        "numpy": ("https://numpy.org/doc/stable/", None),
+    }
 
 # -- Options for linkcheck builder -------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-the-linkcheck-builder

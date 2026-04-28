@@ -1,4 +1,4 @@
-"""Shared PHI regex catalog used by phi_gate, log_hygiene, and future NER.
+"""Shared PHI regex catalog used by phi_gate and log_hygiene.
 
 Single source of truth for "what does a PHI-like substring look like" so
 the query-time gate, the log redactor, and the narrative scrub all agree.

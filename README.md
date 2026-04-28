@@ -396,8 +396,7 @@ RePORT AI Portal/
 │   │   ├── phi_patterns.py          # Shared regex catalog
 │   │   ├── phi_allowlist.py         # Clinical-phrase allowlist
 │   │   ├── phi_gate.py              # Query-time PHI gate
-│   │   ├── kanon_gate.py            # k-anonymity gate
-│   │   └── phi_ner.py               # Narrative NER design stub
+│   │   └── kanon_gate.py            # k-anonymity gate
 │   └── utils/                       # Utility modules
 │       ├── __init__.py
 │       ├── logging_system.py        # Centralized logging

@@ -174,8 +174,6 @@ scripts.security.* (in-tree)
 * :mod:`scripts.security.phi_gate` — agent-output gate
 * :mod:`scripts.security.kanon_gate` — k-anon (k=5) + l-diversity (l=2)
 * :mod:`scripts.security.secure_env` — zone guards
-* :mod:`scripts.security.phi_ner` — local-Ollama narrative NER design
-  stub (feature-flagged, raises until implemented)
 
 **Why.** No external dependency for PHI handling — auditors can read
 every line of the security surface without trusting an upstream maintainer.

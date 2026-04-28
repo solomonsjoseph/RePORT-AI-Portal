@@ -87,8 +87,8 @@ Security Modules
 The ``scripts.security`` package groups every module that participates in
 PHI handling — the four-tier architecture boundaries, the 8-action
 offline scrubber, the agent-boundary gates, the shared regex catalog,
-the clinical-phrase allowlist, and the Stage-5 NER design stub. See
-:doc:`phi_architecture` for the narrative.
+and the clinical-phrase allowlist. See :doc:`phi_architecture` for
+the narrative.
 
 Secure Environment (Zone Guard)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -134,14 +134,6 @@ k-Anonymity Gate
 ~~~~~~~~~~~~~~~~
 
 .. automodule:: scripts.security.kanon_gate
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Narrative NER Stub
-~~~~~~~~~~~~~~~~~~
-
-.. automodule:: scripts.security.phi_ner
    :members:
    :undoc-members:
    :show-inheritance:

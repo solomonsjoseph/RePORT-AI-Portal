@@ -1154,14 +1154,6 @@ body[data-rpln-sidebar-collapsed="true"] .rpln-profile-root {
     margin-top: 8px;
     color: var(--rpln-text-muted);
 }
-.rpln-pager {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px;
-    color: var(--rpln-text-faint);
-    padding: 0 8px;
-    user-select: none;
-}
-
 .rpln-jump-latest {
   position: fixed;
   right: 24px;
@@ -1959,31 +1951,6 @@ div[role="dialog"]:not(:has(.rpln-topbar-menu-sentinel)):not(:has(.rpln-topbar-s
     border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;
 }
 
-/* ── Plus-menu popover ── */
-[data-testid="stPopoverBody"]:has(.rpln-plus-menu-header) {
-    width: 220px !important; min-width: 220px !important;
-    background: var(--rpln-menu-bg, var(--rpln-sidebar-bg)) !important;
-    border: 1px solid var(--rpln-menu-border, var(--border-default)) !important;
-    border-radius: 14px !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.35) !important;
-    padding: 6px !important;
-}
-[data-testid="stPopoverBody"]:has(.rpln-plus-menu-header) [data-testid="stBaseButton-secondary"] {
-    padding: 10px 12px !important; border-radius: 8px !important;
-    background: transparent !important; border: none !important;
-    color: var(--rpln-menu-text, var(--rpln-text)) !important;
-    font-size: 14px !important; font-weight: 500 !important;
-    text-align: left !important; justify-content: flex-start !important;
-    box-shadow: none !important;
-}
-[data-testid="stPopoverBody"]:has(.rpln-plus-menu-header) [data-testid="stBaseButton-secondary"]:hover {
-    background: var(--rpln-menu-hover) !important;
-}
-.rpln-plus-menu-header {
-    position: absolute; width: 1px; height: 1px;
-    overflow: hidden; clip: rect(0,0,0,0);
-}
-
 /* ── Search modal ── */
 div[role="dialog"]:has([data-testid="stTextInput"][id*="rpln_search_modal"]),
 div[role="dialog"]:has(.rpln-search-group) {
@@ -2526,7 +2493,7 @@ body.rpln-redesign [data-testid="stChatMessage"] {
   margin: 0 auto 24px auto !important;
 }
 
-/* Status-ready dot + thinking disclosure chip — match token palette. */
+/* Thinking disclosure chip — match token palette. */
 body.rpln-redesign .rpln-thinking-chip,
 body.rpln-redesign [data-rpln-thinking-chip] summary {
   color: var(--text-secondary) !important;
@@ -2536,7 +2503,7 @@ body.rpln-redesign [data-rpln-thinking-chip] summary {
   font-family: var(--font-ui) !important;
 }
 
-/* Per-message rails (Retry/Edit/Copy, 👍/👎, pager) — token-aligned icons. */
+/* Per-message rails (Retry/Edit/Copy, feedback) — token-aligned icons. */
 body.rpln-redesign [data-rpln-action] button,
 body.rpln-redesign [data-rpln-action-row] button {
   color: var(--text-tertiary) !important;
@@ -3089,26 +3056,6 @@ body.rpln-redesign .rpln-mobile-scrim.rpln-open {
 }
 
 /* =======================================================================
-   WP-F.05.09a \u2014 Brand status dot + share flash
-   -----------------------------------------------------------------------
-   Small green dot next to the brand name signals pipeline readiness.
-   Visual-only today; future PR can gate on actual pipeline state.
-   Reference: merged-design.md:156, 164-169.
-   ======================================================================= */
-body.rpln-redesign .rpln-brand-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--status-ready);
-  box-shadow: 0 0 0 3px rgba(110, 231, 160, 0.18);
-  margin-left: 8px;
-  vertical-align: middle;
-  position: relative;
-  top: -1px;
-}
-
-/* =======================================================================
    WP-F.05.09b.4 \u2014 "edited" badge after an Edit-flow re-submission
    ======================================================================= */
 body.rpln-redesign .rpln-edited-badge {
@@ -3619,9 +3566,7 @@ body.rpln-redesign .rpln-profile-dock {
        still triggers the real hidden button (form semantics preserved).
    (b) Style .rpln-submit-proxy as the circular orange arrow-up (matches
        the previous formSubmit button visually).
-   (c) Hide Streamlit's native popover chevron on the [+] attach trigger
-       so only the bare [+] glyph shows (reference HTML:896).
-   (d) Rotate Streamlit's model-pill popover chevron 180° so it reads `^`
+   (c) Rotate Streamlit's model-pill popover chevron 180° so it reads `^`
        (expand_less) instead of `v` (expand_more) — matches reference.
    ======================================================================= */
 
@@ -3722,39 +3667,7 @@ body.rpln-redesign .rpln-profile-dock {
   transform: none !important;
 }
 
-/* (c) Hide the popover-indicator chevron on the [+] attach trigger.
-   Streamlit's popover trigger can emit the chevron as either <svg> or a
-   Material Symbols ligature span (depending on Streamlit version + widget
-   variant). Cover both, plus any trailing stIconMaterial inside the
-   button. Scoped to the composer + button only — other popovers unaffected. */
-.st-key-rpln_composer_plus [data-testid="stPopoverButton"] svg,
-.st-key-rpln_composer_plus [data-testid="stPopoverButton"] [data-testid="stIconMaterial"],
-.st-key-rpln_composer_plus [data-testid="stPopoverButton"] > span:last-child:not(:first-child) {
-    display: none !important;
-}
-/* [+] attach trigger — v0 compact size (~28px square, subtle surface). */
-.st-key-rpln_composer_plus [data-testid="stPopoverButton"] {
-    width: 28px !important;
-    height: 28px !important;
-    min-height: 28px !important;
-    min-width: 28px !important;
-    padding: 0 !important;
-    border-radius: 8px !important;
-    background: var(--rpln-surface-2, rgba(255,255,255,0.04)) !important;
-    border: 1px solid var(--rpln-hairline, rgba(255,255,255,0.08)) !important;
-    color: var(--rpln-text-muted) !important;
-    font-size: 16px !important;
-    line-height: 1 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-.st-key-rpln_composer_plus [data-testid="stPopoverButton"]:hover {
-    background: var(--rpln-surface, rgba(255,255,255,0.07)) !important;
-    color: var(--rpln-text) !important;
-}
-
-/* (d) Rotate the model-pill chevron 180° (v → ^). Reference uses expand_less;
+/* (c) Rotate the model-pill chevron 180° (v → ^). Reference uses expand_less;
    Streamlit's popover trigger ships expand_more. Rotation is cheaper than
    replacing the DOM. Also cover the stIconMaterial variant in case Streamlit
    swaps between svg and Material-Symbols span. */
@@ -3764,7 +3677,7 @@ body.rpln-redesign .rpln-profile-dock {
     transition: transform 0.15s ease;
 }
 
-/* (e) Composer full v0 parity with tmp/Test 2/RePORTaLiN Chat.html `.composer`.
+/* (d) Composer full v0 parity with tmp/Test 2/RePORTaLiN Chat.html `.composer`.
    Target metrics: 720px × ~94px. Layout: 10px top pad + 44px textarea +
    small gap + 28px controls row + 10px bottom pad. Rules are unscoped
    (no body.rpln-redesign prefix) so parity holds regardless of body class.
@@ -3829,11 +3742,7 @@ body.rpln-redesign .rpln-profile-dock {
 }
 
 /* ---------- Adapter B — v1-style composer foot-row (spec §5.8) ---------- */
-/* Matches the v0 reference: chip row under textarea with a retrieval chip
- * on the left and the model-pill (hoisted by bridge.js) on the right. The
- * shell container (st-key-rpln_composer_shell) already provides the rounded
- * card, hairline border, and surface colour — this block styles the new
- * chip row inside it and the model-pill once hoisted into the pill-slot. */
+/* Styles the model pill once bridge.js hoists it into the pill slot. */
 [class*="st-key-rpln_composer_shell"] .rpln-composer-foot,
 .rpln-composer-foot {
     display: flex;
@@ -3850,24 +3759,6 @@ body.rpln-redesign .rpln-profile-dock {
   gap: 18px;
   min-width: 0;
 }
-.rpln-composer-foot .rpln-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0;
-    background: transparent;
-    border: 0;
-    border-radius: 0;
-    color: var(--rpln-text-muted);
-    font: 500 12px var(--rpln-font-ui);
-    cursor: pointer;
-    transition: color 0.15s ease !important;
-}
-.rpln-composer-foot .rpln-chip:hover {
-    color: var(--rpln-text);
-    background: transparent;
-}
-.rpln-composer-foot .rpln-chip .material-symbols-rounded { font-size: 15px; }
 .rpln-composer-spacer { flex: 1 1 auto; }
 .rpln-composer-pill-slot {
     display: inline-flex;

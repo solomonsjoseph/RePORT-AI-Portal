@@ -14,9 +14,8 @@
 #   (g) KEEP — explicit allowlist that wins over broader patterns (keep_fields)
 #
 # Free-text PHI (narrative verbatim) is handled via the drop rule on the
-# specific narrative fields listed in drop_fields. A local-Ollama NER sweep
-# is reserved as future work (see scripts/security/phi_ner.py); until then,
-# narrative whole-value drop is the honest-safe default.
+# specific narrative fields listed in drop_fields. Narrative whole-value
+# drop is the honest-safe default.
 #
 # Rule priority (first match wins within the scrubber):
 #   1. keep_fields  — explicit allowlist (short-circuits every other rule)

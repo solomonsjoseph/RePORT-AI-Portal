@@ -114,5 +114,3 @@ agent to read raw PHI.
   catalog.
 * Optional ``config/consent_scope.yaml`` for an IEC-approved field
   allowlist layered above the scrub catalog.
-* Local narrative NER sweep in ``scripts/security/phi_ner.py`` once a
-  model and prompt are calibrated against the study corpus.

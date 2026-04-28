@@ -153,9 +153,9 @@ like "Treatment Completed" that match the generic name-like heuristic.
 * **Stanford Stanza with i2b2-tuned model**. Considered; ~93% F1 open-
   source. Deferred as an optional supplement for narrative residuals
   if the rule catalog proves insufficient.
-* **Local Ollama prompt-engineered NER**. Deferred (see
-  :mod:`scripts.security.phi_ner` design stub). When it lands, it will
-  be additive to the rule catalog, not a replacement.
+* **Local Ollama prompt-engineered NER**. Rejected for the current
+  runtime because the calibrated rule catalog plus whole-field narrative
+  drops provide a smaller, auditable surface.
 
 **Consequences.** Rule maintenance cost scales with new PHI classes
 discovered during deployment. Offset by the catalog being data-driven

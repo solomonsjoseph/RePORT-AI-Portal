@@ -145,7 +145,7 @@ Each subsection answers: **what is it, what is the background, why this choice, 
 ### A.3.8 Column-level drop
 
 - **What.** Entire column removed from every row. Covers 93 rules across 14 categories. Dominates narrative free-text (whole-column drop, not in-place redaction).
-- **Why whole-drop for narratives.** A free-text narrative like `"pt reports husband Suresh 9876543210 near Madurai"` contains tokens from *multiple* PHI classes in one cell. Hashing the cell obscures the surrounding sentence but preserves the embedded PHI tokens on disk. Dropping the column is the honest-safe default. A local-Ollama NER sweep is the designed Stage-5 extension for when we want to rescue clinically-useful narrative content (`scripts/security/phi_ner.py` — stub, raises today).
+- **Why whole-drop for narratives.** A free-text narrative like `"pt reports husband Suresh 9876543210 near Madurai"` contains tokens from *multiple* PHI classes in one cell. Hashing the cell obscures the surrounding sentence but preserves the embedded PHI tokens on disk. Dropping the column is the honest-safe default.
 - **Code anchor.** `scripts/security/phi_scrub.yaml:237-409`.
 
 ### A.3.9 Regex + clinical allowlist (the query-time PHI gate)
@@ -323,13 +323,13 @@ The manifest records SHA-256 of the runtime inputs *and* outputs. Replay would r
 `Ollama` running `qwen3:8b` locally. `.env.example` sets `LLM_PROVIDER=ollama`. A default install requires **no API key**, produces **zero external egress**, and the scrub + agent both run entirely on operator hardware. External providers (Anthropic, Google) are opt-in and require a key; `scripts/ai_assistant/ui/model_policy.py` additionally enforces a **capability version floor** (Claude ≥ 4.6, Gemini Pro ≥ 3.1, GPT ≥ 5.3) before an external model is accepted, blocking older models with weaker safety guardrails.
 
 ### Q20. Does the UI accept file uploads?
-The `+` menu in the chat composer shows "Upload file" / "Upload folder" and mounts a `st.file_uploader` widget. **It is not wired to any downstream consumer** (verified by grepping `rpln_plus_uploader` across `scripts/ai_assistant/`). Uploaded bytes live in Streamlit session memory for the duration of the tab and are never written to disk, never passed to the agent, never sent to any LLM provider. Functionally inert from a PHI-handling standpoint today. Listed as an honest gap in §A.7 — should be removed or gated.
+No. The chat composer does not expose a file-upload widget. Raw study data enters the system out-of-band through the local filesystem and the extraction pipeline, where PHI controls are explicit and testable.
 
 ### Q21. Does CI enforce PHI-test regressions on every PR?
-Yes. `.github/workflows/ci.yml` runs on code-touching pushes to `main` / `develop` and PRs to `main`. Matrix: Python 3.11 / 3.12 / 3.13. The CI stages run Ruff, mypy, and the full pytest suite. PHI-critical coverage spans scrub, gate, file-access, staging, lineage, prompt-refusal, sandbox, KeyStore, and PDF-redaction tests. A regression fails the build. See [conformance_matrix.md](conformance_matrix.md) for the authoritative verification protocol.
+Yes. `.github/workflows/ci.yml` runs on pushes and PRs. Matrix: Python 3.11 / 3.12 / 3.13. The CI stages run Ruff, mypy, the full pytest suite, and `pip-audit`. PHI-critical coverage spans scrub, gate, file-access, staging, lineage, prompt-refusal, sandbox, KeyStore, and PDF-redaction tests. A regression fails the build. See [conformance_matrix.md](conformance_matrix.md) for the authoritative verification protocol.
 
 ### Q22. Is dependency-vulnerability scanning in CI?
-Partial. `pip-audit` is declared in the `dev` optional-deps group but is not a separate gating step in `.github/workflows/ci.yml`. Ruff `S` rules (hardcoded secrets, command injection, weak crypto) are configured in `pyproject.toml:215-241 (the [tool.ruff.lint] section)` and will fire during the lint stage, but there is no partitioned "security lint" job. Listed as a gap in §A.7.
+Yes. `pip-audit` runs in the dedicated security job in `.github/workflows/ci.yml`. Ruff `S` rules (hardcoded secrets, command injection, weak crypto) are configured in `pyproject.toml` and run during lint.
 
 ### Q23. Does the step ordering matter for audit hygiene?
 Yes, load-bearing. `main.py` runs **Step 1.6 PHI scrub** *before* **Step 1.7 dataset cleanup**, which is the step that emits `dataset_cleanup_report.json`. Therefore the cleanup audit records counts of the post-scrub state and has never seen a raw PHI value. This is deliberate: if the order were reversed, the audit report itself would become a PHI-bearing artifact.
@@ -417,11 +417,11 @@ Each step writes a hidden manifest `.<step>.manifest.json` with SHA-256 hashes o
 ### A.9.4 CI enforcement — the anti-drift control
 
 `.github/workflows/ci.yml`:
-- Triggers on push to `main`/`develop` + PR to `main` (`paths-ignore: docs/**, *.md`).
+- Triggers on every push, every pull request, and manual dispatch.
 - Python matrix `3.11, 3.12, 3.13`.
-- Two sequential jobs: `lint` (Ruff + mypy) → `test` (pytest).
+- Three jobs: `lint-typecheck` (Ruff + mypy), `tests` (pytest matrix), and `security` (`pip-audit`).
 - Ruff rules include `S` (flake8-bandit) — hardcoded-secret detection, weak crypto lints — configured in `pyproject.toml:215-241 (the [tool.ruff.lint] section)`.
-- Test stage runs the full suite via `make test-all`; the PHI-critical subset spans 22 dedicated modules and is included on every PR. See [conformance_matrix.md](conformance_matrix.md) §Test evidence for the verification protocol.
+- Test stage runs the full suite via `uv run pytest tests/`; the PHI-critical subset spans 22 dedicated modules and is included on every PR. See [conformance_matrix.md](conformance_matrix.md) §Test evidence for the verification protocol.
 - Notable tests an IRB reviewer should name-check:
   - `test_agent_tools_phi_safe.py::test_every_tool_decorator_is_followed_by_phi_safe_return` — **source-level gate**. Counts `@tool` and `@phi_safe_return` decorations in `agent_tools.py`; any new tool missing the gate fails CI.
   - `test_agent_tools_phi_safe.py::test_tool_and_phi_safe_return_counts_match` — parity check, same pair.
@@ -429,7 +429,7 @@ Each step writes a hidden manifest `.<step>.manifest.json` with SHA-256 hashes o
   - `TestCatalogCoverage.test_hipaa_category_has_coverage` — parametrised across the HIPAA §164.514(b)(2) identifier list; removing any rule breaks CI.
   - `TestBootstrapKey.test_refuses_overwrite` — hard block on accidental HMAC-key rotation.
 
-### A.9.5 Three operator-attestation environment flags
+### A.9.5 Two operator-attestation environment flags
 
 Documented in `.env.example`:
 
@@ -437,9 +437,8 @@ Documented in `.env.example`:
 |---|---|---|---|
 | `REPORTALIN_TMPFS_STAGING` | Opt in to `/dev/shm` (in-RAM) AMBER on Linux | off | operator |
 | `REPORTALIN_PDF_PHI_FREE` | Authorise external-API PDF extraction | off (refuse) | operator — **also** requires non-empty `authorities/phi_free_pdfs.md` |
-| `REPORTALIN_OLLAMA_NER` | Activate the Stage-5 local-Ollama narrative NER sweep | off | operator (feature flag; `phi_ner.py` raises until implemented) |
 
-All three are explicit opt-ins; defaults are the conservative path.
+Both are explicit opt-ins; defaults are the conservative path.
 
 ### A.9.6 Default LLM runtime is local
 
@@ -462,9 +461,9 @@ All three are explicit opt-ins; defaults are the conservative path.
 - Every surfaced result is an aggregate (descriptive stats, odds ratios, p-values, plots) — no row-level dumps bypass the k-anon gate.
 - Tools that *do* surface rows are wrapped in `guard_rows_with_kanon` before return.
 
-### A.9.9 Chat upload widget — documented inertness
+### A.9.9 Chat upload posture
 
-`scripts/ai_assistant/ui/chat.py:444-467` renders a `+` → "Upload file / Upload folder" popover containing `st.file_uploader`. The widget writes to `st.session_state["rpln_plus_uploader"]`. A `grep -rn "rpln_plus_uploader"` across `scripts/ai_assistant/` shows **no downstream reader**: no tool consumes the bytes, no file-writer persists them, no API call transmits them. Uploaded content therefore lives only in the Streamlit server's RAM until the tab closes. From a PHI-handling perspective the widget is **inert** today. Listed as a gap in §A.7 — recommended action: remove the widget until it is wired, or pair a wiring with a prompt-side PHI gate.
+The chat UI intentionally has no file-upload control. This keeps uploads on the audited extraction path instead of letting raw bytes enter Streamlit session state.
 
 ### A.9.10 `.gitignore` as a preventive control
 
@@ -480,7 +479,7 @@ Prevents the most common causes of accidental PHI commit.
 
 `authorities/` does **not** exist in a fresh checkout by design. An operator creates it and fills it before unlocking a gate:
 - `authorities/phi_free_pdfs.md` — required (alongside `REPORTALIN_PDF_PHI_FREE=1`) for external-API PDF extraction. Template shipped at `docs/irb_dossier/phi_free_pdfs.template.md`; 7-point operator checklist.
-- `authorities/phi_limited_dataset.md` — required when `compliance_posture: limited_dataset` is set in `phi_scrub.yaml`. A matching template is tracked as a documentation follow-up in §A.7.
+- `authorities/phi_limited_dataset.md` — required when `compliance_posture: limited_dataset` is set in `phi_scrub.yaml`. Template: `docs/irb_dossier/phi_limited_dataset.template.md`.
 
 Gate-refusal paths are verified by `tests/test_pdf_phi_flag.py::TestResolvePDFProviderGate` (attempt external extraction without the flag / without the note → `ValueError`).
 
@@ -560,10 +559,10 @@ From [conformance_matrix.md](conformance_matrix.md):
 | 5.5 | `config/consent_scope.yaml` | ✅ de-facto via scrub catalog; explicit file deferred | Future extension |
 | — | Per-session query budget (drill-down attack) | ⚠ stateless today | Future layer |
 | — | l-diversity / t-closeness | ✅ l-diversity (l=2) shipped — `kanon_gate.l_diversity_check`; t-closeness remains a possible future layer | Current |
-| — | Four runbooks (key mgmt / breach / retention / DPDPA transition) | ⚠ stubs | Operator authors before first production ingest |
-| — | `docs/irb_dossier/phi_limited_dataset.template.md` not shipped | ⚠ code path tested; template absent | Add template alongside `phi_free_pdfs.template.md` |
-| — | CI does not gate on `ruff S` (bandit) or `pip-audit` as separate steps | ⚠ rules configured in `pyproject.toml` but not partitioned in CI | Partition a security-lint job |
-| — | `web_ui` chat `+` menu exposes an `st.file_uploader` widget | ⚠ session-state key `rpln_plus_uploader` has no downstream reader; bytes never leave Streamlit RAM | Remove the widget until wired, or add a prompt-side PHI gate |
+| — | Four operator-owned runbooks (key mgmt / breach / retention / DPDPA transition) | ⚠ required before production ingest | Operator authors before first production ingest |
+| — | `docs/irb_dossier/phi_limited_dataset.template.md` | ✅ shipped | Current |
+| — | Dedicated CI security job | ✅ `pip-audit` gated in CI; Ruff security rules run in lint | Current |
+| — | Chat file upload surface | ✅ no upload widget exposed | Current |
 | — | Direct prompt-injection in user input | ✅ closed — `guard_user_prompt` refuses blocking-tier PHI at UI + CLI entry points; LLM never sees the prompt. | Current |
 | — | Indirect prompt-injection via PDF-extracted text surfaced by `search_pdf_context` | ✅ closed — `sanitise_untrusted_snippet` wraps every PDF snippet in a spotlighting envelope and redacts imperative-voice tokens. | Current |
 
@@ -852,7 +851,7 @@ Correct. The PDFs are treated as **sensitive by default**. Two co-existing extra
 
 ## B.8 What the IRB should ask for before approving
 
-All of the above is implemented in code and tested automatically. But four human-owned documents are still stubs that the study team must author before the first real patient ingest:
+All of the above is implemented in code and tested automatically. Four human-owned procedures remain operator responsibilities before the first real patient ingest:
 
 1. **Key management runbook** — who holds the key, where, under what custody arrangement, what happens if they leave the study.
 2. **Breach response runbook** — the 72-hour notification timeline required by the RePORT India Common Protocol.
@@ -907,9 +906,9 @@ Every time a software developer proposes a change to this project, the full pyte
 - "Dates were shifted — are the *gaps* between a subject's dates still correct?" (property-based proof)
 - "The HIPAA privacy-law list has 18 kinds of identifier — are all 18 covered by a delete rule?"
 
-### B.10.5 There is an Upload button, but it does nothing today
+### B.10.5 Chat uploads are intentionally absent
 
-The chat interface shows a `+` button with "Upload file / Upload folder" options. Today, clicking Upload and selecting a file lets Streamlit hold the file in memory, but **no part of the system reads it** — it is not sent to the AI, not written to disk, not logged. The button is an unfinished feature. We consider this a gap worth flagging: either the button should be removed from the UI until the feature is ready, or the wiring should be paired with a privacy check that refuses PHI-bearing uploads. Today the harm is zero (because nothing reads the upload), but it is honest to call this out.
+The chat interface does not accept file uploads. Source data is loaded by the extraction pipeline from local study folders so PHI policy, attestation gates, logging hygiene, and tests stay on one audited path.
 
 ### B.10.6 Rotating the secret key is deliberately disruptive
 
@@ -1011,10 +1010,7 @@ None of these are currently exploitable against the default local setup, but the
 
 ### B.10.13 Honest-gap summary for the lay reviewer
 
-- The Upload button in the chat is currently inert and should be removed or wired up with a privacy check.
-- There is a template for PDF-attestation (`phi_free_pdfs.template.md`); add a matching Limited-Dataset attestation template (`phi_limited_dataset.template.md`).
-- Continuous-integration security checks include code-style security lint, but a dedicated "dependency-vulnerability scan" is not a separate CI step yet. Lives in the dev toolchain but not gated.
-- Four human-owned runbooks (key custody, breach response, retention, DPDPA transition) are stubs. The IRB should hold approval conditional on these being written before first real ingest.
+- Four human-owned runbooks (key custody, breach response, retention, DPDPA transition) remain operator responsibilities. The IRB should hold production ingest conditional on these being written and approved.
 
 ---
 

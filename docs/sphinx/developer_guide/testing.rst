@@ -168,8 +168,8 @@ error branches.
 CI Behavior
 -----------
 
-``.github/workflows/ci.yml`` runs Ruff, mypy, and the full pytest suite
-on Python 3.11, 3.12, and 3.13 for code-touching pushes and PRs.
+``.github/workflows/ci.yml`` runs Ruff, mypy, the full pytest suite,
+and ``pip-audit`` on Python 3.11, 3.12, and 3.13 for pushes and PRs.
 
 ``.github/workflows/docs-quality-check.yml`` runs the doc-freshness
 linter, builds Sphinx, runs linkcheck, and reports size/version drift for
