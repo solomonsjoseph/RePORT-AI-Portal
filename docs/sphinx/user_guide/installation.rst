@@ -1,151 +1,68 @@
 Installation
 ============
 
-Prerequisites
--------------
+This page covers setup for users and local operators. Developer tooling
+and contribution workflow live in :doc:`../developer_guide/index`.
 
-Before installing RePORT AI Portal, ensure you have:
+Requirements
+------------
 
-* Python 3.11 or higher (3.13 recommended)
-* `uv <https://docs.astral.sh/uv/>`_ package manager
-* Git (for cloning the repository)
+* macOS, Linux, or Windows with WSL
+* Python 3.11 or newer
+* Git
+* ``uv`` package manager
+* 8 GB RAM minimum, 16 GB recommended
+* About 2 GB free disk space for dependencies
 
-System Requirements
-~~~~~~~~~~~~~~~~~~~
+Install
+-------
 
-* **Operating System**: macOS, Linux, or Windows
-* **Memory**: Minimum 8GB RAM (16GB recommended for large datasets)
-* **Disk Space**: 2GB for the application and dependencies
-
-Installation Steps
-------------------
-
-1. Install uv (if not already installed)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Install ``uv``:
 
 .. code-block:: bash
 
    curl -LsSf https://astral.sh/uv/install.sh | sh
 
-2. Clone the Repository
-~~~~~~~~~~~~~~~~~~~~~~~
+Clone the project:
 
 .. code-block:: bash
 
    git clone https://github.com/solomonsjoseph/RePORT-AI-Portal.git
    cd RePORT-AI-Portal
 
-3. Quick Start (Recommended)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   make quickstart    # Syncs dependencies and launches the app
-
-Or step-by-step:
-
-.. code-block:: bash
-
-   uv sync            # Install all dependencies (creates .venv automatically)
-   make pipeline      # Run the full data processing pipeline
-
-Required Dependencies
-~~~~~~~~~~~~~~~~~~~~~
-
-The main dependencies include:
-
-* **pandas**: Data manipulation and analysis
-* **openpyxl**: Excel file reading/writing
-* **pypdf/pdfplumber**: PDF processing
-* **cryptography**: AES-256-GCM encryption primitives
-
-Optional Dependencies
-~~~~~~~~~~~~~~~~~~~~~
-
-For the full stack (recommended — installs all groups):
+Install dependencies:
 
 .. code-block:: bash
 
    uv sync --all-groups
 
-Or install individual groups as needed:
-
-For AI Assistant (LangGraph + LangChain providers):
+Verify the install:
 
 .. code-block:: bash
 
-   uv sync --group ai_assistant
+   uv run python -c "import scripts; print('Installation successful')"
 
-This includes:
-
-* langchain-core / langgraph: ReAct agent framework
-* langchain-openai / langchain-anthropic / langchain-google-genai / langchain-ollama: LLM providers
-* kaleido (``>=1.0,<2.0``): static image export for Plotly figures (required by the analytical agent to save charts to disk and embed them in chat exports)
-
-For the Streamlit web UI:
+Start the Web UI
+----------------
 
 .. code-block:: bash
 
-   uv sync --group web
+   make chat
 
-This includes:
+The app opens a local Streamlit page. Use it to select the model
+provider, load a study, and start chat.
 
-* streamlit: Browser-based chat interface (``make chat`` / ``main.py --web``)
+Prepare for First Run
+---------------------
 
-For additional LLM SDK access:
+Before loading a study:
 
-.. code-block:: bash
+1. Put study files under ``data/raw/{STUDY_NAME}/``.
+2. Choose a model provider in :doc:`configuration`.
+3. Create the PHI key:
 
-   uv sync --group llm
+   .. code-block:: bash
 
-This includes:
+      python -m scripts.security.phi_scrub bootstrap-key
 
-* anthropic: Direct Anthropic SDK
-* google-genai: Direct Google GenAI SDK
-
-For development:
-
-.. code-block:: bash
-
-   uv sync --group dev
-
-This includes:
-
-* ruff: Fast Python linter and formatter
-* mypy: Static type checking
-* pytest: Testing framework (included in dev group)
-* pip-audit: Security vulnerability auditing
-
-For documentation:
-
-.. code-block:: bash
-
-   uv sync --group docs
-
-This includes:
-
-* sphinx: Documentation generation
-* sphinx-rtd-theme: Read the Docs theme
-* sphinx-autodoc-typehints: Type hint rendering
-
-4. Verify Installation
-~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   uv run python -c "import scripts; print('Installation successful!')"
-
-Configuration
--------------
-
-After installation, you'll need to configure:
-
-1. **Environment Variables**: Copy `.env.example` to `.env` and set your API keys
-2. **Config File**: Adjust `config.py` for your specific needs
-3. **Data Paths**: Update paths in config to point to your data directories
-
-Next Steps
-----------
-
-* See :doc:`configuration` for detailed configuration options
-* See :doc:`quickstart` for your first data extraction
+Then continue with :doc:`quickstart`.

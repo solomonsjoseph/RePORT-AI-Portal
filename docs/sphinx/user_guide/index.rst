@@ -1,61 +1,47 @@
 User Guide
 ==========
 
-The user guide is for readers who need to run the portal, ask questions
-of a locked study, or review the PHI protections without changing the
-code. Contributors who need source entry points belong in the
-:doc:`../developer_guide/index`.
+This guide is for people who need to use RePORT AI Portal, not maintain
+its internals. It explains what the portal does, how it helps a study
+team, how to set it up, and how to run a study safely.
 
-Reader Profiles
----------------
+For implementation details, architecture, source entry points, tests,
+and contributor workflow, use the :doc:`../developer_guide/index`.
+
+Start Here
+----------
 
 .. list-table::
    :header-rows: 1
-   :widths: 24 38 38
+   :widths: 28 42 30
 
    * - Reader
      - Goal
-     - Best first page
+     - Start with
    * - Clinical researcher
-     - Ask cohort questions in English against a PHI-free published
-       study bundle.
-     - :doc:`overview`, then :doc:`quickstart`
+     - Ask questions about a locked, PHI-scrubbed study.
+     - :doc:`overview`
    * - Data manager
-     - Understand how raw data stays behind the RED/AMBER boundary and
-       how published artifacts are produced.
-     - :doc:`data_pipeline`, then :doc:`configuration`
-   * - IRB or IEC reviewer
-     - Verify PHI handling, audit evidence, and residual risks.
-     - :doc:`faq`, then ``docs/irb_dossier/``
-   * - Site PI or local operator
-     - Install the stack locally, configure the model and PHI flags, and
-       run a locked study.
-     - :doc:`installation`, then :doc:`quickstart`
+     - Prepare raw study files and publish a safe bundle.
+     - :doc:`quickstart`
+   * - Site operator
+     - Install, configure, and launch the portal locally.
+     - :doc:`installation`
+   * - PI or reviewer
+     - Understand the privacy posture and what evidence exists.
+     - :doc:`faq`
 
-How These Pages Are Written
----------------------------
+What's Included
+---------------
 
-User pages are task-first. Each procedural page names the reader, lists
-prerequisites, gives concrete commands, shows expected outputs when
-stable, and links to the next operational step. PHI-sensitive pages name
-the file path, audit artifact, or control that proves the claim.
-
-What's in the User Guide
--------------------------
-
-* :doc:`overview` — the pain this project addresses, what it is, who
-  benefits, and when not to use it.
-* :doc:`installation` — system requirements and one-shot install.
-* :doc:`quickstart` — ten-minute walkthrough from clone to first answer,
-  with expected output at every step.
-* :doc:`configuration` — every runtime knob including the three
-  PHI-safety environment flags.
-* :doc:`data_pipeline` — the full eight-step extract → scrub → publish
-  flow with the honest-broker 4-tier architecture.
-* :doc:`glossary` — authoritative definitions for AMBER / GREEN /
-  trio bundle / SANT jitter / k-anonymity / Safe Harbor / Limited
-  Dataset / etc.
-* :doc:`faq` — trust, PHI scope, leak-response, and operational questions.
+* :doc:`overview` - what the portal is, who it helps, and when to use it.
+* :doc:`installation` - system requirements and setup.
+* :doc:`quickstart` - first run from raw study files to chat.
+* :doc:`configuration` - the small set of settings most users touch.
+* :doc:`data_pipeline` - a plain-language view of what happens when you
+  load a study.
+* :doc:`glossary` - user-facing terms.
+* :doc:`faq` - common setup, privacy, and troubleshooting questions.
 
 Contents
 --------
@@ -70,31 +56,22 @@ Contents
 
 .. toctree::
    :maxdepth: 2
-   :caption: User Documentation
+   :caption: Using the Portal
 
    configuration
    data_pipeline
    glossary
    faq
 
-Suggested Reading Order
------------------------
+Where Details Live
+------------------
 
-1. :doc:`overview` — decide whether this project solves your pain.
-2. :doc:`installation` — get ``uv`` and the Python 3.11+ baseline in place.
-3. :doc:`quickstart` — run the pipeline once, ten minutes.
-4. :doc:`faq` — browse trust + PHI-scope questions before inviting
-   collaborators onto the stack.
-5. :doc:`data_pipeline` + :doc:`configuration` — go deep when you're
-   ready to customise.
+User pages stay brief on purpose. They should help a study team operate
+the portal without needing to understand how the code is built.
 
-Getting Help
-------------
+The technical detail stays in:
 
-* Check the :doc:`faq` for common questions and the PHI-scope /
-  leak-response playbook.
-* Read the :doc:`glossary` if an unfamiliar term blocks comprehension.
-* Open an issue on GitHub with the relevant audit-report excerpt (never
-  paste raw subject data).
-* For technical deep dives — the PHI architecture, decisions, references —
-  cross into the :doc:`../developer_guide/index`.
+* :doc:`../developer_guide/index` - architecture, source layout, tests,
+  operational runbooks, and contributor guidance.
+* ``docs/irb_dossier/`` - reviewer-facing control evidence and
+  conformance material.

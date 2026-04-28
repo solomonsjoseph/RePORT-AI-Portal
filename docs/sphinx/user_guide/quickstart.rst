@@ -1,216 +1,140 @@
-Quick Start — Ten Minutes to Your First Answer
-==============================================
+Quick Start
+===========
 
-Reader and outcome
-------------------
+Use this walkthrough to load one study and ask the first question.
 
-This walkthrough is for a site operator, data manager, or clinical
-researcher who wants to run one locked study locally and ask the first
-question against the PHI-free trio bundle.
-
-After completing it, you will have:
-
-* installed the project dependencies;
-* placed one study under ``data/raw/{STUDY_NAME}/``;
-* created the out-of-repo PHI HMAC key;
-* generated ``output/{STUDY}/trio_bundle/`` and
-  ``output/{STUDY}/audit/``;
-* opened the Streamlit chat UI against the published bundle.
-
-.. contents:: On this page
-   :local:
-   :depth: 2
-
-Before you start
+Before You Start
 ----------------
 
-* macOS, Linux, or Windows (WSL) with **Python 3.11 or newer**.
-* ~2 GB free disk for the virtualenv + dependencies.
-* Study data ready to place under ``data/raw/{STUDY_NAME}/`` — the repo
-  does not ship with raw data.
-* An LLM endpoint. Any of: Ollama running locally (recommended for PHI
-  separation), an Anthropic API key, an OpenAI API key, or a Google
-  Generative AI key.
+You need:
 
-Step 1 — Install ``uv`` and clone the repo
-------------------------------------------
+* the project installed; see :doc:`installation`;
+* one study folder under ``data/raw/{STUDY_NAME}/``;
+* a local Ollama model or a hosted LLM API key;
+* the local PHI key.
 
-.. code-block:: bash
+1. Place Study Files
+--------------------
 
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   git clone https://github.com/solomonsjoseph/RePORT-AI-Portal.git
-   cd RePORT-AI-Portal
-   uv sync --all-groups
-
-Expected: ``uv sync`` prints a handful of package resolutions and
-exits 0. You now have a ``.venv/`` beside the source tree.
-
-Step 2 — Place study data
--------------------------
-
-Copy the raw study tree under ``data/raw/{STUDY_NAME}/`` so that:
+Expected layout:
 
 .. code-block:: text
 
    data/raw/Indo-VAP/
-   ├── datasets/              # your .xlsx / .csv study forms
-   ├── data_dictionary/       # the study data-dictionary workbook
-   └── annotated_pdfs/        # optional — annotated CRF templates
+   ├── datasets/
+   ├── data_dictionary/
+   └── annotated_pdfs/        # optional
 
-Set ``STUDY_NAME`` if it differs from the auto-detected directory:
+Set the study name if needed:
 
 .. code-block:: bash
 
    export STUDY_NAME=Indo-VAP
 
-Step 3 — Bootstrap the PHI HMAC key
------------------------------------
+2. Create the PHI Key
+---------------------
 
-The scrubber uses an HMAC-SHA256 key (32 random bytes) to produce stable
-subject pseudonyms and per-subject date offsets. The key lives **outside
-the repo tree** at ``~/.config/report_ai_portal/phi_key`` (mode 0600).
-
-Create it once:
+Run once per machine:
 
 .. code-block:: bash
 
    python -m scripts.security.phi_scrub bootstrap-key
 
-Expected:
+If the key already exists, keep it. Replacing it changes pseudonyms and
+requires a full re-run.
 
-.. code-block:: text
+3. Choose a Model Provider
+--------------------------
 
-   PHI HMAC key written to: /Users/you/.config/report_ai_portal/phi_key
-   File mode: 0600. This key is outside the repo tree and agent scope.
-
-If the key already exists the command refuses to overwrite — rotating it
-invalidates every previously-scrubbed artifact.
-
-Step 4 — Pick an LLM and run the pipeline
------------------------------------------
-
-Set the provider that matches the LLM endpoint you plan to use. For local
-Ollama (the safest PHI posture — nothing leaves the box):
+Recommended local setup:
 
 .. code-block:: bash
 
    export LLM_PROVIDER=ollama
    export LLM_MODEL=qwen3:8b
-   # Ollama must be running at http://localhost:11434
 
-If your machine is tight on RAM, the agent will automatically step the
-``qwen3:8b → qwen3:4b → qwen3:1.7b`` ladder at startup and pick the
-largest rung Ollama can actually load. Pull all three to give the walker
-room to move: ``ollama pull qwen3:8b qwen3:4b qwen3:1.7b``. The resolved
-rung is reflected in the wizard and any error cards.
-
-For a hosted API (requires the PHI-safety flag acknowledging the PDF
-source is PHI-free — see :doc:`configuration`):
+Hosted provider example:
 
 .. code-block:: bash
 
    export LLM_PROVIDER=anthropic
    export ANTHROPIC_API_KEY=sk-ant-...
    export LLM_MODEL=claude-opus-4-7
-   export REPORTALIN_PDF_PHI_FREE=1   # only if your PDFs are verified PHI-free
 
-Run the pipeline:
+See :doc:`configuration` for OpenAI, Google, and PDF-related settings.
+
+4. Load the Study
+-----------------
+
+From the terminal:
 
 .. code-block:: bash
 
    make pipeline
 
-Expected: progress bars per leg (dictionary → datasets → PDFs), a "Step 1.6:
-PHI Scrub" line with a count of rows kept + fields scrubbed, "Step 1.7:
-Dataset Cleanup", "Step 1.8: Cleanup Propagation", "Step 2: Publish
-Staging → Trio Bundle", "Step 4: Emit Lineage Manifest". Success ends with
-an output-locations summary listing ``output/{STUDY}/trio_bundle/`` and
-``output/{STUDY}/audit/``.
-
-Step 5 — Verify and open the chat
----------------------------------
-
-Peek at the scrub audit:
-
-.. code-block:: bash
-
-   jq '.scrubbed | group_by(.scope) | map({scope: .[0].scope, total: (map(.count) | add)})' \
-       output/Indo-VAP/audit/phi_scrub_report.json
-
-Expected output is a small JSON array of ``{scope, total}`` pairs — counts
-only, no raw values. Nonzero numbers under ``phi-scrub-drop``,
-``phi-scrub-id``, ``phi-scrub-date``, and (if applicable) ``phi-scrub-cap``
-confirm the scrubber did work.
-
-Spot-check the lineage manifest:
-
-.. code-block:: bash
-
-   jq '.steps | keys' output/Indo-VAP/audit/lineage_manifest.json
-
-Expected: ``["phi_scrub", "dataset_cleanup", "dictionary_cleanup", "pdfs_cleanup"]``
-or a subset depending on which legs ran.
-
-Launch the chat UI:
+Or use the web UI:
 
 .. code-block:: bash
 
    make chat
 
-A Streamlit window opens at http://localhost:8501. Ask a test question:
+Then click **Load Study**.
+
+Expected result:
 
 .. code-block:: text
 
-   How many Cohort A subjects enrolled between Jan 2014 and Dec 2014
-   had a TB recurrence outcome?
+   output/Indo-VAP/
+   ├── trio_bundle/
+   ├── audit/
+   └── agent/
 
-The agent routes to structured tools, runs the query against the
-trio_bundle, and answers with a count (plus a link back to the source
-dataset).
+5. Start Chat
+-------------
 
-What If Something Breaks?
--------------------------
+If the web UI is not already open:
 
-* **"PHI HMAC key not found"** — run Step 3.
-* **"PDF extraction via external LLM API refused"** — you set an external
-  API provider but did not set ``REPORTALIN_PDF_PHI_FREE=1``. Either
-  flip the flag (if your PDFs really are PHI-free) or use
-  ``--pdf-source`` with pre-extracted JSON — see :doc:`configuration`.
-* **"tests not found" / missing deps** — ``uv sync --all-groups`` (not
-  just ``uv sync``) pulls the test group and the AI Assistant group.
-* **The scrub report is empty** — ``scripts/security/phi_scrub.yaml`` is
-  the catalog; if it's missing the scrubber no-ops and writes an audit
-  with posture ``disabled``. Restore from the repo.
+.. code-block:: bash
 
-Optional — Save a Restore Snapshot Locally
-------------------------------------------
+   make chat
 
-Once you have a clean trio bundle, save a **restore-ready snapshot** so
-you can roll back to a known-good cohort after subsequent pipeline
-runs::
+Ask a simple first question, for example:
 
-    make snapshot SNAPSHOT=indovap-2026q1      # default name is UTC timestamp
-    make list-snapshots                         # newest first
-    make restore-study SNAPSHOT=indovap-2026q1  # overwrites live trio_bundle/
+.. code-block:: text
 
-Restore points live under ``output/{STUDY_NAME}/agent/restore_points/<name>/``
-and are fully gitignored along with the rest of ``output/``. They are
-byte-for-byte copies of the PHI-scrubbed trio bundle and contain no
-audit logs, telemetry, or conversations. They support crash-recovery
-during dev (rolling back ``trio_bundle/`` to a prior cohort) and are
-distinct from the version-controlled tracked baseline at
-``snapshots/{STUDY_NAME}/`` (maintainer-curated, used by the pipeline's
-PDF orchestrator as a fallback). See :doc:`../developer_guide/operations` (Trio-Bundle Snapshot Maintenance).
+   How many subjects are in this study?
 
-The wizard's step-2 "Use Existing Study" button skips the pipeline and
-trusts the live ``trio_bundle/``; "Load Study" runs the pipeline (with
-the tracked snapshot baseline as PDF fallback when the LLM tier is
-unavailable).
+Then try a study-specific question:
+
+.. code-block:: text
+
+   What variables are available for baseline demographics?
+
+Use Existing Study
+------------------
+
+If a published bundle already exists, the web UI can use it directly.
+Choose **Use Existing Study** instead of loading raw files again.
+
+Common Problems
+---------------
+
+**PHI key not found**
+   Run ``python -m scripts.security.phi_scrub bootstrap-key``.
+
+**Study not found**
+   Confirm ``STUDY_NAME`` matches the folder under ``data/raw/``.
+
+**API key not found**
+   Export the key for the selected hosted provider, or use Ollama.
+
+**PDF warning**
+   PDFs are optional. If PDFs may contain PHI, review
+   :doc:`configuration` before enabling hosted PDF processing.
 
 Next Steps
 ----------
 
-* :doc:`data_pipeline` — the full eight-step flow in depth.
-* :doc:`configuration` — every knob including the three PHI-safety flags.
-* :doc:`faq` — trust, PHI scope, and leak-response questions.
-* :doc:`glossary` — AMBER / GREEN / trio bundle / SANT jitter / k-anonymity.
+* :doc:`data_pipeline` - what happens when a study is loaded.
+* :doc:`configuration` - common runtime settings.
+* :doc:`faq` - common user and privacy questions.
