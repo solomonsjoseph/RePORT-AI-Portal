@@ -407,7 +407,9 @@ class TestRunScrub:
         row = loaded[0]
         # DOB present but shifted
         assert "DOB" in row
-        expected_offset = phi_scrub.date_offset_days("S1", key=bytes.fromhex("00" * 32), max_days=30)
+        expected_offset = phi_scrub.date_offset_days(
+            "S1", key=bytes.fromhex("00" * 32), max_days=30
+        )
         assert expected_offset != 0
         assert row["DOB"] == phi_scrub.shift_date("1970-01-01", expected_offset)
         # Offset must be identical for DOB and VISDAT
