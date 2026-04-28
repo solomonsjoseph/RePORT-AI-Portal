@@ -1,12 +1,9 @@
 User Guide
 ==========
 
-This guide is for people who need to use RePORT AI Portal, not maintain
-its internals. It explains what the portal does, how it helps a study
-team, how to set it up, and how to run a study safely.
-
-For implementation details, architecture, source entry points, tests,
-and contributor workflow, use the :doc:`../developer_guide/index`.
+This guide is for people who need to use RePORT AI Portal. It explains
+what the portal does, how it helps a study team, how to set it up, and
+how to run one study safely. It does not explain how the code is built.
 
 Start Here
 ----------
@@ -27,9 +24,9 @@ Start Here
    * - Site operator
      - Install, configure, and launch the portal locally.
      - :doc:`installation`
-   * - PI or reviewer
-     - Understand the privacy posture and what evidence exists.
-     - :doc:`faq`
+   * - PI
+     - Understand the user workflow and where output evidence lives.
+     - :doc:`overview`, then :doc:`data_pipeline`
 
 What's Included
 ---------------
@@ -69,7 +66,7 @@ Where Details Live
 User pages stay brief on purpose. They should help a study team operate
 the portal without needing to understand how the code is built.
 
-The technical detail stays in:
+Other audience-specific detail stays in:
 
 * :doc:`../developer_guide/index` - architecture, source layout, tests,
   operational runbooks, and contributor guidance.

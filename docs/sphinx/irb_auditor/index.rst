@@ -5,8 +5,8 @@ This profile is only for IRB, IEC, privacy, and audit review. It states
 what PHI is handled, where it can exist, how it is protected, and why
 those controls align with India and USA research privacy expectations.
 
-Use this profile to review the privacy posture without reading developer
-implementation notes.
+Use this profile to review the privacy posture without reading
+developer implementation notes or general user setup instructions.
 
 Review Path
 -----------
@@ -39,6 +39,9 @@ What This Profile Does Not Cover
 * Code architecture, contributor workflow, or build history.
 * Model-provider setup beyond PHI handling implications.
 * General user instructions for running the portal.
+
+For those audiences, use :doc:`../user_guide/index` or
+:doc:`../developer_guide/index`.
 
 Contents
 --------

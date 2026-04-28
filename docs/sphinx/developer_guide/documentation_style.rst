@@ -22,6 +22,22 @@ The project uses a pragmatic blend of:
 * Sphinx structure: use cross-references, toctrees, autodoc, and warnings
   as errors through ``make docs-quality``.
 
+Documentation Boundary
+----------------------
+
+The project has two documentation surfaces:
+
+* ``README.md`` is the GitHub front door. Keep it short: what the
+  project is, where each audience should go, a minimal quick start, and
+  support links.
+* ``docs/sphinx/`` is the documentation library. Put setup detail,
+  privacy evidence, architecture, testing, operations, and contributor
+  workflow here.
+
+Do not add standalone Markdown packets or parallel documentation trees.
+If a topic needs detail, add or update a Sphinx page and link to it from
+the README only when it is a common entry point.
+
 Profile-first Rule
 ------------------
 
