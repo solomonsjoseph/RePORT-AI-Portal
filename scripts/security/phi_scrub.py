@@ -64,8 +64,9 @@ Key management
 --------------
 The HMAC key is a sidecar file at
 ``$XDG_CONFIG_HOME/report_ai_portal/phi_key`` (default ``~/.config/report_ai_portal/phi_key``).
-Mode must be ``0600``. Missing key = hard-fail (no auto-generate). Bootstrap
-explicitly::
+Mode must be ``0600``. Missing key = hard-fail for developer/operator CLI
+pipeline runs. Normal users create it through the web UI's Load Study flow.
+Developers can bootstrap explicitly::
 
     python -m scripts.security.phi_scrub bootstrap-key
 
@@ -614,8 +615,8 @@ def load_key(path: Path | None = None) -> bytes:
     path = path or config.PHI_KEY_PATH
     if not path.is_file():
         raise PHIKeyMissingError(
-            f"PHI HMAC key not found at {path}. Bootstrap the key with:\n"
-            f"    python -m scripts.security.phi_scrub bootstrap-key"
+            f"PHI HMAC key not found at {path}. Use the web UI Load Study flow, "
+            "or ask a developer/operator to provision the sidecar PHI key."
         )
 
     mode = path.stat().st_mode & 0o777

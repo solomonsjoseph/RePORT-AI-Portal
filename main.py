@@ -191,7 +191,7 @@ def _install_log_redactor_best_effort() -> None:
     **Why.** The redactor needs the same 32-byte secret that keys pseudonym
     generation, so subject-id HMAC tags in logs stay joinable with the
     on-disk pseudonyms for operators who hold the key. Entry points that
-    run before ``bootstrap-key`` (fresh checkout / first chat session)
+    run before the PHI key exists (fresh checkout / first chat session)
     should still produce logs rather than hard-fail on a missing key.
 
     **How.** Calls :func:`scripts.security.phi_scrub.load_key`; on
@@ -205,8 +205,8 @@ def _install_log_redactor_best_effort() -> None:
     except (PHIKeyMissingError, PHIKeyPermissionError, PHIScrubError) as exc:
         log.warning(
             "PHI log redactor NOT installed (%s). "
-            "Run `python -m scripts.security.phi_scrub bootstrap-key` "
-            "to enable log redaction.",
+            "Use the web UI Load Study flow, or ask a developer/operator "
+            "to provision the sidecar PHI key.",
             type(exc).__name__,
         )
         return

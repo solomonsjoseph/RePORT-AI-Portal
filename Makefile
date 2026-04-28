@@ -16,19 +16,17 @@
 #   FORCE=1      — Bypass incremental cache
 # ============================================================================
 
-SHELL := /bin/bash
+UV ?= uv
 
-UV := $(shell command -v uv 2>/dev/null)
-ifndef UV
-$(error uv is required. Install: curl -LsSf https://astral.sh/uv/install.sh | sh)
+ifeq ($(OS),Windows_NT)
+VENV_PYTHON := $(abspath .venv/Scripts/python.exe)
+else
+VENV_PYTHON := $(abspath .venv/bin/python)
 endif
 
-VENV_PYTHON := $(abspath .venv/bin/python)
 CHAT_GROUPS := --group web --group ai_assistant --group llm
 CLI_GROUPS := --group ai_assistant --group llm
 PYTHON := $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),$(UV) run python)
-AI_PYTHON := $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),$(UV) run $(CLI_GROUPS) python)
-WEB_PYTHON := $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),$(UV) run $(CHAT_GROUPS) python)
 RUFF := $(UV) run ruff
 MYPY := $(UV) run mypy
 VERBOSE ?=
@@ -217,11 +215,11 @@ pdf-extract:
 # ═══════════════════════════════════════════════════════════════════════
 
 chat-cli-deps:
-	@printf "$(C)Ensuring AI Assistant dependencies...$(N)\n"
+	@echo Ensuring AI Assistant dependencies...
 	@$(UV) run $(CLI_GROUPS) python -c "import langchain, langgraph"
 
 chat-deps:
-	@printf "$(C)Ensuring web chat dependencies...$(N)\n"
+	@echo Ensuring web chat dependencies...
 	@$(UV) run $(CHAT_GROUPS) python -c "import streamlit, langchain, langgraph"
 
 chat-cli: chat-cli-deps
@@ -241,11 +239,11 @@ chat-cli: chat-cli-deps
 			printf "$(G)✓ Ollama started$(N)\n"; \
 		fi; \
 	fi
-	@$(AI_PYTHON) main.py --chat $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
+	@$(UV) run $(CLI_GROUPS) python main.py --chat $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
 
 chat: chat-deps
-	@printf "$(C)Launching Streamlit web UI...$(N)\n"
-	@$(WEB_PYTHON) main.py --web $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
+	@echo Launching Streamlit web UI...
+	@$(UV) run $(CHAT_GROUPS) python main.py --web $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
 
 build-variables:
 	@printf "$(C)Building variables.json from all annotation sources...$(N)\n"

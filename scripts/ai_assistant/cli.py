@@ -338,7 +338,7 @@ def main() -> None:
 
     # Best-effort install of the PHI log redactor. Silently no-op when the
     # sidecar key is absent so fresh checkouts can still start a REPL;
-    # operators will see the fallback warning and know to bootstrap.
+    # operators will see the fallback warning and provision the key.
     try:
         from scripts.security.phi_patterns import SUBJECT_ID_PATTERNS
 
@@ -348,9 +348,8 @@ def main() -> None:
         )
     except (PHIKeyMissingError, PHIKeyPermissionError, PHIScrubError) as exc:
         logger.warning(
-            "PHI log redactor NOT installed (%s). Run "
-            "`python -m scripts.security.phi_scrub bootstrap-key` "
-            "to enable log redaction.",
+            "PHI log redactor NOT installed (%s). Use the web UI Load Study flow, "
+            "or ask a developer/operator to provision the sidecar PHI key.",
             type(exc).__name__,
         )
 

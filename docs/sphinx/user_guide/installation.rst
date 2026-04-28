@@ -7,21 +7,28 @@ and contribution workflow live in :doc:`../developer_guide/index`.
 Requirements
 ------------
 
-* macOS, Linux, or Windows with WSL
+* macOS, Linux, or Windows
 * Python 3.11 or newer
 * Git
 * ``uv`` package manager
+* ``make`` available on ``PATH``
 * 8 GB RAM minimum, 16 GB recommended
 * About 2 GB free disk space for dependencies
 
 Install
 -------
 
-Install ``uv``:
+Install ``uv`` on macOS or Linux:
 
 .. code-block:: bash
 
    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+Install ``uv`` on Windows PowerShell:
+
+.. code-block:: powershell
+
+   powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 
 Clone the project:
 
@@ -29,6 +36,10 @@ Clone the project:
 
    git clone https://github.com/solomonsjoseph/RePORT-AI-Portal.git
    cd RePORT-AI-Portal
+
+On Windows, run the same project commands from a terminal that provides
+``make``. Git Bash, MSYS2, WSL, or another GNU Make installation are all
+acceptable as long as ``uv`` and ``make`` are on ``PATH``.
 
 Start the Web UI
 ----------------

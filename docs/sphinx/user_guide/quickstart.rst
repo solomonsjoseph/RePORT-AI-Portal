@@ -32,6 +32,8 @@ Set the study name if needed:
 
    export STUDY_NAME=Indo-VAP
 
+On Windows PowerShell, use ``$env:STUDY_NAME = "Indo-VAP"`` instead.
+
 2. Choose a Model Provider
 --------------------------
 
@@ -49,6 +51,10 @@ Hosted provider example:
    export LLM_PROVIDER=anthropic
    export ANTHROPIC_API_KEY=sk-ant-...
    export LLM_MODEL=claude-opus-4-7
+
+On Windows PowerShell, set environment variables with ``$env:NAME =
+"value"``. You can also choose the provider from the web UI instead of
+setting these values in the shell.
 
 See :doc:`configuration` for OpenAI, Google, and PDF-related settings.
 

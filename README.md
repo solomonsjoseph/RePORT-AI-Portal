@@ -24,8 +24,21 @@ developer documentation lives in Sphinx:
 
 ## Quick Start
 
+Install `uv` for your platform:
+
 ```bash
+# macOS / Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+```powershell
+# Windows PowerShell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Then start the portal:
+
+```bash
 git clone https://github.com/solomonsjoseph/RePORT-AI-Portal.git
 cd RePORT-AI-Portal
 make chat

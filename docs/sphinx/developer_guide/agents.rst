@@ -132,9 +132,11 @@ PDF leg cannot produce complete output).
 
 **PHI key:** sidecar at ``~/.config/report_ai_portal/phi_key``
 (resolved via ``config.PHI_KEY_PATH``, overridable with
-``XDG_CONFIG_HOME``). Mode must be ``0600``. Missing = hard-fail.
-Bootstrap via ``python -m scripts.security.phi_scrub bootstrap-key``.
-Key rotation = full re-ingestion.
+``XDG_CONFIG_HOME``). Mode must be ``0600``. Missing = hard-fail for
+developer/operator CLI pipeline runs. Normal users should create it only
+through the web UI's **Load Study** flow. Developers can bootstrap it via
+``python -m scripts.security.phi_scrub bootstrap-key`` when running the
+pipeline outside the web UI. Key rotation = full re-ingestion.
 
 Tech stack
 ----------
