@@ -83,12 +83,15 @@ exists to prevent.
        publish. Together with ``output/{STUDY}/agent/`` this forms
        the LLM agent's read surface (``trio_bundle/`` ∪ ``agent/``).
    * - **GREEN-PROTECT**
-     - ``output/{STUDY}/audit/``
-     - Counts-only IRB audit envelope: lineage manifest, scrub report,
-       cleanup report, telemetry. Same ``output/`` tree as GREEN but
-       intentionally not part of ``trio_bundle/``. The LLM is
-       hard-rejected here — that's the entire reason audit isn't in
-       trio_bundle.
+     - Agent tool boundary
+     - Defence-in-depth checks before the assistant speaks: PHI regex
+       gate, k-anonymity (k=5), and l-diversity (l=2) for row-level
+       results.
+
+The counts-only IRB audit envelope lives at ``output/{STUDY}/audit/``:
+lineage manifest, scrub report, cleanup report, and telemetry. It is
+not part of the LLM read surface, and ``validate_agent_read`` rejects
+it.
 
 There is also a fifth, **out-of-zone** location at the repo root:
 ``snapshots/{STUDY}/`` holds a version-controlled, maintainer-curated
@@ -157,6 +160,13 @@ Plus three structural protections:
   ``trio_bundle/`` only. The generated ``.py`` file is persisted to
   ``output/{STUDY}/agent/analysis/{ts}.py`` for operator
   reproduction.
+
+The assistant is instructed to answer in natural clinical-research
+language while staying grounded. For substantive study questions it
+must resolve variable names before analysis, cite the dataset/form
+evidence in plain language, keep computed facts separate from
+interpretation, and surface missing data, low-confidence PDF matches,
+small-cell suppression, or underpowered models as caveats.
 
 The Wizard
 ----------

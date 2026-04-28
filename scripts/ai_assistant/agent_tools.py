@@ -1194,18 +1194,19 @@ def run_study_analysis(
                         f"  - {row['factor']}x{row['moderator']}: p={row['interaction_p']:.4f}"
                     )
 
+        figure_count = len(result.interactive_figures) + len(result.figures)
         summary_lines = [
-            f"ANALYSIS COMPLETE for {result.cohort_name} — {result.outcome}.",
-            f"N={result.n}, Events={result.events} ({result.events / result.n * 100:.1f}% rate).",
-            f"Figures generated: {len(result.interactive_figures) + len(result.figures)}.",
-            "",
+            f"Analysis complete: {result.cohort_name} - {result.outcome}.",
+            (
+                f"Evidence: N={result.n}, events={result.events} "
+                f"({result.events / result.n * 100:.1f}% rate), figures={figure_count}."
+            ),
         ]
         if underpowered:
-            summary_lines.insert(
-                1,
-                f"⚠️ UNDERPOWERED: events={result.events}, "
-                f"events/variable={events_per_variable:.1f} (target ≥10, floor ≥5). "
-                "Multivariate ORs may be unstable; interpret point estimates with caution.",
+            summary_lines.append(
+                f"Caveat: underpowered analysis; events={result.events}, "
+                f"events/variable={events_per_variable:.1f} (target >=10, floor >=5). "
+                "Multivariate odds ratios may be unstable; interpret point estimates cautiously."
             )
         if sig_uni:
             summary_lines.append("Significant univariate predictors:")
@@ -1223,8 +1224,8 @@ def run_study_analysis(
             summary_lines.extend(sig_int)
 
         summary_lines.append("")
+        summary_lines.append("Detailed model tables, plots, and narrative are rendered below.")
         summary_lines.append(f"<RPLN_ANALYSIS:{narrative_path}>")
-        summary_lines.append("Tell the user the analysis is complete and results are shown below.")
 
         return "\n".join(summary_lines)
 

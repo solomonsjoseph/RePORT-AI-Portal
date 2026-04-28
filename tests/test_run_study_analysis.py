@@ -44,6 +44,9 @@ class TestRunStudyAnalysisWithData:
             }
         )
         assert isinstance(result, str)
+        assert "Analysis complete:" in result
+        assert "Detailed model tables, plots, and narrative are rendered below." in result
+        assert "Tell the user" not in result
         assert "smoking" in result.lower() or "univariate" in result.lower()
         assert len(result) > 100  # Should have substantive content
 

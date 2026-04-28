@@ -416,7 +416,7 @@ def render_setup_page() -> None:
                 )
                 st.markdown(
                     '<span class="rpln-beta-note">'
-                    "<em>PHI handling is in beta — datasets must be pre-scrubbed before extraction.</em>"
+                    "<em>PHI scrub runs inside the pipeline before publish; raw datasets stay in staging.</em>"
                     "</span>",
                     unsafe_allow_html=True,
                 )

@@ -9,9 +9,9 @@ the resulting JSONL into the study's **staging workspace**
 atomically promotes the staging bundle into
 ``output/{STUDY}/trio_bundle/datasets/``.
 
-Datasets are expected to be pre-scrubbed before they reach extraction.
-The previous temp-workspace → promotion → secure-cleanup flow has been
-retired; PHI handling is now fully covered by ``scripts/security/``.
+Datasets may contain PHI at extraction time. They remain in AMBER staging
+until ``scripts.security.phi_scrub`` runs at Step 1.6; only scrubbed staging
+artifacts are later published to the trio bundle.
 
 What this module does:
     1. Discover supported dataset files for the active study
@@ -627,13 +627,12 @@ def extract_datasets(
     output_dir: str | Path | None = None,
     study_name: str | None = None,
 ) -> ExtractionResult:
-    """Discover and extract all dataset files directly into the clean output tree.
+    """Discover and extract all dataset files into AMBER staging.
 
     Output lands in *output_dir* when supplied, otherwise in
     ``config.STAGING_DATASETS_DIR`` (``tmp/{STUDY}/datasets/``). The bundle
     is later published from staging to ``trio_bundle/`` by a separate
-    publish step (see ``_publish_staging`` — wired in a later task).
-    Datasets are expected to be pre-scrubbed before they reach extraction.
+    publish step after the Step 1.6 PHI scrub and cleanup propagation.
 
     Returns
     -------

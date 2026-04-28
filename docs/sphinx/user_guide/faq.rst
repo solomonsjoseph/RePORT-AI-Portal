@@ -210,10 +210,10 @@ Four places you can inspect the evidence without trusting any claim:
 3. **``docs/irb_dossier/conformance_matrix.md``** — 31 testable claims
    ("direct identifiers dropped", "ages ≥ 90 capped", etc.) each with
    the pytest case that fails in CI if the claim regresses.
-4. **``make test``** — 712 deterministic tests (``make test-all`` runs the
-   full 784-test suite including AI-Assistant/LLM tests) including
-   catalog-coverage tests that run against the shipped ``phi_scrub.yaml``.
-   A rule deletion or pattern regression breaks CI immediately.
+4. **``make test`` / ``make test-all``** — deterministic and full-suite
+   pytest gates, including catalog-coverage tests that run against the
+   shipped ``phi_scrub.yaml``. A rule deletion or pattern regression
+   breaks CI immediately.
 
 What exactly counts as PHI in this pipeline? What is NOT in scope?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

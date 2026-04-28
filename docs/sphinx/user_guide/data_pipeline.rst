@@ -254,7 +254,7 @@ Output structure on success
    │   ├── dictionary/*.json
    │   ├── pdfs/*_variables.json         # tier: merged | snapshot | empty
    │   └── variables.json                # consolidated schema
-   ├── audit/                            # GREEN-PROTECT — counts only
+   ├── audit/                            # AUDIT — counts only; LLM hard-rejected
    │   ├── lineage_manifest.json
    │   ├── phi_scrub_report.json
    │   ├── dataset_cleanup_report.json
