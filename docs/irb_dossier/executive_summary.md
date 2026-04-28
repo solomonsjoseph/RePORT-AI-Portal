@@ -340,7 +340,7 @@ For IEC convenience, the primary anchors are:
 
 Recommended review sequence:
 
-1. Read this document end-to-end.
+1. Review the executive summary end-to-end.
 2. Read [`conformance_matrix.md`](conformance_matrix.md). Each row is
    a testable promise. Spot-check any five rows by running the named
    tests locally.

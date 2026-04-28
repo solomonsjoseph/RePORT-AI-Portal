@@ -3,7 +3,7 @@
 **Study:** Indo-VAP (Indo-US Vaccine Action Program — VAP & NBM)
 **Applicable authorities:** IT Act §43A + SPDI Rules 2011 (in force until May 13, 2027); DPDPA 2023 + DPDP Rules 2025 (substantive compliance from May 13, 2027); Aadhaar Act §29; ABDM Health Data Management Policy; ICMR 2017 National Ethical Guidelines §11; RePORT India Common Protocol; HIPAA §164.514(b)(2) (reference anchor); NIST SP 800-188; STROBE / RECORD reporting rules.
 
-**How to read this document.** For orientation start with
+**How to use this matrix.** For orientation start with
 [`executive_summary.md`](executive_summary.md), which walks through the
 full pipeline end-to-end for a reviewer who has not seen the project.
 

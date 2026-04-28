@@ -80,6 +80,8 @@ Documentation Rules
 -------------------
 
 Documentation is part of the product, not a release-note graveyard.
+Follow :doc:`documentation_style` for page structure, reader profiles,
+and language rules.
 
 * Current-facing pages should describe the current behavior, not the PR
   that introduced it.

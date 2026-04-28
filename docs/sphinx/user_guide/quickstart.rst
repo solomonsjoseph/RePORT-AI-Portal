@@ -1,24 +1,28 @@
 Quick Start — Ten Minutes to Your First Answer
 ==============================================
 
-**What.** A step-by-step walkthrough that takes you from a cloned repo to
-an answered epidemiological question in about ten minutes. No prior
-familiarity with the pipeline is assumed.
+Reader and outcome
+------------------
 
-**Why.** The best way to trust this stack is to run it once and see the
-audit artifacts drop out. Everything below is reproducible and shows
-expected output where it is stable enough to quote.
+This walkthrough is for a site operator, data manager, or clinical
+researcher who wants to run one locked study locally and ask the first
+question against the PHI-free trio bundle.
 
-**How.** Five steps: install ``uv``, sync deps, place data + configure
-the PHI key, run the pipeline, open the chat. Each step lists the command
-and what "success" looks like.
+After completing it, you will have:
+
+* installed the project dependencies;
+* placed one study under ``data/raw/{STUDY_NAME}/``;
+* created the out-of-repo PHI HMAC key;
+* generated ``output/{STUDY}/trio_bundle/`` and
+  ``output/{STUDY}/audit/``;
+* opened the Streamlit chat UI against the published bundle.
 
 .. contents:: On this page
    :local:
    :depth: 2
 
-Prerequisites
--------------
+Before you start
+----------------
 
 * macOS, Linux, or Windows (WSL) with **Python 3.11 or newer**.
 * ~2 GB free disk for the virtualenv + dependencies.

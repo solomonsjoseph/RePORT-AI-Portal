@@ -6,7 +6,8 @@ What. Compares live, source-of-truth values (tool count from
 guides, and the IRB dossier. Also rejects forbidden phrases that
 indicate retired architecture (vector DB / RAG / Presidio-as-active /
 "only zone the LLM agent reads" / stale tool counts / stale Make
-targets).
+targets) or inaccessible link text (``click here`` / ``read this
+article``).
 
 Why. Three rounds of freshness sweeps converged the docs to current
 state, but inline counts and architecture words drift the moment code
@@ -299,6 +300,16 @@ FORBIDDEN: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     (
         r"\b(?:80|90|100)%\s+(?:code\s+)?coverage",
         "coverage threshold claim is not enforced by current CI; document runnable gates instead",
+        (),
+    ),
+    (
+        r"\bclick\s+here\b",
+        "vague link text — name the destination or action",
+        (),
+    ),
+    (
+        r"\bread\s+this\s+(article|document|page)\b",
+        "vague link text — name the destination or action",
         (),
     ),
     # Stale streamlit version pin

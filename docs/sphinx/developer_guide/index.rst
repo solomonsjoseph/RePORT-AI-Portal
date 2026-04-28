@@ -1,31 +1,48 @@
 Developer Guide
 ===============
 
-Welcome to the RePORT AI Portal developer guide. This section provides technical documentation for developers who want to contribute to, extend, or integrate with RePORT AI Portal.
+The developer guide is for readers who change, review, or operate the
+code. It documents the four-tier honest-broker architecture, the
+eight-action PHI scrubber, the agent-boundary gates, and the verification
+contracts that keep the system IRB-ready.
 
-.. note::
-   This is the **technical documentation** for developers. If you're a user looking to use RePORT AI Portal, see the :doc:`../user_guide/index`.
+Reader Profiles
+---------------
 
-Overview
---------
+.. list-table::
+   :header-rows: 1
+   :widths: 24 38 38
 
-RePORT AI Portal is a single-study, privacy-first, local-first AI
-assistant for clinical research data. The developer side of the docs
-walks through the four-tier honest-broker architecture, the
-eight-action PHI scrubber, the agent-boundary gates, and every major
-design decision behind the architecture and its IRB-grade benchmark. For a feature-list view aimed at
-researchers, see the :doc:`../user_guide/index`.
+   * - Reader
+     - Goal
+     - Best first page
+   * - Pipeline developer
+     - Change extraction, PHI scrub, cleanup, publish, or lineage
+       behavior without breaking the custody model.
+     - :doc:`architecture`, then :doc:`data_extraction_datasets`
+   * - Agent/tool developer
+     - Add or change an AI Assistant tool while preserving file-zone,
+       PHI, and k-anonymity gates.
+     - :doc:`agents`, then :doc:`api_reference`
+   * - Privacy or security reviewer
+     - Audit the load-bearing controls and the tests that prove them.
+     - :doc:`phi_architecture`, :doc:`sandbox`, then :doc:`testing`
+   * - Maintainer or release reviewer
+     - Review branch hygiene, verification gates, operations, and
+       current production readiness.
+     - :doc:`contributing`, then :doc:`project_status`
+   * - Documentation contributor
+     - Keep Sphinx and IRB docs accurate for both user and developer
+       profiles.
+     - :doc:`documentation_style`
 
-**Target audience.** Software developers, data engineers, security
-engineers, and technical contributors. The user-facing narrative
-(what pain this solves, who benefits) is in :doc:`../user_guide/overview`.
+How These Pages Are Written
+---------------------------
 
-**Where to start.** If you want to understand *why* each choice was
-made, read :doc:`decisions`. If you want to understand *what* each
-module does, read :doc:`phi_architecture` followed by
-:doc:`architecture`. If you want to find a specific regulatory anchor,
-go to :doc:`references`. If you want to know which version of which
-library and why, see :doc:`tech_stack`.
+Developer pages are contract-first. Each technical page should name the
+surface it owns, source entry points, invariants, data flow, failure
+modes, and tests. User-facing explanations stay in the
+:doc:`../user_guide/index`.
 
 Contents
 --------
@@ -56,6 +73,7 @@ Contents
 
    api_reference
    project_status
+   documentation_style
 
 .. toctree::
    :maxdepth: 2
@@ -65,10 +83,10 @@ Contents
    testing
    agents
 
-Quick Links for Developers
----------------------------
+Quick Links
+-----------
 
-**Getting Started**
+**Getting started**
 
 1. Read :doc:`../user_guide/overview` for the pain narrative and the
    one-paragraph explanation of what this project is.
@@ -80,7 +98,7 @@ Quick Links for Developers
    and :doc:`testing` to write and run tests.
 5. Consult :doc:`api_reference` for module-level API details.
 
-**Common Development Tasks**
+**Common development tasks**
 
 - **Add a new PHI rule class**: declare it in
   ``scripts/security/phi_scrub.yaml`` under the matching section
@@ -105,7 +123,7 @@ Quick Links for Developers
   (high confidence) or ``WARN_PATTERNS`` (low-confidence heuristic);
   the log redactor and the agent gate pick it up automatically.
 
-Architecture Principles
+Architecture principles
 -----------------------
 
 RePORT AI Portal follows these architectural principles:
@@ -130,10 +148,10 @@ RePORT AI Portal follows these architectural principles:
 **Documentation-First**
    Operator-facing behavior, PHI handling, and verification claims must stay synchronized with code and tests.
 
-Development Standards
+Development standards
 ---------------------
 
-Code Quality
+Code quality
 ~~~~~~~~~~~~
 
 - **Style Guide**: Google Python Style Guide + PEP 8
@@ -142,19 +160,14 @@ Code Quality
 - **Testing**: Add focused pytest coverage for changed behavior
 - **Documentation**: Follow Diátaxis framework (tutorials, how-to guides, reference, explanation)
 
-Documentation Standards
+Documentation standards
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-All documentation must follow the **Diátaxis** framework:
+All documentation must follow :doc:`documentation_style`. In short:
+identify the reader, state the outcome, keep current-facing pages about
+current behavior, and tie PHI/IRB claims to implementation or evidence.
 
-- **Tutorials** (learning-oriented): Step-by-step lessons for beginners
-- **How-to guides** (task-oriented): Solutions to specific problems
-- **Reference** (information-oriented): Technical descriptions of APIs
-- **Explanation** (understanding-oriented): Clarification of design decisions
-
-See :doc:`../user_guide/overview` for examples of user-facing documentation and :doc:`architecture` for technical explanation.
-
-Code Review Process
+Code review process
 ~~~~~~~~~~~~~~~~~~~
 
 All code changes require:
@@ -175,7 +188,7 @@ Ready to contribute? Start with:
 3. :doc:`architecture` - Understand the system design
 4. :doc:`api_reference` - Browse the API documentation
 
-Additional Resources
+Additional resources
 --------------------
 
 - `Google Python Style Guide <https://google.github.io/styleguide/pyguide.html>`_
