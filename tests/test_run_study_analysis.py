@@ -151,16 +151,8 @@ class TestRunStudyAnalysisWithData:
             }
         )
         lower = result.lower()
-        # Either the hard-refuse floor fires (events<5) or the underpowered
-        # caveat is surfaced in the LLM summary (events<10 or EPV<5). Both
-        # paths are acceptable — the test just requires that the tool
-        # honestly signals limited statistical power to the agent.
-        assert (
-            "analysis not run" in lower
-            or "event floor" in lower
-            or "underpowered" in lower
-            or "low power" in lower
-        )
+        assert "inferential models were not run" in lower
+        assert "<RPLN_ANALYSIS:" in result
 
     def test_cohort_b_single_predictor(
         self,

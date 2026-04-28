@@ -23,6 +23,7 @@ from langgraph.graph.state import CompiledStateGraph
 import config
 from scripts.ai_assistant.agent_prompts import SYSTEM_PROMPT
 from scripts.ai_assistant.agent_tools import ALL_TOOLS
+from scripts.ai_assistant.ollama_config import get_ollama_base_url
 from scripts.ai_assistant.phi_safe import redact_phi_in_text
 from scripts.ai_assistant.tool_cache import tool_cache
 
@@ -102,6 +103,8 @@ def _build_llm(provider: str, model: str) -> Any:
             "max_tokens": config.AGENT_MAX_TOKENS,
             "timeout": config.AGENT_TIMEOUT,
         }
+        if provider == "ollama":
+            kwargs["base_url"] = get_ollama_base_url()
         if api_key:
             kwargs["api_key"] = api_key
         return init_chat_model(**kwargs)

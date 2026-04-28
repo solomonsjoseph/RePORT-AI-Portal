@@ -150,7 +150,14 @@ class VerboseLogger:
 
     def __init__(self, logger_module: types.ModuleType) -> None:
         self.log = logger_module
-        self._indent = 0
+        self._state = threading.local()
+
+    def _indent(self) -> int:
+        value = getattr(self._state, "indent", 0)
+        return value if isinstance(value, int) and value > 0 else 0
+
+    def _set_indent(self, value: int) -> None:
+        self._state.indent = max(0, value)
 
     def __call__(self, message: str) -> None:
         if self._is_verbose():
@@ -167,7 +174,7 @@ class VerboseLogger:
         if not self._is_verbose():
             return
         with suppress(Exception):
-            indent = "  " * self._indent
+            indent = "  " * self._indent()
             self.log.debug("%s%s%s", indent, prefix, message)
 
     class _ContextManager:
@@ -181,11 +188,11 @@ class VerboseLogger:
 
         def __enter__(self):
             self.vlog._log_tree(self.prefix, self.header)
-            self.vlog._indent += 1
+            self.vlog._set_indent(self.vlog._indent() + 1)
             return self
 
         def __exit__(self, *args: object) -> None:
-            self.vlog._indent -= 1
+            self.vlog._set_indent(self.vlog._indent() - 1)
             if self.footer:
                 self.vlog._log_tree("└─ ", self.footer)
 

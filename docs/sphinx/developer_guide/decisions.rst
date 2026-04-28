@@ -153,9 +153,9 @@ like "Treatment Completed" that match the generic name-like heuristic.
 * **Stanford Stanza with i2b2-tuned model**. Considered; ~93% F1 open-
   source. Deferred as an optional supplement for narrative residuals
   if the rule catalog proves insufficient.
-* **Local Ollama prompt-engineered NER**. Deferred (see
-  :mod:`scripts.security.phi_ner` design stub). When it lands, it will
-  be additive to the rule catalog, not a replacement.
+* **Local Ollama prompt-engineered NER**. Rejected for the current
+  runtime because the calibrated rule catalog plus whole-field narrative
+  drops provide a smaller, auditable surface.
 
 **Consequences.** Rule maintenance cost scales with new PHI classes
 discovered during deployment. Offset by the catalog being data-driven
@@ -545,11 +545,11 @@ runs.
   change.
 
 **Consequences.**
-:class:`scripts.utils.logging_system.VerboseLogger`'s ``_indent``
-attribute is mutated by overlapping ``file_processing`` context
-managers; under ``--verbose`` mode tree-output indentation may
-interleave when extraction legs overlap. Cosmetic only — log
-emissions are correct and tracked as a known cosmetic gap.
+The staging root is protected by a per-study process lock before
+AMBER is purged, so two operator-triggered runs cannot race over the
+same ``tmp/{STUDY}/`` workspace. ``VerboseLogger`` uses thread-local
+indentation, keeping ``--verbose`` tree output readable while the
+three extraction legs overlap.
 
 ADR-015 — l-diversity (l=2) on row-returning tools
 ---------------------------------------------------

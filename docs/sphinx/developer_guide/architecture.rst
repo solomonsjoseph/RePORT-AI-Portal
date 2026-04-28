@@ -109,10 +109,9 @@ API keys + PHI patterns from every log line. Both filters attach
 to the root logger so ``World 1`` and ``World 2`` emit scrubbed
 logs by default.
 
-Known limitation: ``VerboseLogger._indent`` is mutated by
-overlapping ``file_processing`` context managers. Under
-``--verbose`` mode, parallel-extraction tree output may interleave.
-Cosmetic only — log emissions are correct.
+``VerboseLogger`` keeps indentation in thread-local state, so
+``--verbose`` tree output remains readable while the dictionary,
+dataset, and PDF extraction legs run in parallel.
 
 Pipeline Modules
 ----------------

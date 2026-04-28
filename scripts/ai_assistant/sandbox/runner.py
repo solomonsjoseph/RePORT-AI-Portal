@@ -28,6 +28,7 @@ import contextlib
 import datetime as _dt
 import io
 import json
+import os
 import sys
 import traceback
 import uuid
@@ -271,6 +272,10 @@ def main(spec_path: str) -> int:
     max_figures: int = int(spec.get("max_figures", 20))
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    mpl_config_dir = output_dir / ".matplotlib"
+    mpl_config_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    os.environ.setdefault("MPLBACKEND", "Agg")
+    os.environ["MPLCONFIGDIR"] = str(mpl_config_dir)
 
     try:
         _ast_pre_check(code)
@@ -363,19 +368,23 @@ def main(spec_path: str) -> int:
     except ImportError:
         pass
 
-    try:
-        import matplotlib.pyplot as _plt
+    if "matplotlib.pyplot" in sys.modules:
+        try:
+            import matplotlib.pyplot as _plt
 
-        for num in _plt.get_fignums()[:max_figures]:
-            fig = _plt.figure(num)
-            fid = uuid.uuid4().hex[:12]
-            p = fig_dir / f"fig_{fid}.png"
-            fig.savefig(p, format="png", bbox_inches="tight", dpi=150)
-            figure_paths.append(str(p))
-            _plt.close(fig)
-        _plt.close("all")
-    except ImportError:
-        pass
+            for num in _plt.get_fignums()[:max_figures]:
+                fig = _plt.figure(num)
+                fid = uuid.uuid4().hex[:12]
+                p = fig_dir / f"fig_{fid}.png"
+                fig.savefig(p, format="png", bbox_inches="tight", dpi=150)
+                figure_paths.append(str(p))
+                _plt.close(fig)
+            _plt.close("all")
+        except Exception as exc:
+            print(
+                f"Matplotlib figure capture skipped: {type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
 
     code_paths: list[str] = []
     if persist_code:

@@ -937,6 +937,37 @@ class PlotGenerator:
 class ResultInterpreter:
     """Convert statistical output into narrative text."""
 
+    def interpret_descriptive(
+        self,
+        stats: dict[str, Any],
+        outcome: str,
+        events: int,
+        cohort_name: str,
+    ) -> str:
+        lines = [f"## Descriptive Summary — {cohort_name}\n"]
+        n = int(stats.get("n", 0))
+        event_rate = events / n * 100 if n else 0.0
+        lines.append(f"Outcome: **{outcome}** — {events}/{n} events ({event_rate:.1f}%).\n")
+        lines.append("| Variable | Summary | Valid n | Missing n |")
+        lines.append("|----------|---------|---------|-----------|")
+        for name, body in stats.items():
+            if name == "n" or not isinstance(body, dict):
+                continue
+            if body.get("type") == "categorical":
+                counts = body.get("counts", {})
+                summary = ", ".join(f"{k}: {v}" for k, v in counts.items())
+            else:
+                summary = (
+                    f"median {body.get('median', float('nan')):.2f}; "
+                    f"mean {body.get('mean', float('nan')):.2f}; "
+                    f"range {body.get('min', float('nan')):.2f}-"
+                    f"{body.get('max', float('nan')):.2f}"
+                )
+            lines.append(
+                f"| {name} | {summary} | {body.get('n_valid', 0)} | {body.get('n_missing', 0)} |"
+            )
+        return "\n".join(lines)
+
     def interpret_univariate(
         self,
         results: pd.DataFrame,
@@ -1172,6 +1203,56 @@ def run_full_analysis(
         f"**N = {result.n}**, **Events = {result.events}** "
         f"({result.events / result.n * 100:.1f}% event rate)\n"
     )
+
+    # Rare-event floor: keep the prototype useful by producing descriptive
+    # summaries and plots, while refusing invalid logistic inference.
+    if result.events < 5:
+        desc = DescriptiveAnalyzer()
+        result.descriptive = desc.run(df, analysis_preds)
+        narrative_parts.append(
+            interpreter.interpret_descriptive(
+                result.descriptive,
+                outcome,
+                result.events,
+                cohort_name,
+            )
+        )
+        narrative_parts.append(
+            "## Inferential Models Not Run\n\n"
+            f"Only {result.events} event(s) are present in {result.n} subjects, "
+            "below the 5-event floor for logistic regression. Univariate, "
+            "multivariate, and interaction models are intentionally skipped; "
+            "report descriptive results only."
+        )
+
+        if plot_types and analysis_preds:
+            plotter = PlotGenerator()
+            categorical_preds = ["diabetes", "smoking", "sex"]
+            continuous_preds = ["bmi", "alcohol_freq", "age", "hba1c"]
+            want_violin = "violin" in plot_types or "interaction_violin" in plot_types
+            want_scatter = "scatter" in plot_types or "interaction_scatter" in plot_types
+            for pred in analysis_preds:
+                rare_event_plot_kind = None
+                if pred in categorical_preds and want_violin:
+                    rare_event_plot_kind = "violin"
+                elif pred in continuous_preds and want_scatter:
+                    rare_event_plot_kind = "scatter"
+                if rare_event_plot_kind is None:
+                    continue
+                plot_artifacts = plotter.generate(
+                    df, outcome, pred, rare_event_plot_kind, cohort_dir
+                )
+                if plot_artifacts is None:
+                    continue
+                if plot_artifacts.interactive is not None:
+                    result.interactive_figures.append(plot_artifacts.interactive)
+                if plot_artifacts.static is not None:
+                    result.figures.append(plot_artifacts.static)
+
+        result.caveats = interpreter.generate_caveats(df, outcome, cohort_name)
+        narrative_parts.append(result.caveats)
+        result.narrative = "\n\n".join(narrative_parts)
+        return result
 
     # Univariate
     if "univariate" in analysis_types and analysis_preds:

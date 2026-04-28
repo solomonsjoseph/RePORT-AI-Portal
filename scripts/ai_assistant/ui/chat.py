@@ -121,7 +121,7 @@ def composer(assistant_slot: Any | None = None) -> None:
             )
 
             # Composer layout: textarea + real submit button on the top row,
-            # control rail below (model pill + retrieval filter).
+            # control rail below (model pill + keyboard hint).
             # The model-pill lives in a hidden container outside the form
             # (st.popover forbids nesting inside st.form) — bridge.js hoists its
             # DOM node into .rpln-composer-pill-slot so it appears in the lower
@@ -141,17 +141,11 @@ def composer(assistant_slot: Any | None = None) -> None:
                     help=("Response in progress" if pending_stream else None),
                 )
 
-            # Lower control rail: pill moved to the model-selection position on
-            # the left, retrieval filter beside it, shortcuts on the right.
+            # Lower control rail: model pill on the left, shortcuts on the right.
             st.markdown(
                 '<div class="rpln-composer-foot" data-rpln-composer-foot="1">'
                 '  <span class="rpln-composer-foot-left">'
                 '    <span class="rpln-composer-pill-slot" data-rpln-pill-slot="1"></span>'
-                '    <button type="button" class="rpln-chip" data-rpln-chip="retrieval"'
-                '            data-rpln-action="open-retrieval-popover">'
-                '      <span class="material-symbols-rounded" aria-hidden="true">filter_list</span>'
-                "      <span>Retrieval filter</span>"
-                "    </button>"
                 "  </span>"
                 '  <span class="rpln-composer-spacer"></span>'
                 '  <span class="rpln-composer-hint" aria-hidden="true">'
@@ -457,29 +451,3 @@ def _render_model_pill() -> None:
                     _set_chat_model(model)
                     st.session_state.rpln_model_more_open = False
                     st.rerun()
-
-
-def _render_composer_plus_menu() -> None:
-    """Render the `+` popover (Upload file / Upload folder)."""
-    with (
-        st.container(key="rpln_composer_plus"),
-        st.popover("+", width="content"),
-    ):
-        st.markdown(
-            '<div class="rpln-plus-menu-header">Attach</div>',
-            unsafe_allow_html=True,
-        )
-        if st.button("Upload file", key="rpln_plus_upload_file", width="stretch"):
-            st.session_state["rpln_plus_upload_mode"] = "file"
-        if st.button("Upload folder", key="rpln_plus_upload_folder", width="stretch"):
-            st.session_state["rpln_plus_upload_mode"] = "folder"
-
-    mode = st.session_state.get("rpln_plus_upload_mode")
-    if mode:
-        with st.container(key="rpln_plus_uploader_slot"):
-            st.file_uploader(
-                "Select files" if mode == "file" else "Select a folder of files",
-                key="rpln_plus_uploader",
-                accept_multiple_files=(mode == "folder"),
-                label_visibility="collapsed",
-            )

@@ -160,7 +160,9 @@ processed artifacts
   a restricted `exec` environment.
 - **Deterministic analytical engine** — univariate logistic regression,
   backward-stepwise multivariate selection, and interaction analysis wired
-  through `run_study_analysis` with publication-quality plots.
+  through `run_study_analysis` with publication-quality plots. Rare-event
+  cohorts render descriptive tables/plots and explicitly refuse invalid
+  logistic inference.
 - **Grounded natural-language answers** — the system prompt requires the
   assistant to resolve variables before analysis, distinguish computed facts
   from interpretation, and surface caveats such as sparse events,
@@ -396,8 +398,7 @@ RePORT AI Portal/
 │   │   ├── phi_patterns.py          # Shared regex catalog
 │   │   ├── phi_allowlist.py         # Clinical-phrase allowlist
 │   │   ├── phi_gate.py              # Query-time PHI gate
-│   │   ├── kanon_gate.py            # k-anonymity gate
-│   │   └── phi_ner.py               # Narrative NER design stub
+│   │   └── kanon_gate.py            # k-anonymity gate
 │   └── utils/                       # Utility modules
 │       ├── __init__.py
 │       ├── logging_system.py        # Centralized logging

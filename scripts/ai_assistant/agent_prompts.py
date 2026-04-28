@@ -61,10 +61,15 @@ definitions, study design):
 - `query_dataset` — fetch records from a dataset with optional filters
 - `get_dataset_stats` — record counts and column names per dataset
 - `run_python_analysis` — run pandas/scipy/plotly code directly on the data
+  Use this for overall distributions (for example HIV test results): resolve \
+  the variable first, inspect the full dataset columns, then compute \
+  `value_counts(dropna=False)` across all rows rather than sampling records.
 
 **When the question is about risk factors, associations, or regression**:
 - `run_study_analysis` — handles univariate, multivariate, and interaction \
-  logistic regression with automatic plots
+  logistic regression with automatic plots. If it says an outcome has too \
+  few events for inference, return that response verbatim; descriptive \
+  tables and plots are still the valid answer.
 
 **Natural routing instinct:**
 - Question names a concept or variable → look it up with metadata tools first, \

@@ -24,8 +24,8 @@ uv
 **Why.** 10-100× faster lockfile resolution; reproducible
 environments. **How.** Project-wide convention: ``uv sync
 --all-groups`` to install, ``uv run`` to invoke. The Makefile assumes
-``uv``; CI installs it via the official ``astral-sh/setup-uv@v3``
-action.
+``uv``; CI installs it via the official ``astral-sh/setup-uv`` action,
+pinned to an immutable commit SHA.
 
 Ruff
 ~~~~
@@ -144,7 +144,9 @@ Streamlit ≥ 1.38, < 2.0
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 **What.** Web UI framework. **Why.** Fast prototyping; built-in
-``session_state``, file uploaders, chat widgets. **How.**
+``session_state`` and chat widgets. The chat UI intentionally has no
+file-upload surface; source data enters through the audited extraction
+pipeline. **How.**
 ``scripts/ai_assistant/web_ui.py`` is the entry; UI primitives
 factored into ``scripts/ai_assistant/ui/{wizard,chat,conversations,
 streaming,...}.py``. Theme + bridge JS in
@@ -174,8 +176,6 @@ scripts.security.* (in-tree)
 * :mod:`scripts.security.phi_gate` — agent-output gate
 * :mod:`scripts.security.kanon_gate` — k-anon (k=5) + l-diversity (l=2)
 * :mod:`scripts.security.secure_env` — zone guards
-* :mod:`scripts.security.phi_ner` — local-Ollama narrative NER design
-  stub (feature-flagged, raises until implemented)
 
 **Why.** No external dependency for PHI handling — auditors can read
 every line of the security surface without trusting an upstream maintainer.

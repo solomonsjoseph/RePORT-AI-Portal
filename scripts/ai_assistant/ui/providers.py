@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import subprocess
 import time
 import urllib.error
@@ -12,6 +11,7 @@ import urllib.request
 from typing import Any
 
 import config
+from scripts.ai_assistant.ollama_config import get_ollama_base_url
 
 logger = logging.getLogger(__name__)
 
@@ -159,13 +159,8 @@ def _build_ollama_selector_state(
 
 
 def _get_ollama_base_url() -> str:
-    """Return the Ollama API base URL, respecting ``OLLAMA_HOST`` env var."""
-    host = os.environ.get("OLLAMA_HOST", "").strip()
-    if host:
-        if not host.startswith(("http://", "https://")):
-            host = f"http://{host}"
-        return host.rstrip("/")
-    return "http://127.0.0.1:11434"
+    """Return the Ollama API base URL for UI model discovery."""
+    return get_ollama_base_url()
 
 
 def _try_start_ollama(base_url: str, *, max_wait: int = 10) -> bool:

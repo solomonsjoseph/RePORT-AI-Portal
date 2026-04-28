@@ -21,6 +21,7 @@ from scripts.ai_assistant.ui.conversations import (
 from scripts.ai_assistant.ui.providers import (
     _OTHER_MODEL_OPTION,
     _build_ollama_selector_state,
+    _get_ollama_base_url,
     _is_ollama_chat_model,
     _ollama_models_match,
 )
@@ -43,6 +44,22 @@ _PROJECT_ROOT = Path(__file__).parent.parent
 def test_ollama_model_matching_treats_latest_as_implicit() -> None:
     assert _ollama_models_match("mistral", "mistral:latest")
     assert _ollama_models_match("mistral:latest", "mistral")
+
+
+def test_ollama_base_url_prefers_documented_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OLLAMA_BASE_URL", "ollama.internal:11435/")
+    monkeypatch.setenv("OLLAMA_HOST", "ignored.local:11434")
+
+    assert _get_ollama_base_url() == "http://ollama.internal:11435"
+
+
+def test_ollama_base_url_supports_legacy_host_alias(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("OLLAMA_BASE_URL", raising=False)
+    monkeypatch.setenv("OLLAMA_HOST", "https://ollama.example.test/")
+
+    assert _get_ollama_base_url() == "https://ollama.example.test"
 
 
 def test_embedding_models_are_hidden_from_chat_selector() -> None:

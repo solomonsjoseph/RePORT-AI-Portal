@@ -228,8 +228,7 @@ quasi-identifiers at the agent-boundary k-anonymity gate.
 
 * Free-text narrative PHI — fields like ``*_SPECIFY``, ``*_COMMENT``,
   ``*_REMARK`` are dropped wholesale rather than having their contents
-  NER-parsed. The Stage-5 local-Ollama NER sweep
-  (:mod:`scripts.security.phi_ner`) is a design stub pending calibration.
+  NER-parsed.
 * DICOM metadata scrubbing — if CXR images are attached, the pipeline
   does not strip DICOM ``PatientName`` / ``PatientID`` tags. That belongs
   to a separate imaging pipeline.
@@ -250,12 +249,11 @@ India Common Protocol + local IRB timelines (typically 72 hours).
    offending value (redact in your report; do not paste the raw value
    into email).
 3. **Classify.** Was it a direct identifier the scrub should have caught?
-   Or a narrative-field residual (Stage-5 territory)? Check
+   Or a narrative-field residual? Check
    ``phi_scrub.yaml`` for a matching rule; if none, file a rule-catalog
    gap.
 4. **Report.** Notify the study PI, the data manager, and the IRB per the
-   breach-response runbook (``docs/irb_dossier/breach_response_runbook.md``
-   — study-team-owned stub).
+   study-team breach-response runbook.
 5. **Remediate.** Add the missing rule to ``phi_scrub.yaml``, re-run the
    pipeline, verify the audit report no longer contains a residual.
 6. **Rotate the HMAC key** if the breach suggests subject-id

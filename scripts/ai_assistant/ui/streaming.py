@@ -73,19 +73,11 @@ _CSS_MSG_ACTIONS: str = (
     ".rpln-rail-btn:hover{background:rgba(255,255,255,0.06);"
     "color:rgba(232,228,222,0.92);}"
     ".rpln-rail-btn svg{width:16px;height:16px;display:block;}"
-    # WP-F.04.18c: feedback/pager extensions on the assistant rail.
+    # WP-F.04.18c: feedback controls on the assistant rail.
     # Separator is a thin vertical rule between logical groups (Copy/Regen │
-    # 👍👎 │ pager). pointer-events:none prevents the sep from trapping hover.
+    # 👍👎). pointer-events:none prevents the sep from trapping hover.
     ".rpln-rail-sep{display:inline-block;width:1px;height:16px;"
     "background:rgba(255,255,255,0.1);margin:0 6px;pointer-events:none;}"
-    # Pager stub — disabled chevrons + 1/1 counter. Chevrons inherit
-    # .rpln-rail-btn sizing; :disabled dims them and disables the cursor.
-    ".rpln-pager{display:inline-flex;align-items:center;gap:0;}"
-    ".rpln-pager-counter{font-size:11px;color:rgba(232,228,222,0.55);"
-    "padding:0 4px;font-family:var(--font-sans);min-width:28px;text-align:center;}"
-    ".rpln-rail-btn:disabled{opacity:0.35;cursor:not-allowed;}"
-    ".rpln-rail-btn:disabled:hover{background:transparent;"
-    "color:rgba(232,228,222,0.55);}"
     # Active feedback state — filled background + brighter icon when the
     # user has toggled 👍 or 👎 on this message.
     ".rpln-rail-btn[data-rpln-fb-active='1']{color:rgba(232,228,222,0.92);"
@@ -119,7 +111,7 @@ _SVG_COPY: str = (
     '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>'
     '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
 )
-# WP-F.04.18c: feedback + pager glyphs for the assistant rail.
+# WP-F.04.18c: feedback glyphs for the assistant rail.
 _SVG_THUMB_UP: str = (
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
     'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
@@ -132,17 +124,6 @@ _SVG_THUMB_DOWN: str = (
     '<path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9A2 2 0 0 0 4.28 15H10z"/>'
     '<line x1="17" y1="2" x2="17" y2="13"/></svg>'
 )
-_SVG_CHEV_L: str = (
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
-    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-    '<polyline points="15 18 9 12 15 6"/></svg>'
-)
-_SVG_CHEV_R: str = (
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
-    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-    '<polyline points="9 18 15 12 9 6"/></svg>'
-)
-
 _JS_MSG_ACTIONS: str = """<!DOCTYPE html>
 <html><head></head><body style="margin:0;padding:0;">
 <script>
@@ -206,9 +187,6 @@ _JS_MSG_ACTIONS: str = """<!DOCTYPE html>
         } else if (action === 'down' && idx !== null) {
             clickBridge('rpln_regen_fb_down_' + idx);
         }
-        // pager-prev / pager-next are intentionally no-ops — the buttons
-        // are rendered `disabled` so clicks don't reach here anyway, but
-        // if a future phase enables them the branch adds trivially.
     }, true);
 })();
 </script>
@@ -599,10 +577,9 @@ def _upsert_tool_detail(
 
 
 def _render_message_actions(idx: int) -> None:
-    """Render hover-reveal assistant rail: Copy / Regenerate | 👍 / 👎 | pager.
+    """Render hover-reveal assistant rail: Copy / Regenerate | feedback.
 
     Feedback state persists in ``st.session_state.messages_meta[idx]["feedback"]``.
-    Pager chevrons are rendered disabled — no branching version history yet.
     """
     fb_state = st.session_state.messages_meta.get(idx, {}).get("feedback")
     up_active = ' data-rpln-fb-active="1"' if fb_state == "up" else ""
@@ -614,12 +591,6 @@ def _render_message_actions(idx: int) -> None:
         '<span class="rpln-rail-sep"></span>'
         f'<button class="rpln-rail-btn" data-rpln-action="up" title="Helpful"{up_active}>{_SVG_THUMB_UP}</button>'
         f'<button class="rpln-rail-btn" data-rpln-action="down" title="Not helpful"{down_active}>{_SVG_THUMB_DOWN}</button>'
-        '<span class="rpln-rail-sep"></span>'
-        '<div class="rpln-pager">'
-        f'<button class="rpln-rail-btn" data-rpln-action="pager-prev" title="Previous version" disabled>{_SVG_CHEV_L}</button>'
-        '<span class="rpln-pager-counter">1 / 1</span>'
-        f'<button class="rpln-rail-btn" data-rpln-action="pager-next" title="Next version" disabled>{_SVG_CHEV_R}</button>'
-        "</div>"
         "</div>",
         unsafe_allow_html=True,
     )

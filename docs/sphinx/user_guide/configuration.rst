@@ -127,9 +127,9 @@ LLM configuration
      - (none)
      - Google Gemini API key (same KeyStore note applies)
    * - ``OLLAMA_BASE_URL``
-     - ``http://localhost:11434``
-     - Ollama server URL (used by both the agent and the PDF
-       orchestrator's capability gate)
+     - ``http://127.0.0.1:11434``
+     - Ollama server URL used by the chat agent and UI model discovery.
+       ``OLLAMA_HOST`` is also accepted as an Ollama-compatible alias.
 
 Capability + model selection for the PDF orchestrator
 -----------------------------------------------------
@@ -180,12 +180,6 @@ logged against the IRB dossier.
        verified PHI-free (blank CRFs, protocol, MOP) — and ALSO
        create a non-empty attestation note at
        ``authorities/phi_free_pdfs.md``. Both are required.
-   * - ``REPORTALIN_OLLAMA_NER``
-     - ``0``
-     - Feature flag for the Stage-5 local-Ollama narrative NER sweep
-       (:mod:`scripts.security.phi_ner`). Setting this today is a
-       no-op because the implementation is a design stub pending
-       prompt calibration against the Indo-VAP narrative corpus.
    * - ``REPORTALIN_PDF_EXTRACTION_MODE``
      - (unset)
      - Selects the PDF extraction path inside
@@ -273,9 +267,7 @@ Logging
      - ``INFO``
      - Root logger level. Set to ``DEBUG`` for tree-style verbose
        output; the parallel-extraction phase renders per-leg progress
-       in ``--verbose`` mode but the
-       ``VerboseLogger`` indent counter is not thread-safe so the
-       indentation may interleave (cosmetic only).
+       in ``--verbose`` mode using thread-local indentation.
    * - ``LOG_VERBOSE``
      - ``0``
      - When ``1``, force-enables the verbose tree-style output

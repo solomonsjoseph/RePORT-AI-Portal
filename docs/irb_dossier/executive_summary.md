@@ -351,7 +351,7 @@ Recommended review sequence:
    [`docs/sphinx/developer_guide/decisions.rst`](../sphinx/developer_guide/decisions.rst)
    for the rationale behind each architectural choice, including the
    alternatives that were considered and rejected.
-5. Read the **operator-owned runbook stubs** listed at the bottom of
+5. Read the **operator-owned runbook requirements** listed at the bottom of
    the conformance matrix (key management, breach response, data
    retention, DPDPA transition). These are the procedures the study
    team fills in before first production ingest — the code can

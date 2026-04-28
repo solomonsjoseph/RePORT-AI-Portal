@@ -374,8 +374,7 @@ Key files
      - ``scripts/security/phi_gate.py``,
        ``scripts/security/kanon_gate.py``,
        ``scripts/security/phi_allowlist.py``,
-       ``scripts/security/phi_patterns.py``,
-       ``scripts/security/phi_ner.py`` (design stub)
+       ``scripts/security/phi_patterns.py``
    * - Phase-0 staging hardening
      - ``scripts/utils/secure_staging.py``
    * - Integrity + governance

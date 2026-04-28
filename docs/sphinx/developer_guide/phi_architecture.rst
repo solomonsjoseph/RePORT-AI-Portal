@@ -326,9 +326,6 @@ Module Map
        ``l_diversity_check``, ``guard_rows_with_kanon_and_ldiv``.
    * - :mod:`scripts.security.secure_env`
      - Pipeline-side directory-level zone guards.
-   * - :mod:`scripts.security.phi_ner`
-     - Local-Ollama narrative NER design stub
-       (``REPORTALIN_OLLAMA_NER=1``).
    * - :mod:`scripts.ai_assistant.file_access`
      - Agent-runtime path validator (``validate_agent_read`` etc.).
    * - :mod:`scripts.ai_assistant.phi_safe`

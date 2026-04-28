@@ -28,14 +28,11 @@ See `conformance_matrix.md` for the claim-by-claim test inventory and
 
 | ID | Area | Current control | Remaining work | Owner |
 |---|---|---|---|---|
-| F1 | Concurrent pipeline invocation | The three extraction legs run in one process and join before cleanup. | Add an OS-level per-study run lock around `tmp/{STUDY}/` so two operator-triggered runs cannot race. | Engineering |
 | F2 | Breach response | PHI gate blocks and scrub audits are recorded; logs are PHI-redacted. | Write the study-team breach-response runbook: detection, severity, IRB/IEC notification window, containment, root cause, and remediation. | Study team |
 | F3 | Retention/destruction | AMBER staging is securely removed on success; output and audit trees are durable. | Write the retention/destruction runbook for raw inputs, trio bundle, audit envelope, restore points, logs, and HMAC key custody. | Study team |
 | F4 | Consent scoping | `phi_scrub.yaml` is the de-facto field allow/drop catalog. | Optionally add `config/consent_scope.yaml` as an IEC-approved allowlist layered above the scrub catalog. | Study team + engineering |
 | F5 | District population threshold | Geography identifiers are dropped or generalized by catalog rules. | Add a per-study district-population mapping if the site needs population-threshold retention logic. | Study team |
 | F6 | Narrative rescue | High-risk narrative/free-text fields are dropped by default. | Calibrate and implement local narrative NER only if preserving narrative signal becomes scientifically necessary. | Engineering |
-| F7 | Inert chat upload control | The Streamlit upload widget is not wired to disk, agent tools, or provider calls. | Remove the widget or wire it only behind upload-specific PHI checks and explicit operator policy. | Engineering |
-| F8 | Limited Dataset attestation template | Limited Dataset mode requires `authorities/phi_limited_dataset.md`. | Add a template matching the existing PDF PHI-free attestation template. | Documentation |
 
 ## Deployment constraints
 

@@ -9,8 +9,7 @@ generic name-like heuristic.
 Presidio NER is intentionally not wired in — comparative benchmarks
 showed precision around 22.7 % on mixed data where the rule catalog +
 clinical allowlist reach materially higher precision on the calibrated
-Indo-VAP field shapes. A local-Ollama narrative NER sweep remains a
-future extension (see :mod:`scripts.security.phi_ner`).
+Indo-VAP field shapes.
 
 The gate is the **defence-in-depth** layer at the trio-bundle → agent
 boundary: every ``@tool`` function in :mod:`scripts.ai_assistant.agent_tools`

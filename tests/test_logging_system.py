@@ -10,17 +10,20 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 import time
 from pathlib import Path
 
 import pytest
 
+from scripts.utils import logging_system as logging_mod
 from scripts.utils.logging_system import (
     SUCCESS,
     CustomFormatter,
     JSONFormatter,
     cleanup_old_logs,
     get_log_file_path,
+    get_verbose_logger,
     log_errors,
     log_time,
     reset_logging,
@@ -214,3 +217,41 @@ class TestLogErrors:
             raise RuntimeError("boom")
 
         assert failing() is None
+
+
+class TestVerboseLogger:
+    def test_indentation_is_thread_local(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.setenv("LOG_DIR", str(tmp_path))
+        setup_logging(log_level="DEBUG")
+        messages: list[str] = []
+        messages_lock = threading.Lock()
+
+        def capture(msg: str, *args: object, **kwargs: object) -> None:
+            rendered = msg % args if args else msg
+            with messages_lock:
+                messages.append(rendered)
+
+        monkeypatch.setattr(logging_mod, "debug", capture)
+        vlog = get_verbose_logger()
+        entered = threading.Event()
+        release = threading.Event()
+
+        def worker_a() -> None:
+            with vlog.step("outer"):
+                entered.set()
+                release.wait(timeout=2)
+
+        def worker_b() -> None:
+            entered.wait(timeout=2)
+            vlog.detail("parallel")
+            release.set()
+
+        thread_a = threading.Thread(target=worker_a)
+        thread_b = threading.Thread(target=worker_b)
+        thread_a.start()
+        thread_b.start()
+        thread_a.join(timeout=2)
+        thread_b.join(timeout=2)
+
+        assert "├─ outer" in messages
+        assert "│  parallel" in messages

@@ -38,11 +38,10 @@ Eight structural-field action classes, evaluated in strict priority order
    ``"SUBJ_" + hmac_sha256(key, raw_id).hexdigest()[:12]``. Deterministic
    cross-file linkage preserved; non-reversible without key possession.
 
-Free-text PHI residuals (narrative content inside narrative fields not
-covered by drop) are addressed by a planned local-Ollama NER sweep —
-see :mod:`scripts.security.phi_ner` for the design stub. Current
-narrative fields like ``*COMMENT``, ``*REMARK``, ``WITHDRAWEXPLAIN``,
-``*SPECIFY`` are whole-field dropped.
+Free-text PHI residuals are handled conservatively by dropping narrative
+fields wholesale. Current narrative fields like ``*COMMENT``, ``*REMARK``,
+``WITHDRAWEXPLAIN``, and ``*SPECIFY`` are removed before publication; the
+agent-boundary PHI gate remains defense-in-depth for returned text.
 
 Rule catalog is declared in ``phi_scrub.yaml`` (Indo-VAP-calibrated).
 

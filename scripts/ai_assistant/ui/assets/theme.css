@@ -3,14 +3,9 @@
    Dark-only. All tokens in :root; never hard-code hex outside this file.
    ========================================================================= */
 
-/* ---------- Fonts (currently Google-hosted for all three families)
-   Inter and Source Serif 4 WOFF2 files exist in assets/fonts/ but @font-face
-   declarations and Streamlit static-serving config are not yet wired up.
-   JetBrains Mono WOFF2 files are not yet downloaded (Apache-2.0; get from
-   github.com/JetBrains/JetBrainsMono/releases, weights 400/500/600).
-   To self-host all three: enable static serving, add @font-face blocks, then
-   remove JetBrains Mono from the @import below. ---------- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* ---------- Fonts
+   Text uses system fonts. Streamlit static serving is disabled, so no unused
+   local font binaries are tracked in the repository. ---------- */
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..700,0..1,-50..200&display=block');
 
 /* Material Symbols base class — required for ligatures to resolve */
@@ -52,9 +47,9 @@
     --rpln-good:            #7FB77E;
     --rpln-bad:             #D97878;
 
-    --rpln-font-ui:         'Inter', system-ui, -apple-system, sans-serif;
-    --rpln-font-prose:      'Source Serif 4', Georgia, serif;
-    --rpln-font-mono:       'JetBrains Mono', ui-monospace, Menlo, monospace;
+    --rpln-font-ui:         system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --rpln-font-prose:      Georgia, 'Times New Roman', serif;
+    --rpln-font-mono:       ui-monospace, SFMono-Regular, Menlo, monospace;
 
     --rpln-col-width:       720px;
     --rpln-sidebar-w:       272px;
@@ -1154,14 +1149,6 @@ body[data-rpln-sidebar-collapsed="true"] .rpln-profile-root {
     margin-top: 8px;
     color: var(--rpln-text-muted);
 }
-.rpln-pager {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px;
-    color: var(--rpln-text-faint);
-    padding: 0 8px;
-    user-select: none;
-}
-
 .rpln-jump-latest {
   position: fixed;
   right: 24px;
@@ -1331,9 +1318,9 @@ body[data-rpln-sidebar-collapsed="true"] .rpln-profile-root {
   --border:              rgba(244,239,232,0.10);
   --border-dark:         rgba(244,239,232,0.10);
   --border-dark-s:       var(--rpln-hairline, rgba(244,239,232,0.08));
-  --font-sans:           var(--rpln-font-ui, 'Inter', system-ui, sans-serif);
-  --font-serif:          var(--rpln-font-prose, 'Source Serif 4', Georgia, serif);
-  --font-mono:           var(--rpln-font-mono, 'JetBrains Mono', monospace);
+  --font-sans:           var(--rpln-font-ui, system-ui, sans-serif);
+  --font-serif:          var(--rpln-font-prose, Georgia, serif);
+  --font-mono:           var(--rpln-font-mono, ui-monospace, monospace);
   /* @deprecated — use --rpln-text-* instead (--fs-sm=13px vs --rpln-text-sm=12px) */
   --fs-xs: 11px; --fs-sm: 13px; --fs-base: 14px; --fs-md: 15px;
   --fs-lg: 17px; --fs-xl: 22px; --fs-2xl: 28px; --fs-3xl: 36px;
@@ -1423,7 +1410,7 @@ html,
   height: auto;
   flex: 0 0 auto;
   color: var(--text-primary, #F4EFE8) !important;
-  font: 600 12px var(--rpln-font-ui, Inter, sans-serif);
+  font: 600 12px var(--rpln-font-ui, system-ui, sans-serif);
   line-height: 1.2;
   letter-spacing: 0.015em;
   animation: none;
@@ -1547,7 +1534,7 @@ div[role="dialog"]:not(:has(.rpln-topbar-menu-sentinel)):not(:has(.rpln-topbar-s
     border: 1px solid var(--rpln-hairline, rgba(244,239,232,0.08)) !important;
     border-radius: 20px !important;
     padding: 5px 10px 5px 12px !important;
-    font-family: var(--rpln-font-ui, 'Inter', sans-serif) !important;
+    font-family: var(--rpln-font-ui, system-ui, sans-serif) !important;
     font-size: 13px !important;
     font-weight: 500 !important;
     color: var(--rpln-text, #F4EFE8) !important;
@@ -1673,7 +1660,7 @@ div[role="dialog"]:not(:has(.rpln-topbar-menu-sentinel)):not(:has(.rpln-topbar-s
     gap: var(--sp-2, 8px);
 }
 .rpln-wizard-wordmark {
-    font-family: var(--font-serif, 'Source Serif 4', Georgia, serif);
+    font-family: var(--font-serif, Georgia, serif);
     font-weight: 600;
     font-size: 56px;
     letter-spacing: -0.02em;
@@ -1682,7 +1669,7 @@ div[role="dialog"]:not(:has(.rpln-topbar-menu-sentinel)):not(:has(.rpln-topbar-s
     margin: 0;
 }
 .rpln-wizard-tagline {
-    font-family: var(--font-sans, 'Inter', sans-serif);
+    font-family: var(--font-sans, system-ui, sans-serif);
     font-size: 14px;
     font-weight: 400;
     color: var(--text-tertiary);
@@ -1795,7 +1782,7 @@ div[role="dialog"]:not(:has(.rpln-topbar-menu-sentinel)):not(:has(.rpln-topbar-s
 [data-testid="stChatMessageContent"][aria-label*="assistant" i] > *:last-child { margin-bottom: 0 !important; }
 /* Assistant prose typography */
 [data-testid="stChatMessageContent"][aria-label*="assistant" i] {
-    font-family: var(--font-serif, 'Source Serif 4', Georgia, serif) !important;
+    font-family: var(--font-serif, Georgia, serif) !important;
     font-size: 16px !important;
     line-height: 1.65 !important;
     letter-spacing: -0.003em !important;
@@ -1846,7 +1833,7 @@ div[role="dialog"]:not(:has(.rpln-topbar-menu-sentinel)):not(:has(.rpln-topbar-s
     flex: 0 0 auto !important;
     align-self: flex-end !important;
     margin: 0 !important;
-    font-family: var(--rpln-font-ui, 'Inter', sans-serif) !important;
+    font-family: var(--rpln-font-ui, system-ui, sans-serif) !important;
     font-size: 17px !important;
     line-height: 1.45 !important;
     color: var(--rpln-text, #F4EFE8) !important;
@@ -1861,7 +1848,7 @@ div[role="dialog"]:not(:has(.rpln-topbar-menu-sentinel)):not(:has(.rpln-topbar-s
     padding: 1px 5px !important;
     border-radius: 6.4px !important;
     border: 1px solid rgba(255,255,255,0.12) !important;
-    font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+    font-family: var(--font-mono, ui-monospace, monospace) !important;
     font-size: 0.9em !important;
 }
 
@@ -1896,7 +1883,7 @@ div[role="dialog"]:not(:has(.rpln-topbar-menu-sentinel)):not(:has(.rpln-topbar-s
 
 /* ── Footer disclaimers ── */
 .rpln-footer-disclaimer {
-    font-family: var(--rpln-font-ui, 'Inter', sans-serif) !important;
+    font-family: var(--rpln-font-ui, system-ui, sans-serif) !important;
     font-size: 11px !important;
     color: var(--rpln-text-faint, rgba(244,239,232,0.38)) !important;
     text-align: center !important;
@@ -1904,7 +1891,7 @@ div[role="dialog"]:not(:has(.rpln-topbar-menu-sentinel)):not(:has(.rpln-topbar-s
     padding: 0 !important;
 }
 .rpln-welcome-caption {
-    font-family: var(--rpln-font-ui, 'Inter', sans-serif) !important;
+    font-family: var(--rpln-font-ui, system-ui, sans-serif) !important;
     font-size: 11px !important;
     color: var(--rpln-text-faint, rgba(244,239,232,0.38)) !important;
     text-align: center !important;
@@ -1957,31 +1944,6 @@ div[role="dialog"]:not(:has(.rpln-topbar-menu-sentinel)):not(:has(.rpln-topbar-s
     text-transform: uppercase; letter-spacing: 0.06em;
     color: rgba(244,239,232,0.45);
     border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;
-}
-
-/* ── Plus-menu popover ── */
-[data-testid="stPopoverBody"]:has(.rpln-plus-menu-header) {
-    width: 220px !important; min-width: 220px !important;
-    background: var(--rpln-menu-bg, var(--rpln-sidebar-bg)) !important;
-    border: 1px solid var(--rpln-menu-border, var(--border-default)) !important;
-    border-radius: 14px !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.35) !important;
-    padding: 6px !important;
-}
-[data-testid="stPopoverBody"]:has(.rpln-plus-menu-header) [data-testid="stBaseButton-secondary"] {
-    padding: 10px 12px !important; border-radius: 8px !important;
-    background: transparent !important; border: none !important;
-    color: var(--rpln-menu-text, var(--rpln-text)) !important;
-    font-size: 14px !important; font-weight: 500 !important;
-    text-align: left !important; justify-content: flex-start !important;
-    box-shadow: none !important;
-}
-[data-testid="stPopoverBody"]:has(.rpln-plus-menu-header) [data-testid="stBaseButton-secondary"]:hover {
-    background: var(--rpln-menu-hover) !important;
-}
-.rpln-plus-menu-header {
-    position: absolute; width: 1px; height: 1px;
-    overflow: hidden; clip: rect(0,0,0,0);
 }
 
 /* ── Search modal ── */
@@ -2076,7 +2038,7 @@ div[role="dialog"]:has(.rpln-search-group) [data-testid="stTextInput"] input {
     padding: 32px 24px !important;
 }
 .rpln-settings-title {
-    font-family: var(--font-serif, 'Source Serif 4', Georgia, serif);
+    font-family: var(--font-serif, Georgia, serif);
     font-size: 28px; color: var(--text-primary);
     display: block; margin-bottom: 16px;
 }
@@ -2140,9 +2102,9 @@ body.rpln-redesign {
   --border-subtle: rgba(255, 255, 255, 0.04);
 
   /* Typography */
-  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-prose: 'Source Serif 4', Georgia, 'Times New Roman', serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-prose: Georgia, 'Times New Roman', serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Geometry */
   --col-w: 720px;
@@ -2526,7 +2488,7 @@ body.rpln-redesign [data-testid="stChatMessage"] {
   margin: 0 auto 24px auto !important;
 }
 
-/* Status-ready dot + thinking disclosure chip — match token palette. */
+/* Thinking disclosure chip — match token palette. */
 body.rpln-redesign .rpln-thinking-chip,
 body.rpln-redesign [data-rpln-thinking-chip] summary {
   color: var(--text-secondary) !important;
@@ -2536,7 +2498,7 @@ body.rpln-redesign [data-rpln-thinking-chip] summary {
   font-family: var(--font-ui) !important;
 }
 
-/* Per-message rails (Retry/Edit/Copy, 👍/👎, pager) — token-aligned icons. */
+/* Per-message rails (Retry/Edit/Copy, feedback) — token-aligned icons. */
 body.rpln-redesign [data-rpln-action] button,
 body.rpln-redesign [data-rpln-action-row] button {
   color: var(--text-tertiary) !important;
@@ -2614,8 +2576,8 @@ body.rpln-redesign .st-key-rpln_adaptive_toggle {
    WP-F.05.05 — Welcome hero + empty-state polish
    -----------------------------------------------------------------------
    Hero DOM comes from _render_welcome() and already uses `.rpln-hero-*`
-   anchors. Legacy theme.css pins title to Source Serif 4 40px; we
-   re-skin colors to redesign tokens and lift the tagline into an
+   anchors. The legacy title treatment used a custom serif at 40px; this
+   re-skins colors to redesign tokens and lifts the tagline into an
    uppercase eyebrow to match `tmp/img/v2-default.png`. No starter cards
    (DECISIONS.md B2 — permanently removed).
    ======================================================================= */
@@ -3089,26 +3051,6 @@ body.rpln-redesign .rpln-mobile-scrim.rpln-open {
 }
 
 /* =======================================================================
-   WP-F.05.09a \u2014 Brand status dot + share flash
-   -----------------------------------------------------------------------
-   Small green dot next to the brand name signals pipeline readiness.
-   Visual-only today; future PR can gate on actual pipeline state.
-   Reference: merged-design.md:156, 164-169.
-   ======================================================================= */
-body.rpln-redesign .rpln-brand-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--status-ready);
-  box-shadow: 0 0 0 3px rgba(110, 231, 160, 0.18);
-  margin-left: 8px;
-  vertical-align: middle;
-  position: relative;
-  top: -1px;
-}
-
-/* =======================================================================
    WP-F.05.09b.4 \u2014 "edited" badge after an Edit-flow re-submission
    ======================================================================= */
 body.rpln-redesign .rpln-edited-badge {
@@ -3372,7 +3314,7 @@ body.rpln-redesign .rpln-profile-dock.menu-open .rpln-pd-caret {
   background: var(--bg-surface, #242422);
   color: var(--text-primary, #F4EFE8);
   border: 1px solid var(--border-default, rgba(244, 239, 232, 0.12));
-  font-family: var(--font-ui, Inter, system-ui, sans-serif);
+  font-family: var(--font-ui, system-ui, sans-serif);
   font-size: 13px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
   opacity: 0;
@@ -3619,9 +3561,7 @@ body.rpln-redesign .rpln-profile-dock {
        still triggers the real hidden button (form semantics preserved).
    (b) Style .rpln-submit-proxy as the circular orange arrow-up (matches
        the previous formSubmit button visually).
-   (c) Hide Streamlit's native popover chevron on the [+] attach trigger
-       so only the bare [+] glyph shows (reference HTML:896).
-   (d) Rotate Streamlit's model-pill popover chevron 180° so it reads `^`
+   (c) Rotate Streamlit's model-pill popover chevron 180° so it reads `^`
        (expand_less) instead of `v` (expand_more) — matches reference.
    ======================================================================= */
 
@@ -3722,39 +3662,7 @@ body.rpln-redesign .rpln-profile-dock {
   transform: none !important;
 }
 
-/* (c) Hide the popover-indicator chevron on the [+] attach trigger.
-   Streamlit's popover trigger can emit the chevron as either <svg> or a
-   Material Symbols ligature span (depending on Streamlit version + widget
-   variant). Cover both, plus any trailing stIconMaterial inside the
-   button. Scoped to the composer + button only — other popovers unaffected. */
-.st-key-rpln_composer_plus [data-testid="stPopoverButton"] svg,
-.st-key-rpln_composer_plus [data-testid="stPopoverButton"] [data-testid="stIconMaterial"],
-.st-key-rpln_composer_plus [data-testid="stPopoverButton"] > span:last-child:not(:first-child) {
-    display: none !important;
-}
-/* [+] attach trigger — v0 compact size (~28px square, subtle surface). */
-.st-key-rpln_composer_plus [data-testid="stPopoverButton"] {
-    width: 28px !important;
-    height: 28px !important;
-    min-height: 28px !important;
-    min-width: 28px !important;
-    padding: 0 !important;
-    border-radius: 8px !important;
-    background: var(--rpln-surface-2, rgba(255,255,255,0.04)) !important;
-    border: 1px solid var(--rpln-hairline, rgba(255,255,255,0.08)) !important;
-    color: var(--rpln-text-muted) !important;
-    font-size: 16px !important;
-    line-height: 1 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-.st-key-rpln_composer_plus [data-testid="stPopoverButton"]:hover {
-    background: var(--rpln-surface, rgba(255,255,255,0.07)) !important;
-    color: var(--rpln-text) !important;
-}
-
-/* (d) Rotate the model-pill chevron 180° (v → ^). Reference uses expand_less;
+/* (c) Rotate the model-pill chevron 180° (v → ^). Reference uses expand_less;
    Streamlit's popover trigger ships expand_more. Rotation is cheaper than
    replacing the DOM. Also cover the stIconMaterial variant in case Streamlit
    swaps between svg and Material-Symbols span. */
@@ -3764,7 +3672,7 @@ body.rpln-redesign .rpln-profile-dock {
     transition: transform 0.15s ease;
 }
 
-/* (e) Composer full v0 parity with tmp/Test 2/RePORTaLiN Chat.html `.composer`.
+/* (d) Composer full v0 parity with tmp/Test 2/RePORTaLiN Chat.html `.composer`.
    Target metrics: 720px × ~94px. Layout: 10px top pad + 44px textarea +
    small gap + 28px controls row + 10px bottom pad. Rules are unscoped
    (no body.rpln-redesign prefix) so parity holds regardless of body class.
@@ -3829,11 +3737,7 @@ body.rpln-redesign .rpln-profile-dock {
 }
 
 /* ---------- Adapter B — v1-style composer foot-row (spec §5.8) ---------- */
-/* Matches the v0 reference: chip row under textarea with a retrieval chip
- * on the left and the model-pill (hoisted by bridge.js) on the right. The
- * shell container (st-key-rpln_composer_shell) already provides the rounded
- * card, hairline border, and surface colour — this block styles the new
- * chip row inside it and the model-pill once hoisted into the pill-slot. */
+/* Styles the model pill once bridge.js hoists it into the pill slot. */
 [class*="st-key-rpln_composer_shell"] .rpln-composer-foot,
 .rpln-composer-foot {
     display: flex;
@@ -3850,24 +3754,6 @@ body.rpln-redesign .rpln-profile-dock {
   gap: 18px;
   min-width: 0;
 }
-.rpln-composer-foot .rpln-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0;
-    background: transparent;
-    border: 0;
-    border-radius: 0;
-    color: var(--rpln-text-muted);
-    font: 500 12px var(--rpln-font-ui);
-    cursor: pointer;
-    transition: color 0.15s ease !important;
-}
-.rpln-composer-foot .rpln-chip:hover {
-    color: var(--rpln-text);
-    background: transparent;
-}
-.rpln-composer-foot .rpln-chip .material-symbols-rounded { font-size: 15px; }
 .rpln-composer-spacer { flex: 1 1 auto; }
 .rpln-composer-pill-slot {
     display: inline-flex;

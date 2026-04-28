@@ -84,6 +84,7 @@ See Also:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import logging
 import os
 import shutil
@@ -122,6 +123,63 @@ __all__ = [
     "main",
     "run_step",
 ]
+
+_PIPELINE_LOCK_FILE: Any | None = None
+
+
+def _acquire_pipeline_lock() -> None:
+    """Hold an exclusive per-study process lock for the lifetime of this run."""
+    global _PIPELINE_LOCK_FILE
+
+    lock_dir = Path(config.TMP_DIR)
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(OSError):
+        lock_dir.chmod(0o700)
+    lock_path = lock_dir / f".{config.STUDY_NAME}.pipeline.lock"
+    if _PIPELINE_LOCK_FILE is not None:
+        if Path(str(_PIPELINE_LOCK_FILE.name)) == lock_path:
+            return
+        _PIPELINE_LOCK_FILE.close()
+        _PIPELINE_LOCK_FILE = None
+
+    fh = lock_path.open("a+", encoding="utf-8")
+    with contextlib.suppress(OSError):
+        lock_path.chmod(0o600)
+
+    try:
+        fh.seek(0)
+        if os.name == "posix":
+            import fcntl
+
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        elif os.name == "nt":
+            import msvcrt
+
+            fh.write("\0")
+            fh.flush()
+            fh.seek(0)
+            msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)  # type: ignore[attr-defined]
+        fh.seek(0)
+        fh.truncate()
+        fh.write(f"pid={os.getpid()}\nstudy={config.STUDY_NAME}\n")
+        fh.flush()
+        os.fsync(fh.fileno())
+    except OSError as exc:
+        fh.close()
+        raise RuntimeError(
+            f"Another pipeline run already holds the study lock: {lock_path}"
+        ) from exc
+
+    _PIPELINE_LOCK_FILE = fh
+
+
+def _release_pipeline_lock() -> None:
+    """Release the process-local pipeline lock handle."""
+    global _PIPELINE_LOCK_FILE
+    if _PIPELINE_LOCK_FILE is None:
+        return
+    _PIPELINE_LOCK_FILE.close()
+    _PIPELINE_LOCK_FILE = None
 
 
 def _install_log_redactor_best_effort() -> None:
@@ -240,6 +298,7 @@ def _prepare_staging() -> None:
     rewritten in place to the resolved root so every downstream module
     that reads ``config.STAGING_DATASETS_DIR`` etc. sees the same value.
     """
+    _acquire_pipeline_lock()
     staging = resolve_staging_root(
         Path(config.STUDY_STAGING_DIR),
         study_name=config.STUDY_NAME,
@@ -385,6 +444,7 @@ def _cleanup_staging() -> None:
     if staging.exists():
         secure_remove_tree(staging)
         log.info("Staging workspace securely removed: %s", staging)
+    _release_pipeline_lock()
 
 
 def _run_dict_leg(*, skip: bool) -> dict[str, Any]:

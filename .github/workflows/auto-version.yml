@@ -4,95 +4,99 @@ on:
   push:
     branches:
       - main
-      - 'RePORT_India_STUDY_RAG_Focus'
     paths-ignore:
+      - 'README.md'
       - 'docs/**'
-      - '*.md'
       - '.github/workflows/deploy-docs.yml'
       - '.github/workflows/docs-quality-check.yml'
+
+concurrency:
+  group: auto-version-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
 
 jobs:
   version-bump:
+    name: Conventional commit version bump
     runs-on: ubuntu-latest
-    # Skip if the last commit was already a version bump (prevent loops)
-    if: "!startsWith(github.event.head_commit.message, 'chore: bump version')"
+    timeout-minutes: 10
+    if: >-
+      !startsWith(github.event.head_commit.message, 'chore: bump version') &&
+      github.actor != 'github-actions[bot]'
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 2
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Python
-        uses: actions/setup-python@v5
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           python-version: '3.13'
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
 
-      - name: Determine version bump from commit message
+      - name: Determine version bump
         id: bump
         shell: bash
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          FIRST_LINE=$(echo "$COMMIT_MSG" | head -n 1)
+          first_line="$(printf '%s\n' "$COMMIT_MSG" | head -n 1)"
 
-          # Check for BREAKING CHANGE in body or ! in type
-          if echo "$COMMIT_MSG" | grep -qiE 'BREAKING CHANGE:' || echo "$FIRST_LINE" | grep -qiE '^[a-z]+!:'; then
+          if printf '%s\n' "$COMMIT_MSG" | grep -qiE 'BREAKING CHANGE:' || printf '%s\n' "$first_line" | grep -qiE '^[a-z]+(\([^)]+\))?!:'; then
             echo "bump=major" >> "$GITHUB_OUTPUT"
-          elif echo "$FIRST_LINE" | grep -qiE '^feat(\(.+\))?:'; then
+          elif printf '%s\n' "$first_line" | grep -qiE '^feat(\([^)]+\))?:'; then
             echo "bump=minor" >> "$GITHUB_OUTPUT"
-          elif echo "$FIRST_LINE" | grep -qiE '^fix(\(.+\))?:'; then
+          elif printf '%s\n' "$first_line" | grep -qiE '^fix(\([^)]+\))?:'; then
             echo "bump=patch" >> "$GITHUB_OUTPUT"
           else
             echo "bump=none" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Bump version
+      - name: Bump version files
         if: steps.bump.outputs.bump != 'none'
         id: version
         shell: python
         run: |
-          import os, re
+          import os
+          import re
+          from pathlib import Path
 
-          version_file = "__version__.py"
-          with open(version_file) as f:
-              content = f.read()
-
+          version_file = Path("__version__.py")
+          content = version_file.read_text(encoding="utf-8")
           match = re.search(r'__version__:\s*str\s*=\s*"(\d+)\.(\d+)\.(\d+)"', content)
           if not match:
               raise ValueError("Could not parse version from __version__.py")
 
-          major, minor, patch = int(match.group(1)), int(match.group(2)), int(match.group(3))
+          major, minor, patch = map(int, match.groups())
           old_version = f"{major}.{minor}.{patch}"
-
           bump = "${{ steps.bump.outputs.bump }}"
           if bump == "major":
-              major += 1
-              minor = 0
-              patch = 0
+              major, minor, patch = major + 1, 0, 0
           elif bump == "minor":
-              minor += 1
-              patch = 0
+              minor, patch = minor + 1, 0
           elif bump == "patch":
               patch += 1
 
           new_version = f"{major}.{minor}.{patch}"
+          version_file.write_text(
+              content.replace(
+                  f'__version__: str = "{old_version}"',
+                  f'__version__: str = "{new_version}"',
+              ),
+              encoding="utf-8",
+          )
 
-          new_content = content.replace(f'__version__: str = "{old_version}"', f'__version__: str = "{new_version}"')
-          with open(version_file, "w") as f:
-              f.write(new_content)
-
-          # Also update the top-level app.version in config.yaml
-          config_yaml = "config/config.yaml"
-          if os.path.exists(config_yaml):
-              with open(config_yaml) as f:
-                  yaml_content = f.read()
-              # Use regex anchored to the app section to avoid replacing
-              # version strings that appear elsewhere in the file.
+          config_yaml = Path("config/config.yaml")
+          if config_yaml.exists():
+              yaml_content = config_yaml.read_text(encoding="utf-8")
               yaml_content = re.sub(
                   rf'^(\s+version:\s*"){re.escape(old_version)}"',
                   rf'\g<1>{new_version}"',
@@ -100,14 +104,13 @@ jobs:
                   count=1,
                   flags=re.MULTILINE,
               )
-              with open(config_yaml, "w") as f:
-                  f.write(yaml_content)
+              config_yaml.write_text(yaml_content, encoding="utf-8")
 
-          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-              f.write(f"old_version={old_version}\n")
-              f.write(f"new_version={new_version}\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"old_version={old_version}\n")
+              fh.write(f"new_version={new_version}\n")
 
-          print(f"Version bumped: {old_version} → {new_version} ({bump})")
+          print(f"Version bumped: {old_version} -> {new_version} ({bump})")
 
       - name: Commit version bump
         if: steps.bump.outputs.bump != 'none'
@@ -115,5 +118,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add __version__.py config/config.yaml
-          git commit -m "chore: bump version ${{ steps.version.outputs.old_version }} → ${{ steps.version.outputs.new_version }}"
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: bump version ${{ steps.version.outputs.old_version }} -> ${{ steps.version.outputs.new_version }}"
           git push

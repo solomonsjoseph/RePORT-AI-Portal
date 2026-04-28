@@ -166,7 +166,10 @@ language while staying grounded. For substantive study questions it
 must resolve variable names before analysis, cite the dataset/form
 evidence in plain language, keep computed facts separate from
 interpretation, and surface missing data, low-confidence PDF matches,
-small-cell suppression, or underpowered models as caveats.
+small-cell suppression, or underpowered models as caveats. If a cohort
+has fewer than five outcome events, the analysis tool renders
+descriptive tables and plots but refuses univariate, multivariate, and
+interaction inference.
 
 The Wizard
 ----------
