@@ -20,7 +20,7 @@ permissions:
 jobs:
   version-bump:
     name: Conventional commit version bump
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     if: >-
       !startsWith(github.event.head_commit.message, 'chore: bump version') &&
@@ -121,3 +121,19 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "chore: bump version ${{ steps.version.outputs.old_version }} -> ${{ steps.version.outputs.new_version }}"
           git push
+
+      - name: Build release artifacts
+        if: steps.bump.outputs.bump != 'none'
+        run: uv build
+
+      - name: Tag and publish GitHub release
+        if: steps.bump.outputs.bump != 'none'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.new_version }}
+        run: |
+          git tag "v${VERSION}"
+          git push origin "v${VERSION}"
+          gh release create "v${VERSION}" dist/* \
+            --title "v${VERSION}" \
+            --notes "Automated release for v${VERSION}."

@@ -20,6 +20,7 @@ import streamlit as st
 
 import config
 from scripts.ai_assistant.ui import chat, shell, wizard
+from scripts.ai_assistant.ui.auth import enforce_auth_boundary
 from scripts.ai_assistant.ui.conversations import (
     _conversation_has_artifacts,
     _conversations_dir,
@@ -88,6 +89,7 @@ def main() -> None:
         initial_sidebar_state="expanded",
     )
 
+    enforce_auth_boundary()
     init_state()
     shell.inject_css()
     shell.install_bridge()

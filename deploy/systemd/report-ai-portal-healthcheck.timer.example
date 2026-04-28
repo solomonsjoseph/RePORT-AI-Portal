@@ -1,0 +1,11 @@
+[Unit]
+Description=Run RePORT AI Portal healthcheck every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=15s
+Unit=report-ai-portal-healthcheck.service
+
+[Install]
+WantedBy=timers.target
