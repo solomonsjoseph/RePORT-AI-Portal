@@ -12,8 +12,7 @@ suppress_small_cell / date jitter / id pseudonymize), and atomically
 published as a PHI-free Trio bundle for the ReAct agent. Every run emits ``audit/lineage_manifest.json`` — the single
 evidence artifact pairing every raw input SHA-256 with every published
 trio artifact SHA-256. See ``docs/irb_dossier/conformance_matrix.md`` for
-the 31-criterion IRB benchmark (plus four follow-ups added in patches
-2026-04-23a/b, totalling 35 architecturally satisfied).
+the active IRB conformance matrix.
 
 This root page is the entry point to two audiences:
 

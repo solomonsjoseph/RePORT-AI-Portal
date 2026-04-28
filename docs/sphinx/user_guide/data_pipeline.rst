@@ -1,10 +1,9 @@
 Data Pipeline
 =============
 
-Rewritten 2026-04-27 against the v0.20.0 code state. This page
-describes what ``python main.py --pipeline`` (or the wizard's "Load
-Study" button) actually does, in operator terms. For the deep
-architecture see :doc:`../developer_guide/architecture` and
+This page describes what ``python main.py --pipeline`` (or the wizard's
+"Load Study" button) does in operator terms. For the deep architecture
+see :doc:`../developer_guide/architecture` and
 :doc:`../developer_guide/phi_architecture`.
 
 Top-Level Flow
@@ -19,7 +18,7 @@ Top-Level Flow
                                               └── variables.json   for the
                                                                   PDF orchestrator)
             │
-            │   STEP 0/1/1.5: PARALLEL extraction (3-worker ThreadPoolExecutor — PR #18)
+            │   STEP 0/1/1.5: PARALLEL extraction (3-worker ThreadPoolExecutor)
             │     ├── Dictionary leg → tmp/{STUDY}/dictionary/
             │     ├── Datasets leg   → tmp/{STUDY}/datasets/
             │     └── PDFs leg       → tmp/{STUDY}/pdfs/   (orchestrator: pdfplumber
@@ -309,7 +308,7 @@ Where To Go Next
 
 * :doc:`../developer_guide/architecture` — full system architecture.
 * :doc:`../developer_guide/data_extraction_pdfs` — deep dive on the
-  PDF orchestrator (PR #15).
+  PDF orchestrator.
 * :doc:`configuration` — env flags, including
   ``REPORTALIN_PDF_EXTRACTION_MODE`` and the PHI-safety three.
 * :doc:`../developer_guide/operations` — operational playbook,

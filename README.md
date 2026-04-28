@@ -67,9 +67,8 @@ date_jitter → id_pseudonymize** — and emits a counts-only audit report plus 
 lineage manifest pairing every raw-file SHA-256 with every published artifact
 SHA-256. That manifest is the single IRB-review evidence file.
 
-For the 31-criterion IRB benchmark (plus four follow-ups added in patches
-2026-04-23a/b) with one passing test cited per claim, see
-`docs/irb_dossier/conformance_matrix.md`.
+For the active IRB conformance inventory, with one passing test cited
+per claim, see `docs/irb_dossier/conformance_matrix.md`.
 
 ## Data Flow
 
@@ -166,8 +165,8 @@ processed artifacts
   assistant to resolve variables before analysis, distinguish computed facts
   from interpretation, and surface caveats such as sparse events,
   low-confidence CRF matches, missing variables, or k-anonymity suppression.
-- **Multi-provider LLM** — OpenAI, Anthropic, Google, Ollama, vLLM via
-  LangChain's `init_chat_model()`; no bespoke adapters.
+- **Multi-provider LLM** — OpenAI, Anthropic, Google Gemini, Ollama,
+  and NVIDIA AI Endpoints via LangChain provider integrations.
 - **Dual interface** — CLI (`--chat`) and Streamlit web UI (`--web`).
 - **Telemetry** — append-only event logging with conservative field masking.
 
@@ -418,7 +417,7 @@ RePORT AI Portal/
 │   └── test_*.py                    # Module-level unit tests
 ├── typings/                         # Custom type stubs for Pyright
 ├── docs/
-│   ├── irb_dossier/                 # 31-criterion benchmark + 4 follow-ups + executive summary
+│   ├── irb_dossier/                 # IRB conformance matrix + executive summary
 │   └── sphinx/                      # User + developer Sphinx guides
 ├── data/                            # Raw study data (gitignored)
 │   └── raw/{STUDY}/
@@ -456,7 +455,7 @@ OPENAI_API_KEY=                # OpenAI
 GOOGLE_API_KEY=                # Google Gemini
 STUDY_NAME=                    # Override auto-detected study name
 LOG_LEVEL=                     # Logging level override
-LLM_PROVIDER=                  # openai | anthropic | google-genai | ollama | vllm
+LLM_PROVIDER=                  # openai | anthropic | google-genai | ollama | nvidia-ai-endpoints
 LLM_MODEL=                     # LLM model name (e.g., gpt-4o-mini)
 REPORTALIN_TMPFS_STAGING=1     # Route AMBER staging through /dev/shm
 REPORTALIN_PDF_PHI_FREE=1      # Attest PDFs are PHI-free (requires dossier note)

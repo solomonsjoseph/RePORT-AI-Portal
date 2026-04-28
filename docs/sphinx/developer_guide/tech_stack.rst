@@ -1,8 +1,7 @@
 Tech Stack
 ==========
 
-Rewritten 2026-04-27 against the v0.20.0 code state. Every runtime and
-development dependency, grouped by role, with one paragraph each on
+Every runtime and development dependency, grouped by role, with one paragraph each on
 **what** it is, **why** it was chosen, and **how** the project uses
 it. Pinned versions and rationale live in ``pyproject.toml``.
 
@@ -43,8 +42,7 @@ mypy
 ~~~~
 
 **What.** Static type checker. **Why.** Catches a class of LLM-flow
-bugs (e.g., the v0.18.0 PR #15 type errors I caught at PR-prep time:
-``Anthropic`` vs ``Client`` cross-binding). **How.**
+bugs such as nullable provider names reaching SDK constructors. **How.**
 ``pyproject.toml`` configures ``ignore_missing_imports = true`` so
 optional deps don't block; custom stubs live in ``typings/`` for
 ``google.genai`` and ``anthropic``.
@@ -91,7 +89,7 @@ pdfplumber
 
 **What.** Layout-aware PDF extractor. **Why.** Per-character bounding
 boxes give better structure recovery than ``pypdf`` for complex
-multi-section CRFs. **How.** As of PR #15 (v0.19.0), pdfplumber is
+multi-section CRFs. **How.** pdfplumber is
 the **always-on code path** inside the two-way PDF orchestrator
 (:mod:`scripts.extraction.pdf_pipeline`). Extracted text is
 PHI-redacted before any LLM call; the LLM response is merged with
@@ -118,7 +116,7 @@ provider-agnostic construction (Anthropic / OpenAI / Google / Ollama
 agent topology. **How.** :mod:`scripts.ai_assistant.agent_graph` is
 the only module that constructs an LLM client; every client takes
 ``api_key=`` as an explicit kwarg sourced from the in-memory
-KeyStore (PR #3) — no ``os.environ`` lookup at construction time.
+KeyStore — no ``os.environ`` lookup at construction time.
 
 LangChain provider packages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -219,9 +217,8 @@ pip-audit
 
 **What.** Dependency vulnerability scanner. **Why.** Catches known
 CVEs in pinned dependencies before they reach production. **How.**
-Runs on demand (``make security``); not yet a dedicated CI job
-(documented gap in ``docs/irb_dossier/conformance_matrix.md``,
-outside the Sphinx tree).
+Runs on demand via ``make security`` and should be included in local
+release verification.
 
 Sphinx + sphinx-rtd-theme + myst-parser
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

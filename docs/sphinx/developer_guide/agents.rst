@@ -38,8 +38,7 @@ this repo, never read by agent code).
 * **AUDIT envelope** — ``output/{STUDY}/audit/``: counts-only IRB
   evidence, hard-rejected for the agent.
 
-Plus a fifth, **out-of-zone** tier introduced in PR #18:
-``snapshots/{STUDY}/`` at the repo root holds a version-controlled
+Plus a fifth, **out-of-zone** tier: ``snapshots/{STUDY}/`` at the repo root holds a version-controlled
 cleaned trio bundle baseline for the PDF orchestrator's per-PDF
 fallback. **The LLM cannot read it.**
 
@@ -68,8 +67,8 @@ Architecture (two-world)
 ``scripts/extraction/``, ``scripts/security/``, ``scripts/utils/``):
 
 The three extraction legs (dictionary, datasets, PDFs) write into a
-transient staging workspace at ``tmp/{STUDY_NAME}/``. As of PR #18 the
-three legs run **in parallel** on a 3-worker
+transient staging workspace at ``tmp/{STUDY_NAME}/``. The three legs
+run **in parallel** on a 3-worker
 ``concurrent.futures.ThreadPoolExecutor``; the cleanup chain (PHI
 scrub / dataset cleanup / cleanup propagation) and Publish + Variables
 are sequential after the join.
@@ -94,8 +93,7 @@ pairing every raw input (SHA-256) with every published trio artifact
 fsync + unlink); on failure, ``tmp/{STUDY_NAME}/`` is preserved for
 operator inspection.
 
-**PDF extraction (PR #15 two-way orchestrator):** the wizard's "Load
-Study" button selects the orchestrator path
+**PDF extraction:** the wizard's "Load Study" button selects the orchestrator path
 (:mod:`scripts.extraction.pdf_pipeline`). pdfplumber extracts text
 locally; the text is PHI-redacted; only redacted text reaches the LLM;
 the response is re-scrubbed and merged with the code candidate. When
@@ -117,7 +115,7 @@ accesses raw data.
 ``agent/{analysis,conversations,restore_points}/``; transient staging
 sibling: ``tmp/{STUDY_NAME}/{datasets,dictionary,pdfs}/``.
 
-**Two snapshot tiers (PR #18 split):**
+**Two snapshot tiers:**
 
 1. **Tracked baseline** at
    ``snapshots/{STUDY_NAME}/{datasets,dictionary,pdfs,variables.json}``
@@ -130,7 +128,7 @@ sibling: ``tmp/{STUDY_NAME}/{datasets,dictionary,pdfs}/``.
    multi-named, agent-writable. Crash recovery only; never read by the
    pipeline.
 
-**Wizard step 2 (PR #18 rewrite):** two top-level buttons — *Use
+**Wizard step 2:** two top-level buttons — *Use
 Existing Study* (skip pipeline; trust the live ``trio_bundle/``) and
 *Load Study* (run the pipeline subprocess; orchestrator falls back to
 the tracked snapshot baseline per-PDF when the LLM tier is
@@ -171,7 +169,7 @@ Security zones (MUST follow)
   with ``@phi_safe_return``.
 * When surfacing row-level data, call
   :func:`scripts.security.kanon_gate.guard_rows_with_kanon_and_ldiv`
-  first — k=5 + l=2 (PR #13). The gate suppresses responses when any
+  first — k=5 + l=2. The gate suppresses responses when any
   quasi-identifier equivalence class has fewer than k members or when
   l-diversity (l=2) on the sensitive attribute is violated.
 * When writing pipeline code that logs subject data, install the PHI
@@ -232,8 +230,8 @@ Prompt-injection + at-rest defences
   Any deviation fails ``tests/test_agent_tools_phi_safe.py`` +
   ``tests/test_file_access.py``.
 
-KeyStore (PR #3 — keys-not-in-environ)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+KeyStore
+~~~~~~~~
 
 * The Streamlit wizard's step 1 routes the pasted API key into
   :mod:`scripts.ai_assistant.keystore` (an in-memory ``KeyStore``
@@ -246,8 +244,8 @@ KeyStore (PR #3 — keys-not-in-environ)
   kwarg sourced from the KeyStore — no environment lookup at
   construction time.
 
-Sandbox (PR #2 — subprocess + rlimits)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Sandbox
+~~~~~~~
 
 ``run_python_analysis`` runs in an isolated subprocess. See
 :doc:`sandbox`. Layered protections include subprocess isolation,
@@ -368,7 +366,7 @@ Key files
      - ``scripts/extraction/dataset_pipeline.py``,
        ``scripts/extraction/build_variables_reference.py``,
        ``scripts/extraction/extract_pdf_data.py``,
-       ``scripts/extraction/pdf_pipeline.py`` (PR #15 orchestrator)
+       ``scripts/extraction/pdf_pipeline.py`` (orchestrator)
    * - PHI scrub + catalog
      - ``scripts/security/phi_scrub.py``,
        ``scripts/security/phi_scrub.yaml``
@@ -390,10 +388,10 @@ Key files
        ``scripts/ai_assistant/agent_tools.py``,
        ``scripts/ai_assistant/agent_prompts.py``,
        ``scripts/ai_assistant/phi_safe.py``,
-       ``scripts/ai_assistant/keystore.py`` (PR #3 KeyStore)
+       ``scripts/ai_assistant/keystore.py`` (KeyStore)
    * - Sandbox subprocess
      - ``scripts/ai_assistant/sandbox/{replicate,limits,runner}.py``
-       (PR #2)
+       (subprocess sandbox)
    * - Telemetry
      - ``scripts/utils/telemetry.py``
    * - Web UI

@@ -2,9 +2,9 @@ Architecture Decisions (ADRs)
 =============================
 
 **What.** One record per major architectural decision. ADRs 001–009
-were authored during the 2026-04 PHI-handling work (Phase 2 +
-Phase 3.A/B). ADRs 010–015 capture decisions shipped between
-v0.18.0 and v0.20.0 (PRs #2, #3, #13, #15, #18). Each record states
+cover the original PHI-handling architecture. ADRs 010–015 cover the
+sandbox, KeyStore, PDF orchestrator, snapshot split, parallel
+extraction, and l-diversity decisions. Each record states
 what was decided, why, how it was implemented, what alternatives were
 considered, and what consequences to expect if the decision ages
 poorly.
@@ -220,7 +220,7 @@ JSON, skip the PDF leg entirely).
 **Alternatives.**
 
 * **Local-only PDF extraction** (pdfplumber primary + local-Ollama
-  multimodal fallback). **Superseded by PR #15 (v0.19.0):**
+  multimodal fallback). **Superseded by the PDF orchestrator:**
   ``scripts/extraction/pdf_pipeline.py`` ships pdfplumber as the
   always-on code path, paired with a redacted-text LLM call (capable
   cloud or local model) via ``_merge``, and a per-PDF snapshot
@@ -342,7 +342,7 @@ subprocess cannot exceed the rlimits, cannot read the parent's
 KeyStore, cannot write outside ``trio_bundle/``, cannot fork beyond
 ``RLIMIT_NPROC``.
 
-**How.** Shipped in PR #2 (v0.17.0) under
+**How.** Implemented under
 :mod:`scripts.ai_assistant.sandbox.replicate` (public API),
 :mod:`scripts.ai_assistant.sandbox.runner` (child entry point), and
 :mod:`scripts.ai_assistant.sandbox.limits` (rlimits helpers). The
@@ -352,7 +352,7 @@ generated ``.py`` file is persisted to
 
 **Alternatives.**
 
-* **AST guards only** (the pre-PR-#2 design). Rejected — known
+* **AST guards only**. Rejected — known
   CPython escape gadgets defeat AST-level filtering.
 * **``nsjail`` / ``firejail``** profile. Considered as a future
   high-assurance option for cloud deployments; not shipped because
@@ -387,7 +387,7 @@ operator's terminal scrollback. Removing the keys from ``os.environ``
 once they're loaded into the in-memory registry shrinks the leak
 surface materially.
 
-**How.** Shipped in PR #3 (v0.17.0) as
+**How.** Implemented as
 :mod:`scripts.ai_assistant.keystore`. Every LLM client constructor
 (``ChatAnthropic``, ``ChatOpenAI``, ``ChatGoogleGenerativeAI``,
 ``ChatNVIDIA``, ``ChatOllama``) takes an explicit ``api_key=`` kwarg
@@ -434,7 +434,7 @@ attestation" with "redact text first, then ship". The redaction
 catalog is the same one the agent-output PHI gate uses, so the
 audit story is internally consistent.
 
-**How.** Shipped in PR #15 (v0.19.0) under
+**How.** Implemented under
 :mod:`scripts.extraction.pdf_pipeline`. Capability gate via
 :func:`scripts.utils.llm_capabilities.is_capable_model` (Claude Opus
 4.6+, Sonnet 4.6+, GPT-5+, Gemini 2.5 Pro, Llama 3.3 405B; Ollama
@@ -457,8 +457,8 @@ wiring). Idempotent cache keyed on
 
 **Consequences.** ADR-006 is now a *fallback* path, not the primary
 path. The attestation gate remains in the legacy
-``extract_pdf_data._resolve_pdf_provider``. PR #15 introduced a
-``snapshots/{STUDY}/`` baseline tier — see ADR-013.
+``extract_pdf_data._resolve_pdf_provider``. The orchestrator uses the
+``snapshots/{STUDY}/`` baseline tier described in ADR-013.
 
 ADR-013 — Two-tier snapshot model (tracked baseline + restore points)
 ---------------------------------------------------------------------
@@ -483,7 +483,7 @@ would either (a) pollute the tracked baseline with multi-run dumps
 restore-CLI multi-name behaviour fight git ignore rules. Splitting
 them onto different paths preserves both properties.
 
-**How.** Shipped in PR #18 (v0.20.0). ``config.STUDY_SNAPSHOTS_DIR``
+**How.** ``config.STUDY_SNAPSHOTS_DIR``
 points at the repo-root tracked baseline. ``config.STUDY_RESTORE_POINTS_DIR``
 points at the gitignored operator-restore tier. The
 :mod:`scripts.utils.snapshots` CLI uses the latter; the orchestrator
@@ -528,7 +528,7 @@ because it has hard data dependencies (PHI scrub needs all dataset
 records; propagation needs the cleanup audit; publish needs
 propagation; ``variables.json`` needs publish to have landed).
 
-**How.** Shipped in PR #18 (v0.20.0). Each leg is wrapped in a
+**How.** Each leg is wrapped in a
 helper (``_run_dict_leg``, ``_run_dataset_leg``, ``_run_pdf_leg``)
 that returns a result dict; futures are gathered via
 ``as_completed`` so a fast leg can short-circuit while a slow one
@@ -549,8 +549,7 @@ runs.
 attribute is mutated by overlapping ``file_processing`` context
 managers; under ``--verbose`` mode tree-output indentation may
 interleave when extraction legs overlap. Cosmetic only — log
-emissions are correct. Tracked as a known gap in the PR #18
-description.
+emissions are correct and tracked as a known cosmetic gap.
 
 ADR-015 — l-diversity (l=2) on row-returning tools
 ---------------------------------------------------
@@ -570,7 +569,7 @@ re-identifying as a k=1 disclosure. l-diversity guards against this
 by also requiring at least ``l`` distinct values of the sensitive
 attribute.
 
-**How.** Shipped in PR #13 (v0.18.0). Default sensitive attributes
+**How.** Default sensitive attributes
 are configured in ``_DEFAULT_SENSITIVE_ATTRIBUTES`` of
 :mod:`scripts.security.kanon_gate`. Tested by
 ``tests/security/test_kanon_l_diversity.py``.

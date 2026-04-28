@@ -114,7 +114,7 @@ RePORT AI Portal follows these architectural principles:
    Each component (data extraction, dataset promotion, AI Assistant) is a separate, testable module.
 
 **Privacy-First**
-   The runtime implements a four-tier honest-broker architecture: raw (RED) → secure staging (AMBER) → PHI-free trio bundle (GREEN) → agent boundary with PHI + k-anonymity gates (GREEN-PROTECT). The 8-action PHI scrub (:mod:`scripts.security.phi_scrub`) runs as Step 1.6 on staged datasets before any audit output is written. See ``docs/irb_dossier/conformance_matrix.md`` for the 31-criterion IRB benchmark (plus four follow-ups added in patches 2026-04-23a/b).
+   The runtime implements a four-tier honest-broker architecture: raw (RED) → secure staging (AMBER) → PHI-free trio bundle (GREEN) → agent boundary with PHI + k-anonymity gates (GREEN-PROTECT). The 8-action PHI scrub (:mod:`scripts.security.phi_scrub`) runs as Step 1.6 on staged datasets before any audit output is written. See ``docs/irb_dossier/conformance_matrix.md`` for the active IRB conformance matrix.
 
 **Extensibility**
    LLM providers (via ``init_chat_model`` from langchain-core), agent tools
@@ -128,7 +128,7 @@ RePORT AI Portal follows these architectural principles:
    System behavior is controlled through ``config.py``, not hardcoded values.
 
 **Documentation-First**
-   All code includes comprehensive docstrings and examples that can be tested with Sphinx doctest.
+   Operator-facing behavior, PHI handling, and verification claims must stay synchronized with code and tests.
 
 Development Standards
 ---------------------
@@ -139,7 +139,7 @@ Code Quality
 - **Style Guide**: Google Python Style Guide + PEP 8
 - **Docstrings**: Google-style docstrings for all public APIs
 - **Type Hints**: Use type annotations for function signatures
-- **Testing**: Maintain 80%+ code coverage
+- **Testing**: Add focused pytest coverage for changed behavior
 - **Documentation**: Follow Diátaxis framework (tutorials, how-to guides, reference, explanation)
 
 Documentation Standards
@@ -160,7 +160,7 @@ Code Review Process
 All code changes require:
 
 1. Google-style docstrings with examples
-2. Unit tests with 80%+ coverage
+2. Focused tests for changed behavior
 3. Updated documentation
 4. Passing CI/CD checks
 5. At least one approving review

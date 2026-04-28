@@ -271,6 +271,36 @@ FORBIDDEN: tuple[tuple[str, str, tuple[str, ...]], ...] = (
         "legacy .xls residue — supported tabular inputs are .xlsx and .csv only",
         (),
     ),
+    (
+        r"\bvllm\b",
+        "stale provider claim — supported provider IDs are openai, anthropic, google-genai, ollama, nvidia-ai-endpoints",
+        (),
+    ),
+    (
+        r"test_dataset_extraction\.py",
+        "stale test filename — dataset extraction coverage lives in tests/test_dataset_pipeline.py",
+        (),
+    ),
+    (
+        r"test_date_transform\.py",
+        "stale test filename — SANT/date coverage lives in tests/test_phi_scrub.py",
+        (),
+    ),
+    (
+        r"ai_assistant/\s+#.*planned",
+        "stale test-tree claim — AI Assistant tests are active top-level tests, not a planned tests/ai_assistant folder",
+        (),
+    ),
+    (
+        r"extraction/\s+#.*planned",
+        "stale test-tree claim — extraction tests are active top-level tests, not a planned tests/extraction folder",
+        (),
+    ),
+    (
+        r"\b(?:80|90|100)%\s+(?:code\s+)?coverage",
+        "coverage threshold claim is not enforced by current CI; document runnable gates instead",
+        (),
+    ),
     # Stale streamlit version pin
     (
         r"streamlit\s+1\.5\d",

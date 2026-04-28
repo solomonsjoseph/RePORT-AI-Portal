@@ -1,9 +1,8 @@
 PDF Extraction
 ==============
 
-Rewritten 2026-04-27 against the v0.20.0 code state. Orchestrator
-(PR #15) is now the primary path; the legacy raw-PDF API path is
-documented as the back-compat fallback.
+The PDF orchestrator is the primary path; the legacy raw-PDF API path
+is documented as the back-compat fallback.
 
 Two co-existing extraction paths
 --------------------------------
@@ -47,8 +46,8 @@ which checks the ``REPORTALIN_PDF_EXTRACTION_MODE`` env var:
 * unset (CLI default) → legacy raw-PDF API path with the two-part
   attestation gate.
 
-Orchestrator path (PR #15, the default)
----------------------------------------
+Orchestrator path (the default)
+-------------------------------
 
 For each PDF, the orchestrator runs:
 
@@ -95,8 +94,8 @@ itself. It does not touch ``data/raw/{STUDY}/datasets/`` or
 Capability gate details
 -----------------------
 
-The capability gate is intentionally conservative. As of v0.20.0 the
-default allowlist is:
+The capability gate is intentionally conservative. The default allowlist
+is:
 
 * **Anthropic** — ``claude-opus-4-6+``, ``claude-sonnet-4-6+`` (older
   Sonnet struggles on multi-section CRFs)
@@ -204,7 +203,7 @@ CLI usage
 Key files
 ---------
 
-* :mod:`scripts.extraction.pdf_pipeline` — the orchestrator (PR #15).
+* :mod:`scripts.extraction.pdf_pipeline` — the orchestrator.
   Two-way merge, capability gate, idempotent cache, snapshot
   fallback.
 * :mod:`scripts.extraction.extract_pdf_data` — the legacy raw-PDF

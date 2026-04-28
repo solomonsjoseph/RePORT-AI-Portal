@@ -1,8 +1,7 @@
 Architecture
 ============
 
-Rewritten 2026-04-27 against the v0.20.0 code state. The active
-technical architecture of the RePORT AI Portal runtime. For the
+The active technical architecture of the RePORT AI Portal runtime. For the
 PHI-handling deep dive see :doc:`phi_architecture`; for the
 decisions behind the choices see :doc:`decisions`; for the
 operator's view see :doc:`../user_guide/data_pipeline`.
@@ -110,7 +109,7 @@ API keys + PHI patterns from every log line. Both filters attach
 to the root logger so ``World 1`` and ``World 2`` emit scrubbed
 logs by default.
 
-Known limitation (PR #18): ``VerboseLogger._indent`` is mutated by
+Known limitation: ``VerboseLogger._indent`` is mutated by
 overlapping ``file_processing`` context managers. Under
 ``--verbose`` mode, parallel-extraction tree output may interleave.
 Cosmetic only — log emissions are correct.
@@ -151,7 +150,7 @@ Dataset Extraction
 PDF Extraction
 ~~~~~~~~~~~~~~
 
-Two co-existing paths as of v0.19.0:
+Two co-existing paths:
 
 * **Orchestrator path** (default):
   :mod:`scripts.extraction.pdf_pipeline`. ``pdfplumber`` code path
@@ -271,8 +270,7 @@ AI Assistant Agent Layer
   ``sanitise_traceback``.
 * :mod:`scripts.ai_assistant.file_access` — agent-runtime path
   validator (the canonical chokepoint for every tool's file I/O).
-* :mod:`scripts.ai_assistant.keystore` — in-memory API-key
-  registry (PR #3, ADR-011).
+* :mod:`scripts.ai_assistant.keystore` — in-memory API-key registry.
 * :mod:`scripts.ai_assistant.tool_cache` — per-tool memoisation.
 
 Analytical Engine
@@ -409,7 +407,7 @@ Expected source tree:
    ├── datasets/                               # cleaned + verified, version-controlled,
    ├── dictionary/                             # LLM-INVISIBLE; PDF orchestrator reads
    ├── pdfs/                                   # ``pdfs/{stem}_variables.json`` as
-   └── variables.json                          # per-PDF fallback (PR #18)
+   └── variables.json                          # per-PDF fallback
 
 Expected processed tree:
 
@@ -439,7 +437,7 @@ Transient staging root (not a durable artifact):
    ├── datasets/
    ├── dictionary/
    ├── pdfs/
-   └── .pdf_cache/                   # idempotent LLM-response cache (PR #15)
+   └── .pdf_cache/                   # idempotent LLM-response cache
 
 Security Boundaries
 -------------------
@@ -473,7 +471,7 @@ See :doc:`phi_architecture`. PHI regex catalog + k=5 + l=2.
 API keys never in os.environ
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-ADR-011 / PR #3. The wizard routes pasted keys into the in-memory
+ADR-011. The wizard routes pasted keys into the in-memory
 ``KeyStore``; ``*_API_KEY`` env vars are scrubbed from
 ``os.environ``. Keys re-injected only into the short-lived
 pipeline subprocess via ``KeyStore.env_for_subprocess``.
@@ -481,7 +479,7 @@ pipeline subprocess via ``KeyStore.env_for_subprocess``.
 Subprocess sandbox for ``run_python_analysis``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-ADR-010 / PR #2. ``RLIMIT_AS`` / ``RLIMIT_NPROC`` / ``RLIMIT_CPU``
+ADR-010. ``RLIMIT_AS`` / ``RLIMIT_NPROC`` / ``RLIMIT_CPU``
 clamps + sanitised env + read-only ``trio_bundle/`` + AST guards
 inside the child. See :doc:`sandbox`.
 
@@ -539,8 +537,8 @@ See Also
 --------
 
 * :doc:`phi_architecture` — full PHI handling story.
-* :doc:`decisions` — ADRs (especially 010-015 for the v0.19.0 /
-  v0.20.0 work).
+* :doc:`decisions` — ADRs for the security, PDF, snapshot, and
+  agent-boundary decisions.
 * :doc:`sandbox` — subprocess sandbox.
 * :doc:`data_extraction_pdfs` — PDF orchestrator deep dive.
 * :doc:`operations` — operational playbook + snapshot-baseline
