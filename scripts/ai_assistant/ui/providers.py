@@ -312,7 +312,7 @@ _PROVIDER_CONFIG: dict[str, dict] = {
             "gpt-5.5",
             "gpt-5.4",
             "gpt-5.4-mini",
-            "gpt-5.4-nano",
+            "gpt-5-nano",
             _OTHER_MODEL_OPTION,
         ],
     },
