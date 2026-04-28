@@ -545,11 +545,11 @@ runs.
   change.
 
 **Consequences.**
-:class:`scripts.utils.logging_system.VerboseLogger`'s ``_indent``
-attribute is mutated by overlapping ``file_processing`` context
-managers; under ``--verbose`` mode tree-output indentation may
-interleave when extraction legs overlap. Cosmetic only — log
-emissions are correct and tracked as a known cosmetic gap.
+The staging root is protected by a per-study process lock before
+AMBER is purged, so two operator-triggered runs cannot race over the
+same ``tmp/{STUDY}/`` workspace. ``VerboseLogger`` uses thread-local
+indentation, keeping ``--verbose`` tree output readable while the
+three extraction legs overlap.
 
 ADR-015 — l-diversity (l=2) on row-returning tools
 ---------------------------------------------------

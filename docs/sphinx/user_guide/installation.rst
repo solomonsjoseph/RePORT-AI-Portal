@@ -80,7 +80,7 @@ This includes:
 
 * langchain-core / langgraph: ReAct agent framework
 * langchain-openai / langchain-anthropic / langchain-google-genai / langchain-ollama: LLM providers
-* kaleido (0.2.x, ``<1.0``): static image export for Plotly figures (required by the analytical agent to save charts to disk and embed them in chat exports)
+* kaleido (``>=1.0,<2.0``): static image export for Plotly figures (required by the analytical agent to save charts to disk and embed them in chat exports)
 
 For the Streamlit web UI:
 

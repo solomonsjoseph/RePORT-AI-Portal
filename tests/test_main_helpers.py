@@ -11,6 +11,7 @@ Covers:
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +57,21 @@ class TestPrepareStaging:
         assert not any(config.STAGING_DATASETS_DIR.iterdir())
         assert config.STAGING_DICTIONARY_DIR.is_dir()
         assert config.STAGING_PDFS_DIR.is_dir()
+
+    def test_prepare_holds_process_lock(self, monkeypatch_config: Path) -> None:
+        if os.name != "posix":
+            pytest.skip("fcntl lock assertion is POSIX-only")
+        fcntl = pytest.importorskip("fcntl")
+        import config
+
+        main._prepare_staging()
+        lock_path = config.TMP_DIR / f".{config.STUDY_NAME}.pipeline.lock"
+        assert lock_path.is_file()
+
+        with lock_path.open("a+", encoding="utf-8") as fh, pytest.raises(BlockingIOError):
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+        main._cleanup_staging()
 
 
 # ── _publish_leg ────────────────────────────────────────────────────────────

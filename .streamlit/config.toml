@@ -10,4 +10,6 @@ font = "sans serif"
 
 [server]
 headless = true
-enableStaticServing = true
+enableCORS = true
+enableXsrfProtection = true
+enableStaticServing = false

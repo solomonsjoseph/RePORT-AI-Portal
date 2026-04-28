@@ -349,6 +349,28 @@ class TestInitLlmOomLadder:
             f"model requires more system memory ({size_g} GiB) than is available ({avail_g} GiB)"
         )
 
+    def test_build_llm_passes_configured_ollama_base_url(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        import langchain.chat_models as chat_models
+
+        from scripts.ai_assistant import agent_graph as ag
+
+        monkeypatch.setenv("OLLAMA_BASE_URL", "ollama.box:11435")
+        captured: dict[str, object] = {}
+        sentinel = object()
+
+        def _fake_init_chat_model(**kwargs: object) -> object:
+            captured.update(kwargs)
+            return sentinel
+
+        monkeypatch.setattr(chat_models, "init_chat_model", _fake_init_chat_model)
+
+        assert ag._build_llm("ollama", "qwen3:8b") is sentinel
+        assert captured["base_url"] == "http://ollama.box:11435"
+        assert "api_key" not in captured
+
     def test_first_rung_ok_skips_ladder(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import config as _config
         from scripts.ai_assistant import agent_graph as ag
