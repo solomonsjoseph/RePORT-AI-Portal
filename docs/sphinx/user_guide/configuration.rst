@@ -74,8 +74,7 @@ root):
      - Published, sanitised study bundle — GREEN zone (LLM-readable)
    * - ``STUDY_AUDIT_DIR``
      - ``output/{STUDY}/audit/``
-     - Counts-only IRB audit envelope — GREEN-PROTECT
-       (LLM-rejected)
+     - Counts-only IRB audit envelope (LLM-rejected)
    * - ``AGENT_STATE_DIR``
      - ``output/{STUDY}/agent/``
      - Agent-owned operational state (analysis, conversations,

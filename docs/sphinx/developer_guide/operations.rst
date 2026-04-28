@@ -155,8 +155,8 @@ Quality Checks
 
 .. code-block:: bash
 
-   make test          # pytest — 703 deterministic tests (excludes agent-tools, agent-graph, CLI, telemetry)
-   make test-all      # pytest — 775 full suite
+   make test          # deterministic pytest subset
+   make test-all      # full pytest suite
    make lint          # ruff
    make typecheck     # mypy
    make ci            # All quality checks
@@ -301,4 +301,3 @@ When NOT to use which
 
 Bumping the baseline is a maintainer action with audit-trail
 implications. Saving a restore point is a developer convenience.
-

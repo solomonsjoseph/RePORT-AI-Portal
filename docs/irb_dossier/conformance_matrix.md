@@ -81,7 +81,7 @@ This matrix pairs every testable architectural claim with the regulation that an
 
 **Total: 35 / 35 criteria architecturally satisfied** (31 original + 4 added via patches 2026-04-23a/b; Pillar 4.2 hybrid follow-up closed by PR #15 in v0.19.0). All remaining follow-ups are explicitly documented and testable; none require architectural rework.
 
-**Test evidence:** 913 pytest cases passing via `make test-all` (841 deterministic via `make test`; up from 784 / 768 after boundary-refactor + deep-scan work; from 664 baseline), 0 skipped, 0 failures, 0 new mypy errors in the changed modules, 0 new lint errors. Patches 2026-04-23a/b added +4 criteria (2.5 — 2.8) and +36 test cases in `tests/test_phi_safe_input_gates.py`; subsequent boundary-refactor work added the unified `scripts/ai_assistant/file_access.py` validator chokepoint with +26 tests in `tests/test_file_access.py`.
+**Test evidence:** `make test-all` is the authoritative full-suite gate and `make test` is the deterministic subset gate. The IRB packet should attach the current CI or local verification transcript for the submitted commit. Patches 2026-04-23a/b added +4 criteria (2.5 — 2.8) and +36 test cases in `tests/test_phi_safe_input_gates.py`; subsequent boundary-refactor work added the unified `scripts/ai_assistant/file_access.py` validator chokepoint with +26 tests in `tests/test_file_access.py`.
 
 **Outstanding design items** (out of scope for this dossier, tracked separately):
 

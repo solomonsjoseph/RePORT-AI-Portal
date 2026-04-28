@@ -261,6 +261,16 @@ FORBIDDEN: tuple[tuple[str, str, tuple[str, ...]], ...] = (
         '"pre-scrubbed" residue — Step 1.6 in-pipeline scrub is canonical',
         (),
     ),
+    (
+        r"\.xls(?!x)",
+        "legacy .xls residue — supported tabular inputs are .xlsx and .csv only",
+        (),
+    ),
+    (
+        r"xlsx,\s*xls,\s*csv",
+        "legacy .xls residue — supported tabular inputs are .xlsx and .csv only",
+        (),
+    ),
     # Stale streamlit version pin
     (
         r"streamlit\s+1\.5\d",

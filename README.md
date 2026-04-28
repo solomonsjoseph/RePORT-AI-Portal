@@ -162,6 +162,10 @@ processed artifacts
 - **Deterministic analytical engine** — univariate logistic regression,
   backward-stepwise multivariate selection, and interaction analysis wired
   through `run_study_analysis` with publication-quality plots.
+- **Grounded natural-language answers** — the system prompt requires the
+  assistant to resolve variables before analysis, distinguish computed facts
+  from interpretation, and surface caveats such as sparse events,
+  low-confidence CRF matches, missing variables, or k-anonymity suppression.
 - **Multi-provider LLM** — OpenAI, Anthropic, Google, Ollama, vLLM via
   LangChain's `init_chat_model()`; no bespoke adapters.
 - **Dual interface** — CLI (`--chat`) and Streamlit web UI (`--web`).
@@ -407,7 +411,7 @@ RePORT AI Portal/
 │       ├── telemetry.py             # Agent event telemetry
 │       ├── errors.py                # Structured error envelopes
 │       └── smart-commit.sh          # Smart commit with version bump
-├── tests/                           # 775 tests (~703 deterministic via `make test`)
+├── tests/                           # pytest suite; `make test` / `make test-all`
 │   ├── __init__.py
 │   ├── conftest.py                  # Shared fixtures + zone-guard patches
 │   ├── test_smoke.py                # End-to-end smoke tests

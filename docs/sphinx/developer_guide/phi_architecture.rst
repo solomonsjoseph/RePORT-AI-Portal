@@ -10,10 +10,12 @@ see ``docs/irb_dossier/phi_walkthrough.md`` (outside the Sphinx
 tree); for the architectural decisions behind these mechanisms see
 :doc:`decisions`.
 
-The Four Zones (plus one out-of-zone tier)
-------------------------------------------
+The Four Tiers (plus audit and one out-of-zone tier)
+----------------------------------------------------
 
-Every artifact lives in exactly one of four zones. The fifth path
+The honest-broker model has three filesystem zones plus one agent
+boundary tier. The audit envelope is a separate counts-only filesystem
+surface that the agent cannot read. The fifth path
 (``snapshots/{STUDY}/`` at the repo root) is *not* a zone in the
 honest-broker sense — it's a version-controlled baseline, intentionally
 outside every LLM-readable surface.
@@ -42,18 +44,25 @@ outside every LLM-readable surface.
        :func:`scripts.ai_assistant.file_access.validate_agent_read`
        admits paths in this zone only.
    * - **GREEN-PROTECT**
-     - ``output/{STUDY}/audit/``
-     - Counts-only IRB envelope: lineage manifest, scrub report,
-       cleanup report, telemetry. Same ``output/`` tree as GREEN but
-       hard-rejected by the agent's read-zone validator.
+     - Agent tool boundary (not a directory)
+     - Every tool return is checked by the PHI regex gate and, for
+       row-level results, k-anonymity + l-diversity before the LLM can
+       answer.
+
+The audit envelope:
+
+* **``output/{STUDY}/audit/``** — counts-only IRB evidence: lineage
+  manifest, scrub report, cleanup report, telemetry. Same ``output/``
+  root as GREEN but hard-rejected by the agent's read-zone validator.
 
 The fifth path:
 
 * **``snapshots/{STUDY}/``** (repo root) — version-controlled
   cleaned trio bundle baseline used by the PDF orchestrator's per-PDF
   fallback. **The LLM cannot read it.** The path is outside the GREEN
-  + GREEN-PROTECT trees so a stale baseline can never be served as
-  live data. Maintainer-curated by hand; see :doc:`operations`.
+  tree and outside the audit envelope, so a stale baseline can never
+  be served as live data. Maintainer-curated by hand; see
+  :doc:`operations`.
 
 Zone enforcement
 ~~~~~~~~~~~~~~~~

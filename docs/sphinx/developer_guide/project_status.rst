@@ -313,10 +313,9 @@ Test Coverage
    * - ``test_run_study_analysis.py``
      - Study analysis runner
 
-**775 tests passing** via ``make test-all`` (703 deterministic via
-``make test``; full suite includes PHI architecture + agent-boundary
-gates + log hygiene + lineage + secure-staging + PDF PHI-flag tests).
-Zero failures. Zero new lint or mypy errors on any changed module. See
+The current verification gate is ``make test-all`` plus ``make verify``.
+The full suite includes PHI architecture + agent-boundary gates + log
+hygiene + lineage + secure-staging + PDF PHI-flag tests. See
 ``docs/irb_dossier/conformance_matrix.md`` for the 31-criterion
 benchmark (plus four follow-ups added in patches 2026-04-23a/b) with
 the specific pytest case backing each claim.

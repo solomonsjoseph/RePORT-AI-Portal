@@ -70,8 +70,11 @@ See :doc:`phi_architecture` for the full discussion. Briefly:
      - ``output/{STUDY}/{trio_bundle,agent}/``
      - LLM read zone. PHI-free.
    * - **GREEN-PROTECT**
+     - Agent tool boundary
+     - PHI regex + k-anonymity + l-diversity gates before answers.
+   * - **AUDIT**
      - ``output/{STUDY}/audit/``
-     - Counts-only. LLM-rejected.
+     - Counts-only IRB evidence. LLM-rejected.
    * - *out-of-zone*
      - ``snapshots/{STUDY}/``
      - Tracked baseline (LLM-invisible). PDF orchestrator
@@ -136,7 +139,7 @@ Dataset Extraction
 
 * **Module:** :func:`scripts.extraction.dataset_pipeline.process_datasets`
 * **Step:** Step 1 (extract)
-* **Reads:** ``data/raw/{STUDY}/datasets/*.{xlsx,xls,csv}``
+* **Reads:** ``data/raw/{STUDY}/datasets/*.{xlsx,csv}``
 * **Writes:** ``tmp/{STUDY}/datasets/*.jsonl``
 * **PHI posture:** Records carry full PHI here. Every record gets
   a ``_provenance`` dict (raw_sha256, pipeline_version,
@@ -418,7 +421,7 @@ Expected processed tree:
    │   ├── dictionary/*.json
    │   ├── pdfs/*_variables.json     # tier: merged | snapshot | empty
    │   └── variables.json            # consolidated schema
-   ├── audit/                        # GREEN-PROTECT — counts only
+   ├── audit/                        # AUDIT — counts only; LLM hard-rejected
    │   ├── lineage_manifest.json
    │   ├── phi_scrub_report.json
    │   ├── dataset_cleanup_report.json

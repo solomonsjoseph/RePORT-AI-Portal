@@ -99,6 +99,20 @@ class TestGetAgent:
 
     @patch("scripts.ai_assistant.agent_graph._init_llm")
     @patch("scripts.ai_assistant.agent_graph.create_agent")
+    def test_agent_prompt_contains_answer_quality_contract(self, mock_create, mock_llm):
+        mock_llm.return_value = MagicMock()
+        mock_create.return_value = MagicMock()
+        get_agent()
+        _, kwargs = mock_create.call_args
+        prompt = kwargs["system_prompt"]
+        assert "Grounding and Accuracy Contract" in prompt
+        assert "Do not make a statistical, causal, risk-factor" in prompt
+        assert "privacy-shifted" in prompt
+        assert "clinical" in prompt
+        assert "dates" in prompt
+
+    @patch("scripts.ai_assistant.agent_graph._init_llm")
+    @patch("scripts.ai_assistant.agent_graph.create_agent")
     def test_agent_receives_checkpointer(self, mock_create, mock_llm):
         mock_llm.return_value = MagicMock()
         mock_create.return_value = MagicMock()

@@ -32,7 +32,10 @@ this repo, never read by agent code).
   ``output/{STUDY}/agent/`` (the agent's own state). These two zones
   form the LLM's read surface, enforced by
   :func:`scripts.ai_assistant.file_access.validate_agent_read`.
-* **GREEN-PROTECT** — ``output/{STUDY}/audit/``: counts-only IRB
+* **GREEN-PROTECT** — the agent tool boundary: PHI regex gate plus
+  k-anonymity and l-diversity for row-level results before the LLM can
+  answer.
+* **AUDIT envelope** — ``output/{STUDY}/audit/``: counts-only IRB
   evidence, hard-rejected for the agent.
 
 Plus a fifth, **out-of-zone** tier introduced in PR #18:
