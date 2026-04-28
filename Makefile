@@ -9,7 +9,7 @@
 #   Pipeline     — dictionary, process-datasets, bundle
 #   AI Assistant  — chat, web
 #   Quality      — test, lint, typecheck, ci, verify
-#   Docs         — docs
+#   Docs         — docs, docs-quality, docs-linkcheck, docs-ci
 #
 # Modifiers (prefix any target):
 #   VERBOSE=1    — DEBUG logging / extra output
@@ -76,7 +76,8 @@ N := \033[0m
 	pipeline dictionary extract-datasets bundle pdf-extract \
 	chat-cli chat build-variables \
 	snapshot snapshot-study restore-study list-snapshots \
-	test test-all lint typecheck security ci verify docs doc-freshness docs-quality \
+	test test-all lint typecheck security ci verify \
+	docs doc-freshness docs-quality docs-linkcheck docs-ci release-notes \
 	clean nuke
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -131,10 +132,13 @@ help:
 	@printf "  $(C)make docs$(N)             Build Sphinx HTML docs\n"
 	@printf "  $(C)make doc-freshness$(N)    Run stale-doc lint\n"
 	@printf "  $(C)make docs-quality$(N)     Doc freshness + warnings-as-errors build\n"
+	@printf "  $(C)make docs-linkcheck$(N)   Run Sphinx linkcheck\n"
+	@printf "  $(C)make docs-ci$(N)          Docs quality + linkcheck, matching docs CI\n"
+	@printf "  $(C)make release-notes$(N)    Print Sphinx release notes source\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Maintenance$(N)\n"
-	@printf "  $(C)make clean$(N)            Remove caches, sessions, stale logs\n"
-	@printf "  $(C)make nuke$(N)             Remove everything (venv, output, indexes)\n"
+	@printf "  $(C)make clean$(N)            Remove caches, docs build output, stale logs\n"
+	@printf "  $(C)make nuke$(N)             Remove generated state; preserve data/raw + snapshots\n"
 	@printf "\n"
 	@printf "$(Y)  Modifiers:$(N)\n"
 	@printf "  $(Y)VERBOSE=1$(N) make <target>   Enable DEBUG logging\n"
@@ -315,22 +319,37 @@ docs-quality: doc-freshness
 	@cd docs/sphinx && $(MAKE) html SPHINXBUILD="$(UV) run --frozen sphinx-build" SPHINXOPTS="-W"
 	@printf "$(G)✓ Docs quality checks passed$(N)\n"
 
+docs-linkcheck:
+	@cd docs/sphinx && $(UV) run --frozen sphinx-build -b linkcheck . _build/linkcheck
+	@printf "$(G)✓ Docs linkcheck passed$(N)\n"
+
+docs-ci: docs-quality docs-linkcheck
+	@printf "$(G)✓ Docs CI checks passed$(N)\n"
+
+release-notes:
+	@sed -n '1,220p' docs/sphinx/release_notes.rst
+
 # ═══════════════════════════════════════════════════════════════════════
 # MAINTENANCE
 # ═══════════════════════════════════════════════════════════════════════
 
 clean:
-	@find . -type d -name "__pycache__" -not -path "./.venv/*" -exec rm -rf {} + 2>/dev/null || true
-	@find . -type f \( -name "*.pyc" -o -name "*.pyo" -o -name ".DS_Store" \) -delete 2>/dev/null || true
-	@rm -rf .pytest_cache .mypy_cache .ruff_cache .coverage htmlcov 2>/dev/null || true
+	@find scripts tests docs/sphinx -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
+	@find scripts tests docs/sphinx -type f \( -name "*.pyc" -o -name "*.pyo" -o -name ".DS_Store" \) -delete 2>/dev/null || true
+	@find . -maxdepth 1 -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@find . -maxdepth 1 -type f \( -name "*.pyc" -o -name "*.pyo" -o -name ".DS_Store" \) -delete 2>/dev/null || true
+	@rm -rf .pytest_cache .mypy_cache .ruff_cache .coverage htmlcov docs/sphinx/_build 2>/dev/null || true
 	@if [ -d ".logs" ]; then find .logs/ -type f -mtime +7 -delete 2>/dev/null || true; fi
 	@printf "$(G)✓ Caches, sessions, stale logs cleaned$(N)\n"
 
 nuke:
-	@printf "$(R)This removes: .venv, output/, .logs/, caches, tmp/$(N)\n"
+	@printf "$(R)This removes generated state: .venv, output/, .logs/, logs/, tmp/, docs/sphinx/_build/, caches.$(N)\n"
+	@printf "$(Y)It preserves data/raw/ and data/snapshots/.$(N)\n"
 	@printf "Type 'yes' to confirm: " && read r && [ "$$r" = "yes" ] || { printf "$(Y)Cancelled.$(N)\n"; exit 1; }
-	@rm -rf .venv output/ .logs/ logs/ tmp/* docs/sphinx/_build/ 2>/dev/null || true
-	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-	@find . -type f \( -name "*.pyc" -o -name ".DS_Store" \) -delete 2>/dev/null || true
+	@rm -rf .venv output/ .logs/ logs/ tmp/ docs/sphinx/_build/ 2>/dev/null || true
+	@find scripts tests docs/sphinx -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
+	@find scripts tests docs/sphinx -type f \( -name "*.pyc" -o -name ".DS_Store" \) -delete 2>/dev/null || true
+	@find . -maxdepth 1 -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@find . -maxdepth 1 -type f \( -name "*.pyc" -o -name ".DS_Store" \) -delete 2>/dev/null || true
 	@rm -rf .pytest_cache .mypy_cache .ruff_cache .coverage htmlcov 2>/dev/null || true
 	@printf "$(G)Nuked. Run 'make sync' to restore deps (or 'make quickstart' to fully rebuild + launch).$(N)\n"

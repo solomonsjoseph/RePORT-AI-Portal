@@ -11,6 +11,8 @@ Unreleased
 Added
 ~~~~~
 
+* Added Makefile targets for Sphinx release notes, docs linkcheck, and
+  docs CI parity.
 * Added this release-notes page to the Sphinx documentation.
 * Added a contribution rule that every pull request should include a
   user-readable release note unless the change is purely internal and
@@ -19,12 +21,20 @@ Added
 Changed
 ~~~~~~~
 
+* Updated Makefile cleanup targets to avoid whole-repo traversal and to
+  preserve ``data/raw/`` and ``data/snapshots/``.
 * Reworked the GitHub README as a minimal entry point that sends readers
   to Sphinx for setup, IRB/auditor evidence, and developer detail.
 * Consolidated the Sphinx audience routing into the documentation
   landing page.
 * Moved the IRB/auditor profile into Sphinx and removed the old
   standalone Markdown dossier.
+
+Fixed
+~~~~~
+
+* Updated a sandbox regression test so its expected output no longer
+  resembles a PHI phone-number pattern on Python 3.13.
 
 Release Note Rules
 ------------------
