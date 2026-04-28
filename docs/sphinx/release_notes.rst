@@ -42,6 +42,8 @@ Changed
 Fixed
 ~~~~~
 
+* Fixed local ``make chat`` startup when another Streamlit process already
+  owns port 8501.
 * Fixed production/proxy startup when the deployment uses an explicit or
   default study name without raw study input mounted at import time.
 * Updated a sandbox regression test so its expected output no longer

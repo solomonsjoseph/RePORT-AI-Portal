@@ -33,6 +33,36 @@ def test_production_mode_is_enabled_by_proxy_auth(
     assert config.production_mode_enabled()
 
 
+def test_local_streamlit_launch_uses_next_free_port(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("REPORT_AI_PRODUCTION", raising=False)
+    monkeypatch.delenv("REPORT_AI_AUTH_MODE", raising=False)
+    monkeypatch.delenv("REPORT_AI_REQUIRE_PHI_LOG_REDACTOR", raising=False)
+    monkeypatch.delenv("STREAMLIT_SERVER_PORT", raising=False)
+    monkeypatch.setenv("STREAMLIT_SERVER_ADDRESS", "127.0.0.1")
+
+    def _available(host: str, port: int) -> bool:
+        return host == "127.0.0.1" and port == 8502
+
+    monkeypatch.setattr(main, "_streamlit_port_available", _available)
+
+    cmd = main._streamlit_launch_command()
+
+    assert cmd[-2:] == ["--server.port", "8502"]
+
+
+def test_production_streamlit_launch_keeps_fixed_configured_port(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("REPORT_AI_PRODUCTION", "1")
+    monkeypatch.delenv("STREAMLIT_SERVER_PORT", raising=False)
+
+    cmd = main._streamlit_launch_command()
+
+    assert "--server.port" not in cmd
+
+
 def test_chat_rate_limit_blocks_after_configured_turn_count() -> None:
     allowed, retained, retry_after = _rate_limit_status(
         [100.0, 110.0],

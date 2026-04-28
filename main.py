@@ -88,6 +88,7 @@ import contextlib
 import logging
 import os
 import shutil
+import socket
 import sys
 import time
 from collections.abc import Callable
@@ -125,6 +126,8 @@ __all__ = [
 ]
 
 _PIPELINE_LOCK_FILE: Any | None = None
+_STREAMLIT_DEFAULT_PORT = 8501
+_STREAMLIT_MAX_LOCAL_PORT = 8599
 
 
 def _acquire_pipeline_lock() -> None:
@@ -180,6 +183,43 @@ def _release_pipeline_lock() -> None:
         return
     _PIPELINE_LOCK_FILE.close()
     _PIPELINE_LOCK_FILE = None
+
+
+def _streamlit_port_available(host: str, port: int) -> bool:
+    family = socket.AF_INET6 if ":" in host else socket.AF_INET
+    try:
+        with socket.socket(family, socket.SOCK_STREAM) as sock:
+            sock.bind((host, port))
+    except OSError:
+        return False
+    return True
+
+
+def _local_streamlit_port(host: str) -> int:
+    for port in range(_STREAMLIT_DEFAULT_PORT, _STREAMLIT_MAX_LOCAL_PORT + 1):
+        if _streamlit_port_available(host, port):
+            return port
+    raise RuntimeError(
+        f"No free Streamlit port found in {_STREAMLIT_DEFAULT_PORT}-{_STREAMLIT_MAX_LOCAL_PORT}."
+    )
+
+
+def _streamlit_launch_command() -> list[str]:
+    cmd = [sys.executable, "-m", "streamlit", "run", "scripts/ai_assistant/web_ui.py"]
+    if config.production_mode_enabled() or os.environ.get("STREAMLIT_SERVER_PORT"):
+        return cmd
+
+    host = os.environ.get("STREAMLIT_SERVER_ADDRESS", "127.0.0.1").strip() or "127.0.0.1"
+    port = _local_streamlit_port(host)
+    cmd.extend(["--server.port", str(port)])
+    if port != _STREAMLIT_DEFAULT_PORT:
+        log.warning(
+            "Streamlit port %s is busy; launching local web UI on %s:%s.",
+            _STREAMLIT_DEFAULT_PORT,
+            host,
+            port,
+        )
+    return cmd
 
 
 def _install_log_redactor_best_effort() -> None:
@@ -993,10 +1033,7 @@ For detailed documentation, see the Sphinx docs or README.md
         )
         _install_log_redactor_best_effort()
         log.info("Launching Streamlit web UI…")
-        subprocess.run(
-            [sys.executable, "-m", "streamlit", "run", "scripts/ai_assistant/web_ui.py"],
-            check=True,
-        )
+        subprocess.run(_streamlit_launch_command(), check=True)  # noqa: S603
         return
 
     if getattr(args, "chat", False):
