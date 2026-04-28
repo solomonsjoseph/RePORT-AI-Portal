@@ -113,8 +113,9 @@ Then try a study-specific question:
 Use Existing Study
 ------------------
 
-If a published bundle already exists, the web UI can use it directly.
-Choose **Use Existing Study** instead of loading raw files again.
+If the study team has saved a reviewed snapshot, choose **Use Existing
+Study**. The portal restores ``data/snapshots/{STUDY}/`` into
+``output/{STUDY}/trio_bundle/`` before chat.
 
 Common Problems
 ---------------

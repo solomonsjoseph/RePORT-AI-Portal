@@ -3,7 +3,7 @@
 The production LLM agent's permitted zones are (2026-04-24 boundary design):
 
 * **Read** — ``TRIO_BUNDLE_DIR`` (scrubbed, k-anon-gated trio outputs) **or**
-  ``AGENT_STATE_DIR`` (its own analysis outputs, conversations, snapshots).
+  ``AGENT_STATE_DIR`` (its own analysis outputs and conversations).
   A small allowlist admits read-only source-tree config files
   (``config/study_knowledge.yaml``) that tool implementations need.
 * **Write** — ``AGENT_STATE_DIR`` only.

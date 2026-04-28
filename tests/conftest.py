@@ -86,7 +86,7 @@ def monkeypatch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setattr(config, "STUDY_OUTPUT_DIR", tmp_path)
     monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path)
 
-    # Agent state tier — per-session state + restore snapshots, under
+    # Agent state tier — per-session state, under
     # output/{STUDY}/agent/. Telemetry lives under audit/ (not agent/) so the
     # LLM's permitted agent/** zone stays clear of operator-audit bytes.
     agent_state = tmp_path / "agent"
@@ -94,21 +94,15 @@ def monkeypatch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     (agent_state / "conversations").mkdir(parents=True, exist_ok=True)
     telemetry_dir = tmp_path / "audit" / "telemetry"
     telemetry_dir.mkdir(parents=True, exist_ok=True)
-    # Operator-restore "named runs" tier (gitignored, agent-writable).
-    # Distinct from the tracked baseline at ``snapshots/{STUDY}/`` —
-    # see ``docs/sphinx/developer_guide/operations.rst`` (Trio-Bundle Snapshot Maintenance section) and ``config.STUDY_SNAPSHOTS_DIR``.
-    restore_points = agent_state / "restore_points"
-    restore_points.mkdir(exist_ok=True)
-    # Tracked-baseline tier — under tmp_path (not the real repo) to keep
-    # the test isolated from the on-disk snapshots/ directory.
-    snapshots_baseline = tmp_path / "snapshots_baseline"
-    snapshots_baseline.mkdir(exist_ok=True)
+    # Reviewed snapshot baseline — outside output/{STUDY}/agent/ so agent tools
+    # cannot read or write it.
+    snapshots_baseline = tmp_path / "data" / "snapshots" / config.STUDY_NAME
+    snapshots_baseline.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(config, "AGENT_STATE_DIR", agent_state)
     monkeypatch.setattr(config, "AGENT_OUTPUT_DIR", agent_state / "analysis")
     monkeypatch.setattr(config, "CONVERSATIONS_DIR", agent_state / "conversations")
     monkeypatch.setattr(config, "TELEMETRY_DIR", telemetry_dir)
     monkeypatch.setattr(config, "TELEMETRY_SINK", telemetry_dir / "events.jsonl")
-    monkeypatch.setattr(config, "STUDY_RESTORE_POINTS_DIR", restore_points)
     monkeypatch.setattr(config, "STUDY_SNAPSHOTS_DIR", snapshots_baseline)
 
     # Patch TMP_DIR so build_variables_reference uses isolated temp locations.

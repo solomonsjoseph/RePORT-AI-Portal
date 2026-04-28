@@ -176,12 +176,11 @@ def run_pipeline() -> dict[str, Any]:
     clean before, during, and after the call.
 
     The PDF orchestrator inside ``main.py`` always tries the LLM path
-    first (when a capable provider is configured) and falls back to the
-    repo-tracked ``snapshots/{STUDY}/pdfs/`` baseline per-PDF when the
-    LLM tier cannot produce extractions. The operator no longer chooses
-    snapshot-vs-LLM at the per-PDF level — they pick "Load Study" (run
-    the pipeline, with snapshot fallback) or "Use Existing Study" (skip
-    the pipeline and use the live trio_bundle as-is).
+    first (when a capable provider is configured). If fresh PDF
+    extraction cannot produce a complete result and a reviewed
+    ``data/snapshots/{STUDY}/`` baseline exists, the pipeline restores
+    that baseline over the live ``trio_bundle/``. "Use Existing Study"
+    performs the same restore before chat starts.
     """
     import os
 
@@ -215,6 +214,24 @@ def _pipeline_output_exists() -> bool:
         return config.TRIO_BUNDLE_DIR.exists() and any(config.TRIO_DATASETS_DIR.glob("*.jsonl"))
     except Exception:
         return False
+
+
+def _snapshot_exists() -> bool:
+    from scripts.utils.snapshots import snapshot_exists
+
+    return snapshot_exists()
+
+
+def use_existing_study() -> dict[str, Any]:
+    """Restore the reviewed snapshot baseline before enabling chat."""
+
+    from scripts.utils.snapshots import SnapshotError, restore_snapshot
+
+    try:
+        path = restore_snapshot()
+    except SnapshotError as exc:
+        return {"success": False, "output": str(exc)}
+    return {"success": True, "output": f"Restored reviewed snapshot into {path}"}
 
 
 # ---------------------------------------------------------------------------
@@ -422,50 +439,60 @@ def render_setup_page() -> None:
                 )
 
                 output_exists = _pipeline_output_exists()
+                snapshot_exists = _snapshot_exists()
                 pipeline_ready: bool = st.session_state.pipeline_ready
 
                 if pipeline_ready:
                     st.success("Study data loaded — ready for querying.", icon="✅")
+                elif snapshot_exists:
+                    st.info(
+                        "Reviewed snapshot data detected at `data/snapshots/`. "
+                        "Use Existing Study will restore it into `output/` before chat.",
+                        icon=":material/info:",
+                    )
                 elif output_exists:
                     st.info(
                         "Existing study data detected at `output/`. "
-                        "You can use it directly or run a fresh load to refresh.",
+                        "No reviewed snapshot was found; run a fresh load or save a reviewed snapshot.",
                         icon=":material/info:",
                     )
                 else:
                     st.info(
-                        "No existing study data on disk yet. Run a fresh load to "
-                        "produce ``trio_bundle/`` from your raw study inputs.",
+                        "No reviewed snapshot or existing study data on disk yet. "
+                        "Run a fresh load to produce ``trio_bundle/`` from raw study inputs.",
                         icon=":material/info:",
                     )
 
                 # ── Two-button flow (PR #18) ─────────────────────────────
-                # Use Existing Study: trust whatever is already published in
-                #   ``output/{STUDY}/trio_bundle/`` — no pipeline run, no
-                #   network egress, instant. Disabled when the bundle is
-                #   absent.
+                # Use Existing Study: restore the reviewed snapshot from
+                #   ``data/snapshots/{STUDY}/`` over the live
+                #   ``output/{STUDY}/trio_bundle/`` before chat starts.
                 # Load Study: run the full pipeline subprocess. The PDF
-                #   orchestrator falls back to ``snapshots/{STUDY}/pdfs/``
-                #   per-PDF when the LLM tier is unavailable, so this works
-                #   without an API key on a network-isolated host as long
-                #   as the maintainer has populated the snapshots baseline.
+                #   leg restores that same reviewed snapshot when fresh
+                #   PDF extraction fails or cannot run.
                 col_use, col_load = st.columns(2)
                 with col_use:
                     if st.button(
                         "Use Existing Study",
-                        type="primary" if output_exists and not pipeline_ready else "secondary",
+                        type="primary" if snapshot_exists and not pipeline_ready else "secondary",
                         width="stretch",
-                        disabled=not output_exists,
+                        disabled=not snapshot_exists,
                         help=(
-                            "Skip the pipeline and use the trio bundle already "
-                            "published at output/{STUDY}/trio_bundle/."
-                            if output_exists
-                            else "No published trio_bundle on disk yet — run Load Study first."
+                            "Restore data/snapshots/{STUDY}/ over "
+                            "output/{STUDY}/trio_bundle/ and use that reviewed bundle."
+                            if snapshot_exists
+                            else "No reviewed snapshot found at data/snapshots/{STUDY}/."
                         ),
                     ):
-                        st.session_state.pipeline_ready = True
-                        st.toast("Using existing study data.", icon="✅")
-                        st.rerun()
+                        with st.spinner("Restoring reviewed snapshot…"):
+                            result = use_existing_study()
+                        st.session_state.pipeline_log = result["output"]
+                        if result["success"]:
+                            st.session_state.pipeline_ready = True
+                            st.toast("Reviewed snapshot restored.", icon="✅")
+                            st.rerun()
+                        else:
+                            st.error("Could not restore reviewed snapshot.")
                 with col_load:
                     load_label = "Reload Study" if pipeline_ready or output_exists else "Load Study"
                     if st.button(

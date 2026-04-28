@@ -3,7 +3,7 @@ Architecture Decisions (ADRs)
 
 **What.** One record per major architectural decision. ADRs 001–009
 cover the original PHI-handling architecture. ADRs 010–015 cover the
-sandbox, KeyStore, PDF orchestrator, snapshot split, parallel
+sandbox, KeyStore, PDF orchestrator, reviewed snapshot baseline, parallel
 extraction, and l-diversity decisions. Each record states
 what was decided, why, how it was implemented, what alternatives were
 considered, and what consequences to expect if the decision ages
@@ -224,7 +224,7 @@ JSON, skip the PDF leg entirely).
   ``scripts/extraction/pdf_pipeline.py`` ships pdfplumber as the
   always-on code path, paired with a redacted-text LLM call (capable
   cloud or local model) via ``_merge``, and a per-PDF snapshot
-  baseline fallback at ``snapshots/{STUDY}/pdfs/``. No raw PDF bytes
+  baseline fallback at ``data/snapshots/{STUDY}/pdfs/``. No raw PDF bytes
   leave the host on the orchestrator path. The original ADR-006
   external-API gate remains as the legacy fallback for operators who
   cannot run the orchestrator.
@@ -422,7 +422,7 @@ selection) extracts text locally with ``pdfplumber``, redacts the
 text via ``phi_patterns.BLOCKING_PATTERNS`` *before* any LLM call,
 sends only the redacted text to a capable LLM, re-scrubs the
 response, and merges with the code candidate. Per-PDF fallback to
-the version-controlled snapshot baseline at ``snapshots/{STUDY}/pdfs/``
+the reviewed snapshot baseline at ``data/snapshots/{STUDY}/pdfs/``
 when the LLM tier is unavailable. **No raw PDF bytes leave the host
 on this path.**
 
@@ -458,58 +458,48 @@ wiring). Idempotent cache keyed on
 **Consequences.** ADR-006 is now a *fallback* path, not the primary
 path. The attestation gate remains in the legacy
 ``extract_pdf_data._resolve_pdf_provider``. The orchestrator uses the
-``snapshots/{STUDY}/`` baseline tier described in ADR-013.
+``data/snapshots/{STUDY}/`` baseline tier described in ADR-013.
 
-ADR-013 — Two-tier snapshot model (tracked baseline + restore points)
----------------------------------------------------------------------
+ADR-013 — Single reviewed snapshot baseline
+-------------------------------------------
 
-**What.** Two distinct copy-of-the-trio-bundle tiers, on different
-paths, with different lifecycles:
-
-1. **Tracked baseline** at ``snapshots/{STUDY}/`` (repo root,
-   version-controlled, maintainer-curated, single per-study cleaned
-   trio bundle). Read by the PDF orchestrator's per-PDF fallback.
-2. **Operator restore points** at
-   ``output/{STUDY}/agent/restore_points/`` (gitignored, multi-named
-   runs). Created via ``python -m scripts.utils.snapshots create``.
-   Crash-recovery only; never read by the pipeline.
+**What.** One human-reviewed copy of the trio bundle lives at
+``data/snapshots/{STUDY}/``. It is a single per-study cleaned trio
+bundle and mirrors ``output/{STUDY}/trio_bundle/``.
 
 **Why.** The PDF orchestrator (ADR-012) needs a deterministic,
-reviewable baseline to fall back on when the LLM tier fails. The
-operator-restore CLI (which predates the orchestrator) creates
-multi-named runs for local rollback. Putting both on the same path
-would either (a) pollute the tracked baseline with multi-run dumps
-(violating the "one verified baseline" property) or (b) make the
-restore-CLI multi-name behaviour fight git ignore rules. Splitting
-them onto different paths preserves both properties.
+reviewable baseline to fall back on when the LLM tier fails, and the
+wizard needs a clean way to recover from incomplete PDF extraction.
+Multi-named scratch copies created ambiguity: operators could confuse
+local rollback data with the reviewed baseline. The architecture now
+keeps only the reviewed baseline.
 
-**How.** ``config.STUDY_SNAPSHOTS_DIR``
-points at the repo-root tracked baseline. ``config.STUDY_RESTORE_POINTS_DIR``
-points at the gitignored operator-restore tier. The
-:mod:`scripts.utils.snapshots` CLI uses the latter; the orchestrator
-uses the former.
+**How.** ``config.STUDY_SNAPSHOTS_DIR`` points at
+``data/snapshots/{STUDY}/``. :mod:`scripts.utils.snapshots` saves and
+restores that baseline. The wizard's **Use Existing Study** button and
+the full pipeline's PDF-failure path both restore the baseline over
+``output/{STUDY}/trio_bundle/``.
 
 **Crucially:** the LLM agent's read zone is strictly
-``trio_bundle/`` + ``agent/``. Both snapshot paths are intentionally
+``trio_bundle/`` + ``agent/``. The snapshot path is intentionally
 *outside* the LLM read zone. A stale baseline can never be served
-as live data because the agent simply cannot read it.
+directly as live data because the agent cannot read it.
 
 **Alternatives.**
 
-* **One snapshot path** with mode bits to distinguish baseline vs
-  scratch. Rejected — too fragile to rely on filesystem mode for an
-  audit-critical distinction.
-* **Don't track the baseline; require operators to seed via env
-  var or a separate repo.** Rejected — version-controlled baseline
-  is the cleanest IRB story (any change is a commit; the diff is
-  reviewable).
+* **Restore points under ``output/{STUDY}/agent/``.** Rejected —
+  they are scratch state, sit inside the agent zone, and do not match
+  the human-reviewed fallback contract.
+* **Require operators to seed via env var or a separate repo.**
+  Rejected — ``data/snapshots/{STUDY}/`` keeps the fallback colocated
+  with study data and easy to review.
 
 **Consequences.** Maintainers who follow the snapshot-baseline
 maintenance protocol (see :doc:`operations`) must run a manual
-``cp -r output/{STUDY}/trio_bundle/ snapshots/{STUDY}/`` after a
-verified production run. The whole value of a snapshot is the human
-verification step; auto-generation from ``--force`` runs is a foot-gun
-the protocol explicitly forbids.
+``make snapshot`` after a verified production run. The whole value of
+a snapshot is the human verification step; auto-generation from
+``--force`` runs without review is a foot-gun the protocol explicitly
+forbids.
 
 ADR-014 — Parallel extraction phase (3-worker ThreadPoolExecutor)
 -----------------------------------------------------------------

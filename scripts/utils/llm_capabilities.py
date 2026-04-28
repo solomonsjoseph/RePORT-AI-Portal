@@ -7,8 +7,8 @@ The PDF pipeline runs in three tiers (see
 2. **LLM path** — runs ONLY when a "capable" model is configured.
    Capable means the model can reliably extract structured form
    metadata from CRF text without hallucinating columns.
-3. **Backup snapshot** — falls back to a human-verified ``initial``
-   snapshot when neither path produces valid output.
+3. **Backup snapshot** — falls back to a human-verified snapshot
+   baseline when neither path produces valid output.
 
 This module decides tier 2's eligibility. The default capable set is
 hardcoded but env-overridable via ``REPORTALIN_PDF_LLM_CAPABLE_MODELS``

@@ -313,7 +313,7 @@ No tool accepts birthdate as an output field — the column was dropped. The age
 ### Q17. What about the PDF leg — can PDFs leak PHI to Anthropic / Google?
 **Two co-existing paths:**
 
-- **Two-way orchestrator** (`scripts/extraction/pdf_pipeline.py` — the wizard's "Load Study" button selects this path). The `pdfplumber` code path always runs first; extracted text is PHI-redacted via `phi_patterns.BLOCKING_PATTERNS` BEFORE any byte leaves the host, with a defensive `_assert_no_raw_phi_in_payload` re-check that raises if any blocking pattern survives. The LLM receives only the redacted text. Response is re-scrubbed via `phi_safe.guard_text` and merged with the code candidate. Per-PDF fallback to the version-controlled `snapshots/{STUDY}/pdfs/` baseline when the LLM tier is unavailable. **No raw PDF bytes leave the host.** Idempotent cache keyed on `SHA-256(pdf_bytes || provider || model || phi_scrub.yaml hash)`.
+- **Two-way orchestrator** (`scripts/extraction/pdf_pipeline.py` — the wizard's "Load Study" button selects this path). The `pdfplumber` code path always runs first; extracted text is PHI-redacted via `phi_patterns.BLOCKING_PATTERNS` BEFORE any byte leaves the host, with a defensive `_assert_no_raw_phi_in_payload` re-check that raises if any blocking pattern survives. The LLM receives only the redacted text. Response is re-scrubbed via `phi_safe.guard_text` and merged with the code candidate. Per-PDF fallback to the reviewed `data/snapshots/{STUDY}/pdfs/` baseline when the LLM tier is unavailable. If the PDF leg fails or cannot run, the reviewed `data/snapshots/{STUDY}/` trio bundle is restored over the live `output/{STUDY}/trio_bundle/`. **No raw PDF bytes leave the host.** Idempotent cache keyed on `SHA-256(pdf_bytes || provider || model || phi_scrub.yaml hash)`.
 - **Legacy raw-PDF API path** (`scripts/extraction/extract_pdf_data.py`, the CLI default) is refused unless the operator opts in via two-factor attestation: `REPORTALIN_PDF_PHI_FREE=1` env flag **and** non-empty `authorities/phi_free_pdfs.md` note. Both are enforced inside `_resolve_pdf_provider` (currently `scripts/extraction/extract_pdf_data.py:305-433`; see `_pdf_phi_free_opt_in` and `_pdf_phi_free_authority_present` for the individual checks).
 
 ### Q18. Can an attacker replay a stale `lineage_manifest.json` to make a re-run look identical?
@@ -337,13 +337,18 @@ Yes, load-bearing. `main.py` runs **Step 1.6 PHI scrub** *before* **Step 1.7 dat
 ### Q24. Are older, less-capable LLMs allowed?
 Not remotely. `model_policy.py` maintains a minimum-capability allowlist; remote models below the floor are rejected at load time. Ollama is version-floor-exempt because the operator controls the inference runtime. This prevents accidental use of an older, less-safety-tuned cloud model with study data.
 
-### Q25. Can `step_cache` or restore points / snapshots let stale PHI-bearing artifacts surface?
+### Q25. Can `step_cache` or snapshots let stale PHI-bearing artifacts surface?
 No. `scripts/utils/step_cache.py` records a `.manifest.json` of input SHA-256 + artifact versions; a fresh-cache decision skips re-computation only when every input hash still matches. If any input changed, the step is re-run with the current scrub catalog — so a scrub-rule update cannot be silently bypassed.
 
-There are two snapshot tiers:
-
-1. **Operator restore points** — `scripts/utils/snapshots.py` copies only the **already-scrubbed trio_bundle** into `output/{STUDY}/agent/restore_points/` (gitignored). Restoring overwrites the live trio with a pre-scrubbed copy, never with raw data.
-2. **Tracked baseline** — `snapshots/{STUDY}/` at the repo root holds a maintainer-curated cleaned trio bundle, used by the pipeline's PDF orchestrator as a per-PDF fallback. The LLM is forbidden from reading it (its read zone is `trio_bundle/` + `agent/` only). Maintainer protocol requires the baseline to come from a verified scrubbed run; see [docs/sphinx/developer_guide/operations.rst Trio-Bundle Snapshot Maintenance section](../sphinx/developer_guide/operations.rst).
+There is one reviewed snapshot baseline: `data/snapshots/{STUDY}/`.
+`scripts/utils/snapshots.py` copies only an already-scrubbed,
+human-reviewed `trio_bundle` into that path and restores that baseline
+over `output/{STUDY}/trio_bundle/` when **Use Existing Study** is
+clicked or when fresh PDF extraction fails. The LLM is forbidden from
+reading the baseline directly (its read zone is `trio_bundle/` +
+`agent/` only). Maintainer protocol requires the baseline to come from
+a verified scrubbed run; see [docs/sphinx/developer_guide/operations.rst
+Trio-Bundle Snapshot Maintenance section](../sphinx/developer_guide/operations.rst).
 
 Neither path is a bypass.
 
@@ -469,7 +474,7 @@ The chat UI intentionally has no file-upload control. This keeps uploads on the 
 
 The repo's `.gitignore` (345 lines) explicitly excludes:
 - `data/raw/**` — raw study data cannot be committed.
-- `output/**` — trio_bundle, audit, agent state, conversations, snapshots.
+- `output/**` — trio_bundle, audit, agent state, and conversations.
 - `*_mappings.json`, `*_phi.json`, `*_pii.json` — catch-all for any filename resembling an identifier map.
 - `authorities/**` — operator attestation files are per-site, not versioned in the shared repo.
 
@@ -833,7 +838,7 @@ On success, every working-room file is overwritten with random bytes before bein
 ### "What about the PDF forms — those have handwriting and signatures!"
 Correct. The PDFs are treated as **sensitive by default**. Two co-existing extraction paths:
 
-1. **The orchestrator path** (`scripts/extraction/pdf_pipeline.py`, the wizard's "Load Study" default). The PDF text is extracted locally with `pdfplumber`, then **scrubbed to remove every identifier the catalog knows about** — Aadhaar, PAN, MRN, phone, email, dates — *before* anything goes to the outside AI. A defensive re-check raises an error if any blocking pattern survives. Only the redacted text reaches the LLM, the response is re-scrubbed, and a per-PDF fallback to the version-controlled snapshot baseline kicks in if the LLM is unavailable. **No raw PDF bytes leave the host.**
+1. **The orchestrator path** (`scripts/extraction/pdf_pipeline.py`, the wizard's "Load Study" default). The PDF text is extracted locally with `pdfplumber`, then **scrubbed to remove every identifier the catalog knows about** — Aadhaar, PAN, MRN, phone, email, dates — *before* anything goes to the outside AI. A defensive re-check raises an error if any blocking pattern survives. Only the redacted text reaches the LLM, the response is re-scrubbed, and a fallback to the reviewed snapshot baseline kicks in if the LLM is unavailable or the PDF leg fails. **No raw PDF bytes leave the host.**
 2. **The legacy raw-PDF API path** (the CLI default) **refuses** to send any PDF byte to an outside AI service unless the operator attests — twice, once with an environment setting and once with a signed text file — that the PDFs have been reviewed and are verified PHI-free. Either attestation alone is not enough.
 
 ---

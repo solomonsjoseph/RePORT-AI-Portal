@@ -190,7 +190,6 @@ def test_ensure_directories_hardens_sensitive_dirs_to_0700(
             "AGENT_OUTPUT_DIR",
             "CONVERSATIONS_DIR",
             "TELEMETRY_DIR",
-            "STUDY_RESTORE_POINTS_DIR",
         ):
             new = tmp_path / attr.lower()
             monkeypatch.setattr(config, attr, new)
@@ -207,7 +206,6 @@ def test_ensure_directories_hardens_sensitive_dirs_to_0700(
             "AGENT_STATE_DIR",
             "AGENT_OUTPUT_DIR",
             "CONVERSATIONS_DIR",
-            "STUDY_RESTORE_POINTS_DIR",
             "STUDY_AUDIT_DIR",
             "TRIO_BUNDLE_DIR",
         ):

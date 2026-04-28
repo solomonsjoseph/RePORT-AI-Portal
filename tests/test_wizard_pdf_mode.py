@@ -1,11 +1,10 @@
 """Tests for the wizard's two-button study-load flow (PR #18 rewrite).
 
 PR #18 replaced PR #16's PDF-extraction-mode radio with a higher-level
-two-button choice in step 2: *Use Existing Study* (skip the pipeline,
-trust ``output/{STUDY}/trio_bundle/``) vs *Load Study* (run the
-pipeline subprocess, with the repo-tracked snapshot baseline at
-``snapshots/{STUDY}/pdfs/`` as the per-PDF fallback when the LLM
-tier is unavailable).
+two-button choice in step 2. The current contract is: *Use Existing
+Study* restores the reviewed ``data/snapshots/{STUDY}/`` baseline over
+``output/{STUDY}/trio_bundle/`` before chat, while *Load Study* runs the
+pipeline subprocess.
 
 This file pins the contract that ``run_pipeline()`` propagates the
 right env signal to the subprocess, and that the orchestrator-mode
@@ -46,9 +45,8 @@ def test_run_pipeline_always_signals_llm_mode(
 ) -> None:
     """The subprocess always sees ``REPORTALIN_PDF_EXTRACTION_MODE=llm``
     so the dispatcher chooses the orchestrator (which has its own
-    per-PDF snapshot fallback). The pre-PR-#18 radio that let operators
-    pick ``snapshot`` directly is gone — the user never makes that
-    choice at the per-PDF level any more."""
+    reviewed snapshot fallback). The pre-PR-#18 radio that let operators
+    pick ``snapshot`` directly is gone."""
     from scripts.ai_assistant.ui import wizard
 
     monkeypatch.setattr(wizard, "_ensure_phi_key", lambda: None)
@@ -107,8 +105,33 @@ def test_pr18_removed_pdf_mode_helpers() -> None:
 
 def test_run_pipeline_export_still_present() -> None:
     """The Streamlit step-2 buttons both call ``wizard.run_pipeline``
-    (Load Study) or set ``pipeline_ready`` directly (Use Existing Study).
+    (Load Study) or ``wizard.use_existing_study`` (Use Existing Study).
     ``run_pipeline`` must remain a public symbol of the module."""
     from scripts.ai_assistant.ui import wizard
 
     assert callable(wizard.run_pipeline)
+    assert callable(wizard.use_existing_study)
+
+
+def test_use_existing_study_restores_reviewed_snapshot(
+    tmp_path: Path,
+    monkeypatch_config: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import config
+    from scripts.ai_assistant.ui import wizard
+
+    trio = tmp_path / "output" / "Study" / "trio_bundle"
+    snap = tmp_path / "data" / "snapshots" / "Study"
+    (trio / "datasets").mkdir(parents=True)
+    (snap / "datasets").mkdir(parents=True)
+    (trio / "variables.json").write_text('{"broken": true}', encoding="utf-8")
+    (snap / "variables.json").write_text('{"reviewed": true}', encoding="utf-8")
+    (snap / "datasets" / "1_demo.jsonl").write_text('{"row": 1}\n', encoding="utf-8")
+    monkeypatch.setattr(config, "TRIO_BUNDLE_DIR", trio)
+    monkeypatch.setattr(config, "STUDY_SNAPSHOTS_DIR", snap)
+
+    result = wizard.use_existing_study()
+
+    assert result["success"] is True
+    assert (trio / "variables.json").read_text(encoding="utf-8") == '{"reviewed": true}'

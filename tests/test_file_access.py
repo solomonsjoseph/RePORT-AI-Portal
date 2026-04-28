@@ -91,16 +91,15 @@ class TestValidateAgentWrite:
         f = config.AGENT_OUTPUT_DIR / "new_output.csv"
         assert validate_agent_write(f) == Path(f.resolve())
 
-    def test_agent_restore_points_allowed(self, monkeypatch_config: Path) -> None:
-        """Operator restore-point tier (``output/{STUDY}/agent/restore_points/``)
-        is agent-writable — the CLI tool needs to drop named runs there."""
+    def test_agent_conversations_allowed(self, monkeypatch_config: Path) -> None:
+        """Agent-owned conversation state remains inside the writable zone."""
         import config
 
-        f = config.STUDY_RESTORE_POINTS_DIR / "run-x" / "snap.json"
+        f = config.CONVERSATIONS_DIR / "session.json"
         assert validate_agent_write(f) == Path(f.resolve())
 
     def test_tracked_snapshots_baseline_rejected(self, monkeypatch_config: Path) -> None:
-        """Tracked baseline at ``snapshots/{STUDY}/`` is OUTSIDE the agent
+        """Reviewed baseline at ``data/snapshots/{STUDY}/`` is OUTSIDE the agent
         write zone — only a maintainer (with shell access) curates it."""
         import config
 
@@ -238,10 +237,10 @@ class TestValidateSandboxWrite:
 
     def test_agent_state_outside_analysis_rejected(self, monkeypatch_config: Path) -> None:
         """Sandbox write zone is narrower than agent-tool zone:
-        other ``agent/`` subdirs like restore_points/ are rejected."""
+        other ``agent/`` subdirs like conversations/ are rejected."""
         import config
 
-        f = config.STUDY_RESTORE_POINTS_DIR / "tamper.json"
+        f = config.CONVERSATIONS_DIR / "tamper.json"
         with pytest.raises(ZoneViolationError):
             validate_sandbox_write(f)
 

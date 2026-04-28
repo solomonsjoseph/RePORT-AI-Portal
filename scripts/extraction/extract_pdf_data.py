@@ -110,8 +110,8 @@ INTER_PDF_DELAY: float = config.PDF_EXTRACTION_INTER_DELAY
 #                     capable-LLM call + snapshot fallback per-PDF when the
 #                     LLM can't handle a form).
 #   2. ``snapshot`` — skip the LLM entirely and publish the human-verified
-#                     baseline JSONs from ``snapshots/{STUDY}/pdfs/`` (the
-#                     repo-tracked baseline; LLM-invisible).
+#                     baseline JSONs from ``data/snapshots/{STUDY}/pdfs/`` (the
+#                     reviewed baseline; LLM-invisible).
 #
 # When :data:`_PDF_EXTRACTION_MODE_ENV` is unset, ``extract_pdfs_to_jsonl``
 # falls back to the legacy raw-PDF API path (gated by the two-part
@@ -133,14 +133,11 @@ def _pdf_extraction_mode() -> str:
 
 
 def _initial_snapshot_pdfs_dir() -> Path:
-    """``snapshots/{STUDY}/pdfs/`` (repo-root, version-controlled) — the
+    """``data/snapshots/{STUDY}/pdfs/`` — the
     canonical location of the human-verified baseline PDF JSONs the
     snapshot fallback publishes verbatim. Layout matches
     ``trio_bundle/pdfs/`` (one ``{stem}_variables.json`` per form).
-
-    NOTE: this is the *baseline* snapshot, NOT the operator restore-point
-    tier (``STUDY_RESTORE_POINTS_DIR``). See ``docs/sphinx/developer_guide/operations.rst`` (Trio-Bundle Snapshot Maintenance) for
-    the maintenance protocol."""
+    """
     return Path(config.STUDY_SNAPSHOTS_DIR) / "pdfs"
 
 
@@ -795,8 +792,8 @@ def _run_snapshot_mode(
     """Publish the verified baseline JSONs verbatim — no LLM call.
 
     For each annotated PDF, copy the matching
-    ``{stem}_variables.json`` from ``snapshots/{STUDY}/pdfs/`` (the
-    repo-tracked baseline; LLM-invisible) into ``dest_dir``. A missing
+    ``{stem}_variables.json`` from ``data/snapshots/{STUDY}/pdfs/`` (the
+    reviewed baseline; LLM-invisible) into ``dest_dir``. A missing
     snapshot is reported as an error (the form will simply be absent
     from the published bundle); it is NOT a fatal failure.
     """
@@ -807,7 +804,7 @@ def _run_snapshot_mode(
         msg = (
             f"Snapshot directory not found: {snapshot_dir}. "
             "Run --pipeline once with REPORTALIN_PDF_EXTRACTION_MODE=llm "
-            "or seed initial snapshots."
+            "or seed the reviewed snapshot baseline."
         )
         log.error(msg)
         return 0, 0, 0, [{"file": "", "error": msg}]
@@ -899,7 +896,7 @@ def _run_orchestrator_mode(
     """Run the two-way orchestrator (``pdf_pipeline.extract_pdf``) per PDF.
 
     Each form goes through redacted-text → capable-LLM-call → merge with
-    code candidate, and falls back to the verified ``initial`` snapshot
+    code candidate, and falls back to the reviewed snapshot baseline
     when the LLM tier is unavailable. The orchestrator's idempotent cache
     lives under ``tmp/{STUDY}/.pdf_cache/``.
     """

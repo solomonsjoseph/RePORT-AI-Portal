@@ -111,11 +111,11 @@ help:
 	@printf "  $(C)make chat$(N)             Launch Streamlit web UI (with setup wizard)\n"
 	@printf "  $(C)make build-variables$(N)  Build variables.json from all annotation sources\n"
 	@printf "\n"
-	@printf "$(B)$(G)  Restore Points$(N)  $(Y)(output/{STUDY}/agent/restore_points/ — gitignored)$(N)\n"
-	@printf "  $(C)make snapshot$(N)         Copy output/{STUDY}/trio_bundle/ → agent/restore_points/<ts>/\n"
-	@printf "  $(C)make list-snapshots$(N)   List available restore points (newest first)\n"
-	@printf "  $(C)make restore-study$(N)    Restore a point back into trio_bundle/ (SNAPSHOT=<name>)\n"
-	@printf "  $(Y)Note: tracked-baseline snapshots/{STUDY}/ is curated by hand — see snapshots/README.md$(N)\n"
+	@printf "$(B)$(G)  Reviewed Snapshot$(N)  $(Y)(data/snapshots/{STUDY}/)$(N)\n"
+	@printf "  $(C)make snapshot$(N)         Copy output/{STUDY}/trio_bundle/ → data/snapshots/{STUDY}/\n"
+	@printf "  $(C)make list-snapshots$(N)   Show whether the reviewed baseline exists\n"
+	@printf "  $(C)make restore-study$(N)    Restore data/snapshots/{STUDY}/ back into trio_bundle/\n"
+	@printf "  $(Y)Note: Use Existing Study restores this reviewed baseline before chat.$(N)\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Quality$(N)\n"
 
@@ -236,19 +236,15 @@ build-variables:
 	@printf "$(G)✓ variables.json built$(N)\n"
 
 # ═══════════════════════════════════════════════════════════════════════
-# RESTORE POINTS — trio_bundle backup / restore (gitignored, multi-named)
+# REVIEWED SNAPSHOT BASELINE — trio_bundle backup / restore
 # ═══════════════════════════════════════════════════════════════════════
-# Lands in ``output/{STUDY}/agent/restore_points/`` — DISTINCT from the
-# tracked baseline at ``snapshots/{STUDY}/`` (which is maintainer-curated
-# by hand; see ``snapshots/README.md``).
-# SNAPSHOT=<name>   (optional) explicit restore-point name
-#                   default for snapshot-study: UTC timestamp
-#                   required   for restore-study
-# FORCE=1           allow overwriting an existing restore point of the same name
+# Lands in ``data/snapshots/{STUDY}/``. This is the single human-reviewed
+# fallback copied over ``output/{STUDY}/trio_bundle/`` when PDF extraction
+# fails or the operator clicks "Use Existing Study".
+# FORCE=1           allow overwriting the existing reviewed snapshot
 
 snapshot-study:
 	@$(PYTHON) -m scripts.utils.snapshots create \
-		$(if $(SNAPSHOT),--name $(SNAPSHOT),) \
 		$(if $(filter 1 true yes True Yes on,$(FORCE)),--force,)
 
 # Short alias for snapshot-study — intended for operators who invoke
@@ -256,23 +252,10 @@ snapshot-study:
 snapshot: snapshot-study
 
 restore-study:
-	@if [ -z "$(SNAPSHOT)" ]; then \
-		printf "$(R)✗ Usage: make restore-study SNAPSHOT=<name>$(N)\n"; \
-		printf "$(Y)Available snapshots:$(N)\n"; \
-		$(PYTHON) -c "from scripts.utils.snapshots import list_snapshots; \
-[print(f'  - {n}') for n in list_snapshots()] or print('  (none)')"; \
-		exit 1; \
-	fi
-	@printf "$(C)Restoring snapshot '$(SNAPSHOT)' into trio_bundle/...$(N)\n"
-	@$(PYTHON) -c "from scripts.utils.snapshots import restore_snapshot; \
-p = restore_snapshot('$(SNAPSHOT)'); \
-print(f'✓ Restored {p}')"
+	@$(PYTHON) -m scripts.utils.snapshots restore
 
 list-snapshots:
-	@$(PYTHON) -c "from scripts.utils.snapshots import list_snapshots; \
-names = list_snapshots(); \
-print('Snapshots (newest first):') if names else print('No snapshots available.'); \
-[print(f'  - {n}') for n in names]"
+	@$(PYTHON) -m scripts.utils.snapshots list
 
 # ═══════════════════════════════════════════════════════════════════════
 # QUALITY

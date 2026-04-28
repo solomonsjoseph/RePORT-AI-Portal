@@ -103,7 +103,8 @@ make chat
 Then choose a provider and either:
 
 - click **Load Study** to process raw study files; or
-- click **Use Existing Study** if a published bundle already exists.
+- click **Use Existing Study** to restore the reviewed snapshot into
+  the published bundle before chat.
 
 Run only the pipeline:
 

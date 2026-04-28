@@ -33,7 +33,7 @@ tier runs **paired** with the code path:
 When the LLM tier is unavailable for any reason (no capable model
 configured, no API key, image-only PDF, LLM call error), the pipeline
 falls back to a human-verified snapshot at
-``snapshots/{STUDY}/pdfs/<form>.json`` (repo-root, version-controlled
+``data/snapshots/{STUDY}/pdfs/<form>.json`` (human-reviewed
 baseline; LLM-invisible). **A code-only result is NEVER an acceptable output** — heuristic
 extraction without LLM oversight is too unreliable to publish, so
 we'd rather use a verified baseline than ship potentially-wrong
@@ -455,7 +455,7 @@ def extract_pdf(
     diagnostic ``llm_skipped_reason``.
 
     ``snapshot_dir`` is the directory holding human-verified backup
-    JSONs (typically ``snapshots/{STUDY}/pdfs/`` at the repo root).
+    JSONs (typically ``data/snapshots/{STUDY}/pdfs/``).
     When omitted, the snapshot fallback is unavailable.
 
     ``cache_dir`` is the LLM-response cache root (typically

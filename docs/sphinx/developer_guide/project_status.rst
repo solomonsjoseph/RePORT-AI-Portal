@@ -35,8 +35,9 @@ PHI And Security Boundaries
   k-anonymity, and l-diversity before row-level answers are surfaced.
 * ``output/{STUDY}/audit/`` is a counts-only audit envelope and is
   rejected by the agent read validator.
-* ``snapshots/{STUDY}/`` is a version-controlled baseline used by the
-  PDF orchestrator fallback; it is outside the agent read surface.
+* ``data/snapshots/{STUDY}/`` is a reviewed baseline restored when
+  PDF extraction fails or **Use Existing Study** is selected; it is
+  outside the agent read surface.
 * API keys route through the in-memory KeyStore in the Streamlit flow.
 * ``run_python_analysis`` executes generated code in a constrained
   subprocess and persists reproducibility artifacts under
@@ -63,7 +64,7 @@ PDF Extraction
 * Default wizard path uses the two-way PDF orchestrator:
   ``pdfplumber`` text extraction, PHI redaction before any LLM call,
   re-scrubbed LLM response, merge with code candidate, and per-PDF
-  fallback to ``snapshots/{STUDY}/pdfs/``.
+  fallback to ``data/snapshots/{STUDY}/pdfs/``.
 * Legacy raw-PDF API path remains available for CLI compatibility, but
   is refused unless ``REPORTALIN_PDF_PHI_FREE=1`` and a non-empty
   ``authorities/phi_free_pdfs.md`` attestation are both present.

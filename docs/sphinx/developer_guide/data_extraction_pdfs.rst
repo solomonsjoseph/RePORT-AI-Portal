@@ -41,7 +41,7 @@ Both paths route through
 which checks the ``REPORTALIN_PDF_EXTRACTION_MODE`` env var:
 
 * ``llm`` → orchestrator path (the wizard always sets this).
-* ``snapshot`` → publish ``snapshots/{STUDY}/pdfs/`` baseline
+* ``snapshot`` → publish ``data/snapshots/{STUDY}/pdfs/`` baseline
   verbatim, no LLM call.
 * unset (CLI default) → legacy raw-PDF API path with the two-part
   attestation gate.
@@ -78,8 +78,8 @@ For each PDF, the orchestrator runs:
    PHI scrub config invalidates every cache entry.
 6. **Snapshot fallback (per-PDF).** When any of (capable model,
    API key, code-path text non-empty, LLM call success) is missing,
-   the orchestrator publishes the version-controlled baseline at
-   ``snapshots/{STUDY}/pdfs/{stem}_variables.json`` instead.
+   the orchestrator publishes the reviewed baseline at
+   ``data/snapshots/{STUDY}/pdfs/{stem}_variables.json`` instead.
    **Code-only output is never an acceptable result** — heuristic-only
    metadata is too unreliable to publish without LLM oversight.
 
@@ -215,8 +215,8 @@ Key files
 * :mod:`scripts.security.phi_patterns` — the BLOCKING_PATTERNS used
   by the orchestrator's redaction step (and by the agent-output PHI
   gate).
-* ``config.STUDY_SNAPSHOTS_DIR`` — the tracked baseline location
-  (``snapshots/{STUDY}/``); see
+* ``config.STUDY_SNAPSHOTS_DIR`` — the reviewed baseline location
+  (``data/snapshots/{STUDY}/``); see
   :doc:`operations` for the maintenance protocol.
 
 Testing
