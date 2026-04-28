@@ -23,12 +23,12 @@ ifndef UV
 $(error uv is required. Install: curl -LsSf https://astral.sh/uv/install.sh | sh)
 endif
 
-export UV_CACHE_DIR ?= $(abspath .uv-cache)
-
 VENV_PYTHON := $(abspath .venv/bin/python)
+CHAT_GROUPS := --group web --group ai_assistant --group llm
+CLI_GROUPS := --group ai_assistant --group llm
 PYTHON := $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),$(UV) run python)
-AI_PYTHON := $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),$(UV) run --group ai_assistant --group llm python)
-WEB_PYTHON := $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),$(UV) run --group web --group ai_assistant --group llm python)
+AI_PYTHON := $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),$(UV) run $(CLI_GROUPS) python)
+WEB_PYTHON := $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),$(UV) run $(CHAT_GROUPS) python)
 RUFF := $(UV) run ruff
 MYPY := $(UV) run mypy
 VERBOSE ?=
@@ -79,7 +79,7 @@ N := \033[0m
 .PHONY: \
 	help quickstart debug sync version \
 	pipeline dictionary extract-datasets bundle pdf-extract \
-	chat-cli chat build-variables \
+	chat-deps chat-cli-deps chat-cli chat build-variables \
 	snapshot snapshot-study restore-study list-snapshots \
 	test test-all lint typecheck security ci verify \
 	docs doc-freshness docs-quality docs-linkcheck docs-ci release-notes \
@@ -114,7 +114,7 @@ help:
 	@printf "\n"
 	@printf "$(B)$(G)  AI Assistant$(N)\n"
 	@printf "  $(C)make chat-cli$(N)         Start interactive AI Assistant chat (CLI)\n"
-	@printf "  $(C)make chat$(N)             Launch Streamlit web UI (with setup wizard)\n"
+	@printf "  $(C)make chat$(N)             Install needed deps → launch web UI\n"
 	@printf "  $(C)make build-variables$(N)  Build variables.json from all annotation sources\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Reviewed Snapshot$(N)  $(Y)(data/snapshots/{STUDY}/)$(N)\n"
@@ -216,7 +216,15 @@ pdf-extract:
 # AI Assistant
 # ═══════════════════════════════════════════════════════════════════════
 
-chat-cli:
+chat-cli-deps:
+	@printf "$(C)Ensuring AI Assistant dependencies...$(N)\n"
+	@$(UV) run $(CLI_GROUPS) python -c "import langchain, langgraph"
+
+chat-deps:
+	@printf "$(C)Ensuring web chat dependencies...$(N)\n"
+	@$(UV) run $(CHAT_GROUPS) python -c "import streamlit, langchain, langgraph"
+
+chat-cli: chat-cli-deps
 	@printf "$(C)Starting interactive AI Assistant chat (CLI)...$(N)\n"
 	@if [ -z "$(PROVIDER)" ] || [ "$(PROVIDER)" = "ollama" ]; then \
 		if ! curl -sf http://localhost:11434/api/tags >/dev/null 2>&1; then \
@@ -235,7 +243,7 @@ chat-cli:
 	fi
 	@$(AI_PYTHON) main.py --chat $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
 
-chat:
+chat: chat-deps
 	@printf "$(C)Launching Streamlit web UI...$(N)\n"
 	@$(WEB_PYTHON) main.py --web $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
 

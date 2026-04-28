@@ -61,7 +61,7 @@ Use:
    curl -LsSf https://astral.sh/uv/install.sh | sh
    git clone https://github.com/solomonsjoseph/RePORT-AI-Portal.git
    cd RePORT-AI-Portal
-   uv sync --all-groups
+   make chat
 
 Then follow :doc:`quickstart`.
 
@@ -74,7 +74,7 @@ For the web UI:
 
    make chat
 
-For the pipeline only:
+For developer/operator pipeline runs only:
 
 .. code-block:: bash
 

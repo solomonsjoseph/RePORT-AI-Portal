@@ -56,19 +56,16 @@ Users normally interact with ``trio_bundle/`` through the chat UI. The
 Running the Pipeline
 --------------------
 
-From the command line:
-
-.. code-block:: bash
-
-   make pipeline
-
-From the web UI:
+Normal users run the pipeline from the web UI:
 
 .. code-block:: bash
 
    make chat
 
 Then click **Load Study**.
+
+The command-line ``make pipeline`` path is for developers and deployment
+operators who have already provisioned the local PHI key.
 
 Using an Existing Study
 -----------------------

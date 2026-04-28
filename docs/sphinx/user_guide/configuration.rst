@@ -103,15 +103,13 @@ PHI Key
 -------
 
 The scrubber needs one local PHI key for stable pseudonyms and date
-shifting. Create it once:
+shifting. Normal web-UI users do not create this key manually; the
+**Load Study** flow creates it when needed.
 
-.. code-block:: bash
-
-   python -m scripts.security.phi_scrub bootstrap-key
-
-Keep this key outside the repository and back it up according to the
-study team's policy. Rotating it changes pseudonyms and requires a full
-re-run.
+Developers and deployment operators can provision the key from the
+command line when running the pipeline outside the web UI. Keep this key
+outside the repository and back it up according to the study team's
+policy. Rotating it changes pseudonyms and requires a full re-run.
 
 Where to Put More Detail
 ------------------------

@@ -28,12 +28,11 @@ developer documentation lives in Sphinx:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone https://github.com/solomonsjoseph/RePORT-AI-Portal.git
 cd RePORT-AI-Portal
-uv sync --all-groups
-python -m scripts.security.phi_scrub bootstrap-key
 make chat
 ```
 
-The web UI guides provider selection, study loading, and chat. For the
+`make chat` installs the web/AI dependencies it needs, launches the web
+UI, and guides provider selection, study loading, PHI-key setup, and chat. For the
 complete setup path, use the
 [installation](https://solomonsjoseph.github.io/RePORT-AI-Portal/user_guide/installation.html)
 and

@@ -30,18 +30,6 @@ Clone the project:
    git clone https://github.com/solomonsjoseph/RePORT-AI-Portal.git
    cd RePORT-AI-Portal
 
-Install dependencies:
-
-.. code-block:: bash
-
-   uv sync --all-groups
-
-Verify the install:
-
-.. code-block:: bash
-
-   uv run python -c "import scripts; print('Installation successful')"
-
 Start the Web UI
 ----------------
 
@@ -49,8 +37,25 @@ Start the Web UI
 
    make chat
 
-The app opens a local Streamlit page. Use it to select the model
+``make chat`` installs the web and AI Assistant dependency groups it
+needs, then opens a local Streamlit page. Use it to select the model
 provider, load a study, and start chat.
+
+Optional Developer Setup
+------------------------
+
+Developers who need the full test, docs, profiling, and LLM toolchain can
+install every dependency group explicitly:
+
+.. code-block:: bash
+
+   make sync
+
+Verify the full developer install:
+
+.. code-block:: bash
+
+   uv run python -c "import scripts; print('Installation successful')"
 
 Prepare for First Run
 ---------------------
@@ -59,10 +64,7 @@ Before loading a study:
 
 1. Put study files under ``data/raw/{STUDY_NAME}/``.
 2. Choose a model provider in :doc:`configuration`.
-3. Create the PHI key:
-
-   .. code-block:: bash
-
-      python -m scripts.security.phi_scrub bootstrap-key
+3. Use **Load Study** in the web UI. It creates the local PHI key if one
+   does not already exist.
 
 Then continue with :doc:`quickstart`.
