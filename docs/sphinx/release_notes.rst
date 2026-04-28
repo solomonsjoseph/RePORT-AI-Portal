@@ -30,6 +30,12 @@ Changed
 * Moved the IRB/auditor profile into Sphinx and removed the old
   standalone Markdown dossier.
 
+Fixed
+~~~~~
+
+* Updated a sandbox regression test so its expected output no longer
+  resembles a PHI phone-number pattern on Python 3.13.
+
 Release Note Rules
 ------------------
 

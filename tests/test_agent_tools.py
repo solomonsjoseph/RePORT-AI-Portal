@@ -344,9 +344,14 @@ class TestSandboxRuntimeGuards:
     def test_getattr_allows_normal_attributes(self) -> None:
         from scripts.ai_assistant.agent_tools import run_python_analysis
 
-        code = "import pandas as pd\ndf = pd.DataFrame({'x': [1,2,3]})\nprint(getattr(df, 'shape'))"
+        code = (
+            "import pandas as pd\n"
+            "df = pd.DataFrame({'x': [1,2,3]})\n"
+            "shape = getattr(df, 'shape')\n"
+            "print(f'rows={shape[0]} cols={shape[1]}')"
+        )
         result = run_python_analysis.invoke(code)
-        assert "(3, 1)" in result
+        assert "rows=3 cols=1" in result
 
     def test_legitimate_analysis_works(self) -> None:
         from scripts.ai_assistant.agent_tools import run_python_analysis
