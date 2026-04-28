@@ -80,6 +80,12 @@ unreadable PHI redaction keys are startup failures, not warnings. Local
 developer runs may still warn and continue before the first study load
 provisions a key.
 
+Set ``STUDY_NAME`` explicitly for deployments. Study auto-detection falls
+back to the default name when ``data/raw/`` is absent or the deployment uses
+only reviewed snapshots / scrubbed output. If an environment must fail when
+auto-detection cannot find raw study input, set
+``REPORT_AI_STRICT_STUDY_DETECTION=1``.
+
 The Nginx template applies conservative per-client request throttles. Keep
 the app-layer chat turn ceiling enabled as a second guard:
 ``CHAT_RATE_LIMIT_MAX_TURNS`` requests per ``CHAT_RATE_LIMIT_WINDOW_SECONDS``.

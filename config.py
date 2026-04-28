@@ -64,6 +64,12 @@ def production_mode_enabled() -> bool:
     )
 
 
+def strict_study_detection_enabled() -> bool:
+    """Return True when missing auto-detected study data should abort import."""
+
+    return _get_env_bool("REPORT_AI_STRICT_STUDY_DETECTION", False)
+
+
 # ----------------------------------------------------------------------------
 # YAML CONFIG (config/config.yaml — optional overlay)
 # ----------------------------------------------------------------------------
@@ -134,7 +140,7 @@ TMP_DIR = BASE_DIR / "tmp"
 
 
 def detect_study_name(*, strict: bool | None = None) -> str:
-    strict = production_mode_enabled() if strict is None else strict
+    strict = strict_study_detection_enabled() if strict is None else strict
     if not RAW_DATA_DIR.exists():
         msg = f"RAW_DATA_DIR missing: {RAW_DATA_DIR}"
         if strict:

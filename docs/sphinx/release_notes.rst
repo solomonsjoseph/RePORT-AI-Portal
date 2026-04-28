@@ -42,6 +42,8 @@ Changed
 Fixed
 ~~~~~
 
+* Fixed production/proxy startup when the deployment uses an explicit or
+  default study name without raw study input mounted at import time.
 * Updated a sandbox regression test so its expected output no longer
   resembles a PHI phone-number pattern on Python 3.13.
 

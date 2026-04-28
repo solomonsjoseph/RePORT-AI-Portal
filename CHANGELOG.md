@@ -4,6 +4,8 @@ User-facing release notes live in `docs/sphinx/release_notes.rst`.
 
 ## Unreleased
 
+- Fixed production/proxy startup when the deployment uses an explicit or
+  default study name without raw study input mounted at import time.
 - Hardened production runtime controls for PHI log redaction, request rate
   limiting, CSP enforcement, direct virtualenv service execution, and
   study-name resolution.
