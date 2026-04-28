@@ -23,7 +23,12 @@ ifndef UV
 $(error uv is required. Install: curl -LsSf https://astral.sh/uv/install.sh | sh)
 endif
 
-PYTHON := $(UV) run python
+export UV_CACHE_DIR ?= $(abspath .uv-cache)
+
+VENV_PYTHON := $(abspath .venv/bin/python)
+PYTHON := $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),$(UV) run python)
+AI_PYTHON := $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),$(UV) run --group ai_assistant --group llm python)
+WEB_PYTHON := $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),$(UV) run --group web --group ai_assistant --group llm python)
 RUFF := $(UV) run ruff
 MYPY := $(UV) run mypy
 VERBOSE ?=
@@ -228,11 +233,11 @@ chat-cli:
 			printf "$(G)✓ Ollama started$(N)\n"; \
 		fi; \
 	fi
-	@$(PYTHON) main.py --chat $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
+	@$(AI_PYTHON) main.py --chat $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
 
 chat:
 	@printf "$(C)Launching Streamlit web UI...$(N)\n"
-	@$(PYTHON) main.py --web $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
+	@$(WEB_PYTHON) main.py --web $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
 
 build-variables:
 	@printf "$(C)Building variables.json from all annotation sources...$(N)\n"
@@ -352,4 +357,4 @@ nuke:
 	@find . -maxdepth 1 -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	@find . -maxdepth 1 -type f \( -name "*.pyc" -o -name ".DS_Store" \) -delete 2>/dev/null || true
 	@rm -rf .pytest_cache .mypy_cache .ruff_cache .coverage htmlcov 2>/dev/null || true
-	@printf "$(G)Nuked. Run 'make sync' to restore deps (or 'make quickstart' to fully rebuild + launch).$(N)\n"
+	@printf "$(G)Nuked. Run 'make chat' to recreate web deps + launch, or 'make sync' to restore every dependency group first.$(N)\n"
