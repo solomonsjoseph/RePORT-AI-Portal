@@ -47,9 +47,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Files / directories the linter scans for prose drift.
 TRACKED_FILES: tuple[str, ...] = ("README.md",)
-TRACKED_DIRS: tuple[str, ...] = (
-    "docs/sphinx",
-)
+TRACKED_DIRS: tuple[str, ...] = ("docs/sphinx",)
 TRACKED_GLOBS: tuple[str, ...] = (
     "*.rst",
     "*.md",
