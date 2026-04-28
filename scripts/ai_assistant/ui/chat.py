@@ -23,6 +23,41 @@ from scripts.ai_assistant.ui.providers import (
 logger = logging.getLogger(__name__)
 
 
+def _rate_limit_status(
+    timestamps: list[float],
+    *,
+    now: float,
+    window_seconds: int,
+    max_turns: int,
+) -> tuple[bool, list[float], int]:
+    """Return (allowed, retained_timestamps, retry_after_seconds)."""
+
+    window = max(window_seconds, 1)
+    limit = max(max_turns, 1)
+    retained = [ts for ts in timestamps if now - ts < window]
+    if len(retained) >= limit:
+        retry_after = max(1, int(window - (now - retained[0])))
+        return False, retained, retry_after
+    return True, [*retained, now], 0
+
+
+def _consume_turn_quota() -> str | None:
+    """Apply a per-session chat-turn ceiling before any LLM call."""
+
+    raw = st.session_state.get("rpln_turn_timestamps", [])
+    timestamps = [float(ts) for ts in raw if isinstance(ts, (int, float))]
+    allowed, retained, retry_after = _rate_limit_status(
+        timestamps,
+        now=datetime.now(UTC).timestamp(),
+        window_seconds=config.CHAT_RATE_LIMIT_WINDOW_SECONDS,
+        max_turns=config.CHAT_RATE_LIMIT_MAX_TURNS,
+    )
+    st.session_state["rpln_turn_timestamps"] = retained
+    if allowed:
+        return None
+    return f"Too many messages. Wait {retry_after}s before sending another request."
+
+
 # ---------------------------------------------------------------------------
 # Welcome hero
 # ---------------------------------------------------------------------------
@@ -218,6 +253,11 @@ def composer(assistant_slot: Any | None = None) -> None:
     question = pending or user_input
 
     if question and not pending_stream:
+        rate_limited = _consume_turn_quota()
+        if rate_limited:
+            st.warning(rate_limited)
+            return
+
         guard = guard_user_prompt(question)
         user_idx = len(ss.messages)
         user_content = question if guard.ok else "[PHI-REFUSED — content redacted]"

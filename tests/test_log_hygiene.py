@@ -109,7 +109,7 @@ class TestInstallPhiRedactor:
         assert not any("patient@example.com" in r.getMessage() for r in caplog.records)
 
 
-class TestBestEffortOnFailure:
+class TestRedactionFailureHandling:
     def test_malformed_format_args_do_not_crash(self, caplog: pytest.LogCaptureFixture) -> None:
         flt = log_hygiene.PHIRedactingFilter(hmac_key=TEST_KEY)
         logger = logging.getLogger("test_log_hygiene.errors")
@@ -117,8 +117,31 @@ class TestBestEffortOnFailure:
         logger.setLevel(logging.INFO)
         with caplog.at_level(logging.INFO, logger=logger.name):
             # Intentionally pass wrong number of args — getMessage() will
-            # raise internally; filter must fall through without aborting.
+            # raise internally; filter must suppress without aborting.
             logger.info("hello %s %s", "one")
         logger.removeFilter(flt)
         # A record was still emitted (not dropped).
         assert len(caplog.records) == 1
+
+    def test_internal_redaction_failure_suppresses_message(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        class BrokenPattern:
+            def sub(self, repl: str, text: str) -> str:
+                raise RuntimeError("boom")
+
+        flt = log_hygiene.PHIRedactingFilter(
+            hmac_key=TEST_KEY,
+            generic_patterns=[("BROKEN", BrokenPattern())],  # type: ignore[list-item]
+        )
+        logger = logging.getLogger("test_log_hygiene.fail_closed")
+        logger.addFilter(flt)
+        logger.setLevel(logging.INFO)
+
+        with caplog.at_level(logging.INFO, logger=logger.name):
+            logger.info("raw email patient@example.com")
+
+        logger.removeFilter(flt)
+        assert caplog.records[0].getMessage() == "[PHI LOG REDACTION FAILURE - message suppressed]"
+        assert "patient@example.com" not in caplog.text

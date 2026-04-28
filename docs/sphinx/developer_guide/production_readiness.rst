@@ -74,19 +74,43 @@ proxy must set both ``X-Forwarded-User`` and
 ``X-Report-AI-Proxy-Secret``. Missing or mismatched values stop the app before
 the PHI-capable UI renders.
 
+Production services must also set ``REPORT_AI_PRODUCTION=1`` and
+``REPORT_AI_REQUIRE_PHI_LOG_REDACTOR=1``. With those flags, missing or
+unreadable PHI redaction keys are startup failures, not warnings. Local
+developer runs may still warn and continue before the first study load
+provisions a key.
+
+The Nginx template applies conservative per-client request throttles. Keep
+the app-layer chat turn ceiling enabled as a second guard:
+``CHAT_RATE_LIMIT_MAX_TURNS`` requests per ``CHAT_RATE_LIMIT_WINDOW_SECONDS``.
+
 The repository includes starting templates:
 
 * ``deploy/nginx/report-ai-portal.conf.example`` — Nginx reverse proxy
   with OAuth2 Proxy hook, TLS redirect, WebSocket forwarding, and security
   headers.
+* ``deploy/nginx/report-ai-portal-proxy-secret.conf.example`` — root-only
+  Nginx snippet containing the proxy shared-secret header. Keep this outside
+  the broadly-readable site config and make it match
+  ``REPORT_AI_PROXY_SHARED_SECRET``.
 * ``deploy/systemd/report-ai-portal.service.example`` — Linux service
-  unit with narrow writable paths and process hardening.
+  unit with direct virtualenv execution, narrow writable paths, and process
+  hardening. Build the virtualenv during deployment, then start the service;
+  do not let systemd invoke ``uv run`` as the long-lived runtime.
 * ``deploy/systemd/report-ai-portal-healthcheck.*.example`` — timer-driven
   healthcheck that restarts the service when ``/_stcore/health`` fails.
 
 Review the examples before use. Replace hostnames, certificate paths,
 service users, writable paths, OAuth configuration, and CSP reporting
 endpoints for the deployed environment.
+
+Before enabling the systemd unit, install dependencies into the checked-out
+virtualenv:
+
+.. code-block:: bash
+
+   cd /opt/report-ai-portal
+   uv sync --frozen --group web --group ai_assistant --group llm
 
 Security Headers
 ----------------

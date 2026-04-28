@@ -14,9 +14,11 @@ Environment=LOG_DIR=/var/log/report-ai-portal
 Environment=STREAMLIT_SERVER_ADDRESS=127.0.0.1
 Environment=STREAMLIT_SERVER_ENABLE_CORS=true
 Environment=STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=true
+Environment=REPORT_AI_PRODUCTION=1
+Environment=REPORT_AI_REQUIRE_PHI_LOG_REDACTOR=1
 Environment=REPORT_AI_AUTH_MODE=proxy
 EnvironmentFile=/etc/default/report-ai-portal
-ExecStart=/usr/local/bin/uv run --group web --group ai_assistant --group llm python main.py --web
+ExecStart=/opt/report-ai-portal/.venv/bin/python main.py --web
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30

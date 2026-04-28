@@ -54,6 +54,16 @@ def _get_env_bool(key: str, default: bool) -> bool:
     return value in {"1", "true", "yes", "on"}
 
 
+def production_mode_enabled() -> bool:
+    """Return True when production controls should fail closed."""
+
+    return (
+        _get_env_bool("REPORT_AI_PRODUCTION", False)
+        or _get_env_bool("REPORT_AI_REQUIRE_PHI_LOG_REDACTOR", False)
+        or str(_get_env("REPORT_AI_AUTH_MODE", "")).strip().lower() == "proxy"
+    )
+
+
 # ----------------------------------------------------------------------------
 # YAML CONFIG (config/config.yaml — optional overlay)
 # ----------------------------------------------------------------------------
@@ -123,9 +133,13 @@ TMP_DIR = BASE_DIR / "tmp"
 # ----------------------------------------------------------------------------
 
 
-def detect_study_name() -> str:
+def detect_study_name(*, strict: bool | None = None) -> str:
+    strict = production_mode_enabled() if strict is None else strict
     if not RAW_DATA_DIR.exists():
-        logger.warning("RAW_DATA_DIR missing → using default: %s", DEFAULT_DATASET_NAME)
+        msg = f"RAW_DATA_DIR missing: {RAW_DATA_DIR}"
+        if strict:
+            raise RuntimeError(msg)
+        logger.warning("%s → using default: %s", msg, DEFAULT_DATASET_NAME)
         return DEFAULT_DATASET_NAME
 
     try:
@@ -141,16 +155,27 @@ def detect_study_name() -> str:
             if (RAW_DATA_DIR / candidate / "datasets").is_dir():
                 return candidate
 
-        logger.warning("No valid study found → using default: %s", DEFAULT_DATASET_NAME)
+        msg = f"No valid study found under {RAW_DATA_DIR}"
+        if strict:
+            raise RuntimeError(msg)
+        logger.warning("%s → using default: %s", msg, DEFAULT_DATASET_NAME)
         return DEFAULT_DATASET_NAME
 
-    except Exception:
-        logger.warning("Study detection failed → fallback to default")
+    except OSError as exc:
+        if strict:
+            raise RuntimeError(f"Study detection failed under {RAW_DATA_DIR}") from exc
+        logger.warning("Study detection failed → fallback to default", exc_info=True)
         return DEFAULT_DATASET_NAME
 
 
 # ENV override ALWAYS wins
-STUDY_NAME = _get_env("STUDY_NAME", detect_study_name())
+_STUDY_NAME_ENV = _get_env("STUDY_NAME")
+if _STUDY_NAME_ENV:
+    if "/" in _STUDY_NAME_ENV or "\\" in _STUDY_NAME_ENV or _STUDY_NAME_ENV in {".", ".."}:
+        raise ValueError("STUDY_NAME must be a plain folder name, not a path")
+    STUDY_NAME = _STUDY_NAME_ENV
+else:
+    STUDY_NAME = detect_study_name()
 
 
 # ----------------------------------------------------------------------------
@@ -367,6 +392,8 @@ TELEMETRY_SINK = TELEMETRY_DIR / "events.jsonl"
 # Chat / agent
 AGENT_MAX_TOKENS: int = _get_env_int("AGENT_MAX_TOKENS", 16384)
 AGENT_TIMEOUT: int = _get_env_int("AGENT_TIMEOUT", 300)
+CHAT_RATE_LIMIT_WINDOW_SECONDS: int = _get_env_int("CHAT_RATE_LIMIT_WINDOW_SECONDS", 60)
+CHAT_RATE_LIMIT_MAX_TURNS: int = _get_env_int("CHAT_RATE_LIMIT_MAX_TURNS", 12)
 # Watchdog on the agent stream: raise TimeoutError if no chunk is produced
 # for this many seconds. Measures inter-chunk idle time, NOT total wall
 # clock — so slow-but-steady streams (long tool runs) stay alive. The E3

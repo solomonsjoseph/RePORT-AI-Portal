@@ -21,8 +21,8 @@ Runtime Resilience
 
 * Add hosted-LLM retry/backoff and circuit-breaker behavior for OpenAI,
   Anthropic, Google, and NVIDIA provider calls.
-* Add per-session token, turn, and estimated-cost ceilings with operator
-  alerts for runaway agent loops.
+* Add per-session token and estimated-cost ceilings with operator alerts for
+  runaway agent loops.
 * Add provider-side spend alarms and document who owns them.
 * Add load and latency-regression checks with a concrete p95 target.
 
