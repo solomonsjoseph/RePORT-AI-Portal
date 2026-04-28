@@ -11,7 +11,8 @@ You need:
 * the project installed; see :doc:`installation`;
 * one study folder under ``data/raw/{STUDY_NAME}/``;
 * a local Ollama model or a hosted LLM API key;
-* the local PHI key.
+* access to the web UI. The web UI creates the local PHI key during
+  study load when needed.
 
 1. Place Study Files
 --------------------
@@ -31,19 +32,7 @@ Set the study name if needed:
 
    export STUDY_NAME=Indo-VAP
 
-2. Create the PHI Key
----------------------
-
-Run once per machine:
-
-.. code-block:: bash
-
-   python -m scripts.security.phi_scrub bootstrap-key
-
-If the key already exists, keep it. Replacing it changes pseudonyms and
-requires a full re-run.
-
-3. Choose a Model Provider
+2. Choose a Model Provider
 --------------------------
 
 Recommended local setup:
@@ -63,22 +52,19 @@ Hosted provider example:
 
 See :doc:`configuration` for OpenAI, Google, and PDF-related settings.
 
-4. Load the Study
+3. Load the Study
 -----------------
 
-From the terminal:
-
-.. code-block:: bash
-
-   make pipeline
-
-Or use the web UI:
+Use the web UI:
 
 .. code-block:: bash
 
    make chat
 
 Then click **Load Study**.
+
+The command-line pipeline is for developers and deployment operators who
+have already provisioned the local PHI key.
 
 Expected result:
 
@@ -89,7 +75,7 @@ Expected result:
    ├── audit/
    └── agent/
 
-5. Start Chat
+4. Start Chat
 -------------
 
 If the web UI is not already open:
@@ -121,7 +107,9 @@ Common Problems
 ---------------
 
 **PHI key not found**
-   Run ``python -m scripts.security.phi_scrub bootstrap-key``.
+   Use **Load Study** in the web UI. It creates the local PHI key when
+   needed. If the command-line pipeline reports this error, ask a
+   developer or operator to provision the key.
 
 **Study not found**
    Confirm ``STUDY_NAME`` matches the folder under ``data/raw/``.

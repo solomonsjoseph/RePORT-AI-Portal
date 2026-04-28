@@ -59,10 +59,7 @@ Before loading a study:
 
 1. Put study files under ``data/raw/{STUDY_NAME}/``.
 2. Choose a model provider in :doc:`configuration`.
-3. Create the PHI key:
-
-   .. code-block:: bash
-
-      python -m scripts.security.phi_scrub bootstrap-key
+3. Start the web UI with ``make chat``. The **Load Study** flow creates
+   the local PHI key if one does not already exist.
 
 Then continue with :doc:`quickstart`.

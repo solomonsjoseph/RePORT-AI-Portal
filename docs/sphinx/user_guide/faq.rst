@@ -74,7 +74,7 @@ For the web UI:
 
    make chat
 
-For the pipeline only:
+For developer/operator pipeline runs only:
 
 .. code-block:: bash
 

@@ -348,9 +348,9 @@ def main() -> None:
         )
     except (PHIKeyMissingError, PHIKeyPermissionError, PHIScrubError) as exc:
         logger.warning(
-            "PHI log redactor NOT installed (%s). Run "
-            "`python -m scripts.security.phi_scrub bootstrap-key` "
-            "to enable log redaction.",
+            "PHI log redactor NOT installed (%s). Ask a developer or deployment "
+            "operator to provision the local PHI key before using the command-line "
+            "chat flow with study data.",
             type(exc).__name__,
         )
 
