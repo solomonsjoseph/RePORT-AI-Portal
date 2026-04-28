@@ -160,7 +160,9 @@ processed artifacts
   a restricted `exec` environment.
 - **Deterministic analytical engine** — univariate logistic regression,
   backward-stepwise multivariate selection, and interaction analysis wired
-  through `run_study_analysis` with publication-quality plots.
+  through `run_study_analysis` with publication-quality plots. Rare-event
+  cohorts render descriptive tables/plots and explicitly refuse invalid
+  logistic inference.
 - **Grounded natural-language answers** — the system prompt requires the
   assistant to resolve variables before analysis, distinguish computed facts
   from interpretation, and surface caveats such as sparse events,

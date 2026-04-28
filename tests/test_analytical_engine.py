@@ -407,4 +407,8 @@ class TestRunFullAnalysis:
             plot_types=[],
         )
         assert result.events <= 5  # very few events
+        assert result.univariate is None
+        assert result.multivariate is None
+        assert result.descriptive is not None
+        assert "inferential models not run" in result.narrative.lower()
         assert "underpowered" in result.caveats.lower() or "low power" in result.caveats.lower()

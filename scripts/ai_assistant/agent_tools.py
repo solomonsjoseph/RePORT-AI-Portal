@@ -1147,17 +1147,6 @@ def run_study_analysis(
             timeout=config.ANALYSIS_TIMEOUT,
         )
 
-        # Hard refuse when the sample cannot support any inferential stats.
-        # Threshold = 5 events (Peduzzi et al. 1996 floor of ~10 EPV makes
-        # anything below 5 events meaningless even for a 1-predictor model).
-        if result.events < 5:
-            return (
-                f"Analysis not run for {result.cohort_name} — {result.outcome}: "
-                f"only {result.events} event(s) in {result.n} subjects, below "
-                "the 5-event floor for any logistic model. "
-                "Report descriptive counts only — do not run univariate/multivariate/interaction."
-            )
-
         # Soft caveat when events are low enough that ORs should be
         # reported with explicit power warnings.
         events_per_variable = result.events / max(len(pred_list or []) or 6, 1)
@@ -1168,8 +1157,6 @@ def run_study_analysis(
         full_parts: list[str] = [result.narrative]
         full_parts.extend(f"<RPLN_PLOTLY:{fig_path}>" for fig_path in result.interactive_figures)
         full_parts.extend(f"<RPLN_FIGURE:{fig_path}>" for fig_path in result.figures)
-        if result.caveats:
-            full_parts.append(result.caveats)
         full_narrative = "\n\n".join(full_parts)
         narrative_path.write_text(full_narrative, encoding="utf-8")
 
@@ -1202,6 +1189,17 @@ def run_study_analysis(
                 f"({result.events / result.n * 100:.1f}% rate), figures={figure_count}."
             ),
         ]
+        if result.events < 5:
+            summary_lines.append(
+                "Inferential models were not run: fewer than 5 outcome events are present. "
+                "Use the descriptive tables and plots only."
+            )
+            summary_lines.append("")
+            summary_lines.append(
+                "Detailed descriptive tables, plots, and caveats are rendered below."
+            )
+            summary_lines.append(f"<RPLN_ANALYSIS:{narrative_path}>")
+            return "\n".join(summary_lines)
         if underpowered:
             summary_lines.append(
                 f"Caveat: underpowered analysis; events={result.events}, "
