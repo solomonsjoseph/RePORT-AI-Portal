@@ -7,6 +7,7 @@ on:
   push:
     paths:
       - 'README.md'
+      - 'Makefile'
       - 'docs/**'
       - 'scripts/lint_doc_freshness.py'
       - 'scripts/ai_assistant/agent_tools.py'
@@ -17,6 +18,7 @@ on:
   pull_request:
     paths:
       - 'README.md'
+      - 'Makefile'
       - 'docs/**'
       - 'scripts/lint_doc_freshness.py'
       - 'scripts/ai_assistant/agent_tools.py'
@@ -65,8 +67,7 @@ jobs:
         run: make docs-quality
 
       - name: Link check
-        working-directory: docs/sphinx
-        run: uv run sphinx-build -b linkcheck . _build/linkcheck
+        run: make docs-linkcheck
 
       - name: Documentation metrics
         if: always()
