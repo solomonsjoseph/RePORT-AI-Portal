@@ -1,6 +1,6 @@
 """Phase 2.x++ pipeline polish — regression tests for v0.17.2 follow-up fixes.
 
-Companion to ``docs/irb_dossier/phase3_phi_followups.md``. Pins the
+Companion to ``docs/sphinx/irb_auditor/conformance.rst``. Pins the
 follow-up items surfaced by the deeper extraction-pipeline + PHI-scrub-
 internals + PR-#10-re-verify audit on 2026-04-27:
 

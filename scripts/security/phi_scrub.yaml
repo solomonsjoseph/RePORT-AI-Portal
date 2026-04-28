@@ -31,7 +31,7 @@
 # uses re.search (not fullmatch) — anchor with ^…$ for exact-column-name
 # intent; leave unanchored for substring-in-column-name intent.
 #
-# IRB-grade benchmark anchors (see docs/irb_dossier/):
+# IRB-grade benchmark anchors (see docs/sphinx/irb_auditor/):
 #   HIPAA §164.514(b)(2), ICMR §11, SPDI Rule 3, Aadhaar Act §29,
 #   DPDPA 2023 §2(t), NIST SP 800-188, RePORT India Common Protocol.
 #

@@ -4,8 +4,8 @@ Agent Instructions (for AI Coding Assistants)
 This page is the authoritative briefing for AI coding assistants
 (Claude Code, Copilot CLI, Codex, Gemini CLI) working on this
 repository. It supersedes the historical ``AGENTS.md`` at the repo
-root, which has been retired (per the directive "keep only README +
-Sphinx + IRB dossier").
+root, which has been retired (per the directive to keep project
+documentation in README and Sphinx).
 
 The remainder of this page is organised the way an assistant's
 context-builder reads it: orientation → conventions → rules.
@@ -44,8 +44,7 @@ extraction fails or **Use Existing Study** is selected. **The LLM
 cannot read it.**
 
 See :doc:`architecture` for the full architecture. The IRB-grade
-benchmark lives outside the Sphinx tree at
-``docs/irb_dossier/conformance_matrix.md``.
+benchmark lives at :doc:`../irb_auditor/conformance`.
 
 Quick reference
 ---------------
@@ -396,10 +395,10 @@ Key files
    * - Config
      - ``config.py``, ``config/config.yaml``,
        ``config/study_knowledge.yaml``
-   * - IRB benchmark dossier
-     - ``docs/irb_dossier/conformance_matrix.md``,
-       ``docs/irb_dossier/executive_summary.md``,
-       ``docs/irb_dossier/phi_walkthrough.md``
+   * - IRB/Auditor profile
+     - :doc:`../irb_auditor/index`,
+       :doc:`../irb_auditor/phi_handling`,
+       :doc:`../irb_auditor/conformance`
 
 Documentation
 -------------

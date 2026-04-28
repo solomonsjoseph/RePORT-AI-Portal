@@ -27,7 +27,7 @@ installed). None print or persist raw row values.
 IRB-grade benchmark anchors: Pillar 2.4 (every tool return passes the
 PHI gate) + Pillar 1.7 (k-anonymity enforcement at surface). Prompt-side
 gate + PDF snippet sanitiser close the two prompt-injection gaps
-enumerated in `docs/irb_dossier/phi_walkthrough.md` §A.10.
+summarized in `docs/sphinx/irb_auditor/conformance.rst`.
 """
 
 from __future__ import annotations
@@ -185,7 +185,7 @@ def guard_rows_with_kanon_and_ldiv(
 
     Phase 3.A + 3.B: this is the gate every row-returning tool should
     call before serialising rows to the LLM. See
-    ``docs/irb_dossier/phase3_phi_followups.md``.
+    ``docs/sphinx/irb_auditor/conformance.rst``.
     """
     rows_list = list(rows)
     kanon_res = kanon_check(rows_list, quasi_identifiers=quasi_identifiers, k=k)

@@ -30,7 +30,7 @@ how the project is built.
      - :doc:`user_guide/installation`, then :doc:`user_guide/quickstart`
    * - PI or reviewer
      - Understand the privacy posture and know where evidence lives.
-     - :doc:`user_guide/faq`, then ``docs/irb_dossier/``
+     - :doc:`irb_auditor/index`
 
 Developers
 ----------
@@ -65,5 +65,6 @@ Rule of Thumb
 -------------
 
 If the reader is trying to **use** the portal, keep them in the user
-guide. If the reader is trying to **change, audit, or maintain** the
-code, send them to the developer guide or IRB dossier.
+guide. If the reader is trying to **audit PHI handling**, send them to
+the IRB/Auditor profile. If the reader is trying to **change or
+maintain** the code, send them to the developer guide.

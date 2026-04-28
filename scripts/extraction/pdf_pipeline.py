@@ -1,8 +1,9 @@
 """Two-way PDF extraction pipeline (Phase 3.F + 3.G + 3.H).
 
-Closes the audit findings 3.F (raw PDF bytes shipped to vision API),
-3.G (LLM response not scanned for echoed PHI), and 3.H (no idempotent
-retry caching) from ``docs/irb_dossier/phase3_phi_followups.md``.
+Closes the PDF PHI controls summarized in
+``docs/sphinx/irb_auditor/conformance.rst``: no raw PDF bytes on the
+orchestrator path, LLM responses are re-scrubbed, and LLM calls are
+cached idempotently.
 
 The pipeline has exactly **two acceptable output paths** per PDF —
 either the LLM tier succeeds (paired with the code-extracted text),

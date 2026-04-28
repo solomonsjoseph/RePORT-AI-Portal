@@ -19,8 +19,8 @@ Start with the profile that matches the task:
   how the portal helps, then :doc:`user_guide/quickstart`.
 * **Data manager or site operator** — use :doc:`user_guide/installation`,
   :doc:`user_guide/configuration`, and :doc:`user_guide/data_pipeline`.
-* **IRB or IEC reviewer** — use :doc:`user_guide/faq` first, then the
-  IRB dossier in ``docs/irb_dossier/`` for detailed evidence.
+* **IRB or IEC reviewer** — use :doc:`irb_auditor/index` for the
+  reviewer-only PHI handling and conformance profile.
 * **Developer or maintainer** — use :doc:`developer_guide/index` for
   architecture, source entry points, invariants, and PR gates.
 * **Documentation contributor** — use :doc:`audience_profiles` and
@@ -42,6 +42,12 @@ Contents
    :caption: For Researchers & Data Managers
 
    user_guide/index
+
+.. toctree::
+   :maxdepth: 2
+   :caption: For IRB & Auditors
+
+   irb_auditor/index
 
 .. toctree::
    :maxdepth: 2

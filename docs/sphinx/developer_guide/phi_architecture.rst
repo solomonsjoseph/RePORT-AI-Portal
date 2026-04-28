@@ -4,10 +4,9 @@ PHI Architecture
 The canonical developer-facing description of the full PHI-handling story — the
 four zones, the eight-action scrub catalog, the integrity chain, the
 log redactor, the PDF orchestrator's redact-then-call posture, and
-the agent-boundary three-gate stack. For the IRB-grade walkthrough
-see ``docs/irb_dossier/phi_walkthrough.md`` (outside the Sphinx
-tree); for the architectural decisions behind these mechanisms see
-:doc:`decisions`.
+the agent-boundary three-gate stack. For the reviewer-only IRB/Auditor
+profile, see :doc:`../irb_auditor/phi_handling`; for the architectural
+decisions behind these mechanisms see :doc:`decisions`.
 
 The Four Tiers (plus audit and one out-of-zone tier)
 ----------------------------------------------------
@@ -350,8 +349,8 @@ Module Map
 IRB Benchmark Cross-Reference
 -----------------------------
 
-The active conformance matrix lives at
-``docs/irb_dossier/conformance_matrix.md`` (outside the Sphinx tree).
+The active IRB/Auditor conformance profile lives at
+:doc:`../irb_auditor/conformance`.
 Pillar mapping:
 
 * **Pillar 1 — PHI scrub catalog**: ``phi_scrub.py`` + ``phi_scrub.yaml``,
@@ -373,11 +372,11 @@ Every diff that touches anything under ``scripts/security/``,
 ``scripts/extraction/pdf_pipeline.py`` should:
 
 1. Run ``make test-all`` locally — the 22 PHI-critical test modules
-   listed in ``docs/irb_dossier/phi_walkthrough.md`` Q21 must all
-   pass.
+   covering scrub, staging, file access, PDF redaction, PHI gates,
+   lineage, and log hygiene must all pass.
 2. Run ``make doc-freshness`` — the lint compares live source-of-
    truth values (tool count, scrub-action count, version) against
-   prose in this page and the IRB dossier.
+   prose in this page and the Sphinx docs.
 3. If you change the scrub catalog (the YAML), the
    ``phi_scrub.yaml`` SHA-256 changes — which invalidates the PDF
    orchestrator's idempotent cache by design (the cache key
@@ -396,5 +395,5 @@ See Also
   PHI, PDF, snapshot, and agent-boundary work).
 * :doc:`sandbox` — subprocess sandbox.
 * :doc:`operations` — snapshot-baseline maintenance protocol.
-* ``docs/irb_dossier/phi_walkthrough.md`` — the IRB-grade
-  walkthrough with regulatory mapping.
+* :doc:`../irb_auditor/index` — reviewer-only PHI handling and
+  conformance profile.

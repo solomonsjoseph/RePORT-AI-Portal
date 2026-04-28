@@ -259,7 +259,7 @@ off-limits to the agent.
   under `data/raw/{study}/`.
 
 For the full honest-broker architecture see the repository-root README and
-`docs/irb_dossier/conformance_matrix.md`.
+`docs/sphinx/irb_auditor/conformance.rst`.
 
 ---
 Pipeline version: {version}

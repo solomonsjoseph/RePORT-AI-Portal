@@ -130,7 +130,7 @@ output/{STUDY_NAME}/
 - Quick start: <https://solomonsjoseph.github.io/RePORT-AI-Portal/user_guide/quickstart.html>
 - FAQ: <https://solomonsjoseph.github.io/RePORT-AI-Portal/user_guide/faq.html>
 - Developer guide: <https://solomonsjoseph.github.io/RePORT-AI-Portal/developer_guide/>
-- IRB dossier: `docs/irb_dossier/`
+- IRB/Auditor profile: <https://solomonsjoseph.github.io/RePORT-AI-Portal/irb_auditor/>
 
 ## Development
 

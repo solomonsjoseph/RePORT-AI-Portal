@@ -89,16 +89,15 @@ Sphinx build, linkcheck, and documentation metrics.
 IRB Conformance
 ---------------
 
-The active IRB conformance matrix lives in
-``docs/irb_dossier/conformance_matrix.md``. It maps each claim to:
+The active IRB/Auditor conformance profile lives in
+:doc:`../irb_auditor/conformance`. It maps each claim to:
 
 * the applicable authority,
 * the disk artifact an auditor can inspect,
 * and the pytest assertion that fails if the claim regresses.
 
-The line-by-line PHI handling narrative lives in
-``docs/irb_dossier/phi_walkthrough.md``. The plain-language IEC/IRB
-summary lives in ``docs/irb_dossier/executive_summary.md``.
+The reviewer-facing PHI handling narrative lives in
+:doc:`../irb_auditor/phi_handling`.
 
 Known Follow-Ups
 ----------------
