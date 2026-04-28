@@ -1,0 +1,6 @@
+[Unit]
+Description=Restart RePORT AI Portal when Streamlit health is unhealthy
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -eu -c 'curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8501/_stcore/health >/dev/null || systemctl restart report-ai-portal.service'

@@ -11,7 +11,11 @@ WorkingDirectory=/opt/report-ai-portal
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 Environment=LOG_FORMAT=json
 Environment=LOG_DIR=/var/log/report-ai-portal
-Environment=STUDY_NAME=Indo-VAP
+Environment=STREAMLIT_SERVER_ADDRESS=127.0.0.1
+Environment=STREAMLIT_SERVER_ENABLE_CORS=true
+Environment=STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=true
+Environment=REPORT_AI_AUTH_MODE=proxy
+EnvironmentFile=/etc/default/report-ai-portal
 ExecStart=/usr/local/bin/uv run --group web --group ai_assistant --group llm python main.py --web
 Restart=on-failure
 RestartSec=5
@@ -23,7 +27,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/opt/report-ai-portal/data /opt/report-ai-portal/output /opt/report-ai-portal/tmp /var/log/report-ai-portal /home/report-ai/.config/report_ai_portal
+ReadWritePaths=/opt/report-ai-portal/data /opt/report-ai-portal/output /opt/report-ai-portal/tmp /var/log/report-ai-portal /var/lib/report-ai/.config/report_ai_portal
 UMask=0077
 
 [Install]

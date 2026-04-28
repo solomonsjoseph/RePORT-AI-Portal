@@ -81,6 +81,7 @@ N := \033[0m
 	snapshot snapshot-study restore-study list-snapshots \
 	test test-all lint typecheck security ci verify release-check \
 	docs doc-freshness docs-quality docs-linkcheck docs-ci release-notes \
+	restore-drill chat-smoke \
 	clean nuke
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -270,6 +271,9 @@ snapshot: snapshot-study
 restore-study:
 	@$(PYTHON) -m scripts.utils.snapshots restore
 
+restore-drill:
+	@$(PYTHON) -m scripts.utils.restore_drill
+
 list-snapshots:
 	@$(PYTHON) -m scripts.utils.snapshots list
 
@@ -302,7 +306,11 @@ security:
 	@$(UV) run pip-audit
 	@printf "$(G)✓ Security audit passed$(N)\n"
 
-ci: lint typecheck test
+chat-smoke:
+	@$(PYTHON) -m pytest tests/test_production_smoke.py
+	@printf "$(G)✓ Chat smoke passed$(N)\n"
+
+ci: lint typecheck test-all chat-smoke
 	@printf "$(G)✓ All CI gates passed$(N)\n"
 
 verify:

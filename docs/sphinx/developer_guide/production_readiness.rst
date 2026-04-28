@@ -43,6 +43,10 @@ the dependency vulnerability audit. A dependency that cannot be audited
 because it is the local project package is acceptable; third-party
 vulnerability findings are not.
 
+The release workflow must tag immutable releases as ``vX.Y.Z`` and attach
+build artifacts to the GitHub Release. Deployments should pin to a tag, not
+to a moving branch.
+
 Deployment Boundary
 -------------------
 
@@ -64,6 +68,12 @@ For shared use, place the app behind a reverse proxy that provides:
 * WebSocket proxying for Streamlit sessions;
 * security headers at the proxy layer.
 
+Production services must set ``REPORT_AI_AUTH_MODE=proxy`` and a long random
+``REPORT_AI_PROXY_SHARED_SECRET`` through the deployment secret store. The
+proxy must set both ``X-Forwarded-User`` and
+``X-Report-AI-Proxy-Secret``. Missing or mismatched values stop the app before
+the PHI-capable UI renders.
+
 The repository includes starting templates:
 
 * ``deploy/nginx/report-ai-portal.conf.example`` — Nginx reverse proxy
@@ -71,6 +81,8 @@ The repository includes starting templates:
   headers.
 * ``deploy/systemd/report-ai-portal.service.example`` — Linux service
   unit with narrow writable paths and process hardening.
+* ``deploy/systemd/report-ai-portal-healthcheck.*.example`` — timer-driven
+  healthcheck that restarts the service when ``/_stcore/health`` fails.
 
 Review the examples before use. Replace hostnames, certificate paths,
 service users, writable paths, OAuth configuration, and CSP reporting
@@ -141,6 +153,12 @@ Restore drills are mandatory before production use:
 5. confirm the assistant reads the restored ``trio_bundle/`` and not
    ``data/snapshots/`` directly.
 
+Run the non-destructive automated drill before hand-off:
+
+.. code-block:: bash
+
+   make restore-drill
+
 Secret and Key Rotation
 -----------------------
 
@@ -192,5 +210,4 @@ External References
 -------------------
 
 * `Streamlit configuration <https://docs.streamlit.io/develop/api-reference/configuration/config.toml>`_
-* `Streamlit Kubernetes deployment guide <https://docs.streamlit.io/deploy/tutorials/kubernetes>`_
 * `OWASP Secure Headers Project <https://owasp.org/www-project-secure-headers/>`_

@@ -96,8 +96,9 @@ else:
 # -- Options for linkcheck builder -------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-the-linkcheck-builder
 #
-# HHS.gov and several Indian government hosts (abdm.gov.in, icmr.nic.in)
-# return 403 to automated linkcheck user-agents or fail DNS intermittently.
+# HHS.gov, NIST CSRC, and several Indian government hosts
+# (abdm.gov.in, icmr.nic.in) return 403 to automated linkcheck user-agents
+# or fail DNS intermittently.
 # The Streamlit quickstart URL is a local dev endpoint, so it is unavailable
 # on GitHub Actions. Ignore those specific hosts rather than treating them as
 # broken links. See
@@ -107,6 +108,7 @@ linkcheck_ignore: list[str] = [
     r"^https://www\.hhs\.gov/hipaa/.*",
     r"^https://www\.hhs\.gov/ohrp/.*",
     r"^https://abdm\.gov\.in/.*",
+    r"^https://csrc\.nist\.gov/.*",
     r"^https://main\.icmr\.nic\.in/.*",
     r"^https://dl\.acm\.org/doi/.*",
     r"^http://localhost:8501/?$",

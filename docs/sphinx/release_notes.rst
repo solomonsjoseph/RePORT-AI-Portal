@@ -11,6 +11,12 @@ Unreleased
 Added
 ~~~~~
 
+* Added production-readiness controls for proxy authentication, healthcheck
+  wiring, release tagging, restore-drill automation, and root security/license
+  governance files.
+* Added a production backlog page for deferred hardening items such as SBOMs,
+  dependency-update automation, hosted-LLM budget limits, remote log sinks,
+  conversation retention, and OCI packaging.
 * Added Makefile targets for Sphinx release notes, docs linkcheck, and
   docs CI parity.
 * Added this release-notes page to the Sphinx documentation.
