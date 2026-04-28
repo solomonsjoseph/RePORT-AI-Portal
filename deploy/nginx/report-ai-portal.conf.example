@@ -59,9 +59,9 @@ server {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
 
-    # Streamlit uses inline runtime assets. Start in Report-Only, inspect
-    # browser reports, then promote a tested policy to Content-Security-Policy.
-    add_header Content-Security-Policy-Report-Only "default-src 'self'; img-src 'self' data: blob:; connect-src 'self' ws: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; report-uri /csp-report" always;
+    # Streamlit uses inline runtime assets; tighten this baseline only after
+    # exercising the full wizard and chat workflow.
+    add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: blob:; connect-src 'self' ws: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; report-uri /csp-report" always;
 
     location / {
         limit_req zone=report_ai_app burst=60 nodelay;

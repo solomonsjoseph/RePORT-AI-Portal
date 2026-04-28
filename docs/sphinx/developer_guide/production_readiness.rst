@@ -126,10 +126,10 @@ At minimum:
 * ``Permissions-Policy`` denying unused browser capabilities;
 * a tested ``Content-Security-Policy``.
 
-Streamlit uses inline runtime assets, so start CSP in
-``Content-Security-Policy-Report-Only`` mode, inspect reports while using
-the full wizard and chat workflow, then promote a verified policy to
-enforcement. Do not ship an untested enforcing CSP.
+The Nginx template ships an enforcing CSP baseline with Streamlit's required
+inline runtime allowances. Exercise the full wizard and chat workflow after
+proxy changes, inspect browser console and CSP reports, and add only exact
+origins required by the deployed environment.
 
 Monitoring
 ----------
