@@ -393,6 +393,8 @@ class TestRunScrub:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(config, "BASE_DIR", tmp_path)
+        sidecar_key.write_text("00" * 32, encoding="utf-8")
+        sidecar_key.chmod(0o600)
         authority = tmp_path / "authorities" / "phi_limited_dataset.md"
         authority.parent.mkdir(parents=True)
         authority.write_text("IRB + DUA", encoding="utf-8")
@@ -405,11 +407,14 @@ class TestRunScrub:
         row = loaded[0]
         # DOB present but shifted
         assert "DOB" in row
-        assert row["DOB"] != "1970-01-01"
+        expected_offset = phi_scrub.date_offset_days("S1", key=bytes.fromhex("00" * 32), max_days=30)
+        assert expected_offset != 0
+        assert row["DOB"] == phi_scrub.shift_date("1970-01-01", expected_offset)
         # Offset must be identical for DOB and VISDAT
         dob_dt = datetime.strptime(row["DOB"], "%Y-%m-%d")
         vis_dt = datetime.strptime(row["VISDAT"], "%Y-%m-%d")
-        assert (dob_dt - datetime(1970, 1, 1)).days == (vis_dt - datetime(2014, 7, 15)).days
+        assert (dob_dt - datetime(1970, 1, 1)).days == expected_offset
+        assert (vis_dt - datetime(2014, 7, 15)).days == expected_offset
 
     def test_audit_schema_uses_scrubbed_key(
         self,
