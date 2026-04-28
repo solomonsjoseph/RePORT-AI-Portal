@@ -30,9 +30,9 @@ logger = logging.getLogger(__name__)
 
 _PROVIDER_CHOICES: dict[str, tuple[str, str, str | None, str]] = {
     "1": ("ollama", "Ollama (local)", None, "qwen3:8b"),
-    "2": ("anthropic", "Anthropic", "ANTHROPIC_API_KEY", "claude-sonnet-4-6"),
-    "3": ("openai", "OpenAI", "OPENAI_API_KEY", "gpt-4.1"),
-    "4": ("google-genai", "Google Gemini", "GOOGLE_API_KEY", "gemini-2.5-flash"),
+    "2": ("anthropic", "Anthropic", "ANTHROPIC_API_KEY", "claude-opus-4-7"),
+    "3": ("openai", "OpenAI", "OPENAI_API_KEY", "gpt-5.5"),
+    "4": ("google-genai", "Google Gemini", "GOOGLE_API_KEY", "gemini-3.1-pro-preview"),
     # Parity with the wizard's provider list. NVIDIA was previously in the
     # Streamlit UI + KeyStore but not selectable from the CLI; this closes
     # that surface inconsistency.
@@ -40,7 +40,7 @@ _PROVIDER_CHOICES: dict[str, tuple[str, str, str | None, str]] = {
         "nvidia-ai-endpoints",
         "NVIDIA AI Endpoints",
         "NVIDIA_API_KEY",
-        "meta/llama-3.3-70b-instruct",
+        "moonshotai/kimi-k2.5",
     ),
 }
 

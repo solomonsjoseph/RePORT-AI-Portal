@@ -99,16 +99,18 @@ def test_live_selector_skips_embeddings_when_auto_picking() -> None:
 def test_model_pill_has_descriptions_for_curated_models() -> None:
     # Representative models from each supported provider should have curated
     # descriptions rendered in the Claude-style pill dropdown.
-    assert "claude-opus-4-6" in _MODEL_DESCRIPTIONS
+    assert "claude-opus-4-7" in _MODEL_DESCRIPTIONS
     assert "claude-sonnet-4-6" in _MODEL_DESCRIPTIONS
-    assert "gpt-4.1" in _MODEL_DESCRIPTIONS
+    assert "gpt-5.5" in _MODEL_DESCRIPTIONS
+    assert "gemini-3.1-pro-preview" in _MODEL_DESCRIPTIONS
     assert "qwen3:8b" in _MODEL_DESCRIPTIONS
 
 
 def test_pretty_model_label_shortens_known_families() -> None:
-    assert _pretty_model_label("claude-opus-4-6") == "Opus 4.6"
+    assert _pretty_model_label("claude-opus-4-7") == "Opus 4.7"
     assert _pretty_model_label("claude-sonnet-4-6") == "Sonnet 4.6"
-    assert _pretty_model_label("gpt-4.1") == "GPT-4.1"
+    assert _pretty_model_label("gpt-5.5") == "GPT-5.5"
+    assert _pretty_model_label("gemini-3.1-pro-preview") == "Gemini 3.1 Pro"
     # Unknown / local model ids pass through unchanged.
     assert _pretty_model_label("qwen3:8b") == "qwen3:8b"
 
@@ -479,7 +481,7 @@ def _configured_chat_app() -> AppTest:
     at.session_state["pipeline_ready"] = True
     at.session_state["llm_provider_label"] = "OpenAI"
     at.session_state["api_key_saved"] = "sk-test"
-    at.session_state["llm_model"] = "gpt-4.1"
+    at.session_state["llm_model"] = "gpt-5.5"
     return at
 
 

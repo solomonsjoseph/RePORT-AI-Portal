@@ -261,45 +261,54 @@ def composer(assistant_slot: Any | None = None) -> None:
 
 _MODEL_DESCRIPTIONS: dict[str, str] = {
     # Anthropic
+    "claude-opus-4-7": "Most capable Claude — advanced reasoning",
     "claude-opus-4-6": "Most capable Claude — deep reasoning",
     "claude-opus-4-5-20251101": "Opus 4.5 — long-horizon reasoning",
     "claude-sonnet-4-6": "Balanced Claude — fast and smart",
     "claude-sonnet-4-5-20250929": "Sonnet 4.5 — daily driver",
     "claude-haiku-4-5-20251001": "Fastest Claude — low latency",
     # OpenAI
-    "gpt-4.1": "GPT-4.1 — reliable all-rounder",
-    "gpt-4.1-mini": "Smaller GPT-4.1 — cheaper",
-    "gpt-4o": "Omni-modal flagship",
-    "gpt-4o-mini": "Lightweight omni-modal",
-    "o4-mini-2025-04-16": "Reasoning-focused mini",
-    "o3-2025-04-16": "Advanced reasoning",
+    "gpt-5.5": "GPT-5.5 — flagship reasoning and coding",
+    "gpt-5.4": "GPT-5.4 — professional workhorse",
+    "gpt-5.4-mini": "GPT-5.4 mini — lower latency",
+    "gpt-5.4-nano": "GPT-5.4 nano — lowest cost",
     # Google
-    "gemini-3-flash": "Fast Gemini 3",
-    "gemini-3-pro": "Capable Gemini 3",
+    "gemini-3.1-pro-preview": "Gemini 3.1 Pro — advanced reasoning",
+    "gemini-3-flash-preview": "Gemini 3 Flash — fast frontier model",
+    "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash-Lite — low latency",
     "gemini-2.5-pro": "Gemini 2.5 — strong reasoning",
     "gemini-2.5-flash": "Fast Gemini 2.5",
-    "gemini-2.0-flash": "Gemini 2.0 — snappy",
+    "gemini-2.5-flash-lite": "Gemini 2.5 Flash-Lite — economical",
     # Ollama (local)
     "qwen3:1.7b": "Local Qwen3 1.7B — lightweight",
     "qwen3:4b": "Local Qwen3 4B — balanced",
     "qwen3:8b": "Local Qwen3 8B — fast default",
     "qwen3:14b": "Local Qwen3 14B — more capable",
+    "qwen3:30b": "Local Qwen3 30B — long context",
     "qwen3:32b": "Local Qwen3 32B — strongest local",
+    "qwen3:235b": "Local Qwen3 235B — flagship MoE",
+    "qwen3-coder:30b": "Local Qwen3 Coder 30B",
+    "qwen3-next:80b": "Local Qwen3 Next 80B",
     "mistral:latest": "Local Mistral",
-    "gemma3:9b": "Local Gemma 3 9B",
+    "gemma3:12b": "Local Gemma 3 12B",
+    "gemma3:27b": "Local Gemma 3 27B",
     "deepseek-r1:8b": "Local DeepSeek R1 — reasoning",
 }
 
 _PRETTY_MODEL_MAP: dict[str, str] = {
+    "claude-opus-4-7": "Opus 4.7",
     "claude-opus-4-6": "Opus 4.6",
     "claude-opus-4-5-20251101": "Opus 4.5",
     "claude-sonnet-4-6": "Sonnet 4.6",
     "claude-sonnet-4-5-20250929": "Sonnet 4.5",
     "claude-haiku-4-5-20251001": "Haiku 4.5",
-    "gpt-4.1": "GPT-4.1",
-    "gpt-4.1-mini": "GPT-4.1 mini",
-    "gpt-4o": "GPT-4o",
-    "gpt-4o-mini": "GPT-4o mini",
+    "gpt-5.5": "GPT-5.5",
+    "gpt-5.4": "GPT-5.4",
+    "gpt-5.4-mini": "GPT-5.4 mini",
+    "gpt-5.4-nano": "GPT-5.4 nano",
+    "gemini-3.1-pro-preview": "Gemini 3.1 Pro",
+    "gemini-3-flash-preview": "Gemini 3 Flash",
+    "gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash-Lite",
 }
 
 

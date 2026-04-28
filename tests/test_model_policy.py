@@ -12,13 +12,16 @@ from scripts.ai_assistant.ui import model_policy
     [
         ("ollama", "qwen3:8b"),
         ("ollama", "mistral:latest"),
+        ("anthropic", "claude-opus-4-7"),
         ("anthropic", "claude-opus-4-6"),
         ("anthropic", "claude-opus-5-0"),
         ("anthropic", "claude-opus-4-6-20251101"),
         ("google-genai", "gemini-3.1-pro"),
+        ("google-genai", "gemini-3.1-pro-preview"),
         ("google-genai", "gemini-3.2-pro"),
         ("google-genai", "gemini-4-pro"),  # next major
         ("openai", "gpt-5-3"),
+        ("openai", "gpt-5.5"),
         ("openai", "gpt-5-4-2026-01"),
         ("openai", "gpt-6"),
     ],

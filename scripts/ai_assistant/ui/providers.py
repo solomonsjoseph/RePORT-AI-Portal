@@ -16,7 +16,7 @@ from scripts.ai_assistant.ollama_config import get_ollama_base_url
 logger = logging.getLogger(__name__)
 
 _OTHER_MODEL_OPTION = "Other (type below)"
-_OLLAMA_FALLBACK_MODELS = ["qwen3:8b", "qwen3:4b", "qwen3:1.7b", "mistral:latest", "gemma3:9b"]
+_OLLAMA_FALLBACK_MODELS = ["qwen3:8b", "qwen3:4b", "qwen3:1.7b", "mistral:latest", "gemma3:12b"]
 _OLLAMA_NON_CHAT_PREFIXES = (
     "all-minilm",
     "bge",
@@ -43,7 +43,9 @@ def _normalise_ollama_model_name(model_name: str) -> str:
 # serve. Consumed by :func:`preferred_or_installed_downgrade` — exposed so
 # tests can extend the ladder without monkey-patching.
 QWEN3_DOWNGRADE_LADDER: tuple[str, ...] = (
+    "qwen3:235b",
     "qwen3:32b",
+    "qwen3:30b",
     "qwen3:14b",
     "qwen3:8b",
     "qwen3:4b",
@@ -274,9 +276,14 @@ _PROVIDER_CONFIG: dict[str, dict] = {
             "qwen3:4b",
             "qwen3:8b",
             "qwen3:14b",
+            "qwen3:30b",
             "qwen3:32b",
+            "qwen3:235b",
+            "qwen3-coder:30b",
+            "qwen3-next:80b",
             "mistral:latest",
-            "gemma3:9b",
+            "gemma3:12b",
+            "gemma3:27b",
             "deepseek-r1:8b",
             _OTHER_MODEL_OPTION,
         ],
@@ -284,11 +291,12 @@ _PROVIDER_CONFIG: dict[str, dict] = {
     "Anthropic": {
         "provider": "anthropic",
         "env_var": "ANTHROPIC_API_KEY",
-        "default_model": "claude-sonnet-4-6",
+        "default_model": "claude-opus-4-7",
         "needs_key": True,
         "models": [
-            "claude-sonnet-4-6",
+            "claude-opus-4-7",
             "claude-opus-4-6",
+            "claude-sonnet-4-6",
             "claude-opus-4-5-20251101",
             "claude-sonnet-4-5-20250929",
             "claude-haiku-4-5-20251001",
@@ -298,29 +306,28 @@ _PROVIDER_CONFIG: dict[str, dict] = {
     "OpenAI": {
         "provider": "openai",
         "env_var": "OPENAI_API_KEY",
-        "default_model": "gpt-4.1",
+        "default_model": "gpt-5.5",
         "needs_key": True,
         "models": [
-            "gpt-4.1",
-            "gpt-4.1-mini",
-            "gpt-4o",
-            "gpt-4o-mini",
-            "o4-mini-2025-04-16",
-            "o3-2025-04-16",
+            "gpt-5.5",
+            "gpt-5.4",
+            "gpt-5.4-mini",
+            "gpt-5.4-nano",
             _OTHER_MODEL_OPTION,
         ],
     },
     "Google Gemini": {
         "provider": "google-genai",
         "env_var": "GOOGLE_API_KEY",
-        "default_model": "gemini-3-flash",
+        "default_model": "gemini-3.1-pro-preview",
         "needs_key": True,
         "models": [
-            "gemini-3-flash",
-            "gemini-3-pro",
+            "gemini-3.1-pro-preview",
+            "gemini-3-flash-preview",
+            "gemini-3.1-flash-lite-preview",
             "gemini-2.5-pro",
             "gemini-2.5-flash",
-            "gemini-2.0-flash",
+            "gemini-2.5-flash-lite",
             _OTHER_MODEL_OPTION,
         ],
     },

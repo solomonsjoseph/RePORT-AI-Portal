@@ -913,7 +913,7 @@ For detailed documentation, see the Sphinx docs or README.md
         "--model",
         type=str,
         metavar="NAME",
-        help="LLM model name (e.g. qwen3:8b, claude-sonnet-4-6, gpt-4o, gemini-2.5-flash)",
+        help="LLM model name (e.g. qwen3:8b, claude-opus-4-7, gpt-5.5, gemini-3.1-pro-preview)",
     )
 
     # Dataset processing + Bundle

@@ -111,7 +111,7 @@ source is PHI-free — see :doc:`configuration`):
 
    export LLM_PROVIDER=anthropic
    export ANTHROPIC_API_KEY=sk-ant-...
-   export LLM_MODEL=claude-sonnet-4-20250514
+   export LLM_MODEL=claude-opus-4-7
    export REPORTALIN_PDF_PHI_FREE=1   # only if your PDFs are verified PHI-free
 
 Run the pipeline:

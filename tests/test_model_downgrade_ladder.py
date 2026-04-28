@@ -41,7 +41,7 @@ class TestPreferredOrInstalledDowngrade:
         assert got == "qwen3:4b"
 
     def test_returns_none_when_no_qwen3_installed(self) -> None:
-        got = preferred_or_installed_downgrade("qwen3:8b", ["mistral:latest", "gemma3:9b"])
+        got = preferred_or_installed_downgrade("qwen3:8b", ["mistral:latest", "gemma3:12b"])
         assert got is None
 
     def test_returns_none_for_non_qwen3_preferred(self) -> None:
@@ -54,6 +54,11 @@ class TestPreferredOrInstalledDowngrade:
 
     def test_ladder_is_ordered_largest_to_smallest(self) -> None:
         # Documents the contract: left = largest memory footprint.
+        assert QWEN3_DOWNGRADE_LADDER.index("qwen3:235b") < QWEN3_DOWNGRADE_LADDER.index(
+            "qwen3:32b"
+        )
+        assert QWEN3_DOWNGRADE_LADDER.index("qwen3:32b") < QWEN3_DOWNGRADE_LADDER.index("qwen3:30b")
+        assert QWEN3_DOWNGRADE_LADDER.index("qwen3:30b") < QWEN3_DOWNGRADE_LADDER.index("qwen3:14b")
         assert QWEN3_DOWNGRADE_LADDER.index("qwen3:32b") < QWEN3_DOWNGRADE_LADDER.index("qwen3:14b")
         assert QWEN3_DOWNGRADE_LADDER.index("qwen3:14b") < QWEN3_DOWNGRADE_LADDER.index("qwen3:8b")
         assert QWEN3_DOWNGRADE_LADDER.index("qwen3:8b") < QWEN3_DOWNGRADE_LADDER.index("qwen3:4b")
@@ -66,6 +71,8 @@ class TestPreferredOrInstalledDowngrade:
         ("qwen3:14b", ["qwen3:8b"], "qwen3:8b"),
         ("qwen3:14b", ["qwen3:32b", "qwen3:8b"], "qwen3:8b"),  # downgrade first, wrap later
         ("qwen3:32b", ["qwen3:14b"], "qwen3:14b"),
+        ("qwen3:235b", ["qwen3:30b"], "qwen3:30b"),
+        ("qwen3:30b", ["qwen3:14b"], "qwen3:14b"),
     ],
 )
 def test_downgrade_parametrised(preferred: str, installed: list[str], expected: str) -> None:

@@ -141,7 +141,7 @@ help:
 	@printf "  $(Y)FORCE=1$(N)   make <target>   Force re-run (ignore cache)\n"
 	@printf "  $(Y)PDF_SOURCE=/path$(N)            Use pre-extracted PDF JSON files\n"
 	@printf "  $(Y)PROVIDER=anthropic$(N)          LLM provider (ollama, anthropic, openai, google-genai)\n"
-	@printf "  $(Y)MODEL=claude-sonnet-4-6$(N)     LLM model name\n"
+	@printf "  $(Y)MODEL=claude-opus-4-7$(N)      LLM model name\n"
 	@printf "\n"
 
 # ═══════════════════════════════════════════════════════════════════════

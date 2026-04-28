@@ -395,7 +395,7 @@ def _resolve_pdf_provider() -> tuple[str, Any, str, dict[str, Any]]:
             "No LLM provider configured.\n\n"
             "  Set LLM_PROVIDER (anthropic or google-genai recommended for\n"
             "  PDF extraction) and provide the corresponding API key.\n\n"
-            "  Via CLI:   python main.py --pipeline --provider anthropic --model claude-sonnet-4-6\n"
+            "  Via CLI:   python main.py --pipeline --provider anthropic --model claude-opus-4-7\n"
             "  Via env:   export LLM_PROVIDER=anthropic ANTHROPIC_API_KEY=sk-ant-...\n"
         )
 
@@ -418,8 +418,8 @@ def _resolve_pdf_provider() -> tuple[str, Any, str, dict[str, Any]]:
 
     if not model:
         _default_models = {
-            "anthropic": "claude-sonnet-4-6",
-            "google": "gemini-2.5-pro",
+            "anthropic": "claude-opus-4-7",
+            "google": "gemini-3.1-pro-preview",
         }
         model = _default_models[provider]
         log.info("No model configured — defaulting to %s for PDF extraction", model)
