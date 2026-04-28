@@ -40,19 +40,14 @@ Short definitions for terms users will see in the portal and docs.
      treated as sensitive and are not the assistant's normal working
      material.
 
-   restore point
-     A local copy of a published bundle that can be restored during
-     operator work. It is stored under ``output/{STUDY}/agent/`` and is
-     not committed.
-
    scrub
      The step that removes, masks, caps, generalizes, or pseudonymizes
      sensitive dataset fields before publishing the bundle.
 
    snapshot baseline
-     A maintainer-curated cleaned baseline under ``snapshots/{STUDY}/``.
-     It is for developer and maintainer workflows; routine users do not
-     need to manage it.
+     A study-team-reviewed cleaned bundle under
+     ``data/snapshots/{STUDY}/``. The portal can restore it when PDF
+     extraction fails or when the user chooses **Use Existing Study**.
 
    study name
      The folder name for the study, such as ``Indo-VAP``. It is used to

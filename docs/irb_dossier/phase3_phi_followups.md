@@ -29,7 +29,7 @@ See `conformance_matrix.md` for the claim-by-claim test inventory and
 | ID | Area | Current control | Remaining work | Owner |
 |---|---|---|---|---|
 | F2 | Breach response | PHI gate blocks and scrub audits are recorded; logs are PHI-redacted. | Write the study-team breach-response runbook: detection, severity, IRB/IEC notification window, containment, root cause, and remediation. | Study team |
-| F3 | Retention/destruction | AMBER staging is securely removed on success; output and audit trees are durable. | Write the retention/destruction runbook for raw inputs, trio bundle, audit envelope, restore points, logs, and HMAC key custody. | Study team |
+| F3 | Retention/destruction | AMBER staging is securely removed on success; output and audit trees are durable. | Write the retention/destruction runbook for raw inputs, trio bundle, audit envelope, reviewed snapshot baseline, logs, and HMAC key custody. | Study team |
 | F4 | Consent scoping | `phi_scrub.yaml` is the de-facto field allow/drop catalog. | Optionally add `config/consent_scope.yaml` as an IEC-approved allowlist layered above the scrub catalog. | Study team + engineering |
 | F5 | District population threshold | Geography identifiers are dropped or generalized by catalog rules. | Add a per-study district-population mapping if the site needs population-threshold retention logic. | Study team |
 | F6 | Narrative rescue | High-risk narrative/free-text fields are dropped by default. | Calibrate and implement local narrative NER only if preserving narrative signal becomes scientifically necessary. | Engineering |

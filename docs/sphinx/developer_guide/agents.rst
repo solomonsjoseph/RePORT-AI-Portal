@@ -38,9 +38,10 @@ this repo, never read by agent code).
 * **AUDIT envelope** — ``output/{STUDY}/audit/``: counts-only IRB
   evidence, hard-rejected for the agent.
 
-Plus a fifth, **out-of-zone** tier: ``snapshots/{STUDY}/`` at the repo root holds a version-controlled
-cleaned trio bundle baseline for the PDF orchestrator's per-PDF
-fallback. **The LLM cannot read it.**
+Plus a fifth, **out-of-zone** tier: ``data/snapshots/{STUDY}/`` holds the
+human-reviewed cleaned trio bundle baseline restored when PDF
+extraction fails or **Use Existing Study** is selected. **The LLM
+cannot read it.**
 
 See :doc:`architecture` for the full architecture. The IRB-grade
 benchmark lives outside the Sphinx tree at
@@ -98,7 +99,9 @@ operator inspection.
 locally; the text is PHI-redacted; only redacted text reaches the LLM;
 the response is re-scrubbed and merged with the code candidate. When
 the LLM tier is unavailable for any reason, the orchestrator falls
-back per-PDF to ``snapshots/{STUDY}/pdfs/`` (the tracked baseline).
+back per-PDF to ``data/snapshots/{STUDY}/pdfs/`` (the reviewed
+baseline). If the PDF leg fails, the pipeline restores the full
+reviewed baseline over ``trio_bundle/``.
 The legacy raw-PDF API path (:mod:`scripts.extraction.extract_pdf_data`)
 is the CLI default and is gated by the two-part
 ``REPORTALIN_PDF_PHI_FREE`` operator attestation.
@@ -112,27 +115,21 @@ accesses raw data.
 ``audit/{dataset,dictionary,pdfs}_cleanup_report.json`` +
 ``audit/phi_scrub_report.json`` + ``audit/lineage_manifest.json`` +
 ``audit/telemetry/events.jsonl``,
-``agent/{analysis,conversations,restore_points}/``; transient staging
+``agent/{analysis,conversations}/``; transient staging
 sibling: ``tmp/{STUDY_NAME}/{datasets,dictionary,pdfs}/``.
 
-**Two snapshot tiers:**
-
-1. **Tracked baseline** at
-   ``snapshots/{STUDY_NAME}/{datasets,dictionary,pdfs,variables.json}``
-   — version-controlled, maintainer-curated, single per-study cleaned
-   trio bundle. The PDF orchestrator reads it as the per-PDF fallback.
-   **LLM is forbidden from reading it.** Maintainer protocol: see
-   :doc:`operations`.
-2. **Operator restore points** at
-   ``output/{STUDY_NAME}/agent/restore_points/<name>/`` — gitignored,
-   multi-named, agent-writable. Crash recovery only; never read by the
-   pipeline.
+**Snapshot baseline:** ``data/snapshots/{STUDY_NAME}/{datasets,dictionary,pdfs,variables.json}``
+is the human-reviewed, single per-study cleaned trio bundle. The PDF
+orchestrator reads it as the per-PDF fallback, and the wizard restores
+it over the live ``trio_bundle/`` for **Use Existing Study**. **LLM is
+forbidden from reading it.** Maintainer protocol: see
+:doc:`operations`.
 
 **Wizard step 2:** two top-level buttons — *Use
-Existing Study* (skip pipeline; trust the live ``trio_bundle/``) and
-*Load Study* (run the pipeline subprocess; orchestrator falls back to
-the tracked snapshot baseline per-PDF when the LLM tier is
-unavailable).
+Existing Study* (restore the reviewed snapshot baseline into the live
+``trio_bundle/``) and *Load Study* (run the pipeline subprocess;
+orchestrator falls back to the reviewed snapshot baseline when the
+PDF leg cannot produce complete output).
 
 **PHI key:** sidecar at ``~/.config/report_ai_portal/phi_key``
 (resolved via ``config.PHI_KEY_PATH``, overridable with

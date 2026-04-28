@@ -15,9 +15,9 @@ The Four Tiers (plus audit and one out-of-zone tier)
 The honest-broker model has three filesystem zones plus one agent
 boundary tier. The audit envelope is a separate counts-only filesystem
 surface that the agent cannot read. The fifth path
-(``snapshots/{STUDY}/`` at the repo root) is *not* a zone in the
-honest-broker sense — it's a version-controlled baseline, intentionally
-outside every LLM-readable surface.
+(``data/snapshots/{STUDY}/``) is *not* a zone in the honest-broker
+sense — it's a human-reviewed baseline, intentionally outside every
+LLM-readable surface.
 
 .. list-table::
    :header-rows: 1
@@ -56,11 +56,13 @@ The audit envelope:
 
 The fifth path:
 
-* **``snapshots/{STUDY}/``** (repo root) — version-controlled
-  cleaned trio bundle baseline used by the PDF orchestrator's per-PDF
-  fallback. **The LLM cannot read it.** The path is outside the GREEN
-  tree and outside the audit envelope, so a stale baseline can never
-  be served as live data. Maintainer-curated by hand; see
+* **``data/snapshots/{STUDY}/``** — human-reviewed cleaned trio
+  bundle baseline used by the PDF orchestrator's fallback and restored
+  over ``trio_bundle/`` when fresh PDF extraction fails or **Use
+  Existing Study** is selected. **The LLM cannot read it.** The path is
+  outside the GREEN tree and outside the audit envelope, so a stale
+  baseline can never be served directly as live data. Maintainer-curated
+  by hand; see
   :doc:`operations`.
 
 Zone enforcement
@@ -207,7 +209,7 @@ selects this path. Per PDF:
 5. **Merge.** :func:`scripts.extraction.pdf_pipeline._merge`
    reconciles LLM + code candidates.
 6. **Per-PDF snapshot fallback.** When the LLM tier is unavailable,
-   the orchestrator publishes ``snapshots/{STUDY}/pdfs/{stem}_variables.json``
+   the orchestrator publishes ``data/snapshots/{STUDY}/pdfs/{stem}_variables.json``
    instead. **Code-only output is never published** — heuristic-only
    metadata without LLM oversight is too unreliable for IRB-grade
    work.

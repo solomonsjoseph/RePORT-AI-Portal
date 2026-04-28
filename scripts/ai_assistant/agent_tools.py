@@ -5,7 +5,7 @@ All read-side tools resolve every path through
 agent-zone chokepoint. The permitted read zone is
 ``output/{STUDY}/trio_bundle/`` (PHI-scrubbed artifacts) plus
 ``output/{STUDY}/agent/`` (the agent's own analysis outputs,
-conversations, and snapshots). Telemetry lives under ``audit/`` and is
+and conversations). Telemetry lives under ``audit/`` and is
 off-limits to the agent, so is raw data and staging. Writes (analysis
 figures and narratives) are confined to ``output/{STUDY}/agent/`` via
 ``validate_agent_write``, with a narrower ``validate_sandbox_write``

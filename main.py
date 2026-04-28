@@ -242,12 +242,10 @@ off-limits to the agent.
   read its own prior events structurally, by directory. Hard-rejected by
   `validate_agent_read`.
 - `agent/` — Per-session state. `analysis/` holds deterministic epidemiology
-  outputs, `conversations/` holds chat transcripts, and `restore_points/` holds
-  multi-named operator restore copies of the trio bundle (crash-recovery
-  target; gitignored). The version-controlled tracked baseline lives at
-  `snapshots/{study}/` at the repo root and is intentionally OUTSIDE
-  `agent/` — the LLM cannot read it. Readable parts of `agent/` (analysis,
-  conversations, restore_points) feed the agent's own session memory;
+  outputs, and `conversations/` holds chat transcripts. The human-reviewed
+  snapshot baseline lives at `data/snapshots/{study}/` and is intentionally
+  OUTSIDE `agent/` — the LLM cannot read it. Readable parts of `agent/`
+  (analysis and conversations) feed the agent's own session memory;
   `analysis/` is also its sandbox write zone (the
   narrower `validate_sandbox_write` — other `agent/` subdirs are read-only
   to LLM-generated code).
@@ -683,6 +681,34 @@ def _run_pdf_leg(
             "files_created": 0,
             "errors": [{"file": "", "error": str(exc)}],
         }
+
+
+def _pdf_needs_snapshot_restore(pdf_leg_result: dict[str, Any]) -> bool:
+    """Return True when the PDF leg could not produce a clean fresh result."""
+
+    return bool(
+        pdf_leg_result.get("skipped")
+        or pdf_leg_result.get("errors")
+        or int(pdf_leg_result.get("files_created", 0) or 0) == 0
+    )
+
+
+def _restore_reviewed_snapshot_if_available(reason: str) -> bool:
+    """Restore ``data/snapshots/{STUDY}/`` over the live trio bundle if present."""
+
+    from scripts.utils.snapshots import SnapshotError, restore_snapshot, snapshot_exists
+
+    if not snapshot_exists():
+        log.warning("Reviewed snapshot unavailable; cannot restore fallback after %s", reason)
+        return False
+    try:
+        path = restore_snapshot()
+    except SnapshotError as exc:
+        log.error("Reviewed snapshot restore failed after %s: %s", reason, exc)
+        return False
+    log.warning("Reviewed snapshot restored after %s: %s", reason, path)
+    print(f"  ✓ Restored reviewed snapshot after {reason}: {path}")
+    return True
 
 
 def run_step(step_name: str, func: Callable[[], Any]) -> Any:
@@ -1129,6 +1155,15 @@ For detailed documentation, see the Sphinx docs or README.md
                 err,
             )
 
+    if (
+        bool(args.build_bundle or args.pipeline)
+        and _pdf_needs_snapshot_restore(pdf_leg_result)
+        and _restore_reviewed_snapshot_if_available("PDF extraction failure or skip")
+    ):
+        _cleanup_staging()
+        print("\nPipeline used the reviewed snapshot baseline; fresh extraction was skipped.")
+        return
+
     # ── Step 1.6: PHI Scrub (date jitter + ID pseudonymization) ──
     # Operates on the STAGING datasets tree BEFORE Step 1.7 cleanup. Running
     # scrub first keeps the dataset audit + propagation events free of raw
@@ -1289,7 +1324,7 @@ For detailed documentation, see the Sphinx docs or README.md
     print(f"    Analysis Output:   {config.AGENT_OUTPUT_DIR}")
     print(f"    Conversations:     {config.CONVERSATIONS_DIR}")
     print(f"    Telemetry:         {config.TELEMETRY_DIR}")
-    print(f"    Snapshots:         {config.STUDY_SNAPSHOTS_DIR}")
+    print(f"    Reviewed Snapshot: {config.STUDY_SNAPSHOTS_DIR}")
     if args.pipeline:
         print(f"    Variables JSON:    {config.VARIABLES_JSON_PATH}")
     print("\n" + "=" * 70 + "\n")

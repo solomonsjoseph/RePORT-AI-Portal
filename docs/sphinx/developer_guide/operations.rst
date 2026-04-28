@@ -64,11 +64,8 @@ Individual Steps
    * - ``make bundle``
      - Re-assemble the trio bundle from already-scrubbed staging artifacts
    * - ``make snapshot``
-     - Save a restore point of the current trio bundle to
-       ``output/{STUDY}/agent/restore_points/`` (gitignored). The
-       version-controlled tracked baseline at ``snapshots/{STUDY}/`` is
-       maintainer-curated by hand — see :ref:`snapshot-baseline-protocol`
-       below.
+     - Save the reviewed snapshot baseline at
+       ``data/snapshots/{STUDY}/`` after human review.
    * - ``make chat``
      - Launch the Streamlit research-assistant UI (with setup wizard)
    * - ``make chat-cli``
@@ -204,41 +201,35 @@ metadata.
 Trio-Bundle Snapshot Maintenance
 --------------------------------
 
-This project keeps two distinct copy-of-the-trio-bundle tiers. They
-look similar on disk and the CLI commands sound interchangeable, but
-they serve different purposes and have different lifecycles. **Do not
-confuse the two.**
-
-Tier 1 — Tracked baseline (``snapshots/{STUDY}/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-A *snapshot baseline* is a cleaned-and-verified trio bundle committed
-to version control at ``snapshots/{STUDY_NAME}/``. Each
-per-study subdirectory mirrors the layout of the live
-``output/{STUDY}/trio_bundle/``:
+A *snapshot baseline* is the single cleaned-and-verified trio bundle
+saved under ``data/snapshots/{STUDY_NAME}/`` after human review. It
+mirrors the layout of the live ``output/{STUDY}/trio_bundle/``:
 
 .. code-block:: text
 
-   snapshots/
-   └── {STUDY_NAME}/             # e.g. snapshots/Indo-VAP/ — must match
+   data/snapshots/
+   └── {STUDY_NAME}/             # e.g. data/snapshots/Indo-VAP/ — must match
        ├── datasets/             # config.STUDY_NAME exactly
        ├── dictionary/
        ├── pdfs/
        └── variables.json
 
-**Purpose.** The tracked baseline is the **deterministic fallback
-source** for the pipeline:
+**Purpose.** The reviewed baseline is the deterministic fallback
+source for the portal:
 
 1. **PDF orchestrator fallback.** When the wizard's "Load Study"
    runs and the PDF orchestrator's LLM tier is unavailable for a
    particular PDF (no API key, image-only PDF, capability gate fails,
    LLM call errors), the orchestrator reads
-   ``snapshots/{STUDY}/pdfs/{stem}_variables.json`` instead of
+   ``data/snapshots/{STUDY}/pdfs/{stem}_variables.json`` instead of
    publishing a code-only heuristic guess.
-2. **Network-isolated runs.** Operators on hardened hosts without
-   LLM access can run ``python main.py --pipeline`` and the
-   pipeline will populate ``trio_bundle/pdfs/`` from these snapshots
-   so the agent has something to answer questions against.
+2. **Failed or skipped PDF leg.** If the PDF extraction leg fails,
+   is skipped, or creates no files during a full pipeline run, the
+   pipeline restores ``data/snapshots/{STUDY}/`` over the live
+   ``output/{STUDY}/trio_bundle/``.
+3. **Use Existing Study.** The setup wizard's button restores the
+   same reviewed baseline over the live trio bundle before enabling
+   chat. The rest of ``output/{STUDY}/`` is left in place.
 
 **Read posture.** The LLM agent must NOT read this directory. The
 agent's read zone is restricted to ``output/{STUDY}/trio_bundle/``
@@ -247,10 +238,8 @@ and ``output/{STUDY}/agent/`` only (see
 Putting snapshots outside both zones is intentional — a stale
 snapshot must never be served as live data.
 
-The wizard's "Load Study" subprocess is the only legitimate reader.
-The pipeline's PDF orchestrator imports
-``config.STUDY_SNAPSHOTS_DIR`` and uses it as the snapshot lookup
-root.
+The wizard and pipeline subprocess are the only legitimate readers.
+Both use ``config.STUDY_SNAPSHOTS_DIR`` as the snapshot lookup root.
 
 **Maintenance protocol.**
 
@@ -259,45 +248,26 @@ root.
   subject IDs or unscrubbed dates to a snapshot would defeat the
   entire purpose.
 * Update by promoting from a verified production run. A maintainer
-  copies ``output/{STUDY}/trio_bundle/`` →
-  ``snapshots/{STUDY}/`` after manual review, commits, and references
-  the ``lineage_manifest.json`` hash in the commit message for audit
-  trail.
+  runs ``make snapshot`` after manual review and references the
+  ``lineage_manifest.json`` hash in the commit message for audit trail
+  when the baseline is committed.
 * Do not generate snapshots from ``--force`` runs without manual
   review. The whole value of a snapshot is the human verification
   step.
 
-The repo's ``.gitignore`` explicitly tracks ``snapshots/``. Files
-under this directory ARE committed.
+The repo's ``.gitignore`` allows ``data/snapshots/`` to be committed.
+Files under this directory are study-team reviewed artifacts and are
+not agent-owned state.
 
-Tier 2 — Operator restore points (``output/{STUDY}/agent/restore_points/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Multi-named, gitignored, agent-writable copies of the trio bundle
-saved by ``scripts.utils.snapshots.create_snapshot``. Used for
-crash-recovery during dev. Lifecycle:
+Lifecycle:
 
 .. code-block:: bash
 
-   make snapshot                          # save current trio bundle as a restore point
-   make list-snapshots                    # list available restore points
-   make restore-study SNAPSHOT=<name>     # roll trio_bundle/ back to a restore point
-
-Restore points are scratch storage — never read by the pipeline,
-never the source of truth, never committed to git. They sit beside
-``analysis/`` and ``conversations/`` under the agent state tree
-because they are agent-owned operational state.
-
-When NOT to use which
-~~~~~~~~~~~~~~~~~~~~~
-
-* Need a per-PDF fallback for "Load Study" on a network-isolated
-  host? → Tracked baseline (Tier 1).
-* Want to roll back a bad pipeline run during local development? →
-  Restore point (Tier 2).
-* Need an IRB-reviewable provenance reference? → Tracked baseline
-  (Tier 1) plus the corresponding ``lineage_manifest.json`` from the
-  audit envelope.
+   make snapshot              # save current trio bundle as the reviewed baseline
+   make snapshot FORCE=1      # overwrite the reviewed baseline after review
+   make list-snapshots        # show whether the reviewed baseline exists
+   make restore-study         # restore the reviewed baseline into trio_bundle/
 
 Bumping the baseline is a maintainer action with audit-trail
-implications. Saving a restore point is a developer convenience.
+implications. Restore points are intentionally not part of the
+architecture.

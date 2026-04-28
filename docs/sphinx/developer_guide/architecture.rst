@@ -75,9 +75,10 @@ See :doc:`phi_architecture` for the full discussion. Briefly:
      - ``output/{STUDY}/audit/``
      - Counts-only IRB evidence. LLM-rejected.
    * - *out-of-zone*
-     - ``snapshots/{STUDY}/``
-     - Tracked baseline (LLM-invisible). PDF orchestrator
-       per-PDF fallback.
+     - ``data/snapshots/{STUDY}/``
+     - Human-reviewed baseline (LLM-invisible). Restored over
+       ``trio_bundle/`` when fresh PDF extraction fails or when
+       **Use Existing Study** is selected.
 
 Core Components
 ---------------
@@ -94,10 +95,8 @@ the full env-var table; key constants:
 * ``BASE_DIR`` — repo root, used as the anchor for all path
   derivation.
 * ``TRIO_BUNDLE_DIR`` — the canonical published-bundle path.
-* ``STUDY_SNAPSHOTS_DIR`` — the tracked baseline path
-  (``snapshots/{STUDY}/``).
-* ``STUDY_RESTORE_POINTS_DIR`` — the gitignored restore-point path
-  (``output/{STUDY}/agent/restore_points/``).
+* ``STUDY_SNAPSHOTS_DIR`` — the reviewed baseline path
+  (``data/snapshots/{STUDY}/``).
 
 Logging System
 ~~~~~~~~~~~~~~
@@ -154,7 +153,9 @@ Two co-existing paths:
 * **Orchestrator path** (default):
   :mod:`scripts.extraction.pdf_pipeline`. ``pdfplumber`` code path
   + redacted-text LLM merge + per-PDF fallback to
-  ``snapshots/{STUDY}/pdfs/``. **No raw PDF bytes leave the host.**
+  ``data/snapshots/{STUDY}/pdfs/``. If the PDF leg fails, the full
+  reviewed snapshot baseline is restored over ``trio_bundle/``. **No
+  raw PDF bytes leave the host.**
   See :doc:`data_extraction_pdfs` for the per-step pipeline.
 * **Legacy raw-PDF API path:**
   :mod:`scripts.extraction.extract_pdf_data`. Refused unless the
@@ -351,7 +352,8 @@ End-to-End Runtime Flow
                                                 code path + redacted-    │
                                                 text LLM merge +         │
                                                 snapshot fallback at     │
-                                                snapshots/{STUDY}/pdfs/) │
+                                                data/snapshots/{STUDY}/  │
+                                                pdfs/)                   │
                                                                          │
                                               (all legs → staging)       ▼
                                           tmp/{STUDY_NAME}/{datasets,dictionary,pdfs}/
@@ -402,9 +404,9 @@ Expected source tree:
    ├── annotated_pdfs/
    └── data_dictionary/
 
-   snapshots/{STUDY_NAME}/                     # tracked baseline
-   ├── datasets/                               # cleaned + verified, version-controlled,
-   ├── dictionary/                             # LLM-INVISIBLE; PDF orchestrator reads
+   data/snapshots/{STUDY_NAME}/                # reviewed baseline
+   ├── datasets/                               # cleaned + verified,
+   ├── dictionary/                             # LLM-INVISIBLE; restored over live trio
    ├── pdfs/                                   # ``pdfs/{stem}_variables.json`` as
    └── variables.json                          # per-PDF fallback
 
@@ -426,7 +428,7 @@ Expected processed tree:
    │   ├── pdfs_cleanup_report.json
    │   └── telemetry/
    │       └── events.jsonl
-   └── agent/                        # analysis / conversations / restore_points
+   └── agent/                        # analysis / conversations
 
 Transient staging root (not a durable artifact):
 
@@ -512,8 +514,9 @@ Security-first boundaries
 * Three agent-output gates (PHI / k-anon / l-diversity).
 * KeyStore + subprocess sandbox + log redactor as orthogonal
   defenses.
-* Two-tier snapshot model (tracked baseline + restore points)
-  prevents the LLM from reading a stale baseline as live data.
+* Single reviewed snapshot baseline prevents an incomplete PDF run
+  from becoming live data while keeping the baseline outside the LLM
+  read zone.
 
 Out-of-scope (explicit non-goals)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

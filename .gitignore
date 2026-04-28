@@ -260,7 +260,7 @@ data/raw/**
 #
 #   output/{STUDY}/trio_bundle/ — PHI-free LLM read zone
 #   output/{STUDY}/audit/       — counts-only IRB evidence
-#   output/{STUDY}/agent/       — session state + restore snapshots
+#   output/{STUDY}/agent/       — session state
 #   output/session_tmp/         — ephemeral session data (shared)
 
 # ============================================================================
@@ -271,8 +271,7 @@ data/raw/**/~$*.xlsx
 ~$*.xlsx
 
 # Output directory — raw extractions, never commit.
-# All subtrees — trio_bundle/, audit/, agent/ (including
-# agent/snapshots/ restore copies) — stay out of git by design.
+# All subtrees — trio_bundle/, audit/, agent/ — stay out of git by design.
 output/
 output*/**
 
@@ -362,7 +361,6 @@ docs/prompts/
 docs/superpowers/
 # Test output and snapshot placeholders
 test-results/
-# NOTE: ``snapshots/`` (repo root) is intentionally TRACKED — it holds the
-# version-controlled cleaned + verified trio bundle baseline used as the
-# "Load Study" fallback. The LLM is forbidden from reading it (zone guards
-# permit only ``trio_bundle/`` + ``output/{STUDY}/agent/``).
+# NOTE: ``data/snapshots/{STUDY}/`` is intentionally trackable. It holds the
+# human-reviewed cleaned trio bundle baseline used to repair a broken live
+# ``output/{STUDY}/trio_bundle/``. Raw PHI remains ignored under ``data/raw/``.

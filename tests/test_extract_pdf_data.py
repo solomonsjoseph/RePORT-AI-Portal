@@ -196,8 +196,8 @@ class TestPdfExtractionModeDispatch:
     """
 
     def _seed_snapshot(self, monkeypatch_config: Path, stem: str, payload: dict) -> Path:
-        # PR #18 relocated the baseline to ``snapshots/{STUDY}/pdfs/``
-        # (tracked, repo-root). The test conftest patches
+        # The reviewed baseline lives under ``data/snapshots/{STUDY}/pdfs/``.
+        # The test conftest patches
         # ``config.STUDY_SNAPSHOTS_DIR`` to a tmp_path-anchored location,
         # so we read it from there rather than hardcoding the layout.
         snap_dir = Path(config.STUDY_SNAPSHOTS_DIR) / "pdfs"

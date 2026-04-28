@@ -197,33 +197,27 @@ AGENT_STATE_DIR: Path = STUDY_OUTPUT_DIR / "agent"
 AGENT_OUTPUT_DIR: Path = AGENT_STATE_DIR / "analysis"
 CONVERSATIONS_DIR: Path = AGENT_STATE_DIR / "conversations"
 
-# Operator-managed restore points — multi-named bundle backups produced by
-# ``python -m scripts.utils.snapshots create``. Lives under the
-# fully-gitignored ``output/`` tree because its contents include freshly
-# scrubbed cohort data that must never reach version control. This path
-# is distinct from :data:`STUDY_SNAPSHOTS_DIR` (the tracked baseline).
-STUDY_RESTORE_POINTS_DIR: Path = AGENT_STATE_DIR / "restore_points"
-
 # ----------------------------------------------------------------------------
-# SNAPSHOT TIER (version-controlled gold-master baseline; LLM-INVISIBLE)
+# SNAPSHOT TIER (human-reviewed baseline; LLM-INVISIBLE)
 # ----------------------------------------------------------------------------
-# Snapshots are SEPARATE from the agent tier and SEPARATE from the live
-# trio bundle. They hold a cleaned-and-verified trio bundle (datasets /
-# dictionary / pdfs / variables.json) committed to version control so the
-# pipeline has a deterministic baseline to fall back on when fresh
-# extraction is unavailable (no LLM, no API key, network-isolated host).
+# Snapshots are separate from raw data, agent state, and the live trio bundle.
+# They hold a cleaned-and-verified trio bundle (datasets / dictionary / pdfs /
+# variables.json) saved by a human after review. When PDF extraction fails or
+# the operator clicks "Use Existing Study", this baseline is copied over the
+# live ``output/{STUDY}/trio_bundle/``.
 #
 # Read posture:
-#   - The pipeline's PDF orchestrator reads ``snapshots/{STUDY}/pdfs/`` as
-#     the per-PDF fallback when the LLM tier cannot produce extractions.
-#   - The wizard's "Load Study" subprocess is the ONLY caller. The LLM
+#   - The pipeline reads this baseline when fresh PDF extraction cannot
+#     produce a complete bundle.
+#   - The wizard's "Use Existing Study" path restores this baseline over the
+#     live trio bundle before chat starts.
+#   - The LLM
 #     agent's read zone is restricted to ``trio_bundle/`` + ``agent/``;
-#     ``snapshots/`` is intentionally outside that zone so the LLM cannot
+#     ``data/snapshots/`` is intentionally outside that zone so the LLM cannot
 #     accidentally read a stale baseline as if it were live data.
 #
-# Path: repo root (next to ``data/``, ``scripts/``), NOT under ``output/``,
-# so it is committed to git. .gitignore is configured to track this path.
-STUDY_SNAPSHOTS_DIR: Path = BASE_DIR / "snapshots" / STUDY_NAME
+# Path: under ``data/`` because it is reviewed study data, not runtime output.
+STUDY_SNAPSHOTS_DIR: Path = DATA_DIR / "snapshots" / STUDY_NAME
 
 # Staging workspace — per-study tree inside TMP_DIR. Managed per-run by
 # main.py's _prepare_staging() / _publish_staging(); NOT created eagerly by
@@ -423,7 +417,7 @@ os.environ.setdefault("LANGCHAIN_TRACING_V2", "false")
 
 def ensure_directories() -> None:
     """Create runtime directories. Sensitive dirs (containing PHI-scrubbed
-    data, agent state, conversations, snapshots, audit, or logs) are
+    data, agent state, conversations, audit, or logs) are
     hardened to mode 0o700 after creation so they're not world-readable
     under the typical umask 0o022. Dirs that may legitimately need group
     access (``OUTPUT_DIR`` parent, ``TMP_DIR`` is already 0o700 via
@@ -440,12 +434,9 @@ def ensure_directories() -> None:
         AGENT_OUTPUT_DIR,
         CONVERSATIONS_DIR,
         TELEMETRY_DIR,
-        STUDY_RESTORE_POINTS_DIR,
-        # NOTE: ``STUDY_SNAPSHOTS_DIR`` is intentionally NOT in this list.
-        # It is a tracked, version-controlled baseline at the repo root
-        # (``snapshots/{STUDY}/``) that maintainers populate by hand from a
-        # verified ``trio_bundle/`` run. Auto-creating it would risk a
-        # blank-baseline commit; chmod-ing it would fight version control.
+        # NOTE: ``STUDY_SNAPSHOTS_DIR`` is intentionally NOT created here.
+        # It is a human-reviewed baseline under ``data/snapshots/{STUDY}/``.
+        # Auto-creating it would hide the absence of a reviewed fallback.
     ]
     for path in [OUTPUT_DIR, TMP_DIR, *sensitive_paths]:
         path.mkdir(parents=True, exist_ok=True)

@@ -47,7 +47,7 @@ After a successful run, look under ``output/{STUDY_NAME}/``:
    output/Indo-VAP/
    ├── trio_bundle/       # scrubbed bundle used by the assistant
    ├── audit/             # counts and lineage evidence
-   ├── agent/             # chat state, generated analysis, restore points
+   ├── agent/             # chat state and generated analysis
    └── README.md          # local output summary
 
 Users normally interact with ``trio_bundle/`` through the chat UI. The
@@ -111,5 +111,5 @@ If a run fails:
 * confirm the PHI key exists if the scrubber asks for it;
 * rerun after fixing the input or configuration issue.
 
-For failure semantics, restore-point maintenance, and low-level pipeline
+For failure semantics, snapshot maintenance, and low-level pipeline
 behavior, see :doc:`../developer_guide/operations`.

@@ -76,8 +76,8 @@ The architecture documented below answers each of these.
 ## 4. End-to-End Data Flow
 
 ```
-   Raw study data (PHI-bearing)            Tracked snapshot baseline
-   data/raw/{STUDY}/                       snapshots/{STUDY}/
+   Raw study data (PHI-bearing)            Reviewed snapshot baseline
+   data/raw/{STUDY}/                       data/snapshots/{STUDY}/
        ├─ datasets/                            ├─ datasets/    (LLM-INVISIBLE,
        ├─ data_dictionary/                     ├─ dictionary/   version-controlled
        └─ annotated_pdfs/                      ├─ pdfs/         per-PDF fallback
@@ -109,7 +109,7 @@ The architecture documented below answers each of these.
    Published trio bundle (PHI-free, durable)
    output/{STUDY}/trio_bundle/
        ├─ datasets/              <-- LLM read zone (1 of 2; the other is `output/{STUDY}/agent/`)
-       ├─ dictionary/                NOTE: snapshots/{STUDY}/ above is intentionally
+       ├─ dictionary/                NOTE: data/snapshots/{STUDY}/ above is intentionally
        ├─ pdfs/                       OUTSIDE this zone — the LLM cannot read the baseline.
        └─ variables.json
    output/{STUDY}/audit/
@@ -203,13 +203,12 @@ remains as a directory-level early-reject at pipeline boundaries),
 which raises a `ZoneViolationError` (a `PermissionError` subclass)
 if any file path falls outside the agent's allowed zone.
 
-**Explicitly out-of-zone:** `snapshots/{STUDY}/` at the repo root holds
-the version-controlled cleaned-trio-bundle baseline used
-by the PDF orchestrator's per-PDF fallback. The LLM agent is
-forbidden from reading it — a stale baseline must never be served as
-live data. The previous `output/{STUDY}/agent/snapshots/` path (which
-*was* inside the agent zone) has been retired; operator restore points
-now live at `output/{STUDY}/agent/restore_points/` (gitignored).
+**Explicitly out-of-zone:** `data/snapshots/{STUDY}/` holds the
+human-reviewed cleaned-trio-bundle baseline used whenever fresh PDF
+extraction fails or cannot run. The LLM agent is forbidden from
+reading it — the wizard restores the baseline over the live
+`output/{STUDY}/trio_bundle/` before chat instead of serving a stale
+copy directly.
 
 Every tool return string additionally passes through three gates:
 
@@ -248,8 +247,8 @@ a sanitised env (no `*_API_KEY`), and read-only access to
 PHI-redacted via `phi_patterns.BLOCKING_PATTERNS` BEFORE any LLM
 call, with a defensive `_assert_no_raw_phi_in_payload` re-check.
 The LLM response is re-scrubbed and merged with the code candidate.
-Per-PDF fallback to the version-controlled snapshot baseline at
-`snapshots/{STUDY}/pdfs/` when the LLM tier is unavailable. **No raw
+Per-PDF fallback to the reviewed snapshot baseline at
+`data/snapshots/{STUDY}/pdfs/` when the LLM tier is unavailable. **No raw
 PDF bytes leave the host on the orchestrator path.**
 
 ## 7. What the Operator Sees in the Audit Directory
