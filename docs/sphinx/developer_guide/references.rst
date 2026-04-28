@@ -46,7 +46,7 @@ DPDPA 2023 — Digital Personal Data Protection Act
 SPDI Rules 2011 (under IT Act §43A)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* **Text.** https://www.indiacode.nic.in/handle/123456789/1362
+* **Brief.** https://prsindia.org/files/bills_acts/bills_parliament/2011/IT_Rules_and_Regulations_Brief_2011.pdf
 * **What we use it for.** Still the in-force regulation until DPDPA's
   substantive provisions kick in. Rule 3 defines Sensitive Personal
   Data or Information (SPDI); health data and biometric data are
@@ -217,7 +217,7 @@ John Snow Labs Clinical NER
 i2b2 / n2c2 de-identification shared tasks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* **Site.** https://portal.dbmi.hms.harvard.edu/projects/n2c2-nlp/
+* **Site.** https://n2c2.dbmi.hms.harvard.edu/data-sets
 * **What we use it for.** Corpus used to benchmark clinical de-
   identification systems and justify the current rule-catalog posture.
 
