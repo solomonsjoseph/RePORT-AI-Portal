@@ -1,41 +1,70 @@
 RePORT AI Portal Documentation
 ==============================
 
-**RePORT AI Portal** is a local-first assistant for one clinical
-research study. It helps a study team load local source files, publish a
-PHI-scrubbed study bundle, and ask grounded questions through a chat
-interface.
+RePORT AI Portal is a local-first assistant for one clinical research
+study. It helps a study team load local source files, publish a
+PHI-scrubbed study bundle, and ask grounded questions from that bundle.
 
-User pages explain what the portal does, how it helps, how to set it up,
-and how to run a study. Developer pages hold the architecture, source
-entry points, test contracts, and implementation details.
+This site is the project documentation. The GitHub README is a short
+entry point; the Sphinx pages hold the user instructions, IRB/auditor
+evidence, and developer detail.
 
 Choose Your Path
 ----------------
 
-Start with the profile that matches the task:
+.. list-table::
+   :header-rows: 1
+   :widths: 24 46 30
 
-* **Clinical researcher** — use :doc:`user_guide/overview` to understand
-  how the portal helps, then :doc:`user_guide/quickstart`.
-* **Data manager or site operator** — use :doc:`user_guide/installation`,
-  :doc:`user_guide/configuration`, and :doc:`user_guide/data_pipeline`.
-* **IRB or IEC reviewer** — use :doc:`irb_auditor/index` for the
-  reviewer-only PHI handling and conformance profile.
-* **Developer or maintainer** — use :doc:`developer_guide/index` for
-  architecture, source entry points, invariants, and PR gates.
-* **Documentation contributor** — use :doc:`audience_profiles` and
-  :doc:`developer_guide/documentation_style` before changing public docs.
+   * - Reader
+     - Goal
+     - Start here
+   * - Clinical researcher
+     - Understand what the portal can answer and how it helps a study
+       workflow.
+     - :doc:`user_guide/overview`, then :doc:`user_guide/quickstart`
+   * - Data manager
+     - Prepare study files, load one study, and review the published
+       bundle.
+     - :doc:`user_guide/data_pipeline`, then
+       :doc:`user_guide/configuration`
+   * - Site operator
+     - Install dependencies, choose a model provider, and launch the UI.
+     - :doc:`user_guide/installation`, then
+       :doc:`user_guide/quickstart`
+   * - IRB, IEC, or auditor
+     - Review what PHI is handled, why the controls exist, and what
+       evidence verifies them.
+     - :doc:`irb_auditor/index`
+   * - Developer or maintainer
+     - Change code, review architecture, run tests, or prepare a PR.
+     - :doc:`developer_guide/index`
 
-For a profile-by-profile map, see :doc:`audience_profiles`.
+Documentation Map
+-----------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 24 46 30
+
+   * - Section
+     - Contains
+     - Does not contain
+   * - :doc:`user_guide/index`
+     - Setup, first run, configuration, study loading, normal use, FAQ,
+       and glossary.
+     - Code architecture or implementation history.
+   * - :doc:`irb_auditor/index`
+     - PHI handling, India-USA privacy alignment, conformance evidence,
+       and required attestations.
+     - Developer workflow or build details.
+   * - :doc:`developer_guide/index`
+     - Architecture, source entry points, operational contracts, tests,
+       decisions, and contribution workflow.
+     - Basic user onboarding.
 
 Contents
 --------
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Start Here
-
-   audience_profiles
 
 .. toctree::
    :maxdepth: 2
