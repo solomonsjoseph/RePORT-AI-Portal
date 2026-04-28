@@ -50,7 +50,9 @@ Start the Web UI
 
 ``make chat`` installs the web and AI Assistant dependency groups it
 needs, then opens a local Streamlit page. Use it to select the model
-provider, load a study, and start chat.
+provider, load a study, and start chat. If port ``8501`` is already in
+use, local startup chooses the next free port; production service units
+keep their configured fixed port.
 
 Optional Developer Setup
 ------------------------

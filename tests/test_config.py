@@ -12,6 +12,7 @@ from config import (
     _get_env_int,
     detect_study_name,
     ensure_directories,
+    strict_study_detection_enabled,
 )
 
 
@@ -54,6 +55,26 @@ class TestDetectStudyName:
         monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path)
         with pytest.raises(RuntimeError, match="No valid study"):
             detect_study_name(strict=True)
+
+    def test_proxy_auth_does_not_make_detection_strict(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        (tmp_path / "EmptyDir").mkdir()
+        monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path)
+        monkeypatch.setenv("REPORT_AI_AUTH_MODE", "proxy")
+        monkeypatch.delenv("REPORT_AI_STRICT_STUDY_DETECTION", raising=False)
+
+        assert detect_study_name() == config.DEFAULT_DATASET_NAME
+
+
+class TestStrictStudyDetection:
+    def test_disabled_by_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("REPORT_AI_STRICT_STUDY_DETECTION", raising=False)
+        assert not strict_study_detection_enabled()
+
+    def test_enabled_by_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("REPORT_AI_STRICT_STUDY_DETECTION", "1")
+        assert strict_study_detection_enabled()
 
 
 class TestGetEnvInt:
