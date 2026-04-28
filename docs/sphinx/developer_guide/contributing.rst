@@ -73,6 +73,9 @@ Coding Rules
 * Add tests when behavior changes.
 * Update docs when operator behavior, PHI handling, configuration, or
   verification claims change.
+* Add a release-note entry for every pull request unless the change is
+  purely internal and has no operator, reviewer, developer, or user
+  impact.
 * Use Ruff for linting and formatting; do not introduce Black, Flake8, or
   isort configuration.
 
@@ -88,6 +91,8 @@ and language rules.
 * Avoid hard-coded test counts unless the count is generated or checked.
 * Avoid line-number references to code; they drift quickly.
 * Keep IRB-facing claims tied to artifacts and tests.
+* Add release notes in :doc:`../release_notes`; write them for the
+  affected audience, not from the commit history.
 * Run ``make docs-quality`` before committing documentation changes.
 
 Adding A PHI Rule

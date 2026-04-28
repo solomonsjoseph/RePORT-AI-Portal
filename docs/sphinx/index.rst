@@ -62,6 +62,9 @@ Documentation Map
      - Architecture, source entry points, operational contracts, tests,
        decisions, and contribution workflow.
      - Basic user onboarding.
+   * - :doc:`release_notes`
+     - User-readable summaries of notable changes.
+     - Commit dumps or implementation history.
 
 Contents
 --------
@@ -83,6 +86,12 @@ Contents
    :caption: For Developers & Maintainers
 
    developer_guide/index
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Project Updates
+
+   release_notes
 
 Reference
 ---------

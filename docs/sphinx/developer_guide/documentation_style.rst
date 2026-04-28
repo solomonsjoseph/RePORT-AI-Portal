@@ -33,6 +33,9 @@ The project has two documentation surfaces:
 * ``docs/sphinx/`` is the documentation library. Put setup detail,
   privacy evidence, architecture, testing, operations, and contributor
   workflow here.
+* ``docs/sphinx/release_notes.rst`` is the release-note source. Add a
+  short entry for every pull request unless the change has no reader
+  impact.
 
 Do not add standalone Markdown packets or parallel documentation trees.
 If a topic needs detail, add or update a Sphinx page and link to it from
@@ -157,4 +160,6 @@ Before opening a documentation PR:
 3. Confirm every command and path still exists.
 4. Confirm every PHI or IRB claim names an implementation artifact or
    verification artifact.
-5. Run the freshness, Sphinx, and verification gates.
+5. Add or update :doc:`../release_notes` when the change affects users,
+   operators, reviewers, or developers.
+6. Run the freshness, Sphinx, and verification gates.
