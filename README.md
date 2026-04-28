@@ -64,7 +64,8 @@ and audit reviewers should start with the
 
 Use the
 [developer guide](https://solomonsjoseph.github.io/RePORT-AI-Portal/developer_guide/)
-for architecture, testing, operations, and contribution workflow.
+for architecture, testing, operations, production readiness, and contribution
+workflow.
 
 Common local checks:
 

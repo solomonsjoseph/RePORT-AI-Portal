@@ -32,7 +32,7 @@ Start by Role
    * - Maintainer
      - Run verification, restore reviewed snapshots, and prepare
        releases.
-     - :doc:`operations`, then :doc:`project_status`
+     - :doc:`operations`, then :doc:`production_readiness`
    * - Documentation contributor
      - Keep README and Sphinx organized by audience.
      - :doc:`documentation_style`, then :doc:`contributing`
@@ -57,6 +57,7 @@ Contents
    data_extraction_datasets
    data_extraction_pdfs
    operations
+   production_readiness
    sandbox
    versioning
 

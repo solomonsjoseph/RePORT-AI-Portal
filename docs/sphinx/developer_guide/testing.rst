@@ -19,6 +19,7 @@ Run these from the repository root:
    make security      # pip-audit dependency scan
    make verify        # fast local readiness gate
    make docs-quality  # doc freshness + Sphinx warnings-as-errors build
+   make release-check # full release readiness gate
 
 Direct equivalents:
 
@@ -87,6 +88,10 @@ What Each Gate Proves
    Runs ``pip-audit`` against the locked environment. It is the local
    dependency-vulnerability gate; it does not replace code review for
    application-layer security.
+
+``make release-check``
+   Runs ``verify → typecheck → test-all → docs-ci → security``. This is
+   the pre-tag gate for release-candidate builds.
 
 PHI-Critical Coverage
 ---------------------

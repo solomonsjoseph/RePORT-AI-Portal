@@ -1,0 +1,30 @@
+[Unit]
+Description=RePORT AI Portal Streamlit UI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=report-ai
+Group=report-ai
+WorkingDirectory=/opt/report-ai-portal
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=LOG_FORMAT=json
+Environment=LOG_DIR=/var/log/report-ai-portal
+Environment=STUDY_NAME=Indo-VAP
+ExecStart=/usr/local/bin/uv run --group web --group ai_assistant --group llm python main.py --web
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+
+# Linux hardening. Keep writable paths narrow and adjust them to the deployed
+# data location before enabling this unit.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/report-ai-portal/data /opt/report-ai-portal/output /opt/report-ai-portal/tmp /var/log/report-ai-portal /home/report-ai/.config/report_ai_portal
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

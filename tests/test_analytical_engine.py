@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -211,11 +212,14 @@ class TestInteractionAnalyzer:
             }
         )
         analyzer = InteractionAnalyzer()
-        result = analyzer.run(df, "outcome", ["factor"], ["moderator"])
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = analyzer.run(df, "outcome", ["factor"], ["moderator"])
         # Should either converge or return NaN gracefully
         assert len(result) == 1
         row = result.iloc[0]
         assert isinstance(row["interaction_p"], float)
+        assert not caught
 
     def test_missing_values_dropped(self) -> None:
         """Rows with NaN should be dropped before fitting."""

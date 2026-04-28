@@ -2,7 +2,8 @@ Operations
 ==========
 
 Operational runbook for running, rebuilding, and verifying the RePORT AI Portal
-pipeline.
+pipeline. Deployment controls and release gates live in
+:doc:`production_readiness`.
 
 .. contents:: On this page
    :local:

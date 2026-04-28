@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from matplotlib.lines import Line2D
+from statsmodels.tools.sm_exceptions import ConvergenceWarning, PerfectSeparationWarning
 
 from scripts.ai_assistant.file_access import validate_agent_read, validate_agent_write
 from scripts.ai_assistant.study_knowledge import StudyKnowledge
@@ -67,6 +68,24 @@ def _apply_encoding(series: pd.Series, encoding: dict[str, int]) -> pd.Series:
     s = series.astype(str).str.strip().str.lower()
     enc_lower = {k.strip().lower(): v for k, v in encoding.items()}
     return s.map(enc_lower)
+
+
+def _fit_logit(y: pd.Series, x_mat: pd.DataFrame, *, maxiter: int) -> Any:
+    """Fit a logistic model, treating numerical instability as non-convergence."""
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("error", category=ConvergenceWarning)
+        warnings.filterwarnings("error", category=PerfectSeparationWarning)
+        warnings.filterwarnings("error", category=RuntimeWarning, message="overflow encountered")
+        return sm.Logit(y, x_mat).fit(disp=0, maxiter=maxiter)
+
+
+def _finite_exp(value: Any) -> float:
+    """Return exp(value) when finite; otherwise NaN for unstable odds ratios."""
+
+    with np.errstate(over="ignore", invalid="ignore"):
+        result = float(np.exp(float(value)))
+    return result if np.isfinite(result) else float("nan")
 
 
 # ── CohortBuilder ────────────────────────────────────────────────────────
@@ -324,16 +343,16 @@ class UnivariateAnalyzer:
         x_mat = sm.add_constant(sub[predictor].astype(float))
         y = sub[outcome].astype(float)
         try:
-            model = sm.Logit(y, x_mat).fit(disp=0, maxiter=100)
+            model = _fit_logit(y, x_mat, maxiter=100)
             coef = model.params[predictor]
             ci = model.conf_int().loc[predictor]
             return {
                 **base,
                 "coef": coef,
-                "OR": np.exp(coef),
+                "OR": _finite_exp(coef),
                 "p_value": model.pvalues[predictor],
-                "ci_lo": np.exp(ci[0]),
-                "ci_hi": np.exp(ci[1]),
+                "ci_lo": _finite_exp(ci[0]),
+                "ci_hi": _finite_exp(ci[1]),
             }
         except Exception:
             return {
@@ -387,7 +406,7 @@ class MultivariateAnalyzer:
             x_mat = sm.add_constant(sub[current].astype(float))
             y = sub[outcome].astype(float)
             try:
-                model = sm.Logit(y, x_mat).fit(disp=0, maxiter=200)
+                model = _fit_logit(y, x_mat, maxiter=200)
             except Exception as e:
                 if model is None:
                     return {
@@ -420,14 +439,13 @@ class MultivariateAnalyzer:
         retained = [p for p in model.params.index if p != "const"]
         rows = []
         for p in retained:
-            orv = np.exp(model.params[p])
-            ci = np.exp(model.conf_int().loc[p])
+            ci = model.conf_int().loc[p]
             rows.append(
                 {
                     "predictor": p,
-                    "OR": orv,
-                    "ci_lo": ci[0],
-                    "ci_hi": ci[1],
+                    "OR": _finite_exp(model.params[p]),
+                    "ci_lo": _finite_exp(ci[0]),
+                    "ci_hi": _finite_exp(ci[1]),
                     "p_value": model.pvalues[p],
                 }
             )
@@ -491,13 +509,13 @@ class InteractionAnalyzer:
         x_mat = sm.add_constant(sub[[factor, moderator, "interact"]].astype(float))
         y = sub[outcome].astype(float)
         try:
-            model = sm.Logit(y, x_mat).fit(disp=0, maxiter=200)
+            model = _fit_logit(y, x_mat, maxiter=200)
             return {
                 **base,
                 "factor_p": model.pvalues.get(factor, np.nan),
                 "moderator_p": model.pvalues.get(moderator, np.nan),
                 "interaction_p": model.pvalues.get("interact", np.nan),
-                "interaction_OR": np.exp(model.params.get("interact", np.nan)),
+                "interaction_OR": _finite_exp(model.params.get("interact", np.nan)),
             }
         except Exception:
             return {

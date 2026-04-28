@@ -79,7 +79,7 @@ N := \033[0m
 	pipeline dictionary extract-datasets bundle pdf-extract \
 	chat-deps chat-cli-deps chat-cli chat build-variables \
 	snapshot snapshot-study restore-study list-snapshots \
-	test test-all lint typecheck security ci verify \
+	test test-all lint typecheck security ci verify release-check \
 	docs doc-freshness docs-quality docs-linkcheck docs-ci release-notes \
 	clean nuke
 
@@ -130,6 +130,7 @@ help:
 	@printf "  $(C)make security$(N)         Run dependency vulnerability audit\n"
 	@printf "  $(C)make ci$(N)               lint → typecheck → test\n"
 	@printf "  $(C)make verify$(N)           Local readiness checks\n"
+	@printf "  $(C)make release-check$(N)    verify → typecheck → test-all → docs-ci → security\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Docs$(N)\n"
 	@printf "  $(C)make docs$(N)             Build Sphinx HTML docs\n"
@@ -313,6 +314,9 @@ verify:
 		test -f "$$f" && printf "  $(G)✓$(N) %s\n" "$$f" || printf "  $(R)✗$(N) %s\n" "$$f"; \
 	done
 	@printf "$(G)✓ Local verification complete$(N)\n"
+
+release-check: verify typecheck test-all docs-ci security
+	@printf "$(G)✓ Release readiness checks passed$(N)\n"
 
 # ═══════════════════════════════════════════════════════════════════════
 # DOCS
