@@ -1033,7 +1033,10 @@ For detailed documentation, see the Sphinx docs or README.md
         )
         _install_log_redactor_best_effort()
         log.info("Launching Streamlit web UI…")
-        subprocess.run(_streamlit_launch_command(), check=True)  # noqa: S603
+        try:
+            subprocess.run(_streamlit_launch_command(), check=True)  # noqa: S603
+        except KeyboardInterrupt:
+            log.info("Streamlit web UI stopped by operator.")
         return
 
     if getattr(args, "chat", False):
