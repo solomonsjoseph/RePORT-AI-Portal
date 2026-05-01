@@ -87,7 +87,9 @@ _INTERNAL_COLUMNS = frozenset(
     }
 )
 
-_DATE_VALUE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(?:[T\s]\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:?\d{2})?)?$")
+_DATE_VALUE_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}(?:[T\s]\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:?\d{2})?)?$"
+)
 
 _FORM_TOKEN_EXPANSIONS: dict[str, str] = {
     "ic": "index case",
@@ -309,7 +311,9 @@ def _read_jsonl(path: Path, *, max_records: int = 0) -> list[dict[str, Any]]:
     return records
 
 
-def _surface_safe_records(rows: list[Mapping[str, Any]]) -> tuple[list[Mapping[str, Any]], list[str]]:
+def _surface_safe_records(
+    rows: list[Mapping[str, Any]],
+) -> tuple[list[Mapping[str, Any]], list[str]]:
     """Return row samples safe for LLM/tool transport.
 
     The trio bundle stores SANT-shifted clinical dates, but the generic PHI
@@ -1472,7 +1476,12 @@ def _score_variable(var: dict[str, Any], query_terms: list[str], query_phrase: s
         score += 12
     if query_phrase and score == 0:
         fuzzy_text = " ".join([name_n, desc_n, form_n])
-        if SequenceMatcher(None, query_phrase, fuzzy_text[: max(len(query_phrase) * 3, 40)]).ratio() >= 0.55:
+        if (
+            SequenceMatcher(
+                None, query_phrase, fuzzy_text[: max(len(query_phrase) * 3, 40)]
+            ).ratio()
+            >= 0.55
+        ):
             score += 6
     return score
 

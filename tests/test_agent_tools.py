@@ -116,9 +116,7 @@ class TestGetFormVariables:
             json.dumps({"IS_ELIGIBLE": "Yes", "IS_AGE": 43}) + "\n"
         )
 
-        payload = json.loads(
-            get_form_variables.invoke({"form_name": "1A Index Case Screening"})
-        )
+        payload = json.loads(get_form_variables.invoke({"form_name": "1A Index Case Screening"}))
 
         names = {item["name"] for item in payload["variables"]}
         assert "IS_ELIGIBLE" in names
@@ -126,7 +124,9 @@ class TestGetFormVariables:
 
 
 class TestQueryDataset:
-    def test_row_sample_redacts_dates_instead_of_blocking_tool(self, monkeypatch_config: Path) -> None:
+    def test_row_sample_redacts_dates_instead_of_blocking_tool(
+        self, monkeypatch_config: Path
+    ) -> None:
         import config
         from scripts.ai_assistant.agent_tools import query_dataset
 
