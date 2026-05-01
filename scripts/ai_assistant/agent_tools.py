@@ -37,7 +37,8 @@ from __future__ import annotations
 import json
 import logging
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
@@ -85,6 +86,165 @@ _INTERNAL_COLUMNS = frozenset(
         "_ingestion_ts",
     }
 )
+
+_DATE_VALUE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(?:[T\s]\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:?\d{2})?)?$")
+
+_FORM_TOKEN_EXPANSIONS: dict[str, str] = {
+    "ic": "index case",
+    "hc": "household contact",
+    "hhc": "household contact",
+    "cxr": "chest x ray",
+    "elig": "eligibility",
+    "tx": "treatment",
+    "fu": "follow up",
+    "fua": "follow up a",
+    "fub": "follow up b",
+    "foa": "final outcome a",
+    "fob": "final outcome b",
+    "fsa": "final status a",
+    "fsb": "final status b",
+}
+
+
+def _normalise_search_text(value: str) -> str:
+    """Return a lowercase, token-spaced string for stable local matching."""
+    spaced = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", value)
+    spaced = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", " ", spaced)
+    return re.sub(r"[^a-z0-9]+", " ", spaced.lower()).strip()
+
+
+def _expanded_form_text(value: str) -> str:
+    """Expand study abbreviations in dataset/form names for concept matching."""
+    base = _normalise_search_text(value)
+    expansions = [_FORM_TOKEN_EXPANSIONS[t] for t in base.split() if t in _FORM_TOKEN_EXPANSIONS]
+    return " ".join([base, *expansions]).strip()
+
+
+def _query_terms(value: str, *, stop: set[str]) -> tuple[list[str], str]:
+    words = [w for w in value.split() if w.lower() not in stop] or value.split()
+    terms: list[str] = []
+    for word in words:
+        term = _normalise_search_text(word)
+        if term.endswith("s") and len(term) > 3:
+            term = term[:-1]
+        if term:
+            terms.append(term)
+    return terms, " ".join(terms).strip()
+
+
+def _term_variants(term: str) -> set[str]:
+    variants = {term}
+    if term.startswith("eligib"):
+        variants.add("elig")
+    if term in {"tuberculosis", "tb"}:
+        variants.update({"tb", "mtb"})
+    if term == "household":
+        variants.update({"hc", "hhc", "hh"})
+    if term in {"hc", "hhc", "hh"}:
+        variants.update({"household", "contact"})
+    if term == "contact":
+        variants.update({"cont", "contact"})
+    if term in {"chest", "xray", "ray"}:
+        variants.add("cxr")
+    if term in {"cavity", "cavitation"}:
+        variants.add("cavit")
+    if term == "treatment":
+        variants.add("tx")
+    if term == "follow":
+        variants.add("fu")
+    return variants
+
+
+def _text_has_term(text: str, term: str) -> bool:
+    tokens = set(text.split())
+    return any(v in text or v in tokens for v in _term_variants(term))
+
+
+def _dataset_label(stem: str) -> str:
+    return _expanded_form_text(stem).title()
+
+
+def _load_dataset_column_variables() -> list[dict[str, Any]]:
+    """Expose published dataset columns as retrieval candidates.
+
+    ``variables.json`` can be sparse when PDF metadata is unavailable. The
+    agent still needs to discover columns that are demonstrably present in the
+    published trio bundle, so we build a metadata-only reference from JSONL
+    headers without surfacing row values.
+    """
+    datasets_dir = config.TRIO_DATASETS_DIR
+    cache_dir = str(datasets_dir.resolve())
+    hit = tool_cache.get("_dataset_column_variables", datasets_dir=cache_dir)
+    if hit is not None:
+        try:
+            loaded = json.loads(hit)
+            if isinstance(loaded, list):
+                return loaded  # type: ignore[return-value]
+        except json.JSONDecodeError:
+            pass
+
+    assert_trio_bundle_zone(datasets_dir)
+    if not datasets_dir.is_dir():
+        return []
+
+    out: list[dict[str, Any]] = []
+    for path in sorted(datasets_dir.glob("*.jsonl")):
+        try:
+            validated = validate_agent_read(path)
+            columns: set[str] = set()
+            record_count = 0
+            with open(validated, encoding="utf-8") as fh:
+                for line in fh:
+                    if not line.strip():
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if isinstance(rec, dict):
+                        record_count += 1
+                        columns.update(str(k) for k in rec if k not in _INTERNAL_COLUMNS)
+        except OSError:
+            logger.warning("Failed to inspect dataset schema: %s", path.name)
+            continue
+
+        form_name = _dataset_label(path.stem)
+        out.extend(
+            [
+                {
+                    "variable_name": column,
+                    "form_id": "",
+                    "form_name": form_name,
+                    "dataset": path.stem,
+                    "description": f"Dataset column {column} in {form_name}",
+                    "data_type": "unknown",
+                    "coded_options": "",
+                    "is_phi": False,
+                    "phi_type": "",
+                    "source": "dataset_schema",
+                    "record_count": record_count,
+                }
+                for column in sorted(columns)
+            ]
+        )
+
+    tool_cache.put(
+        "_dataset_column_variables",
+        json.dumps(out, ensure_ascii=False),
+        datasets_dir=cache_dir,
+    )
+    return out
+
+
+def _combined_variable_reference() -> list[dict[str, Any]]:
+    variables = _load_variables_json()
+    seen = {str(v.get("variable_name") or "").upper() for v in variables}
+    dataset_only = [
+        v
+        for v in _load_dataset_column_variables()
+        if str(v.get("variable_name") or "").upper() not in seen
+    ]
+    return [*variables, *dataset_only]
 
 
 # Conservative default quasi-identifier columns for Indo-VAP. The k-anon
@@ -147,6 +307,28 @@ def _read_jsonl(path: Path, *, max_records: int = 0) -> list[dict[str, Any]]:
             if max_records and len(records) >= max_records:
                 break
     return records
+
+
+def _surface_safe_records(rows: list[Mapping[str, Any]]) -> tuple[list[Mapping[str, Any]], list[str]]:
+    """Return row samples safe for LLM/tool transport.
+
+    The trio bundle stores SANT-shifted clinical dates, but the generic PHI
+    return gate correctly treats exact ISO date strings as blocking patterns.
+    Row samples are only structural previews, so redact date-shaped values
+    instead of letting one date suppress the whole tool response.
+    """
+    redacted_columns: set[str] = set()
+    safe_rows: list[Mapping[str, Any]] = []
+    for row in rows:
+        safe: dict[str, Any] = {}
+        for key, value in row.items():
+            if isinstance(value, str) and _DATE_VALUE_RE.match(value.strip()):
+                safe[key] = "<DATE_SHIFTED>"
+                redacted_columns.add(str(key))
+            else:
+                safe[key] = value
+        safe_rows.append(safe)
+    return safe_rows, sorted(redacted_columns)
 
 
 # ============================================================================
@@ -249,42 +431,28 @@ def search_variables(query: str) -> str:
     if hit is not None:
         return hit
 
-    variables = _load_variables_json()
+    variables = _combined_variable_reference()
     if not variables:
         return "No variables reference found. Run --build-variables first."
-
-    def _normalise_terms(values: Iterable[str]) -> list[str]:
-        terms: list[str] = []
-        for value in values:
-            term = re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
-            if not term:
-                continue
-            if term.endswith("s") and len(term) > 3:
-                term = term[:-1]
-            terms.append(term)
-        return terms
 
     # Weighted scoring: prefer exact phrase hits in variable names/descriptions
     # and keep the payload compact for smaller local models.
     stop = {"the", "a", "an", "of", "for", "and", "in", "is", "to", "or", "overall"}
-    words = [w for w in query.split() if w.lower() not in stop]
-    if not words:
-        words = query.split()
-    query_terms = _normalise_terms(words)
-    query_phrase = " ".join(query_terms).strip()
-    word_patterns = [re.compile(re.escape(w), re.IGNORECASE) for w in query_terms]
-
+    query_terms, query_phrase = _query_terms(query, stop=stop)
     scored: list[tuple[int, dict[str, str]]] = []
     for var in variables:
         name = var.get("variable_name", "") or ""
         desc = var.get("description", "") or ""
         form = var.get("form_name", "") or ""
+        dataset = var.get("dataset", "") or ""
         section = var.get("section", "") or ""
-        name_terms = _normalise_terms([name.replace("_", " ")])
-        desc_terms = _normalise_terms([desc])
-        form_terms = _normalise_terms([form, section])
+        name_terms = [_normalise_search_text(name.replace("_", " "))]
+        desc_terms = [_normalise_search_text(desc)]
+        form_terms = [_expanded_form_text(" ".join([form, dataset, section]))]
         score = 0
         if query_phrase:
+            if query_phrase == " ".join(name_terms):
+                score += 50
             if query_phrase in " ".join(name_terms):
                 score += 18
             if query_phrase in " ".join(desc_terms):
@@ -292,18 +460,18 @@ def search_variables(query: str) -> str:
             if query_phrase in " ".join(form_terms):
                 score += 8
 
-        for pattern in word_patterns:
-            if pattern.search(name):
+        for term in query_terms:
+            if _text_has_term(_normalise_search_text(name), term):
                 score += 8
-            if pattern.search(desc):
+            if _text_has_term(" ".join(desc_terms), term):
                 score += 10
-            if pattern.search(form) or pattern.search(section):
+            if _text_has_term(" ".join(form_terms), term):
                 score += 3
 
         combined_terms = " ".join(name_terms + desc_terms)
-        if query_terms and all(term in combined_terms for term in query_terms):
+        if query_terms and all(_text_has_term(combined_terms, term) for term in query_terms):
             score += 16
-        if query_terms and all(term in " ".join(desc_terms) for term in query_terms):
+        if query_terms and all(_text_has_term(" ".join(desc_terms), term) for term in query_terms):
             score += 12
         if score > 0:
             scored.append(
@@ -312,6 +480,8 @@ def search_variables(query: str) -> str:
                     {
                         "variable_name": name,
                         "form_name": var.get("form_name") or "",
+                        "dataset": var.get("dataset") or "",
+                        "source": var.get("source") or "variables_json",
                         "section": var.get("section") or "",
                         "description": desc,
                         "data_type": var.get("data_type", "unknown"),
@@ -353,7 +523,7 @@ def get_variable_details(variable_name: str) -> str:
     if hit is not None:
         return hit
 
-    variables = _load_variables_json()
+    variables = _combined_variable_reference()
     target = variable_name.upper()
     for var in variables:
         if var.get("variable_name", "").upper() == target:
@@ -379,7 +549,7 @@ def list_forms() -> str:
     if hit is not None:
         return hit
 
-    variables = _load_variables_json()
+    variables = _combined_variable_reference()
     if not variables:
         return "No variables reference found. Run --build-variables first."
 
@@ -420,16 +590,13 @@ def get_form_variables(form_name: str) -> str:
     if hit is not None:
         return hit
 
-    variables = _load_variables_json()
+    variables = _combined_variable_reference()
     if not variables:
         return "No variables reference found. Run --build-variables first."
 
     # Word-split matching: rank forms by how many query words they contain.
     stop = {"form", "the", "a", "an", "of", "for", "and", "in", "-", "--"}
-    words = [w for w in form_name.split() if w.lower() not in stop and re.search(r"\w", w)]
-    if not words:
-        words = form_name.split()
-    word_patterns = [re.compile(re.escape(w), re.IGNORECASE) for w in words]
+    query_terms, _ = _query_terms(form_name, stop=stop)
 
     # Group variables by form_name and score each form
     forms: dict[str, list[dict[str, Any]]] = {}
@@ -440,7 +607,11 @@ def get_form_variables(form_name: str) -> str:
     best_form: str | None = None
     best_score = 0
     for fname in forms:
-        score = sum(1 for p in word_patterns if p.search(fname))
+        searchable = _expanded_form_text(fname)
+        dataset_names = {str(v.get("dataset") or "") for v in forms[fname] if v.get("dataset")}
+        if dataset_names:
+            searchable = " ".join([searchable, *(_expanded_form_text(n) for n in dataset_names)])
+        score = sum(1 for term in query_terms if _text_has_term(searchable, term))
         if score > best_score:
             best_score = score
             best_form = fname
@@ -586,6 +757,8 @@ def query_dataset(
         else:
             safe_records = list(gated)
 
+    safe_records, date_values_redacted = _surface_safe_records(safe_records)
+
     return json.dumps(
         {
             "dataset": matched_file.stem,
@@ -594,6 +767,7 @@ def query_dataset(
             "returned": len(safe_records),
             "available_columns": all_columns,
             "records": safe_records,
+            "date_values_redacted": date_values_redacted,
             "kanon_violation": kanon_violation,
         },
         indent=2,
@@ -1103,8 +1277,12 @@ def run_study_analysis(
 ) -> str:
     """Run a complete statistical analysis on study data.
 
-    This tool executes pre-built, deterministic epidemiological analyses.
-    No arbitrary code is executed — all analyses are pre-validated functions.
+    This tool executes pre-built, deterministic epidemiological analyses for
+    outcome relationships, predictor effects, odds ratios, and regression-style
+    questions. No arbitrary code is executed — all analyses are pre-validated
+    functions. Metadata questions about which variables, fields, forms, or
+    coded values exist are usually better served by the variable/form tools,
+    but the agent remains free to choose the tool path.
 
     Args:
         cohort: Which cohort to analyze — "cohort_a" (index cases) or "cohort_b" (household contacts).
@@ -1261,20 +1439,17 @@ def _score_variable(var: dict[str, Any], query_terms: list[str], query_phrase: s
     name = var.get("variable_name") or ""
     desc = var.get("description") or ""
     form = var.get("form_name") or ""
+    dataset = var.get("dataset") or ""
     section = var.get("section") or ""
 
-    def _norm(value: str) -> str:
-        term = re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
-        if term.endswith("s") and len(term) > 3:
-            term = term[:-1]
-        return term
-
-    name_n = _norm(name.replace("_", " "))
-    desc_n = _norm(desc)
-    form_n = _norm(form + " " + section)
+    name_n = _normalise_search_text(name.replace("_", " "))
+    desc_n = _normalise_search_text(desc)
+    form_n = _expanded_form_text(" ".join([form, dataset, section]))
 
     score = 0
     if query_phrase:
+        if query_phrase == name_n:
+            score += 50
         if query_phrase in name_n:
             score += 18
         if query_phrase in desc_n:
@@ -1283,19 +1458,22 @@ def _score_variable(var: dict[str, Any], query_terms: list[str], query_phrase: s
             score += 8
 
     for term in query_terms:
-        pat = re.compile(re.escape(term), re.IGNORECASE)
-        if pat.search(name):
+        if _text_has_term(_normalise_search_text(name), term):
             score += 8
-        if pat.search(desc):
+        if _text_has_term(desc_n, term):
             score += 10
-        if pat.search(form) or pat.search(section):
+        if _text_has_term(form_n, term):
             score += 3
 
     combined = name_n + " " + desc_n
-    if query_terms and all(term in combined for term in query_terms):
+    if query_terms and all(_text_has_term(combined, term) for term in query_terms):
         score += 16
-    if query_terms and all(term in desc_n for term in query_terms):
+    if query_terms and all(_text_has_term(desc_n, term) for term in query_terms):
         score += 12
+    if query_phrase and score == 0:
+        fuzzy_text = " ".join([name_n, desc_n, form_n])
+        if SequenceMatcher(None, query_phrase, fuzzy_text[: max(len(query_phrase) * 3, 40)]).ratio() >= 0.55:
+            score += 6
     return score
 
 
@@ -1338,21 +1516,12 @@ def find_variable_candidates(description: str, k: int = 3) -> str:
     if hit is not None:
         return hit
 
-    variables = _load_variables_json()
+    variables = _combined_variable_reference()
     if not variables:
         return "No variables reference found. Run --build-variables first."
 
     stop = {"the", "a", "an", "of", "for", "and", "in", "is", "to", "or", "on", "overall"}
-    words = [w for w in description.split() if w.lower() not in stop] or description.split()
-    query_terms: list[str] = []
-    for w in words:
-        t = re.sub(r"[^a-z0-9]+", " ", w.lower()).strip()
-        if not t:
-            continue
-        if t.endswith("s") and len(t) > 3:
-            t = t[:-1]
-        query_terms.append(t)
-    query_phrase = " ".join(query_terms).strip()
+    query_terms, query_phrase = _query_terms(description, stop=stop)
 
     scored: list[tuple[int, dict[str, Any]]] = []
     for var in variables:
@@ -1388,6 +1557,8 @@ def find_variable_candidates(description: str, k: int = 3) -> str:
                 "variable_name": var.get("variable_name") or "",
                 "form_id": var.get("form_id") or "",
                 "form_name": var.get("form_name") or "",
+                "dataset": var.get("dataset") or "",
+                "source": var.get("source") or "variables_json",
                 "description": var.get("description") or "",
                 "data_type": var.get("data_type") or "unknown",
                 "coded_options": coded,
@@ -1484,15 +1655,15 @@ def _pdf_context_snippets() -> list[dict[str, str]]:
 
 def _score_text(text: str, query_terms: list[str], query_phrase: str) -> int:
     """Light keyword + phrase scoring for free-text snippets."""
-    lower = text.lower()
+    lower = _normalise_search_text(text)
     score = 0
     if query_phrase and query_phrase in lower:
         score += 25
     for term in query_terms:
-        if term in lower:
-            # multiple mentions reward modestly
-            score += 4 + min(lower.count(term) - 1, 6)
-    if query_terms and all(term in lower for term in query_terms):
+        if _text_has_term(lower, term):
+            mentions = max(lower.count(v) for v in _term_variants(term))
+            score += 4 + min(max(mentions - 1, 0), 6)
+    if query_terms and all(_text_has_term(lower, term) for term in query_terms):
         score += 10
     return score
 
@@ -1563,17 +1734,19 @@ def search_pdf_context(query: str, k: int = 5) -> str:
         "does",
         "do",
     }
-    words = [w for w in query.split() if w.lower() not in stop] or query.split()
-    query_terms: list[str] = []
-    for w in words:
-        t = re.sub(r"[^a-z0-9]+", " ", w.lower()).strip()
-        if t:
-            query_terms.append(t)
-    query_phrase = " ".join(query_terms).strip()
+    query_terms, query_phrase = _query_terms(query, stop=stop)
 
     scored: list[tuple[int, dict[str, str]]] = []
     for snip in snippets:
-        s = _score_text(snip["text"], query_terms, query_phrase)
+        searchable = " ".join(
+            [
+                snip["text"],
+                snip["form_name"],
+                snip["source_pdf"],
+                snip["variable_name"],
+            ]
+        )
+        s = _score_text(searchable, query_terms, query_phrase)
         if s > 0:
             scored.append((s, snip))
 

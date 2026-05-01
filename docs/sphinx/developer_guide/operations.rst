@@ -190,7 +190,14 @@ AI Assistant
 The AI Assistant research assistant uses LangGraph with a ReAct agent
 pattern. It reads from the trio bundle and provides study-specific
 answers grounded in the data dictionary, PDF extractions, and dataset
-metadata.
+metadata. Retrieval is deliberately local and tool-based: variable search
+combines ``variables.json`` with published dataset schemas; CRF/PDF context
+search uses normalized keyword, abbreviation, and source-metadata scoring;
+record-level questions go through deterministic dataset or analysis tools.
+Do not document or promise 100% answer accuracy. Improve accuracy by
+adding reviewed source artifacts, strengthening retrieval tests, and
+measuring representative question/answer sets for correctness, grounding,
+and retrieval relevance.
 
 .. code-block:: bash
 
