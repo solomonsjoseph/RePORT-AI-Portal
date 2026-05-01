@@ -37,6 +37,7 @@ def init_state() -> None:
         "setup_complete": False,
         "pipeline_ready": False,
         "pipeline_log": "",
+        "pipeline_log_open": False,
         "wizard_step": 1,
         "llm_provider_label": _default_provider_label(),
         "llm_model": config.LLM_MODEL,

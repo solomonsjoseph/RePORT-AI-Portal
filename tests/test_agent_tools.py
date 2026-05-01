@@ -76,6 +76,74 @@ class TestSearchVariables:
         result = search_variables.invoke({"query": "age"})
         assert isinstance(result, str)
 
+    def test_falls_back_to_published_dataset_columns(self, monkeypatch_config: Path) -> None:
+        import config
+        from scripts.ai_assistant.agent_tools import search_variables
+        from scripts.ai_assistant.tool_cache import tool_cache
+
+        tool_cache.clear()
+        (config.TRIO_BUNDLE_DIR / "variables.json").write_text("[]")
+        (config.TRIO_DATASETS_DIR / "1A_ICScreening.jsonl").write_text(
+            json.dumps({"IS_ELIGIBLE": "Yes", "IS_VISDAT": "2014-07-02"}) + "\n"
+        )
+
+        payload = json.loads(search_variables.invoke({"query": "IS_ELIGIBLE"}))
+
+        assert payload[0]["variable_name"] == "IS_ELIGIBLE"
+        assert payload[0]["dataset"] == "1A_ICScreening"
+        assert payload[0]["source"] == "dataset_schema"
+
+
+class TestGetFormVariables:
+    def test_dataset_form_match_beats_sparse_f1a_metadata(self, monkeypatch_config: Path) -> None:
+        import config
+        from scripts.ai_assistant.agent_tools import get_form_variables
+        from scripts.ai_assistant.tool_cache import tool_cache
+
+        tool_cache.clear()
+        (config.TRIO_BUNDLE_DIR / "variables.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "variable_name": "SUBJID",
+                        "form_name": "F1A",
+                        "description": "Participant ID",
+                    }
+                ]
+            )
+        )
+        (config.TRIO_DATASETS_DIR / "1A_ICScreening.jsonl").write_text(
+            json.dumps({"IS_ELIGIBLE": "Yes", "IS_AGE": 43}) + "\n"
+        )
+
+        payload = json.loads(get_form_variables.invoke({"form_name": "1A Index Case Screening"}))
+
+        names = {item["name"] for item in payload["variables"]}
+        assert "IS_ELIGIBLE" in names
+        assert payload["form_name"] != "F1A"
+
+
+class TestQueryDataset:
+    def test_row_sample_redacts_dates_instead_of_blocking_tool(
+        self, monkeypatch_config: Path
+    ) -> None:
+        import config
+        from scripts.ai_assistant.agent_tools import query_dataset
+
+        rows = [
+            {"VISDAT": "2014-07-02", "RESULT": "Yes"},
+            {"VISDAT": "2014-07-03", "RESULT": "No"},
+        ]
+        (config.TRIO_DATASETS_DIR / "Visits.jsonl").write_text(
+            "\n".join(json.dumps(row) for row in rows)
+        )
+
+        raw = query_dataset.invoke({"dataset_name": "Visits", "limit": 2})
+        payload = json.loads(raw)
+
+        assert payload["records"][0]["VISDAT"] == "<DATE_SHIFTED>"
+        assert payload["date_values_redacted"] == ["VISDAT"]
+
 
 class TestFindVariableCandidates:
     """Fuzzy top-k disambiguator — must always return <= k ranked candidates."""
@@ -231,6 +299,18 @@ class TestSearchPdfContext:
         top = json.loads(raw)["snippets"][0]
         assert "Household Contact" in top["form_name"]
         assert top["source_pdf"] == "Form 1B.pdf"
+
+    def test_uses_abbreviation_variants(self, monkeypatch_config: Path) -> None:
+        import config
+        from scripts.ai_assistant.agent_tools import search_pdf_context
+        from scripts.ai_assistant.tool_cache import tool_cache
+
+        tool_cache.clear()
+        self._write_pdf_fixture(config.PDF_EXTRACTIONS_DIR)
+
+        raw = search_pdf_context.invoke({"query": "HHC same home"})
+        top = json.loads(raw)["snippets"][0]
+        assert "Household Contact" in top["form_name"]
 
     def test_low_confidence_flag(self, monkeypatch_config: Path) -> None:
         import config

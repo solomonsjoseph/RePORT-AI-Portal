@@ -234,6 +234,23 @@ def use_existing_study() -> dict[str, Any]:
     return {"success": True, "output": f"Restored reviewed snapshot into {path}"}
 
 
+def _render_pipeline_log() -> None:
+    """Render the setup log as a user-controlled, scrollable panel."""
+    if not st.session_state.pipeline_log:
+        return
+
+    open_key = "pipeline_log_open"
+    label = "Hide processing log" if st.session_state[open_key] else "Show processing log"
+    icon = ":material/visibility_off:" if st.session_state[open_key] else ":material/receipt_long:"
+    if st.button(label, key="rpln_pipeline_log_toggle", icon=icon, width="stretch"):
+        st.session_state[open_key] = not st.session_state[open_key]
+        st.rerun()
+
+    if st.session_state[open_key]:
+        with st.container(height=280, border=True):
+            st.code(st.session_state.pipeline_log, language="")
+
+
 # ---------------------------------------------------------------------------
 # Wizard header
 # ---------------------------------------------------------------------------
@@ -489,9 +506,11 @@ def render_setup_page() -> None:
                         st.session_state.pipeline_log = result["output"]
                         if result["success"]:
                             st.session_state.pipeline_ready = True
+                            st.session_state.pipeline_log_open = False
                             st.toast("Reviewed snapshot restored.", icon="✅")
                             st.rerun()
                         else:
+                            st.session_state.pipeline_log_open = True
                             st.error("Could not restore reviewed snapshot.")
                 with col_load:
                     load_label = "Reload Study" if pipeline_ready or output_exists else "Load Study"
@@ -505,16 +524,14 @@ def render_setup_page() -> None:
                         st.session_state.pipeline_log = result["output"]
                         if result["success"]:
                             st.session_state.pipeline_ready = True
+                            st.session_state.pipeline_log_open = False
                             st.toast("Study data loaded successfully.", icon="✅")
                             st.rerun()
                         else:
+                            st.session_state.pipeline_log_open = True
                             st.error("Study load failed. Review the log below.")
 
-                if st.session_state.pipeline_log:
-                    with st.expander(
-                        "Processing log", expanded=not st.session_state.pipeline_ready
-                    ):
-                        st.code(st.session_state.pipeline_log, language="")
+                _render_pipeline_log()
 
                 col_back, col_next = st.columns(2)
                 with col_back:

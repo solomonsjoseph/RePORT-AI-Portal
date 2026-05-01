@@ -109,6 +109,7 @@ linkcheck_ignore: list[str] = [
     r"^https://www\.hhs\.gov/ohrp/.*",
     r"^https://abdm\.gov\.in/.*",
     r"^https://csrc\.nist\.gov/.*",
+    r"^https://nvlpubs\.nist\.gov/.*",
     r"^https://uidai\.gov\.in/.*",
     r"^https://main\.icmr\.nic\.in/.*",
     r"^https://www\.icmr\.gov\.in/.*",

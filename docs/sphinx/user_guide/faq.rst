@@ -97,6 +97,22 @@ loading pipeline.
 For the full technical boundary, see
 :doc:`../developer_guide/phi_architecture`.
 
+Does retrieval make answers more accurate?
+------------------------------------------
+
+Yes, but it is not a 100% guarantee. The assistant does not answer from
+model memory alone. It searches the published bundle with structured tools
+for variables, forms, datasets, CRF/PDF text, and deterministic analysis
+outputs, then shows source/tool evidence with the response. That grounding
+reduces hallucination risk and makes answers easier to verify.
+
+Accuracy still depends on the reviewed bundle, data dictionary quality, PDF
+extraction quality, and whether the user question maps cleanly to available
+study artifacts. The realistic target is high, measured accuracy on a
+maintained evaluation set, not a universal 100%. To move closer, add reviewed
+snapshots, improve variable descriptions, include missing protocol/CRF text,
+and regression-test representative questions after each retrieval change.
+
 What if my PDFs may contain PHI?
 --------------------------------
 

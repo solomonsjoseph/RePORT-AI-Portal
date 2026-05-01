@@ -62,7 +62,12 @@ Normal users run the pipeline from the web UI:
 
    make chat
 
-Then click **Load Study**.
+Then click **Load Study**. After a load or restore, click **Show
+processing log** to inspect the captured pipeline output. The log opens in
+a fixed-height scroll panel, and the same button changes to **Hide
+processing log** so the wizard can be collapsed without refreshing the
+page. Failed runs open the log automatically. Successful runs keep it
+closed until you ask for it.
 
 The command-line ``make pipeline`` path is for developers and deployment
 operators who have already provisioned the local PHI key.
