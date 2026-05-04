@@ -21,6 +21,10 @@ from scripts.source_truth.builder import (
     build_records,
     build_source_truth_artifact,
 )
+from scripts.source_truth.catalog import (
+    SourceTruthCatalogError,
+    build_catalog_artifact,
+)
 from scripts.source_truth.completeness import (
     FOOTER_EXCLUSION_BOUNDARY_NOTE,
     report_completeness,
@@ -44,7 +48,9 @@ __all__ = [
     "FOOTER_EXCLUSION_BOUNDARY_NOTE",
     "DatasetSchemaError",
     "SourceTruthBuildError",
+    "SourceTruthCatalogError",
     "SourceTruthValidationError",
+    "build_catalog_artifact",
     "build_dataset_schema",
     "build_records",
     "build_source_truth_artifact",
