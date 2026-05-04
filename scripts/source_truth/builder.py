@@ -135,16 +135,17 @@ def _reject_forbidden_input_keys(name: str, value: Mapping[str, Any]) -> None:
         )
 
 
-def _derivation_targets_for_action(action: str, reason: str | None) -> list[str]:
+def _derivation_targets_for_action(
+    action: str, reason: str | None, *, dataset_present: bool
+) -> list[str]:
     """Map a field-policy action to its downstream derivation targets."""
     if action == "keep":
-        return [DERIVATION_CATALOG, DERIVATION_DATASET_SCHEMA]
+        return [DERIVATION_CATALOG, *([DERIVATION_DATASET_SCHEMA] if dataset_present else [])]
     if action in _RETAINED_PHI_ACTIONS:
-        return [
-            DERIVATION_CATALOG,
-            DERIVATION_DATASET_SCHEMA,
-            DERIVATION_PHI_LEDGER,
-        ]
+        targets = [DERIVATION_CATALOG, DERIVATION_PHI_LEDGER]
+        if dataset_present:
+            targets.insert(1, DERIVATION_DATASET_SCHEMA)
+        return targets
     if action == "drop":
         if reason and reason in PHI_DROP_REASONS:
             return [DERIVATION_PHI_LEDGER]
@@ -273,11 +274,24 @@ def _relationships_for_field(
     return relationships
 
 
-def _build_record_for_column(
-    column: str,
+def _sensitivity_flags_for_field(column: str, field_entry: Mapping[str, Any] | None) -> list[str]:
+    if field_entry is None or "sensitivity_flags" not in field_entry:
+        return []
+    raw = field_entry["sensitivity_flags"]
+    if not isinstance(raw, list) or not all(isinstance(item, str) for item in raw):
+        raise SourceTruthBuildError(
+            f"field_policy.fields[{column!r}].sensitivity_flags must be a list of strings"
+        )
+    return list(raw)
+
+
+def _build_record_for_field(
+    variable_id: str,
     field_entry: Mapping[str, Any] | None,
     pdf_extraction: Mapping[str, Any],
     pdf_annotated_variables: frozenset[str],
+    *,
+    dataset_present: bool,
 ) -> dict[str, Any]:
     if field_entry is None:
         # Dataset column with no field-policy entry: treat as
@@ -286,6 +300,7 @@ def _build_record_for_column(
         reason: str | None = "no_field_policy_entry"
         confidence = "low"
         field_label: str | None = None
+        field_class: str | None = None
         section: str | None = None
         option_set_name: str | None = None
         pdf_status = "not_annotated"
@@ -297,21 +312,33 @@ def _build_record_for_column(
         field_label = field_entry.get("label")
         section_value = field_entry.get("section")
         section = section_value if isinstance(section_value, str) else None
+        field_class_value = field_entry.get("field_class")
+        field_class = field_class_value if isinstance(field_class_value, str) else None
         option_set_value = field_entry.get("option_set")
         option_set_name = option_set_value if isinstance(option_set_value, str) else None
         pdf_status = str(field_entry.get("pdf_annotation_status", "not_annotated"))
 
-    pdf_present = pdf_status == "direct" or column in pdf_annotated_variables
-    derivation_targets = _derivation_targets_for_action(action, reason)
+    pdf_present = pdf_status == "direct" or variable_id in pdf_annotated_variables
+    derivation_targets = _derivation_targets_for_action(
+        action, reason, dataset_present=dataset_present
+    )
     review_state = _review_state_for_action(action)
-    source_kind = _source_kind(dataset_present=True, pdf_present=pdf_present, action=action)
+    source_kind = _source_kind(
+        dataset_present=dataset_present,
+        pdf_present=pdf_present,
+        action=action,
+    )
 
     pdf_options = _option_set_values(pdf_extraction, option_set_name)
-    annotation_pages = _annotation_pages_for_column(pdf_extraction, column)
-    relationships = _relationships_for_field(column, field_entry)
+    annotation_pages = _annotation_pages_for_column(pdf_extraction, variable_id)
+    relationships = _relationships_for_field(variable_id, field_entry)
+    sensitivity_flags = _sensitivity_flags_for_field(variable_id, field_entry)
+    analysis_queryable = dataset_present and DERIVATION_DATASET_SCHEMA in derivation_targets
 
     presence: dict[str, Any] = {
-        "dataset": {"present": True, "column": column},
+        "dataset": (
+            {"present": True, "column": variable_id} if dataset_present else {"present": False}
+        ),
         "pdf": {
             "present": pdf_present,
             "annotation_status": pdf_status,
@@ -321,29 +348,32 @@ def _build_record_for_column(
     }
 
     record: dict[str, Any] = {
-        "variable_id": column,
+        "variable_id": variable_id,
         "source_kind": source_kind,
         "review_state": review_state,
         "presence": presence,
         "exact_source_wording": {
-            "dataset_column": column,
+            "dataset_column": variable_id if dataset_present else None,
             "pdf_question": None,
             "pdf_options": pdf_options,
             "dictionary_label": None,
         },
         "normalized": {
-            "label": _normalize_label(column, field_label),
+            "label": _normalize_label(variable_id, field_label),
             "confidence": confidence,
             "normalization_basis": _normalization_basis(field_label),
             "handling_action": action,
             **({"handling_reason": reason} if reason else {}),
+            **({"field_class": field_class} if field_class else {}),
+            **({"sensitivity_flags": sensitivity_flags} if sensitivity_flags else {}),
+            "analysis_queryable": analysis_queryable,
             **({"section": section} if section else {}),
             **({"option_set": option_set_name} if option_set_name else {}),
             **({"source_defined_options": pdf_options} if pdf_options else {}),
             **({"relationships": relationships} if relationships else {}),
         },
         "source_references": {
-            "dataset": {"column": column},
+            "dataset": ({"column": variable_id} if dataset_present else {"present": False}),
             "pdf": {
                 "annotation_status": pdf_status,
                 "annotation_pages": annotation_pages,
@@ -415,11 +445,34 @@ def build_records(
         if entry is not None and not isinstance(entry, Mapping):
             raise SourceTruthBuildError(f"field_policy.fields[{column!r}] must be a mapping")
         records.append(
-            _build_record_for_column(
-                column=column,
+            _build_record_for_field(
+                variable_id=column,
                 field_entry=entry,
                 pdf_extraction=pdf_extraction,
                 pdf_annotated_variables=pdf_annotated_variables,
+                dataset_present=True,
+            )
+        )
+
+    for variable_id, entry in fields.items():
+        if variable_id in seen_columns:
+            continue
+        if not isinstance(variable_id, str):
+            raise SourceTruthBuildError("field_policy.fields keys must be strings")
+        if not isinstance(entry, Mapping):
+            raise SourceTruthBuildError(f"field_policy.fields[{variable_id!r}] must be a mapping")
+        if entry.get("source_kind") != "source_only" and entry.get("dataset_present") is not False:
+            raise SourceTruthBuildError(
+                f"field_policy.fields[{variable_id!r}] is absent from column_inventory; "
+                "mark it source_kind='source_only' before building source-only metadata"
+            )
+        records.append(
+            _build_record_for_field(
+                variable_id=variable_id,
+                field_entry=entry,
+                pdf_extraction=pdf_extraction,
+                pdf_annotated_variables=pdf_annotated_variables,
+                dataset_present=False,
             )
         )
     return records
