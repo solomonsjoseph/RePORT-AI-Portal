@@ -25,6 +25,12 @@ from scripts.source_truth.completeness import (
     FOOTER_EXCLUSION_BOUNDARY_NOTE,
     report_completeness,
 )
+from scripts.source_truth.dataset_schema import (
+    DatasetSchemaError,
+    build_dataset_schema,
+    get_dataset_schema_status,
+    resolve_analysis_binding,
+)
 from scripts.source_truth.record import (
     SourceTruthValidationError,
     validate_record,
@@ -36,10 +42,14 @@ __all__ = [
     "DERIVATION_DATASET_SCHEMA",
     "DERIVATION_PHI_LEDGER",
     "FOOTER_EXCLUSION_BOUNDARY_NOTE",
+    "DatasetSchemaError",
     "SourceTruthBuildError",
     "SourceTruthValidationError",
+    "build_dataset_schema",
     "build_records",
     "build_source_truth_artifact",
+    "get_dataset_schema_status",
     "report_completeness",
+    "resolve_analysis_binding",
     "validate_record",
 ]
