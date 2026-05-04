@@ -54,6 +54,11 @@ from scripts.source_truth.record import (
     SourceTruthValidationError,
     validate_record,
 )
+from scripts.source_truth.retrieval import (
+    CatalogAnswer,
+    SourceTruthRetrievalError,
+    SourceTruthRetriever,
+)
 
 __all__ = [
     "DERIVATION_CATALOG",
@@ -62,11 +67,14 @@ __all__ = [
     "DERIVATION_PHI_LEDGER",
     "FOOTER_EXCLUSION_BOUNDARY_NOTE",
     "LINEAGE_VERSION",
+    "CatalogAnswer",
     "DatasetSchemaError",
     "SourceTruthBuildError",
     "SourceTruthCatalogError",
     "SourceTruthLedgerError",
     "SourceTruthLineageError",
+    "SourceTruthRetrievalError",
+    "SourceTruthRetriever",
     "SourceTruthValidationError",
     "artifact_ref",
     "build_catalog_artifact",
