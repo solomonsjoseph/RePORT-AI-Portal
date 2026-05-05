@@ -5,6 +5,8 @@ Pins the contract: PDF-extraction LLM tier runs only for capable models.
 
 from __future__ import annotations
 
+import logging
+
 import pytest
 
 from scripts.utils.llm_capabilities import is_capable_model
@@ -26,6 +28,25 @@ def test_capable_anthropic_opus_passes() -> None:
 def test_older_anthropic_sonnet_fails() -> None:
     assert is_capable_model("anthropic", "claude-sonnet-3-5") is False
     assert is_capable_model("anthropic", "claude-3-haiku") is False
+
+
+def test_uncapable_model_debug_log_omits_raw_operator_identifiers(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    provider = "operator-provider-SENSITIVE-86"
+    model = "operator-model-SENSITIVE-86"
+
+    with caplog.at_level(logging.DEBUG, logger="scripts.utils.llm_capabilities"):
+        assert is_capable_model(provider, model) is False
+
+    messages = "\n".join(
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "scripts.utils.llm_capabilities"
+    )
+    assert "not in capable allowlist" in messages
+    assert provider not in messages
+    assert model not in messages
 
 
 def test_openai_gpt5_passes_gpt4_fails() -> None:
