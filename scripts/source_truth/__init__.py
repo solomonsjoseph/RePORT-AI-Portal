@@ -12,6 +12,13 @@ deliberately too detailed for runtime use and is later compiled into
 compact catalog cards plus lazy-loaded evidence packs.
 """
 
+from scripts.source_truth.all_form_validation import (
+    FORM_STATUS_FAILED,
+    FORM_STATUS_PASSED,
+    FORM_STATUS_WARNING,
+    discover_policy_pilot_forms,
+    validate_all_forms,
+)
 from scripts.source_truth.builder import (
     DERIVATION_CATALOG,
     DERIVATION_CLEANUP_LEDGER,
@@ -79,6 +86,9 @@ __all__ = [
     "DERIVATION_DATASET_SCHEMA",
     "DERIVATION_PHI_LEDGER",
     "FOOTER_EXCLUSION_BOUNDARY_NOTE",
+    "FORM_STATUS_FAILED",
+    "FORM_STATUS_PASSED",
+    "FORM_STATUS_WARNING",
     "LINEAGE_VERSION",
     "PDF_EVIDENCE_COMPLETE",
     "PDF_EVIDENCE_NEEDS_HUMAN_REVIEW",
@@ -105,6 +115,7 @@ __all__ = [
     "build_source_truth_artifact",
     "check_pdf_evidence_completeness",
     "derive_generation_id",
+    "discover_policy_pilot_forms",
     "extract_pdf_evidence",
     "get_dataset_schema_status",
     "report_completeness",
@@ -112,6 +123,7 @@ __all__ = [
     "run_categorical_distribution",
     "stamp_generated_artifact",
     "stamp_source_truth",
+    "validate_all_forms",
     "validate_lineage_bundle",
     "validate_record",
 ]
