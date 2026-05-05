@@ -7,6 +7,7 @@ validate_depends_on, clean_existing_jsons, and provider resolution.
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -329,6 +330,48 @@ class TestPdfExtractionModeDispatch:
         assert out.is_file()
         data = json.loads(out.read_text(encoding="utf-8"))
         assert data["variables"] == {"BBB": {"description": "beta"}}
+
+    def test_llm_mode_fallback_diagnostics_are_log_safe(
+        self,
+        tmp_path: Path,
+        monkeypatch_config: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        pdf_src = tmp_path / "annotated_pdfs"
+        pdf_src.mkdir()
+        (pdf_src / "form_sensitive.pdf").write_bytes(b"%PDF-1.4\n%EOF\n")
+
+        from scripts.extraction import pdf_pipeline as pp
+
+        raw_provider = "operator-provider-sensitive-88"
+        raw_model = "operator-model-SENSITIVE-88-" + ("X" * 220)
+        crf_text = (
+            "IS_AGE: Subject age in years at screening visit\n"
+            "IS_SEX: Subject biological sex (Male/Female)\n"
+            "IS_HEIGHT: Subject height in centimetres at screening\n"
+        )
+
+        monkeypatch.setattr(pp, "_extract_text_via_pdfplumber", lambda _p: crf_text)
+        monkeypatch.setenv("REPORTALIN_PDF_EXTRACTION_MODE", "llm")
+        monkeypatch.setenv("LLM_PROVIDER", raw_provider)
+        monkeypatch.setenv("LLM_MODEL", raw_model)
+
+        with caplog.at_level(logging.INFO):
+            result = extract_pdfs_to_jsonl(pdf_dir=pdf_src)
+
+        assert result["files_created"] == 0
+        errors = result["errors"]
+        assert len(errors) == 1
+        assert "orchestrator produced no extractable variables" in errors[0]["error"]
+        assert len(errors[0]["error"]) < 180
+
+        messages = "\n".join(record.getMessage() for record in caplog.records)
+        assert "discarding code-only candidate" in messages
+        assert "provider=present model=present" in messages
+        for raw in (raw_provider, raw_model):
+            assert raw not in messages
+            assert raw not in errors[0]["error"]
 
     def test_unset_mode_falls_back_to_legacy_path(
         self,

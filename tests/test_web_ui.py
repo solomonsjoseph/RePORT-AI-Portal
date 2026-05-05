@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import signal
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -16,6 +18,8 @@ import config
 from scripts.ai_assistant.ui.chat import _MODEL_DESCRIPTIONS, _pretty_model_label
 from scripts.ai_assistant.ui.conversations import (
     _conversation_has_artifacts,
+    _export_conversation_as_md,
+    _export_conversation_as_text,
     _list_conversations_bucketed,
 )
 from scripts.ai_assistant.ui.providers import (
@@ -348,6 +352,34 @@ def test_sanitize_file_refs_strips_paths_extensions_and_markers() -> None:
     assert "<RPLN_PLOTLY" not in cleaned
 
 
+def test_sanitize_file_refs_handles_pathological_path_like_text_quickly() -> None:
+    class SanitizeTimedOutError(Exception):
+        pass
+
+    def _timeout(_signum: int, _frame: object) -> None:
+        raise SanitizeTimedOutError
+
+    text = (
+        f"prefix {'/-' * 24} suffix "
+        "output/Indo-VAP/trio_bundle/datasets/6_HIV.jsonl "
+        "<RPLN_PLOTLY:/workspace/plot.json>"
+    )
+    old_handler = signal.signal(signal.SIGALRM, _timeout)
+    start = perf_counter()
+    try:
+        signal.setitimer(signal.ITIMER_REAL, 0.5)
+        cleaned = _sanitize_file_refs(text)
+    except SanitizeTimedOutError:
+        pytest.fail("_sanitize_file_refs timed out on path-like slash/dash input")
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, old_handler)
+
+    assert perf_counter() - start < 0.25
+    assert "6_HIV.jsonl" not in cleaned
+    assert "<RPLN_PLOTLY" not in cleaned
+
+
 def test_chat_message_renderer_has_no_artifact_download_panel() -> None:
     streaming_src = (_PROJECT_ROOT / "scripts/ai_assistant/ui/streaming.py").read_text(
         encoding="utf-8"
@@ -371,6 +403,34 @@ def test_artifact_file_download_names_are_generic(tmp_path: Path) -> None:
     assert file_name == "interactive_chart_3.json"
     assert mime == "application/json"
     assert "sensitive" not in file_name
+
+
+def test_conversation_exports_strip_file_refs_and_artifact_markers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    conv_dir = tmp_path / "conversations"
+    conv_dir.mkdir()
+    monkeypatch.setattr(config, "CONVERSATIONS_DIR", conv_dir)
+    content = (
+        f"Saved /workspace/output/chart.png and {'/-' * 24} "
+        "output/Indo-VAP/trio_bundle/datasets/6_HIV.jsonl "
+        "with <RPLN_PLOTLY:/workspace/plot.json>"
+    )
+    _write_conv_json(
+        conv_dir,
+        "export-01",
+        datetime.now(UTC).isoformat(),
+        messages=[{"role": "assistant", "content": content}],
+    )
+
+    for exported in (
+        _export_conversation_as_text("export-01"),
+        _export_conversation_as_md("export-01"),
+    ):
+        assert "/workspace/output/chart.png" not in exported
+        assert "6_HIV.jsonl" not in exported
+        assert "<RPLN_PLOTLY" not in exported
+        assert "[Artifact]" in exported
 
 
 def test_web_chat_persists_analysis_code_for_copy_card(
