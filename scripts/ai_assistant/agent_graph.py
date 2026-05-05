@@ -10,6 +10,7 @@ LLM provider is controlled by ``config.LLM_PROVIDER`` / ``config.LLM_MODEL``.
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any, cast
@@ -21,7 +22,10 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
 
 import config
-from scripts.ai_assistant.agent_prompts import SYSTEM_PROMPT
+from scripts.ai_assistant.agent_prompts import (
+    CATALOG_RUNTIME_SYSTEM_PROMPT,
+    SYSTEM_PROMPT,
+)
 from scripts.ai_assistant.agent_tools import ALL_TOOLS
 from scripts.ai_assistant.ollama_config import get_ollama_base_url
 from scripts.ai_assistant.phi_safe import redact_phi_in_text
@@ -33,9 +37,65 @@ __all__ = [
     "get_agent",
     "get_checkpointer",
     "invoke_query",
+    "is_catalog_runtime_enabled",
     "reset_agent",
+    "runtime_system_prompt",
+    "runtime_tools",
     "stream_query",
 ]
+
+
+# ── Catalog runtime feature flag (issue #79) ────────────────────────────
+#
+# When ``REPORTALIN_USE_CATALOG_RUNTIME`` is truthy, the assistant binds
+# its tool list and system prompt to the catalog-aware variants. The
+# flag is OFF by default so existing chat behaviour is preserved until
+# the cutover validation completes.
+#
+# This flag DOES NOT route on user-input keywords. It selects which
+# tools the LLM has and which system prompt it sees. The LLM still
+# decides which tool to call based on the natural-language question.
+
+_CATALOG_RUNTIME_FLAG = "REPORTALIN_USE_CATALOG_RUNTIME"
+_TRUTHY = frozenset({"1", "true", "yes", "on"})
+
+
+def is_catalog_runtime_enabled() -> bool:
+    """Return True iff ``REPORTALIN_USE_CATALOG_RUNTIME`` is truthy."""
+    raw = os.environ.get(_CATALOG_RUNTIME_FLAG, "").strip().lower()
+    return raw in _TRUTHY
+
+
+def runtime_tools(flag_on: bool) -> list[Any]:
+    """Return the tool list the agent should be created with.
+
+    Args:
+        flag_on: Output of :func:`is_catalog_runtime_enabled`.
+
+    The flag-OFF list is the existing union (``ALL_TOOLS``); the flag-ON
+    list is the same union — the catalog tool ``answer_catalog_question``
+    is already part of ``ALL_TOOLS``. The flag does not narrow tools;
+    it surfaces a different system prompt that steers the LLM to use
+    the catalog tool first.
+
+    The signature is intentionally a single boolean: a user-input string
+    must NEVER feed into tool selection (that would be a hidden keyword
+    router, which the maintainer has forbidden).
+    """
+    # Return the constant directly. Both flag states see the union;
+    # narrowing happens via the system prompt, not the tool list.
+    return ALL_TOOLS
+
+
+def runtime_system_prompt(flag_on: bool) -> str:
+    """Return the system prompt template for the current flag state.
+
+    Returns the catalog-runtime prompt when ``flag_on`` is True; the
+    legacy ``SYSTEM_PROMPT`` otherwise. The result is a format string
+    expecting ``{study_name}`` to be substituted by the caller.
+    """
+    return CATALOG_RUNTIME_SYSTEM_PROMPT if flag_on else SYSTEM_PROMPT
+
 
 # Module-level singletons (lazy-initialised)
 _agent: CompiledStateGraph | None = None
@@ -198,20 +258,23 @@ def get_agent() -> CompiledStateGraph:
     global _agent
     if _agent is None:
         llm = _init_llm()
-        prompt = SYSTEM_PROMPT.format(study_name=config.STUDY_NAME)
+        flag_on = is_catalog_runtime_enabled()
+        prompt = runtime_system_prompt(flag_on).format(study_name=config.STUDY_NAME)
+        tools = runtime_tools(flag_on)
 
         _agent = create_agent(
             model=llm,
-            tools=ALL_TOOLS,
+            tools=tools,
             system_prompt=prompt,
             checkpointer=get_checkpointer(),
         )
 
         logger.info(
-            "Agent initialised (provider=%s, model=%s, tools=%d)",
+            "Agent initialised (provider=%s, model=%s, tools=%d, catalog_runtime=%s)",
             config.LLM_PROVIDER,
             config.LLM_MODEL,
-            len(ALL_TOOLS),
+            len(tools),
+            flag_on,
         )
     return _agent
 

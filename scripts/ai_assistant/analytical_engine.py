@@ -34,24 +34,36 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 logger = logging.getLogger(__name__)
 
 
-# ── Catalog-binding feature flag (issue #75) ────────────────────────────
+# ── Catalog-binding feature flag (issue #75 + #79) ──────────────────────
 #
 # When ``REPORTALIN_USE_CATALOG_BINDING=1`` (or a truthy variant), callers
 # resolve analysis bindings through ``scripts.source_truth.analysis_binding``
 # instead of the legacy ``StudyKnowledge`` YAML. The flag is OFF by default
 # so existing deterministic behavior remains the primary path until a later
 # slice retires ``study_knowledge.py`` outright.
+#
+# Issue #79 introduces the broader ``REPORTALIN_USE_CATALOG_RUNTIME`` flag
+# (read in ``scripts.ai_assistant.agent_graph``). Setting the runtime flag
+# implies the binding flag — operators only have to set one toggle to
+# bypass the legacy path end-to-end.
 
 _CATALOG_BINDING_FLAG = "REPORTALIN_USE_CATALOG_BINDING"
+_CATALOG_RUNTIME_FLAG = "REPORTALIN_USE_CATALOG_RUNTIME"
 _TRUTHY = frozenset({"1", "true", "yes", "on"})
 
 
 def is_catalog_binding_enabled() -> bool:
-    """Return True iff the catalog/Dataset-Schema binding path is enabled."""
+    """Return True iff the catalog/Dataset-Schema binding path is enabled.
+
+    Either ``REPORTALIN_USE_CATALOG_BINDING`` or the broader
+    ``REPORTALIN_USE_CATALOG_RUNTIME`` flag activates the bypass; the
+    runtime flag subsumes the binding flag per issue #79.
+    """
     import os
 
-    raw = os.environ.get(_CATALOG_BINDING_FLAG, "").strip().lower()
-    return raw in _TRUTHY
+    binding_raw = os.environ.get(_CATALOG_BINDING_FLAG, "").strip().lower()
+    runtime_raw = os.environ.get(_CATALOG_RUNTIME_FLAG, "").strip().lower()
+    return binding_raw in _TRUTHY or runtime_raw in _TRUTHY
 
 
 def validate_catalog_bindings(
