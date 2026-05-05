@@ -57,6 +57,20 @@ def _string(value: Any, field: str) -> str:
     return value.strip()
 
 
+def _record_id(record: Mapping[str, Any]) -> str:
+    """Stable record id — variable cards expose ``variable_id``, study-design
+    cards expose ``card_id``. Either is accepted; one of the two is required."""
+    variable_id = record.get("variable_id")
+    if isinstance(variable_id, str) and variable_id.strip():
+        return variable_id.strip()
+    card_id = record.get("card_id")
+    if isinstance(card_id, str) and card_id.strip():
+        return card_id.strip()
+    raise SourceTruthRetrievalError(
+        "catalog record must include a non-empty 'variable_id' or 'card_id'"
+    )
+
+
 def _records_by_id(records: Any) -> dict[str, Mapping[str, Any]]:
     if not isinstance(records, list):
         raise SourceTruthRetrievalError("catalog artifact records must be a list")
@@ -64,8 +78,7 @@ def _records_by_id(records: Any) -> dict[str, Mapping[str, Any]]:
     for record in records:
         if not isinstance(record, Mapping):
             raise SourceTruthRetrievalError("catalog records must be mappings")
-        variable_id = _string(record.get("variable_id"), "variable_id")
-        by_id[variable_id] = record
+        by_id[_record_id(record)] = record
     return by_id
 
 
@@ -118,12 +131,10 @@ class SourceTruthRetriever:
         if not query_tokens:
             return []
         scored = [
-            (self._score(record, query, query_tokens), variable_id, record)
-            for variable_id, record in self._records.items()
+            (self._score(record, query, query_tokens), record_id, record)
+            for record_id, record in self._records.items()
         ]
-        matches = [
-            (score, variable_id, record) for score, variable_id, record in scored if score > 0
-        ]
+        matches = [(score, record_id, record) for score, record_id, record in scored if score > 0]
         matches.sort(key=lambda item: (-item[0], item[1]))
         return [record for _, _, record in matches[:limit]]
 
@@ -139,19 +150,48 @@ class SourceTruthRetriever:
             return self._clarification(question, matches)
 
         record = matches[0]
-        variable_id = _string(record.get("variable_id"), "variable_id")
-        pack = self._load_evidence_pack(variable_id) if self._needs_evidence(question) else None
-        return CatalogAnswer(self._compose_answer(record, pack), [variable_id])
+        record_id = _record_id(record)
+        pack = self._load_evidence_pack(record_id) if self._needs_evidence(question) else None
+        return CatalogAnswer(self._compose_answer(record, pack), [record_id])
 
     def _score(self, record: Mapping[str, Any], query: str, query_tokens: set[str]) -> int:
-        variable_id = _string(record.get("variable_id"), "variable_id")
-        if variable_id.lower() in query.lower():
+        record_id = _record_id(record)
+        if record_id.lower() in query.lower():
             return 100
-        terms = set(_tokens(variable_id))
-        for key in ("label", "display_label", "normalized_meaning", "section", "field_class"):
+        terms = set(_tokens(record_id))
+        for key in (
+            "label",
+            "display_label",
+            "normalized_meaning",
+            "section",
+            "field_class",
+            # Study-design tier-specific fields:
+            "visit_name",
+            "specimen_type",
+            "criteria_type",
+            "cohort",
+            "population",
+            "form_id",
+            "cohort_id",
+            "timing",
+            "catalog_tier",
+        ):
             value = record.get(key)
             if isinstance(value, str):
                 terms.update(_tokens(value))
+        for list_key in (
+            "tests",
+            "tests_performed",
+            "specimens_collected",
+            "forms_completed",
+            "timeline",
+            "related_variables",
+        ):
+            value = record.get(list_key)
+            if isinstance(value, list):
+                for item in value:
+                    if isinstance(item, str):
+                        terms.update(_tokens(item))
         search_terms = record.get("search_terms", [])
         if isinstance(search_terms, list):
             terms.update(term.lower() for term in search_terms if isinstance(term, str))
@@ -164,16 +204,13 @@ class SourceTruthRetriever:
         next_score = self._score(matches[1], question, _tokens(question))
         if top_score != next_score:
             return False
-        return all(
-            _string(record.get("variable_id"), "variable_id").lower() not in question.lower()
-            for record in matches[:2]
-        )
+        return all(_record_id(record).lower() not in question.lower() for record in matches[:2])
 
     def _clarification(self, question: str, matches: list[Mapping[str, Any]]) -> CatalogAnswer:
         query_tokens = _tokens(question)
         catalog_terms: set[str] = set()
         for record in matches:
-            for key in ("variable_id", "label", "display_label", "normalized_meaning"):
+            for key in ("variable_id", "card_id", "label", "display_label", "normalized_meaning"):
                 value = record.get(key)
                 if isinstance(value, str):
                     catalog_terms.update(_tokens(value))
@@ -182,12 +219,12 @@ class SourceTruthRetriever:
             "that",
         )
         candidates = ", ".join(
-            f"{record['variable_id']} ({record.get('display_label') or record.get('label')})"
+            f"{_record_id(record)} ({record.get('display_label') or record.get('label')})"
             for record in matches
         )
         return CatalogAnswer(
             f"Which {focus} variable do you mean? Candidates: {candidates}.",
-            [_string(record.get("variable_id"), "variable_id") for record in matches],
+            [_record_id(record) for record in matches],
             needs_clarification=True,
         )
 
@@ -204,9 +241,9 @@ class SourceTruthRetriever:
         record: Mapping[str, Any],
         pack: Mapping[str, Any] | None,
     ) -> str:
-        variable_id = _string(record.get("variable_id"), "variable_id")
+        record_id = _record_id(record)
         label = _string(record.get("display_label") or record.get("label"), "label")
-        parts = [f"{variable_id} is {label}."]
+        parts = [f"{record_id} is {label}."]
 
         dataset_column = record.get("dataset_column")
         form = record.get("form")

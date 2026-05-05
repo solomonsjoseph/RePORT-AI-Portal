@@ -144,3 +144,175 @@ def test_ambiguous_variable_matches_ask_for_clarification_without_loading_eviden
     assert answer.text == (
         "Which HIV variable do you mean? Candidates: HIV_HIV (HIV result), HIV_STATUS (HIV status)."
     )
+
+
+# ---------------------------------------------------------------------------
+# Study-design (criteria/schedule/specimen-test/form/cohort) card retrieval
+# ---------------------------------------------------------------------------
+
+
+def _study_design_catalog() -> dict[str, Any]:
+    return {
+        "artifact_type": "study_design_catalog",
+        "study": "Indo-VAP",
+        "records": [
+            {
+                "card_id": "INCL_AGE_18_65",
+                "catalog_tier": "criteria",
+                "criteria_type": "inclusion",
+                "label": "Age 18-65 at consent",
+                "display_label": "Age 18-65 years at consent",
+                "cohort": "Indo-VAP main",
+                "population": "adults",
+                "search_terms": ["age", "inclusion", "criteria", "adult"],
+                "confidence": "high",
+                "review_state": "auto_normalized",
+                "source_references": {
+                    "pdf": {"file": "Indo-VAP/protocol.pdf", "annotation_pages": [3]}
+                },
+            },
+            {
+                "card_id": "EXCL_PRIOR_TB",
+                "catalog_tier": "criteria",
+                "criteria_type": "exclusion",
+                "label": "Prior TB treatment",
+                "display_label": "Prior TB treatment exclusion",
+                "cohort": "Indo-VAP main",
+                "population": "adults",
+                "search_terms": ["prior", "tb", "treatment", "exclusion", "criteria"],
+                "confidence": "medium",
+                "review_state": "review_required",
+                "source_references": {
+                    "pdf": {"file": "Indo-VAP/protocol.pdf", "annotation_pages": [4]}
+                },
+            },
+            {
+                "card_id": "VISIT_BASELINE",
+                "catalog_tier": "schedule",
+                "visit_name": "Baseline",
+                "label": "Baseline visit",
+                "display_label": "Baseline visit (Day 0)",
+                "timing": "Day 0",
+                "forms_completed": ["6_HIV", "98B_FOB"],
+                "specimens_collected": ["whole_blood"],
+                "tests_performed": ["HIV_RAPID"],
+                "search_terms": ["baseline", "visit", "schedule", "day"],
+                "review_state": "auto_normalized",
+                "source_references": {"pdf": {"file": "Indo-VAP/sov.pdf", "annotation_pages": [1]}},
+            },
+            {
+                "card_id": "SPEC_WHOLE_BLOOD",
+                "catalog_tier": "specimen_test",
+                "specimen_type": "whole_blood",
+                "label": "Whole blood specimen",
+                "display_label": "Whole blood specimen",
+                "tests": ["HIV_RAPID", "CBC"],
+                "timeline": ["Baseline", "Month 2"],
+                "related_variables": ["HIV_HIV"],
+                "search_terms": [
+                    "whole",
+                    "blood",
+                    "specimen",
+                    "hiv",
+                    "rapid",
+                    "test",
+                    "cbc",
+                ],
+                "review_state": "auto_normalized",
+                "source_references": {
+                    "pdf": {"file": "Indo-VAP/lab_manual.pdf", "annotation_pages": [7]}
+                },
+            },
+            {
+                "card_id": "FORM_6_HIV",
+                "catalog_tier": "form",
+                "form_id": "6_HIV",
+                "label": "Form 6: HIV",
+                "display_label": "Form 6 HIV",
+                "search_terms": ["form", "hiv", "6"],
+                "review_state": "auto_normalized",
+                "source_references": {"pdf": {"file": "Indo-VAP/annotated_pdfs/6 HIV v1.0.pdf"}},
+            },
+            {
+                "card_id": "COHORT_INDOVAP_MAIN",
+                "catalog_tier": "cohort",
+                "cohort_id": "Indo-VAP main",
+                "label": "Indo-VAP main cohort",
+                "display_label": "Indo-VAP main cohort",
+                "search_terms": ["cohort", "indo", "vap", "main"],
+                "review_state": "auto_normalized",
+                "source_references": {
+                    "pdf": {"file": "Indo-VAP/protocol.pdf", "annotation_pages": [1]}
+                },
+            },
+        ],
+    }
+
+
+def test_retrieval_returns_inclusion_criteria_card_for_criteria_question() -> None:
+    retriever = SourceTruthRetriever.from_catalog_artifact(_study_design_catalog())
+
+    cards = retriever.retrieve_cards("What are the age inclusion criteria?", limit=3)
+
+    assert cards, "expected at least one matching card"
+    assert cards[0]["card_id"] == "INCL_AGE_18_65"
+    assert cards[0]["catalog_tier"] == "criteria"
+
+
+def test_retrieval_returns_schedule_card_for_visit_question() -> None:
+    retriever = SourceTruthRetriever.from_catalog_artifact(_study_design_catalog())
+
+    cards = retriever.retrieve_cards("What forms are completed at the baseline visit?")
+
+    assert cards
+    assert cards[0]["card_id"] == "VISIT_BASELINE"
+    assert cards[0]["catalog_tier"] == "schedule"
+
+
+def test_retrieval_returns_specimen_test_card_for_specimen_question() -> None:
+    retriever = SourceTruthRetriever.from_catalog_artifact(_study_design_catalog())
+
+    cards = retriever.retrieve_cards("Which tests run on whole blood specimens?")
+
+    assert cards
+    assert cards[0]["card_id"] == "SPEC_WHOLE_BLOOD"
+    assert cards[0]["catalog_tier"] == "specimen_test"
+
+
+def test_retrieval_returns_form_card_for_form_overview_question() -> None:
+    retriever = SourceTruthRetriever.from_catalog_artifact(_study_design_catalog())
+
+    cards = retriever.retrieve_cards("Tell me about Form 6")
+
+    assert cards
+    assert cards[0]["card_id"] == "FORM_6_HIV"
+    assert cards[0]["catalog_tier"] == "form"
+
+
+def test_retrieval_returns_cohort_card_for_cohort_question() -> None:
+    retriever = SourceTruthRetriever.from_catalog_artifact(_study_design_catalog())
+
+    cards = retriever.retrieve_cards("What is the Indo-VAP main cohort?")
+
+    assert cards
+    assert cards[0]["card_id"] == "COHORT_INDOVAP_MAIN"
+    assert cards[0]["catalog_tier"] == "cohort"
+
+
+def test_retrieval_filters_criteria_by_cohort_when_specified() -> None:
+    retriever = SourceTruthRetriever.from_catalog_artifact(_study_design_catalog())
+
+    cards = retriever.retrieve_cards("Indo-VAP main cohort exclusion criteria", limit=5)
+
+    # The exclusion criteria card for the main cohort should rank first
+    assert cards
+    assert cards[0]["card_id"] == "EXCL_PRIOR_TB"
+
+
+def test_retrieval_card_ids_used_in_answer_when_no_variable_id() -> None:
+    retriever = SourceTruthRetriever.from_catalog_artifact(_study_design_catalog())
+
+    answer = retriever.answer_metadata_question("What forms are completed at the baseline visit?")
+
+    assert answer.variable_ids == ["VISIT_BASELINE"]
+    assert "Baseline" in answer.text or "baseline" in answer.text.lower()

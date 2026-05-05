@@ -9,9 +9,14 @@ from typing import Any
 from scripts.source_truth.record import (
     FORBIDDEN_ARTIFACT_VERSION_KEYS,
     FORBIDDEN_RAW_VALUE_KEYS,
+    REVIEW_STATE_VALUES,
 )
 
-__all__ = ["SourceTruthCatalogError", "build_catalog_artifact"]
+__all__ = [
+    "SourceTruthCatalogError",
+    "build_catalog_artifact",
+    "build_study_design_catalog",
+]
 
 
 class SourceTruthCatalogError(ValueError):
@@ -347,4 +352,169 @@ def build_catalog_artifact(
         "evidence_packs": evidence_packs,
         "excluded_records": excluded_records,
         "dataset_schema_links": dataset_schema_links,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Study-design catalog cards (criteria, schedule, specimen/test, form, cohort)
+# ---------------------------------------------------------------------------
+#
+# These are *non-variable* cards that answer study-design questions which
+# do not map cleanly onto a single dataset column. They share the catalog
+# `records` shape with variable cards (label, search_terms, review_state,
+# source_references) but use a `card_id` instead of `variable_id` and
+# carry a different `catalog_tier` discriminator.
+
+_CRITERIA_TYPES: frozenset[str] = frozenset({"inclusion", "exclusion"})
+
+_REQUIRED_CARD_KEYS: dict[str, frozenset[str]] = {
+    "criteria": frozenset(
+        {"card_id", "criteria_type", "label", "review_state", "source_references"}
+    ),
+    "schedule": frozenset({"card_id", "visit_name", "label", "review_state", "source_references"}),
+    "specimen_test": frozenset(
+        {"card_id", "specimen_type", "label", "review_state", "source_references"}
+    ),
+    "form": frozenset({"card_id", "form_id", "label", "review_state", "source_references"}),
+    "cohort": frozenset({"card_id", "cohort_id", "label", "review_state", "source_references"}),
+}
+
+_INPUT_GROUPS: tuple[tuple[str, str], ...] = (
+    ("criteria", "criteria"),
+    ("schedule", "schedule"),
+    ("specimens_tests", "specimen_test"),
+    ("forms", "form"),
+    ("cohorts", "cohort"),
+)
+
+
+def _design_search_terms(card: Mapping[str, Any], tier: str) -> list[str]:
+    terms: list[str] = []
+
+    def _push(value: Any) -> None:
+        if not isinstance(value, str):
+            return
+        for token in value.lower().replace("_", " ").replace("-", " ").split():
+            if token and token not in terms:
+                terms.append(token)
+
+    _push(card.get("card_id"))
+    _push(card.get("label"))
+    _push(card.get("display_label"))
+    _push(tier)
+    # Tier-specific tokens that callers reasonably search for.
+    for key in (
+        "criteria_type",
+        "cohort",
+        "population",
+        "visit_name",
+        "timing",
+        "specimen_type",
+        "form_id",
+        "cohort_id",
+    ):
+        _push(card.get(key))
+    for list_key in (
+        "forms_completed",
+        "specimens_collected",
+        "tests_performed",
+        "tests",
+        "timeline",
+        "related_variables",
+    ):
+        value = card.get(list_key)
+        if isinstance(value, list):
+            for item in value:
+                _push(item)
+    return terms
+
+
+def _validate_design_card(card: Any, tier: str, seen_ids: set[str]) -> Mapping[str, Any]:
+    if not isinstance(card, Mapping):
+        raise SourceTruthCatalogError(f"{tier} card must be a mapping")
+    _reject_forbidden_keys(f"{tier} card", card)
+
+    required = _REQUIRED_CARD_KEYS[tier]
+    missing = required - card.keys()
+    if missing:
+        raise SourceTruthCatalogError(
+            f"{tier} card missing required key(s): " + ", ".join(sorted(missing))
+        )
+
+    card_id = card.get("card_id")
+    if not isinstance(card_id, str) or not card_id.strip():
+        raise SourceTruthCatalogError(f"{tier} card_id must be a non-empty string")
+    if card_id in seen_ids:
+        raise SourceTruthCatalogError(f"duplicate card_id {card_id!r} across study-design cards")
+    seen_ids.add(card_id)
+
+    review_state = card.get("review_state")
+    if review_state not in REVIEW_STATE_VALUES:
+        raise SourceTruthCatalogError(
+            f"{tier} card {card_id!r} has invalid review_state {review_state!r}; "
+            "must be one of " + ", ".join(sorted(REVIEW_STATE_VALUES))
+        )
+
+    if tier == "criteria":
+        criteria_type = card.get("criteria_type")
+        if criteria_type not in _CRITERIA_TYPES:
+            raise SourceTruthCatalogError(
+                f"criteria card {card_id!r} has invalid criteria_type {criteria_type!r}; "
+                "must be one of " + ", ".join(sorted(_CRITERIA_TYPES))
+            )
+
+    refs = card.get("source_references")
+    if not isinstance(refs, Mapping) or not refs:
+        raise SourceTruthCatalogError(
+            f"{tier} card {card_id!r} must include non-empty source_references"
+        )
+    return card
+
+
+def _build_design_record(card: Mapping[str, Any], tier: str) -> dict[str, Any]:
+    record: dict[str, Any] = dict(card)
+    record["catalog_tier"] = tier
+    if "search_terms" not in record or not record["search_terms"]:
+        record["search_terms"] = _design_search_terms(card, tier)
+    else:
+        # Normalize provided search terms to lowercase tokens
+        provided = record["search_terms"]
+        if not isinstance(provided, list) or not all(isinstance(t, str) for t in provided):
+            raise SourceTruthCatalogError(
+                f"{tier} card {card.get('card_id')!r} search_terms must be a list of strings"
+            )
+        record["search_terms"] = [term.lower() for term in provided]
+    return record
+
+
+def build_study_design_catalog(study_design: Mapping[str, Any]) -> dict[str, Any]:
+    """Build a catalog of non-variable study-design cards.
+
+    Accepts a mapping with optional groups: ``criteria``, ``schedule``,
+    ``specimens_tests``, ``forms``, ``cohorts``. Each group is a list of
+    card dictionaries. Returns a ``study_design_catalog`` artifact with a
+    flat ``records`` list, each carrying a ``catalog_tier`` discriminator.
+    """
+    if not isinstance(study_design, Mapping):
+        raise SourceTruthCatalogError("study_design must be a mapping")
+    _reject_forbidden_keys("study_design", study_design)
+
+    seen_ids: set[str] = set()
+    records: list[dict[str, Any]] = []
+
+    for input_key, tier in _INPUT_GROUPS:
+        cards = study_design.get(input_key, [])
+        if cards is None:
+            continue
+        if not isinstance(cards, list):
+            raise SourceTruthCatalogError(f"study_design.{input_key} must be a list when present")
+        for card in cards:
+            validated = _validate_design_card(card, tier, seen_ids)
+            records.append(_build_design_record(validated, tier))
+
+    return {
+        "artifact_type": "study_design_catalog",
+        "study": study_design.get("study"),
+        "source_truth_ref": study_design.get("source_truth_ref"),
+        "records": records,
     }

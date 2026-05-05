@@ -4,8 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from scripts.source_truth.builder import build_source_truth_artifact
-from scripts.source_truth.catalog import build_catalog_artifact
+from scripts.source_truth.catalog import (
+    SourceTruthCatalogError,
+    build_catalog_artifact,
+    build_study_design_catalog,
+)
 from scripts.source_truth.dataset_schema import build_dataset_schema
 
 
@@ -237,3 +243,225 @@ def test_dataset_schema_entries_link_to_catalog_records_and_evidence_packs() -> 
             "variable_id": "HIV_HIV",
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Study-design catalog cards (criteria, schedule, specimen/test, form, cohort)
+# ---------------------------------------------------------------------------
+
+
+def _study_design_input() -> dict[str, Any]:
+    return {
+        "study": "Indo-VAP",
+        "source_truth_ref": {
+            "artifact_type": "study_variable_source_truth",
+            "study": "Indo-VAP",
+        },
+        "criteria": [
+            {
+                "card_id": "INCL_AGE_18_65",
+                "criteria_type": "inclusion",
+                "label": "Age 18-65 at consent",
+                "cohort": "Indo-VAP main",
+                "population": "adults",
+                "confidence": "high",
+                "review_state": "auto_normalized",
+                "source_references": {
+                    "pdf": {"file": "Indo-VAP/protocol.pdf", "annotation_pages": [3]}
+                },
+            },
+            {
+                "card_id": "EXCL_PRIOR_TB",
+                "criteria_type": "exclusion",
+                "label": "Prior TB treatment",
+                "cohort": "Indo-VAP main",
+                "population": "adults",
+                "confidence": "medium",
+                "review_state": "review_required",
+                "source_references": {
+                    "pdf": {"file": "Indo-VAP/protocol.pdf", "annotation_pages": [4]}
+                },
+            },
+        ],
+        "schedule": [
+            {
+                "card_id": "VISIT_BASELINE",
+                "visit_name": "Baseline",
+                "label": "Baseline visit",
+                "timing": "Day 0",
+                "forms_completed": ["6_HIV", "98B_FOB"],
+                "specimens_collected": ["whole_blood"],
+                "tests_performed": ["HIV_RAPID"],
+                "review_state": "auto_normalized",
+                "source_references": {"pdf": {"file": "Indo-VAP/sov.pdf", "annotation_pages": [1]}},
+            }
+        ],
+        "specimens_tests": [
+            {
+                "card_id": "SPEC_WHOLE_BLOOD",
+                "specimen_type": "whole_blood",
+                "label": "Whole blood specimen",
+                "tests": ["HIV_RAPID", "CBC"],
+                "timeline": ["Baseline", "Month 2"],
+                "related_variables": ["HIV_HIV"],
+                "review_state": "auto_normalized",
+                "source_references": {
+                    "pdf": {"file": "Indo-VAP/lab_manual.pdf", "annotation_pages": [7]}
+                },
+            }
+        ],
+        "forms": [
+            {
+                "card_id": "FORM_6_HIV",
+                "form_id": "6_HIV",
+                "label": "Form 6: HIV",
+                "review_state": "auto_normalized",
+                "source_references": {"pdf": {"file": "Indo-VAP/annotated_pdfs/6 HIV v1.0.pdf"}},
+            }
+        ],
+        "cohorts": [
+            {
+                "card_id": "COHORT_INDOVAP_MAIN",
+                "cohort_id": "Indo-VAP main",
+                "label": "Indo-VAP main cohort",
+                "review_state": "auto_normalized",
+                "source_references": {
+                    "pdf": {"file": "Indo-VAP/protocol.pdf", "annotation_pages": [1]}
+                },
+            }
+        ],
+    }
+
+
+def _design_records_by_id(catalog: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {record["card_id"]: record for record in catalog["records"]}
+
+
+def test_study_design_catalog_emits_one_record_per_card_input() -> None:
+    catalog = build_study_design_catalog(_study_design_input())
+
+    records = _design_records_by_id(catalog)
+    assert set(records) == {
+        "INCL_AGE_18_65",
+        "EXCL_PRIOR_TB",
+        "VISIT_BASELINE",
+        "SPEC_WHOLE_BLOOD",
+        "FORM_6_HIV",
+        "COHORT_INDOVAP_MAIN",
+    }
+    tiers = {record["card_id"]: record["catalog_tier"] for record in catalog["records"]}
+    assert tiers == {
+        "INCL_AGE_18_65": "criteria",
+        "EXCL_PRIOR_TB": "criteria",
+        "VISIT_BASELINE": "schedule",
+        "SPEC_WHOLE_BLOOD": "specimen_test",
+        "FORM_6_HIV": "form",
+        "COHORT_INDOVAP_MAIN": "cohort",
+    }
+    assert catalog["artifact_type"] == "study_design_catalog"
+    assert catalog["study"] == "Indo-VAP"
+
+
+def test_study_design_criteria_card_carries_required_review_metadata() -> None:
+    catalog = build_study_design_catalog(_study_design_input())
+    inclusion = _design_records_by_id(catalog)["INCL_AGE_18_65"]
+
+    assert inclusion["criteria_type"] == "inclusion"
+    assert inclusion["cohort"] == "Indo-VAP main"
+    assert inclusion["population"] == "adults"
+    assert inclusion["confidence"] == "high"
+    assert inclusion["review_state"] == "auto_normalized"
+    assert inclusion["source_references"]["pdf"]["annotation_pages"] == [3]
+    assert "age" in inclusion["search_terms"]
+    assert "inclusion" in inclusion["search_terms"]
+
+
+def test_study_design_schedule_card_lists_forms_specimens_and_tests() -> None:
+    catalog = build_study_design_catalog(_study_design_input())
+    visit = _design_records_by_id(catalog)["VISIT_BASELINE"]
+
+    assert visit["catalog_tier"] == "schedule"
+    assert visit["visit_name"] == "Baseline"
+    assert visit["timing"] == "Day 0"
+    assert visit["forms_completed"] == ["6_HIV", "98B_FOB"]
+    assert visit["specimens_collected"] == ["whole_blood"]
+    assert visit["tests_performed"] == ["HIV_RAPID"]
+    assert visit["source_references"]["pdf"]["annotation_pages"] == [1]
+    assert "baseline" in visit["search_terms"]
+
+
+def test_study_design_specimen_test_card_links_to_related_variables() -> None:
+    catalog = build_study_design_catalog(_study_design_input())
+    specimen = _design_records_by_id(catalog)["SPEC_WHOLE_BLOOD"]
+
+    assert specimen["catalog_tier"] == "specimen_test"
+    assert specimen["specimen_type"] == "whole_blood"
+    assert specimen["tests"] == ["HIV_RAPID", "CBC"]
+    assert specimen["timeline"] == ["Baseline", "Month 2"]
+    assert specimen["related_variables"] == ["HIV_HIV"]
+    assert "blood" in specimen["search_terms"]
+
+
+def test_study_design_form_and_cohort_cards_are_present() -> None:
+    catalog = build_study_design_catalog(_study_design_input())
+    records = _design_records_by_id(catalog)
+
+    form = records["FORM_6_HIV"]
+    assert form["catalog_tier"] == "form"
+    assert form["form_id"] == "6_HIV"
+    assert form["label"] == "Form 6: HIV"
+    assert "hiv" in form["search_terms"]
+
+    cohort = records["COHORT_INDOVAP_MAIN"]
+    assert cohort["catalog_tier"] == "cohort"
+    assert cohort["cohort_id"] == "Indo-VAP main"
+    assert "cohort" in cohort["search_terms"]
+
+
+def test_study_design_card_rejects_missing_required_keys() -> None:
+    bad = _study_design_input()
+    # criteria card missing `criteria_type`
+    bad["criteria"][0].pop("criteria_type")
+    with pytest.raises(SourceTruthCatalogError, match="criteria_type"):
+        build_study_design_catalog(bad)
+
+
+def test_study_design_card_rejects_invalid_review_state() -> None:
+    bad = _study_design_input()
+    bad["forms"][0]["review_state"] = "not_a_valid_state"
+    with pytest.raises(SourceTruthCatalogError, match="review_state"):
+        build_study_design_catalog(bad)
+
+
+def test_study_design_card_rejects_forbidden_raw_value_keys() -> None:
+    bad = _study_design_input()
+    bad["criteria"][0]["observed_values"] = ["whatever"]
+    with pytest.raises(SourceTruthCatalogError, match="observed_values"):
+        build_study_design_catalog(bad)
+
+
+def test_study_design_card_rejects_invalid_criteria_type() -> None:
+    bad = _study_design_input()
+    bad["criteria"][0]["criteria_type"] = "maybe"
+    with pytest.raises(SourceTruthCatalogError, match="criteria_type"):
+        build_study_design_catalog(bad)
+
+
+def test_study_design_card_rejects_duplicate_card_ids() -> None:
+    bad = _study_design_input()
+    bad["forms"].append(dict(bad["forms"][0]))
+    with pytest.raises(SourceTruthCatalogError, match="duplicate"):
+        build_study_design_catalog(bad)
+
+
+def test_study_design_review_required_state_propagates() -> None:
+    catalog = build_study_design_catalog(_study_design_input())
+    exclusion = _design_records_by_id(catalog)["EXCL_PRIOR_TB"]
+    assert exclusion["review_state"] == "review_required"
+
+
+def test_study_design_card_without_source_references_is_rejected() -> None:
+    bad = _study_design_input()
+    bad["criteria"][0].pop("source_references")
+    with pytest.raises(SourceTruthCatalogError, match="source_references"):
+        build_study_design_catalog(bad)
