@@ -7,11 +7,24 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from scripts.source_truth.catalog import AUDIT_ONLY_NOTE
+
 __all__ = [
     "CatalogAnswer",
     "SourceTruthRetrievalError",
     "SourceTruthRetriever",
 ]
+
+
+# Polite, deflection-only message for variables the user asks about that
+# are not in the catalog (either never present or deliberately dropped).
+# Avoids exposing PHI/sensitive classification or audit ledger details —
+# see AC for issue #73.
+DROPPED_OR_UNAVAILABLE_NOTE = (
+    "I couldn't find that variable in the published study catalog. "
+    "If you believe it should be available, please reach out to the "
+    "project maintainer."
+)
 
 
 class SourceTruthRetrievalError(ValueError):
@@ -20,11 +33,19 @@ class SourceTruthRetrievalError(ValueError):
 
 @dataclass(frozen=True)
 class CatalogAnswer:
-    """Answer text plus retrieval metadata for metadata-only catalog questions."""
+    """Answer text plus retrieval metadata for metadata-only catalog questions.
+
+    ``audit_only`` and ``analysis_queryable`` carry the boundary signals
+    that downstream layers and tool-description guidance use to decide
+    whether to surface the result, deflect to the maintainer, or refuse
+    analysis. They are part of the public API of the answer.
+    """
 
     text: str
     variable_ids: list[str]
     needs_clarification: bool = False
+    audit_only: bool = False
+    analysis_queryable: bool = True
 
 
 EvidencePackLoader = Callable[[str], Mapping[str, Any] | None]
@@ -104,10 +125,12 @@ class SourceTruthRetriever:
         *,
         evidence_packs: Mapping[str, Mapping[str, Any]] | None = None,
         evidence_pack_loader: EvidencePackLoader | None = None,
+        excluded_records: Mapping[str, Mapping[str, Any]] | None = None,
     ) -> None:
         self._records = dict(records)
         self._evidence_packs = dict(evidence_packs or {})
         self._evidence_pack_loader = evidence_pack_loader
+        self._excluded_records = dict(excluded_records or {})
 
     @classmethod
     def from_catalog_artifact(
@@ -119,10 +142,15 @@ class SourceTruthRetriever:
         """Build a retriever from the catalog artifact shape."""
         if not isinstance(catalog_artifact, Mapping):
             raise SourceTruthRetrievalError("catalog artifact must be a mapping")
+        excluded = catalog_artifact.get("excluded_records")
+        excluded_map: Mapping[str, Mapping[str, Any]] = (
+            excluded if isinstance(excluded, Mapping) else {}
+        )
         return cls(
             _records_by_id(catalog_artifact.get("records")),
             evidence_packs=_packs_by_id(catalog_artifact.get("evidence_packs")),
             evidence_pack_loader=evidence_pack_loader,
+            excluded_records=excluded_map,
         )
 
     def retrieve_cards(self, query: str, *, limit: int = 5) -> list[Mapping[str, Any]]:
@@ -153,6 +181,178 @@ class SourceTruthRetriever:
         record_id = _record_id(record)
         pack = self._load_evidence_pack(record_id) if self._needs_evidence(question) else None
         return CatalogAnswer(self._compose_answer(record, pack), [record_id])
+
+    def answer_chat_question(self, question: str) -> CatalogAnswer:
+        """Answer a normal-chat question respecting the four-state boundary.
+
+        The four states are:
+          1. **Dataset-backed retained**: ordinary metadata answer; no
+             ``Note:`` about PHI; ``analysis_queryable=True``.
+          2. **Source-only**: metadata answer with a concise
+             ``Note: <variable> is not analysis-queryable...`` so the LLM
+             does not silently route the user into an analysis attempt.
+             ``analysis_queryable=False``.
+          3. **Dropped variable** (in ``excluded_records`` with
+             ``handling_action="drop"``): polite maintainer-contact
+             message; no PHI/sensitive classification or ledger detail.
+          4. **Audit-only** retained variable
+             (``audit_only=True`` flag on the compact card): surface the
+             verbatim :data:`AUDIT_ONLY_NOTE` constant. The chat path does
+             not expose ledger contents.
+
+        Ambiguity wins over audit_only: if multiple compact cards match
+        equally, the answer is a clarification request, not a deflection.
+        """
+        # Direct id match against dropped/source-only takes precedence
+        # over fuzzy compact matches: if the user named the dropped or
+        # source-only variable explicitly, treat it as that, not as a
+        # different compact-catalog hit that happens to share a token.
+        boundary = self._direct_excluded_match(question)
+        if boundary is not None:
+            return boundary
+
+        matches = self.retrieve_cards(question, limit=3)
+
+        # If nothing matched in the compact catalog, check whether the
+        # question references a known dropped or source-only id. We check
+        # by token rather than substring so the question doesn't need to
+        # contain a verbatim variable id — any match between the
+        # question's tokens and a known excluded/source-only id surfaces
+        # the appropriate boundary response.
+        if not matches:
+            return self._chat_no_compact_match(question)
+
+        if self._is_ambiguous(question, matches):
+            return self._clarification(question, matches)
+
+        record = matches[0]
+        record_id = _record_id(record)
+        if record.get("audit_only") is True:
+            return CatalogAnswer(
+                AUDIT_ONLY_NOTE,
+                [record_id],
+                audit_only=True,
+                analysis_queryable=False,
+            )
+
+        pack = self._load_evidence_pack(record_id) if self._needs_evidence(question) else None
+        return CatalogAnswer(
+            self._compose_answer(record, pack),
+            [record_id],
+            audit_only=False,
+            analysis_queryable=record.get("analysis_queryable") is True,
+        )
+
+    def _direct_excluded_match(self, question: str) -> CatalogAnswer | None:
+        """If the question literally names a dropped or source-only variable
+        id, return the boundary response for that variable. Otherwise None.
+
+        The match is exact on the variable id (case-insensitive) — we do
+        NOT fuzzy-match here, because the goal is to give precedence to
+        explicit references and avoid pulling boundary responses out of
+        thin air on a stray token.
+        """
+        lowered = question.lower()
+        # Source-only first: evidence pack present, no compact record.
+        for variable_id, pack in self._evidence_packs.items():
+            if variable_id in self._records:
+                continue
+            if variable_id.lower() in lowered:
+                return self._source_only_answer(variable_id, pack)
+        # Then dropped: in excluded_records with handling_action == "drop".
+        for variable_id, info in self._excluded_records.items():
+            if not isinstance(info, Mapping) or info.get("handling_action") != "drop":
+                continue
+            if variable_id.lower() in lowered:
+                return CatalogAnswer(
+                    DROPPED_OR_UNAVAILABLE_NOTE,
+                    [],
+                    audit_only=False,
+                    analysis_queryable=False,
+                )
+        return None
+
+    def _chat_no_compact_match(self, question: str) -> CatalogAnswer:
+        """Resolve chat questions whose tokens didn't hit a compact card.
+
+        The question may reference:
+          * a *dropped* variable (in ``excluded_records``) — polite
+            maintainer-contact, never expose ledger details;
+          * a *source-only* variable (evidence pack present, no compact
+            record) — answer metadata but flag analysis-not-queryable;
+          * an unknown id — generic catalog miss.
+        """
+        question_tokens = _tokens(question)
+        if not question_tokens:
+            return CatalogAnswer(
+                "I could not find a matching catalog variable for that question.",
+                [],
+            )
+
+        # Source-only: evidence pack exists but no compact record.
+        for variable_id, pack in self._evidence_packs.items():
+            if variable_id in self._records:
+                continue
+            id_tokens = _tokens(variable_id)
+            if not id_tokens or not (id_tokens & question_tokens):
+                continue
+            return self._source_only_answer(variable_id, pack)
+
+        # Dropped: in excluded_records.
+        for variable_id, info in self._excluded_records.items():
+            id_tokens = _tokens(variable_id)
+            if not id_tokens or not (id_tokens & question_tokens):
+                continue
+            if isinstance(info, Mapping) and info.get("handling_action") == "drop":
+                return CatalogAnswer(
+                    DROPPED_OR_UNAVAILABLE_NOTE,
+                    [],
+                    audit_only=False,
+                    analysis_queryable=False,
+                )
+
+        # Truly unknown: treat the same way as a dropped variable for
+        # polite chat. The two surfaces are intentionally
+        # indistinguishable so the chat path doesn't leak which
+        # variables existed-but-dropped vs. never-existed — both reduce
+        # to "ask the maintainer".
+        return CatalogAnswer(
+            DROPPED_OR_UNAVAILABLE_NOTE,
+            [],
+            audit_only=False,
+            analysis_queryable=False,
+        )
+
+    def _source_only_answer(self, variable_id: str, pack: Mapping[str, Any]) -> CatalogAnswer:
+        """Compose a metadata answer for a source-only variable.
+
+        The answer is metadata-shaped (so the LLM has something useful
+        to say) plus a concise ``Note:`` flagging that it is not
+        analysis-queryable. We do not expose ledger detail.
+        """
+        normalization_trace = pack.get("normalization_trace")
+        label = variable_id
+        if isinstance(normalization_trace, Mapping):
+            trace_label = normalization_trace.get("label")
+            if isinstance(trace_label, str) and trace_label.strip():
+                label = trace_label
+
+        parts = [f"{variable_id} is {label}."]
+        # Provenance line if the pack has PDF page metadata. Stays
+        # consistent with the dataset-backed answer composer's style.
+        provenance = self._provenance_text(pack)
+        if provenance:
+            parts.append(provenance)
+        parts.append(
+            f"Note: {variable_id} is source-only (PDF/metadata) and is "
+            "not analysis-queryable in the current dataset."
+        )
+        return CatalogAnswer(
+            " ".join(parts),
+            [variable_id],
+            audit_only=False,
+            analysis_queryable=False,
+        )
 
     def _score(self, record: Mapping[str, Any], query: str, query_tokens: set[str]) -> int:
         record_id = _record_id(record)

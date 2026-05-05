@@ -13,6 +13,7 @@ from scripts.source_truth.record import (
 )
 
 __all__ = [
+    "AUDIT_ONLY_NOTE",
     "SourceTruthCatalogError",
     "build_catalog_artifact",
     "build_study_design_catalog",
@@ -25,6 +26,16 @@ class SourceTruthCatalogError(ValueError):
 
 DERIVATION_CATALOG = "catalog"
 DERIVATION_DATASET_SCHEMA = "dataset_schema"
+DERIVATION_PHI_LEDGER = "phi_handling_ledger"
+
+# Verbatim deflection text for audit/PHI-handling questions surfaced through
+# the normal chat path. Pinned as a constant so tests, retrieval, and tool
+# descriptions all use the same exact wording — see issue #73 / HITL #83.
+AUDIT_ONLY_NOTE = (
+    "Note: PHI handling decisions are recorded in the study audit ledger "
+    "and aren't exposed through normal chat. For audit questions, please "
+    "reach out to the project maintainer."
+)
 
 _FORBIDDEN_KEYS = FORBIDDEN_RAW_VALUE_KEYS | FORBIDDEN_ARTIFACT_VERSION_KEYS
 
@@ -126,6 +137,16 @@ def _is_compact_record(record: Mapping[str, Any]) -> bool:
     )
 
 
+def _is_audit_only(record: Mapping[str, Any]) -> bool:
+    """A retained record is audit-only when its source-truth derivation
+    targets include the PHI handling ledger. That covers retained safe-
+    handling actions (pseudonymize / jitter_date / generalize) which are
+    legitimately catalog-visible for analysis but whose handling rationale
+    belongs to the audit ledger, not normal chat."""
+    targets = record.get("derivation_targets")
+    return isinstance(targets, list) and DERIVATION_PHI_LEDGER in targets
+
+
 def _source_presence(record: Mapping[str, Any]) -> dict[str, bool]:
     presence = record.get("presence", {})
     if not isinstance(presence, Mapping):
@@ -211,6 +232,7 @@ def _compact_record(
         "handling_action": action,
         "handling_status": _handling_status(normalized),
         "analysis_queryable": True,
+        "audit_only": _is_audit_only(record),
         "options_summary": _options_summary(normalized),
         "relationship_summary": _relationship_summary(normalized),
         "source_truth_ref": _source_truth_ref(source_truth_artifact, variable_id),
