@@ -14,14 +14,16 @@ import os
 import pytest
 
 from scripts.ai_assistant.keystore import ENV_VAR_BY_PROVIDER, KeyStore
+from tests.security.key_fixtures import anthropic_key
 
 # ── Direct KeyStore correctness ────────────────────────────────────────────
 
 
 def test_set_and_get_round_trip() -> None:
     ks = KeyStore()
-    ks.set("anthropic", "sk-ant-test-key-1234")
-    assert ks.get("anthropic") == "sk-ant-test-key-1234"
+    key = anthropic_key("1234")
+    ks.set("anthropic", key)
+    assert ks.get("anthropic") == key
     assert ks.has("anthropic") is True
 
 

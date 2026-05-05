@@ -42,6 +42,7 @@ from scripts.extraction.pdf_pipeline import (
     _scrub_llm_response,
     extract_pdf,
 )
+from tests.security.key_fixtures import anthropic_key
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -313,7 +314,7 @@ def test_extract_pdf_with_mocked_llm_path(tmp_path: Path, monkeypatch: pytest.Mo
         pdf,
         provider="anthropic",
         model="claude-opus-4-6",
-        api_key="sk-ant-test-placeholder",
+        api_key=anthropic_key("TEST"),
         cache_dir=cache_dir,
     )
 
