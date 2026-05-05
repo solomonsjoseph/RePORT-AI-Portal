@@ -106,7 +106,7 @@ is the CLI default and is gated by the two-part
 ``REPORTALIN_PDF_PHI_FREE`` operator attestation.
 
 **World 2 — AI Assistant** (``scripts/ai_assistant/``):
-LangGraph ReAct agent with 13 tools for querying study data. Never
+LangGraph ReAct agent with 12 tools for querying study data. Never
 accesses raw data.
 
 **Output structure:**

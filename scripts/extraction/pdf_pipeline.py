@@ -40,11 +40,10 @@ extraction without LLM oversight is too unreliable to publish, so
 we'd rather use a verified baseline than ship potentially-wrong
 metadata into ``trio_bundle/``.
 
-Idempotent caching: the LLM tier uses a deterministic, domain-separated
-``pdf-llm-cache-v1`` fingerprint over PDF bytes, provider, model, and
-the PHI scrub config bytes. The fingerprint is a cache identifier only
-(not password/API-key storage), so a re-run with the same inputs hits
-the cache and skips the API call. Cache invalidates on any input change.
+Idempotent caching: the LLM tier keys on
+``SHA-256(pdf_bytes) || provider || model || PHI_SCRUB_CONFIG_HASH``
+so a re-run with the same inputs hits the cache and skips the API
+call. Cache invalidates on any input change.
 
 Zone discipline (audit finding A3): the pipeline-tier LLM client is
 constructed fresh in this module and uses the KeyStore for the API
@@ -64,8 +63,6 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-
-from scripts.utils.log_safe import safe_provider_model_diagnostic
 
 logger = logging.getLogger(__name__)
 
@@ -290,20 +287,14 @@ def _extract_via_llm(
             )
             text = google_resp.text or ""
         else:
-            diagnostic = safe_provider_model_diagnostic(provider=provider, model=model)
             logger.warning(
-                "pdf_pipeline: provider not wired for LLM extraction (%s; "
+                "pdf_pipeline: provider %r not wired for LLM extraction "
                 "(only anthropic + google supported in PR #15)",
-                diagnostic,
+                provider,
             )
             return None
     except Exception as exc:
-        diagnostic = safe_provider_model_diagnostic(provider=provider, model=model)
-        logger.warning(
-            "pdf_pipeline: LLM call failed (%s; exception_type=%s)",
-            diagnostic,
-            type(exc).__name__,
-        )
+        logger.warning("pdf_pipeline: LLM call failed (%s): %s", provider, exc)
         return None
 
     json_text = text.strip()
@@ -382,36 +373,17 @@ def _load_snapshot_for(pdf_name: str, snapshot_dir: Path) -> dict[str, Any] | No
 
 # ── Idempotent cache ────────────────────────────────────────────────────────
 
-_CACHE_FINGERPRINT_VERSION = "pdf-llm-cache-v1"
-_CACHE_FINGERPRINT_PERSON = b"pdf-llm-cache-v1"
 
-
-def _cache_fingerprint(pdf_path: Path, provider: str, model: str) -> str:
-    """Return a non-security LLM-response cache fingerprint.
-
-    This is explicitly cache-oriented, not password/API-key storage. Raw
-    provider/model/PDF path/scrub-rule values are never embedded in the
-    returned filename-safe identifier.
-    """
+def _cache_key(pdf_path: Path, provider: str, model: str) -> str:
+    """SHA-256 of (pdf bytes || provider || model || phi_scrub.yaml SHA-256).
+    Invalidates on any input change including a scrub-rule edit."""
     import contextlib
 
-    digest = hashlib.blake2b(
-        digest_size=32,
-        person=_CACHE_FINGERPRINT_PERSON,
-        usedforsecurity=False,
-    )
-
-    def _add(label: str, value: bytes) -> None:
-        label_bytes = label.encode("ascii")
-        digest.update(len(label_bytes).to_bytes(2, "big"))
-        digest.update(label_bytes)
-        digest.update(len(value).to_bytes(8, "big"))
-        digest.update(value)
-
-    scrub_config_bytes = b"no-config"
+    pdf_hash = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
+    scrub_hash = "no-config"
     # Best-effort: any failure to read the scrub config (missing config
     # module, missing yaml, OS error) drops back to the ``no-config``
-    # sentinel so the cache fingerprint is still deterministic per
+    # sentinel so the cache key is still deterministic per
     # (pdf_bytes, provider, model). Cache hits across yaml edits are not
     # a security risk because the redaction step ALSO runs at request
     # time — the cache only saves the LLM round-trip.
@@ -420,17 +392,13 @@ def _cache_fingerprint(pdf_path: Path, provider: str, model: str) -> str:
 
         scrub_path = Path(_cfg.PHI_SCRUB_CONFIG_PATH)
         if scrub_path.is_file():
-            scrub_config_bytes = scrub_path.read_bytes()
-
-    _add("pdf-bytes", pdf_path.read_bytes())
-    _add("provider", provider.encode("utf-8"))
-    _add("model", model.encode("utf-8"))
-    _add("scrub-config", scrub_config_bytes)
-    return f"{_CACHE_FINGERPRINT_VERSION}_{digest.hexdigest()}"
+            scrub_hash = hashlib.sha256(scrub_path.read_bytes()).hexdigest()[:16]
+    raw = f"{pdf_hash}||{provider}||{model}||{scrub_hash}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def _cache_get(cache_dir: Path, fingerprint: str) -> dict[str, Any] | None:
-    path = cache_dir / f"{fingerprint}.json"
+def _cache_get(cache_dir: Path, key: str) -> dict[str, Any] | None:
+    path = cache_dir / f"{key}.json"
     if not path.is_file():
         return None
     try:
@@ -442,11 +410,11 @@ def _cache_get(cache_dir: Path, fingerprint: str) -> dict[str, Any] | None:
     return None
 
 
-def _cache_put(cache_dir: Path, fingerprint: str, data: dict[str, Any]) -> None:
+def _cache_put(cache_dir: Path, key: str, data: dict[str, Any]) -> None:
     import contextlib
 
     cache_dir.mkdir(parents=True, exist_ok=True)
-    path = cache_dir / f"{fingerprint}.json"
+    path = cache_dir / f"{key}.json"
     path.write_text(json.dumps(data), encoding="utf-8")
     with contextlib.suppress(OSError):
         path.chmod(0o600)
@@ -513,8 +481,7 @@ def extract_pdf(
     if provider is None or model is None:
         skipped = "provider/model not configured"
     elif not is_capable_model(provider, model):
-        diagnostic = safe_provider_model_diagnostic(provider=provider, model=model)
-        skipped = f"configured provider/model not on capable allowlist ({diagnostic})"
+        skipped = f"model {provider}/{model} not on capable allowlist"
     elif not api_key:
         skipped = "no API key in KeyStore for selected provider"
     elif not text:
@@ -522,12 +489,12 @@ def extract_pdf(
     else:
         # Cache lookup
         if cache_dir is not None:
-            fingerprint = _cache_fingerprint(pdf_path, provider, model)
-            cached = _cache_get(cache_dir, fingerprint)
+            key = _cache_key(pdf_path, provider, model)
+            cached = _cache_get(cache_dir, key)
             if cached is not None:
                 llm_data = cached
                 cache_hit = True
-                logger.info("pdf_pipeline: cache hit for pdf=present")
+                logger.info("pdf_pipeline: cache hit for %s", pdf_name)
 
         # Fresh LLM call
         if llm_data is None:
@@ -541,11 +508,7 @@ def extract_pdf(
             if llm_data is None:
                 skipped = "LLM call failed or returned invalid JSON"
             elif cache_dir is not None:
-                _cache_put(
-                    cache_dir,
-                    _cache_fingerprint(pdf_path, provider, model),
-                    llm_data,
-                )
+                _cache_put(cache_dir, _cache_key(pdf_path, provider, model), llm_data)
 
     # Decide path: LLM+code (merged) OR snapshot. Code-only is NEVER
     # a valid output (per the user's 2026-04-27 directive: heuristic
@@ -560,8 +523,9 @@ def extract_pdf(
         # candidate and fall back to the human-verified snapshot.
         if code_data is not None:
             logger.info(
-                "pdf_pipeline: discarding code-only candidate (pdf=present; LLM "
+                "pdf_pipeline: %s — discarding code-only candidate (LLM "
                 "tier unavailable: %s); falling back to snapshot",
+                pdf_name,
                 skipped,
             )
         if snapshot_dir is not None:

@@ -30,7 +30,6 @@ from pathlib import Path
 import pytest
 
 from scripts.ai_assistant.sandbox import run_in_subprocess
-from tests.security.key_fixtures import anthropic_key, openai_key
 
 LINUX_ONLY = pytest.mark.skipif(
     sys.platform != "linux",
@@ -86,8 +85,8 @@ def test_env_var_api_key_is_invisible_to_sandbox(
 ) -> None:
     """The single most important test: a parent-set API key MUST NOT appear
     in the child's ``os.environ``."""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", anthropic_key("CRET"))
-    monkeypatch.setenv("OPENAI_API_KEY", openai_key("AKED"))
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-PARENT-LEAKED-SECRET")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-PARENT-LEAKED")
     code = (
         "import os\n"
         "found_anthropic = os.environ.get('ANTHROPIC_API_KEY', 'MISSING')\n"

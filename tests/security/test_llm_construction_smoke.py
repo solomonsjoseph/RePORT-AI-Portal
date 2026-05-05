@@ -28,8 +28,6 @@ import importlib
 
 import pytest
 
-from tests.security.key_fixtures import openai_key
-
 
 def test_langchain_chat_models_init_chat_model_is_importable() -> None:
     """Direct regression for the PR #6 breakage: ``from langchain.chat_models
@@ -78,7 +76,7 @@ def test_build_llm_constructs_chat_model_for_provider(
     assert slug is not None, f"provider_slug_for({provider!r}) returned None"
 
     ks = KeyStore()
-    ks.set(slug, openai_key("TKEY"))
+    ks.set(slug, "sk-test-placeholder-not-a-real-key")
 
     # Patch get_keystore() to return our test instance.
     import scripts.ai_assistant.keystore as keystore_mod

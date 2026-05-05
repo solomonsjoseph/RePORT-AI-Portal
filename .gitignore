@@ -285,15 +285,14 @@ docs/.vision/
 docs/.vision/**
 
 # Documentation Policy: NO .md files except README.md, docs/*.md,
-# AGENTS.md (agent-facing instructions, tracked convention), docs/agents/*.md
-# (agent skill configuration), and the IRB dossier under docs/irb_dossier/
-# (regulatory evidence package). All long-form non-regulatory documentation
-# still goes in docs/sphinx/*.rst.
+# AGENTS.md (agent-facing instructions, tracked convention), and the
+# IRB dossier under docs/irb_dossier/ (regulatory evidence package).
+# All long-form non-regulatory documentation still goes in
+# docs/sphinx/*.rst.
 *.md
 !README.md
 !docs/*.md
 !AGENTS.md
-!docs/agents/*.md
 !docs/irb_dossier/*.md
 
 # GitHub instructions (local copilot config — not tracked)

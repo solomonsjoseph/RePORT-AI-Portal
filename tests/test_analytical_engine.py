@@ -7,7 +7,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from scripts.ai_assistant.analytical_engine import (
     AnalysisResult,
@@ -372,20 +371,6 @@ class TestResultInterpreter:
 
 
 class TestRunFullAnalysis:
-    """Legacy ``run_full_analysis`` integration tests.
-
-    After issue #81 the catalog binding is the default and
-    ``run_full_analysis`` raises ``AnalysisBindingError`` unless the
-    explicit legacy override (``REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE=1``)
-    is set. These tests pin the legacy ``StudyKnowledge`` runner that
-    operators can still reach during the cutover rollback window, so we
-    enable the legacy override per-test (never global).
-    """
-
-    @pytest.fixture(autouse=True)
-    def _legacy_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE", "1")
-
     def test_cohort_a_synthetic(
         self,
         synthetic_cohort_data: Path,

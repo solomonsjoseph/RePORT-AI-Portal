@@ -1002,11 +1002,10 @@ def _safe_import_check(code: str) -> str | None:
 def run_python_analysis(code: str) -> str:
     """Execute Python code for statistical analysis on study datasets.
 
-    Runs in an isolated subprocess sandbox with pre-loaded DataFrames
-    sourced from the study's catalog and current (de-identified)
-    dataset. The sandbox cannot read API keys from ``os.environ``,
-    cannot escape its narrow output directory, and is wall-clock and
-    (on Linux) memory bounded. See
+    Runs in an isolated subprocess sandbox with pre-loaded DataFrames from
+    the study's de-identified trio bundle. The sandbox cannot read API keys
+    from ``os.environ``, cannot escape its narrow output directory, and is
+    wall-clock and (on Linux) memory bounded. See
     ``docs/sphinx/developer_guide/sandbox.rst`` for the full threat model.
 
     **Available DataFrames** (named ``df_<dataset>``, e.g. ``df_1A_ICScreening``):
@@ -1802,132 +1801,6 @@ def search_pdf_context(query: str, k: int = 5) -> str:
 
 
 # ============================================================================
-# Tool 13: answer_catalog_question — boundary-aware catalog Q&A
-# ============================================================================
-#
-# This tool is the LLM-facing surface for the dataset / source-only /
-# dropped / audit-only boundary spelled out in issue #73 + HITL #83.
-# Routing decisions stay with the LLM (informed by this tool's
-# description and the result's flags) — there is NO outer keyword
-# router. Validation lives INSIDE the tool implementation.
-
-
-def _load_catalog_artifact() -> Mapping[str, Any] | None:
-    """Locate and load the published catalog artifact for the current study.
-
-    Returns None when no catalog has been generated yet (e.g. before the
-    Source Truth → catalog step has run). A None return lets the tool
-    fall back to a clear "catalog not available" answer rather than
-    crashing the agent.
-    """
-    study = getattr(config, "STUDY_NAME", None) or getattr(config, "STUDY", None)
-    candidates: list[Path] = []
-    output_root = Path(getattr(config, "OUTPUT_DIR", "output"))
-    if isinstance(study, str) and study:
-        candidates.append(output_root / study / "trio_bundle" / "study_variable_catalog.json")
-        candidates.append(output_root / study / "study_variable_catalog.json")
-    candidates.append(output_root / "study_variable_catalog.json")
-    for path in candidates:
-        try:
-            if path.exists():
-                validate_agent_read(path)
-                with path.open("r", encoding="utf-8") as fh:
-                    payload = json.load(fh)
-                if isinstance(payload, Mapping):
-                    return payload
-        except (OSError, ValueError, PermissionError):
-            continue
-    return None
-
-
-@tool
-@phi_safe_return
-def answer_catalog_question(question: str) -> str:
-    """Answer a study-variable metadata question through the published catalog.
-
-    Use this for ordinary questions about retained study variables: their
-    label, dataset column, form, options, and provenance. The catalog is
-    the canonical metadata layer — prefer this tool over
-    ``search_variables`` / ``get_variable_details`` for boundary-sensitive
-    questions about whether a variable is analysable, source-only, or
-    dropped.
-
-    Boundary handling (read this carefully — it shapes the LLM's reply):
-
-    * **Dataset-backed retained variable** (``analysis_queryable=true``,
-      ``audit_only=false``): answer normally. Do NOT add a Note about PHI
-      handling for ordinary metadata answers — the catalog already
-      sanitises sensitive content. Repeating "PHI-handled" on every reply
-      is noisy and the maintainer has explicitly asked for it to stop.
-    * **Source-only variable** (the answer text contains a ``Note:`` and
-      ``analysis_queryable=false``): the variable lives in PDF/metadata
-      only. Surface the metadata answer; if the user asked to analyse it,
-      add a brief one-line note that it is not analysis-queryable.
-    * **Dropped variable** (the answer text says the variable is not
-      available): pass the polite maintainer-contact text through. Do
-      NOT speculate about why the variable was dropped, do NOT name PHI
-      or sensitivity classifications, and do NOT mention the audit
-      ledger.
-    * **Audit-only flagged content** (``audit_only=true``): the JSON
-      ``answer`` field will contain exactly the verbatim audit-only
-      note pinned in HITL #83. Surface that text verbatim. Do not
-      paraphrase, do not append explanations about handling policy,
-      and do not look up ledger detail through other tools. The
-      verbatim text the tool will return is:
-      "Note: PHI handling decisions are recorded in the study audit ledger and aren't exposed through normal chat. For audit questions, please reach out to the project maintainer."
-
-    Args:
-        question: Natural-language question about a study variable.
-
-    Returns:
-        JSON string with ``question``, ``answer`` (the chat-ready text),
-        ``variable_ids`` (resolved ids, possibly empty), ``audit_only``
-        (bool), ``analysis_queryable`` (bool), and ``needs_clarification``
-        (bool). The ``answer`` is already boundary-aware; the LLM should
-        normally pass it through verbatim.
-    """
-    # Late import to avoid pulling source_truth into module load time
-    # for environments that only use the legacy variables-reference path.
-    from scripts.source_truth.retrieval import SourceTruthRetriever
-
-    if _query_looks_conversational(question):
-        return _CONVERSATIONAL_REFUSAL_MESSAGE
-
-    catalog = _load_catalog_artifact()
-    if catalog is None:
-        return json.dumps(
-            {
-                "question": question,
-                "answer": (
-                    "The study catalog is not available yet. Please run "
-                    "the Source Truth → catalog generation step first."
-                ),
-                "variable_ids": [],
-                "audit_only": False,
-                "analysis_queryable": False,
-                "needs_clarification": False,
-            },
-            indent=2,
-            ensure_ascii=False,
-        )
-
-    retriever = SourceTruthRetriever.from_catalog_artifact(catalog)
-    answer = retriever.answer_chat_question(question)
-    return json.dumps(
-        {
-            "question": question,
-            "answer": answer.text,
-            "variable_ids": list(answer.variable_ids),
-            "audit_only": answer.audit_only,
-            "analysis_queryable": answer.analysis_queryable,
-            "needs_clarification": answer.needs_clarification,
-        },
-        indent=2,
-        ensure_ascii=False,
-    )
-
-
-# ============================================================================
 # Tool registry
 # ============================================================================
 
@@ -1944,5 +1817,4 @@ ALL_TOOLS = [
     cross_reference_variables,
     run_study_analysis,
     search_pdf_context,
-    answer_catalog_question,
 ]

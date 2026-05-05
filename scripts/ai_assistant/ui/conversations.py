@@ -19,15 +19,6 @@ from scripts.ai_assistant.phi_safe import redact_message_content, redact_phi_in_
 
 logger = logging.getLogger(__name__)
 
-_FILE_REF_EXTENSIONS = "jsonl|json|pdf|png|csv|xlsx|md"
-_EXPORT_ARTIFACT_MARKER_RE = re.compile(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>\r\n]*>")
-_ABSOLUTE_FILE_REF_RE = re.compile(
-    rf"(?<![\w.-])/(?:[\w.-]+/)*[\w.-]+\.(?:{_FILE_REF_EXTENSIONS})\b"
-)
-_RELATIVE_FILE_REF_RE = re.compile(rf"\b(?:[\w.-]+/)+[\w.-]+\.(?:{_FILE_REF_EXTENSIONS})\b")
-_FILE_EXTENSION_RE = re.compile(rf"\.(?:{_FILE_REF_EXTENSIONS})\b")
-_EXCESS_BLANK_LINES_RE = re.compile(r"\n{3,}")
-
 
 def _conversations_dir() -> Path:
     """Return the conversations directory, creating it if needed."""
@@ -339,15 +330,6 @@ def _search_conversations(query: str) -> list[dict[str, Any]]:
     return pinned + recent
 
 
-def _sanitize_export_content(content: str) -> str:
-    """Strip internal artifact paths from downloaded conversation text."""
-    content = _EXPORT_ARTIFACT_MARKER_RE.sub("[Artifact]", content)
-    content = _ABSOLUTE_FILE_REF_RE.sub("", content)
-    content = _RELATIVE_FILE_REF_RE.sub("", content)
-    content = _FILE_EXTENSION_RE.sub("", content)
-    return _EXCESS_BLANK_LINES_RE.sub("\n\n", content).strip()
-
-
 def _export_conversation_as_text(conv_id: str) -> str:
     """Export a specific conversation as plain text."""
     fpath = _conversations_dir() / f"{conv_id}.json"
@@ -367,11 +349,10 @@ def _export_conversation_as_text(conv_id: str) -> str:
     ]
     for msg in data.get("messages", []):
         role = "You" if msg.get("role") == "user" else "RePORT AI Portal"
-        content = msg.get("content", "")
-        content = (
-            _EXPORT_ARTIFACT_MARKER_RE.sub("[Artifact]", content)
-            if msg.get("role") == "user"
-            else _sanitize_export_content(content)
+        content = re.sub(
+            r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>",
+            "[Artifact]",
+            msg.get("content", ""),
         )
         lines.append(f"{role}:")
         lines.append(content)
@@ -400,7 +381,11 @@ def _export_conversation_as_md(conv_id: str) -> str:
         if msg.get("role") == "user":
             lines.append(f"**You**\n\n{msg.get('content', '')}\n")
         else:
-            content = _sanitize_export_content(msg.get("content", ""))
+            content = re.sub(
+                r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>",
+                "[Artifact]",
+                msg.get("content", ""),
+            )
             lines.append(f"**RePORT AI Portal**\n\n{content}\n")
         lines.append("---\n")
     return "\n".join(lines)

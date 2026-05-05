@@ -27,8 +27,6 @@ from __future__ import annotations
 import logging
 import os
 
-from scripts.utils.log_safe import safe_provider_model_diagnostic
-
 __all__ = [
     "DEFAULT_CAPABLE_MODEL_PREFIXES",
     "is_capable_model",
@@ -100,14 +98,13 @@ def is_capable_model(provider: str | None, model: str | None) -> bool:
             return False
         return any(model_l.startswith(p) for p in override)
 
-    override = _override_prefixes()
-    prefixes = override or DEFAULT_CAPABLE_MODEL_PREFIXES
+    prefixes = _override_prefixes() or DEFAULT_CAPABLE_MODEL_PREFIXES
     capable = any(model_l.startswith(p) for p in prefixes)
     if not capable:
-        diagnostic = safe_provider_model_diagnostic(provider=provider, model=model)
         logger.debug(
-            "llm_capabilities: configured provider/model not in capable allowlist (%s) — "
+            "llm_capabilities: model %r/%r not in capable allowlist — "
             "PDF pipeline will skip LLM extraction tier",
-            diagnostic,
+            provider,
+            model,
         )
     return capable

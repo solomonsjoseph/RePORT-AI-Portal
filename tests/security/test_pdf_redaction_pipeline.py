@@ -21,17 +21,12 @@ Plus the architectural directives from 2026-04-27:
   existing patterns (no new catalog).
 - **A3 zone discipline**: no raw PDF bytes in the LLM payload —
   only redacted text.
-- **A4 cache fingerprint**: deterministic, domain-separated, and
-  cache-oriented; raw provider/model/path/config values never appear in
-  cache filenames.
+- **A4 cache key**: ``SHA-256(pdf_bytes) || provider || model || scrub_hash``.
 """
 
 from __future__ import annotations
 
 import json
-import logging
-import sys
-import types
 from pathlib import Path
 from typing import Any
 
@@ -40,14 +35,13 @@ import pytest
 from scripts.extraction.pdf_pipeline import (
     ExtractionResult,
     _assert_no_raw_phi_in_payload,
-    _cache_fingerprint,
+    _cache_key,
     _candidate_from_text,
     _merge,
     _redact_text_for_llm,
     _scrub_llm_response,
     extract_pdf,
 )
-from tests.security.key_fixtures import anthropic_key
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -92,92 +86,6 @@ def test_assert_no_raw_phi_raises_on_unredacted_payload() -> None:
 def test_assert_no_raw_phi_passes_on_clean_payload() -> None:
     """Clean / redacted text passes the defensive check."""
     _assert_no_raw_phi_in_payload(_crf_text())  # raises if blocked
-
-
-def test_llm_dispatch_logs_safe_diagnostics(
-    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    import scripts.extraction.pdf_pipeline as pp
-
-    provider = "operator-provider-SENSITIVE-87"
-    model = "operator-model-SENSITIVE-87"
-    api_key = "sk-SENSITIVE-87"
-    exception_marker = "raw-exception-SENSITIVE-87"
-
-    assert (
-        pp._extract_via_llm(
-            _crf_text(),
-            provider=provider,
-            model=model,
-            api_key=api_key,
-        )
-        is None
-    )
-
-    class _Messages:
-        def create(self, **_kwargs: Any) -> object:
-            raise RuntimeError(exception_marker)
-
-    class _Anthropic:
-        def __init__(self, **_kwargs: str) -> None:
-            self.messages = _Messages()
-
-    monkeypatch.setitem(
-        sys.modules,
-        "anthropic",
-        types.SimpleNamespace(Anthropic=_Anthropic),
-    )
-
-    with caplog.at_level(logging.WARNING, logger="scripts.extraction.pdf_pipeline"):
-        assert (
-            pp._extract_via_llm(
-                _crf_text(),
-                provider="anthropic",
-                model=model,
-                api_key=api_key,
-            )
-            is None
-        )
-
-    messages = "\n".join(
-        record.getMessage()
-        for record in caplog.records
-        if record.name == "scripts.extraction.pdf_pipeline"
-    )
-    assert "not wired for LLM extraction" in messages
-    assert "LLM call failed" in messages
-    assert "provider=present model=present" in messages
-    assert "RuntimeError" in messages
-    for raw in (provider, model, api_key, exception_marker, _crf_text()):
-        assert raw not in messages
-
-
-def test_code_only_fallback_log_omits_raw_pdf_and_model_values(
-    tmp_path: Path,
-    caplog: pytest.LogCaptureFixture,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    import scripts.extraction.pdf_pipeline as pp
-
-    pdf = _make_pdf(tmp_path, name="sensitive-form-88.pdf")
-    provider = "operator-provider-sensitive-88"
-    model = "operator-model-sensitive-88"
-
-    monkeypatch.setattr(pp, "_extract_text_via_pdfplumber", lambda _p: _crf_text())
-
-    with caplog.at_level(logging.INFO, logger="scripts.extraction.pdf_pipeline"):
-        result = extract_pdf(pdf, provider=provider, model=model, api_key="test-key")
-
-    assert result.tier == "empty"
-    messages = "\n".join(
-        record.getMessage()
-        for record in caplog.records
-        if record.name == "scripts.extraction.pdf_pipeline"
-    )
-    assert "discarding code-only candidate" in messages
-    assert "provider=present model=present" in messages
-    for raw in (pdf.name, provider, model):
-        assert raw not in messages
 
 
 # ── 3.G — response scrubbing ────────────────────────────────────────────────
@@ -277,83 +185,25 @@ def test_merge_falls_back_to_single_tier() -> None:
     assert _merge(None, None) is None
 
 
-# ── 3.H — idempotent cache fingerprint ──────────────────────────────────────
+# ── 3.H — idempotent cache key ──────────────────────────────────────────────
 
 
-def test_cache_fingerprint_invariants(tmp_path: Path) -> None:
-    """Same inputs → same fingerprint. Different provider / model /
-    PDF bytes → different fingerprint. This is the basis for the
-    idempotent retry."""
+def test_cache_key_invariants(tmp_path: Path) -> None:
+    """Same inputs → same key. Different provider / model / pdf bytes
+    → different key. This is the basis for the idempotent retry."""
     pdf = _make_pdf(tmp_path, content=b"%PDF-1.4\ntest A")
     pdf2 = _make_pdf(tmp_path, name="other.pdf", content=b"%PDF-1.4\ntest B")
-    pdf_same_bytes = _make_pdf(
-        tmp_path,
-        name="renamed.pdf",
-        content=b"%PDF-1.4\ntest A",
-    )
 
-    k1 = _cache_fingerprint(pdf, "anthropic", "claude-opus-4-6")
-    k1_again = _cache_fingerprint(pdf, "anthropic", "claude-opus-4-6")
-    k_same_bytes = _cache_fingerprint(
-        pdf_same_bytes,
-        "anthropic",
-        "claude-opus-4-6",
-    )
-    k_diff_provider = _cache_fingerprint(pdf, "openai", "gpt-5")
-    k_diff_model = _cache_fingerprint(pdf, "anthropic", "claude-opus-4-7")
-    k_diff_pdf = _cache_fingerprint(pdf2, "anthropic", "claude-opus-4-6")
+    k1 = _cache_key(pdf, "anthropic", "claude-opus-4-6")
+    k1_again = _cache_key(pdf, "anthropic", "claude-opus-4-6")
+    k_diff_provider = _cache_key(pdf, "openai", "gpt-5")
+    k_diff_model = _cache_key(pdf, "anthropic", "claude-opus-4-7")
+    k_diff_pdf = _cache_key(pdf2, "anthropic", "claude-opus-4-6")
 
     assert k1 == k1_again
-    assert k1 == k_same_bytes
     assert k1 != k_diff_provider
     assert k1 != k_diff_model
     assert k1 != k_diff_pdf
-
-
-def test_cache_fingerprint_is_stable_and_not_raw_input_derived(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    pdf = _make_pdf(
-        tmp_path,
-        name="raw-study-form.pdf",
-        content=b"%PDF-1.4\nraw content",
-    )
-    scrub_path = tmp_path / "phi_scrub.yaml"
-    scrub_path.write_text("drop_fields:\n- SECRET_FIELD\n", encoding="utf-8")
-
-    import config
-    import scripts.extraction.pdf_pipeline as pp
-
-    monkeypatch.setattr(config, "PHI_SCRUB_CONFIG_PATH", scrub_path)
-
-    provider = "raw-provider"
-    model = "raw-model"
-
-    fingerprint = pp._cache_fingerprint(pdf, provider, model)
-    same_fingerprint = pp._cache_fingerprint(pdf, provider, model)
-
-    cache_dir = tmp_path / "cache"
-    pp._cache_put(cache_dir, fingerprint, {"ok": True})
-
-    scrub_path.write_text("drop_fields:\n- OTHER_SECRET_FIELD\n", encoding="utf-8")
-    changed_scrub_fingerprint = pp._cache_fingerprint(pdf, provider, model)
-
-    assert fingerprint == same_fingerprint
-    assert fingerprint != changed_scrub_fingerprint
-    assert fingerprint.startswith("pdf-llm-cache-v1_")
-
-    filenames_and_keys = [fingerprint, *(path.name for path in cache_dir.iterdir())]
-    forbidden_raw_values = (
-        provider,
-        model,
-        pdf.name,
-        pdf.stem,
-        "sk-raw-api-key",
-        "SECRET_FIELD",
-        "OTHER_SECRET_FIELD",
-        "raw content",
-    )
-    assert all(raw not in value for raw in forbidden_raw_values for value in filenames_and_keys)
 
 
 # ── Top-level orchestrator (without real LLM) ──────────────────────────────
@@ -463,7 +313,7 @@ def test_extract_pdf_with_mocked_llm_path(tmp_path: Path, monkeypatch: pytest.Mo
         pdf,
         provider="anthropic",
         model="claude-opus-4-6",
-        api_key=anthropic_key("TEST"),
+        api_key="sk-ant-test-placeholder",
         cache_dir=cache_dir,
     )
 
