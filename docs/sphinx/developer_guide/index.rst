@@ -46,6 +46,7 @@ Contents
 
    architecture
    phi_architecture
+   catalog_cutover
    decisions
    references
    tech_stack

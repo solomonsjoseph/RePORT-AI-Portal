@@ -34,36 +34,36 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 logger = logging.getLogger(__name__)
 
 
-# ── Catalog-binding feature flag (issue #75 + #79) ──────────────────────
+# ── Catalog-binding feature flag (issue #75 + #79 + hard cutover #81) ───
 #
-# When ``REPORTALIN_USE_CATALOG_BINDING=1`` (or a truthy variant), callers
-# resolve analysis bindings through ``scripts.source_truth.analysis_binding``
-# instead of the legacy ``StudyKnowledge`` YAML. The flag is OFF by default
-# so existing deterministic behavior remains the primary path until a later
-# slice retires ``study_knowledge.py`` outright.
-#
-# Issue #79 introduces the broader ``REPORTALIN_USE_CATALOG_RUNTIME`` flag
-# (read in ``scripts.ai_assistant.agent_graph``). Setting the runtime flag
-# implies the binding flag — operators only have to set one toggle to
-# bypass the legacy path end-to-end.
+# After issue #81 the catalog/Dataset-Schema binding path is the
+# default. The legacy ``StudyKnowledge``-driven binding remains
+# reachable for one release window via the explicit
+# ``REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE`` override env var. The
+# previously opt-in ``REPORTALIN_USE_CATALOG_BINDING`` and
+# ``REPORTALIN_USE_CATALOG_RUNTIME`` env vars are now redundant -- they
+# are accepted for backward compatibility but do not change behaviour
+# unless the legacy override is also set, in which case the legacy
+# override wins (it is the rollback kill switch).
 
 _CATALOG_BINDING_FLAG = "REPORTALIN_USE_CATALOG_BINDING"
 _CATALOG_RUNTIME_FLAG = "REPORTALIN_USE_CATALOG_RUNTIME"
+_LEGACY_STUDY_KNOWLEDGE_FLAG = "REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE"
 _TRUTHY = frozenset({"1", "true", "yes", "on"})
 
 
 def is_catalog_binding_enabled() -> bool:
-    """Return True iff the catalog/Dataset-Schema binding path is enabled.
+    """Return True when the catalog/Dataset-Schema binding path is the
+    active analysis-binding source.
 
-    Either ``REPORTALIN_USE_CATALOG_BINDING`` or the broader
-    ``REPORTALIN_USE_CATALOG_RUNTIME`` flag activates the bypass; the
-    runtime flag subsumes the binding flag per issue #79.
+    After the hard cutover (#81) the catalog binding is the default.
+    Setting ``REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE=1`` is the explicit
+    rollback override that disables the catalog binding and re-enables
+    the legacy ``StudyKnowledge`` runner for one release window.
     """
     import os
 
-    binding_raw = os.environ.get(_CATALOG_BINDING_FLAG, "").strip().lower()
-    runtime_raw = os.environ.get(_CATALOG_RUNTIME_FLAG, "").strip().lower()
-    return binding_raw in _TRUTHY or runtime_raw in _TRUTHY
+    return os.environ.get(_LEGACY_STUDY_KNOWLEDGE_FLAG, "").strip().lower() not in _TRUTHY
 
 
 def validate_catalog_bindings(

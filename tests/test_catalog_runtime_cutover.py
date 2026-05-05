@@ -41,6 +41,7 @@ from scripts.source_truth.retrieval import SourceTruthRetriever
 
 _RUNTIME_FLAG = "REPORTALIN_USE_CATALOG_RUNTIME"
 _BINDING_FLAG = "REPORTALIN_USE_CATALOG_BINDING"
+_LEGACY_FLAG = "REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE"
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -134,28 +135,48 @@ class TestRuntimeFlag:
     operator to set both flags by hand.
     """
 
-    def test_runtime_flag_default_off(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_runtime_flag_default_on_after_hard_cutover(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """After issue #81 the catalog runtime is the default. The
+        explicit ``REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE`` override
+        rolls it back; otherwise the runtime is on.
+        """
         monkeypatch.delenv(_RUNTIME_FLAG, raising=False)
         monkeypatch.delenv(_BINDING_FLAG, raising=False)
+        monkeypatch.delenv(_LEGACY_FLAG, raising=False)
+        from scripts.ai_assistant import agent_graph
+
+        assert agent_graph.is_catalog_runtime_enabled() is True
+
+    def test_runtime_flag_disabled_under_legacy_override(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv(_RUNTIME_FLAG, raising=False)
+        monkeypatch.setenv(_LEGACY_FLAG, "1")
         from scripts.ai_assistant import agent_graph
 
         assert agent_graph.is_catalog_runtime_enabled() is False
 
     def test_runtime_flag_enabled_with_truthy_value(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv(_LEGACY_FLAG, raising=False)
         monkeypatch.setenv(_RUNTIME_FLAG, "1")
         from scripts.ai_assistant import agent_graph
 
         assert agent_graph.is_catalog_runtime_enabled() is True
 
     def test_runtime_flag_implies_catalog_binding(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Setting only the runtime flag must enable the binding bypass too.
+        """The runtime and binding flags share the same default and the
+        same legacy override.
 
-        The maintainer's pointer in #79 says: "extend or align with this
-        flag rather than introducing a parallel one. Or introduce a new
-        top-level REPORTALIN_USE_CATALOG_RUNTIME flag that subsumes /
-        implies it." The runtime flag therefore implies the binding flag.
+        Pre-cutover (#79) this test asserted that an explicitly set
+        ``REPORTALIN_USE_CATALOG_RUNTIME`` implied the binding flag.
+        After issue #81 both default to True; the legacy override
+        flips both to False together. The implication property still
+        holds (turning the runtime on never leaves the binding off).
         """
         monkeypatch.delenv(_BINDING_FLAG, raising=False)
+        monkeypatch.delenv(_LEGACY_FLAG, raising=False)
         monkeypatch.setenv(_RUNTIME_FLAG, "1")
         import scripts.ai_assistant.analytical_engine as engine
 

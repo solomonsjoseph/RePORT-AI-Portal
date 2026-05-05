@@ -45,25 +45,39 @@ __all__ = [
 ]
 
 
-# ── Catalog runtime feature flag (issue #79) ────────────────────────────
+# ── Catalog runtime feature flag (issue #79 + hard cutover #81) ─────────
 #
-# When ``REPORTALIN_USE_CATALOG_RUNTIME`` is truthy, the assistant binds
-# its tool list and system prompt to the catalog-aware variants. The
-# flag is OFF by default so existing chat behaviour is preserved until
-# the cutover validation completes.
+# After issue #81 the catalog runtime is the default. The legacy
+# ``StudyKnowledge``-driven path remains reachable for one release
+# window via the explicit ``REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE``
+# override env var. The previously opt-in
+# ``REPORTALIN_USE_CATALOG_RUNTIME`` env var is now redundant -- it is
+# accepted for backward compatibility but does not change behaviour
+# unless the legacy override is also set, in which case the legacy
+# override wins (it is the rollback kill switch).
 #
 # This flag DOES NOT route on user-input keywords. It selects which
 # tools the LLM has and which system prompt it sees. The LLM still
 # decides which tool to call based on the natural-language question.
 
 _CATALOG_RUNTIME_FLAG = "REPORTALIN_USE_CATALOG_RUNTIME"
+_LEGACY_STUDY_KNOWLEDGE_FLAG = "REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE"
 _TRUTHY = frozenset({"1", "true", "yes", "on"})
 
 
+def _env_truthy(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in _TRUTHY
+
+
 def is_catalog_runtime_enabled() -> bool:
-    """Return True iff ``REPORTALIN_USE_CATALOG_RUNTIME`` is truthy."""
-    raw = os.environ.get(_CATALOG_RUNTIME_FLAG, "").strip().lower()
-    return raw in _TRUTHY
+    """Return True when the catalog runtime path should be used.
+
+    After the hard cutover (#81) the catalog runtime is the default.
+    Setting ``REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE=1`` is the explicit
+    rollback override that disables the catalog path and re-enables the
+    legacy ``StudyKnowledge`` runtime for one release window.
+    """
+    return not _env_truthy(_LEGACY_STUDY_KNOWLEDGE_FLAG)
 
 
 def runtime_tools(flag_on: bool) -> list[Any]:

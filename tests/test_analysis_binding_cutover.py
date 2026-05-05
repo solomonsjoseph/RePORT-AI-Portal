@@ -29,6 +29,8 @@ from scripts.source_truth.catalog import build_catalog_artifact
 from scripts.source_truth.dataset_schema import build_dataset_schema
 
 _FLAG = "REPORTALIN_USE_CATALOG_BINDING"
+_RUNTIME_FLAG = "REPORTALIN_USE_CATALOG_RUNTIME"
+_LEGACY_FLAG = "REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE"
 
 
 def _bundle() -> dict[str, Any]:
@@ -292,17 +294,35 @@ class TestResolveAnalysisBindings:
 class TestFeatureFlagGate:
     """The flag controls whether the new path is the source of bindings."""
 
-    def test_flag_default_off_keeps_old_study_knowledge_path(
+    def test_flag_default_on_after_hard_cutover(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """When the flag is unset (default), the old code path must be used.
+        """After issue #81 the catalog binding is the default.
 
-        We only need to assert that the flag-aware entry point routes to the
-        StudyKnowledge-driven runner when no flag is set; we do NOT exercise
-        the entire pipeline (no datasets, no plots).
+        Pre-cutover (#75) this asserted that with no env var set the
+        legacy path was used. After the hard cutover the catalog
+        binding is on by default; the legacy override env var is the
+        only way back to the ``StudyKnowledge`` runner.
         """
         monkeypatch.delenv(_FLAG, raising=False)
+        monkeypatch.delenv(_RUNTIME_FLAG, raising=False)
+        monkeypatch.delenv(_LEGACY_FLAG, raising=False)
+        import scripts.ai_assistant.analytical_engine as engine
+
+        assert engine.is_catalog_binding_enabled() is True
+
+    def test_legacy_override_keeps_old_study_knowledge_path(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """``REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE=1`` is the post-cutover
+        rollback: with it set, the catalog binding flag returns False
+        and the legacy ``StudyKnowledge`` runner is reachable again.
+        """
+        monkeypatch.delenv(_FLAG, raising=False)
+        monkeypatch.delenv(_RUNTIME_FLAG, raising=False)
+        monkeypatch.setenv(_LEGACY_FLAG, "1")
         import scripts.ai_assistant.analytical_engine as engine
 
         assert engine.is_catalog_binding_enabled() is False
@@ -311,6 +331,7 @@ class TestFeatureFlagGate:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        monkeypatch.delenv(_LEGACY_FLAG, raising=False)
         monkeypatch.setenv(_FLAG, "1")
         import scripts.ai_assistant.analytical_engine as engine
 

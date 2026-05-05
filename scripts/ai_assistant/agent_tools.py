@@ -1002,10 +1002,11 @@ def _safe_import_check(code: str) -> str | None:
 def run_python_analysis(code: str) -> str:
     """Execute Python code for statistical analysis on study datasets.
 
-    Runs in an isolated subprocess sandbox with pre-loaded DataFrames from
-    the study's de-identified trio bundle. The sandbox cannot read API keys
-    from ``os.environ``, cannot escape its narrow output directory, and is
-    wall-clock and (on Linux) memory bounded. See
+    Runs in an isolated subprocess sandbox with pre-loaded DataFrames
+    sourced from the study's catalog and current (de-identified)
+    dataset. The sandbox cannot read API keys from ``os.environ``,
+    cannot escape its narrow output directory, and is wall-clock and
+    (on Linux) memory bounded. See
     ``docs/sphinx/developer_guide/sandbox.rst`` for the full threat model.
 
     **Available DataFrames** (named ``df_<dataset>``, e.g. ``df_1A_ICScreening``):
