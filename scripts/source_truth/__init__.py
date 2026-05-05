@@ -35,6 +35,10 @@ from scripts.source_truth.dataset_schema import (
     get_dataset_schema_status,
     resolve_analysis_binding,
 )
+from scripts.source_truth.distribution import (
+    DistributionRequestError,
+    run_categorical_distribution,
+)
 from scripts.source_truth.ledgers import (
     SourceTruthLedgerError,
     build_dataset_cleanup_ledger,
@@ -82,6 +86,7 @@ __all__ = [
     "PDF_EVIDENCE_NO_USEFUL_TEXT_LEFT",
     "CatalogAnswer",
     "DatasetSchemaError",
+    "DistributionRequestError",
     "SourceTruthBuildError",
     "SourceTruthCatalogError",
     "SourceTruthLedgerError",
@@ -104,6 +109,7 @@ __all__ = [
     "get_dataset_schema_status",
     "report_completeness",
     "resolve_analysis_binding",
+    "run_categorical_distribution",
     "stamp_generated_artifact",
     "stamp_source_truth",
     "validate_lineage_bundle",
