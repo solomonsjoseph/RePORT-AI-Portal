@@ -315,10 +315,10 @@ class TestBackwardSelection:
 class TestPlotRecommendations:
     """Plot mapping (documented in epidemiology module docstring):
 
-    * categorical predictor × binary outcome  → bar
-    * continuous  predictor × binary outcome  → forest
-    * continuous  predictor × continuous outcome → scatter
-    * categorical predictor × continuous outcome → boxplot
+    * categorical predictor x binary outcome  -> bar
+    * continuous  predictor x binary outcome  -> forest
+    * continuous  predictor x continuous outcome -> scatter
+    * categorical predictor x continuous outcome -> boxplot
     """
 
     def test_categorical_predictor_with_binary_outcome_recommends_bar(self) -> None:

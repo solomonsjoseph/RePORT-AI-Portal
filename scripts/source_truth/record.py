@@ -198,9 +198,7 @@ def _check_presence_block(presence: Any) -> None:
                 f"presence.{source} is missing required 'present' boolean"
             )
         if not isinstance(sub["present"], bool):
-            raise SourceTruthValidationError(
-                f"presence.{source}.present must be a boolean"
-            )
+            raise SourceTruthValidationError(f"presence.{source}.present must be a boolean")
 
 
 def _check_exact_source_wording(wording: Any) -> None:
@@ -221,23 +219,15 @@ def _check_exact_source_wording(wording: Any) -> None:
 
 def _check_normalized(normalized: Any) -> None:
     if not isinstance(normalized, Mapping):
-        raise SourceTruthValidationError(
-            "normalized must be a mapping with at least a 'label'"
-        )
+        raise SourceTruthValidationError("normalized must be a mapping with at least a 'label'")
     if "label" not in normalized or not isinstance(normalized["label"], str):
-        raise SourceTruthValidationError(
-            "normalized.label is required and must be a string"
-        )
+        raise SourceTruthValidationError("normalized.label is required and must be a string")
     # Source-defined options may live in ``normalized.source_defined_options``,
     # but the PRD requires that source-defined options be kept separate
     # from observed dataset values. Reject any record that pairs the two
     # in the same block.
-    if (
-        "source_defined_options" in normalized
-        and (
-            "observed_values" in normalized
-            or "observed_value_counts" in normalized
-        )
+    if "source_defined_options" in normalized and (
+        "observed_values" in normalized or "observed_value_counts" in normalized
     ):
         raise SourceTruthValidationError(
             "normalized.source_defined_options must not co-exist with observed_values; "
@@ -272,15 +262,13 @@ def validate_record(record: Mapping[str, Any]) -> None:
     source_kind = record["source_kind"]
     if source_kind not in SOURCE_KIND_VALUES:
         raise SourceTruthValidationError(
-            f"source_kind {source_kind!r} is not one of "
-            + ", ".join(sorted(SOURCE_KIND_VALUES))
+            f"source_kind {source_kind!r} is not one of " + ", ".join(sorted(SOURCE_KIND_VALUES))
         )
 
     review_state = record["review_state"]
     if review_state not in REVIEW_STATE_VALUES:
         raise SourceTruthValidationError(
-            f"review_state {review_state!r} is not one of "
-            + ", ".join(sorted(REVIEW_STATE_VALUES))
+            f"review_state {review_state!r} is not one of " + ", ".join(sorted(REVIEW_STATE_VALUES))
         )
 
     _check_presence_block(record["presence"])

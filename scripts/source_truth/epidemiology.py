@@ -43,7 +43,7 @@ on top:
   * **causal language**: by default ("influence/affect/cause" → softened
     to "association"); ``causal=True`` opts in.
 
-Plot recommendations (driven by predictor ``field_class`` × outcome
+Plot recommendations (driven by predictor ``field_class`` x outcome
 ``field_class``) follow a small fixed table:
 
 ================================  ===================================
@@ -131,10 +131,7 @@ def _catalog_record(catalog: Mapping[str, Any], variable_id: str) -> Mapping[str
         return None
     target = variable_id.upper()
     for record in records:
-        if (
-            isinstance(record, Mapping)
-            and str(record.get("variable_id", "")).upper() == target
-        ):
+        if isinstance(record, Mapping) and str(record.get("variable_id", "")).upper() == target:
             return record
     return None
 
@@ -145,10 +142,7 @@ def _evidence_pack(catalog: Mapping[str, Any], variable_id: str) -> Mapping[str,
         return None
     target = variable_id.upper()
     for pack in packs:
-        if (
-            isinstance(pack, Mapping)
-            and str(pack.get("variable_id", "")).upper() == target
-        ):
+        if isinstance(pack, Mapping) and str(pack.get("variable_id", "")).upper() == target:
             return pack
     return None
 
@@ -410,8 +404,7 @@ def plan_epidemiology_analysis(
     """
     if not isinstance(outcome_variable_id, str) or not outcome_variable_id:
         raise EpidemiologyPlanError(
-            "outcome_variable_id is required; the planner refuses to pick an "
-            "outcome heuristically."
+            "outcome_variable_id is required; the planner refuses to pick an outcome heuristically."
         )
 
     _validate_cohort(cohort_id, supported_cohorts)

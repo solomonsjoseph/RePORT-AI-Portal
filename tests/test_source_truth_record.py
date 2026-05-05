@@ -151,10 +151,7 @@ class TestExactWordingSeparate:
         record["exact_source_wording"]["pdf_question"] = "HIV TEST RESULT (initial)"
         record["normalized"]["label"] = "hiv_test_result"
         validate_record(record)
-        assert (
-            record["exact_source_wording"]["pdf_question"]
-            != record["normalized"]["label"]
-        )
+        assert record["exact_source_wording"]["pdf_question"] != record["normalized"]["label"]
 
     def test_exact_source_wording_must_be_mapping(self) -> None:
         record = _minimal_valid_record()
@@ -215,17 +212,13 @@ class TestFooterAndVersionExclusion:
     def test_forbidden_artifact_version_key_rejected(self, forbidden_key: str) -> None:
         record = _minimal_valid_record()
         record["normalized"][forbidden_key] = "2024-01-15"
-        with pytest.raises(
-            SourceTruthValidationError, match="footer / artifact-version metadata"
-        ):
+        with pytest.raises(SourceTruthValidationError, match="footer / artifact-version metadata"):
             validate_record(record)
 
     def test_form_version_date_at_top_level_rejected(self) -> None:
         record = _minimal_valid_record()
         record["form_version_date"] = "2024-01-15"
-        with pytest.raises(
-            SourceTruthValidationError, match="footer / artifact-version metadata"
-        ):
+        with pytest.raises(SourceTruthValidationError, match="footer / artifact-version metadata"):
             validate_record(record)
 
     def test_form_version_string_field_is_allowed(self) -> None:

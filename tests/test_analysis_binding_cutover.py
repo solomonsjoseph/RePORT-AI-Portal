@@ -28,7 +28,6 @@ from scripts.source_truth.builder import build_source_truth_artifact
 from scripts.source_truth.catalog import build_catalog_artifact
 from scripts.source_truth.dataset_schema import build_dataset_schema
 
-
 _FLAG = "REPORTALIN_USE_CATALOG_BINDING"
 
 
@@ -187,7 +186,9 @@ class TestResolveAnalysisBindings:
             assert binding["binding_source"] == "dataset_schema"
             assert binding["analysis_queryable"] is True
             assert binding["review_required"] is False
-            assert binding["source_references"]["catalog_ref"]["variable_id"] == binding["variable_id"]
+            assert (
+                binding["source_references"]["catalog_ref"]["variable_id"] == binding["variable_id"]
+            )
 
     def test_cohort_block_carries_source_references(self) -> None:
         from scripts.source_truth.analysis_binding import resolve_analysis_bindings
@@ -205,7 +206,9 @@ class TestResolveAnalysisBindings:
         cohort = result["cohort"]
         assert cohort["cohort_id"] == "cohort_a"
         # Cohort always references the artifacts it was bound from.
-        assert cohort["source_references"]["catalog_ref"]["artifact_type"] == "study_variable_catalog"
+        assert (
+            cohort["source_references"]["catalog_ref"]["artifact_type"] == "study_variable_catalog"
+        )
         assert (
             cohort["source_references"]["dataset_schema_ref"]["artifact_type"]
             == "study_dataset_schema"
