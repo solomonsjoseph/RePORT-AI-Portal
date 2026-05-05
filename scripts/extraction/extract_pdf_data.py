@@ -45,6 +45,7 @@ from scripts.extraction.io import (
     atomic_write_json,
 )
 from scripts.utils import logging_system as log
+from scripts.utils.log_safe import safe_provider_model_diagnostic
 
 vlog = log.get_verbose_logger()
 
@@ -906,10 +907,10 @@ def _run_orchestrator_mode(
     provider, model, api_key = _resolve_orchestrator_credentials()
     snapshot_dir = _initial_snapshot_pdfs_dir()
     cache_dir = Path(config.STUDY_STAGING_DIR) / ".pdf_cache"
+    diagnostic = safe_provider_model_diagnostic(provider=provider, model=model)
     log.info(
-        "PDF extraction: orchestrator mode — provider=%s model=%s snapshot_dir=%s cache_dir=%s",
-        provider,
-        model,
+        "PDF extraction: orchestrator mode — %s snapshot_dir=%s cache_dir=%s",
+        diagnostic,
         snapshot_dir,
         cache_dir,
     )
@@ -942,14 +943,19 @@ def _run_orchestrator_mode(
                     cache_dir=cache_dir,
                 )
             except Exception as exc:  # never let one PDF crash the run
-                errors.append({"file": pdf_path.name, "error": str(exc)})
-                log.error("orchestrator failed for %s: %s", pdf_path.name, exc)
+                msg = f"orchestrator failed ({type(exc).__name__})"
+                errors.append({"file": pdf_path.name, "error": msg})
+                log.error(
+                    "orchestrator failed for %s: exception_type=%s",
+                    pdf_path.name,
+                    type(exc).__name__,
+                )
                 continue
 
             if result.tier == "empty":
                 msg = (
                     f"orchestrator produced no extractable variables "
-                    f"(llm_skipped={result.llm_skipped_reason!r})"
+                    f"(llm_skipped_reason={'present' if result.llm_skipped_reason else 'missing'})"
                 )
                 errors.append({"file": pdf_path.name, "error": msg})
                 continue

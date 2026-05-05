@@ -15,7 +15,7 @@ from scripts.ai_assistant.agent_tools import ALL_TOOLS  # noqa: E402
 class TestToolRegistry:
     def test_all_tools_is_list(self) -> None:
         assert isinstance(ALL_TOOLS, list)
-        assert len(ALL_TOOLS) == 12
+        assert len(ALL_TOOLS) == 13
 
     def test_tools_have_names(self) -> None:
         for tool in ALL_TOOLS:
@@ -41,6 +41,7 @@ class TestToolRegistry:
             "cross_reference_variables",
             "run_study_analysis",
             "search_pdf_context",
+            "answer_catalog_question",
         }
         assert expected == names
 

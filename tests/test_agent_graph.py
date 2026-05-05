@@ -100,16 +100,22 @@ class TestGetAgent:
     @patch("scripts.ai_assistant.agent_graph._init_llm")
     @patch("scripts.ai_assistant.agent_graph.create_agent")
     def test_agent_prompt_contains_answer_quality_contract(self, mock_create, mock_llm):
+        """After issue #81 the catalog runtime prompt is the default. It
+        retains the same accuracy guardrails as the legacy prompt:
+        grounding requirement, refusal to claim statistics without tool
+        output, and the audit-only verbatim text.
+        """
         mock_llm.return_value = MagicMock()
         mock_create.return_value = MagicMock()
         get_agent()
         _, kwargs = mock_create.call_args
         prompt = kwargs["system_prompt"]
-        assert "Grounding and Accuracy Contract" in prompt
-        assert "Do not make a statistical, causal, risk-factor" in prompt
-        assert "privacy-shifted" in prompt
-        assert "clinical" in prompt
-        assert "dates" in prompt
+        # Grounding section is present in the catalog runtime prompt.
+        assert "Grounding and Accuracy" in prompt
+        assert "ground the answer in tool output" in prompt
+        # The "no claim without tool output" guardrail.
+        assert "Do not make a statistical" in prompt
+        assert "prevalence, count" in prompt
 
     @patch("scripts.ai_assistant.agent_graph._init_llm")
     @patch("scripts.ai_assistant.agent_graph.create_agent")

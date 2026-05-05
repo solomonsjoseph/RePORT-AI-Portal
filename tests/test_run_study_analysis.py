@@ -22,6 +22,18 @@ class TestRunStudyAnalysisInput:
 
 
 class TestRunStudyAnalysisWithData:
+    """Legacy ``run_study_analysis`` tool integration tests.
+
+    The tool calls into ``analytical_engine.run_full_analysis``, which
+    after issue #81 raises unless the legacy override is set. Pin the
+    legacy path per-test (never global) so the rollback window remains
+    exercised.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _legacy_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE", "1")
+
     def test_cohort_a_basic(
         self,
         synthetic_cohort_data: Path,
@@ -203,6 +215,10 @@ class TestRunStudyAnalysisWithData:
 
 
 class TestMalnutritionPredictor:
+    @pytest.fixture(autouse=True)
+    def _legacy_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE", "1")
+
     def test_malnutrition_accepted_and_narrated(
         self,
         synthetic_cohort_data: Path,

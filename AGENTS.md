@@ -13,3 +13,17 @@ Avoid:
 - Injecting per-query hidden routing hints.
 - Hard-blocking `run_study_analysis` or any other tool for a user question category outside the tool implementation's own validation and safety checks.
 - Replacing LLM judgment with brittle keyword routers.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked in GitHub Issues for `solomonsjoseph/RePORT-AI-Portal`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Agent triage uses the `agent:*` label vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This repo uses a single-context domain-doc layout. See `docs/agents/domain.md`.

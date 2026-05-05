@@ -310,6 +310,10 @@ chat-smoke:
 	@$(PYTHON) -m pytest tests/test_production_smoke.py
 	@printf "$(G)✓ Chat smoke passed$(N)\n"
 
+cutover-gate:
+	@$(PYTHON) -m pytest tests/test_hard_cutover_validation_gate.py -v
+	@printf "$(G)✓ Hard cutover validation gate passed$(N)\n"
+
 ci: lint typecheck test-all chat-smoke
 	@printf "$(G)✓ All CI gates passed$(N)\n"
 

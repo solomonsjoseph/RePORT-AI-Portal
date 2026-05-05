@@ -239,20 +239,29 @@ def _render_artifact_bar(
 # File-path sanitization for user-facing output
 # ---------------------------------------------------------------------------
 
+_FILE_REF_EXTENSIONS = "jsonl|json|pdf|png|csv|xlsx|md"
+_INTERNAL_MARKER_RE = re.compile(r"<RPLN_[A-Za-z0-9_]+:[^>\r\n]*>")
+_ARTIFACT_MARKER_RE = re.compile(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>\r\n]*>")
+_ABSOLUTE_FILE_REF_RE = re.compile(
+    rf"(?<![\w.-])/(?:[\w.-]+/)*[\w.-]+\.(?:{_FILE_REF_EXTENSIONS})\b"
+)
+_RELATIVE_FILE_REF_RE = re.compile(rf"\b(?:[\w.-]+/)+[\w.-]+\.(?:{_FILE_REF_EXTENSIONS})\b")
+_FILE_EXTENSION_RE = re.compile(rf"\.(?:{_FILE_REF_EXTENSIONS})\b")
+_EXCESS_BLANK_LINES_RE = re.compile(r"\n{3,}")
+
 
 def _sanitize_file_refs(text: str) -> str:
     """Strip filesystem paths, .jsonl/.json extensions, and internal markers."""
-    text = re.sub(r"<RPLN_\w+:[^>]+>", "", text)
-    # Remove absolute/relative file paths (e.g. /Users/.../foo.jsonl)
-    text = re.sub(r"(?:/[\w./-]+)+\.(?:jsonl|json|pdf|png|csv|xlsx|md)\b", "", text)
-    text = re.sub(r"\b(?:[\w.-]+/)+[\w.-]+\.(?:jsonl|json|pdf|png|csv|xlsx|md)\b", "", text)
-    text = re.sub(r"\.(?:jsonl|json|pdf|png|csv|xlsx|md)\b", "", text)
-    return re.sub(r"\n{3,}", "\n\n", text).strip()
+    text = _INTERNAL_MARKER_RE.sub("", text)
+    text = _ABSOLUTE_FILE_REF_RE.sub("", text)
+    text = _RELATIVE_FILE_REF_RE.sub("", text)
+    text = _FILE_EXTENSION_RE.sub("", text)
+    return _EXCESS_BLANK_LINES_RE.sub("\n\n", text).strip()
 
 
 def _strip_internal_markers(text: str) -> str:
     """Replace internal render markers with generic placeholders."""
-    return re.sub(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>", "[Artifact]", text)
+    return _ARTIFACT_MARKER_RE.sub("[Artifact]", text)
 
 
 # ---------------------------------------------------------------------------

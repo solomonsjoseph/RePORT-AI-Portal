@@ -31,6 +31,7 @@ from scripts.ai_assistant.phi_safe import (
     guard_user_prompt,
     sanitise_untrusted_snippet,
 )
+from tests.security.key_fixtures import anthropic_key, google_key, openai_key
 
 # ── PHI smuggling: variants that try to evade the BLOCKING_PATTERNS ─────────
 
@@ -204,8 +205,8 @@ class TestKeyDisclosureChain:
         from scripts.ai_assistant.keystore import KeyStore
 
         ks = KeyStore()
-        ks.set("anthropic", "sk-ant-api03-SECRET-WOULD-LEAK-IF-IN-ENVIRON")
-        ks.set("openai", "sk-SECRET-OPENAI-WOULD-LEAK-IF-IN-ENVIRON")
+        ks.set("anthropic", anthropic_key("IRON"))
+        ks.set("openai", openai_key("IRON"))
 
         for var in (
             "ANTHROPIC_API_KEY",
@@ -229,12 +230,14 @@ class TestKeyDisclosureChain:
         from scripts.ai_assistant.keystore import KeyStore
 
         ks = KeyStore()
-        ks.set("anthropic", "sk-ant-test-WOULD-LEAK")
-        ks.set("google", "AIza-test-WOULD-LEAK")
+        anthropic = anthropic_key("LEAK")
+        google = google_key()
+        ks.set("anthropic", anthropic)
+        ks.set("google", google)
 
         env = ks.env_for_subprocess(["anthropic", "google"])
-        assert env["ANTHROPIC_API_KEY"] == "sk-ant-test-WOULD-LEAK"
-        assert env["GOOGLE_API_KEY"] == "AIza-test-WOULD-LEAK"
+        assert env["ANTHROPIC_API_KEY"] == anthropic
+        assert env["GOOGLE_API_KEY"] == google
 
         # Parent env: still empty.
         assert "ANTHROPIC_API_KEY" not in os.environ
@@ -248,12 +251,10 @@ class TestKeyDisclosureChain:
         from scripts.utils.log_hygiene import PHIRedactingFilter, _redact
 
         flt = PHIRedactingFilter(hmac_key=b"\x00" * 32)
-        prompt_with_leaked_key = (
-            "I'm getting auth errors with sk-ant-api03-LEAKED-KEY-BODY-"
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ — what's wrong?"
-        )
+        key = anthropic_key("AKED")
+        prompt_with_leaked_key = f"I'm getting auth errors with {key} — what's wrong?"
         out = _redact(prompt_with_leaked_key, flt)
-        assert "sk-ant-api03-LEAKED" not in out
+        assert key not in out
         assert "<ANTHROPIC_KEY>" in out
 
 
