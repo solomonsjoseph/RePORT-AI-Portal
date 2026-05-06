@@ -17,6 +17,8 @@
 # ============================================================================
 
 UV ?= uv
+STUDY ?= Indo-VAP
+COLUMN_INVENTORY ?=
 
 ifeq ($(OS),Windows_NT)
 VENV_PYTHON := $(abspath .venv/Scripts/python.exe)
@@ -76,7 +78,7 @@ N := \033[0m
 .DEFAULT_GOAL := help
 .PHONY: \
 	help quickstart debug sync version \
-	pipeline dictionary extract-datasets bundle pdf-extract \
+	pipeline dictionary extract-datasets build-llm-source bundle pdf-extract \
 	chat-deps chat-cli-deps chat-cli chat build-variables \
 	snapshot snapshot-study restore-study list-snapshots \
 	test test-all lint typecheck security ci verify release-check \
@@ -181,7 +183,7 @@ debug:
 # PIPELINE — FULL
 # ═══════════════════════════════════════════════════════════════════════
 
-pipeline:
+pipeline: build-llm-source
 	@printf "$(C)Running full pipeline: Dict → Datasets → PDF → Bundle → Variables$(N)\n"
 	@$(PYTHON) main.py --pipeline $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG) $(FFLAG) $(PDFFLAG)
 	@printf "$(G)✓ Pipeline complete$(N)\n"
@@ -199,6 +201,15 @@ extract-datasets:
 	@printf "$(C)Step 1+3: Extract → promote datasets...$(N)\n"
 	@$(PYTHON) main.py --skip-dictionary --process-datasets $(VFLAG) $(FFLAG)
 	@printf "$(G)✓ Dataset processing complete$(N)\n"
+
+build-llm-source: ## Run SoT-driven build coordinator (Branch Y of pipeline)
+	@printf "$(C)$(B)>> Running build coordinator for STUDY=$(STUDY)$(N)\n"
+	$(UV) run --all-groups python -m scripts.source_truth.build \
+		--study $(STUDY) \
+		--policies-dir data/$(STUDY) \
+		--concepts-file data/$(STUDY)/study_concepts.yaml \
+		--output-root output/$(STUDY) \
+		$(if $(COLUMN_INVENTORY),--column-inventory $(COLUMN_INVENTORY))
 
 bundle:
 	@printf "$(C)Step 2: Building Trio bundle...$(N)\n"
