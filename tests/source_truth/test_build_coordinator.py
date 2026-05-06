@@ -49,3 +49,47 @@ def test_cli_module_invocable(tmp_path):
         text=True,
     )
     assert result.returncode == 0, f"CLI failed: stdout={result.stdout!r} stderr={result.stderr!r}"
+
+
+def test_run_build_emits_catalog_and_evidence_packs(tmp_path):
+    import json
+    fixture = Path("tests/fixtures/build_mini").resolve()
+    output_root = tmp_path / "output" / "Mini"
+    run_build(
+        study="Mini",
+        policies_dir=fixture / "data" / "Mini",
+        concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
+        output_root=output_root,
+        column_inventory=None,
+    )
+
+    catalog_path = output_root / "llm_source" / "study_metadata_catalog.json"
+    assert catalog_path.is_file()
+    catalog = json.loads(catalog_path.read_text())
+    assert catalog["artifact_type"] == "study_metadata_catalog"
+    assert isinstance(catalog["compact_records"], list)
+    assert len(catalog["compact_records"]) > 0
+
+    evidence_dir = output_root / "llm_source" / "evidence_packs"
+    pack_files = list(evidence_dir.glob("*.json"))
+    assert len(pack_files) > 0
+    sample = json.loads(pack_files[0].read_text())
+    assert sample["variable_id"] == pack_files[0].stem
+
+
+def test_run_build_idempotent_byte_identical(tmp_path):
+    fixture = Path("tests/fixtures/build_mini").resolve()
+    out_a = tmp_path / "a"
+    out_b = tmp_path / "b"
+    for out in (out_a, out_b):
+        run_build(
+            study="Mini",
+            policies_dir=fixture / "data" / "Mini",
+            concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
+            output_root=out,
+            column_inventory=None,
+        )
+
+    cat_a = (out_a / "llm_source" / "study_metadata_catalog.json").read_bytes()
+    cat_b = (out_b / "llm_source" / "study_metadata_catalog.json").read_bytes()
+    assert cat_a == cat_b

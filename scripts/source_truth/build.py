@@ -24,9 +24,14 @@ chat tools are not invoked by this module.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 from pathlib import Path
 from typing import Any
+
+from scripts.source_truth.catalog import build_catalog_artifact
+from scripts.source_truth.evidence_pack_splitter import split_catalog_artifact
+from scripts.source_truth.policy_loader import load_policy_yaml
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +40,42 @@ __all__ = ["BuildCoordinatorError", "main", "run_build"]
 
 class BuildCoordinatorError(RuntimeError):
     """Raised when the build coordinator cannot proceed."""
+
+
+def _write_canonical_json(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    encoded = json.dumps(payload, sort_keys=True, indent=2, ensure_ascii=False)
+    path.write_text(encoded + "\n", encoding="utf-8")
+
+
+def _aggregate_catalog(policy_artifacts: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate per-form catalogs into a single study-wide catalog mapping.
+
+    Cross-form duplicates (e.g. SUBJID appearing in every form) are resolved
+    with first-form-wins semantics. The merge semantics for conflicting records
+    is a Plan-A.1 follow-up — for now we skip subsequent forms' copies silently.
+    """
+    aggregated_compact: list[dict[str, Any]] = []
+    aggregated_packs: list[dict[str, Any]] = []
+    seen_vids: set[str] = set()
+    for art in policy_artifacts:
+        per_form = build_catalog_artifact(art)
+        compact_only, packs = split_catalog_artifact(per_form)
+        for record in compact_only.get("compact_records") or []:
+            vid = record["variable_id"]
+            if vid in seen_vids:
+                continue  # cross-form duplicate (e.g. SUBJID); first form wins
+            seen_vids.add(vid)
+            aggregated_compact.append(record)
+        for vid, pack in packs.items():
+            if any(p.get("variable_id") == vid for p in aggregated_packs):
+                continue  # cross-form duplicate; first form wins
+            aggregated_packs.append(pack)
+    return {
+        "artifact_type": "study_metadata_catalog",
+        "compact_records": aggregated_compact,
+        "evidence_packs": aggregated_packs,
+    }
 
 
 def run_build(
@@ -68,6 +109,26 @@ def run_build(
         "output_root": str(output_root),
         "emitted": [],
     }
+
+    policy_paths = sorted(policies_dir.glob("*_policy.yaml"))
+    if not policy_paths:
+        raise BuildCoordinatorError(f"no *_policy.yaml files in {policies_dir}")
+    policy_artifacts = [load_policy_yaml(p) for p in policy_paths]
+
+    aggregated = _aggregate_catalog(policy_artifacts)
+    compact_only, packs = split_catalog_artifact(aggregated)
+
+    _write_canonical_json(llm_source_dir / "study_metadata_catalog.json", compact_only)
+    summary["emitted"].append("llm_source/study_metadata_catalog.json")
+
+    for vid, pack in packs.items():
+        _write_canonical_json(evidence_pack_dir / f"{vid}.json", pack)
+    summary["emitted"].append(f"llm_source/evidence_packs/*.json (count={len(packs)})")
+
+    summary["forms_loaded"] = [art["form"] for art in policy_artifacts]
+    summary["compact_record_count"] = len(compact_only.get("compact_records") or [])
+    summary["evidence_pack_count"] = len(packs)
+
     return summary
 
 
