@@ -6553,68 +6553,6 @@ ledger_expectations:
     - IC_OTHERSYMP_NOUNKN
   dataset_cleanup:
     - Time_Stamp
-validation:
-  forbidden_keys_absent: true
-  columns_unique: true
-  pdf_annotation_unmatched:
-    - "TBKNOWLINK (page 3 annotation labels the multi-response checkbox row for tuberculosis spread; no dataset column with this exact name — TBKNOWUNK appears to be the dataset 'Don't know' indicator captured under the same question)"
-    - "0 (page 3 alcohol-frequency option indicator marker for IC_ALCFRQ; not a variable name)"
-    - "1 (page 3 alcohol-frequency option indicator marker for IC_ALCFRQ; not a variable name)"
-    - "2 (page 3 alcohol-frequency option indicator marker for IC_ALCFRQ; not a variable name)"
-    - "3 (page 3 alcohol-frequency option indicator marker for IC_ALCFRQ; not a variable name)"
-    - "4 (page 3 alcohol-frequency option indicator marker for IC_ALCFRQ; not a variable name)"
-    - "0 (page 3 drinks-per-day option indicator marker for IC_ALCDOSTX; not a variable name)"
-    - "1 (page 3 drinks-per-day option indicator marker for IC_ALCDOSTX; not a variable name)"
-    - "2 (page 3 drinks-per-day option indicator marker for IC_ALCDOSTX; not a variable name)"
-    - "3 (page 3 drinks-per-day option indicator marker for IC_ALCDOSTX; not a variable name)"
-    - "4 (page 3 drinks-per-day option indicator marker for IC_ALCDOSTX; not a variable name)"
-    - "0 (page 3 six-or-more frequency option indicator marker for IC_ALCUSE; not a variable name)"
-    - "1 (page 3 six-or-more frequency option indicator marker for IC_ALCUSE; not a variable name)"
-    - "2 (page 3 six-or-more frequency option indicator marker for IC_ALCUSE; not a variable name)"
-    - "3 (page 3 six-or-more frequency option indicator marker for IC_ALCUSE; not a variable name)"
-    - "4 (page 3 six-or-more frequency option indicator marker for IC_ALCUSE; not a variable name)"
-    - "1 (page 6 cough-duration option indicator marker for IC_COUGHCAT 0-14 days; not a variable name)"
-    - "2 (page 6 cough-duration option indicator marker for IC_COUGHCAT 15-28 days; not a variable name)"
-    - "3 (page 6 cough-duration option indicator marker for IC_COUGHCAT > 28 days; not a variable name)"
-    - "1 (page 6 Karnofsky-area option indicator marker; not a variable name)"
-    - "2 (page 6 Karnofsky-area option indicator marker; not a variable name)"
-    - "4 (page 6 Karnofsky-area option indicator marker; not a variable name)"
-    - "0 (page 7 dietary-frequency option indicator marker for IC_DIETA; not a variable name)"
-    - "1 (page 7 dietary-frequency option indicator marker for IC_DIETA; not a variable name)"
-    - "2 (page 7 dietary-frequency option indicator marker for IC_DIETA; not a variable name)"
-    - "3 (page 7 dietary-frequency option indicator marker for IC_DIETA; not a variable name)"
-    - "0 (page 7 dietary-frequency option indicator marker for IC_DIETB; not a variable name)"
-    - "1 (page 7 dietary-frequency option indicator marker for IC_DIETB; not a variable name)"
-    - "2 (page 7 dietary-frequency option indicator marker for IC_DIETB; not a variable name)"
-    - "3 (page 7 dietary-frequency option indicator marker for IC_DIETB; not a variable name)"
-    - "0 (page 7 dietary-frequency option indicator marker for IC_DIETC; not a variable name)"
-    - "1 (page 7 dietary-frequency option indicator marker for IC_DIETC; not a variable name)"
-    - "2 (page 7 dietary-frequency option indicator marker for IC_DIETC; not a variable name)"
-    - "3 (page 7 dietary-frequency option indicator marker for IC_DIETC; not a variable name)"
-    - "1 (page 7 RBS Not-Done indicator marker adjacent to IC_RBSND; not a variable name)"
-    - "TBKNOWLINK (PDF FreeText annotation present on page 3 with text 'TBKNOWLINK', not a column in the dataset; the column inventory contains TBKNOWUNK and TBKNOWOTHER instead — flagged for reviewer alongside TBKNOWUNK and TBKNOWOTHER review_required entries)"
-    - "0 / 1 / 2 / 3 / 4 (alcohol-section checkbox indicator markers adjacent to IC_ALCFRQ, IC_ALCDOSTX, IC_ALCUSE; not variable names)"
-    - "1 / 2 / 3 (cough-characterization checkbox indicator markers adjacent to IC_COUGHCAT; not variable names)"
-    - "1 / 2 / 4 (Karnofsky-grade checkbox indicator markers adjacent to IC_KARN; not variable names)"
-    - "0 / 1 / 2 / 3 (diet-recall checkbox indicator markers adjacent to IC_DIETA, IC_DIETB, IC_DIETC; not variable names)"
-    - "1 (signature-area checkbox indicator marker adjacent to RBS Not Done; not a variable name)"
-  dataset_columns_unmatched: []
-  excluded_pdf_artifacts:
-    - "05/15/2014 (form version date appearing in page footer of every page — excluded per PDF Extraction Boundary)"
-    - "Page 1 of 7 (page footer — excluded)"
-    - "Page 2 of 7 (page footer — excluded)"
-    - "Page 3 of 7 (page footer — excluded)"
-    - "Page 4 of 7 (page footer — excluded)"
-    - "Page 5 of 7 (page footer — excluded)"
-    - "Page 6 of 7 (page footer — excluded)"
-    - "Page 7 of 7 (page footer — excluded)"
-    - "Indo-US VAP Index Case - Baseline v1.0 (form version footer banner — excluded)"
-    - "35077 (artifact-version code in footer — excluded)"
-    - "- -1 0 2 0 A (Index Case ID number sample/template — excluded as printed sample, header label retained)"
-    - "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner on page 1 — recorded as heading block, not as a variable)"
-    - "Indo-US VAP Index Case Baseline v1.0 (form version footer — excluded)"
-    - "Page X of 7 (page footers — excluded)"
-    - "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner — retained as form context heading not as a variable)"
 variables:
   SUBJID:
     record_type: variable
@@ -7574,7 +7512,7 @@ variables:
     record_type: variable
     source_presence: {dataset: present, pdf: present, dictionary: not_used}
     exact_source_text: {pdf_question: "15. Can tuberculosis be cured?", pdf_annotation: IC_TBCURE, column_name: IC_TBCURE}
-    normalized_metadata: {display_label: Can TB Be Cured?, meaning: "Whether the participant believes tuberculosis can be cured (Yes / No / Don't know).", section: tb_knowledge, data_type: categorical, options_ref: yes_no_dontknow_pdf}
+    normalized_metadata: {display_label: "Can TB Be Cured?", meaning: "Whether the participant believes tuberculosis can be cured (Yes / No / Don't know).", section: tb_knowledge, data_type: categorical, options_ref: yes_no_dontknow_pdf}
     options:
       source_defined: ["Yes", "No", Don't know]
       values: ["Yes", "No", Don't know]
@@ -8631,7 +8569,7 @@ variables:
     record_type: variable
     source_presence: {dataset: present, pdf: present, dictionary: not_used}
     exact_source_text: {pdf_question: "20. Have you been tested for HIV in the past 6 months?", pdf_annotation: IC_HIVTEST, column_name: IC_HIVTEST}
-    normalized_metadata: {display_label: HIV Tested?, meaning: "Whether the participant has been tested for HIV in the past 6 months (Yes Go to 20a / No / Don't know).", section: medical_history, data_type: categorical, options_ref: hiv_test_pdf}
+    normalized_metadata: {display_label: "HIV Tested?", meaning: "Whether the participant has been tested for HIV in the past 6 months (Yes Go to 20a / No / Don't know).", section: medical_history, data_type: categorical, options_ref: hiv_test_pdf}
     options:
       source_defined: [Yes (Go to 20a), "No", Don't know, "Yes"]
       values: [Yes (Go to 20a), "No", Don't know, "Yes"]
@@ -9668,7 +9606,7 @@ variables:
     record_type: variable
     source_presence: {dataset: present, pdf: present, dictionary: not_used}
     exact_source_text: {pdf_question: "34. Is the participant pregnant?", pdf_annotation: IC_PREGNANT, column_name: IC_PREGNANT}
-    normalized_metadata: {display_label: Pregnant?, meaning: "Pregnancy status (Yes tested positive, Yes known to be pregnant, No, Unknown, Not assessed, Not applicable male, Participant declines).", section: pregnancy, data_type: categorical, options_ref: preg_status_pdf}
+    normalized_metadata: {display_label: "Pregnant?", meaning: "Pregnancy status (Yes tested positive, Yes known to be pregnant, No, Unknown, Not assessed, Not applicable male, Participant declines).", section: pregnancy, data_type: categorical, options_ref: preg_status_pdf}
     options:
       source_defined: ["Yes, tested positive (Go to 34a)", "Yes, known to be pregnant (Go to 34a)", "No", Unknown, Not assessed, "Not applicable, participant is male", Participant declines to answer or be tested, "Yes"]
       values: ["Yes, tested positive (Go to 34a)", "Yes, known to be pregnant (Go to 34a)", "No", Unknown, Not assessed, "Not applicable, participant is male", Participant declines to answer or be tested, "Yes"]
@@ -9782,3 +9720,65 @@ variables:
     evidence: {level: high, basis: [dataset_column_name, derived_pattern]}
     review: {state: resolved, reason: null, reviewer_question: null}
     clean_output_presence: absent
+validation:
+  forbidden_keys_absent: true
+  columns_unique: true
+  pdf_annotation_unmatched:
+    - "TBKNOWLINK (page 3 annotation labels the multi-response checkbox row for tuberculosis spread; no dataset column with this exact name — TBKNOWUNK appears to be the dataset 'Don't know' indicator captured under the same question)"
+    - "0 (page 3 alcohol-frequency option indicator marker for IC_ALCFRQ; not a variable name)"
+    - "1 (page 3 alcohol-frequency option indicator marker for IC_ALCFRQ; not a variable name)"
+    - "2 (page 3 alcohol-frequency option indicator marker for IC_ALCFRQ; not a variable name)"
+    - "3 (page 3 alcohol-frequency option indicator marker for IC_ALCFRQ; not a variable name)"
+    - "4 (page 3 alcohol-frequency option indicator marker for IC_ALCFRQ; not a variable name)"
+    - "0 (page 3 drinks-per-day option indicator marker for IC_ALCDOSTX; not a variable name)"
+    - "1 (page 3 drinks-per-day option indicator marker for IC_ALCDOSTX; not a variable name)"
+    - "2 (page 3 drinks-per-day option indicator marker for IC_ALCDOSTX; not a variable name)"
+    - "3 (page 3 drinks-per-day option indicator marker for IC_ALCDOSTX; not a variable name)"
+    - "4 (page 3 drinks-per-day option indicator marker for IC_ALCDOSTX; not a variable name)"
+    - "0 (page 3 six-or-more frequency option indicator marker for IC_ALCUSE; not a variable name)"
+    - "1 (page 3 six-or-more frequency option indicator marker for IC_ALCUSE; not a variable name)"
+    - "2 (page 3 six-or-more frequency option indicator marker for IC_ALCUSE; not a variable name)"
+    - "3 (page 3 six-or-more frequency option indicator marker for IC_ALCUSE; not a variable name)"
+    - "4 (page 3 six-or-more frequency option indicator marker for IC_ALCUSE; not a variable name)"
+    - "1 (page 6 cough-duration option indicator marker for IC_COUGHCAT 0-14 days; not a variable name)"
+    - "2 (page 6 cough-duration option indicator marker for IC_COUGHCAT 15-28 days; not a variable name)"
+    - "3 (page 6 cough-duration option indicator marker for IC_COUGHCAT > 28 days; not a variable name)"
+    - "1 (page 6 Karnofsky-area option indicator marker; not a variable name)"
+    - "2 (page 6 Karnofsky-area option indicator marker; not a variable name)"
+    - "4 (page 6 Karnofsky-area option indicator marker; not a variable name)"
+    - "0 (page 7 dietary-frequency option indicator marker for IC_DIETA; not a variable name)"
+    - "1 (page 7 dietary-frequency option indicator marker for IC_DIETA; not a variable name)"
+    - "2 (page 7 dietary-frequency option indicator marker for IC_DIETA; not a variable name)"
+    - "3 (page 7 dietary-frequency option indicator marker for IC_DIETA; not a variable name)"
+    - "0 (page 7 dietary-frequency option indicator marker for IC_DIETB; not a variable name)"
+    - "1 (page 7 dietary-frequency option indicator marker for IC_DIETB; not a variable name)"
+    - "2 (page 7 dietary-frequency option indicator marker for IC_DIETB; not a variable name)"
+    - "3 (page 7 dietary-frequency option indicator marker for IC_DIETB; not a variable name)"
+    - "0 (page 7 dietary-frequency option indicator marker for IC_DIETC; not a variable name)"
+    - "1 (page 7 dietary-frequency option indicator marker for IC_DIETC; not a variable name)"
+    - "2 (page 7 dietary-frequency option indicator marker for IC_DIETC; not a variable name)"
+    - "3 (page 7 dietary-frequency option indicator marker for IC_DIETC; not a variable name)"
+    - "1 (page 7 RBS Not-Done indicator marker adjacent to IC_RBSND; not a variable name)"
+    - "TBKNOWLINK (PDF FreeText annotation present on page 3 with text 'TBKNOWLINK', not a column in the dataset; the column inventory contains TBKNOWUNK and TBKNOWOTHER instead — flagged for reviewer alongside TBKNOWUNK and TBKNOWOTHER review_required entries)"
+    - "0 / 1 / 2 / 3 / 4 (alcohol-section checkbox indicator markers adjacent to IC_ALCFRQ, IC_ALCDOSTX, IC_ALCUSE; not variable names)"
+    - "1 / 2 / 3 (cough-characterization checkbox indicator markers adjacent to IC_COUGHCAT; not variable names)"
+    - "1 / 2 / 4 (Karnofsky-grade checkbox indicator markers adjacent to IC_KARN; not variable names)"
+    - "0 / 1 / 2 / 3 (diet-recall checkbox indicator markers adjacent to IC_DIETA, IC_DIETB, IC_DIETC; not variable names)"
+    - "1 (signature-area checkbox indicator marker adjacent to RBS Not Done; not a variable name)"
+  dataset_columns_unmatched: []
+  excluded_pdf_artifacts:
+    - "05/15/2014 (form version date appearing in page footer of every page — excluded per PDF Extraction Boundary)"
+    - "Page 1 of 7 (page footer — excluded)"
+    - "Page 2 of 7 (page footer — excluded)"
+    - "Page 3 of 7 (page footer — excluded)"
+    - "Page 4 of 7 (page footer — excluded)"
+    - "Page 5 of 7 (page footer — excluded)"
+    - "Page 6 of 7 (page footer — excluded)"
+    - "Page 7 of 7 (page footer — excluded)"
+    - "Indo-US VAP Index Case - Baseline v1.0 (form version footer banner — excluded)"
+    - "35077 (artifact-version code in footer — excluded)"
+    - "- -1 0 2 0 A (Index Case ID number sample/template — excluded as printed sample, header label retained)"
+    - "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner on page 1 — recorded as heading block, not as a variable)"
+    - "Indo-US VAP Index Case Baseline v1.0 (form version footer — excluded)"
+    - "Page X of 7 (page footers — excluded)"
+    - "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner — retained as form context heading not as a variable)"
