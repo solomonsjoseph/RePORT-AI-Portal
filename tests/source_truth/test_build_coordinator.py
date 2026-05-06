@@ -117,3 +117,25 @@ def test_run_build_emits_declared_ledgers(tmp_path):
     assert cleanup["artifact_type"] == "dataset_cleanup_ledger"
     assert isinstance(phi.get("entries"), list)
     assert isinstance(cleanup.get("entries"), list)
+
+
+def test_run_build_emits_initial_concept_index(tmp_path):
+    import json
+    fixture = Path("tests/fixtures/build_mini").resolve()
+    output_root = tmp_path / "output" / "Mini"
+    run_build(
+        study="Mini",
+        policies_dir=fixture / "data" / "Mini",
+        concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
+        output_root=output_root,
+        column_inventory=None,
+    )
+
+    index_path = output_root / "llm_source" / "concept_index.json"
+    assert index_path.is_file()
+    index = json.loads(index_path.read_text())
+    assert index["artifact_type"] == "study_concept_index"
+    assert "cohort_a" in index["cohorts"]
+    members = index["cohorts"]["cohort_a"]["member_variables"]
+    for member in members:
+        assert member["analysis_queryable"] is None

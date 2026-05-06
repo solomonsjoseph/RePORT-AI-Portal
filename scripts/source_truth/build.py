@@ -30,6 +30,10 @@ from pathlib import Path
 from typing import Any
 
 from scripts.source_truth.catalog import build_catalog_artifact
+from scripts.source_truth.concepts import (
+    build_concept_index,
+    load_study_concepts,
+)
 from scripts.source_truth.evidence_pack_splitter import split_catalog_artifact
 from scripts.source_truth.ledgers import (
     build_dataset_cleanup_ledger,
@@ -170,6 +174,11 @@ def run_build(
         "audit/phi_handling_ledger.declared.json",
         "audit/dataset_cleanup_ledger.declared.json",
     ])
+
+    concepts = load_study_concepts(concepts_file)
+    concept_index = build_concept_index(concepts, policy_artifacts=policy_artifacts)
+    _write_canonical_json(llm_source_dir / "concept_index.json", concept_index)
+    summary["emitted"].append("llm_source/concept_index.json")
 
     return summary
 
