@@ -32,8 +32,10 @@ from typing import Any
 from scripts.source_truth.catalog import build_catalog_artifact
 from scripts.source_truth.concepts import (
     build_concept_index,
+    enrich_concept_index_with_schema,
     load_study_concepts,
 )
+from scripts.source_truth.dataset_schema import build_dataset_schema
 from scripts.source_truth.evidence_pack_splitter import split_catalog_artifact
 from scripts.source_truth.ledgers import (
     build_dataset_cleanup_ledger,
@@ -116,6 +118,25 @@ def _aggregate_catalog(policy_artifacts: list[dict[str, Any]]) -> dict[str, Any]
     }
 
 
+def _load_column_inventory(path: Path) -> dict[str, list[str]]:
+    """Return {form: [column, ...]} from the extraction column inventory JSON."""
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    forms = raw.get("forms") or {}
+    return {form: list(body.get("columns") or []) for form, body in forms.items()}
+
+
+def _build_combined_dataset_schema(
+    policy_artifacts: list[dict[str, Any]],
+    inventory: dict[str, list[str]],
+) -> dict[str, Any]:
+    """Build a study-wide dataset schema by combining per-form builds."""
+    entries: list[dict[str, Any]] = []
+    for art in policy_artifacts:
+        per_form = build_dataset_schema(art)
+        entries.extend(per_form.get("entries") or [])
+    return {"artifact_type": "study_dataset_schema", "entries": entries}
+
+
 def run_build(
     *,
     study: str,
@@ -179,6 +200,23 @@ def run_build(
     concept_index = build_concept_index(concepts, policy_artifacts=policy_artifacts)
     _write_canonical_json(llm_source_dir / "concept_index.json", concept_index)
     summary["emitted"].append("llm_source/concept_index.json")
+
+    if column_inventory is not None:
+        if not column_inventory.is_file():
+            raise BuildCoordinatorError(f"column_inventory not found: {column_inventory}")
+        inventory = _load_column_inventory(column_inventory)
+        dataset_schema = _build_combined_dataset_schema(policy_artifacts, inventory)
+        _write_canonical_json(
+            staging_llm_source_dir / "phi_handled_dataset_schema.json",
+            dataset_schema,
+        )
+        summary["emitted"].append(
+            "staging/llm_source/phi_handled_dataset_schema.json"
+        )
+
+        enriched = enrich_concept_index_with_schema(concept_index, dataset_schema=dataset_schema)
+        _write_canonical_json(staging_llm_source_dir / "concept_index.json", enriched)
+        summary["emitted"].append("staging/llm_source/concept_index.json")
 
     return summary
 

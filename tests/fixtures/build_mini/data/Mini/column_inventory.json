@@ -1,0 +1,8 @@
+{
+  "study": "Mini",
+  "forms": {
+    "1A_ICScreening": {"columns": ["SUBJID"]},
+    "2A_ICBaseline":  {"columns": ["SUBJID", "IC_AGE", "IC_BMI", "IC_DIABETES"]},
+    "19_Smear":       {"columns": ["SUBJID", "CM_VISIT", "CM_FID", "CM_FEVER"]}
+  }
+}

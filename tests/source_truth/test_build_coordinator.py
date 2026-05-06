@@ -139,3 +139,29 @@ def test_run_build_emits_initial_concept_index(tmp_path):
     members = index["cohorts"]["cohort_a"]["member_variables"]
     for member in members:
         assert member["analysis_queryable"] is None
+
+
+def test_run_build_stage2_emits_schema_and_enriched_concept_index_to_staging(tmp_path):
+    import json
+    fixture = Path("tests/fixtures/build_mini").resolve()
+    output_root = tmp_path / "output" / "Mini"
+    run_build(
+        study="Mini",
+        policies_dir=fixture / "data" / "Mini",
+        concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
+        output_root=output_root,
+        column_inventory=fixture / "data" / "Mini" / "column_inventory.json",
+    )
+
+    schema_path = output_root / "staging" / "llm_source" / "phi_handled_dataset_schema.json"
+    assert schema_path.is_file()
+    schema = json.loads(schema_path.read_text())
+    assert schema["artifact_type"] == "study_dataset_schema"
+    assert isinstance(schema["entries"], list)
+
+    enriched_path = output_root / "staging" / "llm_source" / "concept_index.json"
+    assert enriched_path.is_file()
+    enriched = json.loads(enriched_path.read_text())
+    members = enriched["cohorts"]["cohort_a"]["member_variables"]
+    for member in members:
+        assert member["analysis_queryable"] in (True, False)
