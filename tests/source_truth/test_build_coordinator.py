@@ -93,3 +93,27 @@ def test_run_build_idempotent_byte_identical(tmp_path):
     cat_a = (out_a / "llm_source" / "study_metadata_catalog.json").read_bytes()
     cat_b = (out_b / "llm_source" / "study_metadata_catalog.json").read_bytes()
     assert cat_a == cat_b
+
+
+def test_run_build_emits_declared_ledgers(tmp_path):
+    import json
+    fixture = Path("tests/fixtures/build_mini").resolve()
+    output_root = tmp_path / "output" / "Mini"
+    run_build(
+        study="Mini",
+        policies_dir=fixture / "data" / "Mini",
+        concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
+        output_root=output_root,
+        column_inventory=None,
+    )
+
+    phi_path = output_root / "audit" / "phi_handling_ledger.declared.json"
+    cleanup_path = output_root / "audit" / "dataset_cleanup_ledger.declared.json"
+    assert phi_path.is_file()
+    assert cleanup_path.is_file()
+    phi = json.loads(phi_path.read_text())
+    cleanup = json.loads(cleanup_path.read_text())
+    assert phi["artifact_type"] == "phi_handling_ledger"
+    assert cleanup["artifact_type"] == "dataset_cleanup_ledger"
+    assert isinstance(phi.get("entries"), list)
+    assert isinstance(cleanup.get("entries"), list)

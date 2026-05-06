@@ -31,6 +31,10 @@ from typing import Any
 
 from scripts.source_truth.catalog import build_catalog_artifact
 from scripts.source_truth.evidence_pack_splitter import split_catalog_artifact
+from scripts.source_truth.ledgers import (
+    build_dataset_cleanup_ledger,
+    build_phi_handling_ledger,
+)
 from scripts.source_truth.policy_loader import load_policy_yaml
 
 logger = logging.getLogger(__name__)
@@ -46,6 +50,36 @@ def _write_canonical_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     encoded = json.dumps(payload, sort_keys=True, indent=2, ensure_ascii=False)
     path.write_text(encoded + "\n", encoding="utf-8")
+
+
+def _strip_ledger_forbidden_keys(policy_artifact: dict[str, Any]) -> dict[str, Any]:
+    """Return a shallow copy of the policy artifact with keys that the
+    ledger builders reject (e.g. `option_sets`, which carries `values`
+    sub-keys) removed.
+
+    These keys belong in catalog/evidence-pack derivation paths but are
+    not consumed by ledger builders.
+    """
+    forbidden_top_level = {"option_sets"}
+    return {k: v for k, v in policy_artifact.items() if k not in forbidden_top_level}
+
+
+def _aggregate_declared_ledgers(
+    policy_artifacts: list[dict[str, Any]],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Aggregate per-form declared ledger entries into study-wide ledgers."""
+    phi_entries: list[dict[str, Any]] = []
+    cleanup_entries: list[dict[str, Any]] = []
+    for art in policy_artifacts:
+        ledger_input = _strip_ledger_forbidden_keys(art)
+        phi = build_phi_handling_ledger(ledger_input)
+        cleanup = build_dataset_cleanup_ledger(ledger_input)
+        phi_entries.extend(phi.get("entries") or [])
+        cleanup_entries.extend(cleanup.get("entries") or [])
+    return (
+        {"artifact_type": "phi_handling_ledger", "kind": "declared", "entries": phi_entries},
+        {"artifact_type": "dataset_cleanup_ledger", "kind": "declared", "entries": cleanup_entries},
+    )
 
 
 def _aggregate_catalog(policy_artifacts: list[dict[str, Any]]) -> dict[str, Any]:
@@ -128,6 +162,14 @@ def run_build(
     summary["forms_loaded"] = [art["form"] for art in policy_artifacts]
     summary["compact_record_count"] = len(compact_only.get("compact_records") or [])
     summary["evidence_pack_count"] = len(packs)
+
+    phi_declared, cleanup_declared = _aggregate_declared_ledgers(policy_artifacts)
+    _write_canonical_json(audit_dir / "phi_handling_ledger.declared.json", phi_declared)
+    _write_canonical_json(audit_dir / "dataset_cleanup_ledger.declared.json", cleanup_declared)
+    summary["emitted"].extend([
+        "audit/phi_handling_ledger.declared.json",
+        "audit/dataset_cleanup_ledger.declared.json",
+    ])
 
     return summary
 
