@@ -19,6 +19,10 @@ from scripts.source_truth.all_form_validation import (
     discover_policy_pilot_forms,
     validate_all_forms,
 )
+from scripts.source_truth.build import (
+    BuildCoordinatorError,
+    run_build,
+)
 from scripts.source_truth.builder import (
     DERIVATION_CATALOG,
     DERIVATION_CLEANUP_LEDGER,
@@ -36,6 +40,12 @@ from scripts.source_truth.completeness import (
     FOOTER_EXCLUSION_BOUNDARY_NOTE,
     report_completeness,
 )
+from scripts.source_truth.concepts import (
+    ConceptIndexError,
+    build_concept_index,
+    enrich_concept_index_with_schema,
+    load_study_concepts,
+)
 from scripts.source_truth.dataset_schema import (
     DatasetSchemaError,
     build_dataset_schema,
@@ -46,10 +56,15 @@ from scripts.source_truth.distribution import (
     DistributionRequestError,
     run_categorical_distribution,
 )
+from scripts.source_truth.evidence_pack_splitter import split_catalog_artifact
 from scripts.source_truth.ledgers import (
     SourceTruthLedgerError,
     build_dataset_cleanup_ledger,
     build_phi_handling_ledger,
+)
+from scripts.source_truth.policy_loader import (
+    PolicyLoaderError,
+    load_policy_yaml,
 )
 from scripts.source_truth.lineage import (
     LINEAGE_VERSION,
@@ -94,9 +109,12 @@ __all__ = [
     "PDF_EVIDENCE_NEEDS_HUMAN_REVIEW",
     "PDF_EVIDENCE_NOT_EXTRACTED_YET",
     "PDF_EVIDENCE_NO_USEFUL_TEXT_LEFT",
+    "BuildCoordinatorError",
     "CatalogAnswer",
+    "ConceptIndexError",
     "DatasetSchemaError",
     "DistributionRequestError",
+    "PolicyLoaderError",
     "SourceTruthBuildError",
     "SourceTruthCatalogError",
     "SourceTruthLedgerError",
@@ -106,6 +124,7 @@ __all__ = [
     "SourceTruthValidationError",
     "artifact_ref",
     "build_catalog_artifact",
+    "build_concept_index",
     "build_dataset_cleanup_ledger",
     "build_dataset_schema",
     "build_lineage_report",
@@ -116,11 +135,16 @@ __all__ = [
     "check_pdf_evidence_completeness",
     "derive_generation_id",
     "discover_policy_pilot_forms",
+    "enrich_concept_index_with_schema",
     "extract_pdf_evidence",
     "get_dataset_schema_status",
+    "load_policy_yaml",
+    "load_study_concepts",
     "report_completeness",
     "resolve_analysis_binding",
+    "run_build",
     "run_categorical_distribution",
+    "split_catalog_artifact",
     "stamp_generated_artifact",
     "stamp_source_truth",
     "validate_all_forms",
