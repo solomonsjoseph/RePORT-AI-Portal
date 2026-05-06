@@ -201,6 +201,14 @@ DATA_DICTIONARY_DIR = STUDY_DATA_DIR / "data_dictionary"
 TRIO_BUNDLE_DIR = STUDY_OUTPUT_DIR / "trio_bundle"
 TRIO_DATASETS_DIR = TRIO_BUNDLE_DIR / "datasets"
 
+# LLM-visible source directory — canonical home for artefacts the agent reads.
+# Per CONTEXT.md §"Build Pipeline — May 2026", data_dictionary.json and other
+# LLM-facing files live here rather than in trio_bundle/.
+STUDY_LLM_SOURCE_DIR = STUDY_OUTPUT_DIR / "llm_source"
+
+# Canonical output path for the extracted data dictionary JSON.
+DICTIONARY_OUTPUT_PATH: Path = STUDY_LLM_SOURCE_DIR / "data_dictionary.json"
+
 STUDY_AUDIT_DIR = STUDY_OUTPUT_DIR / "audit"
 
 # Audit-report paths (written by the cleanup/dedup pipeline).
