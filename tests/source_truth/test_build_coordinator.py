@@ -165,3 +165,30 @@ def test_run_build_stage2_emits_schema_and_enriched_concept_index_to_staging(tmp
     members = enriched["cohorts"]["cohort_a"]["member_variables"]
     for member in members:
         assert member["analysis_queryable"] in (True, False)
+
+
+GOLDEN_DIR = Path("tests/fixtures/build_mini/expected_outputs")
+
+
+@pytest.mark.parametrize(
+    "rel_path",
+    [
+        "llm_source/study_metadata_catalog.json",
+        "llm_source/concept_index.json",
+        "audit/phi_handling_ledger.declared.json",
+        "audit/dataset_cleanup_ledger.declared.json",
+    ],
+)
+def test_run_build_byte_identical_to_golden(tmp_path, rel_path):
+    fixture = Path("tests/fixtures/build_mini").resolve()
+    output_root = tmp_path / "output" / "Mini"
+    run_build(
+        study="Mini",
+        policies_dir=fixture / "data" / "Mini",
+        concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
+        output_root=output_root,
+        column_inventory=fixture / "data" / "Mini" / "column_inventory.json",
+    )
+    actual = (output_root / rel_path).read_bytes()
+    golden = (GOLDEN_DIR / rel_path).read_bytes()
+    assert actual == golden, f"build output for {rel_path} differs from golden"

@@ -1,0 +1,39 @@
+{
+  "artifact_type": "study_concept_index",
+  "cohorts": {
+    "cohort_a": {
+      "definition_source": {
+        "evidence_gap": false,
+        "form": "1A_ICScreening",
+        "pdf_page": 1,
+        "section": "screening"
+      },
+      "definition_text": "Mini test cohort A.",
+      "evidence_pack_refs": [],
+      "exclusion_criteria": [],
+      "inclusion_criteria": [],
+      "member_variables": [
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "identifier",
+          "variable_id": "SUBJID"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "covariate",
+          "variable_id": "IC_WEIGHT"
+        }
+      ],
+      "name": "Mini Cohort A"
+    }
+  },
+  "definitions": {},
+  "exposures": {},
+  "outcomes": {},
+  "policy_status": "ready",
+  "schedules": {},
+  "schema_version": 1,
+  "study": "Mini"
+}
