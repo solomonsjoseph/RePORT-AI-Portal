@@ -1,0 +1,1751 @@
+schema_version: 2
+policy_status: draft_for_human_review
+study: Indo-VAP
+form: 95_SAE
+source:
+  dataset_file: 95_SAE.xlsx
+  pdf_file: data/raw/Indo-VAP/annotated_pdfs/95 Serious Adverse Event v1.0.pdf
+pdf_form_metadata:
+  form_number: Form 95
+  form_title: SERIOUS ADVERSE EVENT FORM
+  form_version: v1.0
+  page_count: 1
+coverage:
+  column_count: 18
+  columns_mapped: 18
+  pdf_annotation_count: 17
+  pdf_annotation_variables: 17
+  annotated_columns: 17
+  non_annotated_columns:
+    - Time_Stamp
+  unresolved_review_required:
+    - AE_SEVERITYO
+pdf_sections:
+  participant_header:
+    section_label: null
+    fields:
+      - SUBJID
+      - AE_AGE
+    visible_text: |
+      Participant ID number:
+      1 0 2 0 - -
+      Age at time of event:
+      Years
+  adverse_event:
+    section_label: null
+    fields:
+      - AE_EVENT
+      - AE_EVENTDAT
+      - AE_TMON
+      - AE_AWAREDAT
+      - AE_TMAWARE
+      - AE_SEVERITY
+      - AE_SEVERITYO
+      - AE_RELATION
+      - AE_SUMMARY
+      - AE_STATUS
+      - AE_WOUTDAT
+      - AE_WITHDAT
+      - AE_DEATHDAT
+    visible_text: |
+      1. Adverse Event:
+      2. Date of event:
+      / /
+      Day Month Year
+      Time of onset (24h clock):
+      :
+      Hours Minutes
+      3. Date of awareness:
+      / /
+      Day Month Year
+      Time of awareness (24h clock):
+      :
+      Hours Minutes
+      4. Severity classification:
+      Death Life Threatening Disability Hospitalization Required intervention
+      to prevent permanent impairment/damage
+      Other, specify:
+      5. Relationship to study:
+      Unrelated Probably not Possibly Probably Definitely
+      6. Event Summary: Describe study procedure peformed and cause of death if applicable
+      7. Status of event:
+      Ongoing
+      Unknown
+      Resolved WITHOUT sequelae, date: Resolved WITH sequelae, date: Death, date:
+      Day Month Year
+      / / / / / /
+  completion:
+    section_label: null
+    fields:
+      - AE_SIGN
+      - AE_COMPDAT
+    visible_text: |
+      Completed by:
+      signature and print
+      Date: / /
+      Day Month Year
+  system_metadata:
+    section_label: null
+    fields:
+      - Time_Stamp
+    visible_text: |
+      (No PDF visible text — column derived from dataset capture timestamp.)
+option_sets:
+  date_dmy_pdf:
+    source: PDF date boxes
+    source_text: "Day Month Year"
+    values:
+      - Day
+      - Month
+      - Year
+    unknown: true
+  time_24h_pdf:
+    source: PDF time boxes
+    source_text: "Hours Minutes"
+    values:
+      - Hours
+      - Minutes
+    unknown: true
+  severity_classification_pdf:
+    source: PDF option text
+    source_text: |
+      Death Life Threatening Disability Hospitalization Required intervention
+      to prevent permanent impairment/damage
+      Other, specify:
+    values:
+      - Death
+      - Life Threatening
+      - Disability
+      - Hospitalization
+      - Required intervention to prevent permanent impairment/damage
+      - Other, specify
+    unknown: true
+  relationship_to_study_pdf:
+    source: PDF option text
+    source_text: "Unrelated Probably not Possibly Probably Definitely"
+    values:
+      - Unrelated
+      - Probably not
+      - Possibly
+      - Probably
+      - Definitely
+    unknown: true
+  status_of_event_pdf:
+    source: PDF option text
+    source_text: |
+      Ongoing
+      Unknown
+      Resolved WITHOUT sequelae, date:
+      Resolved WITH sequelae, date:
+      Death, date:
+    values:
+      - Ongoing
+      - Unknown
+      - Resolved WITHOUT sequelae
+      - Resolved WITH sequelae
+      - Death
+    unknown: true
+pdf_annotation_pages:
+  - page: 1
+    annotations:
+      - SUBJID
+      - AE_AGE
+      - AE_EVENT
+      - AE_EVENTDAT
+      - AE_TMON
+      - AE_AWAREDAT
+      - AE_TMAWARE
+      - AE_SEVERITY
+      - AE_SEVERITYO
+      - AE_RELATION
+      - AE_SUMMARY
+      - AE_STATUS
+      - AE_WOUTDAT
+      - AE_WITHDAT
+      - AE_DEATHDAT
+      - AE_SIGN
+      - AE_COMPDAT
+pdf_visible_text:
+  by_page:
+    - page: 1
+      blocks:
+        - type: heading
+          text: |
+            Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis
+            Treatment Failure and Relapse
+          related_variables: []
+        - type: heading
+          text: SERIOUS ADVERSE EVENT FORM
+          related_variables: []
+        - type: heading
+          text: Form 95
+          related_variables: []
+        - type: question
+          text: "Participant ID number:"
+          related_variables:
+            - SUBJID
+        - type: caption
+          text: "1 0 2 0 - -"
+          related_variables:
+            - SUBJID
+        - type: question
+          text: "Age at time of event:"
+          related_variables:
+            - AE_AGE
+        - type: caption
+          text: Years
+          related_variables:
+            - AE_AGE
+        - type: question
+          text: "1. Adverse Event:"
+          related_variables:
+            - AE_EVENT
+        - type: question
+          text: "2. Date of event:"
+          related_variables:
+            - AE_EVENTDAT
+        - type: caption
+          text: "Day Month Year"
+          related_variables:
+            - AE_EVENTDAT
+        - type: question
+          text: "Time of onset (24h clock):"
+          related_variables:
+            - AE_TMON
+        - type: caption
+          text: "Hours Minutes"
+          related_variables:
+            - AE_TMON
+        - type: question
+          text: "3. Date of awareness:"
+          related_variables:
+            - AE_AWAREDAT
+        - type: caption
+          text: "Day Month Year"
+          related_variables:
+            - AE_AWAREDAT
+        - type: question
+          text: "Time of awareness (24h clock):"
+          related_variables:
+            - AE_TMAWARE
+        - type: caption
+          text: "Hours Minutes"
+          related_variables:
+            - AE_TMAWARE
+        - type: question
+          text: "4. Severity classification:"
+          related_variables:
+            - AE_SEVERITY
+            - AE_SEVERITYO
+        - type: option_block
+          text: |
+            Death
+            Life Threatening
+            Disability
+            Hospitalization
+            Required intervention to prevent permanent impairment/damage
+          related_variables:
+            - AE_SEVERITY
+        - type: option_block
+          text: "Other, specify:"
+          related_variables:
+            - AE_SEVERITYO
+        - type: question
+          text: "5. Relationship to study:"
+          related_variables:
+            - AE_RELATION
+        - type: option_block
+          text: Unrelated Probably not Possibly Probably Definitely
+          related_variables:
+            - AE_RELATION
+        - type: question
+          text: "6. Event Summary: Describe study procedure peformed and cause of death if applicable"
+          related_variables:
+            - AE_SUMMARY
+        - type: question
+          text: "7. Status of event:"
+          related_variables:
+            - AE_STATUS
+            - AE_WOUTDAT
+            - AE_WITHDAT
+            - AE_DEATHDAT
+        - type: option_block
+          text: |
+            Ongoing
+            Unknown
+          related_variables:
+            - AE_STATUS
+        - type: option_block
+          text: "Resolved WITHOUT sequelae, date:"
+          related_variables:
+            - AE_STATUS
+            - AE_WOUTDAT
+        - type: caption
+          text: "Day Month Year"
+          related_variables:
+            - AE_WOUTDAT
+        - type: option_block
+          text: "Resolved WITH sequelae, date:"
+          related_variables:
+            - AE_STATUS
+            - AE_WITHDAT
+        - type: caption
+          text: "Day Month Year"
+          related_variables:
+            - AE_WITHDAT
+        - type: option_block
+          text: "Death, date:"
+          related_variables:
+            - AE_STATUS
+            - AE_DEATHDAT
+        - type: caption
+          text: "Day Month Year"
+          related_variables:
+            - AE_DEATHDAT
+        - type: question
+          text: "Completed by:"
+          related_variables:
+            - AE_SIGN
+        - type: caption
+          text: signature and print
+          related_variables:
+            - AE_SIGN
+        - type: question
+          text: "Date:"
+          related_variables:
+            - AE_COMPDAT
+        - type: caption
+          text: "Day Month Year"
+          related_variables:
+            - AE_COMPDAT
+  questions:
+    - id: q_subjid
+      page: 1
+      exact_wording: "Participant ID number:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: "Pre-printed ID prefix '1 0 2 0 - -' visible on the form."
+      related_variables:
+        - SUBJID
+    - id: q_age
+      page: 1
+      exact_wording: "Age at time of event:"
+      section: participant_header
+      options_ref: null
+      units: Years
+      skip_logic: null
+      notes: null
+      related_variables:
+        - AE_AGE
+    - id: q1
+      page: 1
+      exact_wording: "1. Adverse Event:"
+      section: adverse_event
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: Free-text description of the adverse event.
+      related_variables:
+        - AE_EVENT
+    - id: q2
+      page: 1
+      exact_wording: "2. Date of event:"
+      section: adverse_event
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes. Paired with Time of onset (AE_TMON).
+      related_variables:
+        - AE_EVENTDAT
+    - id: q2_time_onset
+      page: 1
+      exact_wording: "Time of onset (24h clock):"
+      section: adverse_event
+      options_ref: time_24h_pdf
+      units: null
+      skip_logic: null
+      notes: "Hours : Minutes time boxes (24h clock)."
+      related_variables:
+        - AE_TMON
+    - id: q3
+      page: 1
+      exact_wording: "3. Date of awareness:"
+      section: adverse_event
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes. Paired with Time of awareness (AE_TMAWARE).
+      related_variables:
+        - AE_AWAREDAT
+    - id: q3_time_awareness
+      page: 1
+      exact_wording: "Time of awareness (24h clock):"
+      section: adverse_event
+      options_ref: time_24h_pdf
+      units: null
+      skip_logic: null
+      notes: "Hours : Minutes time boxes (24h clock)."
+      related_variables:
+        - AE_TMAWARE
+    - id: q4
+      page: 1
+      exact_wording: "4. Severity classification:"
+      section: adverse_event
+      options_ref: severity_classification_pdf
+      units: null
+      skip_logic: null
+      notes: "Checkbox set; selecting 'Other, specify' captures a free-text reason in AE_SEVERITYO."
+      related_variables:
+        - AE_SEVERITY
+        - AE_SEVERITYO
+    - id: q4_other
+      page: 1
+      exact_wording: "Other, specify:"
+      section: adverse_event
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: Free-text specify field associated with the Severity classification "Other" option.
+      related_variables:
+        - AE_SEVERITYO
+    - id: q5
+      page: 1
+      exact_wording: "5. Relationship to study:"
+      section: adverse_event
+      options_ref: relationship_to_study_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - AE_RELATION
+    - id: q6
+      page: 1
+      exact_wording: "6. Event Summary: Describe study procedure peformed and cause of death if applicable"
+      section: adverse_event
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: Free-text narrative describing the event and any cause of death.
+      related_variables:
+        - AE_SUMMARY
+    - id: q7
+      page: 1
+      exact_wording: "7. Status of event:"
+      section: adverse_event
+      options_ref: status_of_event_pdf
+      units: null
+      skip_logic: null
+      notes: "Status checkbox group (Ongoing / Unknown / Resolved WITHOUT sequelae / Resolved WITH sequelae / Death). Selecting a 'Resolved' or 'Death' option pairs with its corresponding date field (AE_WOUTDAT, AE_WITHDAT, AE_DEATHDAT)."
+      related_variables:
+        - AE_STATUS
+        - AE_WOUTDAT
+        - AE_WITHDAT
+        - AE_DEATHDAT
+    - id: q7_resolved_without
+      page: 1
+      exact_wording: "Resolved WITHOUT sequelae, date:"
+      section: adverse_event
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes. Captured when status is "Resolved WITHOUT sequelae".
+      related_variables:
+        - AE_WOUTDAT
+    - id: q7_resolved_with
+      page: 1
+      exact_wording: "Resolved WITH sequelae, date:"
+      section: adverse_event
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes. Captured when status is "Resolved WITH sequelae".
+      related_variables:
+        - AE_WITHDAT
+    - id: q7_death
+      page: 1
+      exact_wording: "Death, date:"
+      section: adverse_event
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes. Captured when status is "Death".
+      related_variables:
+        - AE_DEATHDAT
+    - id: q_completed_by
+      page: 1
+      exact_wording: "Completed by:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: "Signature and printed name line ('signature and print')."
+      related_variables:
+        - AE_SIGN
+    - id: q_date_completed
+      page: 1
+      exact_wording: "Date:"
+      section: completion
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: "Day / Month / Year date boxes for form completion date."
+      related_variables:
+        - AE_COMPDAT
+evidence_packs:
+  by_variable:
+    SUBJID:
+      exact_pdf_wording: "Participant ID number:"
+      pdf_annotation: SUBJID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_AGE:
+      exact_pdf_wording: "Age at time of event:"
+      pdf_annotation: AE_AGE
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_EVENT:
+      exact_pdf_wording: "1. Adverse Event:"
+      pdf_annotation: AE_EVENT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_EVENTDAT:
+      exact_pdf_wording: "2. Date of event:"
+      pdf_annotation: AE_EVENTDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_TMON:
+      exact_pdf_wording: "Time of onset (24h clock):"
+      pdf_annotation: AE_TMON
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_AWAREDAT:
+      exact_pdf_wording: "3. Date of awareness:"
+      pdf_annotation: AE_AWAREDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_TMAWARE:
+      exact_pdf_wording: "Time of awareness (24h clock):"
+      pdf_annotation: AE_TMAWARE
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_SEVERITY:
+      exact_pdf_wording: "4. Severity classification:"
+      pdf_annotation: AE_SEVERITY
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_SEVERITYO:
+      exact_pdf_wording: "Other, specify:"
+      pdf_annotation: AE_SEVERITYO
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_RELATION:
+      exact_pdf_wording: "5. Relationship to study:"
+      pdf_annotation: AE_RELATION
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_SUMMARY:
+      exact_pdf_wording: "6. Event Summary: Describe study procedure peformed and cause of death if applicable"
+      pdf_annotation: AE_SUMMARY
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_STATUS:
+      exact_pdf_wording: "7. Status of event:"
+      pdf_annotation: AE_STATUS
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_WOUTDAT:
+      exact_pdf_wording: "Resolved WITHOUT sequelae, date:"
+      pdf_annotation: AE_WOUTDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_WITHDAT:
+      exact_pdf_wording: "Resolved WITH sequelae, date:"
+      pdf_annotation: AE_WITHDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_DEATHDAT:
+      exact_pdf_wording: "Death, date:"
+      pdf_annotation: AE_DEATHDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_COMPDAT:
+      exact_pdf_wording: "Date:"
+      pdf_annotation: AE_COMPDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    AE_SIGN:
+      exact_pdf_wording: "Completed by:"
+      pdf_annotation: AE_SIGN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    Time_Stamp:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+catalog_refs:
+  by_variable:
+    SUBJID:
+      display_label: Participant ID
+      normalized_meaning: Pseudonymized identifier for the study participant.
+      search_terms:
+        - SUBJID
+        - Participant ID number
+        - participant id
+        - subject id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    AE_AGE:
+      display_label: Age at Time of Event
+      normalized_meaning: Participant age in years at the time of the adverse event.
+      search_terms:
+        - AE_AGE
+        - Age at time of event
+        - age
+        - years
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    AE_EVENT:
+      display_label: Adverse Event Description
+      normalized_meaning: Free-text description of the adverse event (Question 1).
+      search_terms:
+        - AE_EVENT
+        - Adverse Event
+        - SAE description
+        - event description
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    AE_EVENTDAT:
+      display_label: Date of Event
+      normalized_meaning: Date the adverse event occurred (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - AE_EVENTDAT
+        - Date of event
+        - event date
+        - SAE date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    AE_TMON:
+      display_label: Time of Onset
+      normalized_meaning: Time of adverse event onset on a 24-hour clock (Hours:Minutes).
+      search_terms:
+        - AE_TMON
+        - Time of onset
+        - 24h clock
+        - onset time
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    AE_AWAREDAT:
+      display_label: Date of Awareness
+      normalized_meaning: Date the study team became aware of the adverse event (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - AE_AWAREDAT
+        - Date of awareness
+        - awareness date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    AE_TMAWARE:
+      display_label: Time of Awareness
+      normalized_meaning: Time the study team became aware of the adverse event on a 24-hour clock (Hours:Minutes).
+      search_terms:
+        - AE_TMAWARE
+        - Time of awareness
+        - 24h clock
+        - awareness time
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    AE_SEVERITY:
+      display_label: Severity Classification
+      normalized_meaning: Severity classification of the adverse event (Death; Life Threatening; Disability; Hospitalization; Required intervention to prevent permanent impairment/damage; Other, specify).
+      search_terms:
+        - AE_SEVERITY
+        - Severity classification
+        - severity
+        - Death
+        - Life Threatening
+        - Disability
+        - Hospitalization
+        - Required intervention
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    AE_SEVERITYO:
+      display_label: Severity — Other Specify
+      normalized_meaning: Free-text reason captured when "Other, specify" is selected for the severity classification.
+      search_terms:
+        - AE_SEVERITYO
+        - Other, specify
+        - severity other
+        - severity specify
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    AE_RELATION:
+      display_label: Relationship to Study
+      normalized_meaning: Causal relationship of the adverse event to the study (Unrelated, Probably not, Possibly, Probably, Definitely).
+      search_terms:
+        - AE_RELATION
+        - Relationship to study
+        - causality
+        - Unrelated
+        - Probably not
+        - Possibly
+        - Probably
+        - Definitely
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    AE_SUMMARY:
+      display_label: Event Summary
+      normalized_meaning: Free-text narrative summary of the event including study procedure performed and cause of death if applicable (Question 6).
+      search_terms:
+        - AE_SUMMARY
+        - Event Summary
+        - SAE summary
+        - cause of death
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    AE_STATUS:
+      display_label: Status of Event
+      normalized_meaning: Current status of the adverse event (Ongoing; Unknown; Resolved WITHOUT sequelae; Resolved WITH sequelae; Death).
+      search_terms:
+        - AE_STATUS
+        - Status of event
+        - Ongoing
+        - Unknown
+        - Resolved WITHOUT sequelae
+        - Resolved WITH sequelae
+        - Death
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    AE_WOUTDAT:
+      display_label: Resolved Without Sequelae Date
+      normalized_meaning: Date the event was resolved without sequelae (Day/Month/Year), jittered for PHI handling. Paired with AE_STATUS = "Resolved WITHOUT sequelae".
+      search_terms:
+        - AE_WOUTDAT
+        - Resolved WITHOUT sequelae
+        - resolved without sequelae date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    AE_WITHDAT:
+      display_label: Resolved With Sequelae Date
+      normalized_meaning: Date the event was resolved with sequelae (Day/Month/Year), jittered for PHI handling. Paired with AE_STATUS = "Resolved WITH sequelae".
+      search_terms:
+        - AE_WITHDAT
+        - Resolved WITH sequelae
+        - resolved with sequelae date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    AE_DEATHDAT:
+      display_label: Date of Death
+      normalized_meaning: Date of death (Day/Month/Year), jittered for PHI handling. Paired with AE_STATUS = "Death".
+      search_terms:
+        - AE_DEATHDAT
+        - Death, date
+        - date of death
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    AE_COMPDAT:
+      display_label: Form Completion Date
+      normalized_meaning: Date the form was completed by the data collector (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - AE_COMPDAT
+        - Date Completed
+        - form completion date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    AE_SIGN:
+      display_label: Completed By Signature
+      normalized_meaning: Signature and printed name of the data collector who completed the form (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - AE_SIGN
+        - Completed by
+        - signature and print
+        - signature
+      catalog_tier: source_only
+      analysis_queryable: false
+    Time_Stamp:
+      display_label: Capture Timestamp
+      normalized_meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      search_terms:
+        - Time_Stamp
+        - timestamp
+        - capture timestamp
+      catalog_tier: source_only
+      analysis_queryable: false
+ledger_expectations:
+  phi_handling:
+    - SUBJID
+    - AE_EVENTDAT
+    - AE_AWAREDAT
+    - AE_SEVERITYO
+    - AE_SUMMARY
+    - AE_WOUTDAT
+    - AE_WITHDAT
+    - AE_DEATHDAT
+    - AE_COMPDAT
+    - AE_SIGN
+  dataset_cleanup:
+    - Time_Stamp
+variables:
+  SUBJID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Participant ID number:"
+      pdf_annotation: SUBJID
+      column_name: SUBJID
+    normalized_metadata:
+      display_label: Participant ID
+      meaning: Pseudonymized identifier for the study participant.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  AE_AGE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Age at time of event:"
+      pdf_annotation: AE_AGE
+      column_name: AE_AGE
+    normalized_metadata:
+      display_label: Age at Time of Event
+      meaning: Participant age in years at the time of the adverse event.
+      section: participant_header
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  AE_EVENT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "1. Adverse Event:"
+      pdf_annotation: AE_EVENT
+      column_name: AE_EVENT
+    normalized_metadata:
+      display_label: Adverse Event Description
+      meaning: Free-text description of the adverse event.
+      section: adverse_event
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: adverse_event
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_free_text
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  AE_EVENTDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "2. Date of event:"
+      pdf_annotation: AE_EVENTDAT
+      column_name: AE_EVENTDAT
+    normalized_metadata:
+      display_label: Date of Event
+      meaning: Date the adverse event occurred.
+      section: adverse_event
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: adverse_event
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  AE_TMON:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Time of onset (24h clock):"
+      pdf_annotation: AE_TMON
+      column_name: AE_TMON
+    normalized_metadata:
+      display_label: Time of Onset
+      meaning: Time of adverse event onset on a 24-hour clock (Hours:Minutes).
+      section: adverse_event
+      data_type: time
+      options_ref: time_24h_pdf
+    options:
+      source_defined:
+        - Hours
+        - Minutes
+      values:
+        - Hours
+        - Minutes
+      unknown: true
+    relationships:
+      parent: AE_EVENTDAT
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: adverse_event
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_time
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  AE_AWAREDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3. Date of awareness:"
+      pdf_annotation: AE_AWAREDAT
+      column_name: AE_AWAREDAT
+    normalized_metadata:
+      display_label: Date of Awareness
+      meaning: Date the study team became aware of the adverse event.
+      section: adverse_event
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: adverse_event
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  AE_TMAWARE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Time of awareness (24h clock):"
+      pdf_annotation: AE_TMAWARE
+      column_name: AE_TMAWARE
+    normalized_metadata:
+      display_label: Time of Awareness
+      meaning: Time the study team became aware of the adverse event on a 24-hour clock (Hours:Minutes).
+      section: adverse_event
+      data_type: time
+      options_ref: time_24h_pdf
+    options:
+      source_defined:
+        - Hours
+        - Minutes
+      values:
+        - Hours
+        - Minutes
+      unknown: true
+    relationships:
+      parent: AE_AWAREDAT
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: adverse_event
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_time
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  AE_SEVERITY:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "4. Severity classification:"
+      pdf_annotation: AE_SEVERITY
+      column_name: AE_SEVERITY
+    normalized_metadata:
+      display_label: Severity Classification
+      meaning: Severity classification of the adverse event; selects among Death, Life Threatening, Disability, Hospitalization, Required intervention to prevent permanent impairment/damage, or Other (specify).
+      section: adverse_event
+      data_type: categorical
+      options_ref: severity_classification_pdf
+    options:
+      source_defined:
+        - Death
+        - Life Threatening
+        - Disability
+        - Hospitalization
+        - Required intervention to prevent permanent impairment/damage
+        - Other, specify
+      values:
+        - Death
+        - Life Threatening
+        - Disability
+        - Hospitalization
+        - Required intervention to prevent permanent impairment/damage
+        - Other, specify
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - AE_SEVERITYO
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: adverse_event
+      other_specify: AE_SEVERITYO
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  AE_SEVERITYO:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Other, specify:"
+      pdf_annotation: AE_SEVERITYO
+      column_name: AE_SEVERITYO
+    normalized_metadata:
+      display_label: Severity — Other Specify
+      meaning: Free-text reason captured when "Other, specify" is selected for the severity classification.
+      section: adverse_event
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: AE_SEVERITY
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: adverse_event
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: Is the free-text "Other, specify" content for severity classification allowed in the PHI-handled dataset, or should it be dropped/redacted?
+    clean_output_presence: absent
+  AE_RELATION:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "5. Relationship to study:"
+      pdf_annotation: AE_RELATION
+      column_name: AE_RELATION
+    normalized_metadata:
+      display_label: Relationship to Study
+      meaning: Causal relationship of the adverse event to the study (Unrelated, Probably not, Possibly, Probably, Definitely).
+      section: adverse_event
+      data_type: categorical
+      options_ref: relationship_to_study_pdf
+    options:
+      source_defined:
+        - Unrelated
+        - Probably not
+        - Possibly
+        - Probably
+        - Definitely
+      values:
+        - Unrelated
+        - Probably not
+        - Possibly
+        - Probably
+        - Definitely
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: adverse_event
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  AE_SUMMARY:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "6. Event Summary: Describe study procedure peformed and cause of death if applicable"
+      pdf_annotation: AE_SUMMARY
+      column_name: AE_SUMMARY
+    normalized_metadata:
+      display_label: Event Summary
+      meaning: Free-text narrative summary of the event including study procedure performed and cause of death if applicable.
+      section: adverse_event
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: adverse_event
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: keep
+      reason: clinical_free_text
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  AE_STATUS:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "7. Status of event:"
+      pdf_annotation: AE_STATUS
+      column_name: AE_STATUS
+    normalized_metadata:
+      display_label: Status of Event
+      meaning: Current status of the adverse event; selects among Ongoing, Unknown, Resolved WITHOUT sequelae, Resolved WITH sequelae, or Death.
+      section: adverse_event
+      data_type: categorical
+      options_ref: status_of_event_pdf
+    options:
+      source_defined:
+        - Ongoing
+        - Unknown
+        - Resolved WITHOUT sequelae
+        - Resolved WITH sequelae
+        - Death
+      values:
+        - Ongoing
+        - Unknown
+        - Resolved WITHOUT sequelae
+        - Resolved WITH sequelae
+        - Death
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - AE_WOUTDAT
+        - AE_WITHDAT
+        - AE_DEATHDAT
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: adverse_event
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  AE_WOUTDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Resolved WITHOUT sequelae, date:"
+      pdf_annotation: AE_WOUTDAT
+      column_name: AE_WOUTDAT
+    normalized_metadata:
+      display_label: Resolved Without Sequelae Date
+      meaning: Date the event was resolved without sequelae; paired with AE_STATUS = "Resolved WITHOUT sequelae".
+      section: adverse_event
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: AE_STATUS
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: adverse_event
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  AE_WITHDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Resolved WITH sequelae, date:"
+      pdf_annotation: AE_WITHDAT
+      column_name: AE_WITHDAT
+    normalized_metadata:
+      display_label: Resolved With Sequelae Date
+      meaning: Date the event was resolved with sequelae; paired with AE_STATUS = "Resolved WITH sequelae".
+      section: adverse_event
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: AE_STATUS
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: adverse_event
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  AE_DEATHDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Death, date:"
+      pdf_annotation: AE_DEATHDAT
+      column_name: AE_DEATHDAT
+    normalized_metadata:
+      display_label: Date of Death
+      meaning: Date of death; paired with AE_STATUS = "Death".
+      section: adverse_event
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: AE_STATUS
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: adverse_event
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  AE_COMPDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date:"
+      pdf_annotation: AE_COMPDAT
+      column_name: AE_COMPDAT
+    normalized_metadata:
+      display_label: Form Completion Date
+      meaning: Date the form was completed by the data collector.
+      section: completion
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  AE_SIGN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Completed by:"
+      pdf_annotation: AE_SIGN
+      column_name: AE_SIGN
+    normalized_metadata:
+      display_label: Completed By Signature
+      meaning: Signature and printed name of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: signature_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  Time_Stamp:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: Time_Stamp
+    normalized_metadata:
+      display_label: Capture Timestamp
+      meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      section: system_metadata
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: system_metadata
+      other_specify: null
+    phi_sensitive_category: system_timestamp
+    handling_intent:
+      action: drop
+      reason: non_pdf_system_timestamp_metadata
+      label: null
+    runtime_binding:
+      - dataset_cleanup
+    derivation_targets:
+      - dataset_cleanup_ledger
+    evidence:
+      level: high
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+validation:
+  forbidden_keys_absent: true
+  columns_unique: true
+  pdf_annotation_unmatched: []
+  dataset_columns_unmatched: []
+  excluded_pdf_artifacts:
+    - "05/22/2014 (form version date — excluded per PDF Extraction Boundary)"
+    - "Indo-US VAP Serious Adverse Event v1.0 (form version footer — excluded)"
+    - "Page 1 of 1 (page footer — excluded)"
+    - "30234 (artifact-version code in footer — excluded)"
+    - "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner — retained as form context heading not as a variable; not excluded but recorded as heading block)"

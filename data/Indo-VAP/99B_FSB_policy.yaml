@@ -1,0 +1,1884 @@
+schema_version: 2
+policy_status: draft_for_human_review
+study: Indo-VAP
+form: 99B_FSB
+source:
+  dataset_file: 99B_FSB.xlsx
+  pdf_file: data/raw/Indo-VAP/annotated_pdfs/99B Final Status B v1.0.pdf
+pdf_form_metadata:
+  form_number: Form 99B
+  form_title: Off Study Form for Cohort B
+  form_version: v1.0
+  page_count: 1
+coverage:
+  column_count: 19
+  columns_mapped: 19
+  pdf_annotation_count: 18
+  pdf_annotation_variables: 18
+  annotated_columns: 17
+  non_annotated_columns:
+    - FB_WITHDRAWEXPLAIN
+    - Time_Stamp
+  unresolved_review_required:
+    - FB_FUCOMPBDCSP
+    - FB_ENRCOHASPO
+    - FB_DTHCAUSSP
+    - FB_DTHSRCSP
+    - FB_WITHDRAWEXPLAIN
+pdf_sections:
+  participant_header:
+    section_label: null
+    fields:
+      - SUBJID
+      - FB_VISDAT
+      - FID
+      - FB_VISIT
+    visible_text: |
+      OFF STUDY FORM FOR COHORT B
+      This questionnaire should be completed for all enrolled Household Contacts.  The purpose is to determine their final status.
+      Household contact ID:
+      Date of evaluation:
+      Day                        Month                   Year
+      Family ID:
+      Visit type: Month 12 Month 24 TB Activation Unscheduled
+  followup_status:
+    section_label: null
+    fields:
+      - FB_FUCOMPB
+      - FB_FUCOMPBDC
+      - FB_FUCOMPBDCSP
+    visible_text: |
+      1. Did the participant complete follow up through the month 24 visit?
+      Yes
+      Skip to the end of the form.
+      Sign, date and initial.
+      No
+      2. Reason for NOT completing follow up through the month 24 visit? (check ONE reason only:)
+      Participant developed active TB
+      (Go to Q3)
+      Death
+      (Go to Q4)
+      Physician decision (Investigator determines that further participation would be detrimental to the health or well-being of the subject)
+      Inadvertent enrollment
+      Withdrawal by participant
+      Withdrawal by parent/guardian
+      Lost to follow up
+      Moved out of area
+      Study terminated by sponsor
+      Other, specify:
+      (End of form)
+  cohort_a_enrollment:
+    section_label: null
+    fields:
+      - FB_ENRCOHA
+      - FB_ENRCOHASP
+      - FB_ENRCOHASPO
+    visible_text: |
+      3. If the participant developed active TB, has the participant been enrolled into Cohort A?
+      Yes
+      No
+      3a. Specify reason:
+      Extrapulmonary TB (no pulmonary disease)
+      MDR-TB
+      XDR-TB
+      Other, specify:
+      (Multiple responses possible):
+  death_details:
+    section_label: null
+    fields:
+      - FB_DTHCAUSSP
+      - FB_DTHDAT
+      - FB_DTHSRC
+      - FB_DTHSRCSP
+    visible_text: |
+      Only respond to Q4 if the participant died while on study.
+      4a. Primary cause of death:
+      4b. Date of death:
+      /          /
+      Day                       Month                    Year
+      4c. Death information obtained from
+      (Multiple responses possible):
+      Death certificate
+      Autopsy report
+      Medical record
+      Contact with participant's family or friends
+      Contact wtih physician/social worker
+      Other, specify
+  withdrawal_explanation:
+    section_label: null
+    fields:
+      - FB_WITHDRAWEXPLAIN
+    visible_text: |
+      (No exact PDF question label observed; column appears to capture free-text explanation associated with the withdrawal options under Q2 "Withdrawal by participant" / "Withdrawal by parent/guardian". Mapping needs human review.)
+  completion:
+    section_label: null
+    fields:
+      - FB_INIT
+      - FB_SIGN
+      - FB_COMPDAT
+    visible_text: |
+      Date Completed:  /          /
+      Day                       Month                    Year
+      Signature of Data Collector:
+      Initials of Data Collector:
+  system_metadata:
+    section_label: null
+    fields:
+      - Time_Stamp
+    visible_text: |
+      (No PDF visible text — column derived from dataset capture timestamp.)
+option_sets:
+  yes_no_pdf:
+    source: PDF option text
+    source_text: "Yes No"
+    values:
+      - "Yes"
+      - "No"
+    unknown: true
+  date_dmy_pdf:
+    source: PDF date boxes
+    source_text: "Day                       Month                    Year"
+    values:
+      - Day
+      - Month
+      - Year
+    unknown: true
+  visit_type_pdf:
+    source: PDF option text
+    source_text: "Visit type: Month 12 Month 24 TB Activation Unscheduled"
+    values:
+      - Month 12
+      - Month 24
+      - TB Activation
+      - Unscheduled
+    unknown: true
+  followup_complete_pdf:
+    source: PDF option text
+    source_text: |
+      1. Did the participant complete follow up through the month 24 visit?
+      Yes
+      No
+    values:
+      - "Yes"
+      - "No"
+    unknown: true
+  reason_not_complete_pdf:
+    source: PDF option text
+    source_text: |
+      2. Reason for NOT completing follow up through the month 24 visit? (check ONE reason only:)
+      Participant developed active TB
+      Death
+      Physician decision (Investigator determines that further participation would be detrimental to the health or well-being of the subject)
+      Inadvertent enrollment
+      Withdrawal by participant
+      Withdrawal by parent/guardian
+      Lost to follow up
+      Moved out of area
+      Study terminated by sponsor
+      Other, specify:
+    values:
+      - Participant developed active TB
+      - Death
+      - Physician decision
+      - Inadvertent enrollment
+      - Withdrawal by participant
+      - Withdrawal by parent/guardian
+      - Lost to follow up
+      - Moved out of area
+      - Study terminated by sponsor
+      - Other, specify
+    unknown: true
+  cohort_a_tb_type_pdf:
+    source: PDF option text
+    source_text: |
+      3a. Specify reason:
+      Extrapulmonary TB (no pulmonary disease)
+      MDR-TB
+      XDR-TB
+      Other, specify:
+      (Multiple responses possible)
+    values:
+      - Extrapulmonary TB (no pulmonary disease)
+      - MDR-TB
+      - XDR-TB
+      - Other, specify
+    unknown: true
+  death_information_source_pdf:
+    source: PDF option text
+    source_text: |
+      4c. Death information obtained from
+      (Multiple responses possible):
+      Death certificate
+      Autopsy report
+      Medical record
+      Contact with participant's family or friends
+      Contact wtih physician/social worker
+      Other, specify
+    values:
+      - Death certificate
+      - Autopsy report
+      - Medical record
+      - Contact with participant's family or friends
+      - Contact wtih physician/social worker
+      - Other, specify
+    unknown: true
+pdf_annotation_pages:
+  - page: 1
+    annotations:
+      - SUBJID
+      - FB_VISDAT
+      - FID
+      - FB_VISIT
+      - FB_FUCOMPB
+      - FB_FUCOMPBDC
+      - FB_FUCOMPBDCSP
+      - FB_ENRCOHA
+      - FB_ENRCOHASP
+      - EPTB
+      - FB_ENRCOHASPO
+      - FB_DTHCAUSSP
+      - FB_DTHDAT
+      - FB_DTHSRC
+      - FB_DTHSRCSP
+      - FB_INIT
+      - FB_SIGN
+      - FB_COMPDAT
+pdf_visible_text:
+  by_page:
+    - page: 1
+      blocks:
+        - type: heading
+          text: OFF STUDY FORM FOR COHORT B
+          related_variables: []
+        - type: instruction
+          text: This questionnaire should be completed for all enrolled Household Contacts.  The purpose is to determine their final status.
+          related_variables: []
+        - type: question
+          text: "Household contact ID:"
+          related_variables:
+            - SUBJID
+        - type: question
+          text: "Date of evaluation:"
+          related_variables:
+            - FB_VISDAT
+        - type: caption
+          text: "Day                        Month                   Year"
+          related_variables:
+            - FB_VISDAT
+        - type: question
+          text: "Family ID:"
+          related_variables:
+            - FID
+        - type: question
+          text: "Visit type:"
+          related_variables:
+            - FB_VISIT
+        - type: option_block
+          text: Month 12 Month 24 TB Activation Unscheduled
+          related_variables:
+            - FB_VISIT
+        - type: question
+          text: 1. Did the participant complete follow up through the month 24 visit?
+          related_variables:
+            - FB_FUCOMPB
+        - type: option_block
+          text: Yes No
+          related_variables:
+            - FB_FUCOMPB
+        - type: instruction
+          text: |
+            Skip to the end of the form.
+            Sign, date and initial.
+          related_variables:
+            - FB_FUCOMPB
+            - FB_SIGN
+            - FB_INIT
+            - FB_COMPDAT
+        - type: question
+          text: "2. Reason for NOT completing follow up through the month 24 visit? (check ONE reason only:)"
+          related_variables:
+            - FB_FUCOMPBDC
+        - type: option_block
+          text: |
+            Participant developed active TB
+            Death
+            Physician decision (Investigator determines that further participation would be detrimental to the health or well-being of the subject)
+            Inadvertent enrollment
+            Withdrawal by participant
+            Withdrawal by parent/guardian
+            Lost to follow up
+            Moved out of area
+            Study terminated by sponsor
+            Other, specify:
+          related_variables:
+            - FB_FUCOMPBDC
+            - FB_FUCOMPBDCSP
+            - FB_WITHDRAWEXPLAIN
+        - type: instruction
+          text: (Go to Q3)
+          related_variables:
+            - FB_ENRCOHA
+        - type: instruction
+          text: (Go to Q4)
+          related_variables:
+            - FB_DTHCAUSSP
+            - FB_DTHDAT
+            - FB_DTHSRC
+            - FB_DTHSRCSP
+        - type: instruction
+          text: (End of form)
+          related_variables: []
+        - type: question
+          text: 3. If the participant developed active TB, has the participant been enrolled into Cohort A?
+          related_variables:
+            - FB_ENRCOHA
+        - type: option_block
+          text: Yes No
+          related_variables:
+            - FB_ENRCOHA
+        - type: question
+          text: "3a. Specify reason:"
+          related_variables:
+            - FB_ENRCOHASP
+            - FB_ENRCOHASPO
+        - type: option_block
+          text: |
+            Extrapulmonary TB (no pulmonary disease)
+            MDR-TB
+            XDR-TB
+            Other, specify:
+          related_variables:
+            - FB_ENRCOHASP
+            - FB_ENRCOHASPO
+        - type: caption
+          text: "(Multiple responses possible):"
+          related_variables:
+            - FB_ENRCOHASP
+        - type: instruction
+          text: Only respond to Q4 if the participant died while on study.
+          related_variables:
+            - FB_DTHCAUSSP
+            - FB_DTHDAT
+            - FB_DTHSRC
+            - FB_DTHSRCSP
+        - type: question
+          text: "4a. Primary cause of death:"
+          related_variables:
+            - FB_DTHCAUSSP
+        - type: question
+          text: "4b. Date of death:"
+          related_variables:
+            - FB_DTHDAT
+        - type: caption
+          text: "/          /"
+          related_variables:
+            - FB_DTHDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - FB_DTHDAT
+        - type: question
+          text: 4c. Death information obtained from
+          related_variables:
+            - FB_DTHSRC
+            - FB_DTHSRCSP
+        - type: caption
+          text: "(Multiple responses possible):"
+          related_variables:
+            - FB_DTHSRC
+        - type: option_block
+          text: |
+            Death certificate
+            Autopsy report
+            Medical record
+            Contact with participant's family or friends
+            Contact wtih physician/social worker
+            Other, specify
+          related_variables:
+            - FB_DTHSRC
+            - FB_DTHSRCSP
+        - type: question
+          text: "Date Completed: / /"
+          related_variables:
+            - FB_COMPDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - FB_COMPDAT
+        - type: question
+          text: "Signature of Data Collector:"
+          related_variables:
+            - FB_SIGN
+        - type: question
+          text: "Initials of Data Collector:"
+          related_variables:
+            - FB_INIT
+  questions:
+    - id: q_subjid
+      page: 1
+      exact_wording: "Household contact ID:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - SUBJID
+    - id: q_visdat
+      page: 1
+      exact_wording: "Date of evaluation:"
+      section: participant_header
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - FB_VISDAT
+    - id: q_fid
+      page: 1
+      exact_wording: "Family ID:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FID
+    - id: q_visit
+      page: 1
+      exact_wording: "Visit type:"
+      section: participant_header
+      options_ref: visit_type_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FB_VISIT
+    - id: q1
+      page: 1
+      exact_wording: 1. Did the participant complete follow up through the month 24 visit?
+      section: followup_status
+      options_ref: followup_complete_pdf
+      units: null
+      skip_logic: |
+        Yes -> Skip to the end of the form. Sign, date and initial.
+      notes: Branching question. "Yes" jumps to the completion block (FB_SIGN/FB_INIT/FB_COMPDAT); "No" cascades into Q2.
+      related_variables:
+        - FB_FUCOMPB
+    - id: q2
+      page: 1
+      exact_wording: "2. Reason for NOT completing follow up through the month 24 visit? (check ONE reason only:)"
+      section: followup_status
+      options_ref: reason_not_complete_pdf
+      units: null
+      skip_logic: |
+        Participant developed active TB -> Go to Q3
+        Death -> Go to Q4
+        Other, specify -> End of form
+      notes: Single-select discontinuation reason. "Other, specify" is captured by FB_FUCOMPBDCSP. Withdrawal options have no PDF specify field but the dataset has an FB_WITHDRAWEXPLAIN column flagged for review.
+      related_variables:
+        - FB_FUCOMPBDC
+        - FB_FUCOMPBDCSP
+        - FB_WITHDRAWEXPLAIN
+    - id: q3
+      page: 1
+      exact_wording: 3. If the participant developed active TB, has the participant been enrolled into Cohort A?
+      section: cohort_a_enrollment
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: Reached only when Q2 = "Participant developed active TB".
+      related_variables:
+        - FB_ENRCOHA
+    - id: q3a
+      page: 1
+      exact_wording: "3a. Specify reason:"
+      section: cohort_a_enrollment
+      options_ref: cohort_a_tb_type_pdf
+      units: null
+      skip_logic: null
+      notes: |
+        Multi-select TB classification. The PDF carries an EPTB FreeText annotation positioned over the "Extrapulmonary TB (no pulmonary disease)" option but no EPTB column exists in the dataset; FB_ENRCOHASP appears to be the encoded reason and FB_ENRCOHASPO captures "Other, specify".
+      related_variables:
+        - FB_ENRCOHASP
+        - FB_ENRCOHASPO
+    - id: q4a
+      page: 1
+      exact_wording: "4a. Primary cause of death:"
+      section: death_details
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: Free-text primary cause of death. Reached only when Q2 = "Death".
+      related_variables:
+        - FB_DTHCAUSSP
+    - id: q4b
+      page: 1
+      exact_wording: "4b. Date of death:"
+      section: death_details
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - FB_DTHDAT
+    - id: q4c
+      page: 1
+      exact_wording: 4c. Death information obtained from
+      section: death_details
+      options_ref: death_information_source_pdf
+      units: null
+      skip_logic: null
+      notes: Multi-select source list. "Other, specify" captured by FB_DTHSRCSP.
+      related_variables:
+        - FB_DTHSRC
+        - FB_DTHSRCSP
+    - id: q_signature
+      page: 1
+      exact_wording: "Signature of Data Collector:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FB_SIGN
+    - id: q_initials
+      page: 1
+      exact_wording: "Initials of Data Collector:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FB_INIT
+    - id: q_date_completed
+      page: 1
+      exact_wording: "Date Completed: / /"
+      section: completion
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - FB_COMPDAT
+evidence_packs:
+  by_variable:
+    SUBJID:
+      exact_pdf_wording: "Household contact ID:"
+      pdf_annotation: SUBJID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FB_VISDAT:
+      exact_pdf_wording: "Date of evaluation:"
+      pdf_annotation: FB_VISDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FID:
+      exact_pdf_wording: "Family ID:"
+      pdf_annotation: FID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FB_VISIT:
+      exact_pdf_wording: "Visit type:"
+      pdf_annotation: FB_VISIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FB_FUCOMPB:
+      exact_pdf_wording: 1. Did the participant complete follow up through the month 24 visit?
+      pdf_annotation: FB_FUCOMPB
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FB_FUCOMPBDC:
+      exact_pdf_wording: "2. Reason for NOT completing follow up through the month 24 visit? (check ONE reason only:)"
+      pdf_annotation: FB_FUCOMPBDC
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FB_FUCOMPBDCSP:
+      exact_pdf_wording: "Other, specify:"
+      pdf_annotation: FB_FUCOMPBDCSP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FB_ENRCOHA:
+      exact_pdf_wording: 3. If the participant developed active TB, has the participant been enrolled into Cohort A?
+      pdf_annotation: FB_ENRCOHA
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FB_ENRCOHASP:
+      exact_pdf_wording: "3a. Specify reason:"
+      pdf_annotation: FB_ENRCOHASP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FB_ENRCOHASPO:
+      exact_pdf_wording: "Other, specify:"
+      pdf_annotation: FB_ENRCOHASPO
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FB_DTHCAUSSP:
+      exact_pdf_wording: "4a. Primary cause of death:"
+      pdf_annotation: FB_DTHCAUSSP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FB_DTHDAT:
+      exact_pdf_wording: "4b. Date of death:"
+      pdf_annotation: FB_DTHDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FB_DTHSRC:
+      exact_pdf_wording: 4c. Death information obtained from
+      pdf_annotation: FB_DTHSRC
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FB_DTHSRCSP:
+      exact_pdf_wording: "Other, specify"
+      pdf_annotation: FB_DTHSRCSP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FB_WITHDRAWEXPLAIN:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FB_INIT:
+      exact_pdf_wording: "Initials of Data Collector:"
+      pdf_annotation: FB_INIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FB_SIGN:
+      exact_pdf_wording: "Signature of Data Collector:"
+      pdf_annotation: FB_SIGN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FB_COMPDAT:
+      exact_pdf_wording: "Date Completed: / /"
+      pdf_annotation: FB_COMPDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    Time_Stamp:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+catalog_refs:
+  by_variable:
+    SUBJID:
+      display_label: Participant ID
+      normalized_meaning: Pseudonymized identifier for the household contact participant (Cohort B).
+      search_terms:
+        - SUBJID
+        - Household contact ID
+        - participant id
+        - subject id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FB_VISDAT:
+      display_label: Off-Study Visit Date
+      normalized_meaning: Date of the off-study evaluation visit (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - FB_VISDAT
+        - Date of evaluation
+        - off-study visit date
+        - final status visit date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FID:
+      display_label: Family ID
+      normalized_meaning: Pseudonymized household/family identifier linking related contacts.
+      search_terms:
+        - FID
+        - Family ID
+        - household ID
+        - family identifier
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FB_VISIT:
+      display_label: Visit Type
+      normalized_meaning: Off-study visit type (Month 12, Month 24, TB Activation, or Unscheduled).
+      search_terms:
+        - FB_VISIT
+        - Visit type
+        - Month 12
+        - Month 24
+        - TB Activation
+        - Unscheduled
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FB_FUCOMPB:
+      display_label: Completed Follow-up Through Month 24
+      normalized_meaning: Whether the participant completed follow up through the month 24 visit (Yes/No).
+      search_terms:
+        - FB_FUCOMPB
+        - completed follow up
+        - completed month 24 visit
+        - follow-up complete
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FB_FUCOMPBDC:
+      display_label: Reason Not Completed Follow-up
+      normalized_meaning: Reason the participant did not complete follow up through month 24 (single select among active TB, death, physician decision, inadvertent enrollment, withdrawal by participant, withdrawal by parent/guardian, lost to follow up, moved out of area, study terminated by sponsor, other specify).
+      search_terms:
+        - FB_FUCOMPBDC
+        - reason for not completing follow up
+        - discontinuation reason
+        - off-study reason
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FB_FUCOMPBDCSP:
+      display_label: Reason Not Completed — Other Specify
+      normalized_meaning: Free-text "Other, specify" reason captured when FB_FUCOMPBDC = "Other, specify".
+      search_terms:
+        - FB_FUCOMPBDCSP
+        - Other, specify
+        - other reason for not completing follow up
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FB_ENRCOHA:
+      display_label: Enrolled into Cohort A
+      normalized_meaning: Whether the participant who developed active TB has been enrolled into Cohort A (Yes/No).
+      search_terms:
+        - FB_ENRCOHA
+        - enrolled into Cohort A
+        - Cohort A enrollment
+        - active TB cohort transfer
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FB_ENRCOHASP:
+      display_label: Active TB Type / Specify Reason
+      normalized_meaning: TB classification recorded under Q3a "Specify reason" — Extrapulmonary TB (no pulmonary disease), MDR-TB, XDR-TB, or Other (multiple responses possible).
+      search_terms:
+        - FB_ENRCOHASP
+        - Specify reason
+        - Extrapulmonary TB
+        - EPTB
+        - MDR-TB
+        - XDR-TB
+        - active TB type
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FB_ENRCOHASPO:
+      display_label: Active TB Type — Other Specify
+      normalized_meaning: Free-text "Other, specify" TB type captured when FB_ENRCOHASP = "Other, specify".
+      search_terms:
+        - FB_ENRCOHASPO
+        - Other, specify
+        - other TB type
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FB_DTHCAUSSP:
+      display_label: Primary Cause of Death
+      normalized_meaning: Free-text primary cause of death recorded for participants who died while on study.
+      search_terms:
+        - FB_DTHCAUSSP
+        - Primary cause of death
+        - cause of death
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FB_DTHDAT:
+      display_label: Date of Death
+      normalized_meaning: Date of death (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - FB_DTHDAT
+        - Date of death
+        - death date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FB_DTHSRC:
+      display_label: Death Information Source
+      normalized_meaning: Source from which death information was obtained — death certificate, autopsy report, medical record, contact with family/friends, contact with physician/social worker, or other (multiple responses possible).
+      search_terms:
+        - FB_DTHSRC
+        - Death information obtained from
+        - death certificate
+        - autopsy report
+        - medical record
+        - source of death information
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FB_DTHSRCSP:
+      display_label: Death Information Source — Other Specify
+      normalized_meaning: Free-text "Other, specify" source captured when FB_DTHSRC includes "Other, specify".
+      search_terms:
+        - FB_DTHSRCSP
+        - Other, specify
+        - other death information source
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FB_WITHDRAWEXPLAIN:
+      display_label: Withdrawal Explanation
+      normalized_meaning: Free-text explanation for withdrawal (column name suggests it accompanies "Withdrawal by participant" or "Withdrawal by parent/guardian" under Q2; mapping awaits human review).
+      search_terms:
+        - FB_WITHDRAWEXPLAIN
+        - withdrawal explanation
+        - Withdrawal by participant
+        - Withdrawal by parent/guardian
+        - reason for withdrawal
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FB_INIT:
+      display_label: Data Collector Initials
+      normalized_meaning: Initials of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - FB_INIT
+        - Initials of Data Collector
+        - data collector initials
+      catalog_tier: source_only
+      analysis_queryable: false
+    FB_SIGN:
+      display_label: Data Collector Signature
+      normalized_meaning: Signature of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - FB_SIGN
+        - Signature of Data Collector
+        - signature
+      catalog_tier: source_only
+      analysis_queryable: false
+    FB_COMPDAT:
+      display_label: Form Completion Date
+      normalized_meaning: Date the form was completed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - FB_COMPDAT
+        - Date Completed
+        - form completion date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    Time_Stamp:
+      display_label: Capture Timestamp
+      normalized_meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      search_terms:
+        - Time_Stamp
+        - timestamp
+        - capture timestamp
+      catalog_tier: source_only
+      analysis_queryable: false
+ledger_expectations:
+  phi_handling:
+    - SUBJID
+    - FID
+    - FB_VISDAT
+    - FB_FUCOMPBDCSP
+    - FB_ENRCOHASPO
+    - FB_DTHCAUSSP
+    - FB_DTHDAT
+    - FB_DTHSRCSP
+    - FB_WITHDRAWEXPLAIN
+    - FB_INIT
+    - FB_SIGN
+    - FB_COMPDAT
+  dataset_cleanup:
+    - Time_Stamp
+variables:
+  SUBJID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Household contact ID:"
+      pdf_annotation: SUBJID
+      column_name: SUBJID
+    normalized_metadata:
+      display_label: Participant ID
+      meaning: Pseudonymized identifier for the household contact participant (Cohort B).
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  FB_VISDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date of evaluation:"
+      pdf_annotation: FB_VISDAT
+      column_name: FB_VISDAT
+    normalized_metadata:
+      display_label: Off-Study Visit Date
+      meaning: Date of the off-study evaluation visit.
+      section: participant_header
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  FID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Family ID:"
+      pdf_annotation: FID
+      column_name: FID
+    normalized_metadata:
+      display_label: Family ID
+      meaning: Pseudonymized household/family identifier linking related contacts.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: family_or_household_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: family_or_household_identifier
+      label: FAM
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  FB_VISIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Visit type:"
+      pdf_annotation: FB_VISIT
+      column_name: FB_VISIT
+    normalized_metadata:
+      display_label: Visit Type
+      meaning: Off-study visit type — Month 12, Month 24, TB Activation, or Unscheduled.
+      section: participant_header
+      data_type: categorical
+      options_ref: visit_type_pdf
+    options:
+      source_defined:
+        - Month 12
+        - Month 24
+        - TB Activation
+        - Unscheduled
+      values:
+        - Month 12
+        - Month 24
+        - TB Activation
+        - Unscheduled
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: off_study_visit
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FB_FUCOMPB:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 1. Did the participant complete follow up through the month 24 visit?
+      pdf_annotation: FB_FUCOMPB
+      column_name: FB_FUCOMPB
+    normalized_metadata:
+      display_label: Completed Follow-up Through Month 24
+      meaning: Whether the participant completed follow up through the month 24 visit.
+      section: followup_status
+      data_type: categorical
+      options_ref: followup_complete_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - FB_FUCOMPBDC
+      skip_logic: |
+        Yes -> Skip to the end of the form. Sign, date and initial.
+      visit_grouping: null
+      section_grouping: followup_status
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FB_FUCOMPBDC:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "2. Reason for NOT completing follow up through the month 24 visit? (check ONE reason only:)"
+      pdf_annotation: FB_FUCOMPBDC
+      column_name: FB_FUCOMPBDC
+    normalized_metadata:
+      display_label: Reason Not Completed Follow-up
+      meaning: Reason the participant did not complete follow up through month 24 (single select).
+      section: followup_status
+      data_type: categorical
+      options_ref: reason_not_complete_pdf
+    options:
+      source_defined:
+        - Participant developed active TB
+        - Death
+        - Physician decision
+        - Inadvertent enrollment
+        - Withdrawal by participant
+        - Withdrawal by parent/guardian
+        - Lost to follow up
+        - Moved out of area
+        - Study terminated by sponsor
+        - Other, specify
+      values:
+        - Participant developed active TB
+        - Death
+        - Physician decision
+        - Inadvertent enrollment
+        - Withdrawal by participant
+        - Withdrawal by parent/guardian
+        - Lost to follow up
+        - Moved out of area
+        - Study terminated by sponsor
+        - Other, specify
+      unknown: true
+    relationships:
+      parent: FB_FUCOMPB
+      children:
+        - FB_FUCOMPBDCSP
+        - FB_ENRCOHA
+        - FB_DTHCAUSSP
+        - FB_DTHDAT
+        - FB_DTHSRC
+        - FB_WITHDRAWEXPLAIN
+      skip_logic: |
+        Participant developed active TB -> Go to Q3
+        Death -> Go to Q4
+        Other, specify -> End of form
+      visit_grouping: null
+      section_grouping: followup_status
+      other_specify: FB_FUCOMPBDCSP
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FB_FUCOMPBDCSP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Other, specify:"
+      pdf_annotation: FB_FUCOMPBDCSP
+      column_name: FB_FUCOMPBDCSP
+    normalized_metadata:
+      display_label: Reason Not Completed — Other Specify
+      meaning: Free-text "Other, specify" reason captured when FB_FUCOMPBDC = "Other, specify".
+      section: followup_status
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FB_FUCOMPBDC
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: followup_status
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: Is the free-text "Other, specify" reason content allowed in the PHI-handled dataset, or should it be dropped/redacted?
+    clean_output_presence: absent
+  FB_ENRCOHA:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 3. If the participant developed active TB, has the participant been enrolled into Cohort A?
+      pdf_annotation: FB_ENRCOHA
+      column_name: FB_ENRCOHA
+    normalized_metadata:
+      display_label: Enrolled into Cohort A
+      meaning: Whether the participant who developed active TB has been enrolled into Cohort A.
+      section: cohort_a_enrollment
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: FB_FUCOMPBDC
+      children:
+        - FB_ENRCOHASP
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cohort_a_enrollment
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FB_ENRCOHASP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3a. Specify reason:"
+      pdf_annotation: FB_ENRCOHASP
+      column_name: FB_ENRCOHASP
+    normalized_metadata:
+      display_label: Active TB Type / Specify Reason
+      meaning: TB classification recorded under Q3a — Extrapulmonary TB (no pulmonary disease), MDR-TB, XDR-TB, or Other (multiple responses possible).
+      section: cohort_a_enrollment
+      data_type: categorical
+      options_ref: cohort_a_tb_type_pdf
+    options:
+      source_defined:
+        - Extrapulmonary TB (no pulmonary disease)
+        - MDR-TB
+        - XDR-TB
+        - Other, specify
+      values:
+        - Extrapulmonary TB (no pulmonary disease)
+        - MDR-TB
+        - XDR-TB
+        - Other, specify
+      unknown: true
+    relationships:
+      parent: FB_ENRCOHA
+      children:
+        - FB_ENRCOHASPO
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cohort_a_enrollment
+      other_specify: FB_ENRCOHASPO
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FB_ENRCOHASPO:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Other, specify:"
+      pdf_annotation: FB_ENRCOHASPO
+      column_name: FB_ENRCOHASPO
+    normalized_metadata:
+      display_label: Active TB Type — Other Specify
+      meaning: Free-text "Other, specify" TB type captured when FB_ENRCOHASP includes "Other, specify".
+      section: cohort_a_enrollment
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FB_ENRCOHASP
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cohort_a_enrollment
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: Is the free-text "Other, specify" TB type content allowed in the PHI-handled dataset, or should it be dropped/redacted?
+    clean_output_presence: absent
+  FB_DTHCAUSSP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "4a. Primary cause of death:"
+      pdf_annotation: FB_DTHCAUSSP
+      column_name: FB_DTHCAUSSP
+    normalized_metadata:
+      display_label: Primary Cause of Death
+      meaning: Free-text primary cause of death recorded for participants who died while on study.
+      section: death_details
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FB_FUCOMPBDC
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: death_details
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: Is the free-text primary cause of death content allowed in the PHI-handled dataset, or should it be dropped/redacted?
+    clean_output_presence: absent
+  FB_DTHDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "4b. Date of death:"
+      pdf_annotation: FB_DTHDAT
+      column_name: FB_DTHDAT
+    normalized_metadata:
+      display_label: Date of Death
+      meaning: Date of death.
+      section: death_details
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: FB_FUCOMPBDC
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: death_details
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  FB_DTHSRC:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 4c. Death information obtained from
+      pdf_annotation: FB_DTHSRC
+      column_name: FB_DTHSRC
+    normalized_metadata:
+      display_label: Death Information Source
+      meaning: Source from which death information was obtained (multiple responses possible) — Death certificate, Autopsy report, Medical record, Contact with participant's family or friends, Contact with physician/social worker, Other specify.
+      section: death_details
+      data_type: categorical
+      options_ref: death_information_source_pdf
+    options:
+      source_defined:
+        - Death certificate
+        - Autopsy report
+        - Medical record
+        - Contact with participant's family or friends
+        - Contact wtih physician/social worker
+        - Other, specify
+      values:
+        - Death certificate
+        - Autopsy report
+        - Medical record
+        - Contact with participant's family or friends
+        - Contact wtih physician/social worker
+        - Other, specify
+      unknown: true
+    relationships:
+      parent: FB_FUCOMPBDC
+      children:
+        - FB_DTHSRCSP
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: death_details
+      other_specify: FB_DTHSRCSP
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FB_DTHSRCSP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Other, specify"
+      pdf_annotation: FB_DTHSRCSP
+      column_name: FB_DTHSRCSP
+    normalized_metadata:
+      display_label: Death Information Source — Other Specify
+      meaning: Free-text "Other, specify" source captured when FB_DTHSRC includes "Other, specify".
+      section: death_details
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FB_DTHSRC
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: death_details
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: Is the free-text "Other, specify" death information source content allowed in the PHI-handled dataset, or should it be dropped/redacted?
+    clean_output_presence: absent
+  FB_WITHDRAWEXPLAIN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FB_WITHDRAWEXPLAIN
+    normalized_metadata:
+      display_label: Withdrawal Explanation
+      meaning: Free-text explanation for withdrawal (column name suggests it accompanies the "Withdrawal by participant" or "Withdrawal by parent/guardian" choices under Q2; mapping awaits human review).
+      section: followup_status
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FB_FUCOMPBDC
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: followup_status
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_free_text_field_no_pdf_annotation
+      reviewer_question: FB_WITHDRAWEXPLAIN is a dataset-only column with no PDF annotation or visible question label. Confirm whether it captures free-text explanation associated with the Q2 "Withdrawal by participant" / "Withdrawal by parent/guardian" choices and whether the content is allowed in the PHI-handled dataset or should be dropped/redacted.
+    clean_output_presence: absent
+  FB_INIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Initials of Data Collector:"
+      pdf_annotation: FB_INIT
+      column_name: FB_INIT
+    normalized_metadata:
+      display_label: Data Collector Initials
+      meaning: Initials of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: initials_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  FB_SIGN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Signature of Data Collector:"
+      pdf_annotation: FB_SIGN
+      column_name: FB_SIGN
+    normalized_metadata:
+      display_label: Data Collector Signature
+      meaning: Signature of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: signature_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  FB_COMPDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date Completed: / /"
+      pdf_annotation: FB_COMPDAT
+      column_name: FB_COMPDAT
+    normalized_metadata:
+      display_label: Form Completion Date
+      meaning: Date the form was completed by the data collector.
+      section: completion
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  Time_Stamp:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: Time_Stamp
+    normalized_metadata:
+      display_label: Capture Timestamp
+      meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      section: system_metadata
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: system_metadata
+      other_specify: null
+    phi_sensitive_category: system_timestamp
+    handling_intent:
+      action: drop
+      reason: non_pdf_system_timestamp_metadata
+      label: null
+    runtime_binding:
+      - dataset_cleanup
+    derivation_targets:
+      - dataset_cleanup_ledger
+    evidence:
+      level: high
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+validation:
+  forbidden_keys_absent: true
+  columns_unique: true
+  pdf_annotation_unmatched:
+    - "EPTB (FreeText annotation positioned over the Q3a 'Extrapulmonary TB (no pulmonary disease)' option; the literal Contents text is EPTB but no EPTB column exists in the dataset — the encoded TB type appears to roll up into FB_ENRCOHASP)"
+  dataset_columns_unmatched: []
+  excluded_pdf_artifacts:
+    - "05/22/2014 (form version date — excluded per PDF Extraction Boundary)"
+    - "Indo-US VAP Off  Study B  v1.0 (form version footer — excluded)"
+    - "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner — retained as form context heading not as a variable; not excluded but recorded as heading block)"
+    - "Page 1 of 1 (page footer — excluded)"
+    - "Form 99B (form-number footer — excluded)"
+    - "13642 (artifact-version code in footer — excluded)"
+    - "- -1 0 2 0 B (placeholder Household contact ID example print on the form — excluded)"

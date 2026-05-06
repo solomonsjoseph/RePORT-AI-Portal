@@ -1,0 +1,1547 @@
+schema_version: 2
+policy_status: draft_for_human_review
+study: Indo-VAP
+form: 19_Smear
+source:
+  dataset_file: 19_Smear.xlsx
+  pdf_file: data/raw/Indo-VAP/annotated_pdfs/19 Smear V1.0.pdf
+pdf_form_metadata:
+  form_number: Form 19
+  form_title: CONCENTRATED AFB MICROSCOPY RESULTS (ZIEHL-NEELSEN)
+  form_version: v1.0
+  page_count: 1
+coverage:
+  column_count: 16
+  columns_mapped: 16
+  pdf_annotation_count: 14
+  pdf_annotation_variables: 14
+  annotated_columns: 14
+  non_annotated_columns:
+    - CM_SVOLM
+    - TIME_STAMP
+  unresolved_review_required:
+    - CM_SVOLM
+pdf_sections:
+  participant_header:
+    section_label: null
+    fields:
+      - SUBJID
+      - CM_VISIT
+      - CM_FID
+    visible_text: |
+      Participant ID:
+      - -1 0 2 0
+      Visit:
+      Baseline
+      Month 1
+      Month 2
+      End of Treatment
+      TB Activation
+      TB Failure/Relapse/Withdrawal
+      Unscheduled
+      (Month 5)
+      (Month 6 or Month 7)
+      Family ID:
+  sputum_quality:
+    section_label: A.  Sputum Quality
+    fields:
+      - CM_FEVER
+      - CM_FEVER_2
+      - CM_FEVER_3
+      - CM_FEVER_4
+      - CM_SVOLM
+    visible_text: |
+      A.  Sputum Quality
+      Blood-stained:                Yes No
+      Mucopurulent:                 Yes No
+      Salivary:                     Yes No
+      At Least 1 mL:                Yes No
+  sputum_smear_result:
+    section_label: B.  Sputum Concentrated Smear Result
+    fields:
+      - CM_MBND2
+      - CM_MBDAT2
+      - CM_MBREFID2
+      - CM_MBLABID2
+      - CM_AFBQUAN2
+    visible_text: |
+      B.  Sputum Concentrated Smear Result
+      Smear Not Done
+      Date of AFB Smear: / /
+      Day                       Month                    Year
+      Laboratory accession #: -
+      Laboratory ID code:
+      Smear Result: 3+ 2+ 1+ Scanty Negative
+  completion:
+    section_label: null
+    fields:
+      - CM_COMPDAT
+      - CM_INIT
+    visible_text: |
+      Date Completed: / /
+      Day                       Month                  Year
+      Initials:
+  system_metadata:
+    section_label: null
+    fields:
+      - TIME_STAMP
+    visible_text: |
+      (No PDF visible text — column derived from dataset capture timestamp.)
+option_sets:
+  yes_no_pdf:
+    source: PDF option text
+    source_text: "Yes No"
+    values:
+      - "Yes"
+      - "No"
+    unknown: true
+  date_dmy_pdf:
+    source: PDF date boxes
+    source_text: "Day                       Month                    Year"
+    values:
+      - Day
+      - Month
+      - Year
+    unknown: true
+  smear_result_pdf:
+    source: PDF option text
+    source_text: "Smear Result: 3+ 2+ 1+ Scanty Negative"
+    values:
+      - 3+
+      - 2+
+      - 1+
+      - Scanty
+      - Negative
+    unknown: true
+  smear_not_done_pdf:
+    source: PDF option text
+    source_text: "Smear Not Done"
+    values:
+      - Smear Not Done
+    unknown: true
+  visit_category_pdf:
+    source: PDF option text
+    source_text: |
+      Baseline
+      Month 1
+      Month 2
+      End of Treatment
+      TB Activation
+      TB Failure/Relapse/Withdrawal
+      Unscheduled
+      (Month 5)
+      (Month 6 or Month 7)
+    values:
+      - Baseline
+      - Month 1
+      - Month 2
+      - End of Treatment
+      - TB Activation
+      - TB Failure/Relapse/Withdrawal
+      - Unscheduled
+    unknown: true
+pdf_annotation_pages:
+  - page: 1
+    annotations:
+      - SUBJID
+      - CM_VISIT
+      - CM_FID
+      - CM_FEVER
+      - CM_FEVER_2
+      - CM_FEVER_3
+      - CM_FEVER_4
+      - CM_MBND2
+      - CM_MBDAT2
+      - CM_MBREFID2
+      - CM_MBLABID2
+      - CM_AFBQUAN2
+      - CM_COMPDAT
+      - CM_INIT
+pdf_visible_text:
+  by_page:
+    - page: 1
+      blocks:
+        - type: heading
+          text: CONCENTRATED AFB MICROSCOPY RESULTS (ZIEHL-NEELSEN)
+          related_variables: []
+        - type: heading
+          text: |
+            Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis
+            Treatment Failure and Relapse
+          related_variables: []
+        - type: heading
+          text: Form 19
+          related_variables: []
+        - type: question
+          text: "Participant ID:"
+          related_variables:
+            - SUBJID
+        - type: caption
+          text: "- -1 0 2 0"
+          related_variables:
+            - SUBJID
+        - type: question
+          text: "Visit:"
+          related_variables:
+            - CM_VISIT
+        - type: option_block
+          text: |
+            Baseline
+            Month 1
+            Month 2
+            End of Treatment
+            (Month 5)
+            (Month 6 or Month 7)
+            TB Activation
+            TB Failure/Relapse/Withdrawal
+            Unscheduled
+          related_variables:
+            - CM_VISIT
+        - type: question
+          text: "Family ID:"
+          related_variables:
+            - CM_FID
+        - type: section_label
+          text: A.  Sputum Quality
+          related_variables:
+            - CM_FEVER
+            - CM_FEVER_2
+            - CM_FEVER_3
+            - CM_FEVER_4
+            - CM_SVOLM
+        - type: question
+          text: "Blood-stained:"
+          related_variables:
+            - CM_FEVER
+        - type: option_block
+          text: Yes No
+          related_variables:
+            - CM_FEVER
+        - type: question
+          text: "Mucopurulent:"
+          related_variables:
+            - CM_FEVER_2
+        - type: option_block
+          text: Yes No
+          related_variables:
+            - CM_FEVER_2
+        - type: question
+          text: "Salivary:"
+          related_variables:
+            - CM_FEVER_3
+        - type: option_block
+          text: Yes No
+          related_variables:
+            - CM_FEVER_3
+        - type: question
+          text: "At Least 1 mL:"
+          related_variables:
+            - CM_FEVER_4
+        - type: option_block
+          text: Yes No
+          related_variables:
+            - CM_FEVER_4
+        - type: section_label
+          text: B.  Sputum Concentrated Smear Result
+          related_variables:
+            - CM_MBND2
+            - CM_MBDAT2
+            - CM_MBREFID2
+            - CM_MBLABID2
+            - CM_AFBQUAN2
+        - type: option_block
+          text: Smear Not Done
+          related_variables:
+            - CM_MBND2
+        - type: question
+          text: "Date of AFB Smear: / /"
+          related_variables:
+            - CM_MBDAT2
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - CM_MBDAT2
+        - type: question
+          text: "Laboratory accession #: -"
+          related_variables:
+            - CM_MBREFID2
+        - type: caption
+          text: "Y  Y"
+          related_variables:
+            - CM_MBREFID2
+        - type: question
+          text: "Laboratory ID code:"
+          related_variables:
+            - CM_MBLABID2
+        - type: question
+          text: "Smear Result:"
+          related_variables:
+            - CM_AFBQUAN2
+        - type: option_block
+          text: 3+ 2+ 1+ Scanty Negative
+          related_variables:
+            - CM_AFBQUAN2
+        - type: question
+          text: "Date Completed: / /"
+          related_variables:
+            - CM_COMPDAT
+        - type: caption
+          text: "Day                       Month                  Year"
+          related_variables:
+            - CM_COMPDAT
+        - type: question
+          text: "Initials:"
+          related_variables:
+            - CM_INIT
+  questions:
+    - id: q_subjid
+      page: 1
+      exact_wording: "Participant ID:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: "Adjacent caption text '- -1 0 2 0' appears as a participant-ID layout/template marker on the form."
+      related_variables:
+        - SUBJID
+    - id: q_visit
+      page: 1
+      exact_wording: "Visit:"
+      section: participant_header
+      options_ref: visit_category_pdf
+      units: null
+      skip_logic: null
+      notes: "Visit categories include parenthetical timing notes '(Month 5)' adjacent to Month 1 and '(Month 6 or Month 7)' adjacent to End of Treatment."
+      related_variables:
+        - CM_VISIT
+    - id: q_family_id
+      page: 1
+      exact_wording: "Family ID:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - CM_FID
+    - id: qA_blood_stained
+      page: 1
+      exact_wording: "Blood-stained:"
+      section: sputum_quality
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: "Sputum-quality Yes/No item under section 'A.  Sputum Quality'."
+      related_variables:
+        - CM_FEVER
+    - id: qA_mucopurulent
+      page: 1
+      exact_wording: "Mucopurulent:"
+      section: sputum_quality
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: "Sputum-quality Yes/No item under section 'A.  Sputum Quality'."
+      related_variables:
+        - CM_FEVER_2
+    - id: qA_salivary
+      page: 1
+      exact_wording: "Salivary:"
+      section: sputum_quality
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: "Sputum-quality Yes/No item under section 'A.  Sputum Quality'."
+      related_variables:
+        - CM_FEVER_3
+    - id: qA_at_least_1ml
+      page: 1
+      exact_wording: "At Least 1 mL:"
+      section: sputum_quality
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: "Sputum-quality Yes/No item under section 'A.  Sputum Quality'."
+      related_variables:
+        - CM_FEVER_4
+    - id: qB_smear_not_done
+      page: 1
+      exact_wording: Smear Not Done
+      section: sputum_smear_result
+      options_ref: smear_not_done_pdf
+      units: null
+      skip_logic: null
+      notes: "Indicator that the concentrated smear was not done."
+      related_variables:
+        - CM_MBND2
+    - id: qB_smear_date
+      page: 1
+      exact_wording: "Date of AFB Smear: / /"
+      section: sputum_smear_result
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - CM_MBDAT2
+    - id: qB_lab_accession
+      page: 1
+      exact_wording: "Laboratory accession #: -"
+      section: sputum_smear_result
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: "Adjacent caption 'Y  Y' appears as a lab-accession layout/template marker on the form."
+      related_variables:
+        - CM_MBREFID2
+    - id: qB_lab_id_code
+      page: 1
+      exact_wording: "Laboratory ID code:"
+      section: sputum_smear_result
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - CM_MBLABID2
+    - id: qB_smear_result
+      page: 1
+      exact_wording: "Smear Result:"
+      section: sputum_smear_result
+      options_ref: smear_result_pdf
+      units: null
+      skip_logic: null
+      notes: "Quantification grades: 3+, 2+, 1+, Scanty, Negative."
+      related_variables:
+        - CM_AFBQUAN2
+    - id: q_date_completed
+      page: 1
+      exact_wording: "Date Completed: / /"
+      section: completion
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - CM_COMPDAT
+    - id: q_initials
+      page: 1
+      exact_wording: "Initials:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - CM_INIT
+evidence_packs:
+  by_variable:
+    SUBJID:
+      exact_pdf_wording: "Participant ID:"
+      pdf_annotation: SUBJID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CM_VISIT:
+      exact_pdf_wording: "Visit:"
+      pdf_annotation: CM_VISIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CM_FID:
+      exact_pdf_wording: "Family ID:"
+      pdf_annotation: CM_FID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CM_FEVER:
+      exact_pdf_wording: "Blood-stained:"
+      pdf_annotation: CM_FEVER
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CM_FEVER_2:
+      exact_pdf_wording: "Mucopurulent:"
+      pdf_annotation: CM_FEVER_2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CM_FEVER_3:
+      exact_pdf_wording: "Salivary:"
+      pdf_annotation: CM_FEVER_3
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CM_FEVER_4:
+      exact_pdf_wording: "At Least 1 mL:"
+      pdf_annotation: CM_FEVER_4
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CM_SVOLM:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CM_MBND2:
+      exact_pdf_wording: Smear Not Done
+      pdf_annotation: CM_MBND2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CM_MBDAT2:
+      exact_pdf_wording: "Date of AFB Smear: / /"
+      pdf_annotation: CM_MBDAT2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CM_MBREFID2:
+      exact_pdf_wording: "Laboratory accession #: -"
+      pdf_annotation: CM_MBREFID2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CM_MBLABID2:
+      exact_pdf_wording: "Laboratory ID code:"
+      pdf_annotation: CM_MBLABID2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CM_AFBQUAN2:
+      exact_pdf_wording: "Smear Result:"
+      pdf_annotation: CM_AFBQUAN2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CM_COMPDAT:
+      exact_pdf_wording: "Date Completed: / /"
+      pdf_annotation: CM_COMPDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CM_INIT:
+      exact_pdf_wording: "Initials:"
+      pdf_annotation: CM_INIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TIME_STAMP:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+catalog_refs:
+  by_variable:
+    SUBJID:
+      display_label: Participant ID
+      normalized_meaning: Pseudonymized identifier for the study participant.
+      search_terms:
+        - SUBJID
+        - Participant ID
+        - participant id
+        - subject id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CM_VISIT:
+      display_label: Visit
+      normalized_meaning: Visit category for the smear (Baseline, Month 1, Month 2, End of Treatment, TB Activation, TB Failure/Relapse/Withdrawal, Unscheduled).
+      search_terms:
+        - CM_VISIT
+        - Visit
+        - visit category
+        - Baseline
+        - Month 1
+        - Month 2
+        - End of Treatment
+        - TB Activation
+        - TB Failure/Relapse/Withdrawal
+        - Unscheduled
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CM_FID:
+      display_label: Family ID
+      normalized_meaning: Pseudonymized family/household identifier linking participants in the same household.
+      search_terms:
+        - CM_FID
+        - Family ID
+        - household id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CM_FEVER:
+      display_label: Sputum Quality — Blood-stained
+      normalized_meaning: Sputum quality indicator — whether the sputum sample is blood-stained (Yes/No).
+      search_terms:
+        - CM_FEVER
+        - Blood-stained
+        - sputum quality
+        - blood
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CM_FEVER_2:
+      display_label: Sputum Quality — Mucopurulent
+      normalized_meaning: Sputum quality indicator — whether the sputum sample is mucopurulent (Yes/No).
+      search_terms:
+        - CM_FEVER_2
+        - Mucopurulent
+        - sputum quality
+        - mucopurulent
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CM_FEVER_3:
+      display_label: Sputum Quality — Salivary
+      normalized_meaning: Sputum quality indicator — whether the sputum sample is salivary (Yes/No).
+      search_terms:
+        - CM_FEVER_3
+        - Salivary
+        - sputum quality
+        - salivary
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CM_FEVER_4:
+      display_label: Sputum Quality — At Least 1 mL
+      normalized_meaning: Sputum quality indicator — whether the sputum sample is at least 1 mL in volume (Yes/No).
+      search_terms:
+        - CM_FEVER_4
+        - At Least 1 mL
+        - sputum quality
+        - sputum volume
+        - 1 mL
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CM_SVOLM:
+      display_label: Sputum Volume (mL)
+      normalized_meaning: Sputum volume in millilitres (suggested by column name); not directly mapped to a PDF annotation or visible question. Awaiting reviewer interpretation.
+      search_terms:
+        - CM_SVOLM
+        - sputum volume
+        - sputum volume mL
+        - SVOLM
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CM_MBND2:
+      display_label: Smear Not Done
+      normalized_meaning: Indicator that the concentrated smear was not done.
+      search_terms:
+        - CM_MBND2
+        - Smear Not Done
+        - smear not done
+        - MBND
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CM_MBDAT2:
+      display_label: Date of AFB Smear
+      normalized_meaning: Date the AFB smear was performed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - CM_MBDAT2
+        - Date of AFB Smear
+        - AFB smear date
+        - smear date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CM_MBREFID2:
+      display_label: Laboratory Accession Number
+      normalized_meaning: Pseudonymized laboratory accession number for the smear sample.
+      search_terms:
+        - CM_MBREFID2
+        - Laboratory accession #
+        - lab accession number
+        - accession
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CM_MBLABID2:
+      display_label: Laboratory ID Code
+      normalized_meaning: Pseudonymized laboratory identifier code for the smear sample.
+      search_terms:
+        - CM_MBLABID2
+        - Laboratory ID code
+        - lab id code
+        - lab code
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CM_AFBQUAN2:
+      display_label: Smear Result
+      normalized_meaning: AFB smear quantification result (3+, 2+, 1+, Scanty, Negative).
+      search_terms:
+        - CM_AFBQUAN2
+        - Smear Result
+        - AFB smear result
+        - 3+
+        - 2+
+        - 1+
+        - Scanty
+        - Negative
+        - smear quantification
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CM_COMPDAT:
+      display_label: Form Completion Date
+      normalized_meaning: Date the form was completed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - CM_COMPDAT
+        - Date Completed
+        - form completion date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CM_INIT:
+      display_label: Data Collector Initials
+      normalized_meaning: Initials of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - CM_INIT
+        - Initials
+        - data collector initials
+      catalog_tier: source_only
+      analysis_queryable: false
+    TIME_STAMP:
+      display_label: Capture Timestamp
+      normalized_meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      search_terms:
+        - TIME_STAMP
+        - timestamp
+        - capture timestamp
+      catalog_tier: source_only
+      analysis_queryable: false
+ledger_expectations:
+  phi_handling:
+    - SUBJID
+    - CM_FID
+    - CM_MBDAT2
+    - CM_MBREFID2
+    - CM_MBLABID2
+    - CM_COMPDAT
+    - CM_INIT
+    - CM_SVOLM
+  dataset_cleanup:
+    - TIME_STAMP
+variables:
+  SUBJID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Participant ID:"
+      pdf_annotation: SUBJID
+      column_name: SUBJID
+    normalized_metadata:
+      display_label: Participant ID
+      meaning: Pseudonymized identifier for the study participant.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  CM_VISIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Visit:"
+      pdf_annotation: CM_VISIT
+      column_name: CM_VISIT
+    normalized_metadata:
+      display_label: Visit
+      meaning: Visit category — selects among Baseline, Month 1, Month 2, End of Treatment, TB Activation, TB Failure/Relapse/Withdrawal, or Unscheduled.
+      section: participant_header
+      data_type: categorical
+      options_ref: visit_category_pdf
+    options:
+      source_defined:
+        - Baseline
+        - Month 1
+        - Month 2
+        - End of Treatment
+        - TB Activation
+        - TB Failure/Relapse/Withdrawal
+        - Unscheduled
+      values:
+        - Baseline
+        - Month 1
+        - Month 2
+        - End of Treatment
+        - TB Activation
+        - TB Failure/Relapse/Withdrawal
+        - Unscheduled
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CM_FID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Family ID:"
+      pdf_annotation: CM_FID
+      column_name: CM_FID
+    normalized_metadata:
+      display_label: Family ID
+      meaning: Pseudonymized family/household identifier linking participants in the same household.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: family_or_household_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: family_or_household_identifier
+      label: FAM
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  CM_FEVER:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Blood-stained:"
+      pdf_annotation: CM_FEVER
+      column_name: CM_FEVER
+    normalized_metadata:
+      display_label: Sputum Quality — Blood-stained
+      meaning: Sputum quality indicator — whether the sputum sample is blood-stained.
+      section: sputum_quality
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: sputum_quality
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CM_FEVER_2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Mucopurulent:"
+      pdf_annotation: CM_FEVER_2
+      column_name: CM_FEVER_2
+    normalized_metadata:
+      display_label: Sputum Quality — Mucopurulent
+      meaning: Sputum quality indicator — whether the sputum sample is mucopurulent.
+      section: sputum_quality
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: sputum_quality
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CM_FEVER_3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Salivary:"
+      pdf_annotation: CM_FEVER_3
+      column_name: CM_FEVER_3
+    normalized_metadata:
+      display_label: Sputum Quality — Salivary
+      meaning: Sputum quality indicator — whether the sputum sample is salivary.
+      section: sputum_quality
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: sputum_quality
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CM_FEVER_4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "At Least 1 mL:"
+      pdf_annotation: CM_FEVER_4
+      column_name: CM_FEVER_4
+    normalized_metadata:
+      display_label: Sputum Quality — At Least 1 mL
+      meaning: Sputum quality indicator — whether the sputum sample volume is at least 1 mL.
+      section: sputum_quality
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: sputum_quality
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CM_SVOLM:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CM_SVOLM
+    normalized_metadata:
+      display_label: Sputum Volume (mL)
+      meaning: Sputum volume in millilitres (suggested by column name CM_SVOLM, "S VOL M"). No PDF annotation or directly visible question maps to this column; the PDF only shows a related "At Least 1 mL:" Yes/No item bound to CM_FEVER_4. Awaiting reviewer interpretation.
+      section: sputum_quality
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: sputum_quality
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: "Column CM_SVOLM has no PDF annotation and no directly matching visible question. The name suggests 'Sputum Volume (mL)' as a numeric measurement. Confirm whether CM_SVOLM is (a) a numeric sputum volume captured outside the visible PDF text, (b) a derived/auxiliary field paired with CM_FEVER_4 'At Least 1 mL:', or (c) something else, and whether it should be kept, generalized, or dropped."
+    clean_output_presence: present
+  CM_MBND2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Smear Not Done
+      pdf_annotation: CM_MBND2
+      column_name: CM_MBND2
+    normalized_metadata:
+      display_label: Smear Not Done
+      meaning: Indicator that the concentrated smear was not done.
+      section: sputum_smear_result
+      data_type: categorical
+      options_ref: smear_not_done_pdf
+    options:
+      source_defined:
+        - Smear Not Done
+      values:
+        - Smear Not Done
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - CM_MBDAT2
+        - CM_MBREFID2
+        - CM_MBLABID2
+        - CM_AFBQUAN2
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: sputum_smear_result
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CM_MBDAT2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date of AFB Smear: / /"
+      pdf_annotation: CM_MBDAT2
+      column_name: CM_MBDAT2
+    normalized_metadata:
+      display_label: Date of AFB Smear
+      meaning: Date the AFB smear was performed.
+      section: sputum_smear_result
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: CM_MBND2
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: sputum_smear_result
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  CM_MBREFID2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Laboratory accession #: -"
+      pdf_annotation: CM_MBREFID2
+      column_name: CM_MBREFID2
+    normalized_metadata:
+      display_label: Laboratory Accession Number
+      meaning: Pseudonymized laboratory accession number for the smear sample.
+      section: sputum_smear_result
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: CM_MBND2
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: sputum_smear_result
+      other_specify: null
+    phi_sensitive_category: operational_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: operational_identifier
+      label: ID
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  CM_MBLABID2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Laboratory ID code:"
+      pdf_annotation: CM_MBLABID2
+      column_name: CM_MBLABID2
+    normalized_metadata:
+      display_label: Laboratory ID Code
+      meaning: Pseudonymized laboratory identifier code for the smear sample.
+      section: sputum_smear_result
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: CM_MBND2
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: sputum_smear_result
+      other_specify: null
+    phi_sensitive_category: facility_or_site_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: facility_or_site_identifier
+      label: FAC
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  CM_AFBQUAN2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Smear Result:"
+      pdf_annotation: CM_AFBQUAN2
+      column_name: CM_AFBQUAN2
+    normalized_metadata:
+      display_label: Smear Result
+      meaning: AFB smear quantification result (3+, 2+, 1+, Scanty, Negative).
+      section: sputum_smear_result
+      data_type: categorical
+      options_ref: smear_result_pdf
+    options:
+      source_defined:
+        - 3+
+        - 2+
+        - 1+
+        - Scanty
+        - Negative
+      values:
+        - 3+
+        - 2+
+        - 1+
+        - Scanty
+        - Negative
+      unknown: true
+    relationships:
+      parent: CM_MBND2
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: sputum_smear_result
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CM_COMPDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date Completed: / /"
+      pdf_annotation: CM_COMPDAT
+      column_name: CM_COMPDAT
+    normalized_metadata:
+      display_label: Form Completion Date
+      meaning: Date the form was completed by the data collector.
+      section: completion
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  CM_INIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Initials:"
+      pdf_annotation: CM_INIT
+      column_name: CM_INIT
+    normalized_metadata:
+      display_label: Data Collector Initials
+      meaning: Initials of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: initials_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  TIME_STAMP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TIME_STAMP
+    normalized_metadata:
+      display_label: Capture Timestamp
+      meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      section: system_metadata
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: system_metadata
+      other_specify: null
+    phi_sensitive_category: system_timestamp
+    handling_intent:
+      action: drop
+      reason: non_pdf_system_timestamp_metadata
+      label: null
+    runtime_binding:
+      - dataset_cleanup
+    derivation_targets:
+      - dataset_cleanup_ledger
+    evidence:
+      level: high
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+validation:
+  forbidden_keys_absent: true
+  columns_unique: true
+  pdf_annotation_unmatched: []
+  dataset_columns_unmatched: []
+  excluded_pdf_artifacts:
+    - "07/25/2014 (form version date — excluded per PDF Extraction Boundary)"
+    - "Indo-US VAP Microscopy v1.0 (form version footer — excluded)"
+    - "Page 1 of 1 (page footer — excluded)"
+    - "31341 (artifact-version code in footer/header — excluded)"
+    - "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner — retained as form context heading not as a variable; not excluded but recorded as heading block)"
+    - "Form 19 (form-number banner — retained as form context heading not as a variable; not excluded but recorded as heading block)"

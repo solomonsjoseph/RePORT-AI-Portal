@@ -1,0 +1,1493 @@
+schema_version: 2
+policy_status: draft_for_human_review
+study: Indo-VAP
+form: 17_EligConfirmation
+source:
+  dataset_file: 17_EligConfirmation.xlsx
+  pdf_file: data/raw/Indo-VAP/annotated_pdfs/17 Eligibility Confirmation v1.0.pdf
+pdf_form_metadata:
+  form_number: Form 17
+  form_title: Eligibility Confirmation Form - Cohort A
+  form_version: v1.0
+  page_count: 1
+coverage:
+  column_count: 16
+  columns_mapped: 16
+  pdf_annotation_count: 13
+  pdf_annotation_variables: 13
+  annotated_columns: 13
+  non_annotated_columns:
+    - EC_ELIGCONF
+    - EC_AINCLR2
+    - Time_Stamp
+  unresolved_review_required:
+    - EC_ELIGCONF
+    - EC_AINCLR2
+pdf_sections:
+  participant_header:
+    section_label: null
+    fields:
+      - SUBJID
+      - EC_VISIT
+    visible_text: |
+      Particiant ID Number:
+      Visit Type: Month 1 Month 2 End of TX Unscheduled
+  instructions:
+    section_label: Instructions
+    fields: []
+    visible_text: |
+      Instructions: Final Cohort A eligibility is to be confirmed for all participants enrolled in the common protocol within the
+      6-month follow-up period based on Enrollment Confirmation criteria (Refer to Common Protocol Section, Participant Inclusion
+      Criteria: Criteria for Enrollment Confirmation).
+      If the participant is found to be ineligible for further follow-up, end study participation and complete the Off-Study Form
+      F99A. All specimens that were previously collected from the participant will be retained in storage at the Central Repository.
+  cohort_a_eligibility:
+    section_label: null
+    fields:
+      - EC_ELIG2A1
+      - EC_ELIG2A2
+      - EC_ELIG2A3
+      - EC_ELIG2A4
+      - EC_ELIG2A5
+      - EC_ELIG2A6
+      - EC_ELIG2A7
+      - EC_ELIG2A8
+      - EC_ELIGCONF
+      - EC_AINCLR2
+    visible_text: |
+      1. Does the participant have culture-confirmed pulmonary TB based on expectorated, induced sputum (or nasopharyngeal or
+      a gastric aspirate for children <14 years of age)?
+      Yes(Eligible-STOP) No
+      2. At enrollment, was the participant<14 years of age?
+      Yes No(Ineligible-STOP)
+      3. Is the child participant (<14 years of age) culture-negative after 2 attempts at sputum collection using sputum induction,
+      nasopharyngeal aspirates, or gastric aspirates OR has documented reason(s) for lack of specimen for culture?
+      Yes No(Ineligible-STOP)
+      4. Does the child participant have a chest x-ray consistent with inthoracic disease due to Mycobacterium Tuberculosis (MTB)?
+      Yes No(Ineligible-STOP)
+      5. Did the child participant have a positive clinical response to standard multi-drug anti-TB treatment (as defined in Common
+      Protocol Section, Outcome Measures for Cohort A)?
+      Yes No
+      6.Did the child participant have documented exposure to a case of active TB (as defined in Common Protocol Section,
+      Enrollment Confirmation Criteria)?
+      Yes No
+      7. Did the child participant have immunological evidence of MTB infection (e.g. reactive TST or positive IGRA)?
+      Yes No
+      8. Is there a "yes" response to Q5, Q6 or Q7?
+      Yes No(Ineligible)
+  completion:
+    section_label: null
+    fields:
+      - EC_SIGN
+      - EC_INIT
+      - EC_COMPDTE
+    visible_text: |
+      Signature:
+      Initials:
+      / /
+      Date Completed:
+  system_metadata:
+    section_label: null
+    fields:
+      - Time_Stamp
+    visible_text: |
+      (No PDF visible text — column derived from dataset capture timestamp.)
+option_sets:
+  yes_no_pdf:
+    source: PDF option text
+    source_text: "Yes No"
+    values:
+      - "Yes"
+      - "No"
+    unknown: true
+  visit_type_pdf:
+    source: PDF option text
+    source_text: "Visit Type: Month 1 Month 2 End of TX Unscheduled"
+    values:
+      - Month 1
+      - Month 2
+      - End of TX
+      - Unscheduled
+    unknown: true
+  date_dmy_pdf:
+    source: PDF date boxes
+    source_text: "/ /"
+    values:
+      - Day
+      - Month
+      - Year
+    unknown: true
+pdf_annotation_pages:
+  - page: 1
+    annotations:
+      - SUBJID
+      - EC_VISIT
+      - EC_ELIG2A1
+      - EC_ELIG2A2
+      - EC_ELIG2A3
+      - EC_ELIG2A4
+      - EC_ELIG2A5
+      - EC_ELIG2A6
+      - EC_ELIG2A7
+      - EC_ELIG2A8
+      - EC_SIGN
+      - EC_INIT
+      - EC_COMPDTE
+pdf_visible_text:
+  by_page:
+    - page: 1
+      blocks:
+        - type: heading
+          text: Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse
+          related_variables: []
+        - type: heading
+          text: ELIGIBILITY CONFIRMATION FORM - COHORT A
+          related_variables: []
+        - type: question
+          text: "Particiant ID Number:"
+          related_variables:
+            - SUBJID
+        - type: question
+          text: "Visit Type:"
+          related_variables:
+            - EC_VISIT
+        - type: option_block
+          text: Month 1 Month 2 End of TX Unscheduled
+          related_variables:
+            - EC_VISIT
+        - type: instruction
+          text: |
+            Instructions: Final Cohort A eligibility is to be confirmed for all participants enrolled in the common protocol within the
+            6-month follow-up period based on Enrollment Confirmation criteria (Refer to Common Protocol Section, Participant Inclusion
+            Criteria: Criteria for Enrollment Confirmation).
+            If the participant is found to be ineligible for further follow-up, end study participation and complete the Off-Study Form
+            F99A. All specimens that were previously collected from the participant will be retained in storage at the Central Repository.
+          related_variables: []
+        - type: question
+          text: |
+            1. Does the participant have culture-confirmed pulmonary TB based on expectorated, induced sputum (or nasopharyngeal or
+            a gastric aspirate for children <14 years of age)?
+          related_variables:
+            - EC_ELIG2A1
+        - type: option_block
+          text: Yes(Eligible-STOP) No
+          related_variables:
+            - EC_ELIG2A1
+        - type: question
+          text: 2. At enrollment, was the participant<14 years of age?
+          related_variables:
+            - EC_ELIG2A2
+        - type: option_block
+          text: Yes No(Ineligible-STOP)
+          related_variables:
+            - EC_ELIG2A2
+        - type: question
+          text: |
+            3. Is the child participant (<14 years of age) culture-negative after 2 attempts at sputum collection using sputum induction,
+            nasopharyngeal aspirates, or gastric aspirates OR has documented reason(s) for lack of specimen for culture?
+          related_variables:
+            - EC_ELIG2A3
+        - type: option_block
+          text: Yes No(Ineligible-STOP)
+          related_variables:
+            - EC_ELIG2A3
+        - type: question
+          text: 4. Does the child participant have a chest x-ray consistent with inthoracic disease due to Mycobacterium Tuberculosis (MTB)?
+          related_variables:
+            - EC_ELIG2A4
+        - type: option_block
+          text: Yes No(Ineligible-STOP)
+          related_variables:
+            - EC_ELIG2A4
+        - type: question
+          text: |
+            5. Did the child participant have a positive clinical response to standard multi-drug anti-TB treatment (as defined in Common
+            Protocol Section, Outcome Measures for Cohort A)?
+          related_variables:
+            - EC_ELIG2A5
+        - type: option_block
+          text: Yes No
+          related_variables:
+            - EC_ELIG2A5
+        - type: question
+          text: |
+            6.Did the child participant have documented exposure to a case of active TB (as defined in Common Protocol Section,
+            Enrollment Confirmation Criteria)?
+          related_variables:
+            - EC_ELIG2A6
+        - type: option_block
+          text: Yes No
+          related_variables:
+            - EC_ELIG2A6
+        - type: question
+          text: 7. Did the child participant have immunological evidence of MTB infection (e.g. reactive TST or positive IGRA)?
+          related_variables:
+            - EC_ELIG2A7
+        - type: option_block
+          text: Yes No
+          related_variables:
+            - EC_ELIG2A7
+        - type: question
+          text: 8. Is there a "yes" response to Q5, Q6 or Q7?
+          related_variables:
+            - EC_ELIG2A8
+        - type: option_block
+          text: Yes No(Ineligible)
+          related_variables:
+            - EC_ELIG2A8
+        - type: question
+          text: "Signature:"
+          related_variables:
+            - EC_SIGN
+        - type: question
+          text: "Initials:"
+          related_variables:
+            - EC_INIT
+        - type: question
+          text: "Date Completed:"
+          related_variables:
+            - EC_COMPDTE
+        - type: caption
+          text: "/ /"
+          related_variables:
+            - EC_COMPDTE
+  questions:
+    - id: q_subjid
+      page: 1
+      exact_wording: "Particiant ID Number:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: "PDF text contains a typo ('Particiant') preserved verbatim from the source."
+      related_variables:
+        - SUBJID
+    - id: q_visit
+      page: 1
+      exact_wording: "Visit Type: Month 1 Month 2 End of TX Unscheduled"
+      section: participant_header
+      options_ref: visit_type_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - EC_VISIT
+    - id: q1
+      page: 1
+      exact_wording: |
+        1. Does the participant have culture-confirmed pulmonary TB based on expectorated, induced sputum (or nasopharyngeal or
+        a gastric aspirate for children <14 years of age)?
+      section: cohort_a_eligibility
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: "Yes(Eligible-STOP): selecting Yes confirms eligibility and stops the eligibility checklist."
+      notes: "Option labels carry STOP semantics: 'Yes(Eligible-STOP) No'."
+      related_variables:
+        - EC_ELIG2A1
+    - id: q2
+      page: 1
+      exact_wording: 2. At enrollment, was the participant<14 years of age?
+      section: cohort_a_eligibility
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: "No(Ineligible-STOP): selecting No marks the participant ineligible and stops the checklist."
+      notes: "Option labels carry STOP semantics: 'Yes No(Ineligible-STOP)'."
+      related_variables:
+        - EC_ELIG2A2
+    - id: q3
+      page: 1
+      exact_wording: |
+        3. Is the child participant (<14 years of age) culture-negative after 2 attempts at sputum collection using sputum induction,
+        nasopharyngeal aspirates, or gastric aspirates OR has documented reason(s) for lack of specimen for culture?
+      section: cohort_a_eligibility
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: "No(Ineligible-STOP): selecting No marks the participant ineligible and stops the checklist."
+      notes: "Option labels carry STOP semantics: 'Yes No(Ineligible-STOP)'."
+      related_variables:
+        - EC_ELIG2A3
+    - id: q4
+      page: 1
+      exact_wording: 4. Does the child participant have a chest x-ray consistent with inthoracic disease due to Mycobacterium Tuberculosis (MTB)?
+      section: cohort_a_eligibility
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: "No(Ineligible-STOP): selecting No marks the participant ineligible and stops the checklist."
+      notes: "Option labels carry STOP semantics: 'Yes No(Ineligible-STOP)'. PDF wording 'inthoracic' preserved verbatim from source."
+      related_variables:
+        - EC_ELIG2A4
+    - id: q5
+      page: 1
+      exact_wording: |
+        5. Did the child participant have a positive clinical response to standard multi-drug anti-TB treatment (as defined in Common
+        Protocol Section, Outcome Measures for Cohort A)?
+      section: cohort_a_eligibility
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: "Q5/Q6/Q7 are the inputs to Q8's combined 'yes' summary."
+      related_variables:
+        - EC_ELIG2A5
+    - id: q6
+      page: 1
+      exact_wording: |
+        6.Did the child participant have documented exposure to a case of active TB (as defined in Common Protocol Section,
+        Enrollment Confirmation Criteria)?
+      section: cohort_a_eligibility
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: "Q5/Q6/Q7 are the inputs to Q8's combined 'yes' summary."
+      related_variables:
+        - EC_ELIG2A6
+    - id: q7
+      page: 1
+      exact_wording: 7. Did the child participant have immunological evidence of MTB infection (e.g. reactive TST or positive IGRA)?
+      section: cohort_a_eligibility
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: "Q5/Q6/Q7 are the inputs to Q8's combined 'yes' summary."
+      related_variables:
+        - EC_ELIG2A7
+    - id: q8
+      page: 1
+      exact_wording: 8. Is there a "yes" response to Q5, Q6 or Q7?
+      section: cohort_a_eligibility
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: "No(Ineligible): selecting No marks the participant ineligible."
+      notes: "Option labels carry skip semantics: 'Yes No(Ineligible)'. Composite indicator over Q5/Q6/Q7."
+      related_variables:
+        - EC_ELIG2A8
+    - id: q_signature
+      page: 1
+      exact_wording: "Signature:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - EC_SIGN
+    - id: q_initials
+      page: 1
+      exact_wording: "Initials:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - EC_INIT
+    - id: q_date_completed
+      page: 1
+      exact_wording: "Date Completed:"
+      section: completion
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: "Adjacent '/ /' caption is the Day/Month/Year date entry pattern."
+      related_variables:
+        - EC_COMPDTE
+evidence_packs:
+  by_variable:
+    SUBJID:
+      exact_pdf_wording: "Particiant ID Number:"
+      pdf_annotation: SUBJID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    EC_VISIT:
+      exact_pdf_wording: "Visit Type: Month 1 Month 2 End of TX Unscheduled"
+      pdf_annotation: EC_VISIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    EC_ELIG2A1:
+      exact_pdf_wording: |
+        1. Does the participant have culture-confirmed pulmonary TB based on expectorated, induced sputum (or nasopharyngeal or
+        a gastric aspirate for children <14 years of age)?
+      pdf_annotation: EC_ELIG2A1
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    EC_ELIGCONF:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    EC_ELIG2A2:
+      exact_pdf_wording: 2. At enrollment, was the participant<14 years of age?
+      pdf_annotation: EC_ELIG2A2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    EC_ELIG2A3:
+      exact_pdf_wording: |
+        3. Is the child participant (<14 years of age) culture-negative after 2 attempts at sputum collection using sputum induction,
+        nasopharyngeal aspirates, or gastric aspirates OR has documented reason(s) for lack of specimen for culture?
+      pdf_annotation: EC_ELIG2A3
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    EC_ELIG2A4:
+      exact_pdf_wording: 4. Does the child participant have a chest x-ray consistent with inthoracic disease due to Mycobacterium Tuberculosis (MTB)?
+      pdf_annotation: EC_ELIG2A4
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    EC_ELIG2A5:
+      exact_pdf_wording: |
+        5. Did the child participant have a positive clinical response to standard multi-drug anti-TB treatment (as defined in Common
+        Protocol Section, Outcome Measures for Cohort A)?
+      pdf_annotation: EC_ELIG2A5
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    EC_ELIG2A6:
+      exact_pdf_wording: |
+        6.Did the child participant have documented exposure to a case of active TB (as defined in Common Protocol Section,
+        Enrollment Confirmation Criteria)?
+      pdf_annotation: EC_ELIG2A6
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    EC_ELIG2A7:
+      exact_pdf_wording: 7. Did the child participant have immunological evidence of MTB infection (e.g. reactive TST or positive IGRA)?
+      pdf_annotation: EC_ELIG2A7
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    EC_ELIG2A8:
+      exact_pdf_wording: 8. Is there a "yes" response to Q5, Q6 or Q7?
+      pdf_annotation: EC_ELIG2A8
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    EC_AINCLR2:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    EC_SIGN:
+      exact_pdf_wording: "Signature:"
+      pdf_annotation: EC_SIGN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    EC_INIT:
+      exact_pdf_wording: "Initials:"
+      pdf_annotation: EC_INIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    EC_COMPDTE:
+      exact_pdf_wording: "Date Completed:"
+      pdf_annotation: EC_COMPDTE
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    Time_Stamp:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+catalog_refs:
+  by_variable:
+    SUBJID:
+      display_label: Participant ID
+      normalized_meaning: Pseudonymized identifier for the study participant.
+      search_terms:
+        - SUBJID
+        - Participant ID Number
+        - Particiant ID Number
+        - participant id
+        - subject id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    EC_VISIT:
+      display_label: Visit Type
+      normalized_meaning: Visit type at which the Cohort A eligibility was confirmed (Month 1, Month 2, End of TX, Unscheduled).
+      search_terms:
+        - EC_VISIT
+        - Visit Type
+        - Month 1
+        - Month 2
+        - End of TX
+        - Unscheduled
+        - eligibility visit
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    EC_ELIG2A1:
+      display_label: Eligibility Q1 — Culture-Confirmed Pulmonary TB
+      normalized_meaning: Whether the participant has culture-confirmed pulmonary TB based on expectorated, induced sputum (or nasopharyngeal or a gastric aspirate for children <14 years of age). "Yes" confirms Cohort A eligibility and stops further questions.
+      search_terms:
+        - EC_ELIG2A1
+        - culture-confirmed pulmonary TB
+        - induced sputum
+        - nasopharyngeal aspirate
+        - gastric aspirate
+        - eligibility Q1
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    EC_ELIGCONF:
+      display_label: Eligibility Confirmation (Unmapped)
+      normalized_meaning: Likely an overall Cohort A eligibility confirmation indicator, but not directly mapped to a PDF question or annotation; pending reviewer confirmation.
+      search_terms:
+        - EC_ELIGCONF
+        - eligibility confirmation
+        - eligible
+      catalog_tier: source_only
+      analysis_queryable: false
+    EC_ELIG2A2:
+      display_label: Eligibility Q2 — Age <14 at Enrollment
+      normalized_meaning: Whether the participant was <14 years of age at enrollment. "No" marks the participant ineligible and stops the checklist.
+      search_terms:
+        - EC_ELIG2A2
+        - age at enrollment
+        - under 14
+        - eligibility Q2
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    EC_ELIG2A3:
+      display_label: Eligibility Q3 — Culture-Negative or Documented Reason
+      normalized_meaning: Whether the child participant (<14 years) is culture-negative after 2 attempts at sputum collection (sputum induction, nasopharyngeal aspirates, or gastric aspirates) OR has documented reason(s) for lack of specimen for culture. "No" marks the participant ineligible.
+      search_terms:
+        - EC_ELIG2A3
+        - culture-negative
+        - sputum induction
+        - nasopharyngeal aspirate
+        - gastric aspirate
+        - eligibility Q3
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    EC_ELIG2A4:
+      display_label: Eligibility Q4 — Chest X-Ray Consistent with MTB
+      normalized_meaning: Whether the child participant has a chest x-ray consistent with intrathoracic disease due to Mycobacterium Tuberculosis (MTB). "No" marks the participant ineligible.
+      search_terms:
+        - EC_ELIG2A4
+        - chest x-ray
+        - intrathoracic disease
+        - Mycobacterium Tuberculosis
+        - MTB
+        - eligibility Q4
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    EC_ELIG2A5:
+      display_label: Eligibility Q5 — Positive Clinical Response to Anti-TB Treatment
+      normalized_meaning: Whether the child participant had a positive clinical response to standard multi-drug anti-TB treatment (as defined in Common Protocol, Outcome Measures for Cohort A).
+      search_terms:
+        - EC_ELIG2A5
+        - clinical response
+        - anti-TB treatment
+        - multi-drug treatment
+        - eligibility Q5
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    EC_ELIG2A6:
+      display_label: Eligibility Q6 — Documented Exposure to Active TB
+      normalized_meaning: Whether the child participant had documented exposure to a case of active TB (as defined in Common Protocol, Enrollment Confirmation Criteria).
+      search_terms:
+        - EC_ELIG2A6
+        - documented exposure
+        - active TB
+        - TB exposure
+        - eligibility Q6
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    EC_ELIG2A7:
+      display_label: Eligibility Q7 — Immunological Evidence of MTB Infection
+      normalized_meaning: Whether the child participant had immunological evidence of MTB infection (e.g. reactive TST or positive IGRA).
+      search_terms:
+        - EC_ELIG2A7
+        - immunological evidence
+        - MTB infection
+        - reactive TST
+        - positive IGRA
+        - eligibility Q7
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    EC_ELIG2A8:
+      display_label: Eligibility Q8 — Yes to Q5, Q6, or Q7
+      normalized_meaning: Composite indicator capturing whether there is a "yes" response to Q5, Q6, or Q7. "No" marks the participant ineligible.
+      search_terms:
+        - EC_ELIG2A8
+        - composite eligibility
+        - Q5 Q6 Q7
+        - eligibility Q8
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    EC_AINCLR2:
+      display_label: Cohort A Inclusion (Unmapped)
+      normalized_meaning: Possibly a Cohort A inclusion-criteria indicator (round 2) inferred from the column name; not directly mapped to PDF question text or annotation; pending reviewer confirmation.
+      search_terms:
+        - EC_AINCLR2
+        - cohort A inclusion
+        - inclusion criteria
+      catalog_tier: source_only
+      analysis_queryable: false
+    EC_SIGN:
+      display_label: Data Collector Signature
+      normalized_meaning: Signature of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - EC_SIGN
+        - Signature
+        - data collector signature
+      catalog_tier: source_only
+      analysis_queryable: false
+    EC_INIT:
+      display_label: Data Collector Initials
+      normalized_meaning: Initials of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - EC_INIT
+        - Initials
+        - data collector initials
+      catalog_tier: source_only
+      analysis_queryable: false
+    EC_COMPDTE:
+      display_label: Form Completion Date
+      normalized_meaning: Date the form was completed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - EC_COMPDTE
+        - Date Completed
+        - form completion date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    Time_Stamp:
+      display_label: Capture Timestamp
+      normalized_meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      search_terms:
+        - Time_Stamp
+        - timestamp
+        - capture timestamp
+      catalog_tier: source_only
+      analysis_queryable: false
+ledger_expectations:
+  phi_handling:
+    - SUBJID
+    - EC_SIGN
+    - EC_INIT
+    - EC_COMPDTE
+  dataset_cleanup:
+    - Time_Stamp
+variables:
+  SUBJID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Particiant ID Number:"
+      pdf_annotation: SUBJID
+      column_name: SUBJID
+    normalized_metadata:
+      display_label: Participant ID
+      meaning: Pseudonymized identifier for the study participant.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  EC_VISIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Visit Type: Month 1 Month 2 End of TX Unscheduled"
+      pdf_annotation: EC_VISIT
+      column_name: EC_VISIT
+    normalized_metadata:
+      display_label: Visit Type
+      meaning: Visit type at which the Cohort A eligibility was confirmed.
+      section: participant_header
+      data_type: categorical
+      options_ref: visit_type_pdf
+    options:
+      source_defined:
+        - Month 1
+        - Month 2
+        - End of TX
+        - Unscheduled
+      values:
+        - Month 1
+        - Month 2
+        - End of TX
+        - Unscheduled
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  EC_ELIG2A1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: |
+        1. Does the participant have culture-confirmed pulmonary TB based on expectorated, induced sputum (or nasopharyngeal or
+        a gastric aspirate for children <14 years of age)?
+      pdf_annotation: EC_ELIG2A1
+      column_name: EC_ELIG2A1
+    normalized_metadata:
+      display_label: Eligibility Q1 — Culture-Confirmed Pulmonary TB
+      meaning: Whether the participant has culture-confirmed pulmonary TB based on expectorated, induced sputum (or nasopharyngeal or a gastric aspirate for children <14 years of age).
+      section: cohort_a_eligibility
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: "Yes(Eligible-STOP): Yes confirms eligibility and stops the checklist."
+      visit_grouping: null
+      section_grouping: cohort_a_eligibility
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  EC_ELIGCONF:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: EC_ELIGCONF
+    normalized_metadata:
+      display_label: Eligibility Confirmation (Unmapped)
+      meaning: Likely an overall Cohort A eligibility confirmation indicator inferred from the column name; not directly mapped to PDF question text or annotation.
+      section: cohort_a_eligibility
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cohort_a_eligibility
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets: []
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "EC_ELIGCONF has no FreeText annotation and no matching PDF question/label. Is it a derived overall Cohort A eligibility flag computed from EC_ELIG2A1..EC_ELIG2A8? Confirm intended meaning, value set, and whether it should be kept, dropped, or treated as a derived field."
+    clean_output_presence: absent
+  EC_ELIG2A2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 2. At enrollment, was the participant<14 years of age?
+      pdf_annotation: EC_ELIG2A2
+      column_name: EC_ELIG2A2
+    normalized_metadata:
+      display_label: Eligibility Q2 — Age <14 at Enrollment
+      meaning: Whether the participant was <14 years of age at enrollment.
+      section: cohort_a_eligibility
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: "No(Ineligible-STOP): No marks the participant ineligible and stops the checklist."
+      visit_grouping: null
+      section_grouping: cohort_a_eligibility
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  EC_ELIG2A3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: |
+        3. Is the child participant (<14 years of age) culture-negative after 2 attempts at sputum collection using sputum induction,
+        nasopharyngeal aspirates, or gastric aspirates OR has documented reason(s) for lack of specimen for culture?
+      pdf_annotation: EC_ELIG2A3
+      column_name: EC_ELIG2A3
+    normalized_metadata:
+      display_label: Eligibility Q3 — Culture-Negative or Documented Reason
+      meaning: Whether the child participant (<14 years) is culture-negative after 2 attempts at sputum collection or has documented reason(s) for lack of specimen for culture.
+      section: cohort_a_eligibility
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: "No(Ineligible-STOP): No marks the participant ineligible and stops the checklist."
+      visit_grouping: null
+      section_grouping: cohort_a_eligibility
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  EC_ELIG2A4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 4. Does the child participant have a chest x-ray consistent with inthoracic disease due to Mycobacterium Tuberculosis (MTB)?
+      pdf_annotation: EC_ELIG2A4
+      column_name: EC_ELIG2A4
+    normalized_metadata:
+      display_label: Eligibility Q4 — Chest X-Ray Consistent with MTB
+      meaning: Whether the child participant has a chest x-ray consistent with intrathoracic disease due to Mycobacterium Tuberculosis (MTB).
+      section: cohort_a_eligibility
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: "No(Ineligible-STOP): No marks the participant ineligible and stops the checklist."
+      visit_grouping: null
+      section_grouping: cohort_a_eligibility
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  EC_ELIG2A5:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: |
+        5. Did the child participant have a positive clinical response to standard multi-drug anti-TB treatment (as defined in Common
+        Protocol Section, Outcome Measures for Cohort A)?
+      pdf_annotation: EC_ELIG2A5
+      column_name: EC_ELIG2A5
+    normalized_metadata:
+      display_label: Eligibility Q5 — Positive Clinical Response to Anti-TB Treatment
+      meaning: Whether the child participant had a positive clinical response to standard multi-drug anti-TB treatment.
+      section: cohort_a_eligibility
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cohort_a_eligibility
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  EC_ELIG2A6:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: |
+        6.Did the child participant have documented exposure to a case of active TB (as defined in Common Protocol Section,
+        Enrollment Confirmation Criteria)?
+      pdf_annotation: EC_ELIG2A6
+      column_name: EC_ELIG2A6
+    normalized_metadata:
+      display_label: Eligibility Q6 — Documented Exposure to Active TB
+      meaning: Whether the child participant had documented exposure to a case of active TB.
+      section: cohort_a_eligibility
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cohort_a_eligibility
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  EC_ELIG2A7:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 7. Did the child participant have immunological evidence of MTB infection (e.g. reactive TST or positive IGRA)?
+      pdf_annotation: EC_ELIG2A7
+      column_name: EC_ELIG2A7
+    normalized_metadata:
+      display_label: Eligibility Q7 — Immunological Evidence of MTB Infection
+      meaning: Whether the child participant had immunological evidence of MTB infection (e.g. reactive TST or positive IGRA).
+      section: cohort_a_eligibility
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cohort_a_eligibility
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  EC_ELIG2A8:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 8. Is there a "yes" response to Q5, Q6 or Q7?
+      pdf_annotation: EC_ELIG2A8
+      column_name: EC_ELIG2A8
+    normalized_metadata:
+      display_label: Eligibility Q8 — Yes to Q5, Q6, or Q7
+      meaning: Composite indicator capturing whether there is a "yes" response to Q5, Q6, or Q7.
+      section: cohort_a_eligibility
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: "No(Ineligible): No marks the participant ineligible."
+      visit_grouping: null
+      section_grouping: cohort_a_eligibility
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  EC_AINCLR2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: EC_AINCLR2
+    normalized_metadata:
+      display_label: Cohort A Inclusion (Unmapped)
+      meaning: Possibly a Cohort A inclusion-criteria indicator (round 2) inferred from the column name; not directly mapped to PDF question text or annotation.
+      section: cohort_a_eligibility
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cohort_a_eligibility
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets: []
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "EC_AINCLR2 has no FreeText annotation and no matching PDF question/label. The column name suggests 'Cohort A Inclusion (Round 2)' but this is unverified. Confirm intended meaning, value set, and whether it should be kept, dropped, or treated as a derived field."
+    clean_output_presence: absent
+  EC_SIGN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Signature:"
+      pdf_annotation: EC_SIGN
+      column_name: EC_SIGN
+    normalized_metadata:
+      display_label: Data Collector Signature
+      meaning: Signature of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: signature_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  EC_INIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Initials:"
+      pdf_annotation: EC_INIT
+      column_name: EC_INIT
+    normalized_metadata:
+      display_label: Data Collector Initials
+      meaning: Initials of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: initials_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  EC_COMPDTE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date Completed:"
+      pdf_annotation: EC_COMPDTE
+      column_name: EC_COMPDTE
+    normalized_metadata:
+      display_label: Form Completion Date
+      meaning: Date the form was completed by the data collector.
+      section: completion
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  Time_Stamp:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: Time_Stamp
+    normalized_metadata:
+      display_label: Capture Timestamp
+      meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      section: system_metadata
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: system_metadata
+      other_specify: null
+    phi_sensitive_category: system_timestamp
+    handling_intent:
+      action: drop
+      reason: non_pdf_system_timestamp_metadata
+      label: null
+    runtime_binding:
+      - dataset_cleanup
+    derivation_targets:
+      - dataset_cleanup_ledger
+    evidence:
+      level: high
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+validation:
+  forbidden_keys_absent: true
+  columns_unique: true
+  pdf_annotation_unmatched: []
+  dataset_columns_unmatched: []
+  excluded_pdf_artifacts:
+    - "Indo-US VAP Eligibility Confirmation Form v1.0 05/19/2014 Page 1 of 1 (form version footer + page footer — excluded per PDF Extraction Boundary)"
+    - "05/19/2014 (form version date — excluded)"
+    - "4631 (artifact-version code in header area — excluded)"
+    - "1 0 2 - 0 - A (cohort-A SUBJID format scaffolding/template visible on the form — excluded as template scaffolding text, not a variable)"
+    - "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner — retained as form context heading not as a variable; not excluded but recorded as heading block)"

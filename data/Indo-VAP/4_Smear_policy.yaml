@@ -1,0 +1,3373 @@
+schema_version: 2
+policy_status: draft_for_human_review
+study: Indo-VAP
+form: 4_Smear
+source:
+  dataset_file: 4_Smear.xlsx
+  pdf_file: data/raw/Indo-VAP/annotated_pdfs/4 Microscopy v1.0.pdf
+pdf_form_metadata:
+  form_number: Form 4
+  form_title: Direct AFB Microscopy Results (Ziehl-Neelsen)
+  form_version: v1.0
+  page_count: 1
+coverage:
+  column_count: 42
+  columns_mapped: 42
+  pdf_annotation_count: 22
+  pdf_annotation_variables: 22
+  annotated_columns: 22
+  non_annotated_columns:
+    - ZN_SOLND
+    - ZN_SOLSTDAT
+    - ZN_SOLENDAT
+    - ZN_SOLMTBNEG
+    - ZN_SOLMTBPOS
+    - ZN_SOLNMTBPOS
+    - ZN_SOLCONTM
+    - ZN_SOLQUAN
+    - ZN_SOLQNCAT
+    - ZN_SOLQNND
+    - ZN_LIQND
+    - ZN_LIQSTDAT
+    - ZN_LIQENDAT
+    - ZN_LIQMTBNEG
+    - ZN_LIQMTBPOS
+    - ZN_LIQNMTBPOS
+    - ZN_LIQCONTM
+    - ZN_LIQTTDDD
+    - ZN_LIQTTDDH
+    - Time_Stamp
+  unresolved_review_required:
+    - ZN_SOLND
+    - ZN_SOLSTDAT
+    - ZN_SOLENDAT
+    - ZN_SOLMTBNEG
+    - ZN_SOLMTBPOS
+    - ZN_SOLNMTBPOS
+    - ZN_SOLCONTM
+    - ZN_SOLQUAN
+    - ZN_SOLQNCAT
+    - ZN_SOLQNND
+    - ZN_LIQND
+    - ZN_LIQSTDAT
+    - ZN_LIQENDAT
+    - ZN_LIQMTBNEG
+    - ZN_LIQMTBPOS
+    - ZN_LIQNMTBPOS
+    - ZN_LIQCONTM
+    - ZN_LIQTTDDD
+    - ZN_LIQTTDDH
+pdf_sections:
+  participant_header:
+    section_label: null
+    fields:
+      - SUBJID
+      - FID
+      - ZN_VISIT
+    visible_text: |
+      Participant ID:
+      Family ID:
+      Visit:
+      Baseline
+      Month 1
+      Month 2
+      End of Treatment (Month 6 or Month 7)
+      TB Activation
+      TB Failure/Relapse/Withdrawal (Month 5)
+      Unscheduled
+  first_sputum_specimen:
+    section_label: A. 1st sputum specimen
+    fields:
+      - ZN_MBND
+      - ZN_MBDAT
+      - ZN_MBDATNR
+      - ZN_MBRECDAT
+      - ZN_MBREFID
+      - ZN_MBLABID
+      - ZN_SPMETH
+      - ZN_AFBQUAN
+    visible_text: |
+      A. 1st sputum specimen
+      Smear Not Done
+      Date of specimen collection: / /
+      Day                       Month                    Year
+      Date not recorded
+      Date specimen received in the lab: / /
+      Day                       Month                    Year
+      Laboratory accession #: P -
+      Laboratory ID code:
+      Sputum collection method: Expectorated Induced Gastric lavage Nasopharyngeal aspiration
+      Smear Result: 3+ 2+ 1+ Scanty Negative
+  second_sputum_specimen:
+    section_label: B. 2nd sputum specimen
+    fields:
+      - ZN_MBND2
+      - ZN_MBDAT2
+      - ZN_MBDATNR2
+      - ZN_RECDAT2
+      - ZN_MBREFID2
+      - ZN_MBLABID2
+      - ZN_MBSPMETH2
+      - ZN_AFBQUAN2
+    visible_text: |
+      B. 2nd sputum specimen
+      Smear Not Done
+      Date of specimen collection: / /
+      Day                       Month                    Year
+      Date not recorded
+      Date specimen received in the lab: / /
+      Day                       Month                    Year
+      Laboratory accession #: -
+      Laboratory ID code:
+      Sputum collection method: Expectorated Induced Gastric lavage Nasopharyngeal aspiration
+      Smear Result: 3+ 2+ 1+ Scanty Negative
+  solid_culture:
+    section_label: null
+    fields:
+      - ZN_SOLND
+      - ZN_SOLSTDAT
+      - ZN_SOLENDAT
+      - ZN_SOLMTBNEG
+      - ZN_SOLMTBPOS
+      - ZN_SOLNMTBPOS
+      - ZN_SOLCONTM
+      - ZN_SOLQUAN
+      - ZN_SOLQNCAT
+      - ZN_SOLQNND
+    visible_text: |
+      (No PDF visible text — solid-culture columns are present in the dataset but the Microscopy PDF (Form 4) does not contain a solid-culture section. These columns appear to originate from a separate culture form; flagged for reviewer.)
+  liquid_culture:
+    section_label: null
+    fields:
+      - ZN_LIQND
+      - ZN_LIQSTDAT
+      - ZN_LIQENDAT
+      - ZN_LIQMTBNEG
+      - ZN_LIQMTBPOS
+      - ZN_LIQNMTBPOS
+      - ZN_LIQCONTM
+      - ZN_LIQTTDDD
+      - ZN_LIQTTDDH
+    visible_text: |
+      (No PDF visible text — liquid-culture columns are present in the dataset but the Microscopy PDF (Form 4) does not contain a liquid-culture section. These columns appear to originate from a separate culture form; flagged for reviewer.)
+  completion:
+    section_label: null
+    fields:
+      - ZN_SIGN
+      - ZN_INIT
+      - ZN_COMPDAT
+    visible_text: |
+      Signature:
+      Initials:
+      Date Completed: / /
+      Day                       Month                    Year
+  system_metadata:
+    section_label: null
+    fields:
+      - Time_Stamp
+    visible_text: |
+      (No PDF visible text — column derived from dataset capture timestamp.)
+option_sets:
+  date_dmy_pdf:
+    source: PDF date boxes
+    source_text: "Day                       Month                    Year"
+    values:
+      - Day
+      - Month
+      - Year
+    unknown: true
+  not_done_pdf:
+    source: PDF option text
+    source_text: "Smear Not Done"
+    values:
+      - Smear Not Done
+    unknown: true
+  date_not_recorded_pdf:
+    source: PDF option text
+    source_text: "Date not recorded"
+    values:
+      - Date not recorded
+    unknown: true
+  visit_pdf:
+    source: PDF option text
+    source_text: |
+      Baseline
+      Month 1
+      Month 2
+      End of Treatment (Month 6 or Month 7)
+      TB Activation
+      TB Failure/Relapse/Withdrawal (Month 5)
+      Unscheduled
+    values:
+      - Baseline
+      - Month 1
+      - Month 2
+      - End of Treatment (Month 6 or Month 7)
+      - TB Activation
+      - TB Failure/Relapse/Withdrawal (Month 5)
+      - Unscheduled
+    unknown: true
+  sputum_collection_method_pdf:
+    source: PDF option text
+    source_text: "Expectorated Induced Gastric lavage Nasopharyngeal aspiration"
+    values:
+      - Expectorated
+      - Induced
+      - Gastric lavage
+      - Nasopharyngeal aspiration
+    unknown: true
+  smear_result_pdf:
+    source: PDF option text
+    source_text: "3+ 2+ 1+ Scanty Negative"
+    values:
+      - 3+
+      - 2+
+      - 1+
+      - Scanty
+      - Negative
+    unknown: true
+pdf_annotation_pages:
+  - page: 1
+    annotations:
+      - SUBJID
+      - FID
+      - ZN_VISIT
+      - ZN_MBND
+      - ZN_MBDAT
+      - ZN_MBDATNR
+      - ZN_MBRECDAT
+      - ZN_MBREFID
+      - ZN_MBLABID
+      - ZN_SPMETH
+      - ZN_AFBQUAN
+      - ZN_MBND2
+      - ZN_MBDAT2
+      - ZN_MBDATNR2
+      - ZN_RECDAT2
+      - ZN_MBREFID2
+      - ZN_MBLABID2
+      - ZN_MBSPMETH2
+      - ZN_AFBQUAN2
+      - ZN_SIGN
+      - ZN_INIT
+      - ZN_COMPDAT
+pdf_visible_text:
+  by_page:
+    - page: 1
+      blocks:
+        - type: heading
+          text: Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse
+          related_variables: []
+        - type: heading
+          text: DIRECT AFB MICROSCOPY RESULTS (ZIEHL-NEELSEN)
+          related_variables: []
+        - type: question
+          text: "Participant ID:"
+          related_variables:
+            - SUBJID
+        - type: question
+          text: "Family ID:"
+          related_variables:
+            - FID
+        - type: question
+          text: "Visit:"
+          related_variables:
+            - ZN_VISIT
+        - type: option_block
+          text: |
+            Baseline
+            Month 1
+            Month 2
+            End of Treatment (Month 6 or Month 7)
+            TB Activation
+            TB Failure/Relapse/Withdrawal (Month 5)
+            Unscheduled
+          related_variables:
+            - ZN_VISIT
+        - type: section_label
+          text: A. 1st sputum specimen
+          related_variables:
+            - ZN_MBND
+            - ZN_MBDAT
+            - ZN_MBDATNR
+            - ZN_MBRECDAT
+            - ZN_MBREFID
+            - ZN_MBLABID
+            - ZN_SPMETH
+            - ZN_AFBQUAN
+        - type: option_block
+          text: Smear Not Done
+          related_variables:
+            - ZN_MBND
+        - type: question
+          text: "Date of specimen collection: / /"
+          related_variables:
+            - ZN_MBDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - ZN_MBDAT
+        - type: option_block
+          text: Date not recorded
+          related_variables:
+            - ZN_MBDATNR
+        - type: question
+          text: "Date specimen received in the lab: / /"
+          related_variables:
+            - ZN_MBRECDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - ZN_MBRECDAT
+        - type: question
+          text: "Laboratory accession #: P -"
+          related_variables:
+            - ZN_MBREFID
+        - type: question
+          text: "Laboratory ID code:"
+          related_variables:
+            - ZN_MBLABID
+        - type: question
+          text: "Sputum collection method:"
+          related_variables:
+            - ZN_SPMETH
+        - type: option_block
+          text: Expectorated Induced Gastric lavage Nasopharyngeal aspiration
+          related_variables:
+            - ZN_SPMETH
+        - type: question
+          text: "Smear Result:"
+          related_variables:
+            - ZN_AFBQUAN
+        - type: option_block
+          text: 3+ 2+ 1+ Scanty Negative
+          related_variables:
+            - ZN_AFBQUAN
+        - type: section_label
+          text: B. 2nd sputum specimen
+          related_variables:
+            - ZN_MBND2
+            - ZN_MBDAT2
+            - ZN_MBDATNR2
+            - ZN_RECDAT2
+            - ZN_MBREFID2
+            - ZN_MBLABID2
+            - ZN_MBSPMETH2
+            - ZN_AFBQUAN2
+        - type: option_block
+          text: Smear Not Done
+          related_variables:
+            - ZN_MBND2
+        - type: question
+          text: "Date of specimen collection: / /"
+          related_variables:
+            - ZN_MBDAT2
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - ZN_MBDAT2
+        - type: option_block
+          text: Date not recorded
+          related_variables:
+            - ZN_MBDATNR2
+        - type: question
+          text: "Date specimen received in the lab: / /"
+          related_variables:
+            - ZN_RECDAT2
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - ZN_RECDAT2
+        - type: question
+          text: "Laboratory accession #: -"
+          related_variables:
+            - ZN_MBREFID2
+        - type: question
+          text: "Laboratory ID code:"
+          related_variables:
+            - ZN_MBLABID2
+        - type: question
+          text: "Sputum collection method:"
+          related_variables:
+            - ZN_MBSPMETH2
+        - type: option_block
+          text: Expectorated Induced Gastric lavage Nasopharyngeal aspiration
+          related_variables:
+            - ZN_MBSPMETH2
+        - type: question
+          text: "Smear Result:"
+          related_variables:
+            - ZN_AFBQUAN2
+        - type: option_block
+          text: 3+ 2+ 1+ Scanty Negative
+          related_variables:
+            - ZN_AFBQUAN2
+        - type: question
+          text: "Signature:"
+          related_variables:
+            - ZN_SIGN
+        - type: question
+          text: "Initials:"
+          related_variables:
+            - ZN_INIT
+        - type: question
+          text: "Date Completed: / /"
+          related_variables:
+            - ZN_COMPDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - ZN_COMPDAT
+  questions:
+    - id: q_subjid
+      page: 1
+      exact_wording: "Participant ID:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - SUBJID
+    - id: q_fid
+      page: 1
+      exact_wording: "Family ID:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FID
+    - id: q_visit
+      page: 1
+      exact_wording: "Visit:"
+      section: participant_header
+      options_ref: visit_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - ZN_VISIT
+    - id: qA_smear_not_done
+      page: 1
+      exact_wording: Smear Not Done
+      section: first_sputum_specimen
+      options_ref: not_done_pdf
+      units: null
+      skip_logic: If Smear Not Done is checked, Smear Result is skipped for the 1st specimen.
+      notes: null
+      related_variables:
+        - ZN_MBND
+    - id: qA_date_collection
+      page: 1
+      exact_wording: "Date of specimen collection: / /"
+      section: first_sputum_specimen
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes for 1st specimen.
+      related_variables:
+        - ZN_MBDAT
+    - id: qA_date_not_recorded
+      page: 1
+      exact_wording: Date not recorded
+      section: first_sputum_specimen
+      options_ref: date_not_recorded_pdf
+      units: null
+      skip_logic: null
+      notes: "Adjacent 'Date not recorded' checkbox links to ZN_MBDATNR (paired with ZN_MBDAT)."
+      related_variables:
+        - ZN_MBDATNR
+    - id: qA_date_received
+      page: 1
+      exact_wording: "Date specimen received in the lab: / /"
+      section: first_sputum_specimen
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes for 1st specimen receipt.
+      related_variables:
+        - ZN_MBRECDAT
+    - id: qA_lab_accession
+      page: 1
+      exact_wording: "Laboratory accession #: P -"
+      section: first_sputum_specimen
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: "Laboratory accession number for 1st specimen; prefix 'P' followed by accession boxes and YY suffix."
+      related_variables:
+        - ZN_MBREFID
+    - id: qA_lab_id
+      page: 1
+      exact_wording: "Laboratory ID code:"
+      section: first_sputum_specimen
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: Laboratory ID code for 1st specimen.
+      related_variables:
+        - ZN_MBLABID
+    - id: qA_sputum_method
+      page: 1
+      exact_wording: "Sputum collection method:"
+      section: first_sputum_specimen
+      options_ref: sputum_collection_method_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - ZN_SPMETH
+    - id: qA_smear_result
+      page: 1
+      exact_wording: "Smear Result:"
+      section: first_sputum_specimen
+      options_ref: smear_result_pdf
+      units: null
+      skip_logic: null
+      notes: AFB quantification result for 1st specimen.
+      related_variables:
+        - ZN_AFBQUAN
+    - id: qB_smear_not_done
+      page: 1
+      exact_wording: Smear Not Done
+      section: second_sputum_specimen
+      options_ref: not_done_pdf
+      units: null
+      skip_logic: If Smear Not Done is checked, Smear Result is skipped for the 2nd specimen.
+      notes: null
+      related_variables:
+        - ZN_MBND2
+    - id: qB_date_collection
+      page: 1
+      exact_wording: "Date of specimen collection: / /"
+      section: second_sputum_specimen
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes for 2nd specimen.
+      related_variables:
+        - ZN_MBDAT2
+    - id: qB_date_not_recorded
+      page: 1
+      exact_wording: Date not recorded
+      section: second_sputum_specimen
+      options_ref: date_not_recorded_pdf
+      units: null
+      skip_logic: null
+      notes: "Adjacent 'Date not recorded' checkbox links to ZN_MBDATNR2 (paired with ZN_MBDAT2)."
+      related_variables:
+        - ZN_MBDATNR2
+    - id: qB_date_received
+      page: 1
+      exact_wording: "Date specimen received in the lab: / /"
+      section: second_sputum_specimen
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes for 2nd specimen receipt.
+      related_variables:
+        - ZN_RECDAT2
+    - id: qB_lab_accession
+      page: 1
+      exact_wording: "Laboratory accession #: -"
+      section: second_sputum_specimen
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: Laboratory accession number for 2nd specimen.
+      related_variables:
+        - ZN_MBREFID2
+    - id: qB_lab_id
+      page: 1
+      exact_wording: "Laboratory ID code:"
+      section: second_sputum_specimen
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: Laboratory ID code for 2nd specimen.
+      related_variables:
+        - ZN_MBLABID2
+    - id: qB_sputum_method
+      page: 1
+      exact_wording: "Sputum collection method:"
+      section: second_sputum_specimen
+      options_ref: sputum_collection_method_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - ZN_MBSPMETH2
+    - id: qB_smear_result
+      page: 1
+      exact_wording: "Smear Result:"
+      section: second_sputum_specimen
+      options_ref: smear_result_pdf
+      units: null
+      skip_logic: null
+      notes: AFB quantification result for 2nd specimen.
+      related_variables:
+        - ZN_AFBQUAN2
+    - id: q_signature
+      page: 1
+      exact_wording: "Signature:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - ZN_SIGN
+    - id: q_initials
+      page: 1
+      exact_wording: "Initials:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - ZN_INIT
+    - id: q_date_completed
+      page: 1
+      exact_wording: "Date Completed: / /"
+      section: completion
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - ZN_COMPDAT
+evidence_packs:
+  by_variable:
+    SUBJID:
+      exact_pdf_wording: "Participant ID:"
+      pdf_annotation: SUBJID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FID:
+      exact_pdf_wording: "Family ID:"
+      pdf_annotation: FID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_VISIT:
+      exact_pdf_wording: "Visit:"
+      pdf_annotation: ZN_VISIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_MBND:
+      exact_pdf_wording: Smear Not Done
+      pdf_annotation: ZN_MBND
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_MBDAT:
+      exact_pdf_wording: "Date of specimen collection: / /"
+      pdf_annotation: ZN_MBDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_MBDATNR:
+      exact_pdf_wording: Date not recorded
+      pdf_annotation: ZN_MBDATNR
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_MBRECDAT:
+      exact_pdf_wording: "Date specimen received in the lab: / /"
+      pdf_annotation: ZN_MBRECDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_MBREFID:
+      exact_pdf_wording: "Laboratory accession #: P -"
+      pdf_annotation: ZN_MBREFID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_MBLABID:
+      exact_pdf_wording: "Laboratory ID code:"
+      pdf_annotation: ZN_MBLABID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_SPMETH:
+      exact_pdf_wording: "Sputum collection method:"
+      pdf_annotation: ZN_SPMETH
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_AFBQUAN:
+      exact_pdf_wording: "Smear Result:"
+      pdf_annotation: ZN_AFBQUAN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_MBND2:
+      exact_pdf_wording: Smear Not Done
+      pdf_annotation: ZN_MBND2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_MBDAT2:
+      exact_pdf_wording: "Date of specimen collection: / /"
+      pdf_annotation: ZN_MBDAT2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_MBDATNR2:
+      exact_pdf_wording: Date not recorded
+      pdf_annotation: ZN_MBDATNR2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_RECDAT2:
+      exact_pdf_wording: "Date specimen received in the lab: / /"
+      pdf_annotation: ZN_RECDAT2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_MBREFID2:
+      exact_pdf_wording: "Laboratory accession #: -"
+      pdf_annotation: ZN_MBREFID2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_MBLABID2:
+      exact_pdf_wording: "Laboratory ID code:"
+      pdf_annotation: ZN_MBLABID2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_MBSPMETH2:
+      exact_pdf_wording: "Sputum collection method:"
+      pdf_annotation: ZN_MBSPMETH2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_AFBQUAN2:
+      exact_pdf_wording: "Smear Result:"
+      pdf_annotation: ZN_AFBQUAN2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_SOLND:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_SOLSTDAT:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_SOLENDAT:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_SOLMTBNEG:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_SOLMTBPOS:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_SOLNMTBPOS:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_SOLCONTM:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_SOLQUAN:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_SOLQNCAT:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_SOLQNND:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_LIQND:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_LIQSTDAT:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_LIQENDAT:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_LIQMTBNEG:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_LIQMTBPOS:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_LIQNMTBPOS:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_LIQCONTM:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_LIQTTDDD:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_LIQTTDDH:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    ZN_SIGN:
+      exact_pdf_wording: "Signature:"
+      pdf_annotation: ZN_SIGN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_INIT:
+      exact_pdf_wording: "Initials:"
+      pdf_annotation: ZN_INIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    ZN_COMPDAT:
+      exact_pdf_wording: "Date Completed: / /"
+      pdf_annotation: ZN_COMPDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    Time_Stamp:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+catalog_refs:
+  by_variable:
+    SUBJID:
+      display_label: Participant ID
+      normalized_meaning: Pseudonymized identifier for the study participant.
+      search_terms:
+        - SUBJID
+        - Participant ID
+        - participant id
+        - subject id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FID:
+      display_label: Family ID
+      normalized_meaning: Pseudonymized family/household identifier linking participants who share a household.
+      search_terms:
+        - FID
+        - Family ID
+        - household id
+        - family identifier
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_VISIT:
+      display_label: Visit
+      normalized_meaning: Visit/timepoint at which the smear was collected (Baseline, Month 1, Month 2, End of Treatment Month 6 or Month 7, TB Activation, TB Failure/Relapse/Withdrawal Month 5, Unscheduled).
+      search_terms:
+        - ZN_VISIT
+        - Visit
+        - timepoint
+        - Baseline
+        - Month 1
+        - Month 2
+        - End of Treatment
+        - TB Activation
+        - TB Failure/Relapse/Withdrawal
+        - Unscheduled
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_MBND:
+      display_label: Smear Not Done (1st specimen)
+      normalized_meaning: Indicator that the AFB smear was not done for the 1st sputum specimen.
+      search_terms:
+        - ZN_MBND
+        - Smear Not Done
+        - smear not performed
+        - AFB not done
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_MBDAT:
+      display_label: 1st Specimen Collection Date
+      normalized_meaning: Date the 1st sputum specimen was collected (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - ZN_MBDAT
+        - Date of specimen collection
+        - 1st specimen date
+        - sputum collection date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_MBDATNR:
+      display_label: 1st Specimen Collection Date Not Recorded
+      normalized_meaning: Indicator that the collection date for the 1st sputum specimen was not recorded (paired with ZN_MBDAT).
+      search_terms:
+        - ZN_MBDATNR
+        - Date not recorded
+        - 1st specimen date not recorded
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_MBRECDAT:
+      display_label: 1st Specimen Lab Receipt Date
+      normalized_meaning: Date the 1st sputum specimen was received in the lab (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - ZN_MBRECDAT
+        - Date specimen received in the lab
+        - lab receipt date
+        - 1st specimen received
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_MBREFID:
+      display_label: 1st Specimen Laboratory Accession Number
+      normalized_meaning: Pseudonymized laboratory accession number for the 1st sputum specimen.
+      search_terms:
+        - ZN_MBREFID
+        - Laboratory accession
+        - lab accession number
+        - 1st specimen accession
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_MBLABID:
+      display_label: 1st Specimen Laboratory ID Code
+      normalized_meaning: Pseudonymized laboratory ID code for the 1st sputum specimen.
+      search_terms:
+        - ZN_MBLABID
+        - Laboratory ID code
+        - lab id
+        - 1st specimen lab id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_SPMETH:
+      display_label: 1st Specimen Sputum Collection Method
+      normalized_meaning: Method used to collect the 1st sputum specimen (Expectorated, Induced, Gastric lavage, Nasopharyngeal aspiration).
+      search_terms:
+        - ZN_SPMETH
+        - Sputum collection method
+        - Expectorated
+        - Induced
+        - Gastric lavage
+        - Nasopharyngeal aspiration
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_AFBQUAN:
+      display_label: 1st Specimen Smear Result (AFB Quantification)
+      normalized_meaning: AFB smear quantification result for the 1st sputum specimen (3+, 2+, 1+, Scanty, Negative).
+      search_terms:
+        - ZN_AFBQUAN
+        - Smear Result
+        - AFB quantification
+        - 3+
+        - 2+
+        - 1+
+        - Scanty
+        - Negative
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_MBND2:
+      display_label: Smear Not Done (2nd specimen)
+      normalized_meaning: Indicator that the AFB smear was not done for the 2nd sputum specimen.
+      search_terms:
+        - ZN_MBND2
+        - Smear Not Done
+        - 2nd specimen smear not done
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_MBDAT2:
+      display_label: 2nd Specimen Collection Date
+      normalized_meaning: Date the 2nd sputum specimen was collected (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - ZN_MBDAT2
+        - Date of specimen collection
+        - 2nd specimen date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_MBDATNR2:
+      display_label: 2nd Specimen Collection Date Not Recorded
+      normalized_meaning: Indicator that the collection date for the 2nd sputum specimen was not recorded (paired with ZN_MBDAT2).
+      search_terms:
+        - ZN_MBDATNR2
+        - Date not recorded
+        - 2nd specimen date not recorded
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_RECDAT2:
+      display_label: 2nd Specimen Lab Receipt Date
+      normalized_meaning: Date the 2nd sputum specimen was received in the lab (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - ZN_RECDAT2
+        - Date specimen received in the lab
+        - 2nd specimen received
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_MBREFID2:
+      display_label: 2nd Specimen Laboratory Accession Number
+      normalized_meaning: Pseudonymized laboratory accession number for the 2nd sputum specimen.
+      search_terms:
+        - ZN_MBREFID2
+        - Laboratory accession
+        - 2nd specimen accession
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_MBLABID2:
+      display_label: 2nd Specimen Laboratory ID Code
+      normalized_meaning: Pseudonymized laboratory ID code for the 2nd sputum specimen.
+      search_terms:
+        - ZN_MBLABID2
+        - Laboratory ID code
+        - 2nd specimen lab id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_MBSPMETH2:
+      display_label: 2nd Specimen Sputum Collection Method
+      normalized_meaning: Method used to collect the 2nd sputum specimen (Expectorated, Induced, Gastric lavage, Nasopharyngeal aspiration).
+      search_terms:
+        - ZN_MBSPMETH2
+        - Sputum collection method
+        - 2nd specimen method
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_AFBQUAN2:
+      display_label: 2nd Specimen Smear Result (AFB Quantification)
+      normalized_meaning: AFB smear quantification result for the 2nd sputum specimen (3+, 2+, 1+, Scanty, Negative).
+      search_terms:
+        - ZN_AFBQUAN2
+        - Smear Result
+        - AFB quantification
+        - 2nd specimen smear result
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    ZN_SOLND:
+      display_label: Solid Culture Not Done
+      normalized_meaning: Indicator that the solid (Lowenstein-Jensen-style) mycobacterial culture was not done. Inferred from dataset column name; the Microscopy PDF (Form 4) does not include solid-culture content.
+      search_terms:
+        - ZN_SOLND
+        - solid culture not done
+        - LJ culture not done
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_SOLSTDAT:
+      display_label: Solid Culture Start Date
+      normalized_meaning: Inferred date the solid mycobacterial culture was started (Day/Month/Year). Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_SOLSTDAT
+        - solid culture start date
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_SOLENDAT:
+      display_label: Solid Culture End Date
+      normalized_meaning: Inferred date the solid mycobacterial culture was ended (Day/Month/Year). Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_SOLENDAT
+        - solid culture end date
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_SOLMTBNEG:
+      display_label: Solid Culture MTB Negative
+      normalized_meaning: Inferred indicator that solid culture was MTB negative. Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_SOLMTBNEG
+        - solid culture MTB negative
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_SOLMTBPOS:
+      display_label: Solid Culture MTB Positive
+      normalized_meaning: Inferred indicator that solid culture was MTB positive. Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_SOLMTBPOS
+        - solid culture MTB positive
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_SOLNMTBPOS:
+      display_label: Solid Culture Non-MTB Positive
+      normalized_meaning: Inferred indicator that solid culture grew non-MTB mycobacteria. Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_SOLNMTBPOS
+        - solid culture non-MTB positive
+        - NTM positive
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_SOLCONTM:
+      display_label: Solid Culture Contaminated
+      normalized_meaning: Inferred indicator that solid culture was contaminated. Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_SOLCONTM
+        - solid culture contaminated
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_SOLQUAN:
+      display_label: Solid Culture Quantification
+      normalized_meaning: Inferred quantification of solid culture growth. Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_SOLQUAN
+        - solid culture quantification
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_SOLQNCAT:
+      display_label: Solid Culture Quantification Category
+      normalized_meaning: Inferred categorical quantification of solid culture growth. Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_SOLQNCAT
+        - solid culture quantification category
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_SOLQNND:
+      display_label: Solid Culture Quantification Not Done
+      normalized_meaning: Inferred indicator that solid culture quantification was not done. Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_SOLQNND
+        - solid culture quantification not done
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_LIQND:
+      display_label: Liquid Culture Not Done
+      normalized_meaning: Inferred indicator that the liquid (MGIT-style) mycobacterial culture was not done. Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_LIQND
+        - liquid culture not done
+        - MGIT not done
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_LIQSTDAT:
+      display_label: Liquid Culture Start Date
+      normalized_meaning: Inferred date the liquid mycobacterial culture was started (Day/Month/Year). Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_LIQSTDAT
+        - liquid culture start date
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_LIQENDAT:
+      display_label: Liquid Culture End Date
+      normalized_meaning: Inferred date the liquid mycobacterial culture was ended (Day/Month/Year). Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_LIQENDAT
+        - liquid culture end date
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_LIQMTBNEG:
+      display_label: Liquid Culture MTB Negative
+      normalized_meaning: Inferred indicator that liquid culture was MTB negative. Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_LIQMTBNEG
+        - liquid culture MTB negative
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_LIQMTBPOS:
+      display_label: Liquid Culture MTB Positive
+      normalized_meaning: Inferred indicator that liquid culture was MTB positive. Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_LIQMTBPOS
+        - liquid culture MTB positive
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_LIQNMTBPOS:
+      display_label: Liquid Culture Non-MTB Positive
+      normalized_meaning: Inferred indicator that liquid culture grew non-MTB mycobacteria. Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_LIQNMTBPOS
+        - liquid culture non-MTB positive
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_LIQCONTM:
+      display_label: Liquid Culture Contaminated
+      normalized_meaning: Inferred indicator that liquid culture was contaminated. Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_LIQCONTM
+        - liquid culture contaminated
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_LIQTTDDD:
+      display_label: Liquid Culture Time-To-Detection (Days)
+      normalized_meaning: Inferred liquid-culture time-to-detection in days. Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_LIQTTDDD
+        - time to detection
+        - TTD days
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_LIQTTDDH:
+      display_label: Liquid Culture Time-To-Detection (Hours)
+      normalized_meaning: Inferred liquid-culture time-to-detection in hours. Inferred from dataset column name; not present on the Microscopy PDF.
+      search_terms:
+        - ZN_LIQTTDDH
+        - time to detection
+        - TTD hours
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_SIGN:
+      display_label: Data Collector Signature
+      normalized_meaning: Signature of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - ZN_SIGN
+        - Signature
+        - data collector signature
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_INIT:
+      display_label: Data Collector Initials
+      normalized_meaning: Initials of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - ZN_INIT
+        - Initials
+        - data collector initials
+      catalog_tier: source_only
+      analysis_queryable: false
+    ZN_COMPDAT:
+      display_label: Form Completion Date
+      normalized_meaning: Date the form was completed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - ZN_COMPDAT
+        - Date Completed
+        - form completion date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    Time_Stamp:
+      display_label: Capture Timestamp
+      normalized_meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      search_terms:
+        - Time_Stamp
+        - timestamp
+        - capture timestamp
+      catalog_tier: source_only
+      analysis_queryable: false
+ledger_expectations:
+  phi_handling:
+    - SUBJID
+    - FID
+    - ZN_MBDAT
+    - ZN_MBRECDAT
+    - ZN_MBREFID
+    - ZN_MBLABID
+    - ZN_MBDAT2
+    - ZN_RECDAT2
+    - ZN_MBREFID2
+    - ZN_MBLABID2
+    - ZN_SOLSTDAT
+    - ZN_SOLENDAT
+    - ZN_LIQSTDAT
+    - ZN_LIQENDAT
+    - ZN_SIGN
+    - ZN_INIT
+    - ZN_COMPDAT
+  dataset_cleanup:
+    - Time_Stamp
+variables:
+  SUBJID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Participant ID:"
+      pdf_annotation: SUBJID
+      column_name: SUBJID
+    normalized_metadata:
+      display_label: Participant ID
+      meaning: Pseudonymized identifier for the study participant.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  FID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Family ID:"
+      pdf_annotation: FID
+      column_name: FID
+    normalized_metadata:
+      display_label: Family ID
+      meaning: Pseudonymized family/household identifier.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: family_or_household_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: family_or_household_identifier
+      label: FAM
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  ZN_VISIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Visit:"
+      pdf_annotation: ZN_VISIT
+      column_name: ZN_VISIT
+    normalized_metadata:
+      display_label: Visit
+      meaning: Visit/timepoint at which the smear was collected; values are the seven visit checkboxes shown on the form.
+      section: participant_header
+      data_type: categorical
+      options_ref: visit_pdf
+    options:
+      source_defined:
+        - Baseline
+        - Month 1
+        - Month 2
+        - End of Treatment (Month 6 or Month 7)
+        - TB Activation
+        - TB Failure/Relapse/Withdrawal (Month 5)
+        - Unscheduled
+      values:
+        - Baseline
+        - Month 1
+        - Month 2
+        - End of Treatment (Month 6 or Month 7)
+        - TB Activation
+        - TB Failure/Relapse/Withdrawal (Month 5)
+        - Unscheduled
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  ZN_MBND:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Smear Not Done
+      pdf_annotation: ZN_MBND
+      column_name: ZN_MBND
+    normalized_metadata:
+      display_label: Smear Not Done (1st specimen)
+      meaning: Indicator that the AFB smear was not done for the 1st sputum specimen.
+      section: first_sputum_specimen
+      data_type: categorical
+      options_ref: not_done_pdf
+    options:
+      source_defined:
+        - Smear Not Done
+      values:
+        - Smear Not Done
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - ZN_AFBQUAN
+      skip_logic: If Smear Not Done is checked, Smear Result is skipped for the 1st specimen.
+      visit_grouping: null
+      section_grouping: first_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  ZN_MBDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date of specimen collection: / /"
+      pdf_annotation: ZN_MBDAT
+      column_name: ZN_MBDAT
+    normalized_metadata:
+      display_label: 1st Specimen Collection Date
+      meaning: Date the 1st sputum specimen was collected.
+      section: first_sputum_specimen
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: first_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  ZN_MBDATNR:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Date not recorded
+      pdf_annotation: ZN_MBDATNR
+      column_name: ZN_MBDATNR
+    normalized_metadata:
+      display_label: 1st Specimen Collection Date Not Recorded
+      meaning: Indicator that the 1st specimen collection date was not recorded (paired with ZN_MBDAT).
+      section: first_sputum_specimen
+      data_type: categorical
+      options_ref: date_not_recorded_pdf
+    options:
+      source_defined:
+        - Date not recorded
+      values:
+        - Date not recorded
+      unknown: true
+    relationships:
+      parent: ZN_MBDAT
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: first_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  ZN_MBRECDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date specimen received in the lab: / /"
+      pdf_annotation: ZN_MBRECDAT
+      column_name: ZN_MBRECDAT
+    normalized_metadata:
+      display_label: 1st Specimen Lab Receipt Date
+      meaning: Date the 1st sputum specimen was received in the lab.
+      section: first_sputum_specimen
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: first_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  ZN_MBREFID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Laboratory accession #: P -"
+      pdf_annotation: ZN_MBREFID
+      column_name: ZN_MBREFID
+    normalized_metadata:
+      display_label: 1st Specimen Laboratory Accession Number
+      meaning: Pseudonymized laboratory accession number for the 1st sputum specimen.
+      section: first_sputum_specimen
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: first_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: facility_or_site_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: facility_or_site_identifier
+      label: ID
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  ZN_MBLABID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Laboratory ID code:"
+      pdf_annotation: ZN_MBLABID
+      column_name: ZN_MBLABID
+    normalized_metadata:
+      display_label: 1st Specimen Laboratory ID Code
+      meaning: Pseudonymized laboratory ID code for the 1st sputum specimen.
+      section: first_sputum_specimen
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: first_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: facility_or_site_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: facility_or_site_identifier
+      label: ID
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  ZN_SPMETH:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Sputum collection method:"
+      pdf_annotation: ZN_SPMETH
+      column_name: ZN_SPMETH
+    normalized_metadata:
+      display_label: 1st Specimen Sputum Collection Method
+      meaning: Method used to collect the 1st sputum specimen (Expectorated, Induced, Gastric lavage, Nasopharyngeal aspiration).
+      section: first_sputum_specimen
+      data_type: categorical
+      options_ref: sputum_collection_method_pdf
+    options:
+      source_defined:
+        - Expectorated
+        - Induced
+        - Gastric lavage
+        - Nasopharyngeal aspiration
+      values:
+        - Expectorated
+        - Induced
+        - Gastric lavage
+        - Nasopharyngeal aspiration
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: first_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  ZN_AFBQUAN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Smear Result:"
+      pdf_annotation: ZN_AFBQUAN
+      column_name: ZN_AFBQUAN
+    normalized_metadata:
+      display_label: 1st Specimen Smear Result (AFB Quantification)
+      meaning: AFB smear quantification result for the 1st sputum specimen.
+      section: first_sputum_specimen
+      data_type: categorical
+      options_ref: smear_result_pdf
+    options:
+      source_defined:
+        - 3+
+        - 2+
+        - 1+
+        - Scanty
+        - Negative
+      values:
+        - 3+
+        - 2+
+        - 1+
+        - Scanty
+        - Negative
+      unknown: true
+    relationships:
+      parent: ZN_MBND
+      children: []
+      skip_logic: If Smear Not Done is checked, Smear Result is skipped for the 1st specimen.
+      visit_grouping: null
+      section_grouping: first_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  ZN_MBND2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Smear Not Done
+      pdf_annotation: ZN_MBND2
+      column_name: ZN_MBND2
+    normalized_metadata:
+      display_label: Smear Not Done (2nd specimen)
+      meaning: Indicator that the AFB smear was not done for the 2nd sputum specimen.
+      section: second_sputum_specimen
+      data_type: categorical
+      options_ref: not_done_pdf
+    options:
+      source_defined:
+        - Smear Not Done
+      values:
+        - Smear Not Done
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - ZN_AFBQUAN2
+      skip_logic: If Smear Not Done is checked, Smear Result is skipped for the 2nd specimen.
+      visit_grouping: null
+      section_grouping: second_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  ZN_MBDAT2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date of specimen collection: / /"
+      pdf_annotation: ZN_MBDAT2
+      column_name: ZN_MBDAT2
+    normalized_metadata:
+      display_label: 2nd Specimen Collection Date
+      meaning: Date the 2nd sputum specimen was collected.
+      section: second_sputum_specimen
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: second_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  ZN_MBDATNR2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Date not recorded
+      pdf_annotation: ZN_MBDATNR2
+      column_name: ZN_MBDATNR2
+    normalized_metadata:
+      display_label: 2nd Specimen Collection Date Not Recorded
+      meaning: Indicator that the 2nd specimen collection date was not recorded (paired with ZN_MBDAT2).
+      section: second_sputum_specimen
+      data_type: categorical
+      options_ref: date_not_recorded_pdf
+    options:
+      source_defined:
+        - Date not recorded
+      values:
+        - Date not recorded
+      unknown: true
+    relationships:
+      parent: ZN_MBDAT2
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: second_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  ZN_RECDAT2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date specimen received in the lab: / /"
+      pdf_annotation: ZN_RECDAT2
+      column_name: ZN_RECDAT2
+    normalized_metadata:
+      display_label: 2nd Specimen Lab Receipt Date
+      meaning: Date the 2nd sputum specimen was received in the lab.
+      section: second_sputum_specimen
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: second_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  ZN_MBREFID2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Laboratory accession #: -"
+      pdf_annotation: ZN_MBREFID2
+      column_name: ZN_MBREFID2
+    normalized_metadata:
+      display_label: 2nd Specimen Laboratory Accession Number
+      meaning: Pseudonymized laboratory accession number for the 2nd sputum specimen.
+      section: second_sputum_specimen
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: second_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: facility_or_site_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: facility_or_site_identifier
+      label: ID
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  ZN_MBLABID2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Laboratory ID code:"
+      pdf_annotation: ZN_MBLABID2
+      column_name: ZN_MBLABID2
+    normalized_metadata:
+      display_label: 2nd Specimen Laboratory ID Code
+      meaning: Pseudonymized laboratory ID code for the 2nd sputum specimen.
+      section: second_sputum_specimen
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: second_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: facility_or_site_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: facility_or_site_identifier
+      label: ID
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  ZN_MBSPMETH2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Sputum collection method:"
+      pdf_annotation: ZN_MBSPMETH2
+      column_name: ZN_MBSPMETH2
+    normalized_metadata:
+      display_label: 2nd Specimen Sputum Collection Method
+      meaning: Method used to collect the 2nd sputum specimen (Expectorated, Induced, Gastric lavage, Nasopharyngeal aspiration).
+      section: second_sputum_specimen
+      data_type: categorical
+      options_ref: sputum_collection_method_pdf
+    options:
+      source_defined:
+        - Expectorated
+        - Induced
+        - Gastric lavage
+        - Nasopharyngeal aspiration
+      values:
+        - Expectorated
+        - Induced
+        - Gastric lavage
+        - Nasopharyngeal aspiration
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: second_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  ZN_AFBQUAN2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Smear Result:"
+      pdf_annotation: ZN_AFBQUAN2
+      column_name: ZN_AFBQUAN2
+    normalized_metadata:
+      display_label: 2nd Specimen Smear Result (AFB Quantification)
+      meaning: AFB smear quantification result for the 2nd sputum specimen.
+      section: second_sputum_specimen
+      data_type: categorical
+      options_ref: smear_result_pdf
+    options:
+      source_defined:
+        - 3+
+        - 2+
+        - 1+
+        - Scanty
+        - Negative
+      values:
+        - 3+
+        - 2+
+        - 1+
+        - Scanty
+        - Negative
+      unknown: true
+    relationships:
+      parent: ZN_MBND2
+      children: []
+      skip_logic: If Smear Not Done is checked, Smear Result is skipped for the 2nd specimen.
+      visit_grouping: null
+      section_grouping: second_sputum_specimen
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  ZN_SOLND:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_SOLND
+    normalized_metadata:
+      display_label: Solid Culture Not Done
+      meaning: Inferred indicator that solid (Lowenstein-Jensen-style) mycobacterial culture was not done. Inferred from dataset column name; the Microscopy PDF (Form 4) does not contain solid-culture content.
+      section: solid_culture
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: solid_culture
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_SOLND is present in the dataset but the Microscopy PDF (Form 4) does not contain a solid-culture section. Confirm whether ZN_SOLND originates from a separate culture form, or should be removed/relocated, and confirm intended handling."
+    clean_output_presence: present
+  ZN_SOLSTDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_SOLSTDAT
+    normalized_metadata:
+      display_label: Solid Culture Start Date
+      meaning: Inferred date the solid mycobacterial culture was started. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: solid_culture
+      data_type: date
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: solid_culture
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_SOLSTDAT is present in the dataset but not on the Microscopy PDF. Confirm origin (likely a separate culture form) and confirm date-jitter handling."
+    clean_output_presence: transformed
+  ZN_SOLENDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_SOLENDAT
+    normalized_metadata:
+      display_label: Solid Culture End Date
+      meaning: Inferred date the solid mycobacterial culture was ended. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: solid_culture
+      data_type: date
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: solid_culture
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_SOLENDAT is present in the dataset but not on the Microscopy PDF. Confirm origin (likely a separate culture form) and confirm date-jitter handling."
+    clean_output_presence: transformed
+  ZN_SOLMTBNEG:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_SOLMTBNEG
+    normalized_metadata:
+      display_label: Solid Culture MTB Negative
+      meaning: Inferred indicator that solid culture was MTB negative. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: solid_culture
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: solid_culture
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: pdf_evidence_gap
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_SOLMTBNEG is present in the dataset but not on the Microscopy PDF. Confirm origin and intended handling (categorical clinical indicator vs. derived flag)."
+    clean_output_presence: review_required
+  ZN_SOLMTBPOS:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_SOLMTBPOS
+    normalized_metadata:
+      display_label: Solid Culture MTB Positive
+      meaning: Inferred indicator that solid culture was MTB positive. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: solid_culture
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: solid_culture
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: pdf_evidence_gap
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_SOLMTBPOS is present in the dataset but not on the Microscopy PDF. Confirm origin and intended handling."
+    clean_output_presence: review_required
+  ZN_SOLNMTBPOS:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_SOLNMTBPOS
+    normalized_metadata:
+      display_label: Solid Culture Non-MTB Positive
+      meaning: Inferred indicator that solid culture grew non-MTB mycobacteria. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: solid_culture
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: solid_culture
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: pdf_evidence_gap
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_SOLNMTBPOS is present in the dataset but not on the Microscopy PDF. Confirm origin and intended handling."
+    clean_output_presence: review_required
+  ZN_SOLCONTM:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_SOLCONTM
+    normalized_metadata:
+      display_label: Solid Culture Contaminated
+      meaning: Inferred indicator that solid culture was contaminated. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: solid_culture
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: solid_culture
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: pdf_evidence_gap
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_SOLCONTM is present in the dataset but not on the Microscopy PDF. Confirm origin and intended handling."
+    clean_output_presence: review_required
+  ZN_SOLQUAN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_SOLQUAN
+    normalized_metadata:
+      display_label: Solid Culture Quantification
+      meaning: Inferred quantification of solid culture growth. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: solid_culture
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: solid_culture
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: pdf_evidence_gap
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_SOLQUAN is present in the dataset but not on the Microscopy PDF. Confirm origin and whether it is numeric quantification or a coded category."
+    clean_output_presence: review_required
+  ZN_SOLQNCAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_SOLQNCAT
+    normalized_metadata:
+      display_label: Solid Culture Quantification Category
+      meaning: Inferred categorical quantification of solid culture growth. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: solid_culture
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: solid_culture
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: pdf_evidence_gap
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_SOLQNCAT is present in the dataset but not on the Microscopy PDF. Confirm categories and origin."
+    clean_output_presence: review_required
+  ZN_SOLQNND:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_SOLQNND
+    normalized_metadata:
+      display_label: Solid Culture Quantification Not Done
+      meaning: Inferred indicator that solid culture quantification was not done. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: solid_culture
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: solid_culture
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_SOLQNND is present in the dataset but not on the Microscopy PDF. Confirm origin and intended handling."
+    clean_output_presence: present
+  ZN_LIQND:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_LIQND
+    normalized_metadata:
+      display_label: Liquid Culture Not Done
+      meaning: Inferred indicator that the liquid (MGIT-style) mycobacterial culture was not done. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: liquid_culture
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: liquid_culture
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_LIQND is present in the dataset but not on the Microscopy PDF. Confirm origin (likely a separate culture form) and intended handling."
+    clean_output_presence: present
+  ZN_LIQSTDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_LIQSTDAT
+    normalized_metadata:
+      display_label: Liquid Culture Start Date
+      meaning: Inferred date the liquid mycobacterial culture was started. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: liquid_culture
+      data_type: date
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: liquid_culture
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_LIQSTDAT is present in the dataset but not on the Microscopy PDF. Confirm origin and date-jitter handling."
+    clean_output_presence: transformed
+  ZN_LIQENDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_LIQENDAT
+    normalized_metadata:
+      display_label: Liquid Culture End Date
+      meaning: Inferred date the liquid mycobacterial culture was ended. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: liquid_culture
+      data_type: date
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: liquid_culture
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_LIQENDAT is present in the dataset but not on the Microscopy PDF. Confirm origin and date-jitter handling."
+    clean_output_presence: transformed
+  ZN_LIQMTBNEG:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_LIQMTBNEG
+    normalized_metadata:
+      display_label: Liquid Culture MTB Negative
+      meaning: Inferred indicator that liquid culture was MTB negative. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: liquid_culture
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: liquid_culture
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: pdf_evidence_gap
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_LIQMTBNEG is present in the dataset but not on the Microscopy PDF. Confirm origin and intended handling."
+    clean_output_presence: review_required
+  ZN_LIQMTBPOS:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_LIQMTBPOS
+    normalized_metadata:
+      display_label: Liquid Culture MTB Positive
+      meaning: Inferred indicator that liquid culture was MTB positive. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: liquid_culture
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: liquid_culture
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: pdf_evidence_gap
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_LIQMTBPOS is present in the dataset but not on the Microscopy PDF. Confirm origin and intended handling."
+    clean_output_presence: review_required
+  ZN_LIQNMTBPOS:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_LIQNMTBPOS
+    normalized_metadata:
+      display_label: Liquid Culture Non-MTB Positive
+      meaning: Inferred indicator that liquid culture grew non-MTB mycobacteria. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: liquid_culture
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: liquid_culture
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: pdf_evidence_gap
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_LIQNMTBPOS is present in the dataset but not on the Microscopy PDF. Confirm origin and intended handling."
+    clean_output_presence: review_required
+  ZN_LIQCONTM:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_LIQCONTM
+    normalized_metadata:
+      display_label: Liquid Culture Contaminated
+      meaning: Inferred indicator that liquid culture was contaminated. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: liquid_culture
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: liquid_culture
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: pdf_evidence_gap
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_LIQCONTM is present in the dataset but not on the Microscopy PDF. Confirm origin and intended handling."
+    clean_output_presence: review_required
+  ZN_LIQTTDDD:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_LIQTTDDD
+    normalized_metadata:
+      display_label: Liquid Culture Time-To-Detection (Days)
+      meaning: Inferred liquid-culture time-to-detection in days. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: liquid_culture
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: liquid_culture
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: pdf_evidence_gap
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_LIQTTDDD is present in the dataset but not on the Microscopy PDF. Confirm origin and whether it is numeric days-to-detection."
+    clean_output_presence: review_required
+  ZN_LIQTTDDH:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: ZN_LIQTTDDH
+    normalized_metadata:
+      display_label: Liquid Culture Time-To-Detection (Hours)
+      meaning: Inferred liquid-culture time-to-detection in hours. Inferred from dataset column name; not present on the Microscopy PDF.
+      section: liquid_culture
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: liquid_culture
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: pdf_evidence_gap
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: pdf_evidence_gap
+      reviewer_question: "ZN_LIQTTDDH is present in the dataset but not on the Microscopy PDF. Confirm origin and whether it is numeric hours-to-detection."
+    clean_output_presence: review_required
+  ZN_SIGN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Signature:"
+      pdf_annotation: ZN_SIGN
+      column_name: ZN_SIGN
+    normalized_metadata:
+      display_label: Data Collector Signature
+      meaning: Signature of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: signature_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  ZN_INIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Initials:"
+      pdf_annotation: ZN_INIT
+      column_name: ZN_INIT
+    normalized_metadata:
+      display_label: Data Collector Initials
+      meaning: Initials of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: initials_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  ZN_COMPDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date Completed: / /"
+      pdf_annotation: ZN_COMPDAT
+      column_name: ZN_COMPDAT
+    normalized_metadata:
+      display_label: Form Completion Date
+      meaning: Date the form was completed by the data collector.
+      section: completion
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  Time_Stamp:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: Time_Stamp
+    normalized_metadata:
+      display_label: Capture Timestamp
+      meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      section: system_metadata
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: system_metadata
+      other_specify: null
+    phi_sensitive_category: system_timestamp
+    handling_intent:
+      action: drop
+      reason: non_pdf_system_timestamp_metadata
+      label: null
+    runtime_binding:
+      - dataset_cleanup
+    derivation_targets:
+      - dataset_cleanup_ledger
+    evidence:
+      level: high
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+validation:
+  forbidden_keys_absent: true
+  columns_unique: true
+  pdf_annotation_unmatched: []
+  dataset_columns_unmatched: []
+  excluded_pdf_artifacts:
+    - "05/15/2014 (form version date — excluded per PDF Extraction Boundary)"
+    - "Indo-US VAP Microscopy v1.0 (form version footer — excluded)"
+    - "Page 1 of 1 (page footer — excluded)"
+    - "12704 (artifact-version code in footer — excluded)"
+    - "1 0 2 0 - - (Participant ID input mask scaffold — excluded)"
+    - "Y Y (year input mask scaffold — excluded)"
+    - "P - (Laboratory accession 'P' prefix and YY suffix scaffold — retained as part of question wording for ZN_MBREFID context, not as an independent variable)"
+    - "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner — retained as form context heading not as a variable)"

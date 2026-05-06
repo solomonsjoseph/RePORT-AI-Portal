@@ -1,0 +1,1105 @@
+schema_version: 2
+policy_status: draft_for_human_review
+study: Indo-VAP
+form: 18_NonConsent
+source:
+  dataset_file: 18_NonConsent.xlsx
+  pdf_file: data/raw/Indo-VAP/annotated_pdfs/18 Non-consent Baseline v1.0.pdf
+pdf_form_metadata:
+  form_number: Form 18
+  form_title: Non-Consent Form
+  form_version: v1.0
+  page_count: 1
+coverage:
+  column_count: 11
+  columns_mapped: 11
+  pdf_annotation_count: 21
+  pdf_annotation_variables: 16
+  annotated_columns: 10
+  non_annotated_columns:
+    - Time_Stamp
+  unresolved_review_required:
+    - NC_REASON
+    - NC_REASONSP
+pdf_sections:
+  participant_header:
+    section_label: null
+    fields:
+      - NC_SUBJID
+      - NC_FID
+      - NC_VISDAT
+    visible_text: |
+      Particiant ID Number:
+      Family ID:
+      Date of Screening:
+      Day                       Month                    Year
+  demographics:
+    section_label: null
+    fields:
+      - NC_AGE
+      - NC_SEX
+    visible_text: |
+      Age:
+      Less than 18 years
+      At least 18 years
+      Unknown
+      Gender:
+      Female
+      Male
+  non_consent_reasons:
+    section_label: null
+    fields:
+      - NC_REASON
+      - NC_REASONSP
+    visible_text: |
+      The participant declined to consent study participation because: (CHECK ALL THAT APPLY)
+      Lacks the time for study visits
+      Uninterested in the scientific research
+      Deterred by required blood collection
+      Wanted permission to participate from someone who was absent
+      Too sick to consent
+      Uncomfortable with presence of study team at the home
+      Unable to locate and meet the participant
+      Deterred by required sample collection (in general)
+      Other, specify:
+  completion:
+    section_label: null
+    fields:
+      - NC_SIGN
+      - NC_INIT
+      - NC_COMPDAT
+    visible_text: |
+      Signature:
+      Initials:
+      Date Completed:
+      Day                       Month                    Year
+  system_metadata:
+    section_label: null
+    fields:
+      - Time_Stamp
+    visible_text: |
+      (No PDF visible text — column derived from dataset capture timestamp.)
+option_sets:
+  date_dmy_pdf:
+    source: PDF date boxes
+    source_text: "Day                       Month                    Year"
+    values:
+      - Day
+      - Month
+      - Year
+    unknown: true
+  sex_pdf:
+    source: PDF option text
+    source_text: |
+      Female
+      Male
+    values:
+      - Female
+      - Male
+    unknown: true
+  age_category_pdf:
+    source: PDF option text
+    source_text: |
+      Less than 18 years
+      At least 18 years
+      Unknown
+    values:
+      - Less than 18 years
+      - At least 18 years
+      - Unknown
+    unknown: true
+  nc_reason_pdf:
+    source: PDF option text
+    source_text: |
+      Lacks the time for study visits
+      Uninterested in the scientific research
+      Deterred by required blood collection
+      Wanted permission to participate from someone who was absent
+      Too sick to consent
+      Uncomfortable with presence of study team at the home
+      Unable to locate and meet the participant
+      Deterred by required sample collection (in general)
+      Other, specify:
+    values:
+      - Lacks the time for study visits
+      - Uninterested in the scientific research
+      - Deterred by required blood collection
+      - Wanted permission to participate from someone who was absent
+      - Too sick to consent
+      - Uncomfortable with presence of study team at the home
+      - Unable to locate and meet the participant
+      - Deterred by required sample collection (in general)
+      - Other, specify
+    unknown: true
+pdf_annotation_pages:
+  - page: 1
+    annotations:
+      - NC_SUBJID
+      - NC_FID
+      - NC_VISDAT
+      - NC_AGE
+      - NC_SEX
+      - F
+      - M
+      - NC_REASON
+      - lacks time
+      - uninterested
+      - blood volumes
+      - absent
+      - too sick
+      - uncomfortable
+      - sample collection
+      - no locate
+      - other
+      - NC_REASONSP
+      - NC_SIGN
+      - NC_COMPDAT
+      - NC_INIT
+pdf_visible_text:
+  by_page:
+    - page: 1
+      blocks:
+        - type: heading
+          text: NON-CONSENT FORM
+          related_variables: []
+        - type: instruction
+          text: "This form should be completed for all candidates who were approached but did not consent and therefore were not screened."
+          related_variables: []
+        - type: question
+          text: "Particiant ID Number:"
+          related_variables:
+            - NC_SUBJID
+        - type: question
+          text: "Family ID:"
+          related_variables:
+            - NC_FID
+        - type: question
+          text: "Date of Screening:"
+          related_variables:
+            - NC_VISDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - NC_VISDAT
+        - type: question
+          text: "Age:"
+          related_variables:
+            - NC_AGE
+        - type: option_block
+          text: |
+            Less than 18 years
+            At least 18 years
+            Unknown
+          related_variables:
+            - NC_AGE
+        - type: question
+          text: "Gender:"
+          related_variables:
+            - NC_SEX
+        - type: option_block
+          text: |
+            Female
+            Male
+          related_variables:
+            - NC_SEX
+        - type: question
+          text: "The participant declined to consent study participation because: (CHECK ALL THAT APPLY)"
+          related_variables:
+            - NC_REASON
+            - NC_REASONSP
+        - type: option_block
+          text: |
+            Lacks the time for study visits
+            Uninterested in the scientific research
+            Deterred by required blood collection
+            Wanted permission to participate from someone who was absent
+            Too sick to consent
+            Uncomfortable with presence of study team at the home
+            Unable to locate and meet the participant
+            Deterred by required sample collection (in general)
+            Other, specify:
+          related_variables:
+            - NC_REASON
+            - NC_REASONSP
+        - type: question
+          text: "Signature:"
+          related_variables:
+            - NC_SIGN
+        - type: question
+          text: "Initials:"
+          related_variables:
+            - NC_INIT
+        - type: question
+          text: "Date Completed:"
+          related_variables:
+            - NC_COMPDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - NC_COMPDAT
+  questions:
+    - id: q_subjid
+      page: 1
+      exact_wording: "Particiant ID Number:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: "PDF wording contains a typo ('Particiant' instead of 'Participant'); preserved verbatim."
+      related_variables:
+        - NC_SUBJID
+    - id: q_fid
+      page: 1
+      exact_wording: "Family ID:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - NC_FID
+    - id: q_visdat
+      page: 1
+      exact_wording: "Date of Screening:"
+      section: participant_header
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - NC_VISDAT
+    - id: q_age
+      page: 1
+      exact_wording: "Age:"
+      section: demographics
+      options_ref: age_category_pdf
+      units: null
+      skip_logic: null
+      notes: "Categorical age bucket selected from three checkboxes (Less than 18 years / At least 18 years / Unknown)."
+      related_variables:
+        - NC_AGE
+    - id: q_sex
+      page: 1
+      exact_wording: "Gender:"
+      section: demographics
+      options_ref: sex_pdf
+      units: null
+      skip_logic: null
+      notes: "Two checkboxes labelled Female and Male; the 'F' and 'M' PDF annotations mark these checkboxes."
+      related_variables:
+        - NC_SEX
+    - id: q_reason
+      page: 1
+      exact_wording: "The participant declined to consent study participation because: (CHECK ALL THAT APPLY)"
+      section: non_consent_reasons
+      options_ref: nc_reason_pdf
+      units: null
+      skip_logic: null
+      notes: "Multi-select list of reasons; selecting 'Other, specify:' triggers a free-text capture in NC_REASONSP."
+      related_variables:
+        - NC_REASON
+        - NC_REASONSP
+    - id: q_signature
+      page: 1
+      exact_wording: "Signature:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - NC_SIGN
+    - id: q_initials
+      page: 1
+      exact_wording: "Initials:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - NC_INIT
+    - id: q_date_completed
+      page: 1
+      exact_wording: "Date Completed:"
+      section: completion
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - NC_COMPDAT
+evidence_packs:
+  by_variable:
+    NC_SUBJID:
+      exact_pdf_wording: "Particiant ID Number:"
+      pdf_annotation: NC_SUBJID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    NC_FID:
+      exact_pdf_wording: "Family ID:"
+      pdf_annotation: NC_FID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    NC_VISDAT:
+      exact_pdf_wording: "Date of Screening:"
+      pdf_annotation: NC_VISDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    NC_AGE:
+      exact_pdf_wording: "Age:"
+      pdf_annotation: NC_AGE
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    NC_SEX:
+      exact_pdf_wording: "Gender:"
+      pdf_annotation: NC_SEX
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    NC_REASON:
+      exact_pdf_wording: "The participant declined to consent study participation because: (CHECK ALL THAT APPLY)"
+      pdf_annotation: NC_REASON
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    NC_REASONSP:
+      exact_pdf_wording: "Other, specify:"
+      pdf_annotation: NC_REASONSP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    NC_SIGN:
+      exact_pdf_wording: "Signature:"
+      pdf_annotation: NC_SIGN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    NC_INIT:
+      exact_pdf_wording: "Initials:"
+      pdf_annotation: NC_INIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    NC_COMPDAT:
+      exact_pdf_wording: "Date Completed:"
+      pdf_annotation: NC_COMPDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    Time_Stamp:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+catalog_refs:
+  by_variable:
+    NC_SUBJID:
+      display_label: Participant ID
+      normalized_meaning: Pseudonymized identifier for the candidate who was approached but did not consent.
+      search_terms:
+        - NC_SUBJID
+        - Participant ID Number
+        - Particiant ID Number
+        - participant id
+        - subject id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    NC_FID:
+      display_label: Family ID
+      normalized_meaning: Pseudonymized family/household identifier linking the candidate to a family unit.
+      search_terms:
+        - NC_FID
+        - Family ID
+        - family identifier
+        - household id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    NC_VISDAT:
+      display_label: Date of Screening
+      normalized_meaning: Date the candidate was approached / screening visit occurred (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - NC_VISDAT
+        - Date of Screening
+        - screening date
+        - visit date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    NC_AGE:
+      display_label: Age Category
+      normalized_meaning: Categorical age bucket of the candidate (Less than 18 years, At least 18 years, or Unknown).
+      search_terms:
+        - NC_AGE
+        - Age
+        - age category
+        - Less than 18 years
+        - At least 18 years
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    NC_SEX:
+      display_label: Gender
+      normalized_meaning: Gender of the candidate as captured on the form (Female or Male).
+      search_terms:
+        - NC_SEX
+        - Gender
+        - sex
+        - Female
+        - Male
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    NC_REASON:
+      display_label: Non-Consent Reason
+      normalized_meaning: Reason(s) the participant declined to consent; multi-select from a fixed list with an Other/specify option.
+      search_terms:
+        - NC_REASON
+        - non-consent reason
+        - declined to consent
+        - reason for non-consent
+        - CHECK ALL THAT APPLY
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    NC_REASONSP:
+      display_label: Non-Consent Reason — Other Specify
+      normalized_meaning: Free-text reason captured when "Other, specify" is selected for non-consent.
+      search_terms:
+        - NC_REASONSP
+        - Other, specify
+        - non-consent other reason
+        - reason specify
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    NC_SIGN:
+      display_label: Data Collector Signature
+      normalized_meaning: Signature of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - NC_SIGN
+        - Signature
+        - data collector signature
+      catalog_tier: source_only
+      analysis_queryable: false
+    NC_INIT:
+      display_label: Data Collector Initials
+      normalized_meaning: Initials of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - NC_INIT
+        - Initials
+        - data collector initials
+      catalog_tier: source_only
+      analysis_queryable: false
+    NC_COMPDAT:
+      display_label: Form Completion Date
+      normalized_meaning: Date the non-consent form was completed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - NC_COMPDAT
+        - Date Completed
+        - form completion date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    Time_Stamp:
+      display_label: Capture Timestamp
+      normalized_meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      search_terms:
+        - Time_Stamp
+        - timestamp
+        - capture timestamp
+      catalog_tier: source_only
+      analysis_queryable: false
+ledger_expectations:
+  phi_handling:
+    - NC_SUBJID
+    - NC_FID
+    - NC_VISDAT
+    - NC_REASONSP
+    - NC_SIGN
+    - NC_INIT
+    - NC_COMPDAT
+  dataset_cleanup:
+    - Time_Stamp
+variables:
+  NC_SUBJID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Particiant ID Number:"
+      pdf_annotation: NC_SUBJID
+      column_name: NC_SUBJID
+    normalized_metadata:
+      display_label: Participant ID
+      meaning: Pseudonymized identifier for the candidate who was approached but did not consent.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  NC_FID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Family ID:"
+      pdf_annotation: NC_FID
+      column_name: NC_FID
+    normalized_metadata:
+      display_label: Family ID
+      meaning: Pseudonymized family/household identifier for the candidate.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: facility_or_site_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: facility_site_or_operational_identifier
+      label: ID
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  NC_VISDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date of Screening:"
+      pdf_annotation: NC_VISDAT
+      column_name: NC_VISDAT
+    normalized_metadata:
+      display_label: Date of Screening
+      meaning: Date the candidate was approached / screening visit occurred.
+      section: participant_header
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  NC_AGE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Age:"
+      pdf_annotation: NC_AGE
+      column_name: NC_AGE
+    normalized_metadata:
+      display_label: Age Category
+      meaning: Categorical age bucket of the candidate (Less than 18 years, At least 18 years, or Unknown).
+      section: demographics
+      data_type: categorical
+      options_ref: age_category_pdf
+    options:
+      source_defined:
+        - Less than 18 years
+        - At least 18 years
+        - Unknown
+      values:
+        - Less than 18 years
+        - At least 18 years
+        - Unknown
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: demographics
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  NC_SEX:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Gender:"
+      pdf_annotation: NC_SEX
+      column_name: NC_SEX
+    normalized_metadata:
+      display_label: Gender
+      meaning: Gender of the candidate as captured on the form (Female or Male).
+      section: demographics
+      data_type: categorical
+      options_ref: sex_pdf
+    options:
+      source_defined:
+        - Female
+        - Male
+      values:
+        - Female
+        - Male
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: demographics
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  NC_REASON:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "The participant declined to consent study participation because: (CHECK ALL THAT APPLY)"
+      pdf_annotation: NC_REASON
+      column_name: NC_REASON
+    normalized_metadata:
+      display_label: Non-Consent Reason
+      meaning: Reason(s) the participant declined to consent; multi-select from a fixed list with an Other/specify option.
+      section: non_consent_reasons
+      data_type: categorical
+      options_ref: nc_reason_pdf
+    options:
+      source_defined:
+        - Lacks the time for study visits
+        - Uninterested in the scientific research
+        - Deterred by required blood collection
+        - Wanted permission to participate from someone who was absent
+        - Too sick to consent
+        - Uncomfortable with presence of study team at the home
+        - Unable to locate and meet the participant
+        - Deterred by required sample collection (in general)
+        - Other, specify
+      values:
+        - Lacks the time for study visits
+        - Uninterested in the scientific research
+        - Deterred by required blood collection
+        - Wanted permission to participate from someone who was absent
+        - Too sick to consent
+        - Uncomfortable with presence of study team at the home
+        - Unable to locate and meet the participant
+        - Deterred by required sample collection (in general)
+        - Other, specify
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: non_consent_reasons
+      other_specify: NC_REASONSP
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_or_other_specify_or_unproven_supplemental_field
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: multi_select_storage_unknown
+      reviewer_question: "Confirm storage encoding for NC_REASON (multi-select 'CHECK ALL THAT APPLY'). Is each reason a separate categorical code, a delimited list, or a bitmask? Confirm whether the column is non-PHI and safe to keep without transformation."
+    clean_output_presence: present
+  NC_REASONSP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Other, specify:"
+      pdf_annotation: NC_REASONSP
+      column_name: NC_REASONSP
+    normalized_metadata:
+      display_label: Non-Consent Reason — Other Specify
+      meaning: Free-text reason captured when "Other, specify" is selected for non-consent.
+      section: non_consent_reasons
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: NC_REASON
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: non_consent_reasons
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: Is the free-text "Other, specify" content allowed in the PHI-handled dataset, or should it be dropped/redacted?
+    clean_output_presence: absent
+  NC_SIGN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Signature:"
+      pdf_annotation: NC_SIGN
+      column_name: NC_SIGN
+    normalized_metadata:
+      display_label: Data Collector Signature
+      meaning: Signature of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: signature_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  NC_INIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Initials:"
+      pdf_annotation: NC_INIT
+      column_name: NC_INIT
+    normalized_metadata:
+      display_label: Data Collector Initials
+      meaning: Initials of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: initials_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  NC_COMPDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date Completed:"
+      pdf_annotation: NC_COMPDAT
+      column_name: NC_COMPDAT
+    normalized_metadata:
+      display_label: Form Completion Date
+      meaning: Date the non-consent form was completed by the data collector.
+      section: completion
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  Time_Stamp:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: Time_Stamp
+    normalized_metadata:
+      display_label: Capture Timestamp
+      meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      section: system_metadata
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: system_metadata
+      other_specify: null
+    phi_sensitive_category: system_timestamp
+    handling_intent:
+      action: drop
+      reason: non_pdf_system_timestamp_metadata
+      label: null
+    runtime_binding:
+      - dataset_cleanup
+    derivation_targets:
+      - dataset_cleanup_ledger
+    evidence:
+      level: high
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+validation:
+  forbidden_keys_absent: true
+  columns_unique: true
+  pdf_annotation_unmatched:
+    - "F (checkbox indicator marker adjacent to Female option for NC_SEX, not a variable name)"
+    - "M (checkbox indicator marker adjacent to Male option for NC_SEX, not a variable name)"
+    - "lacks time (option-label annotation for NC_REASON option 'Lacks the time for study visits'; not a variable)"
+    - "uninterested (option-label annotation for NC_REASON option 'Uninterested in the scientific research'; not a variable)"
+    - "blood volumes (option-label annotation for NC_REASON option 'Deterred by required blood collection'; not a variable)"
+    - "absent (option-label annotation for NC_REASON option 'Wanted permission to participate from someone who was absent'; not a variable)"
+    - "too sick (option-label annotation for NC_REASON option 'Too sick to consent'; not a variable)"
+    - "uncomfortable (option-label annotation for NC_REASON option 'Uncomfortable with presence of study team at the home'; not a variable)"
+    - "sample collection (option-label annotation for NC_REASON option 'Deterred by required sample collection (in general)'; not a variable)"
+    - "no locate (option-label annotation for NC_REASON option 'Unable to locate and meet the participant'; not a variable)"
+    - "other (option-label annotation for NC_REASON option 'Other, specify:'; not a variable)"
+  dataset_columns_unmatched: []
+  excluded_pdf_artifacts:
+    - "05/27/2014 (form version date — excluded per PDF Extraction Boundary)"
+    - "Indo-US VAP Non-Consent Form v1.0 (form version footer — excluded)"
+    - "Page 1 of 1 (page footer — excluded)"
+    - "54389 (artifact-version code in header — excluded)"
+    - "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner — retained as form context heading not as a variable; not excluded but recorded as heading block)"
+    - "1 0 2 - 0 - (printed Particiant ID Number prefix template — excluded as preprinted template, not a variable value)"

@@ -1,0 +1,3738 @@
+schema_version: 2
+policy_status: draft_for_human_review
+study: Indo-VAP
+form: 8_CXR
+source:
+  dataset_file: 8_CXR.xlsx
+  pdf_file: data/raw/Indo-VAP/annotated_pdfs/8 Chest X-Ray v1.0.pdf
+pdf_form_metadata:
+  form_number: Form 8
+  form_title: CHEST X-RAY INTERPRETATION
+  form_version: v1.0
+  page_count: 1
+coverage:
+  column_count: 47
+  columns_mapped: 47
+  pdf_annotation_count: 48
+  pdf_annotation_variables: 22
+  annotated_columns: 22
+  non_annotated_columns:
+    - CXR_QUALAPV
+    - CXR_QUALLV
+    - CXR_QUALPAV
+    - CXR_CXRFIND
+    - CXR_HILAR_R
+    - CXR_HILAR_L
+    - CXR_BRONCHIR
+    - CXR_BRONCHIL
+    - CXR_COLLAPSER
+    - CXR_COLLAPSEL
+    - CXR_Other
+    - CXR_OTHERR
+    - CXR_OTHERL
+    - CXR_other_1
+    - CXR_otherr_1
+    - CXR_otherL_1
+    - CXR_other_2
+    - CXR_other_3
+    - cxr_otherr_2
+    - cxr_otherr_3
+    - cxr_otherL_2
+    - cxr_otherL_3
+    - CXR_SUMSCORE
+    - SUBJID2
+    - Time_Stamp
+  unresolved_review_required:
+    - CXR_CXRNDREAOTH
+    - CXR_QUALAPV
+    - CXR_QUALLV
+    - CXR_QUALPAV
+    - CXR_CXRFIND
+    - CXR_HILAR_R
+    - CXR_HILAR_L
+    - CXR_BRONCHIR
+    - CXR_BRONCHIL
+    - CXR_COLLAPSER
+    - CXR_COLLAPSEL
+    - CXR_Other
+    - CXR_OTHERR
+    - CXR_OTHERL
+    - CXR_other_1
+    - CXR_otherr_1
+    - CXR_otherL_1
+    - CXR_other_2
+    - CXR_other_3
+    - cxr_otherr_2
+    - cxr_otherr_3
+    - cxr_otherL_2
+    - cxr_otherL_3
+    - CXR_SUMSCORE
+    - SUBJID2
+pdf_sections:
+  participant_header:
+    section_label: null
+    fields:
+      - SUBJID
+      - FID
+      - CXR_CXRDAT
+      - CXR_VISIT
+      - SUBJID2
+    visible_text: |
+      Index case ID:
+      1 0 2 0 - -
+      Family ID number:
+      Date of Chest X-ray:
+      / /
+      Day Month Year
+      Visit type: Baseline Month 2 End of Treatment Household Contact TB Activation
+  cxr_performed:
+    section_label: null
+    fields:
+      - CXR_PERF
+      - CXR_CXRNDREA
+      - CXR_CXRNDREAOTH
+    visible_text: |
+      1. Was chest X-ray performed?
+      Yes (Go to Question 2) No
+      Reason: Pregnant Other (specify):
+  cxr_quality:
+    section_label: null
+    fields:
+      - CXR_QUALAPV
+      - CXR_QUALLV
+      - CXR_QUALPAV
+    visible_text: |
+      (No PDF visible text — dataset-only columns whose names suggest CXR view-quality flags; not directly mapped to a visible question on this form version.)
+  cxr_findings:
+    section_label: 2. Chest X-ray findings
+    fields:
+      - CXR_CXRFIND
+      - CXR_OPACRU
+      - CXR_OPACLU
+      - CXR_OPACRM
+      - CXR_OPACLM
+      - CXR_OPACRL
+      - CXR_OPACLL
+      - CXR_ADENOR
+      - CXR_ADENOL
+      - CXR_PLEFR
+      - CXR_PLEFL
+      - CXR_HILAR_R
+      - CXR_HILAR_L
+      - CXR_BRONCHIR
+      - CXR_BRONCHIL
+      - CXR_COLLAPSER
+      - CXR_COLLAPSEL
+      - CXR_Other
+      - CXR_OTHERR
+      - CXR_OTHERL
+      - CXR_other_1
+      - CXR_otherr_1
+      - CXR_otherL_1
+      - CXR_other_2
+      - CXR_other_3
+      - cxr_otherr_2
+      - cxr_otherr_3
+      - cxr_otherL_2
+      - cxr_otherL_3
+    visible_text: |
+      2. Chest X-ray findings
+      Right Left
+      Lung Opacity (Shadows)
+      Upper Zone (Apex to anterior end of 2nd rib)
+      Mid Zone (2nd to 4th rib)
+      Lower Zone (Anterior end of 4th rib to diaphragm)
+      1 Cavitation
+      2 Opacity (Shadows other than cavitation)
+      3 No opacity (no shadows)
+      Mediastinal adenopathy
+      Present Absent
+      Pleural effusion
+      Present Absent
+  cxr_score:
+    section_label: 3. Chest X-ray Score
+    fields:
+      - CXR_CXRSCOR
+      - CXR_CAVIT
+      - CXR_SUMSCORE
+    visible_text: |
+      3. Chest X-ray Score
+      3a. Percentage of lung affected: %
+      3b. Is cavitation present?
+      Yes
+      No
+  completion:
+    section_label: null
+    fields:
+      - CXR_SIGN
+      - CXR_INIT
+      - CXR_COMPDTE
+    visible_text: |
+      Signature of Data Collector:
+      Initials of Data Collector:
+      Date Completed: / /
+      Day Month Year
+  system_metadata:
+    section_label: null
+    fields:
+      - Time_Stamp
+    visible_text: |
+      (No PDF visible text — column derived from dataset capture timestamp.)
+option_sets:
+  yes_no_pdf:
+    source: PDF option text
+    source_text: "Yes No"
+    values:
+      - "Yes"
+      - "No"
+    unknown: true
+  date_dmy_pdf:
+    source: PDF date boxes
+    source_text: "Day Month Year"
+    values:
+      - Day
+      - Month
+      - Year
+    unknown: true
+  cxr_performed_pdf:
+    source: PDF option text
+    source_text: "Yes (Go to Question 2) No"
+    values:
+      - "Yes (Go to Question 2)"
+      - "No"
+    unknown: true
+  cxr_not_performed_reason_pdf:
+    source: PDF option text
+    source_text: "Reason: Pregnant Other (specify):"
+    values:
+      - Pregnant
+      - Other (specify)
+    unknown: true
+  visit_type_pdf:
+    source: PDF option text
+    source_text: |
+      Visit type: Baseline Month 2 End of Treatment Household Contact TB Activation
+    values:
+      - Baseline
+      - Month 2
+      - End of Treatment
+      - Household Contact TB Activation
+    unknown: true
+  lung_opacity_pdf:
+    source: PDF option text
+    source_text: |
+      1 Cavitation
+      2 Opacity (Shadows other than cavitation)
+      3 No opacity (no shadows)
+    values:
+      - 1 Cavitation
+      - 2 Opacity (Shadows other than cavitation)
+      - 3 No opacity (no shadows)
+    unknown: true
+  present_absent_pdf:
+    source: PDF option text
+    source_text: "Present Absent"
+    values:
+      - Present
+      - Absent
+    unknown: true
+pdf_annotation_pages:
+  - page: 1
+    annotations:
+      - SUBJID
+      - FID
+      - CXR_CXRDAT
+      - CXR_VISIT
+      - CXR_PERF
+      - CXR_CXRNDREA
+      - CXR_CXRNDREAOTH
+      - CXR_OPACRU
+      - "1"
+      - "2"
+      - "3"
+      - CXR_OPACLU
+      - "1"
+      - "2"
+      - "3"
+      - CXR_OPACRM
+      - "1"
+      - "2"
+      - "3"
+      - CXR_OPACLM
+      - "1"
+      - "2"
+      - "3"
+      - CXR_OPACRL
+      - "1"
+      - "2"
+      - "3"
+      - CXR_OPACLL
+      - "1"
+      - "2"
+      - "3"
+      - CXR_ADENOR
+      - "1"
+      - "2"
+      - CXR_ADENOL
+      - "1"
+      - "2"
+      - CXR_PLEFR
+      - "1"
+      - "2"
+      - "1"
+      - "2"
+      - CXR_PLEFL
+      - CXR_CXRSCOR
+      - CXR_CAVIT
+      - CXR_SIGN
+      - CXR_INIT
+      - CXR_COMPDTE
+pdf_visible_text:
+  by_page:
+    - page: 1
+      blocks:
+        - type: heading
+          text: CHEST X-RAY INTERPRETATION
+          related_variables: []
+        - type: heading
+          text: |
+            Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis
+            Treatment Failure and Relapse
+          related_variables: []
+        - type: heading
+          text: Form 8
+          related_variables: []
+        - type: instruction
+          text: This questionnaire should be completed for all Index Cases and Household Contacts who develop active TB.
+          related_variables: []
+        - type: question
+          text: "Index case ID:"
+          related_variables:
+            - SUBJID
+        - type: caption
+          text: "1 0 2 0 - -"
+          related_variables:
+            - SUBJID
+        - type: question
+          text: "Family ID number:"
+          related_variables:
+            - FID
+        - type: question
+          text: "Date of Chest X-ray:"
+          related_variables:
+            - CXR_CXRDAT
+        - type: caption
+          text: "/ /"
+          related_variables:
+            - CXR_CXRDAT
+        - type: caption
+          text: "Day Month Year"
+          related_variables:
+            - CXR_CXRDAT
+        - type: question
+          text: "Visit type:"
+          related_variables:
+            - CXR_VISIT
+        - type: option_block
+          text: |
+            Baseline
+            Month 2
+            End of Treatment
+            Household Contact TB Activation
+          related_variables:
+            - CXR_VISIT
+        - type: question
+          text: 1. Was chest X-ray performed?
+          related_variables:
+            - CXR_PERF
+        - type: option_block
+          text: Yes (Go to Question 2) No
+          related_variables:
+            - CXR_PERF
+        - type: question
+          text: "Reason:"
+          related_variables:
+            - CXR_CXRNDREA
+            - CXR_CXRNDREAOTH
+        - type: option_block
+          text: "Pregnant Other (specify):"
+          related_variables:
+            - CXR_CXRNDREA
+            - CXR_CXRNDREAOTH
+        - type: section_label
+          text: 2. Chest X-ray findings
+          related_variables:
+            - CXR_OPACRU
+            - CXR_OPACLU
+            - CXR_OPACRM
+            - CXR_OPACLM
+            - CXR_OPACRL
+            - CXR_OPACLL
+            - CXR_ADENOR
+            - CXR_ADENOL
+            - CXR_PLEFR
+            - CXR_PLEFL
+        - type: caption
+          text: Right Left
+          related_variables:
+            - CXR_OPACRU
+            - CXR_OPACLU
+            - CXR_OPACRM
+            - CXR_OPACLM
+            - CXR_OPACRL
+            - CXR_OPACLL
+            - CXR_ADENOR
+            - CXR_ADENOL
+            - CXR_PLEFR
+            - CXR_PLEFL
+        - type: caption
+          text: Lung Opacity (Shadows)
+          related_variables:
+            - CXR_OPACRU
+            - CXR_OPACLU
+            - CXR_OPACRM
+            - CXR_OPACLM
+            - CXR_OPACRL
+            - CXR_OPACLL
+        - type: caption
+          text: Upper Zone (Apex to anterior end of 2nd rib)
+          related_variables:
+            - CXR_OPACRU
+            - CXR_OPACLU
+        - type: option_block
+          text: |
+            1 Cavitation
+            2 Opacity (Shadows other than cavitation)
+            3 No opacity (no shadows)
+          related_variables:
+            - CXR_OPACRU
+            - CXR_OPACLU
+        - type: caption
+          text: Mid Zone (2nd to 4th rib)
+          related_variables:
+            - CXR_OPACRM
+            - CXR_OPACLM
+        - type: option_block
+          text: |
+            1 Cavitation
+            2 Opacity (Shadows other than cavitation)
+            3 No opacity (no shadows)
+          related_variables:
+            - CXR_OPACRM
+            - CXR_OPACLM
+        - type: caption
+          text: Lower Zone (Anterior end of 4th rib to diaphragm)
+          related_variables:
+            - CXR_OPACRL
+            - CXR_OPACLL
+        - type: option_block
+          text: |
+            1 Cavitation
+            2 Opacity (Shadows other than cavitation)
+            3 No opacity (no shadows)
+          related_variables:
+            - CXR_OPACRL
+            - CXR_OPACLL
+        - type: caption
+          text: Mediastinal adenopathy
+          related_variables:
+            - CXR_ADENOR
+            - CXR_ADENOL
+        - type: option_block
+          text: Present Absent
+          related_variables:
+            - CXR_ADENOR
+            - CXR_ADENOL
+        - type: caption
+          text: Pleural effusion
+          related_variables:
+            - CXR_PLEFR
+            - CXR_PLEFL
+        - type: option_block
+          text: Present Absent
+          related_variables:
+            - CXR_PLEFR
+            - CXR_PLEFL
+        - type: section_label
+          text: 3. Chest X-ray Score
+          related_variables:
+            - CXR_CXRSCOR
+            - CXR_CAVIT
+        - type: question
+          text: "3a. Percentage of lung affected:"
+          related_variables:
+            - CXR_CXRSCOR
+        - type: caption
+          text: "%"
+          related_variables:
+            - CXR_CXRSCOR
+        - type: question
+          text: 3b. Is cavitation present?
+          related_variables:
+            - CXR_CAVIT
+        - type: option_block
+          text: |
+            Yes
+            No
+          related_variables:
+            - CXR_CAVIT
+        - type: question
+          text: "Signature of Data Collector:"
+          related_variables:
+            - CXR_SIGN
+        - type: question
+          text: "Initials of Data Collector:"
+          related_variables:
+            - CXR_INIT
+        - type: question
+          text: "Date Completed: / /"
+          related_variables:
+            - CXR_COMPDTE
+        - type: caption
+          text: "Day Month Year"
+          related_variables:
+            - CXR_COMPDTE
+  questions:
+    - id: q_index_case_id
+      page: 1
+      exact_wording: "Index case ID:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: "Adjacent caption text '1 0 2 0 - -' appears as an index-case-ID layout/template marker on the form."
+      related_variables:
+        - SUBJID
+    - id: q_family_id
+      page: 1
+      exact_wording: "Family ID number:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FID
+    - id: q_cxr_date
+      page: 1
+      exact_wording: "Date of Chest X-ray:"
+      section: participant_header
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - CXR_CXRDAT
+    - id: q_visit_type
+      page: 1
+      exact_wording: "Visit type:"
+      section: participant_header
+      options_ref: visit_type_pdf
+      units: null
+      skip_logic: null
+      notes: "Visit categories: Baseline, Month 2, End of Treatment, Household Contact TB Activation."
+      related_variables:
+        - CXR_VISIT
+    - id: q1
+      page: 1
+      exact_wording: 1. Was chest X-ray performed?
+      section: cxr_performed
+      options_ref: cxr_performed_pdf
+      units: null
+      skip_logic: "Yes (Go to Question 2)."
+      notes: Branching question; Yes proceeds to Question 2; No requires the reason capture.
+      related_variables:
+        - CXR_PERF
+    - id: q1_reason
+      page: 1
+      exact_wording: "Reason: Pregnant Other (specify):"
+      section: cxr_performed
+      options_ref: cxr_not_performed_reason_pdf
+      units: null
+      skip_logic: null
+      notes: "'Other (specify):' implies a free-text answer captured by CXR_CXRNDREAOTH."
+      related_variables:
+        - CXR_CXRNDREA
+        - CXR_CXRNDREAOTH
+    - id: q2_findings
+      page: 1
+      exact_wording: 2. Chest X-ray findings
+      section: cxr_findings
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: "Compound findings grid covering Lung Opacity (Right/Left × Upper/Mid/Lower zones), Mediastinal adenopathy, and Pleural effusion."
+      related_variables:
+        - CXR_OPACRU
+        - CXR_OPACLU
+        - CXR_OPACRM
+        - CXR_OPACLM
+        - CXR_OPACRL
+        - CXR_OPACLL
+        - CXR_ADENOR
+        - CXR_ADENOL
+        - CXR_PLEFR
+        - CXR_PLEFL
+    - id: q2_opacity_upper
+      page: 1
+      exact_wording: "Upper Zone (Apex to anterior end of 2nd rib): 1 Cavitation 2 Opacity (Shadows other than cavitation) 3 No opacity (no shadows)"
+      section: cxr_findings
+      options_ref: lung_opacity_pdf
+      units: null
+      skip_logic: null
+      notes: "Upper-zone Lung Opacity row; Right column → CXR_OPACRU, Left column → CXR_OPACLU."
+      related_variables:
+        - CXR_OPACRU
+        - CXR_OPACLU
+    - id: q2_opacity_mid
+      page: 1
+      exact_wording: "Mid Zone (2nd to 4th rib): 1 Cavitation 2 Opacity (Shadows other than cavitation) 3 No opacity (no shadows)"
+      section: cxr_findings
+      options_ref: lung_opacity_pdf
+      units: null
+      skip_logic: null
+      notes: "Mid-zone Lung Opacity row; Right column → CXR_OPACRM, Left column → CXR_OPACLM."
+      related_variables:
+        - CXR_OPACRM
+        - CXR_OPACLM
+    - id: q2_opacity_lower
+      page: 1
+      exact_wording: "Lower Zone (Anterior end of 4th rib to diaphragm): 1 Cavitation 2 Opacity (Shadows other than cavitation) 3 No opacity (no shadows)"
+      section: cxr_findings
+      options_ref: lung_opacity_pdf
+      units: null
+      skip_logic: null
+      notes: "Lower-zone Lung Opacity row; Right column → CXR_OPACRL, Left column → CXR_OPACLL."
+      related_variables:
+        - CXR_OPACRL
+        - CXR_OPACLL
+    - id: q2_adenopathy
+      page: 1
+      exact_wording: "Mediastinal adenopathy: Present Absent"
+      section: cxr_findings
+      options_ref: present_absent_pdf
+      units: null
+      skip_logic: null
+      notes: "Mediastinal adenopathy row; Right column → CXR_ADENOR, Left column → CXR_ADENOL."
+      related_variables:
+        - CXR_ADENOR
+        - CXR_ADENOL
+    - id: q2_pleural_effusion
+      page: 1
+      exact_wording: "Pleural effusion: Present Absent"
+      section: cxr_findings
+      options_ref: present_absent_pdf
+      units: null
+      skip_logic: null
+      notes: "Pleural effusion row; Right column → CXR_PLEFR, Left column → CXR_PLEFL."
+      related_variables:
+        - CXR_PLEFR
+        - CXR_PLEFL
+    - id: q3a_percent_lung_affected
+      page: 1
+      exact_wording: "3a. Percentage of lung affected: %"
+      section: cxr_score
+      options_ref: null
+      units: "%"
+      skip_logic: null
+      notes: Numeric percentage of lung affected.
+      related_variables:
+        - CXR_CXRSCOR
+    - id: q3b_cavitation_present
+      page: 1
+      exact_wording: 3b. Is cavitation present?
+      section: cxr_score
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - CXR_CAVIT
+    - id: q_signature
+      page: 1
+      exact_wording: "Signature of Data Collector:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - CXR_SIGN
+    - id: q_initials
+      page: 1
+      exact_wording: "Initials of Data Collector:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - CXR_INIT
+    - id: q_date_completed
+      page: 1
+      exact_wording: "Date Completed: / /"
+      section: completion
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - CXR_COMPDTE
+evidence_packs:
+  by_variable:
+    SUBJID:
+      exact_pdf_wording: "Index case ID:"
+      pdf_annotation: SUBJID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FID:
+      exact_pdf_wording: "Family ID number:"
+      pdf_annotation: FID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_CXRDAT:
+      exact_pdf_wording: "Date of Chest X-ray:"
+      pdf_annotation: CXR_CXRDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_VISIT:
+      exact_pdf_wording: "Visit type:"
+      pdf_annotation: CXR_VISIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_PERF:
+      exact_pdf_wording: 1. Was chest X-ray performed?
+      pdf_annotation: CXR_PERF
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_CXRNDREA:
+      exact_pdf_wording: "Reason: Pregnant Other (specify):"
+      pdf_annotation: CXR_CXRNDREA
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_CXRNDREAOTH:
+      exact_pdf_wording: "Other (specify):"
+      pdf_annotation: CXR_CXRNDREAOTH
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_QUALAPV:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_QUALLV:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_QUALPAV:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_CXRFIND:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_OPACRU:
+      exact_pdf_wording: "Upper Zone (Apex to anterior end of 2nd rib): 1 Cavitation 2 Opacity (Shadows other than cavitation) 3 No opacity (no shadows)"
+      pdf_annotation: CXR_OPACRU
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_OPACLU:
+      exact_pdf_wording: "Upper Zone (Apex to anterior end of 2nd rib): 1 Cavitation 2 Opacity (Shadows other than cavitation) 3 No opacity (no shadows)"
+      pdf_annotation: CXR_OPACLU
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_OPACRM:
+      exact_pdf_wording: "Mid Zone (2nd to 4th rib): 1 Cavitation 2 Opacity (Shadows other than cavitation) 3 No opacity (no shadows)"
+      pdf_annotation: CXR_OPACRM
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_OPACLM:
+      exact_pdf_wording: "Mid Zone (2nd to 4th rib): 1 Cavitation 2 Opacity (Shadows other than cavitation) 3 No opacity (no shadows)"
+      pdf_annotation: CXR_OPACLM
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_OPACRL:
+      exact_pdf_wording: "Lower Zone (Anterior end of 4th rib to diaphragm): 1 Cavitation 2 Opacity (Shadows other than cavitation) 3 No opacity (no shadows)"
+      pdf_annotation: CXR_OPACRL
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_OPACLL:
+      exact_pdf_wording: "Lower Zone (Anterior end of 4th rib to diaphragm): 1 Cavitation 2 Opacity (Shadows other than cavitation) 3 No opacity (no shadows)"
+      pdf_annotation: CXR_OPACLL
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_ADENOR:
+      exact_pdf_wording: "Mediastinal adenopathy: Present Absent"
+      pdf_annotation: CXR_ADENOR
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_ADENOL:
+      exact_pdf_wording: "Mediastinal adenopathy: Present Absent"
+      pdf_annotation: CXR_ADENOL
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_PLEFR:
+      exact_pdf_wording: "Pleural effusion: Present Absent"
+      pdf_annotation: CXR_PLEFR
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_PLEFL:
+      exact_pdf_wording: "Pleural effusion: Present Absent"
+      pdf_annotation: CXR_PLEFL
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_HILAR_R:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_HILAR_L:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_BRONCHIR:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_BRONCHIL:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_COLLAPSER:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_COLLAPSEL:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_Other:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_OTHERR:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_OTHERL:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_other_1:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_otherr_1:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_otherL_1:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_other_2:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_other_3:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    cxr_otherr_2:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    cxr_otherr_3:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    cxr_otherL_2:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    cxr_otherL_3:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_CXRSCOR:
+      exact_pdf_wording: "3a. Percentage of lung affected: %"
+      pdf_annotation: CXR_CXRSCOR
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_CAVIT:
+      exact_pdf_wording: 3b. Is cavitation present?
+      pdf_annotation: CXR_CAVIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_SUMSCORE:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CXR_SIGN:
+      exact_pdf_wording: "Signature of Data Collector:"
+      pdf_annotation: CXR_SIGN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_INIT:
+      exact_pdf_wording: "Initials of Data Collector:"
+      pdf_annotation: CXR_INIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CXR_COMPDTE:
+      exact_pdf_wording: "Date Completed: / /"
+      pdf_annotation: CXR_COMPDTE
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    SUBJID2:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    Time_Stamp:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+catalog_refs:
+  by_variable:
+    SUBJID:
+      display_label: Index Case ID
+      normalized_meaning: Pseudonymized identifier for the index case (study participant) referenced by the chest X-ray.
+      search_terms:
+        - SUBJID
+        - Index case ID
+        - participant id
+        - subject id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FID:
+      display_label: Family ID
+      normalized_meaning: Pseudonymized family/household identifier linking participants in the same household.
+      search_terms:
+        - FID
+        - Family ID number
+        - family id
+        - household id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_CXRDAT:
+      display_label: Date of Chest X-ray
+      normalized_meaning: Date the chest X-ray was performed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - CXR_CXRDAT
+        - Date of Chest X-ray
+        - chest x-ray date
+        - CXR date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_VISIT:
+      display_label: Visit Type
+      normalized_meaning: Visit category for the chest X-ray (Baseline, Month 2, End of Treatment, Household Contact TB Activation).
+      search_terms:
+        - CXR_VISIT
+        - Visit type
+        - visit category
+        - Baseline
+        - Month 2
+        - End of Treatment
+        - Household Contact TB Activation
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_PERF:
+      display_label: Chest X-ray Performed
+      normalized_meaning: Whether a chest X-ray was performed (Yes/No); Yes proceeds to Question 2, No requires a reason.
+      search_terms:
+        - CXR_PERF
+        - chest x-ray performed
+        - Was chest X-ray performed
+        - CXR performed
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_CXRNDREA:
+      display_label: CXR Not Performed Reason
+      normalized_meaning: Reason the chest X-ray was not performed (Pregnant or Other (specify)).
+      search_terms:
+        - CXR_CXRNDREA
+        - reason
+        - chest x-ray reason
+        - Pregnant
+        - Other (specify)
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_CXRNDREAOTH:
+      display_label: CXR Not Performed — Other Reason
+      normalized_meaning: Free-text reason captured when "Other (specify)" is selected for why the chest X-ray was not performed.
+      search_terms:
+        - CXR_CXRNDREAOTH
+        - Other (specify)
+        - CXR not performed other
+        - chest x-ray reason other
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_QUALAPV:
+      display_label: CXR Quality — AP View (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests an AP-view chest X-ray quality flag; not visible on this form version and pending review.
+      search_terms:
+        - CXR_QUALAPV
+        - CXR quality
+        - AP view
+        - chest x-ray quality
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_QUALLV:
+      display_label: CXR Quality — Lateral View (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a lateral-view chest X-ray quality flag; not visible on this form version and pending review.
+      search_terms:
+        - CXR_QUALLV
+        - CXR quality
+        - lateral view
+        - chest x-ray quality
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_QUALPAV:
+      display_label: CXR Quality — PA View (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a PA-view chest X-ray quality flag; not visible on this form version and pending review.
+      search_terms:
+        - CXR_QUALPAV
+        - CXR quality
+        - PA view
+        - chest x-ray quality
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_CXRFIND:
+      display_label: CXR Findings (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a chest X-ray findings indicator; not directly mapped to a visible PDF question on this form version and pending review.
+      search_terms:
+        - CXR_CXRFIND
+        - CXR findings
+        - chest x-ray findings
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_OPACRU:
+      display_label: Lung Opacity — Right Upper Zone
+      normalized_meaning: Lung opacity finding for the right upper zone (Apex to anterior end of 2nd rib); coded 1 Cavitation, 2 Opacity (Shadows other than cavitation), 3 No opacity (no shadows).
+      search_terms:
+        - CXR_OPACRU
+        - Lung Opacity
+        - Upper Zone
+        - Right
+        - Cavitation
+        - Opacity
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_OPACLU:
+      display_label: Lung Opacity — Left Upper Zone
+      normalized_meaning: Lung opacity finding for the left upper zone (Apex to anterior end of 2nd rib); coded 1 Cavitation, 2 Opacity (Shadows other than cavitation), 3 No opacity (no shadows).
+      search_terms:
+        - CXR_OPACLU
+        - Lung Opacity
+        - Upper Zone
+        - Left
+        - Cavitation
+        - Opacity
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_OPACRM:
+      display_label: Lung Opacity — Right Mid Zone
+      normalized_meaning: Lung opacity finding for the right mid zone (2nd to 4th rib); coded 1 Cavitation, 2 Opacity (Shadows other than cavitation), 3 No opacity (no shadows).
+      search_terms:
+        - CXR_OPACRM
+        - Lung Opacity
+        - Mid Zone
+        - Right
+        - Cavitation
+        - Opacity
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_OPACLM:
+      display_label: Lung Opacity — Left Mid Zone
+      normalized_meaning: Lung opacity finding for the left mid zone (2nd to 4th rib); coded 1 Cavitation, 2 Opacity (Shadows other than cavitation), 3 No opacity (no shadows).
+      search_terms:
+        - CXR_OPACLM
+        - Lung Opacity
+        - Mid Zone
+        - Left
+        - Cavitation
+        - Opacity
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_OPACRL:
+      display_label: Lung Opacity — Right Lower Zone
+      normalized_meaning: Lung opacity finding for the right lower zone (Anterior end of 4th rib to diaphragm); coded 1 Cavitation, 2 Opacity (Shadows other than cavitation), 3 No opacity (no shadows).
+      search_terms:
+        - CXR_OPACRL
+        - Lung Opacity
+        - Lower Zone
+        - Right
+        - Cavitation
+        - Opacity
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_OPACLL:
+      display_label: Lung Opacity — Left Lower Zone
+      normalized_meaning: Lung opacity finding for the left lower zone (Anterior end of 4th rib to diaphragm); coded 1 Cavitation, 2 Opacity (Shadows other than cavitation), 3 No opacity (no shadows).
+      search_terms:
+        - CXR_OPACLL
+        - Lung Opacity
+        - Lower Zone
+        - Left
+        - Cavitation
+        - Opacity
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_ADENOR:
+      display_label: Mediastinal Adenopathy — Right
+      normalized_meaning: Mediastinal adenopathy on the right side (Present/Absent).
+      search_terms:
+        - CXR_ADENOR
+        - Mediastinal adenopathy
+        - adenopathy right
+        - Present
+        - Absent
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_ADENOL:
+      display_label: Mediastinal Adenopathy — Left
+      normalized_meaning: Mediastinal adenopathy on the left side (Present/Absent).
+      search_terms:
+        - CXR_ADENOL
+        - Mediastinal adenopathy
+        - adenopathy left
+        - Present
+        - Absent
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_PLEFR:
+      display_label: Pleural Effusion — Right
+      normalized_meaning: Pleural effusion on the right side (Present/Absent).
+      search_terms:
+        - CXR_PLEFR
+        - Pleural effusion
+        - effusion right
+        - Present
+        - Absent
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_PLEFL:
+      display_label: Pleural Effusion — Left
+      normalized_meaning: Pleural effusion on the left side (Present/Absent).
+      search_terms:
+        - CXR_PLEFL
+        - Pleural effusion
+        - effusion left
+        - Present
+        - Absent
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_HILAR_R:
+      display_label: Hilar Finding — Right (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a right-side hilar finding; not visible on this form version and pending review.
+      search_terms:
+        - CXR_HILAR_R
+        - hilar
+        - hilar right
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_HILAR_L:
+      display_label: Hilar Finding — Left (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a left-side hilar finding; not visible on this form version and pending review.
+      search_terms:
+        - CXR_HILAR_L
+        - hilar
+        - hilar left
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_BRONCHIR:
+      display_label: Bronchial Finding — Right (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a right-side bronchial finding (e.g., bronchiectasis); not visible on this form version and pending review.
+      search_terms:
+        - CXR_BRONCHIR
+        - bronchial
+        - bronchiectasis right
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_BRONCHIL:
+      display_label: Bronchial Finding — Left (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a left-side bronchial finding (e.g., bronchiectasis); not visible on this form version and pending review.
+      search_terms:
+        - CXR_BRONCHIL
+        - bronchial
+        - bronchiectasis left
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_COLLAPSER:
+      display_label: Collapse — Right (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a right-side lung collapse finding; not visible on this form version and pending review.
+      search_terms:
+        - CXR_COLLAPSER
+        - collapse
+        - lung collapse right
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_COLLAPSEL:
+      display_label: Collapse — Left (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a left-side lung collapse finding; not visible on this form version and pending review.
+      search_terms:
+        - CXR_COLLAPSEL
+        - collapse
+        - lung collapse left
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_Other:
+      display_label: Other Finding (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests an other-finding capture; not visible on this form version and pending review.
+      search_terms:
+        - CXR_Other
+        - other finding
+        - other CXR finding
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_OTHERR:
+      display_label: Other Finding — Right (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a right-side other-finding capture; not visible on this form version and pending review.
+      search_terms:
+        - CXR_OTHERR
+        - other finding right
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_OTHERL:
+      display_label: Other Finding — Left (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a left-side other-finding capture; not visible on this form version and pending review.
+      search_terms:
+        - CXR_OTHERL
+        - other finding left
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_other_1:
+      display_label: Other Finding — Variant 1 (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests an other-finding free-text or supplemental capture (variant 1); not visible on this form version and pending review.
+      search_terms:
+        - CXR_other_1
+        - other finding 1
+        - other variant
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_otherr_1:
+      display_label: Other Finding — Right Variant 1 (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a right-side other-finding free-text or supplemental capture (variant 1); not visible on this form version and pending review.
+      search_terms:
+        - CXR_otherr_1
+        - other finding right 1
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_otherL_1:
+      display_label: Other Finding — Left Variant 1 (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a left-side other-finding free-text or supplemental capture (variant 1); not visible on this form version and pending review.
+      search_terms:
+        - CXR_otherL_1
+        - other finding left 1
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_other_2:
+      display_label: Other Finding — Variant 2 (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests an other-finding free-text or supplemental capture (variant 2); not visible on this form version and pending review.
+      search_terms:
+        - CXR_other_2
+        - other finding 2
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_other_3:
+      display_label: Other Finding — Variant 3 (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests an other-finding free-text or supplemental capture (variant 3); not visible on this form version and pending review.
+      search_terms:
+        - CXR_other_3
+        - other finding 3
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    cxr_otherr_2:
+      display_label: Other Finding — Right Variant 2 (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a right-side other-finding free-text or supplemental capture (variant 2); not visible on this form version and pending review.
+      search_terms:
+        - cxr_otherr_2
+        - other finding right 2
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    cxr_otherr_3:
+      display_label: Other Finding — Right Variant 3 (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a right-side other-finding free-text or supplemental capture (variant 3); not visible on this form version and pending review.
+      search_terms:
+        - cxr_otherr_3
+        - other finding right 3
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    cxr_otherL_2:
+      display_label: Other Finding — Left Variant 2 (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a left-side other-finding free-text or supplemental capture (variant 2); not visible on this form version and pending review.
+      search_terms:
+        - cxr_otherL_2
+        - other finding left 2
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    cxr_otherL_3:
+      display_label: Other Finding — Left Variant 3 (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a left-side other-finding free-text or supplemental capture (variant 3); not visible on this form version and pending review.
+      search_terms:
+        - cxr_otherL_3
+        - other finding left 3
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_CXRSCOR:
+      display_label: CXR Score — Percentage of Lung Affected
+      normalized_meaning: Numeric percentage of lung affected (Question 3a).
+      search_terms:
+        - CXR_CXRSCOR
+        - Percentage of lung affected
+        - chest x-ray score
+        - CXR score
+        - percent lung affected
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_CAVIT:
+      display_label: Cavitation Present
+      normalized_meaning: Whether cavitation is present on the chest X-ray (Yes/No) — Question 3b.
+      search_terms:
+        - CXR_CAVIT
+        - cavitation
+        - Is cavitation present
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CXR_SUMSCORE:
+      display_label: CXR Summary Score (Pending Review)
+      normalized_meaning: Dataset-only column whose name suggests a summary chest X-ray score; not visible on this form version and pending review.
+      search_terms:
+        - CXR_SUMSCORE
+        - sum score
+        - summary score
+        - chest x-ray summary score
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CXR_SIGN:
+      display_label: Data Collector Signature
+      normalized_meaning: Signature of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - CXR_SIGN
+        - Signature of Data Collector
+        - signature
+      catalog_tier: source_only
+      analysis_queryable: false
+    CXR_INIT:
+      display_label: Data Collector Initials
+      normalized_meaning: Initials of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - CXR_INIT
+        - Initials of Data Collector
+        - data collector initials
+      catalog_tier: source_only
+      analysis_queryable: false
+    CXR_COMPDTE:
+      display_label: Form Completion Date
+      normalized_meaning: Date the form was completed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - CXR_COMPDTE
+        - Date Completed
+        - form completion date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    SUBJID2:
+      display_label: Index Case ID (Duplicate Candidate)
+      normalized_meaning: Dataset-only duplicate-candidate column for the index-case identifier; not visible on the PDF and pending cleanup verification.
+      search_terms:
+        - SUBJID2
+        - duplicate subject id
+        - duplicate index case id
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    Time_Stamp:
+      display_label: Capture Timestamp
+      normalized_meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      search_terms:
+        - Time_Stamp
+        - timestamp
+        - capture timestamp
+      catalog_tier: source_only
+      analysis_queryable: false
+ledger_expectations:
+  phi_handling:
+    - SUBJID
+    - FID
+    - CXR_CXRDAT
+    - CXR_CXRNDREAOTH
+    - CXR_QUALAPV
+    - CXR_QUALLV
+    - CXR_QUALPAV
+    - CXR_CXRFIND
+    - CXR_HILAR_R
+    - CXR_HILAR_L
+    - CXR_BRONCHIR
+    - CXR_BRONCHIL
+    - CXR_COLLAPSER
+    - CXR_COLLAPSEL
+    - CXR_Other
+    - CXR_OTHERR
+    - CXR_OTHERL
+    - CXR_other_1
+    - CXR_otherr_1
+    - CXR_otherL_1
+    - CXR_other_2
+    - CXR_other_3
+    - cxr_otherr_2
+    - cxr_otherr_3
+    - cxr_otherL_2
+    - cxr_otherL_3
+    - CXR_SUMSCORE
+    - CXR_SIGN
+    - CXR_INIT
+    - CXR_COMPDTE
+    - SUBJID2
+  dataset_cleanup:
+    - SUBJID2
+    - Time_Stamp
+variables:
+  SUBJID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Index case ID:"
+      pdf_annotation: SUBJID
+      column_name: SUBJID
+    normalized_metadata:
+      display_label: Index Case ID
+      meaning: Pseudonymized identifier for the index case (study participant) referenced by the chest X-ray.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  FID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Family ID number:"
+      pdf_annotation: FID
+      column_name: FID
+    normalized_metadata:
+      display_label: Family ID
+      meaning: Pseudonymized family/household identifier linking participants in the same household.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: family_or_household_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: family_or_household_identifier
+      label: FAM
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  CXR_CXRDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date of Chest X-ray:"
+      pdf_annotation: CXR_CXRDAT
+      column_name: CXR_CXRDAT
+    normalized_metadata:
+      display_label: Date of Chest X-ray
+      meaning: Date the chest X-ray was performed.
+      section: participant_header
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  CXR_VISIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Visit type:"
+      pdf_annotation: CXR_VISIT
+      column_name: CXR_VISIT
+    normalized_metadata:
+      display_label: Visit Type
+      meaning: Visit category — selects among Baseline, Month 2, End of Treatment, or Household Contact TB Activation.
+      section: participant_header
+      data_type: categorical
+      options_ref: visit_type_pdf
+    options:
+      source_defined:
+        - Baseline
+        - Month 2
+        - End of Treatment
+        - Household Contact TB Activation
+      values:
+        - Baseline
+        - Month 2
+        - End of Treatment
+        - Household Contact TB Activation
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CXR_PERF:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 1. Was chest X-ray performed?
+      pdf_annotation: CXR_PERF
+      column_name: CXR_PERF
+    normalized_metadata:
+      display_label: Chest X-ray Performed
+      meaning: Whether a chest X-ray was performed; Yes (Go to Question 2) or No (capture reason).
+      section: cxr_performed
+      data_type: categorical
+      options_ref: cxr_performed_pdf
+    options:
+      source_defined:
+        - "Yes (Go to Question 2)"
+        - "No"
+      values:
+        - "Yes (Go to Question 2)"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - CXR_CXRNDREA
+        - CXR_CXRNDREAOTH
+      skip_logic: "Yes (Go to Question 2)."
+      visit_grouping: null
+      section_grouping: cxr_performed
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CXR_CXRNDREA:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Reason: Pregnant Other (specify):"
+      pdf_annotation: CXR_CXRNDREA
+      column_name: CXR_CXRNDREA
+    normalized_metadata:
+      display_label: CXR Not Performed Reason
+      meaning: Reason the chest X-ray was not performed (Pregnant or Other (specify)).
+      section: cxr_performed
+      data_type: categorical
+      options_ref: cxr_not_performed_reason_pdf
+    options:
+      source_defined:
+        - Pregnant
+        - Other (specify)
+      values:
+        - Pregnant
+        - Other (specify)
+      unknown: true
+    relationships:
+      parent: CXR_PERF
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_performed
+      other_specify: CXR_CXRNDREAOTH
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CXR_CXRNDREAOTH:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Other (specify):"
+      pdf_annotation: CXR_CXRNDREAOTH
+      column_name: CXR_CXRNDREAOTH
+    normalized_metadata:
+      display_label: CXR Not Performed — Other Reason
+      meaning: Free-text reason captured when "Other (specify)" is selected for why the chest X-ray was not performed.
+      section: cxr_performed
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: CXR_CXRNDREA
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_performed
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: 'Is the free-text "Other (specify)" content for CXR_CXRNDREAOTH allowed in the PHI-handled dataset, or should it be dropped/redacted?'
+    clean_output_presence: absent
+  CXR_QUALAPV:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_QUALAPV
+    normalized_metadata:
+      display_label: CXR Quality — AP View
+      meaning: Dataset-only column whose name suggests an AP-view chest X-ray quality flag. No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_quality
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_quality
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: "Column CXR_QUALAPV has no PDF annotation and no directly matching visible question. The name suggests 'CXR Quality — AP View'. Confirm what CXR_QUALAPV captures and whether it should be kept, generalized, or dropped."
+    clean_output_presence: present
+  CXR_QUALLV:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_QUALLV
+    normalized_metadata:
+      display_label: CXR Quality — Lateral View
+      meaning: Dataset-only column whose name suggests a lateral-view chest X-ray quality flag. No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_quality
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_quality
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: "Column CXR_QUALLV has no PDF annotation and no directly matching visible question. The name suggests 'CXR Quality — Lateral View'. Confirm what CXR_QUALLV captures and whether it should be kept, generalized, or dropped."
+    clean_output_presence: present
+  CXR_QUALPAV:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_QUALPAV
+    normalized_metadata:
+      display_label: CXR Quality — PA View
+      meaning: Dataset-only column whose name suggests a PA-view chest X-ray quality flag. No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_quality
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_quality
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: "Column CXR_QUALPAV has no PDF annotation and no directly matching visible question. The name suggests 'CXR Quality — PA View'. Confirm what CXR_QUALPAV captures and whether it should be kept, generalized, or dropped."
+    clean_output_presence: present
+  CXR_CXRFIND:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_CXRFIND
+    normalized_metadata:
+      display_label: CXR Findings Indicator
+      meaning: Dataset-only column whose name suggests a chest X-ray findings indicator. No PDF annotation or directly visible question maps to this column; the related "2. Chest X-ray findings" section header on the form is bound to the per-zone opacity, adenopathy, and effusion variables, not directly to CXR_CXRFIND.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: "Column CXR_CXRFIND has no PDF annotation and no directly matching visible question. The name suggests a CXR findings indicator (e.g., any abnormal finding present). Confirm what CXR_CXRFIND captures and whether it should be kept, generalized, or dropped."
+    clean_output_presence: present
+  CXR_OPACRU:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Upper Zone (Apex to anterior end of 2nd rib): 1 Cavitation 2 Opacity (Shadows other than cavitation) 3 No opacity (no shadows)"
+      pdf_annotation: CXR_OPACRU
+      column_name: CXR_OPACRU
+    normalized_metadata:
+      display_label: Lung Opacity — Right Upper Zone
+      meaning: Lung opacity finding for the right upper zone (Apex to anterior end of 2nd rib).
+      section: cxr_findings
+      data_type: categorical
+      options_ref: lung_opacity_pdf
+    options:
+      source_defined:
+        - 1 Cavitation
+        - 2 Opacity (Shadows other than cavitation)
+        - 3 No opacity (no shadows)
+      values:
+        - 1 Cavitation
+        - 2 Opacity (Shadows other than cavitation)
+        - 3 No opacity (no shadows)
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CXR_OPACLU:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Upper Zone (Apex to anterior end of 2nd rib): 1 Cavitation 2 Opacity (Shadows other than cavitation) 3 No opacity (no shadows)"
+      pdf_annotation: CXR_OPACLU
+      column_name: CXR_OPACLU
+    normalized_metadata:
+      display_label: Lung Opacity — Left Upper Zone
+      meaning: Lung opacity finding for the left upper zone (Apex to anterior end of 2nd rib).
+      section: cxr_findings
+      data_type: categorical
+      options_ref: lung_opacity_pdf
+    options:
+      source_defined:
+        - 1 Cavitation
+        - 2 Opacity (Shadows other than cavitation)
+        - 3 No opacity (no shadows)
+      values:
+        - 1 Cavitation
+        - 2 Opacity (Shadows other than cavitation)
+        - 3 No opacity (no shadows)
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CXR_OPACRM:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Mid Zone (2nd to 4th rib): 1 Cavitation 2 Opacity (Shadows other than cavitation) 3 No opacity (no shadows)"
+      pdf_annotation: CXR_OPACRM
+      column_name: CXR_OPACRM
+    normalized_metadata:
+      display_label: Lung Opacity — Right Mid Zone
+      meaning: Lung opacity finding for the right mid zone (2nd to 4th rib).
+      section: cxr_findings
+      data_type: categorical
+      options_ref: lung_opacity_pdf
+    options:
+      source_defined:
+        - 1 Cavitation
+        - 2 Opacity (Shadows other than cavitation)
+        - 3 No opacity (no shadows)
+      values:
+        - 1 Cavitation
+        - 2 Opacity (Shadows other than cavitation)
+        - 3 No opacity (no shadows)
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CXR_OPACLM:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Mid Zone (2nd to 4th rib): 1 Cavitation 2 Opacity (Shadows other than cavitation) 3 No opacity (no shadows)"
+      pdf_annotation: CXR_OPACLM
+      column_name: CXR_OPACLM
+    normalized_metadata:
+      display_label: Lung Opacity — Left Mid Zone
+      meaning: Lung opacity finding for the left mid zone (2nd to 4th rib).
+      section: cxr_findings
+      data_type: categorical
+      options_ref: lung_opacity_pdf
+    options:
+      source_defined:
+        - 1 Cavitation
+        - 2 Opacity (Shadows other than cavitation)
+        - 3 No opacity (no shadows)
+      values:
+        - 1 Cavitation
+        - 2 Opacity (Shadows other than cavitation)
+        - 3 No opacity (no shadows)
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CXR_OPACRL:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Lower Zone (Anterior end of 4th rib to diaphragm): 1 Cavitation 2 Opacity (Shadows other than cavitation) 3 No opacity (no shadows)"
+      pdf_annotation: CXR_OPACRL
+      column_name: CXR_OPACRL
+    normalized_metadata:
+      display_label: Lung Opacity — Right Lower Zone
+      meaning: Lung opacity finding for the right lower zone (Anterior end of 4th rib to diaphragm).
+      section: cxr_findings
+      data_type: categorical
+      options_ref: lung_opacity_pdf
+    options:
+      source_defined:
+        - 1 Cavitation
+        - 2 Opacity (Shadows other than cavitation)
+        - 3 No opacity (no shadows)
+      values:
+        - 1 Cavitation
+        - 2 Opacity (Shadows other than cavitation)
+        - 3 No opacity (no shadows)
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CXR_OPACLL:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Lower Zone (Anterior end of 4th rib to diaphragm): 1 Cavitation 2 Opacity (Shadows other than cavitation) 3 No opacity (no shadows)"
+      pdf_annotation: CXR_OPACLL
+      column_name: CXR_OPACLL
+    normalized_metadata:
+      display_label: Lung Opacity — Left Lower Zone
+      meaning: Lung opacity finding for the left lower zone (Anterior end of 4th rib to diaphragm).
+      section: cxr_findings
+      data_type: categorical
+      options_ref: lung_opacity_pdf
+    options:
+      source_defined:
+        - 1 Cavitation
+        - 2 Opacity (Shadows other than cavitation)
+        - 3 No opacity (no shadows)
+      values:
+        - 1 Cavitation
+        - 2 Opacity (Shadows other than cavitation)
+        - 3 No opacity (no shadows)
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CXR_ADENOR:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Mediastinal adenopathy: Present Absent"
+      pdf_annotation: CXR_ADENOR
+      column_name: CXR_ADENOR
+    normalized_metadata:
+      display_label: Mediastinal Adenopathy — Right
+      meaning: Mediastinal adenopathy on the right side (Present/Absent).
+      section: cxr_findings
+      data_type: categorical
+      options_ref: present_absent_pdf
+    options:
+      source_defined:
+        - Present
+        - Absent
+      values:
+        - Present
+        - Absent
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CXR_ADENOL:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Mediastinal adenopathy: Present Absent"
+      pdf_annotation: CXR_ADENOL
+      column_name: CXR_ADENOL
+    normalized_metadata:
+      display_label: Mediastinal Adenopathy — Left
+      meaning: Mediastinal adenopathy on the left side (Present/Absent).
+      section: cxr_findings
+      data_type: categorical
+      options_ref: present_absent_pdf
+    options:
+      source_defined:
+        - Present
+        - Absent
+      values:
+        - Present
+        - Absent
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CXR_PLEFR:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Pleural effusion: Present Absent"
+      pdf_annotation: CXR_PLEFR
+      column_name: CXR_PLEFR
+    normalized_metadata:
+      display_label: Pleural Effusion — Right
+      meaning: Pleural effusion on the right side (Present/Absent).
+      section: cxr_findings
+      data_type: categorical
+      options_ref: present_absent_pdf
+    options:
+      source_defined:
+        - Present
+        - Absent
+      values:
+        - Present
+        - Absent
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CXR_PLEFL:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Pleural effusion: Present Absent"
+      pdf_annotation: CXR_PLEFL
+      column_name: CXR_PLEFL
+    normalized_metadata:
+      display_label: Pleural Effusion — Left
+      meaning: Pleural effusion on the left side (Present/Absent).
+      section: cxr_findings
+      data_type: categorical
+      options_ref: present_absent_pdf
+    options:
+      source_defined:
+        - Present
+        - Absent
+      values:
+        - Present
+        - Absent
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CXR_HILAR_R:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_HILAR_R
+    normalized_metadata:
+      display_label: Hilar Finding — Right
+      meaning: Dataset-only column whose name suggests a right-side hilar finding. No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: "Column CXR_HILAR_R has no PDF annotation and no directly matching visible question. The name suggests a right-side hilar finding (e.g., hilar adenopathy or shadowing). Confirm what CXR_HILAR_R captures and whether it should be kept, generalized, or dropped."
+    clean_output_presence: present
+  CXR_HILAR_L:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_HILAR_L
+    normalized_metadata:
+      display_label: Hilar Finding — Left
+      meaning: Dataset-only column whose name suggests a left-side hilar finding. No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: "Column CXR_HILAR_L has no PDF annotation and no directly matching visible question. The name suggests a left-side hilar finding (e.g., hilar adenopathy or shadowing). Confirm what CXR_HILAR_L captures and whether it should be kept, generalized, or dropped."
+    clean_output_presence: present
+  CXR_BRONCHIR:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_BRONCHIR
+    normalized_metadata:
+      display_label: Bronchial Finding — Right
+      meaning: Dataset-only column whose name suggests a right-side bronchial finding (e.g., bronchiectasis). No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: "Column CXR_BRONCHIR has no PDF annotation and no directly matching visible question. The name suggests a right-side bronchial finding (e.g., bronchiectasis). Confirm what CXR_BRONCHIR captures and whether it should be kept, generalized, or dropped."
+    clean_output_presence: present
+  CXR_BRONCHIL:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_BRONCHIL
+    normalized_metadata:
+      display_label: Bronchial Finding — Left
+      meaning: Dataset-only column whose name suggests a left-side bronchial finding (e.g., bronchiectasis). No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: "Column CXR_BRONCHIL has no PDF annotation and no directly matching visible question. The name suggests a left-side bronchial finding (e.g., bronchiectasis). Confirm what CXR_BRONCHIL captures and whether it should be kept, generalized, or dropped."
+    clean_output_presence: present
+  CXR_COLLAPSER:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_COLLAPSER
+    normalized_metadata:
+      display_label: Collapse — Right
+      meaning: Dataset-only column whose name suggests a right-side lung collapse finding. No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: "Column CXR_COLLAPSER has no PDF annotation and no directly matching visible question. The name suggests a right-side lung collapse finding. Confirm what CXR_COLLAPSER captures and whether it should be kept, generalized, or dropped."
+    clean_output_presence: present
+  CXR_COLLAPSEL:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_COLLAPSEL
+    normalized_metadata:
+      display_label: Collapse — Left
+      meaning: Dataset-only column whose name suggests a left-side lung collapse finding. No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: "Column CXR_COLLAPSEL has no PDF annotation and no directly matching visible question. The name suggests a left-side lung collapse finding. Confirm what CXR_COLLAPSEL captures and whether it should be kept, generalized, or dropped."
+    clean_output_presence: present
+  CXR_Other:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_Other
+    normalized_metadata:
+      display_label: Other Finding
+      meaning: Dataset-only column whose name suggests an other-finding capture (possibly free-text other-specify). No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: possible_free_text
+      reviewer_question: "Column CXR_Other has no PDF annotation and no directly matching visible question. The name suggests an other-finding free-text or supplemental capture. Confirm whether CXR_Other is a free-text other-specify field and whether it should be retained, redacted, or dropped."
+    clean_output_presence: absent
+  CXR_OTHERR:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_OTHERR
+    normalized_metadata:
+      display_label: Other Finding — Right
+      meaning: Dataset-only column whose name suggests a right-side other-finding capture (possibly free-text). No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: possible_free_text
+      reviewer_question: "Column CXR_OTHERR has no PDF annotation and no directly matching visible question. The name suggests a right-side other-finding free-text or supplemental capture. Confirm whether CXR_OTHERR is a free-text field and whether it should be retained, redacted, or dropped."
+    clean_output_presence: absent
+  CXR_OTHERL:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_OTHERL
+    normalized_metadata:
+      display_label: Other Finding — Left
+      meaning: Dataset-only column whose name suggests a left-side other-finding capture (possibly free-text). No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: possible_free_text
+      reviewer_question: "Column CXR_OTHERL has no PDF annotation and no directly matching visible question. The name suggests a left-side other-finding free-text or supplemental capture. Confirm whether CXR_OTHERL is a free-text field and whether it should be retained, redacted, or dropped."
+    clean_output_presence: absent
+  CXR_other_1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_other_1
+    normalized_metadata:
+      display_label: Other Finding — Variant 1
+      meaning: Dataset-only column whose name suggests an other-finding free-text or supplemental capture (variant 1). No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: possible_free_text
+      reviewer_question: "Column CXR_other_1 has no PDF annotation and no directly matching visible question. The name suggests an other-finding free-text or supplemental capture (variant 1). Confirm whether CXR_other_1 is a free-text field and whether it should be retained, redacted, or dropped."
+    clean_output_presence: absent
+  CXR_otherr_1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_otherr_1
+    normalized_metadata:
+      display_label: Other Finding — Right Variant 1
+      meaning: Dataset-only column whose name suggests a right-side other-finding free-text or supplemental capture (variant 1). No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: possible_free_text
+      reviewer_question: "Column CXR_otherr_1 has no PDF annotation and no directly matching visible question. The name suggests a right-side other-finding free-text or supplemental capture (variant 1). Confirm whether CXR_otherr_1 is a free-text field and whether it should be retained, redacted, or dropped."
+    clean_output_presence: absent
+  CXR_otherL_1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_otherL_1
+    normalized_metadata:
+      display_label: Other Finding — Left Variant 1
+      meaning: Dataset-only column whose name suggests a left-side other-finding free-text or supplemental capture (variant 1). No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: possible_free_text
+      reviewer_question: "Column CXR_otherL_1 has no PDF annotation and no directly matching visible question. The name suggests a left-side other-finding free-text or supplemental capture (variant 1). Confirm whether CXR_otherL_1 is a free-text field and whether it should be retained, redacted, or dropped."
+    clean_output_presence: absent
+  CXR_other_2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_other_2
+    normalized_metadata:
+      display_label: Other Finding — Variant 2
+      meaning: Dataset-only column whose name suggests an other-finding free-text or supplemental capture (variant 2). No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: possible_free_text
+      reviewer_question: "Column CXR_other_2 has no PDF annotation and no directly matching visible question. The name suggests an other-finding free-text or supplemental capture (variant 2). Confirm whether CXR_other_2 is a free-text field and whether it should be retained, redacted, or dropped."
+    clean_output_presence: absent
+  CXR_other_3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_other_3
+    normalized_metadata:
+      display_label: Other Finding — Variant 3
+      meaning: Dataset-only column whose name suggests an other-finding free-text or supplemental capture (variant 3). No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: possible_free_text
+      reviewer_question: "Column CXR_other_3 has no PDF annotation and no directly matching visible question. The name suggests an other-finding free-text or supplemental capture (variant 3). Confirm whether CXR_other_3 is a free-text field and whether it should be retained, redacted, or dropped."
+    clean_output_presence: absent
+  cxr_otherr_2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: cxr_otherr_2
+    normalized_metadata:
+      display_label: Other Finding — Right Variant 2
+      meaning: Dataset-only column whose name suggests a right-side other-finding free-text or supplemental capture (variant 2). No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: possible_free_text
+      reviewer_question: "Column cxr_otherr_2 has no PDF annotation and no directly matching visible question. The name suggests a right-side other-finding free-text or supplemental capture (variant 2). Confirm whether cxr_otherr_2 is a free-text field and whether it should be retained, redacted, or dropped."
+    clean_output_presence: absent
+  cxr_otherr_3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: cxr_otherr_3
+    normalized_metadata:
+      display_label: Other Finding — Right Variant 3
+      meaning: Dataset-only column whose name suggests a right-side other-finding free-text or supplemental capture (variant 3). No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: possible_free_text
+      reviewer_question: "Column cxr_otherr_3 has no PDF annotation and no directly matching visible question. The name suggests a right-side other-finding free-text or supplemental capture (variant 3). Confirm whether cxr_otherr_3 is a free-text field and whether it should be retained, redacted, or dropped."
+    clean_output_presence: absent
+  cxr_otherL_2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: cxr_otherL_2
+    normalized_metadata:
+      display_label: Other Finding — Left Variant 2
+      meaning: Dataset-only column whose name suggests a left-side other-finding free-text or supplemental capture (variant 2). No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: possible_free_text
+      reviewer_question: "Column cxr_otherL_2 has no PDF annotation and no directly matching visible question. The name suggests a left-side other-finding free-text or supplemental capture (variant 2). Confirm whether cxr_otherL_2 is a free-text field and whether it should be retained, redacted, or dropped."
+    clean_output_presence: absent
+  cxr_otherL_3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: cxr_otherL_3
+    normalized_metadata:
+      display_label: Other Finding — Left Variant 3
+      meaning: Dataset-only column whose name suggests a left-side other-finding free-text or supplemental capture (variant 3). No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_findings
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_findings
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: possible_free_text
+      reviewer_question: "Column cxr_otherL_3 has no PDF annotation and no directly matching visible question. The name suggests a left-side other-finding free-text or supplemental capture (variant 3). Confirm whether cxr_otherL_3 is a free-text field and whether it should be retained, redacted, or dropped."
+    clean_output_presence: absent
+  CXR_CXRSCOR:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3a. Percentage of lung affected: %"
+      pdf_annotation: CXR_CXRSCOR
+      column_name: CXR_CXRSCOR
+    normalized_metadata:
+      display_label: CXR Score — Percentage of Lung Affected
+      meaning: Numeric percentage of lung affected (Question 3a).
+      section: cxr_score
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_score
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CXR_CAVIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 3b. Is cavitation present?
+      pdf_annotation: CXR_CAVIT
+      column_name: CXR_CAVIT
+    normalized_metadata:
+      display_label: Cavitation Present
+      meaning: Whether cavitation is present on the chest X-ray (Yes/No) — Question 3b.
+      section: cxr_score
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_score
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CXR_SUMSCORE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CXR_SUMSCORE
+    normalized_metadata:
+      display_label: CXR Summary Score
+      meaning: Dataset-only column whose name suggests a summary chest X-ray score (e.g., aggregated score across zones). No PDF annotation or directly visible question maps to this column on this form version.
+      section: cxr_score
+      data_type: unknown
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cxr_score
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: "Column CXR_SUMSCORE has no PDF annotation and no directly matching visible question. The name suggests a summary chest X-ray score (e.g., aggregated zone score). Confirm what CXR_SUMSCORE captures (numeric scale, computation rule), how it relates to CXR_CXRSCOR (percent lung affected), and whether it should be kept, generalized, or dropped."
+    clean_output_presence: present
+  CXR_SIGN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Signature of Data Collector:"
+      pdf_annotation: CXR_SIGN
+      column_name: CXR_SIGN
+    normalized_metadata:
+      display_label: Data Collector Signature
+      meaning: Signature of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: signature_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  CXR_INIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Initials of Data Collector:"
+      pdf_annotation: CXR_INIT
+      column_name: CXR_INIT
+    normalized_metadata:
+      display_label: Data Collector Initials
+      meaning: Initials of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: initials_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  CXR_COMPDTE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date Completed: / /"
+      pdf_annotation: CXR_COMPDTE
+      column_name: CXR_COMPDTE
+    normalized_metadata:
+      display_label: Form Completion Date
+      meaning: Date the form was completed by the data collector.
+      section: completion
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  SUBJID2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: SUBJID2
+    normalized_metadata:
+      display_label: Index Case ID (Duplicate Candidate)
+      meaning: Dataset-only duplicate-candidate column for the index-case identifier; not visible on the PDF and pending cleanup verification.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: SUBJID
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+      - phi_scrub
+      - dataset_cleanup
+    derivation_targets:
+      - phi_handling_ledger
+      - dataset_cleanup_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: unmatched_dataset_column
+      reviewer_question: SUBJID2 is not visible on the PDF and not in the PDF annotation set. Confirm whether SUBJID2 is an exact duplicate of SUBJID (and should be dropped via the Dataset Cleanup Ledger after PHI handling) or carries distinct information.
+    clean_output_presence: absent
+  Time_Stamp:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: Time_Stamp
+    normalized_metadata:
+      display_label: Capture Timestamp
+      meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      section: system_metadata
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: system_metadata
+      other_specify: null
+    phi_sensitive_category: system_timestamp
+    handling_intent:
+      action: drop
+      reason: non_pdf_system_timestamp_metadata
+      label: null
+    runtime_binding:
+      - dataset_cleanup
+    derivation_targets:
+      - dataset_cleanup_ledger
+    evidence:
+      level: high
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+validation:
+  forbidden_keys_absent: true
+  columns_unique: true
+  pdf_annotation_unmatched:
+    - "1 (lung-opacity option marker '1 Cavitation' adjacent to each opacity zone, not a variable name)"
+    - "2 (lung-opacity option marker '2 Opacity' adjacent to each opacity zone, not a variable name)"
+    - "3 (lung-opacity option marker '3 No opacity (no shadows)' adjacent to each opacity zone, not a variable name)"
+    - "1 (Present marker adjacent to CXR_ADENOR/CXR_ADENOL/CXR_PLEFR/CXR_PLEFL, not a variable name)"
+    - "2 (Absent marker adjacent to CXR_ADENOR/CXR_ADENOL/CXR_PLEFR/CXR_PLEFL, not a variable name)"
+  dataset_columns_unmatched: []
+  excluded_pdf_artifacts:
+    - "05/19/2014 (form version date — excluded per PDF Extraction Boundary)"
+    - "Indo-US VAP Chest X-ray v1.0 (form version footer — excluded)"
+    - "Page 1 of 1 (page footer — excluded)"
+    - "12095 (artifact-version code in header — excluded)"
+    - "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner — retained as form context heading not as a variable; not excluded but recorded as heading block)"
+    - "Form 8 (form-number banner — retained as form context heading not as a variable; not excluded but recorded as heading block)"

@@ -1,0 +1,1269 @@
+schema_version: 2
+policy_status: draft_for_human_review
+study: Indo-VAP
+form: 98A_FOA
+source:
+  dataset_file: 98A_FOA.xlsx
+  pdf_file: data/raw/Indo-VAP/annotated_pdfs/98A Final Outcome A v1.0.pdf
+pdf_form_metadata:
+  form_number: Form 98A
+  form_title: Final Outcome Determination Form - Cohort A (Active Pulmonary TB)
+  form_version: v1.0
+  page_count: 1
+coverage:
+  column_count: 12
+  columns_mapped: 12
+  pdf_annotation_count: 11
+  pdf_annotation_variables: 11
+  annotated_columns: 11
+  non_annotated_columns:
+    - Time_Stamp
+  unresolved_review_required:
+    - FOA_RNTCDCSP
+    - FOA_COHALOCSP
+pdf_sections:
+  participant_header:
+    section_label: null
+    fields:
+      - SUBJID
+      - FOA_VISDAT
+      - FOA_VISIT
+    visible_text: |
+      Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse
+      FINAL OUTCOME DETERMINATION FORM - COHORT A (ACTIVE PULMONARY TB)
+      Index case ID:
+      - -1 0 2 0 A
+      Date of evaluation:
+      Day                       Month                    Year
+      Visit Type: 6 MO Post-TX TB Relapse/Failure/Withdrawal
+      Instructions:  Document the outcome status at the participant's final visit (i.e. 6 MO Post-TX visit or TB Relapse/Failure/Withdrawal)
+      All participants must be assigned 1 outcome as defined in the Common Protocol, Outcome Measures for Cohort A section.
+  foa_fields:
+    section_label: null
+    fields:
+      - FOA_RNTCPCOMP
+      - FOA_RNTCDCSP
+      - FOA_COHAOUT
+      - FOA_COHALOC
+      - FOA_COHALOCSP
+    visible_text: |
+      1. Did the participant successfully complete the RNTCP-specified treatment regimen?
+      Yes
+      No, defaulted (defined as treatment interruption for two or more consecutive months)
+      No, specify reason:
+      Unknown
+      2. TB Outcome Status
+      (Check only one)
+      Bacteriologic cure
+      Bacteriologic status indeterminate (For participants <14 yrs of age who did not have bacteriologic documentation at baseline)
+      Bacteriologic failure
+      Bacteriologic relapse
+      Clinical response
+      Clinical Failure
+      Clinical Relapse
+      Not Tuberculosis
+      Death (Check only if died and none of the other outcomes apply)
+      Treatment Incomplete
+      Lost to follow up
+      3. If the participant had bacteriologic or clinical relapse or failure, indicate the site:
+      Pulmonary
+      Pleural
+      Lymph node
+      Peritoneal
+      Bone
+      Joint
+      Central Nervous System
+      Other, specify:
+  completion:
+    section_label: null
+    fields:
+      - FOA_SIGN
+      - FOA_INIT
+      - FOA_COMPDAT
+    visible_text: |
+      Signature:
+      Initials:
+      Date Completed: / /
+      Day                       Month                    Year
+  system_metadata:
+    section_label: null
+    fields:
+      - Time_Stamp
+    visible_text: |
+      (No PDF visible text — column derived from dataset capture timestamp.)
+option_sets:
+  yes_no_pdf:
+    source: PDF option text
+    source_text: "Yes No"
+    values:
+      - "Yes"
+      - "No"
+    unknown: true
+  date_dmy_pdf:
+    source: PDF date boxes
+    source_text: "Day                       Month                    Year"
+    values:
+      - Day
+      - Month
+      - Year
+    unknown: true
+  visit_type_pdf:
+    source: PDF option text
+    source_text: "Visit Type: 6 MO Post-TX TB Relapse/Failure/Withdrawal"
+    values:
+      - 6 MO Post-TX
+      - TB Relapse/Failure/Withdrawal
+    unknown: true
+  rntcp_completion_pdf:
+    source: PDF option text
+    source_text: |
+      Yes
+      No, defaulted (defined as treatment interruption for two or more consecutive months)
+      No, specify reason:
+      Unknown
+    values:
+      - "Yes"
+      - "No, defaulted (defined as treatment interruption for two or more consecutive months)"
+      - "No, specify reason:"
+      - Unknown
+    unknown: true
+  tb_outcome_status_pdf:
+    source: PDF option text
+    source_text: |
+      Bacteriologic cure
+      Bacteriologic status indeterminate
+      Bacteriologic failure
+      Bacteriologic relapse
+      Clinical response
+      Clinical Failure
+      Clinical Relapse
+      Not Tuberculosis
+      Death
+      Treatment Incomplete
+      Lost to follow up
+    values:
+      - Bacteriologic cure
+      - Bacteriologic status indeterminate
+      - Bacteriologic failure
+      - Bacteriologic relapse
+      - Clinical response
+      - Clinical Failure
+      - Clinical Relapse
+      - Not Tuberculosis
+      - Death
+      - Treatment Incomplete
+      - Lost to follow up
+    unknown: true
+  relapse_site_pdf:
+    source: PDF option text
+    source_text: |
+      Pulmonary
+      Pleural
+      Lymph node
+      Peritoneal
+      Bone
+      Joint
+      Central Nervous System
+      Other, specify:
+    values:
+      - Pulmonary
+      - Pleural
+      - Lymph node
+      - Peritoneal
+      - Bone
+      - Joint
+      - Central Nervous System
+      - "Other, specify:"
+    unknown: true
+pdf_annotation_pages:
+  - page: 1
+    annotations:
+      - SUBJID
+      - FOA_VISDAT
+      - FOA_VISIT
+      - FOA_RNTCPCOMP
+      - FOA_RNTCDCSP
+      - FOA_COHAOUT
+      - FOA_COHALOC
+      - FOA_COHALOCSP
+      - FOA_SIGN
+      - FOA_COMPDAT
+      - FOA_INIT
+pdf_visible_text:
+  by_page:
+    - page: 1
+      blocks:
+        - type: heading
+          text: Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse
+          related_variables: []
+        - type: heading
+          text: FINAL OUTCOME DETERMINATION FORM - COHORT A (ACTIVE PULMONARY TB)
+          related_variables: []
+        - type: question
+          text: "Index case ID:"
+          related_variables:
+            - SUBJID
+        - type: caption
+          text: "- -1 0 2 0 A"
+          related_variables:
+            - SUBJID
+        - type: question
+          text: "Date of evaluation:"
+          related_variables:
+            - FOA_VISDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - FOA_VISDAT
+        - type: question
+          text: "Visit Type: 6 MO Post-TX TB Relapse/Failure/Withdrawal"
+          related_variables:
+            - FOA_VISIT
+        - type: instruction
+          text: "Document the outcome status at the participant's final visit (i.e. 6 MO Post-TX visit or TB Relapse/Failure/Withdrawal)"
+          related_variables:
+            - FOA_VISIT
+            - FOA_COHAOUT
+        - type: instruction
+          text: All participants must be assigned 1 outcome as defined in the Common Protocol, Outcome Measures for Cohort A section.
+          related_variables:
+            - FOA_COHAOUT
+        - type: question
+          text: 1. Did the participant successfully complete the RNTCP-specified treatment regimen?
+          related_variables:
+            - FOA_RNTCPCOMP
+            - FOA_RNTCDCSP
+        - type: option_block
+          text: |
+            Yes
+            No, defaulted (defined as treatment interruption for two or more consecutive months)
+            No, specify reason:
+            Unknown
+          related_variables:
+            - FOA_RNTCPCOMP
+            - FOA_RNTCDCSP
+        - type: question
+          text: 2. TB Outcome Status
+          related_variables:
+            - FOA_COHAOUT
+        - type: instruction
+          text: (Check only one)
+          related_variables:
+            - FOA_COHAOUT
+        - type: option_block
+          text: |
+            Bacteriologic cure
+            Bacteriologic status indeterminate
+            Bacteriologic failure
+            Bacteriologic relapse
+            Clinical response
+            Clinical Failure
+            Clinical Relapse
+            Not Tuberculosis
+            Death
+            Treatment Incomplete
+            Lost to follow up
+          related_variables:
+            - FOA_COHAOUT
+        - type: caption
+          text: "(For participants <14 yrs of age who did not have bacteriologic documentation at baseline)"
+          related_variables:
+            - FOA_COHAOUT
+        - type: caption
+          text: "(Check only if died and none of the other outcomes apply)"
+          related_variables:
+            - FOA_COHAOUT
+        - type: question
+          text: "3. If the participant had bacteriologic or clinical relapse or failure, indicate the site:"
+          related_variables:
+            - FOA_COHALOC
+            - FOA_COHALOCSP
+        - type: option_block
+          text: |
+            Pulmonary
+            Pleural
+            Lymph node
+            Peritoneal
+            Bone
+            Joint
+            Central Nervous System
+            Other, specify:
+          related_variables:
+            - FOA_COHALOC
+            - FOA_COHALOCSP
+        - type: question
+          text: "Signature:"
+          related_variables:
+            - FOA_SIGN
+        - type: question
+          text: "Initials:"
+          related_variables:
+            - FOA_INIT
+        - type: question
+          text: "Date Completed: / /"
+          related_variables:
+            - FOA_COMPDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - FOA_COMPDAT
+  questions:
+    - id: q_subjid
+      page: 1
+      exact_wording: "Index case ID:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: "Index case ID layout shows fixed pattern '- -1 0 2 0 A'."
+      related_variables:
+        - SUBJID
+    - id: q_date_of_evaluation
+      page: 1
+      exact_wording: "Date of evaluation:"
+      section: participant_header
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - FOA_VISDAT
+    - id: q_visit_type
+      page: 1
+      exact_wording: "Visit Type: 6 MO Post-TX TB Relapse/Failure/Withdrawal"
+      section: participant_header
+      options_ref: visit_type_pdf
+      units: null
+      skip_logic: "Document the outcome status at the participant's final visit (i.e. 6 MO Post-TX visit or TB Relapse/Failure/Withdrawal)."
+      notes: null
+      related_variables:
+        - FOA_VISIT
+    - id: q1
+      page: 1
+      exact_wording: 1. Did the participant successfully complete the RNTCP-specified treatment regimen?
+      section: foa_fields
+      options_ref: rntcp_completion_pdf
+      units: null
+      skip_logic: null
+      notes: Branching question. Selecting "No, specify reason:" implies an other/specify free-text answer captured by FOA_RNTCDCSP.
+      related_variables:
+        - FOA_RNTCPCOMP
+        - FOA_RNTCDCSP
+    - id: q2
+      page: 1
+      exact_wording: 2. TB Outcome Status
+      section: foa_fields
+      options_ref: tb_outcome_status_pdf
+      units: null
+      skip_logic: "(Check only one). All participants must be assigned 1 outcome as defined in the Common Protocol."
+      notes: "'Bacteriologic status indeterminate' applies only to participants <14 yrs of age without bacteriologic documentation at baseline. 'Death' is checked only if died and none of the other outcomes apply."
+      related_variables:
+        - FOA_COHAOUT
+    - id: q3
+      page: 1
+      exact_wording: "3. If the participant had bacteriologic or clinical relapse or failure, indicate the site:"
+      section: foa_fields
+      options_ref: relapse_site_pdf
+      units: null
+      skip_logic: Conditional on Q2 indicating bacteriologic or clinical relapse or failure.
+      notes: "Selecting 'Other, specify:' implies an other/specify free-text answer captured by FOA_COHALOCSP."
+      related_variables:
+        - FOA_COHALOC
+        - FOA_COHALOCSP
+    - id: q_signature
+      page: 1
+      exact_wording: "Signature:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FOA_SIGN
+    - id: q_initials
+      page: 1
+      exact_wording: "Initials:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FOA_INIT
+    - id: q_date_completed
+      page: 1
+      exact_wording: "Date Completed: / /"
+      section: completion
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - FOA_COMPDAT
+evidence_packs:
+  by_variable:
+    SUBJID:
+      exact_pdf_wording: "Index case ID:"
+      pdf_annotation: SUBJID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FOA_VISDAT:
+      exact_pdf_wording: "Date of evaluation:"
+      pdf_annotation: FOA_VISDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FOA_VISIT:
+      exact_pdf_wording: "Visit Type: 6 MO Post-TX TB Relapse/Failure/Withdrawal"
+      pdf_annotation: FOA_VISIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FOA_RNTCPCOMP:
+      exact_pdf_wording: 1. Did the participant successfully complete the RNTCP-specified treatment regimen?
+      pdf_annotation: FOA_RNTCPCOMP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FOA_RNTCDCSP:
+      exact_pdf_wording: "No, specify reason:"
+      pdf_annotation: FOA_RNTCDCSP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FOA_COHAOUT:
+      exact_pdf_wording: 2. TB Outcome Status
+      pdf_annotation: FOA_COHAOUT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FOA_COHALOC:
+      exact_pdf_wording: "3. If the participant had bacteriologic or clinical relapse or failure, indicate the site:"
+      pdf_annotation: FOA_COHALOC
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FOA_COHALOCSP:
+      exact_pdf_wording: "Other, specify:"
+      pdf_annotation: FOA_COHALOCSP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FOA_SIGN:
+      exact_pdf_wording: "Signature:"
+      pdf_annotation: FOA_SIGN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FOA_INIT:
+      exact_pdf_wording: "Initials:"
+      pdf_annotation: FOA_INIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FOA_COMPDAT:
+      exact_pdf_wording: "Date Completed: / /"
+      pdf_annotation: FOA_COMPDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    Time_Stamp:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+catalog_refs:
+  by_variable:
+    SUBJID:
+      display_label: Participant ID
+      normalized_meaning: Pseudonymized identifier for the study participant (Index case ID).
+      search_terms:
+        - SUBJID
+        - Index case ID
+        - participant id
+        - subject id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FOA_VISDAT:
+      display_label: Final Outcome Visit Date
+      normalized_meaning: Date of evaluation for the final outcome visit (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - FOA_VISDAT
+        - Date of evaluation
+        - final outcome visit date
+        - evaluation date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FOA_VISIT:
+      display_label: Final Outcome Visit Type
+      normalized_meaning: Final outcome visit type (6 MO Post-TX or TB Relapse/Failure/Withdrawal).
+      search_terms:
+        - FOA_VISIT
+        - Visit Type
+        - 6 MO Post-TX
+        - TB Relapse/Failure/Withdrawal
+        - final outcome visit
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FOA_RNTCPCOMP:
+      display_label: RNTCP Treatment Completion
+      normalized_meaning: Whether the participant successfully completed the RNTCP-specified treatment regimen (Yes; No defaulted; No specify reason; Unknown).
+      search_terms:
+        - FOA_RNTCPCOMP
+        - RNTCP-specified treatment regimen
+        - RNTCP completion
+        - treatment completion
+        - defaulted
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FOA_RNTCDCSP:
+      display_label: RNTCP Not Completed — Other Reason
+      normalized_meaning: Free-text reason captured when "No, specify reason:" is selected for RNTCP treatment completion.
+      search_terms:
+        - FOA_RNTCDCSP
+        - "No, specify reason"
+        - RNTCP reason
+        - RNTCP not completed reason
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FOA_COHAOUT:
+      display_label: Cohort A TB Outcome Status
+      normalized_meaning: TB outcome status assigned at the final visit per Cohort A outcome measures (Bacteriologic cure, Bacteriologic status indeterminate, Bacteriologic failure, Bacteriologic relapse, Clinical response, Clinical Failure, Clinical Relapse, Not Tuberculosis, Death, Treatment Incomplete, Lost to follow up).
+      search_terms:
+        - FOA_COHAOUT
+        - TB Outcome Status
+        - Bacteriologic cure
+        - Bacteriologic failure
+        - Bacteriologic relapse
+        - Clinical response
+        - Clinical Failure
+        - Clinical Relapse
+        - Not Tuberculosis
+        - Treatment Incomplete
+        - Lost to follow up
+        - cohort A outcome
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FOA_COHALOC:
+      display_label: Relapse/Failure Anatomic Site
+      normalized_meaning: Anatomic site of bacteriologic or clinical relapse or failure (Pulmonary, Pleural, Lymph node, Peritoneal, Bone, Joint, Central Nervous System, Other specify).
+      search_terms:
+        - FOA_COHALOC
+        - relapse site
+        - failure site
+        - Pulmonary
+        - Pleural
+        - Lymph node
+        - Peritoneal
+        - Bone
+        - Joint
+        - Central Nervous System
+        - anatomic site
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FOA_COHALOCSP:
+      display_label: Relapse/Failure Site — Other Reason
+      normalized_meaning: Free-text reason captured when "Other, specify:" is selected for the relapse/failure anatomic site.
+      search_terms:
+        - FOA_COHALOCSP
+        - "Other, specify"
+        - relapse site other
+        - failure site other
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FOA_SIGN:
+      display_label: Data Collector Signature
+      normalized_meaning: Signature of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - FOA_SIGN
+        - Signature
+        - signature
+      catalog_tier: source_only
+      analysis_queryable: false
+    FOA_INIT:
+      display_label: Data Collector Initials
+      normalized_meaning: Initials of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - FOA_INIT
+        - Initials
+        - data collector initials
+      catalog_tier: source_only
+      analysis_queryable: false
+    FOA_COMPDAT:
+      display_label: Form Completion Date
+      normalized_meaning: Date the form was completed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - FOA_COMPDAT
+        - Date Completed
+        - form completion date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    Time_Stamp:
+      display_label: Capture Timestamp
+      normalized_meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      search_terms:
+        - Time_Stamp
+        - timestamp
+        - capture timestamp
+      catalog_tier: source_only
+      analysis_queryable: false
+ledger_expectations:
+  phi_handling:
+    - SUBJID
+    - FOA_VISDAT
+    - FOA_RNTCDCSP
+    - FOA_COHALOCSP
+    - FOA_SIGN
+    - FOA_INIT
+    - FOA_COMPDAT
+  dataset_cleanup:
+    - Time_Stamp
+variables:
+  SUBJID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Index case ID:"
+      pdf_annotation: SUBJID
+      column_name: SUBJID
+    normalized_metadata:
+      display_label: Participant ID
+      meaning: Pseudonymized identifier for the study participant (Index case ID).
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  FOA_VISDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date of evaluation:"
+      pdf_annotation: FOA_VISDAT
+      column_name: FOA_VISDAT
+    normalized_metadata:
+      display_label: Final Outcome Visit Date
+      meaning: Date of evaluation for the final outcome visit.
+      section: participant_header
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  FOA_VISIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Visit Type: 6 MO Post-TX TB Relapse/Failure/Withdrawal"
+      pdf_annotation: FOA_VISIT
+      column_name: FOA_VISIT
+    normalized_metadata:
+      display_label: Final Outcome Visit Type
+      meaning: Indicator selecting the final outcome visit type — 6 MO Post-TX or TB Relapse/Failure/Withdrawal.
+      section: participant_header
+      data_type: categorical
+      options_ref: visit_type_pdf
+    options:
+      source_defined:
+        - 6 MO Post-TX
+        - TB Relapse/Failure/Withdrawal
+      values:
+        - 6 MO Post-TX
+        - TB Relapse/Failure/Withdrawal
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: "Document the outcome status at the participant's final visit (i.e. 6 MO Post-TX visit or TB Relapse/Failure/Withdrawal)."
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FOA_RNTCPCOMP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 1. Did the participant successfully complete the RNTCP-specified treatment regimen?
+      pdf_annotation: FOA_RNTCPCOMP
+      column_name: FOA_RNTCPCOMP
+    normalized_metadata:
+      display_label: RNTCP Treatment Completion
+      meaning: Whether the participant successfully completed the RNTCP-specified treatment regimen.
+      section: foa_fields
+      data_type: categorical
+      options_ref: rntcp_completion_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No, defaulted (defined as treatment interruption for two or more consecutive months)"
+        - "No, specify reason:"
+        - Unknown
+      values:
+        - "Yes"
+        - "No, defaulted (defined as treatment interruption for two or more consecutive months)"
+        - "No, specify reason:"
+        - Unknown
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - FOA_RNTCDCSP
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: foa_fields
+      other_specify: FOA_RNTCDCSP
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FOA_RNTCDCSP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "No, specify reason:"
+      pdf_annotation: FOA_RNTCDCSP
+      column_name: FOA_RNTCDCSP
+    normalized_metadata:
+      display_label: RNTCP Not Completed — Other Reason
+      meaning: Free-text reason captured when "No, specify reason:" is selected for the RNTCP treatment completion question.
+      section: foa_fields
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FOA_RNTCPCOMP
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: foa_fields
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: Is the free-text "No, specify reason:" content for RNTCP non-completion allowed in the PHI-handled dataset, or should it be dropped/redacted?
+    clean_output_presence: absent
+  FOA_COHAOUT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 2. TB Outcome Status
+      pdf_annotation: FOA_COHAOUT
+      column_name: FOA_COHAOUT
+    normalized_metadata:
+      display_label: Cohort A TB Outcome Status
+      meaning: TB outcome status assigned at the final visit per Cohort A outcome measures; one outcome per participant.
+      section: foa_fields
+      data_type: categorical
+      options_ref: tb_outcome_status_pdf
+    options:
+      source_defined:
+        - Bacteriologic cure
+        - Bacteriologic status indeterminate
+        - Bacteriologic failure
+        - Bacteriologic relapse
+        - Clinical response
+        - Clinical Failure
+        - Clinical Relapse
+        - Not Tuberculosis
+        - Death
+        - Treatment Incomplete
+        - Lost to follow up
+      values:
+        - Bacteriologic cure
+        - Bacteriologic status indeterminate
+        - Bacteriologic failure
+        - Bacteriologic relapse
+        - Clinical response
+        - Clinical Failure
+        - Clinical Relapse
+        - Not Tuberculosis
+        - Death
+        - Treatment Incomplete
+        - Lost to follow up
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - FOA_COHALOC
+        - FOA_COHALOCSP
+      skip_logic: "(Check only one). All participants must be assigned 1 outcome as defined in the Common Protocol, Outcome Measures for Cohort A section."
+      visit_grouping: null
+      section_grouping: foa_fields
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FOA_COHALOC:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3. If the participant had bacteriologic or clinical relapse or failure, indicate the site:"
+      pdf_annotation: FOA_COHALOC
+      column_name: FOA_COHALOC
+    normalized_metadata:
+      display_label: Relapse/Failure Anatomic Site
+      meaning: Anatomic site of bacteriologic or clinical relapse or failure (anatomic categories from the PDF — Pulmonary, Pleural, Lymph node, Peritoneal, Bone, Joint, Central Nervous System, Other specify).
+      section: foa_fields
+      data_type: categorical
+      options_ref: relapse_site_pdf
+    options:
+      source_defined:
+        - Pulmonary
+        - Pleural
+        - Lymph node
+        - Peritoneal
+        - Bone
+        - Joint
+        - Central Nervous System
+        - "Other, specify:"
+      values:
+        - Pulmonary
+        - Pleural
+        - Lymph node
+        - Peritoneal
+        - Bone
+        - Joint
+        - Central Nervous System
+        - "Other, specify:"
+      unknown: true
+    relationships:
+      parent: FOA_COHAOUT
+      children:
+        - FOA_COHALOCSP
+      skip_logic: Conditional on Q2 indicating bacteriologic or clinical relapse or failure.
+      visit_grouping: null
+      section_grouping: foa_fields
+      other_specify: FOA_COHALOCSP
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: heuristic_location_flag_adjudicated_anatomic_site
+      reviewer_question: null
+    clean_output_presence: present
+  FOA_COHALOCSP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Other, specify:"
+      pdf_annotation: FOA_COHALOCSP
+      column_name: FOA_COHALOCSP
+    normalized_metadata:
+      display_label: Relapse/Failure Site — Other Reason
+      meaning: Free-text reason captured when "Other, specify:" is selected for the relapse/failure anatomic site.
+      section: foa_fields
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FOA_COHALOC
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: foa_fields
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: Is the free-text "Other, specify:" content for relapse/failure anatomic site allowed in the PHI-handled dataset, or should it be dropped/redacted?
+    clean_output_presence: absent
+  FOA_SIGN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Signature:"
+      pdf_annotation: FOA_SIGN
+      column_name: FOA_SIGN
+    normalized_metadata:
+      display_label: Data Collector Signature
+      meaning: Signature of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: signature_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  FOA_INIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Initials:"
+      pdf_annotation: FOA_INIT
+      column_name: FOA_INIT
+    normalized_metadata:
+      display_label: Data Collector Initials
+      meaning: Initials of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: initials_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  FOA_COMPDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date Completed: / /"
+      pdf_annotation: FOA_COMPDAT
+      column_name: FOA_COMPDAT
+    normalized_metadata:
+      display_label: Form Completion Date
+      meaning: Date the form was completed by the data collector.
+      section: completion
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  Time_Stamp:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: Time_Stamp
+    normalized_metadata:
+      display_label: Capture Timestamp
+      meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      section: system_metadata
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: system_metadata
+      other_specify: null
+    phi_sensitive_category: system_timestamp
+    handling_intent:
+      action: drop
+      reason: non_pdf_system_timestamp_metadata
+      label: null
+    runtime_binding:
+      - dataset_cleanup
+    derivation_targets:
+      - dataset_cleanup_ledger
+    evidence:
+      level: high
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+validation:
+  forbidden_keys_absent: true
+  columns_unique: true
+  pdf_annotation_unmatched: []
+  dataset_columns_unmatched: []
+  excluded_pdf_artifacts:
+    - "05/22/2014 (form version date — excluded per PDF Extraction Boundary)"
+    - "Indo-US VAP Final Outcome A v1.0 (form version footer — excluded)"
+    - "Page 1 of 1 (page footer — excluded)"
+    - "32372 (artifact-version code in footer — excluded)"
+    - "Form 98A (form number footer — retained as form metadata, not as a variable)"
+    - "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner — retained as form context heading not as a variable; not excluded but recorded as heading block)"
+  notes:
+    - "FOA_COHALOC heuristic 'location' flag from draft was adjudicated against PDF evidence: PDF Q3 'indicate the site' lists anatomic options (Pulmonary, Pleural, Lymph node, Peritoneal, Bone, Joint, Central Nervous System, Other specify), so the field is clinical_categorical (anatomic site), not geographic location."
+    - "FOA_RNTCDCSP and FOA_COHALOCSP are free-text 'specify' companions to FOA_RNTCPCOMP and FOA_COHALOC respectively; both retained as review_required pending PHI adjudication, mirroring the HIV_HIVNDOTH pattern in 6_HIV_policy.yaml."

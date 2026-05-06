@@ -1,0 +1,4568 @@
+schema_version: 2
+policy_status: draft_for_human_review
+study: Indo-VAP
+form: 12B_FUB
+source:
+  dataset_file: 12B_FUB.xlsx
+  pdf_file: data/raw/Indo-VAP/annotated_pdfs/12B Follow-up B v1.0.pdf
+pdf_form_metadata:
+  form_number: Form 12B
+  form_title: Household Contact Follow-up Visit Form
+  form_version: v1.0
+  page_count: 2
+coverage:
+  column_count: 52
+  columns_mapped: 52
+  pdf_annotation_count: 43
+  pdf_annotation_variables: 35
+  annotated_columns: 35
+  non_annotated_columns:
+    - FUB_HEIGHT
+    - FUB_KNEE
+    - FUB_HEIGHT_NA
+    - FUB_WEIGHT
+    - FUB_WEIGHT_ESTIMATE
+    - FUB_WEIGHT_NA
+    - FUB_IDCHGNA
+    - FUB_DMCIDCHG
+    - FUB_TUIDCHG
+    - FUB_COUGHDURNA
+    - FUB_OTHER
+    - FUB_FATIGUE_2
+    - FUB_INIT_2
+    - FUB_COMPDAT_2
+    - FUB_SIGN_2
+    - FUB_TBTYPE
+    - Time_Stamp
+  unresolved_review_required:
+    - FUB_CNTCNDSP
+    - FUB_CNTCHOWSP
+    - FUB_OTHEVALYN
+    - FUB_OTHEVALSP
+    - FUB_HEIGHT
+    - FUB_KNEE
+    - FUB_HEIGHT_NA
+    - FUB_WEIGHT
+    - FUB_WEIGHT_ESTIMATE
+    - FUB_WEIGHT_NA
+    - FUB_IDCHGNA
+    - FUB_DMCIDCHG
+    - FUB_TUIDCHG
+    - FUB_COUGHDURNA
+    - FUB_OTHER
+    - FUB_FATIGUE_2
+    - FUB_INIT_2
+    - FUB_COMPDAT_2
+    - FUB_SIGN_2
+    - FUB_TBTYPE
+pdf_sections:
+  participant_header:
+    section_label: null
+    fields:
+      - SUBJID
+      - SUBJID2
+      - FUB_VISDAT
+      - FUB_CNTC
+      - FUB_CNTCNDSP
+      - FUB_CNTCHOW
+      - FUB_CNTCHOWSP
+      - FUB_VISIT
+    visible_text: |
+      HOUSEHOLD CONTACT FOLLOW-UP VISIT FORM
+      Household contact ID:
+      Date of evaluation:
+      Day                       Month                    Year
+      Could not contact or evaluate, specify reason:
+      This visit was conducted: In person  By phone  Other, specify:
+      1. Visit type:
+      Month 1  Month 2  Month 6  Month 12  Month 24  TB Activation
+  tb_symptoms:
+    section_label: TB SYMPTOMS
+    fields:
+      - FUB_COUGH
+      - FUB_COUGHDUR
+      - FUB_COUGHBLD
+      - FUB_FEVER
+      - FUB_NIGHTSWT
+      - FUB_WTLOSS
+      - FUB_FAILTHRV
+      - FUB_CHSTPAIN
+      - FUB_FATIGUE
+    visible_text: |
+      TB SYMPTOMS
+      2. Have you had any of the following signs/symptoms since the last study visit?
+      Cough  Yes  No
+      Duration:                weeks
+      *If "Yes," collect sputum sample after completing the questionnaire.
+      Coughing up blood?  Yes  No
+      This person may have TB.
+      Fever  Yes  No  Unknown
+      Excessive night sweats  Yes  No  Unknown
+      Unexpected weight loss  Yes  No  Unknown
+      Loss of appetite if adult or failure to gain weight if a child  Yes  No  Unknown
+      Chest pain especially with coughing or taking a deep breath  Yes  No  Unknown
+      Fatigue  Yes  No  Unknown
+  tb_evaluations:
+    section_label: TB EVALUATIONS
+    fields:
+      - FUB_INH
+      - FUB_INHDUR
+      - FUB_LABSYN
+      - FUB_AFBYN
+      - FUB_CULTUREYN
+      - FUB_CXRY
+      - FUB_OTHEVALYN
+      - FUB_OTHEVALSP
+    visible_text: |
+      TB EVALUATIONS
+      3. Did the you receive INH prophylaxis over the study period? This medicine is for tuberculosis infection.
+      Yes (Go to 3a)
+      No (Go to 4)
+      Unknown (Go to 4)
+      3a. INH prophylaxis was taken for:
+      Less than 3 months
+      3 months to less than 6 months
+      6 months or more
+      4. Were any laboratory or clinical evaluations done since the last study visit?
+      Yes, complete the following:
+      No (Go to 5)
+      Unknown (Go to 5)
+      Sputum AFB smear  Yes  No
+      Sputum culture for TB  Yes  No
+      Chest X-ray  Yes  No
+      Other  Yes  No
+      specify:
+  tb_diagnosis:
+    section_label: null
+    fields:
+      - FUB_TBDIAG
+    visible_text: |
+      5. Have you been diagnosed with active TB?
+      Yes
+      No
+  tb_treatment:
+    section_label: null
+    fields:
+      - FUB_TBTRTYN
+      - FUB_TBTRTSP
+    visible_text: |
+      6. Did you start a multi-drug TB regimen?
+      Yes
+      6a. If yes, report multi-drug anti-TB treatment start date:
+      /          /
+      Day                       Month                    Year
+      No (Go to 7)
+      Unknown (Go to 7)
+  pregnancy:
+    section_label: null
+    fields:
+      - FUB_PREGNANT
+      - FUB_GESTAGE
+      - FUB_PREGOUT
+      - FUB_PREGOUTDAT
+    visible_text: |
+      PREGNANCY ONLY assess pregnancy status for women ages 18-50.
+      7. Are you pregnant?
+      Yes (Go to 7a)
+      No (Go to 8)
+      Unknown (Go to 8)
+      Not assessed (Go to 9)
+      Not applicable, participant is male (Go to 9)
+      Participant declines to answer (Go to 9)
+      7a. Approximently how many weeks have you been pregnant?
+      weeks
+      8. Since the last visit, have you had any of the following pregnancy outcomes?
+      Live birth (full term)
+      Still birth (intrauterine fetal demise >20 weeks)
+      Miscarrage (=<20 weeks)
+      Early termination
+      No, has not been preganant (Go to 9)
+      Participant declines to answer (Go to 9)
+      8a. Date of outcome:
+      /          /
+      Day                       Month                    Year
+  completion:
+    section_label: null
+    fields:
+      - FUB_SIGN
+      - FUB_INIT
+      - FUB_COMPDAT
+    visible_text: |
+      Signature of Data Collector:
+      Initials of Data Collector:
+      Date Completed:
+      /          /
+      Day                       Month                    Year
+  measurements_dataset_only:
+    section_label: null
+    fields:
+      - FUB_HEIGHT
+      - FUB_KNEE
+      - FUB_HEIGHT_NA
+      - FUB_WEIGHT
+      - FUB_WEIGHT_ESTIMATE
+      - FUB_WEIGHT_NA
+    visible_text: |
+      (No PDF visible text — height/weight columns appear in the dataset only; not present on this PDF version.)
+  id_change_dataset_only:
+    section_label: null
+    fields:
+      - FUB_IDCHGNA
+      - FUB_DMCIDCHG
+      - FUB_TUIDCHG
+    visible_text: |
+      (No PDF visible text — ID-change columns appear in the dataset only; not present on this PDF version.)
+  supplemental_dataset_only:
+    section_label: null
+    fields:
+      - FUB_COUGHDURNA
+      - FUB_OTHER
+      - FUB_FATIGUE_2
+      - FUB_TBTYPE
+    visible_text: |
+      (No PDF visible text — supplemental columns appear in the dataset only; not present on this PDF version.)
+  completion_dataset_only:
+    section_label: null
+    fields:
+      - FUB_INIT_2
+      - FUB_COMPDAT_2
+      - FUB_SIGN_2
+    visible_text: |
+      (No PDF visible text — second-completion signature/initials/date columns appear in the dataset only; not present on this PDF version.)
+  system_metadata:
+    section_label: null
+    fields:
+      - Time_Stamp
+    visible_text: |
+      (No PDF visible text — column derived from dataset capture timestamp.)
+option_sets:
+  yes_no_pdf:
+    source: PDF option text
+    source_text: "Yes No"
+    values:
+      - "Yes"
+      - "No"
+    unknown: true
+  yes_no_unknown_pdf:
+    source: PDF option text
+    source_text: "Yes No Unknown"
+    values:
+      - "Yes"
+      - "No"
+      - Unknown
+    unknown: true
+  date_dmy_pdf:
+    source: PDF date boxes
+    source_text: "Day                       Month                    Year"
+    values:
+      - Day
+      - Month
+      - Year
+    unknown: true
+  contact_method_pdf:
+    source: PDF option text
+    source_text: |
+      This visit was conducted: In person  By phone  Other, specify:
+    values:
+      - In person
+      - By phone
+      - Other, specify
+    unknown: true
+  visit_type_pdf:
+    source: PDF option text
+    source_text: |
+      1. Visit type:
+      Month 1  Month 2  Month 6  Month 12  Month 24  TB Activation
+    values:
+      - Month 1
+      - Month 2
+      - Month 6
+      - Month 12
+      - Month 24
+      - TB Activation
+    unknown: true
+  inh_yn_with_skip_pdf:
+    source: PDF option text
+    source_text: |
+      Yes (Go to 3a)
+      No (Go to 4)
+      Unknown (Go to 4)
+    values:
+      - Yes (Go to 3a)
+      - No (Go to 4)
+      - Unknown (Go to 4)
+    unknown: true
+  inh_duration_pdf:
+    source: PDF option text
+    source_text: |
+      Less than 3 months
+      3 months to less than 6 months
+      6 months or more
+    values:
+      - Less than 3 months
+      - 3 months to less than 6 months
+      - 6 months or more
+    unknown: true
+  lab_eval_yn_pdf:
+    source: PDF option text
+    source_text: |
+      Yes, complete the following:
+      No (Go to 5)
+      Unknown (Go to 5)
+    values:
+      - Yes, complete the following
+      - No (Go to 5)
+      - Unknown (Go to 5)
+    unknown: true
+  tb_diagnosis_pdf:
+    source: PDF option text
+    source_text: |
+      Yes
+      No
+    values:
+      - "Yes"
+      - "No"
+    unknown: true
+  tb_treatment_yn_pdf:
+    source: PDF option text
+    source_text: |
+      Yes
+      No (Go to 7)
+      Unknown (Go to 7)
+    values:
+      - "Yes"
+      - No (Go to 7)
+      - Unknown (Go to 7)
+    unknown: true
+  pregnancy_status_pdf:
+    source: PDF option text
+    source_text: |
+      Yes (Go to 7a)
+      No (Go to 8)
+      Unknown (Go to 8)
+      Not assessed (Go to 9)
+      Not applicable, participant is male (Go to 9)
+      Participant declines to answer (Go to 9)
+    values:
+      - Yes (Go to 7a)
+      - No (Go to 8)
+      - Unknown (Go to 8)
+      - Not assessed (Go to 9)
+      - Not applicable, participant is male (Go to 9)
+      - Participant declines to answer (Go to 9)
+    unknown: true
+  pregnancy_outcome_pdf:
+    source: PDF option text
+    source_text: |
+      Live birth (full term)
+      Still birth (intrauterine fetal demise >20 weeks)
+      Miscarrage (=<20 weeks)
+      Early termination
+      No, has not been preganant (Go to 9)
+      Participant declines to answer (Go to 9)
+    values:
+      - Live birth (full term)
+      - Still birth (intrauterine fetal demise >20 weeks)
+      - Miscarrage (=<20 weeks)
+      - Early termination
+      - No, has not been preganant (Go to 9)
+      - Participant declines to answer (Go to 9)
+    unknown: true
+pdf_annotation_pages:
+  - page: 1
+    annotations:
+      - SUBJID
+      - FUB_VISDAT
+      - FUB_CNTC
+      - FUB_CNTCNDSP
+      - FUB_CNTCHOW
+      - "1"
+      - "2"
+      - "4"
+      - FUB_CNTCHOWSP
+      - FUB_VISIT
+      - FUB_COUGH
+      - FUB_COUGHDUR
+      - FUB_COUGHBLD
+      - FUB_FEVER
+      - FUB_NIGHTSWT
+      - FUB_WTLOSS
+      - FUB_FAILTHRV
+      - FUB_CHSTPAIN
+      - FUB_FATIGUE
+      - FUB_INH
+      - FUB_INHDUR
+      - FUB_LABSYN
+      - FUB_AFBYN
+      - FUB_CULTUREYN
+      - FUB_CXRY
+      - FUB_OTHEVALYN
+      - FUB_OTHEVALSP
+  - page: 2
+    annotations:
+      - SUBJID2
+      - FUB_TBDIAG
+      - "1"
+      - "2"
+      - FUB_TBTRTYN
+      - "1"
+      - "2"
+      - "4"
+      - FUB_TBTRTSP
+      - FUB_PREGNANT
+      - FUB_GESTAGE
+      - FUB_PREGOUT
+      - FUB_PREGOUTDAT
+      - FUB_SIGN
+      - FUB_INIT
+      - FUB_COMPDAT
+pdf_visible_text:
+  by_page:
+    - page: 1
+      blocks:
+        - type: heading
+          text: Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse
+          related_variables: []
+        - type: heading
+          text: HOUSEHOLD CONTACT FOLLOW-UP VISIT FORM
+          related_variables: []
+        - type: question
+          text: "Household contact ID:"
+          related_variables:
+            - SUBJID
+        - type: question
+          text: "Date of evaluation:"
+          related_variables:
+            - FUB_VISDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - FUB_VISDAT
+        - type: question
+          text: "Could not contact or evaluate, specify reason:"
+          related_variables:
+            - FUB_CNTC
+            - FUB_CNTCNDSP
+        - type: question
+          text: "This visit was conducted:"
+          related_variables:
+            - FUB_CNTCHOW
+            - FUB_CNTCHOWSP
+        - type: option_block
+          text: "In person  By phone  Other, specify:"
+          related_variables:
+            - FUB_CNTCHOW
+            - FUB_CNTCHOWSP
+        - type: question
+          text: "1. Visit type:"
+          related_variables:
+            - FUB_VISIT
+        - type: option_block
+          text: "Month 1  Month 2  Month 6  Month 12  Month 24  TB Activation"
+          related_variables:
+            - FUB_VISIT
+        - type: section_label
+          text: TB SYMPTOMS
+          related_variables:
+            - FUB_COUGH
+            - FUB_COUGHDUR
+            - FUB_COUGHBLD
+            - FUB_FEVER
+            - FUB_NIGHTSWT
+            - FUB_WTLOSS
+            - FUB_FAILTHRV
+            - FUB_CHSTPAIN
+            - FUB_FATIGUE
+        - type: question
+          text: 2. Have you had any of the following signs/symptoms since the last study visit?
+          related_variables:
+            - FUB_COUGH
+            - FUB_COUGHBLD
+            - FUB_FEVER
+            - FUB_NIGHTSWT
+            - FUB_WTLOSS
+            - FUB_FAILTHRV
+            - FUB_CHSTPAIN
+            - FUB_FATIGUE
+        - type: question
+          text: Cough
+          related_variables:
+            - FUB_COUGH
+        - type: option_block
+          text: "Yes No"
+          related_variables:
+            - FUB_COUGH
+        - type: question
+          text: "Duration:                weeks"
+          related_variables:
+            - FUB_COUGHDUR
+        - type: instruction
+          text: "*If \"Yes,\" collect sputum sample after completing the questionnaire."
+          related_variables:
+            - FUB_COUGH
+            - FUB_COUGHDUR
+        - type: question
+          text: "Coughing up blood?"
+          related_variables:
+            - FUB_COUGHBLD
+        - type: option_block
+          text: "Yes No"
+          related_variables:
+            - FUB_COUGHBLD
+        - type: instruction
+          text: This person may have TB.
+          related_variables:
+            - FUB_COUGHBLD
+        - type: question
+          text: Fever
+          related_variables:
+            - FUB_FEVER
+        - type: option_block
+          text: "Yes No Unknown"
+          related_variables:
+            - FUB_FEVER
+        - type: question
+          text: Excessive night sweats
+          related_variables:
+            - FUB_NIGHTSWT
+        - type: option_block
+          text: "Yes No Unknown"
+          related_variables:
+            - FUB_NIGHTSWT
+        - type: question
+          text: Unexpected weight loss
+          related_variables:
+            - FUB_WTLOSS
+        - type: option_block
+          text: "Yes No Unknown"
+          related_variables:
+            - FUB_WTLOSS
+        - type: question
+          text: Loss of appetite if adult or failure to gain weight if a child
+          related_variables:
+            - FUB_FAILTHRV
+        - type: option_block
+          text: "Yes No Unknown"
+          related_variables:
+            - FUB_FAILTHRV
+        - type: question
+          text: Chest pain especially with coughing or taking a deep breath
+          related_variables:
+            - FUB_CHSTPAIN
+        - type: option_block
+          text: "Yes No Unknown"
+          related_variables:
+            - FUB_CHSTPAIN
+        - type: question
+          text: Fatigue
+          related_variables:
+            - FUB_FATIGUE
+        - type: option_block
+          text: "Yes No Unknown"
+          related_variables:
+            - FUB_FATIGUE
+        - type: section_label
+          text: TB EVALUATIONS
+          related_variables:
+            - FUB_INH
+            - FUB_INHDUR
+            - FUB_LABSYN
+            - FUB_AFBYN
+            - FUB_CULTUREYN
+            - FUB_CXRY
+            - FUB_OTHEVALYN
+            - FUB_OTHEVALSP
+        - type: question
+          text: 3. Did the you receive INH prophylaxis over the study period? This medicine is for tuberculosis infection.
+          related_variables:
+            - FUB_INH
+        - type: option_block
+          text: |
+            Yes (Go to 3a)
+            No (Go to 4)
+            Unknown (Go to 4)
+          related_variables:
+            - FUB_INH
+        - type: question
+          text: "3a. INH prophylaxis was taken for:"
+          related_variables:
+            - FUB_INHDUR
+        - type: option_block
+          text: |
+            Less than 3 months
+            3 months to less than 6 months
+            6 months or more
+          related_variables:
+            - FUB_INHDUR
+        - type: question
+          text: 4. Were any laboratory or clinical evaluations done since the last study visit?
+          related_variables:
+            - FUB_LABSYN
+        - type: option_block
+          text: |
+            Yes, complete the following:
+            No (Go to 5)
+            Unknown (Go to 5)
+          related_variables:
+            - FUB_LABSYN
+        - type: question
+          text: Sputum AFB smear
+          related_variables:
+            - FUB_AFBYN
+        - type: option_block
+          text: "Yes No"
+          related_variables:
+            - FUB_AFBYN
+        - type: question
+          text: Sputum culture for TB
+          related_variables:
+            - FUB_CULTUREYN
+        - type: option_block
+          text: "Yes No"
+          related_variables:
+            - FUB_CULTUREYN
+        - type: question
+          text: Chest X-ray
+          related_variables:
+            - FUB_CXRY
+        - type: option_block
+          text: "Yes No"
+          related_variables:
+            - FUB_CXRY
+        - type: question
+          text: Other
+          related_variables:
+            - FUB_OTHEVALYN
+            - FUB_OTHEVALSP
+        - type: option_block
+          text: "Yes No"
+          related_variables:
+            - FUB_OTHEVALYN
+        - type: question
+          text: "specify:"
+          related_variables:
+            - FUB_OTHEVALSP
+    - page: 2
+      blocks:
+        - type: question
+          text: "Household contact ID:"
+          related_variables:
+            - SUBJID2
+        - type: question
+          text: 5. Have you been diagnosed with active TB?
+          related_variables:
+            - FUB_TBDIAG
+        - type: option_block
+          text: |
+            Yes
+            No
+          related_variables:
+            - FUB_TBDIAG
+        - type: question
+          text: 6. Did you start a multi-drug TB regimen?
+          related_variables:
+            - FUB_TBTRTYN
+        - type: option_block
+          text: |
+            Yes
+            No (Go to 7)
+            Unknown (Go to 7)
+          related_variables:
+            - FUB_TBTRTYN
+        - type: question
+          text: "6a. If yes, report multi-drug anti-TB treatment start date:"
+          related_variables:
+            - FUB_TBTRTSP
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - FUB_TBTRTSP
+        - type: instruction
+          text: PREGNANCY ONLY assess pregnancy status for women ages 18-50.
+          related_variables:
+            - FUB_PREGNANT
+            - FUB_GESTAGE
+            - FUB_PREGOUT
+            - FUB_PREGOUTDAT
+        - type: question
+          text: 7. Are you pregnant?
+          related_variables:
+            - FUB_PREGNANT
+        - type: option_block
+          text: |
+            Yes (Go to 7a)
+            No (Go to 8)
+            Unknown (Go to 8)
+            Not assessed (Go to 9)
+            Not applicable, participant is male (Go to 9)
+            Participant declines to answer (Go to 9)
+          related_variables:
+            - FUB_PREGNANT
+        - type: question
+          text: 7a. Approximently how many weeks have you been pregnant?
+          related_variables:
+            - FUB_GESTAGE
+        - type: caption
+          text: weeks
+          related_variables:
+            - FUB_GESTAGE
+        - type: question
+          text: 8. Since the last visit, have you had any of the following pregnancy outcomes?
+          related_variables:
+            - FUB_PREGOUT
+        - type: option_block
+          text: |
+            Live birth (full term)
+            Still birth (intrauterine fetal demise >20 weeks)
+            Miscarrage (=<20 weeks)
+            Early termination
+            No, has not been preganant (Go to 9)
+            Participant declines to answer (Go to 9)
+          related_variables:
+            - FUB_PREGOUT
+        - type: question
+          text: "8a. Date of outcome:"
+          related_variables:
+            - FUB_PREGOUTDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - FUB_PREGOUTDAT
+        - type: question
+          text: "Signature of Data Collector:"
+          related_variables:
+            - FUB_SIGN
+        - type: question
+          text: "Initials of Data Collector:"
+          related_variables:
+            - FUB_INIT
+        - type: question
+          text: "Date Completed:"
+          related_variables:
+            - FUB_COMPDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - FUB_COMPDAT
+  questions:
+    - id: q_subjid
+      page: 1
+      exact_wording: "Household contact ID:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - SUBJID
+    - id: q_visdat
+      page: 1
+      exact_wording: "Date of evaluation:"
+      section: participant_header
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - FUB_VISDAT
+    - id: q_cntc
+      page: 1
+      exact_wording: "Could not contact or evaluate, specify reason:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: Branching question. Triggers FUB_CNTCNDSP free-text reason.
+      related_variables:
+        - FUB_CNTC
+        - FUB_CNTCNDSP
+    - id: q_cntchow
+      page: 1
+      exact_wording: "This visit was conducted: In person  By phone  Other, specify:"
+      section: participant_header
+      options_ref: contact_method_pdf
+      units: null
+      skip_logic: null
+      notes: "Other, specify free-text answer captured by FUB_CNTCHOWSP."
+      related_variables:
+        - FUB_CNTCHOW
+        - FUB_CNTCHOWSP
+    - id: q1
+      page: 1
+      exact_wording: "1. Visit type:"
+      section: participant_header
+      options_ref: visit_type_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FUB_VISIT
+    - id: q2
+      page: 1
+      exact_wording: 2. Have you had any of the following signs/symptoms since the last study visit?
+      section: tb_symptoms
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: Compound question; each symptom captured by its own variable below.
+      related_variables:
+        - FUB_COUGH
+        - FUB_COUGHBLD
+        - FUB_FEVER
+        - FUB_NIGHTSWT
+        - FUB_WTLOSS
+        - FUB_FAILTHRV
+        - FUB_CHSTPAIN
+        - FUB_FATIGUE
+    - id: q2_cough
+      page: 1
+      exact_wording: Cough
+      section: tb_symptoms
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: "*If \"Yes,\" collect sputum sample after completing the questionnaire."
+      notes: null
+      related_variables:
+        - FUB_COUGH
+    - id: q2_cough_duration
+      page: 1
+      exact_wording: "Duration:                weeks"
+      section: tb_symptoms
+      options_ref: null
+      units: weeks
+      skip_logic: null
+      notes: Numeric duration entered when cough is Yes.
+      related_variables:
+        - FUB_COUGHDUR
+    - id: q2_coughbld
+      page: 1
+      exact_wording: "Coughing up blood?"
+      section: tb_symptoms
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: Adjacent instruction "This person may have TB."
+      related_variables:
+        - FUB_COUGHBLD
+    - id: q2_fever
+      page: 1
+      exact_wording: Fever
+      section: tb_symptoms
+      options_ref: yes_no_unknown_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FUB_FEVER
+    - id: q2_nightswt
+      page: 1
+      exact_wording: Excessive night sweats
+      section: tb_symptoms
+      options_ref: yes_no_unknown_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FUB_NIGHTSWT
+    - id: q2_wtloss
+      page: 1
+      exact_wording: Unexpected weight loss
+      section: tb_symptoms
+      options_ref: yes_no_unknown_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FUB_WTLOSS
+    - id: q2_failthrv
+      page: 1
+      exact_wording: Loss of appetite if adult or failure to gain weight if a child
+      section: tb_symptoms
+      options_ref: yes_no_unknown_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FUB_FAILTHRV
+    - id: q2_chstpain
+      page: 1
+      exact_wording: Chest pain especially with coughing or taking a deep breath
+      section: tb_symptoms
+      options_ref: yes_no_unknown_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FUB_CHSTPAIN
+    - id: q2_fatigue
+      page: 1
+      exact_wording: Fatigue
+      section: tb_symptoms
+      options_ref: yes_no_unknown_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FUB_FATIGUE
+    - id: q3
+      page: 1
+      exact_wording: 3. Did the you receive INH prophylaxis over the study period? This medicine is for tuberculosis infection.
+      section: tb_evaluations
+      options_ref: inh_yn_with_skip_pdf
+      units: null
+      skip_logic: |
+        Yes (Go to 3a)
+        No (Go to 4)
+        Unknown (Go to 4)
+      notes: PDF wording reproduced verbatim ("Did the you receive…").
+      related_variables:
+        - FUB_INH
+    - id: q3a
+      page: 1
+      exact_wording: "3a. INH prophylaxis was taken for:"
+      section: tb_evaluations
+      options_ref: inh_duration_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FUB_INHDUR
+    - id: q4
+      page: 1
+      exact_wording: 4. Were any laboratory or clinical evaluations done since the last study visit?
+      section: tb_evaluations
+      options_ref: lab_eval_yn_pdf
+      units: null
+      skip_logic: |
+        Yes, complete the following:
+        No (Go to 5)
+        Unknown (Go to 5)
+      notes: null
+      related_variables:
+        - FUB_LABSYN
+    - id: q4_afb
+      page: 1
+      exact_wording: Sputum AFB smear
+      section: tb_evaluations
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FUB_AFBYN
+    - id: q4_culture
+      page: 1
+      exact_wording: Sputum culture for TB
+      section: tb_evaluations
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FUB_CULTUREYN
+    - id: q4_cxr
+      page: 1
+      exact_wording: Chest X-ray
+      section: tb_evaluations
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FUB_CXRY
+    - id: q4_other
+      page: 1
+      exact_wording: Other
+      section: tb_evaluations
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: "'specify:' free-text answer captured by FUB_OTHEVALSP."
+      related_variables:
+        - FUB_OTHEVALYN
+        - FUB_OTHEVALSP
+    - id: q4_other_specify
+      page: 1
+      exact_wording: "specify:"
+      section: tb_evaluations
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: Free-text specify field linked to "Other" laboratory/clinical evaluation.
+      related_variables:
+        - FUB_OTHEVALSP
+    - id: q_subjid2
+      page: 2
+      exact_wording: "Household contact ID:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: Page-2 repeat of the participant ID.
+      related_variables:
+        - SUBJID2
+    - id: q5
+      page: 2
+      exact_wording: 5. Have you been diagnosed with active TB?
+      section: tb_diagnosis
+      options_ref: tb_diagnosis_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FUB_TBDIAG
+    - id: q6
+      page: 2
+      exact_wording: 6. Did you start a multi-drug TB regimen?
+      section: tb_treatment
+      options_ref: tb_treatment_yn_pdf
+      units: null
+      skip_logic: |
+        Yes
+        No (Go to 7)
+        Unknown (Go to 7)
+      notes: null
+      related_variables:
+        - FUB_TBTRTYN
+    - id: q6a
+      page: 2
+      exact_wording: "6a. If yes, report multi-drug anti-TB treatment start date:"
+      section: tb_treatment
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes; captured in FUB_TBTRTSP per draft mapping.
+      related_variables:
+        - FUB_TBTRTSP
+    - id: q7
+      page: 2
+      exact_wording: 7. Are you pregnant?
+      section: pregnancy
+      options_ref: pregnancy_status_pdf
+      units: null
+      skip_logic: |
+        Yes (Go to 7a)
+        No (Go to 8)
+        Unknown (Go to 8)
+        Not assessed (Go to 9)
+        Not applicable, participant is male (Go to 9)
+        Participant declines to answer (Go to 9)
+      notes: Page header instruction "PREGNANCY ONLY assess pregnancy status for women ages 18-50." governs the section.
+      related_variables:
+        - FUB_PREGNANT
+    - id: q7a
+      page: 2
+      exact_wording: 7a. Approximently how many weeks have you been pregnant?
+      section: pregnancy
+      options_ref: null
+      units: weeks
+      skip_logic: null
+      notes: PDF wording reproduced verbatim ("Approximently" — original PDF spelling).
+      related_variables:
+        - FUB_GESTAGE
+    - id: q8
+      page: 2
+      exact_wording: 8. Since the last visit, have you had any of the following pregnancy outcomes?
+      section: pregnancy
+      options_ref: pregnancy_outcome_pdf
+      units: null
+      skip_logic: null
+      notes: PDF option labels include verbatim original spellings "Miscarrage" and "preganant".
+      related_variables:
+        - FUB_PREGOUT
+    - id: q8a
+      page: 2
+      exact_wording: "8a. Date of outcome:"
+      section: pregnancy
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - FUB_PREGOUTDAT
+    - id: q_signature
+      page: 2
+      exact_wording: "Signature of Data Collector:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FUB_SIGN
+    - id: q_initials
+      page: 2
+      exact_wording: "Initials of Data Collector:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FUB_INIT
+    - id: q_date_completed
+      page: 2
+      exact_wording: "Date Completed:"
+      section: completion
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - FUB_COMPDAT
+evidence_packs:
+  by_variable:
+    SUBJID:
+      exact_pdf_wording: "Household contact ID:"
+      pdf_annotation: SUBJID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    SUBJID2:
+      exact_pdf_wording: "Household contact ID:"
+      pdf_annotation: SUBJID2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_VISDAT:
+      exact_pdf_wording: "Date of evaluation:"
+      pdf_annotation: FUB_VISDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_CNTC:
+      exact_pdf_wording: "Could not contact or evaluate, specify reason:"
+      pdf_annotation: FUB_CNTC
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_CNTCNDSP:
+      exact_pdf_wording: "Could not contact or evaluate, specify reason:"
+      pdf_annotation: FUB_CNTCNDSP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_CNTCHOW:
+      exact_pdf_wording: "This visit was conducted: In person  By phone  Other, specify:"
+      pdf_annotation: FUB_CNTCHOW
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_CNTCHOWSP:
+      exact_pdf_wording: "Other, specify:"
+      pdf_annotation: FUB_CNTCHOWSP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_VISIT:
+      exact_pdf_wording: "1. Visit type:"
+      pdf_annotation: FUB_VISIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_COUGH:
+      exact_pdf_wording: Cough
+      pdf_annotation: FUB_COUGH
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_COUGHDUR:
+      exact_pdf_wording: "Duration:                weeks"
+      pdf_annotation: FUB_COUGHDUR
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_COUGHBLD:
+      exact_pdf_wording: "Coughing up blood?"
+      pdf_annotation: FUB_COUGHBLD
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_FEVER:
+      exact_pdf_wording: Fever
+      pdf_annotation: FUB_FEVER
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_NIGHTSWT:
+      exact_pdf_wording: Excessive night sweats
+      pdf_annotation: FUB_NIGHTSWT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_WTLOSS:
+      exact_pdf_wording: Unexpected weight loss
+      pdf_annotation: FUB_WTLOSS
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_FAILTHRV:
+      exact_pdf_wording: Loss of appetite if adult or failure to gain weight if a child
+      pdf_annotation: FUB_FAILTHRV
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_CHSTPAIN:
+      exact_pdf_wording: Chest pain especially with coughing or taking a deep breath
+      pdf_annotation: FUB_CHSTPAIN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_FATIGUE:
+      exact_pdf_wording: Fatigue
+      pdf_annotation: FUB_FATIGUE
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_INH:
+      exact_pdf_wording: 3. Did the you receive INH prophylaxis over the study period? This medicine is for tuberculosis infection.
+      pdf_annotation: FUB_INH
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_INHDUR:
+      exact_pdf_wording: "3a. INH prophylaxis was taken for:"
+      pdf_annotation: FUB_INHDUR
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_LABSYN:
+      exact_pdf_wording: 4. Were any laboratory or clinical evaluations done since the last study visit?
+      pdf_annotation: FUB_LABSYN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_AFBYN:
+      exact_pdf_wording: Sputum AFB smear
+      pdf_annotation: FUB_AFBYN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_CULTUREYN:
+      exact_pdf_wording: Sputum culture for TB
+      pdf_annotation: FUB_CULTUREYN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_CXRY:
+      exact_pdf_wording: Chest X-ray
+      pdf_annotation: FUB_CXRY
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_OTHEVALYN:
+      exact_pdf_wording: Other
+      pdf_annotation: FUB_OTHEVALYN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_OTHEVALSP:
+      exact_pdf_wording: "specify:"
+      pdf_annotation: FUB_OTHEVALSP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_TBDIAG:
+      exact_pdf_wording: 5. Have you been diagnosed with active TB?
+      pdf_annotation: FUB_TBDIAG
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_TBTRTYN:
+      exact_pdf_wording: 6. Did you start a multi-drug TB regimen?
+      pdf_annotation: FUB_TBTRTYN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_TBTRTSP:
+      exact_pdf_wording: "6a. If yes, report multi-drug anti-TB treatment start date:"
+      pdf_annotation: FUB_TBTRTSP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_PREGNANT:
+      exact_pdf_wording: 7. Are you pregnant?
+      pdf_annotation: FUB_PREGNANT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_GESTAGE:
+      exact_pdf_wording: 7a. Approximently how many weeks have you been pregnant?
+      pdf_annotation: FUB_GESTAGE
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_PREGOUT:
+      exact_pdf_wording: 8. Since the last visit, have you had any of the following pregnancy outcomes?
+      pdf_annotation: " FUB_PREGOUT"
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_PREGOUTDAT:
+      exact_pdf_wording: "8a. Date of outcome:"
+      pdf_annotation: FUB_PREGOUTDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_SIGN:
+      exact_pdf_wording: "Signature of Data Collector:"
+      pdf_annotation: FUB_SIGN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_INIT:
+      exact_pdf_wording: "Initials of Data Collector:"
+      pdf_annotation: FUB_INIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_COMPDAT:
+      exact_pdf_wording: "Date Completed:"
+      pdf_annotation: FUB_COMPDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FUB_HEIGHT:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FUB_KNEE:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FUB_HEIGHT_NA:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FUB_WEIGHT:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FUB_WEIGHT_ESTIMATE:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FUB_WEIGHT_NA:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FUB_IDCHGNA:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FUB_DMCIDCHG:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FUB_TUIDCHG:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FUB_COUGHDURNA:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FUB_OTHER:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FUB_FATIGUE_2:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FUB_INIT_2:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FUB_COMPDAT_2:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FUB_SIGN_2:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    FUB_TBTYPE:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    Time_Stamp:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+catalog_refs:
+  by_variable:
+    SUBJID:
+      display_label: Household Contact ID
+      normalized_meaning: Pseudonymized identifier for the household contact participant.
+      search_terms:
+        - SUBJID
+        - Household contact ID
+        - participant id
+        - subject id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    SUBJID2:
+      display_label: Household Contact ID (Page 2)
+      normalized_meaning: Page-2 repeat of the household contact identifier; duplicate candidate of SUBJID, verified during PHI handling.
+      search_terms:
+        - SUBJID2
+        - Household contact ID
+        - duplicate subject id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_VISDAT:
+      display_label: Date of Evaluation
+      normalized_meaning: Date the follow-up evaluation visit was performed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - FUB_VISDAT
+        - Date of evaluation
+        - visit date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_CNTC:
+      display_label: Could Not Contact / Evaluate
+      normalized_meaning: Indicator that the participant could not be contacted or evaluated for this visit.
+      search_terms:
+        - FUB_CNTC
+        - Could not contact or evaluate
+        - contact failure
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_CNTCNDSP:
+      display_label: Could Not Contact — Reason Specified
+      normalized_meaning: Free-text reason captured when the participant could not be contacted or evaluated.
+      search_terms:
+        - FUB_CNTCNDSP
+        - Could not contact specify reason
+        - contact failure reason
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FUB_CNTCHOW:
+      display_label: Visit Conducted How
+      normalized_meaning: How the visit was conducted (In person, By phone, Other specify).
+      search_terms:
+        - FUB_CNTCHOW
+        - This visit was conducted
+        - In person
+        - By phone
+        - visit method
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_CNTCHOWSP:
+      display_label: Visit Conducted How — Other Specified
+      normalized_meaning: Free-text other-specify reason for visit conduct method.
+      search_terms:
+        - FUB_CNTCHOWSP
+        - Other, specify
+        - visit method other
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FUB_VISIT:
+      display_label: Visit Type
+      normalized_meaning: Visit type (Month 1, Month 2, Month 6, Month 12, Month 24, TB Activation).
+      search_terms:
+        - FUB_VISIT
+        - Visit type
+        - Month 1
+        - Month 24
+        - TB Activation
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_COUGH:
+      display_label: Cough
+      normalized_meaning: Whether the participant had cough since the last study visit (Yes/No).
+      search_terms:
+        - FUB_COUGH
+        - Cough
+        - cough symptom
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_COUGHDUR:
+      display_label: Cough Duration (weeks)
+      normalized_meaning: Numeric duration of cough in weeks.
+      search_terms:
+        - FUB_COUGHDUR
+        - Duration weeks
+        - cough duration
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_COUGHBLD:
+      display_label: Coughing Up Blood
+      normalized_meaning: Whether the participant has been coughing up blood (Yes/No).
+      search_terms:
+        - FUB_COUGHBLD
+        - Coughing up blood
+        - hemoptysis
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_FEVER:
+      display_label: Fever
+      normalized_meaning: Whether the participant had fever since the last study visit (Yes/No/Unknown).
+      search_terms:
+        - FUB_FEVER
+        - Fever
+        - fever symptom
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_NIGHTSWT:
+      display_label: Excessive Night Sweats
+      normalized_meaning: Whether the participant had excessive night sweats (Yes/No/Unknown).
+      search_terms:
+        - FUB_NIGHTSWT
+        - Excessive night sweats
+        - night sweats
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_WTLOSS:
+      display_label: Unexpected Weight Loss
+      normalized_meaning: Whether the participant had unexpected weight loss (Yes/No/Unknown).
+      search_terms:
+        - FUB_WTLOSS
+        - Unexpected weight loss
+        - weight loss
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_FAILTHRV:
+      display_label: Loss of Appetite / Failure to Thrive
+      normalized_meaning: Loss of appetite if adult or failure to gain weight if a child (Yes/No/Unknown).
+      search_terms:
+        - FUB_FAILTHRV
+        - Loss of appetite
+        - failure to gain weight
+        - failure to thrive
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_CHSTPAIN:
+      display_label: Chest Pain
+      normalized_meaning: Chest pain especially with coughing or taking a deep breath (Yes/No/Unknown).
+      search_terms:
+        - FUB_CHSTPAIN
+        - Chest pain
+        - pleuritic chest pain
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_FATIGUE:
+      display_label: Fatigue
+      normalized_meaning: Whether the participant had fatigue since the last study visit (Yes/No/Unknown).
+      search_terms:
+        - FUB_FATIGUE
+        - Fatigue
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_INH:
+      display_label: INH Prophylaxis Received
+      normalized_meaning: Whether the participant received INH prophylaxis over the study period (Yes/No/Unknown).
+      search_terms:
+        - FUB_INH
+        - INH prophylaxis
+        - isoniazid
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_INHDUR:
+      display_label: INH Prophylaxis Duration
+      normalized_meaning: Duration that INH prophylaxis was taken (Less than 3 months; 3 months to less than 6 months; 6 months or more).
+      search_terms:
+        - FUB_INHDUR
+        - INH prophylaxis duration
+        - INH duration
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_LABSYN:
+      display_label: Labs/Clinical Evaluations Done
+      normalized_meaning: Whether any laboratory or clinical evaluations were done since the last study visit (Yes/No/Unknown).
+      search_terms:
+        - FUB_LABSYN
+        - laboratory or clinical evaluations
+        - labs done
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_AFBYN:
+      display_label: Sputum AFB Smear Done
+      normalized_meaning: Whether a sputum AFB smear was done (Yes/No).
+      search_terms:
+        - FUB_AFBYN
+        - Sputum AFB smear
+        - AFB smear
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_CULTUREYN:
+      display_label: Sputum Culture For TB Done
+      normalized_meaning: Whether a sputum culture for TB was done (Yes/No).
+      search_terms:
+        - FUB_CULTUREYN
+        - Sputum culture for TB
+        - TB culture
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_CXRY:
+      display_label: Chest X-Ray Done
+      normalized_meaning: Whether a chest X-ray was done (Yes/No).
+      search_terms:
+        - FUB_CXRY
+        - Chest X-ray
+        - CXR
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_OTHEVALYN:
+      display_label: Other Evaluation Done
+      normalized_meaning: Whether another (Other) laboratory or clinical evaluation was done (Yes/No).
+      search_terms:
+        - FUB_OTHEVALYN
+        - Other evaluation
+        - other lab evaluation
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_OTHEVALSP:
+      display_label: Other Evaluation — Specified
+      normalized_meaning: Free-text specify of the Other laboratory or clinical evaluation.
+      search_terms:
+        - FUB_OTHEVALSP
+        - Other evaluation specify
+        - specify
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FUB_TBDIAG:
+      display_label: TB Diagnosis
+      normalized_meaning: Whether the participant has been diagnosed with active TB (Yes/No).
+      search_terms:
+        - FUB_TBDIAG
+        - diagnosed with active TB
+        - TB diagnosis
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_TBTRTYN:
+      display_label: Multi-drug TB Regimen Started
+      normalized_meaning: Whether the participant started a multi-drug TB regimen (Yes/No/Unknown).
+      search_terms:
+        - FUB_TBTRTYN
+        - multi-drug TB regimen
+        - TB treatment started
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_TBTRTSP:
+      display_label: TB Treatment Start Date
+      normalized_meaning: Date the participant started multi-drug anti-TB treatment (Day/Month/Year), jittered for PHI handling. PDF question 6a captures this date with a Day/Month/Year box.
+      search_terms:
+        - FUB_TBTRTSP
+        - multi-drug anti-TB treatment start date
+        - TB treatment start date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_PREGNANT:
+      display_label: Pregnant
+      normalized_meaning: Pregnancy status (Yes / No / Unknown / Not assessed / Not applicable participant is male / Participant declines to answer).
+      search_terms:
+        - FUB_PREGNANT
+        - Are you pregnant
+        - pregnancy status
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_GESTAGE:
+      display_label: Gestational Age (weeks)
+      normalized_meaning: Approximate number of weeks pregnant (gestational age).
+      search_terms:
+        - FUB_GESTAGE
+        - weeks pregnant
+        - gestational age
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_PREGOUT:
+      display_label: Pregnancy Outcome
+      normalized_meaning: Pregnancy outcome since last visit (Live birth full term, Still birth, Miscarrage, Early termination, No has not been preganant, Participant declines to answer).
+      search_terms:
+        - FUB_PREGOUT
+        - pregnancy outcomes
+        - Live birth
+        - Miscarrage
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_PREGOUTDAT:
+      display_label: Pregnancy Outcome Date
+      normalized_meaning: Date of pregnancy outcome (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - FUB_PREGOUTDAT
+        - Date of outcome
+        - pregnancy outcome date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_SIGN:
+      display_label: Data Collector Signature
+      normalized_meaning: Signature of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - FUB_SIGN
+        - Signature of Data Collector
+        - signature
+      catalog_tier: source_only
+      analysis_queryable: false
+    FUB_INIT:
+      display_label: Data Collector Initials
+      normalized_meaning: Initials of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - FUB_INIT
+        - Initials of Data Collector
+        - initials
+      catalog_tier: source_only
+      analysis_queryable: false
+    FUB_COMPDAT:
+      display_label: Form Completion Date
+      normalized_meaning: Date the form was completed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - FUB_COMPDAT
+        - Date Completed
+        - form completion date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_HEIGHT:
+      display_label: Height (dataset-only)
+      normalized_meaning: Numeric height; dataset-only column with no PDF visible text on this form version. Awaiting reviewer confirmation of meaning, units, and source.
+      search_terms:
+        - FUB_HEIGHT
+        - height
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FUB_KNEE:
+      display_label: Knee Height (dataset-only)
+      normalized_meaning: Likely knee-height measurement; dataset-only column with no PDF visible text on this form version. Awaiting reviewer confirmation of meaning, units, and source.
+      search_terms:
+        - FUB_KNEE
+        - knee
+        - knee height
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FUB_HEIGHT_NA:
+      display_label: Height Not Available (dataset-only)
+      normalized_meaning: Indicator that height is not available; dataset-only column. Awaiting reviewer confirmation of meaning and source.
+      search_terms:
+        - FUB_HEIGHT_NA
+        - height not available
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FUB_WEIGHT:
+      display_label: Weight (dataset-only)
+      normalized_meaning: Numeric weight; dataset-only column with no PDF visible text on this form version. Awaiting reviewer confirmation of meaning, units, and source.
+      search_terms:
+        - FUB_WEIGHT
+        - weight
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FUB_WEIGHT_ESTIMATE:
+      display_label: Weight Estimate (dataset-only)
+      normalized_meaning: Indicator/value for whether weight was estimated; dataset-only column with no PDF visible text on this form version. Awaiting reviewer confirmation.
+      search_terms:
+        - FUB_WEIGHT_ESTIMATE
+        - weight estimate
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FUB_WEIGHT_NA:
+      display_label: Weight Not Available (dataset-only)
+      normalized_meaning: Indicator that weight is not available; dataset-only column. Awaiting reviewer confirmation of meaning and source.
+      search_terms:
+        - FUB_WEIGHT_NA
+        - weight not available
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FUB_IDCHGNA:
+      display_label: ID Change Not Applicable (dataset-only)
+      normalized_meaning: Indicator related to ID change not applicable; dataset-only column with no PDF visible text on this form version. Awaiting reviewer confirmation.
+      search_terms:
+        - FUB_IDCHGNA
+        - ID change not applicable
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FUB_DMCIDCHG:
+      display_label: DMC ID Change (dataset-only)
+      normalized_meaning: Operational identifier for a Data Management Center ID change; dataset-only column with no PDF visible text on this form version.
+      search_terms:
+        - FUB_DMCIDCHG
+        - DMC ID change
+        - data management center id change
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_TUIDCHG:
+      display_label: TU ID Change (dataset-only)
+      normalized_meaning: Operational identifier for a Treatment/Tracking Unit ID change; dataset-only column with no PDF visible text on this form version.
+      search_terms:
+        - FUB_TUIDCHG
+        - TU ID change
+        - treatment unit id change
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_COUGHDURNA:
+      display_label: Cough Duration Not Available (dataset-only)
+      normalized_meaning: Indicator that cough duration is not available; dataset-only column with no PDF visible text on this form version.
+      search_terms:
+        - FUB_COUGHDURNA
+        - cough duration not available
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FUB_OTHER:
+      display_label: Other Free-text (dataset-only)
+      normalized_meaning: Generic Other free-text field; dataset-only column with no PDF visible text on this form version. Awaiting reviewer confirmation that it is not PHI-bearing.
+      search_terms:
+        - FUB_OTHER
+        - other
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FUB_FATIGUE_2:
+      display_label: Fatigue (alternate, dataset-only)
+      normalized_meaning: Second fatigue column; dataset-only with no PDF visible text on this form version. Awaiting reviewer confirmation that it is not duplicate or alternate-encoding of FUB_FATIGUE.
+      search_terms:
+        - FUB_FATIGUE_2
+        - fatigue alternate
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    FUB_INIT_2:
+      display_label: Data Collector Initials (alternate, dataset-only)
+      normalized_meaning: Second initials column for a co-signing or follow-up data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - FUB_INIT_2
+        - initials second
+      catalog_tier: source_only
+      analysis_queryable: false
+    FUB_COMPDAT_2:
+      display_label: Form Completion Date (alternate, dataset-only)
+      normalized_meaning: Second completion date column; dataset-only with no PDF visible text on this form version. Treated as a date and jittered for PHI handling.
+      search_terms:
+        - FUB_COMPDAT_2
+        - completion date second
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FUB_SIGN_2:
+      display_label: Data Collector Signature (alternate, dataset-only)
+      normalized_meaning: Second signature column for a co-signing or follow-up data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - FUB_SIGN_2
+        - signature second
+      catalog_tier: source_only
+      analysis_queryable: false
+    FUB_TBTYPE:
+      display_label: TB Type (dataset-only)
+      normalized_meaning: TB type classification; dataset-only column with no PDF visible text on this form version. Awaiting reviewer confirmation.
+      search_terms:
+        - FUB_TBTYPE
+        - TB type
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    Time_Stamp:
+      display_label: Capture Timestamp
+      normalized_meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      search_terms:
+        - Time_Stamp
+        - timestamp
+        - capture timestamp
+      catalog_tier: source_only
+      analysis_queryable: false
+ledger_expectations:
+  phi_handling:
+    - SUBJID
+    - SUBJID2
+    - FUB_VISDAT
+    - FUB_CNTCNDSP
+    - FUB_CNTCHOWSP
+    - FUB_OTHEVALSP
+    - FUB_TBTRTSP
+    - FUB_PREGOUTDAT
+    - FUB_DMCIDCHG
+    - FUB_TUIDCHG
+    - FUB_OTHER
+    - FUB_SIGN
+    - FUB_INIT
+    - FUB_COMPDAT
+    - FUB_INIT_2
+    - FUB_COMPDAT_2
+    - FUB_SIGN_2
+  dataset_cleanup:
+    - Time_Stamp
+variables:
+  SUBJID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Household contact ID:"
+      pdf_annotation: SUBJID
+      column_name: SUBJID
+    normalized_metadata:
+      display_label: Household Contact ID
+      meaning: Pseudonymized identifier for the household contact participant.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  SUBJID2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Household contact ID:"
+      pdf_annotation: SUBJID2
+      column_name: SUBJID2
+    normalized_metadata:
+      display_label: Household Contact ID (Page 2)
+      meaning: Page-2 repeat of the household contact identifier; duplicate candidate of SUBJID.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: SUBJID
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+      dedup: exact_only_after_phi
+    runtime_binding:
+      - phi_scrub
+      - dedup_after_phi
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  FUB_VISDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date of evaluation:"
+      pdf_annotation: FUB_VISDAT
+      column_name: FUB_VISDAT
+    normalized_metadata:
+      display_label: Date of Evaluation
+      meaning: Date the follow-up evaluation visit was performed.
+      section: participant_header
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  FUB_CNTC:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Could not contact or evaluate, specify reason:"
+      pdf_annotation: FUB_CNTC
+      column_name: FUB_CNTC
+    normalized_metadata:
+      display_label: Could Not Contact / Evaluate
+      meaning: Indicator that the participant could not be contacted or evaluated for this visit.
+      section: participant_header
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - FUB_CNTCNDSP
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: FUB_CNTCNDSP
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_CNTCNDSP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Could not contact or evaluate, specify reason:"
+      pdf_annotation: FUB_CNTCNDSP
+      column_name: FUB_CNTCNDSP
+    normalized_metadata:
+      display_label: Could Not Contact — Reason Specified
+      meaning: Free-text reason captured when the participant could not be contacted or evaluated.
+      section: participant_header
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FUB_CNTC
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: Is the free-text "Could not contact or evaluate, specify reason" content allowed in the PHI-handled dataset, or should it be dropped/redacted?
+    clean_output_presence: absent
+  FUB_CNTCHOW:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "This visit was conducted: In person  By phone  Other, specify:"
+      pdf_annotation: FUB_CNTCHOW
+      column_name: FUB_CNTCHOW
+    normalized_metadata:
+      display_label: Visit Conducted How
+      meaning: How the visit was conducted (In person, By phone, Other specify).
+      section: participant_header
+      data_type: categorical
+      options_ref: contact_method_pdf
+    options:
+      source_defined:
+        - In person
+        - By phone
+        - Other, specify
+      values:
+        - In person
+        - By phone
+        - Other, specify
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - FUB_CNTCHOWSP
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: FUB_CNTCHOWSP
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_CNTCHOWSP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Other, specify:"
+      pdf_annotation: FUB_CNTCHOWSP
+      column_name: FUB_CNTCHOWSP
+    normalized_metadata:
+      display_label: Visit Conducted How — Other Specified
+      meaning: Free-text other-specify reason for visit conduct method.
+      section: participant_header
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FUB_CNTCHOW
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: Is the free-text visit-conducted "Other, specify" content allowed in the PHI-handled dataset, or should it be dropped/redacted?
+    clean_output_presence: absent
+  FUB_VISIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "1. Visit type:"
+      pdf_annotation: FUB_VISIT
+      column_name: FUB_VISIT
+    normalized_metadata:
+      display_label: Visit Type
+      meaning: Visit type at this follow-up encounter.
+      section: participant_header
+      data_type: categorical
+      options_ref: visit_type_pdf
+    options:
+      source_defined:
+        - Month 1
+        - Month 2
+        - Month 6
+        - Month 12
+        - Month 24
+        - TB Activation
+      values:
+        - Month 1
+        - Month 2
+        - Month 6
+        - Month 12
+        - Month 24
+        - TB Activation
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: visit_type
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_COUGH:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Cough
+      pdf_annotation: FUB_COUGH
+      column_name: FUB_COUGH
+    normalized_metadata:
+      display_label: Cough
+      meaning: Whether the participant had cough since the last study visit.
+      section: tb_symptoms
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - FUB_COUGHDUR
+      skip_logic: "*If \"Yes,\" collect sputum sample after completing the questionnaire."
+      visit_grouping: null
+      section_grouping: tb_symptoms
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_COUGHDUR:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Duration:                weeks"
+      pdf_annotation: FUB_COUGHDUR
+      column_name: FUB_COUGHDUR
+    normalized_metadata:
+      display_label: Cough Duration (weeks)
+      meaning: Duration of cough in weeks.
+      section: tb_symptoms
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FUB_COUGH
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_symptoms
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_COUGHBLD:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Coughing up blood?"
+      pdf_annotation: FUB_COUGHBLD
+      column_name: FUB_COUGHBLD
+    normalized_metadata:
+      display_label: Coughing Up Blood
+      meaning: Whether the participant has been coughing up blood.
+      section: tb_symptoms
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_symptoms
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_FEVER:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Fever
+      pdf_annotation: FUB_FEVER
+      column_name: FUB_FEVER
+    normalized_metadata:
+      display_label: Fever
+      meaning: Whether the participant had fever since the last study visit.
+      section: tb_symptoms
+      data_type: categorical
+      options_ref: yes_no_unknown_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+        - Unknown
+      values:
+        - "Yes"
+        - "No"
+        - Unknown
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_symptoms
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_NIGHTSWT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Excessive night sweats
+      pdf_annotation: FUB_NIGHTSWT
+      column_name: FUB_NIGHTSWT
+    normalized_metadata:
+      display_label: Excessive Night Sweats
+      meaning: Whether the participant had excessive night sweats since the last study visit.
+      section: tb_symptoms
+      data_type: categorical
+      options_ref: yes_no_unknown_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+        - Unknown
+      values:
+        - "Yes"
+        - "No"
+        - Unknown
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_symptoms
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_WTLOSS:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Unexpected weight loss
+      pdf_annotation: FUB_WTLOSS
+      column_name: FUB_WTLOSS
+    normalized_metadata:
+      display_label: Unexpected Weight Loss
+      meaning: Whether the participant had unexpected weight loss since the last study visit.
+      section: tb_symptoms
+      data_type: categorical
+      options_ref: yes_no_unknown_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+        - Unknown
+      values:
+        - "Yes"
+        - "No"
+        - Unknown
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_symptoms
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_FAILTHRV:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Loss of appetite if adult or failure to gain weight if a child
+      pdf_annotation: FUB_FAILTHRV
+      column_name: FUB_FAILTHRV
+    normalized_metadata:
+      display_label: Loss of Appetite / Failure to Thrive
+      meaning: Loss of appetite if adult or failure to gain weight if a child.
+      section: tb_symptoms
+      data_type: categorical
+      options_ref: yes_no_unknown_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+        - Unknown
+      values:
+        - "Yes"
+        - "No"
+        - Unknown
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_symptoms
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_CHSTPAIN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Chest pain especially with coughing or taking a deep breath
+      pdf_annotation: FUB_CHSTPAIN
+      column_name: FUB_CHSTPAIN
+    normalized_metadata:
+      display_label: Chest Pain
+      meaning: Chest pain especially with coughing or taking a deep breath.
+      section: tb_symptoms
+      data_type: categorical
+      options_ref: yes_no_unknown_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+        - Unknown
+      values:
+        - "Yes"
+        - "No"
+        - Unknown
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_symptoms
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_FATIGUE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Fatigue
+      pdf_annotation: FUB_FATIGUE
+      column_name: FUB_FATIGUE
+    normalized_metadata:
+      display_label: Fatigue
+      meaning: Whether the participant had fatigue since the last study visit.
+      section: tb_symptoms
+      data_type: categorical
+      options_ref: yes_no_unknown_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+        - Unknown
+      values:
+        - "Yes"
+        - "No"
+        - Unknown
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_symptoms
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_INH:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 3. Did the you receive INH prophylaxis over the study period? This medicine is for tuberculosis infection.
+      pdf_annotation: FUB_INH
+      column_name: FUB_INH
+    normalized_metadata:
+      display_label: INH Prophylaxis Received
+      meaning: Whether the participant received INH prophylaxis over the study period.
+      section: tb_evaluations
+      data_type: categorical
+      options_ref: inh_yn_with_skip_pdf
+    options:
+      source_defined:
+        - Yes (Go to 3a)
+        - No (Go to 4)
+        - Unknown (Go to 4)
+      values:
+        - Yes (Go to 3a)
+        - No (Go to 4)
+        - Unknown (Go to 4)
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - FUB_INHDUR
+      skip_logic: |
+        Yes (Go to 3a)
+        No (Go to 4)
+        Unknown (Go to 4)
+      visit_grouping: null
+      section_grouping: tb_evaluations
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_INHDUR:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3a. INH prophylaxis was taken for:"
+      pdf_annotation: FUB_INHDUR
+      column_name: FUB_INHDUR
+    normalized_metadata:
+      display_label: INH Prophylaxis Duration
+      meaning: Duration that INH prophylaxis was taken.
+      section: tb_evaluations
+      data_type: categorical
+      options_ref: inh_duration_pdf
+    options:
+      source_defined:
+        - Less than 3 months
+        - 3 months to less than 6 months
+        - 6 months or more
+      values:
+        - Less than 3 months
+        - 3 months to less than 6 months
+        - 6 months or more
+      unknown: true
+    relationships:
+      parent: FUB_INH
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_evaluations
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_LABSYN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 4. Were any laboratory or clinical evaluations done since the last study visit?
+      pdf_annotation: FUB_LABSYN
+      column_name: FUB_LABSYN
+    normalized_metadata:
+      display_label: Labs/Clinical Evaluations Done
+      meaning: Whether any laboratory or clinical evaluations were done since the last study visit.
+      section: tb_evaluations
+      data_type: categorical
+      options_ref: lab_eval_yn_pdf
+    options:
+      source_defined:
+        - Yes, complete the following
+        - No (Go to 5)
+        - Unknown (Go to 5)
+      values:
+        - Yes, complete the following
+        - No (Go to 5)
+        - Unknown (Go to 5)
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - FUB_AFBYN
+        - FUB_CULTUREYN
+        - FUB_CXRY
+        - FUB_OTHEVALYN
+        - FUB_OTHEVALSP
+      skip_logic: |
+        Yes, complete the following:
+        No (Go to 5)
+        Unknown (Go to 5)
+      visit_grouping: null
+      section_grouping: tb_evaluations
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_AFBYN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Sputum AFB smear
+      pdf_annotation: FUB_AFBYN
+      column_name: FUB_AFBYN
+    normalized_metadata:
+      display_label: Sputum AFB Smear Done
+      meaning: Whether a sputum AFB smear was done.
+      section: tb_evaluations
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: FUB_LABSYN
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_evaluations
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_CULTUREYN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Sputum culture for TB
+      pdf_annotation: FUB_CULTUREYN
+      column_name: FUB_CULTUREYN
+    normalized_metadata:
+      display_label: Sputum Culture For TB Done
+      meaning: Whether a sputum culture for TB was done.
+      section: tb_evaluations
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: FUB_LABSYN
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_evaluations
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_CXRY:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Chest X-ray
+      pdf_annotation: FUB_CXRY
+      column_name: FUB_CXRY
+    normalized_metadata:
+      display_label: Chest X-Ray Done
+      meaning: Whether a chest X-ray was done.
+      section: tb_evaluations
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: FUB_LABSYN
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_evaluations
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_OTHEVALYN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Other
+      pdf_annotation: FUB_OTHEVALYN
+      column_name: FUB_OTHEVALYN
+    normalized_metadata:
+      display_label: Other Evaluation Done
+      meaning: Whether another (Other) laboratory or clinical evaluation was done.
+      section: tb_evaluations
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: FUB_LABSYN
+      children:
+        - FUB_OTHEVALSP
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_evaluations
+      other_specify: FUB_OTHEVALSP
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: possible_other_specify_parent
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: ambiguous_other_specify_pairing
+      reviewer_question: Confirm that FUB_OTHEVALYN (Other Yes/No) is the parent of the FUB_OTHEVALSP free-text specify field for Q4 "Other" lab/clinical evaluation, and that no PHI/sensitive content is captured in the Yes/No itself.
+    clean_output_presence: present
+  FUB_OTHEVALSP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "specify:"
+      pdf_annotation: FUB_OTHEVALSP
+      column_name: FUB_OTHEVALSP
+    normalized_metadata:
+      display_label: Other Evaluation — Specified
+      meaning: Free-text specify of the Other laboratory or clinical evaluation.
+      section: tb_evaluations
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FUB_OTHEVALYN
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_evaluations
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: Is the free-text Q4 "Other specify" content allowed in the PHI-handled dataset, or should it be dropped/redacted?
+    clean_output_presence: absent
+  FUB_TBDIAG:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 5. Have you been diagnosed with active TB?
+      pdf_annotation: FUB_TBDIAG
+      column_name: FUB_TBDIAG
+    normalized_metadata:
+      display_label: TB Diagnosis
+      meaning: Whether the participant has been diagnosed with active TB.
+      section: tb_diagnosis
+      data_type: categorical
+      options_ref: tb_diagnosis_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_diagnosis
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_TBTRTYN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 6. Did you start a multi-drug TB regimen?
+      pdf_annotation: FUB_TBTRTYN
+      column_name: FUB_TBTRTYN
+    normalized_metadata:
+      display_label: Multi-drug TB Regimen Started
+      meaning: Whether the participant started a multi-drug TB regimen.
+      section: tb_treatment
+      data_type: categorical
+      options_ref: tb_treatment_yn_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - No (Go to 7)
+        - Unknown (Go to 7)
+      values:
+        - "Yes"
+        - No (Go to 7)
+        - Unknown (Go to 7)
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - FUB_TBTRTSP
+      skip_logic: |
+        Yes
+        No (Go to 7)
+        Unknown (Go to 7)
+      visit_grouping: null
+      section_grouping: tb_treatment
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_TBTRTSP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "6a. If yes, report multi-drug anti-TB treatment start date:"
+      pdf_annotation: FUB_TBTRTSP
+      column_name: FUB_TBTRTSP
+    normalized_metadata:
+      display_label: TB Treatment Start Date
+      meaning: Date the participant started multi-drug anti-TB treatment.
+      section: tb_treatment
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: FUB_TBTRTYN
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_treatment
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  FUB_PREGNANT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 7. Are you pregnant?
+      pdf_annotation: FUB_PREGNANT
+      column_name: FUB_PREGNANT
+    normalized_metadata:
+      display_label: Pregnant
+      meaning: Pregnancy status with full skip-logic option set.
+      section: pregnancy
+      data_type: categorical
+      options_ref: pregnancy_status_pdf
+    options:
+      source_defined:
+        - Yes (Go to 7a)
+        - No (Go to 8)
+        - Unknown (Go to 8)
+        - Not assessed (Go to 9)
+        - Not applicable, participant is male (Go to 9)
+        - Participant declines to answer (Go to 9)
+      values:
+        - Yes (Go to 7a)
+        - No (Go to 8)
+        - Unknown (Go to 8)
+        - Not assessed (Go to 9)
+        - Not applicable, participant is male (Go to 9)
+        - Participant declines to answer (Go to 9)
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - FUB_GESTAGE
+        - FUB_PREGOUT
+        - FUB_PREGOUTDAT
+      skip_logic: |
+        Yes (Go to 7a)
+        No (Go to 8)
+        Unknown (Go to 8)
+        Not assessed (Go to 9)
+        Not applicable, participant is male (Go to 9)
+        Participant declines to answer (Go to 9)
+      visit_grouping: null
+      section_grouping: pregnancy
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_GESTAGE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 7a. Approximently how many weeks have you been pregnant?
+      pdf_annotation: FUB_GESTAGE
+      column_name: FUB_GESTAGE
+    normalized_metadata:
+      display_label: Gestational Age (weeks)
+      meaning: Approximate number of weeks pregnant. PDF wording reproduced verbatim ("Approximently").
+      section: pregnancy
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FUB_PREGNANT
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: pregnancy
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_PREGOUT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 8. Since the last visit, have you had any of the following pregnancy outcomes?
+      pdf_annotation: " FUB_PREGOUT"
+      column_name: FUB_PREGOUT
+    normalized_metadata:
+      display_label: Pregnancy Outcome
+      meaning: Pregnancy outcome since last visit (PDF labels include verbatim original spellings "Miscarrage" and "preganant").
+      section: pregnancy
+      data_type: categorical
+      options_ref: pregnancy_outcome_pdf
+    options:
+      source_defined:
+        - Live birth (full term)
+        - Still birth (intrauterine fetal demise >20 weeks)
+        - Miscarrage (=<20 weeks)
+        - Early termination
+        - No, has not been preganant (Go to 9)
+        - Participant declines to answer (Go to 9)
+      values:
+        - Live birth (full term)
+        - Still birth (intrauterine fetal demise >20 weeks)
+        - Miscarrage (=<20 weeks)
+        - Early termination
+        - No, has not been preganant (Go to 9)
+        - Participant declines to answer (Go to 9)
+      unknown: true
+    relationships:
+      parent: FUB_PREGNANT
+      children:
+        - FUB_PREGOUTDAT
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: pregnancy
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  FUB_PREGOUTDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "8a. Date of outcome:"
+      pdf_annotation: FUB_PREGOUTDAT
+      column_name: FUB_PREGOUTDAT
+    normalized_metadata:
+      display_label: Pregnancy Outcome Date
+      meaning: Date of pregnancy outcome.
+      section: pregnancy
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: FUB_PREGOUT
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: pregnancy
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  FUB_SIGN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Signature of Data Collector:"
+      pdf_annotation: FUB_SIGN
+      column_name: FUB_SIGN
+    normalized_metadata:
+      display_label: Data Collector Signature
+      meaning: Signature of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: signature_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  FUB_INIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Initials of Data Collector:"
+      pdf_annotation: FUB_INIT
+      column_name: FUB_INIT
+    normalized_metadata:
+      display_label: Data Collector Initials
+      meaning: Initials of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: initials_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  FUB_COMPDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date Completed:"
+      pdf_annotation: FUB_COMPDAT
+      column_name: FUB_COMPDAT
+    normalized_metadata:
+      display_label: Form Completion Date
+      meaning: Date the form was completed by the data collector.
+      section: completion
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  FUB_HEIGHT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_HEIGHT
+    normalized_metadata:
+      display_label: Height (dataset-only)
+      meaning: Numeric height; column-name-only evidence. Not present in this PDF version.
+      section: measurements_dataset_only
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: measurements_dataset_only
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: FUB_HEIGHT does not appear in the 12B Follow-up B v1.0 PDF. Confirm whether height is a real captured field for this form (perhaps from a newer revision or paired sub-form), its units, and whether it should remain in the catalog.
+    clean_output_presence: present
+  FUB_KNEE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_KNEE
+    normalized_metadata:
+      display_label: Knee Height (dataset-only)
+      meaning: Likely knee-height measurement; column-name-only evidence. Not present in this PDF version.
+      section: measurements_dataset_only
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: measurements_dataset_only
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: FUB_KNEE does not appear in the 12B Follow-up B v1.0 PDF. Confirm whether this is a knee-height measurement (used as a height proxy), its units, and whether it should remain in the catalog.
+    clean_output_presence: present
+  FUB_HEIGHT_NA:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_HEIGHT_NA
+    normalized_metadata:
+      display_label: Height Not Available (dataset-only)
+      meaning: Indicator that height is not available; column-name-only evidence. Paired with FUB_HEIGHT/FUB_KNEE.
+      section: measurements_dataset_only
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FUB_HEIGHT
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: measurements_dataset_only
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: FUB_HEIGHT_NA does not appear in the 12B Follow-up B v1.0 PDF. Confirm pairing with FUB_HEIGHT/FUB_KNEE and the meaning of the not-available indicator.
+    clean_output_presence: present
+  FUB_WEIGHT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_WEIGHT
+    normalized_metadata:
+      display_label: Weight (dataset-only)
+      meaning: Numeric weight; column-name-only evidence. Not present in this PDF version.
+      section: measurements_dataset_only
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: measurements_dataset_only
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: FUB_WEIGHT does not appear in the 12B Follow-up B v1.0 PDF. Confirm whether weight is a real captured field for this form, its units (kg/lb), and whether it should remain in the catalog.
+    clean_output_presence: present
+  FUB_WEIGHT_ESTIMATE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_WEIGHT_ESTIMATE
+    normalized_metadata:
+      display_label: Weight Estimate (dataset-only)
+      meaning: Indicator/value for whether weight was estimated rather than measured; column-name-only evidence.
+      section: measurements_dataset_only
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FUB_WEIGHT
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: measurements_dataset_only
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: FUB_WEIGHT_ESTIMATE does not appear in the 12B Follow-up B v1.0 PDF. Confirm meaning (estimated vs measured weight indicator) and pairing with FUB_WEIGHT.
+    clean_output_presence: present
+  FUB_WEIGHT_NA:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_WEIGHT_NA
+    normalized_metadata:
+      display_label: Weight Not Available (dataset-only)
+      meaning: Indicator that weight is not available; column-name-only evidence. Paired with FUB_WEIGHT.
+      section: measurements_dataset_only
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FUB_WEIGHT
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: measurements_dataset_only
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: FUB_WEIGHT_NA does not appear in the 12B Follow-up B v1.0 PDF. Confirm pairing with FUB_WEIGHT and the meaning of the not-available indicator.
+    clean_output_presence: present
+  FUB_IDCHGNA:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_IDCHGNA
+    normalized_metadata:
+      display_label: ID Change Not Applicable (dataset-only)
+      meaning: Indicator that no participant ID change occurred; column-name-only evidence.
+      section: id_change_dataset_only
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: id_change_dataset_only
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: FUB_IDCHGNA does not appear in the 12B Follow-up B v1.0 PDF. Confirm meaning (likely "ID change not applicable") and its relationship to FUB_DMCIDCHG/FUB_TUIDCHG.
+    clean_output_presence: present
+  FUB_DMCIDCHG:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_DMCIDCHG
+    normalized_metadata:
+      display_label: DMC ID Change (dataset-only)
+      meaning: Operational identifier for a Data Management Center ID change; column-name-only evidence.
+      section: id_change_dataset_only
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: id_change_dataset_only
+      other_specify: null
+    phi_sensitive_category: operational_identifier
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: ID
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: FUB_DMCIDCHG does not appear in the 12B Follow-up B v1.0 PDF. Confirm whether this is a DMC operational identifier change (pseudonymize) or a non-PHI status flag.
+    clean_output_presence: transformed
+  FUB_TUIDCHG:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_TUIDCHG
+    normalized_metadata:
+      display_label: TU ID Change (dataset-only)
+      meaning: Operational identifier for a Treatment/Tracking Unit ID change; column-name-only evidence.
+      section: id_change_dataset_only
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: id_change_dataset_only
+      other_specify: null
+    phi_sensitive_category: operational_identifier
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: ID
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: FUB_TUIDCHG does not appear in the 12B Follow-up B v1.0 PDF. Confirm whether this is a TU/site operational identifier change (pseudonymize) or a non-PHI status flag.
+    clean_output_presence: transformed
+  FUB_COUGHDURNA:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_COUGHDURNA
+    normalized_metadata:
+      display_label: Cough Duration Not Available (dataset-only)
+      meaning: Indicator that cough duration is not available; column-name-only evidence. Likely paired with FUB_COUGHDUR.
+      section: supplemental_dataset_only
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FUB_COUGHDUR
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: supplemental_dataset_only
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: FUB_COUGHDURNA does not appear in the 12B Follow-up B v1.0 PDF. Confirm pairing with FUB_COUGHDUR and the meaning of the not-available indicator.
+    clean_output_presence: present
+  FUB_OTHER:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_OTHER
+    normalized_metadata:
+      display_label: Other Free-text (dataset-only)
+      meaning: Generic Other free-text field; column-name-only evidence. Not present in this PDF version.
+      section: supplemental_dataset_only
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: supplemental_dataset_only
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: FUB_OTHER does not appear in the 12B Follow-up B v1.0 PDF. Confirm whether this is a free-text "Other" capture and whether content is allowed in the PHI-handled dataset.
+    clean_output_presence: absent
+  FUB_FATIGUE_2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_FATIGUE_2
+    normalized_metadata:
+      display_label: Fatigue (alternate, dataset-only)
+      meaning: Second fatigue column; column-name-only evidence. Possible duplicate or alternate-encoding of FUB_FATIGUE.
+      section: supplemental_dataset_only
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FUB_FATIGUE
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: supplemental_dataset_only
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: FUB_FATIGUE_2 does not appear in the 12B Follow-up B v1.0 PDF. Confirm whether this is a duplicate, alternate encoding, or a separate fatigue capture and how it relates to FUB_FATIGUE.
+    clean_output_presence: present
+  FUB_INIT_2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_INIT_2
+    normalized_metadata:
+      display_label: Data Collector Initials (alternate, dataset-only)
+      meaning: Second initials column; column-name-only evidence. Likely a co-signing or follow-up data collector initials capture.
+      section: completion_dataset_only
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion_dataset_only
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: initials_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: FUB_INIT_2 does not appear in the 12B Follow-up B v1.0 PDF. Confirm that the column captures co-signing/secondary data-collector initials and that drop is the correct PHI handling.
+    clean_output_presence: absent
+  FUB_COMPDAT_2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_COMPDAT_2
+    normalized_metadata:
+      display_label: Form Completion Date (alternate, dataset-only)
+      meaning: Second completion date column; column-name-only evidence. Likely a co-signing or follow-up completion date.
+      section: completion_dataset_only
+      data_type: date
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion_dataset_only
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: FUB_COMPDAT_2 does not appear in the 12B Follow-up B v1.0 PDF. Confirm that the column captures a co-signing/secondary completion date and that jitter_date is the correct PHI handling.
+    clean_output_presence: transformed
+  FUB_SIGN_2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_SIGN_2
+    normalized_metadata:
+      display_label: Data Collector Signature (alternate, dataset-only)
+      meaning: Second signature column; column-name-only evidence. Likely a co-signing or follow-up data-collector signature capture.
+      section: completion_dataset_only
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion_dataset_only
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: signature_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: FUB_SIGN_2 does not appear in the 12B Follow-up B v1.0 PDF. Confirm that the column captures co-signing/secondary data-collector signature and that drop is the correct PHI handling.
+    clean_output_presence: absent
+  FUB_TBTYPE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: FUB_TBTYPE
+    normalized_metadata:
+      display_label: TB Type (dataset-only)
+      meaning: TB type classification; column-name-only evidence. Not present in this PDF version.
+      section: supplemental_dataset_only
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: FUB_TBDIAG
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: supplemental_dataset_only
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: FUB_TBTYPE does not appear in the 12B Follow-up B v1.0 PDF. Confirm whether the column captures pulmonary/extrapulmonary or another TB type classification and how it relates to FUB_TBDIAG.
+    clean_output_presence: present
+  Time_Stamp:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: Time_Stamp
+    normalized_metadata:
+      display_label: Capture Timestamp
+      meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      section: system_metadata
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: system_metadata
+      other_specify: null
+    phi_sensitive_category: system_timestamp
+    handling_intent:
+      action: drop
+      reason: non_pdf_system_timestamp_metadata
+      label: null
+    runtime_binding:
+      - dataset_cleanup
+    derivation_targets:
+      - dataset_cleanup_ledger
+    evidence:
+      level: high
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+validation:
+  forbidden_keys_absent: true
+  columns_unique: true
+  pdf_annotation_unmatched:
+    - "1 (page 1 checkbox indicator marker adjacent to FUB_CNTCHOW 'In person' option, not a variable name)"
+    - "2 (page 1 checkbox indicator marker adjacent to FUB_CNTCHOW 'By phone' option, not a variable name)"
+    - "4 (page 1 checkbox indicator marker adjacent to FUB_CNTCHOW 'Other, specify' option, not a variable name)"
+    - "1 (page 2 checkbox indicator marker adjacent to FUB_TBDIAG 'Yes' option, not a variable name)"
+    - "2 (page 2 checkbox indicator marker adjacent to FUB_TBDIAG 'No' option, not a variable name)"
+    - "1 (page 2 checkbox indicator marker adjacent to FUB_TBTRTYN 'Yes' option, not a variable name)"
+    - "2 (page 2 checkbox indicator marker adjacent to FUB_TBTRTYN 'No (Go to 7)' option, not a variable name)"
+    - "4 (page 2 checkbox indicator marker adjacent to FUB_TBTRTYN 'Unknown (Go to 7)' option, not a variable name)"
+  dataset_columns_unmatched: []
+  pdf_annotation_normalization_notes:
+    - "FUB_PREGOUT (raw FreeText Contents has a leading space ' FUB_PREGOUT'; normalized to FUB_PREGOUT for column matching)"
+  excluded_pdf_artifacts:
+    - "05/22/2014 (form version date — excluded per PDF Extraction Boundary)"
+    - "Indo-US VAP Household contact follow-up v1.0 (form version footer — excluded)"
+    - "Page 1 of 2 (page footer — excluded)"
+    - "Page 2 of 2 (page footer — excluded)"
+    - "38496 (artifact-version code in footer — excluded; appears on both pages)"
+    - "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner — retained as heading block, not as a variable; not excluded but recorded as heading block)"
+    - "Form 12B (form-number marker on page 1 banner — retained as form_number metadata, not as a variable)"

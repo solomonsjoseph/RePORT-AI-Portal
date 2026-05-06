@@ -1,0 +1,3449 @@
+schema_version: 2
+policy_status: draft_for_human_review
+study: Indo-VAP
+form: 1B_HCScreening
+source:
+  dataset_file: 1B_HCScreening.xlsx
+  pdf_file: data/raw/Indo-VAP/annotated_pdfs/1B HHC Screening v1.0.pdf
+pdf_form_metadata:
+  form_number: Form 1B
+  form_title: HOUSEHOLD CONTACT SCREENING FORM
+  form_version: v1.0
+  page_count: 2
+coverage:
+  column_count: 41
+  columns_mapped: 41
+  pdf_annotation_count: 28
+  pdf_annotation_variables: 27
+  annotated_columns: 27
+  non_annotated_columns:
+    - HHC_ICFV
+    - HHC_STORAGE1
+    - HHC_STORAGE2
+    - HHC_BEXCL02
+    - HHC_BEXCL03
+    - HHC_PTBfemale
+    - HHC_PTBmarried
+    - HHC_PTBage
+    - HHC_PTBtstigra
+    - HHC_PTBeligible
+    - HHC_PTBenroll
+    - IS_PTBNOTENROLL
+    - HHC_OTHENRPP
+    - Time_Stamp
+  unresolved_review_required:
+    - HHC_ICFREAS
+    - HHC_ICFV
+    - HHC_NOTENROLL
+    - HHC_STORAGE1
+    - HHC_STORAGE2
+    - HHC_BEXCL02
+    - HHC_BEXCL03
+    - HHC_PTBfemale
+    - HHC_PTBmarried
+    - HHC_PTBage
+    - HHC_PTBtstigra
+    - HHC_PTBeligible
+    - HHC_PTBenroll
+    - IS_PTBNOTENROLL
+    - HHC_OTHENRPP
+pdf_sections:
+  participant_header:
+    section_label: null
+    fields:
+      - SUBJID
+      - FID
+      - HHC_VISDAT
+      - SUBJID2
+    visible_text: |
+      Household contact ID:
+      Family ID:
+      Date of Screening:
+      Day                       Month                    Year
+  gender_and_residency:
+    section_label: null
+    fields:
+      - HHC_SEX
+      - HHC_BINCL01
+    visible_text: |
+      1. Gender at birth:
+      Male
+      Female
+      2. For at least the past 3 months, the participant has:
+      (multiple choices possible)
+      Slept under the same roof on average at least 5 days a week
+      Shared a meal on average at least 5 days a week
+      Watched TV or equivalent on average at least 5 days per week
+  inclusion_criteria:
+    section_label: INCLUSION CRITERIA
+    fields:
+      - HHC_ICF
+      - HHC_ICFDT
+      - HHC_ICFV
+      - HHC_ICFREAS
+      - HHC_AGEY
+      - HHC_BRTHDAT
+      - HHC_AGE
+      - HHC_AGEEST
+      - HHC_BEXCL01
+      - HHC_BINCL02
+      - HHC_WILLING
+    visible_text: |
+      INCLUSION CRITERIA For a candidate to be eligible, all YES/NO questions in this table must be answered YES.
+      Yes No
+      3. Did you sign the Household Contact Consent?
+      If YES, date consent signed:
+      Day                       Month                   Year
+      If NO, specify reason: STOP; do not continue with screening.
+      4. Are you 6 years of age or older?
+      4a. What is your date of birth or age in years?
+      Date of Birth*: / /
+      Day                       Month                    Year
+      *If day and/or month are not known, please print 99 in the Day and/or Month fields.
+      OR
+      Age:                  years
+      Tick here if the date or age entered above is an estimate.
+      5. Do you intend to reside with the Index Case for the upcoming year?
+      6. Are you willing to have a Tuberculin Skin Test placed?
+      7. Are you willing and able to participate in the study?
+      If NO, specify the reason:
+  exclusion_criterion:
+    section_label: EXCLUSION CRITERION
+    fields:
+      - HHC_TBHX
+    visible_text: |
+      EXCLUSION CRITERION For a candidate to be eligible, this question must be answered NO.
+      Yes No
+      8. Do you have a previous history of TB?
+      After completing form 2B, confirm responses to this question are consistent with reported TB history on form 2B
+  final_screening_result:
+    section_label: FINAL SCREENING RESULT
+    fields:
+      - HHC_ELIGIBLE
+      - HHC_ENROLL
+      - HHC_NOTENROLL
+    visible_text: |
+      FINAL SCREENING RESULT
+      Yes No
+      9. Is the candidate eligible? Inclusion questions are answered YES and the exclusion question is answered NO.
+      10. Was the candidate enrolled?
+      If candidate was eligible but not enrolled, specify the reason they were not enrolled:
+  repository_criteria:
+    section_label: REPOSITORY CRITERIA
+    fields:
+      - HHC_CP1
+      - HHC_CP1a
+      - HHC_STORAGE1
+      - HHC_STORAGE2
+      - HHC_ELIGIBLECP
+      - HHC_ENROLLCP
+      - HHC_BEXCL02
+      - HHC_BEXCL03
+    visible_text: |
+      REPOSITORY CRITERIA
+      Complete this section if the candidate consented to participate in the specimen repository and is enrolled in the parent protocol (question 10 answered YES). For a candidate to be eligible, the question 1 below must be answered NO, OR if answered YES, then question 1a must be answered YES.
+      Yes No
+      1. Do you have a persistent cough (about two weeks or longer), cough up blood, draining lymph node or other evidence of extrapulmonary TB, fever, weight loss or failure to thrive (child), fatigue or lethargy, night sweats, or sharp chest pain that gets worse with deep breath?
+      1a. If yes, have you had a chest x-ray and/or sputum culture that has ruled out active TB?
+      2. Is the candidate eligible for the specimen repository?
+      3. Was the candidate enrolled in the specimen repository?
+  ptb_repository_followup:
+    section_label: null
+    fields:
+      - HHC_PTBfemale
+      - HHC_PTBmarried
+      - HHC_PTBage
+      - HHC_PTBtstigra
+      - HHC_PTBeligible
+      - HHC_PTBenroll
+      - IS_PTBNOTENROLL
+      - HHC_OTHENRPP
+    visible_text: |
+      (No PDF visible text matched — column-name-only group flagged for human review.)
+  completion:
+    section_label: null
+    fields:
+      - HHC_SIGN
+      - HHC_INIT
+      - HHC_COMPDTE
+    visible_text: |
+      Signature of Data Collector:
+      Initials of Data Collector:
+      Date Completed: / /
+      Day                       Month                    Year
+  system_metadata:
+    section_label: null
+    fields:
+      - Time_Stamp
+    visible_text: |
+      (No PDF visible text — column derived from dataset capture timestamp.)
+option_sets:
+  yes_no_pdf:
+    source: PDF option text
+    source_text: "Yes No"
+    values:
+      - "Yes"
+      - "No"
+    unknown: true
+  date_dmy_pdf:
+    source: PDF date boxes
+    source_text: "Day                       Month                    Year"
+    values:
+      - Day
+      - Month
+      - Year
+    unknown: true
+  sex_pdf:
+    source: PDF option text
+    source_text: |
+      Male
+      Female
+    values:
+      - Male
+      - Female
+    unknown: true
+  three_month_residency_pdf:
+    source: PDF option text
+    source_text: |
+      2. For at least the past 3 months, the participant has:
+      (multiple choices possible)
+      Slept under the same roof on average at least 5 days a week
+      Shared a meal on average at least 5 days a week
+      Watched TV or equivalent on average at least 5 days per week
+    values:
+      - Slept under the same roof on average at least 5 days a week
+      - Shared a meal on average at least 5 days a week
+      - Watched TV or equivalent on average at least 5 days per week
+    unknown: true
+pdf_annotation_pages:
+  - page: 1
+    annotations:
+      - SUBJID
+      - FID
+      - SEX
+      - HHC_VISDAT
+      - BINCL01
+      - ICF
+      - HHC_ICFDT
+      - HHC_ICFREAS
+      - HHC_AGEY
+      - HHC_BRTHDAT
+      - HHC_AGE
+      - HHC_AGEEST
+      - HHC_BEXCL01
+      - HHC_BINCL02
+      - HHC_WILLING
+      - HHC_UNWILLING
+      - HHC_TBHX
+      - HHC_ELIGIBLE
+      - HHC_ENROLL
+      - HHC_NOTENROLL
+  - page: 2
+    annotations:
+      - SUBJID2
+      - HHC_CP1
+      - HHC_CP1a
+      - HHC_ELIGIBLECP
+      - HHC-ENROLLCP
+      - HHC_SIGN
+      - HHC_INIT
+      - HHC_COMPDTE
+pdf_visible_text:
+  by_page:
+    - page: 1
+      blocks:
+        - type: heading
+          text: Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse
+          related_variables: []
+        - type: heading
+          text: HOUSEHOLD CONTACT SCREENING FORM
+          related_variables: []
+        - type: instruction
+          text: This form should be completed for every household contact being screened for eligibility and study enrollment.
+          related_variables: []
+        - type: question
+          text: "Household contact ID:"
+          related_variables:
+            - SUBJID
+        - type: question
+          text: "Family ID:"
+          related_variables:
+            - FID
+        - type: question
+          text: "Date of Screening:"
+          related_variables:
+            - HHC_VISDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - HHC_VISDAT
+        - type: question
+          text: "1. Gender at birth:"
+          related_variables:
+            - HHC_SEX
+        - type: option_block
+          text: |
+            Male
+            Female
+          related_variables:
+            - HHC_SEX
+        - type: question
+          text: "2. For at least the past 3 months, the participant has:"
+          related_variables:
+            - HHC_BINCL01
+        - type: caption
+          text: (multiple choices possible)
+          related_variables:
+            - HHC_BINCL01
+        - type: option_block
+          text: |
+            Slept under the same roof on average at least 5 days a week
+            Shared a meal on average at least 5 days a week
+            Watched TV or equivalent on average at least 5 days per week
+          related_variables:
+            - HHC_BINCL01
+        - type: section_label
+          text: INCLUSION CRITERIA
+          related_variables:
+            - HHC_ICF
+            - HHC_ICFDT
+            - HHC_ICFREAS
+            - HHC_AGEY
+            - HHC_BRTHDAT
+            - HHC_AGE
+            - HHC_AGEEST
+            - HHC_BEXCL01
+            - HHC_BINCL02
+            - HHC_WILLING
+        - type: instruction
+          text: For a candidate to be eligible, all YES/NO questions in this table must be answered YES.
+          related_variables:
+            - HHC_ICF
+            - HHC_AGEY
+            - HHC_BEXCL01
+            - HHC_BINCL02
+            - HHC_WILLING
+        - type: caption
+          text: Yes No
+          related_variables:
+            - HHC_ICF
+            - HHC_AGEY
+            - HHC_BEXCL01
+            - HHC_BINCL02
+            - HHC_WILLING
+        - type: question
+          text: 3.  Did you sign the Household Contact Consent?
+          related_variables:
+            - HHC_ICF
+        - type: instruction
+          text: "If YES, date consent signed: / /"
+          related_variables:
+            - HHC_ICFDT
+        - type: caption
+          text: "Day                       Month                   Year"
+          related_variables:
+            - HHC_ICFDT
+        - type: instruction
+          text: "If NO, specify reason: STOP; do not continue with screening."
+          related_variables:
+            - HHC_ICFREAS
+        - type: question
+          text: 4.  Are you 6 years of age or older?
+          related_variables:
+            - HHC_AGEY
+        - type: question
+          text: "4a.   What is your date of birth or age in years?"
+          related_variables:
+            - HHC_BRTHDAT
+            - HHC_AGE
+            - HHC_AGEEST
+        - type: question
+          text: "Date of Birth*: / /"
+          related_variables:
+            - HHC_BRTHDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - HHC_BRTHDAT
+        - type: instruction
+          text: "*If day and/or month are not known, please print 99 in the Day and/or Month fields."
+          related_variables:
+            - HHC_BRTHDAT
+        - type: caption
+          text: OR
+          related_variables:
+            - HHC_BRTHDAT
+            - HHC_AGE
+        - type: question
+          text: "Age: years"
+          related_variables:
+            - HHC_AGE
+        - type: instruction
+          text: Tick here if the date or age entered above is an estimate.
+          related_variables:
+            - HHC_AGEEST
+        - type: question
+          text: "5.   Do you intend to reside with the Index Case for the upcoming year?"
+          related_variables:
+            - HHC_BEXCL01
+        - type: question
+          text: "6.   Are you willing to have a Tuberculin Skin Test placed?"
+          related_variables:
+            - HHC_BINCL02
+        - type: question
+          text: "7.   Are you willing and able to participate in the study?"
+          related_variables:
+            - HHC_WILLING
+        - type: instruction
+          text: "If NO, specify the reason:"
+          related_variables:
+            - HHC_WILLING
+        - type: section_label
+          text: EXCLUSION CRITERION
+          related_variables:
+            - HHC_TBHX
+        - type: instruction
+          text: For a candidate to be eligible, this question must be answered NO.
+          related_variables:
+            - HHC_TBHX
+        - type: caption
+          text: Yes No
+          related_variables:
+            - HHC_TBHX
+        - type: question
+          text: 8.   Do you have a previous history of TB?
+          related_variables:
+            - HHC_TBHX
+        - type: instruction
+          text: After completing form 2B, confirm responses to this question are consistent with reported TB history on form 2B
+          related_variables:
+            - HHC_TBHX
+        - type: section_label
+          text: FINAL SCREENING RESULT
+          related_variables:
+            - HHC_ELIGIBLE
+            - HHC_ENROLL
+            - HHC_NOTENROLL
+        - type: caption
+          text: Yes No
+          related_variables:
+            - HHC_ELIGIBLE
+            - HHC_ENROLL
+        - type: question
+          text: 9.   Is the candidate eligible? Inclusion questions are answered YES and the exclusion question is answered NO.
+          related_variables:
+            - HHC_ELIGIBLE
+        - type: question
+          text: 10.   Was the candidate enrolled?
+          related_variables:
+            - HHC_ENROLL
+        - type: instruction
+          text: "If candidate was eligible but not enrolled, specify the reason they were not enrolled:"
+          related_variables:
+            - HHC_NOTENROLL
+    - page: 2
+      blocks:
+        - type: question
+          text: "Household contact ID:"
+          related_variables:
+            - SUBJID2
+        - type: section_label
+          text: REPOSITORY CRITERIA
+          related_variables:
+            - HHC_CP1
+            - HHC_CP1a
+            - HHC_ELIGIBLECP
+            - HHC_ENROLLCP
+        - type: instruction
+          text: Complete this section if the candidate consented to participate in the specimen repository and is enrolled in the parent protocol (question 10 answered YES). For a candidate to be eligible, the question 1 below must be answered NO, OR if answered YES, then question 1a must be answered YES.
+          related_variables:
+            - HHC_CP1
+            - HHC_CP1a
+            - HHC_ELIGIBLECP
+            - HHC_ENROLLCP
+        - type: caption
+          text: Yes No
+          related_variables:
+            - HHC_CP1
+            - HHC_CP1a
+            - HHC_ELIGIBLECP
+            - HHC_ENROLLCP
+        - type: question
+          text: 1.   Do you have a persistent cough (about two weeks or longer), cough up blood, draining lymph node or other evidence of extrapulmonary TB, fever, weight loss or failure to thrive (child), fatigue or lethargy, night sweats, or sharp chest pain that gets worse with deep breath?
+          related_variables:
+            - HHC_CP1
+        - type: question
+          text: 1a. If yes, have you had a chest x-ray and/or sputum culture that has ruled out active TB?
+          related_variables:
+            - HHC_CP1a
+        - type: question
+          text: "2.   Is the candidate eligible for the specimen repository?"
+          related_variables:
+            - HHC_ELIGIBLECP
+        - type: question
+          text: "3.   Was the candidate enrolled in the specimen repository?"
+          related_variables:
+            - HHC_ENROLLCP
+        - type: question
+          text: "Signature of Data Collector:"
+          related_variables:
+            - HHC_SIGN
+        - type: question
+          text: "Initials of Data Collector:"
+          related_variables:
+            - HHC_INIT
+        - type: question
+          text: "Date Completed: / /"
+          related_variables:
+            - HHC_COMPDTE
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - HHC_COMPDTE
+  questions:
+    - id: q_subjid
+      page: 1
+      exact_wording: "Household contact ID:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - SUBJID
+    - id: q_fid
+      page: 1
+      exact_wording: "Family ID:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FID
+    - id: q_visdat
+      page: 1
+      exact_wording: "Date of Screening:"
+      section: participant_header
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - HHC_VISDAT
+    - id: q1_gender
+      page: 1
+      exact_wording: "1. Gender at birth:"
+      section: gender_and_residency
+      options_ref: sex_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - HHC_SEX
+    - id: q2_three_months
+      page: 1
+      exact_wording: "2. For at least the past 3 months, the participant has:"
+      section: gender_and_residency
+      options_ref: three_month_residency_pdf
+      units: null
+      skip_logic: null
+      notes: Multiple choices possible (compound residency criterion).
+      related_variables:
+        - HHC_BINCL01
+    - id: q3_consent
+      page: 1
+      exact_wording: 3.  Did you sign the Household Contact Consent?
+      section: inclusion_criteria
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: "If NO, specify reason: STOP; do not continue with screening."
+      notes: Branching question with date-of-consent child and free-text reason child.
+      related_variables:
+        - HHC_ICF
+        - HHC_ICFDT
+        - HHC_ICFREAS
+    - id: q3_consent_date
+      page: 1
+      exact_wording: "If YES, date consent signed: / /"
+      section: inclusion_criteria
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - HHC_ICFDT
+    - id: q3_consent_reason
+      page: 1
+      exact_wording: "If NO, specify reason:"
+      section: inclusion_criteria
+      options_ref: null
+      units: null
+      skip_logic: STOP; do not continue with screening.
+      notes: Free-text reason captured when consent not signed.
+      related_variables:
+        - HHC_ICFREAS
+    - id: q4_age_threshold
+      page: 1
+      exact_wording: 4.  Are you 6 years of age or older?
+      section: inclusion_criteria
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - HHC_AGEY
+    - id: q4a_dob_or_age
+      page: 1
+      exact_wording: "4a.   What is your date of birth or age in years?"
+      section: inclusion_criteria
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: Compound question — Date of Birth OR Age in years; tick if estimated.
+      related_variables:
+        - HHC_BRTHDAT
+        - HHC_AGE
+        - HHC_AGEEST
+    - id: q4a_dob
+      page: 1
+      exact_wording: "Date of Birth*: / /"
+      section: inclusion_criteria
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: "*If day and/or month are not known, please print 99 in the Day and/or Month fields."
+      related_variables:
+        - HHC_BRTHDAT
+    - id: q4a_age
+      page: 1
+      exact_wording: "Age: years"
+      section: inclusion_criteria
+      options_ref: null
+      units: years
+      skip_logic: null
+      notes: Numeric age in years (alternative to Date of Birth).
+      related_variables:
+        - HHC_AGE
+    - id: q4a_age_estimate
+      page: 1
+      exact_wording: Tick here if the date or age entered above is an estimate.
+      section: inclusion_criteria
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: Estimate-tick checkbox paired with HHC_BRTHDAT and HHC_AGE.
+      related_variables:
+        - HHC_AGEEST
+    - id: q5_reside
+      page: 1
+      exact_wording: "5.   Do you intend to reside with the Index Case for the upcoming year?"
+      section: inclusion_criteria
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - HHC_BEXCL01
+    - id: q6_tst
+      page: 1
+      exact_wording: "6.   Are you willing to have a Tuberculin Skin Test placed?"
+      section: inclusion_criteria
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - HHC_BINCL02
+    - id: q7_willing
+      page: 1
+      exact_wording: "7.   Are you willing and able to participate in the study?"
+      section: inclusion_criteria
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: "Free-text 'If NO, specify the reason:' annotation HHC_UNWILLING is present on the PDF but has no matching dataset column."
+      related_variables:
+        - HHC_WILLING
+    - id: q8_tbhx
+      page: 1
+      exact_wording: 8.   Do you have a previous history of TB?
+      section: exclusion_criterion
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: After completing form 2B, confirm responses to this question are consistent with reported TB history on form 2B.
+      related_variables:
+        - HHC_TBHX
+    - id: q9_eligible
+      page: 1
+      exact_wording: 9.   Is the candidate eligible? Inclusion questions are answered YES and the exclusion question is answered NO.
+      section: final_screening_result
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - HHC_ELIGIBLE
+    - id: q10_enrolled
+      page: 1
+      exact_wording: 10.   Was the candidate enrolled?
+      section: final_screening_result
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - HHC_ENROLL
+    - id: q10_notenroll_reason
+      page: 1
+      exact_wording: "If candidate was eligible but not enrolled, specify the reason they were not enrolled:"
+      section: final_screening_result
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: Free-text reason captured when an eligible candidate was not enrolled.
+      related_variables:
+        - HHC_NOTENROLL
+    - id: q_subjid2
+      page: 2
+      exact_wording: "Household contact ID:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: Page 2 header repeats the participant ID for cross-page traceability; treated as duplicate-candidate of SUBJID.
+      related_variables:
+        - SUBJID2
+    - id: q_repo_cp1
+      page: 2
+      exact_wording: 1.   Do you have a persistent cough (about two weeks or longer), cough up blood, draining lymph node or other evidence of extrapulmonary TB, fever, weight loss or failure to thrive (child), fatigue or lethargy, night sweats, or sharp chest pain that gets worse with deep breath?
+      section: repository_criteria
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: For a candidate to be eligible, the question 1 below must be answered NO, OR if answered YES, then question 1a must be answered YES.
+      notes: null
+      related_variables:
+        - HHC_CP1
+    - id: q_repo_cp1a
+      page: 2
+      exact_wording: 1a. If yes, have you had a chest x-ray and/or sputum culture that has ruled out active TB?
+      section: repository_criteria
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - HHC_CP1a
+    - id: q_repo_eligible
+      page: 2
+      exact_wording: "2.   Is the candidate eligible for the specimen repository?"
+      section: repository_criteria
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - HHC_ELIGIBLECP
+    - id: q_repo_enrolled
+      page: 2
+      exact_wording: "3.   Was the candidate enrolled in the specimen repository?"
+      section: repository_criteria
+      options_ref: yes_no_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - HHC_ENROLLCP
+    - id: q_signature
+      page: 2
+      exact_wording: "Signature of Data Collector:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - HHC_SIGN
+    - id: q_initials
+      page: 2
+      exact_wording: "Initials of Data Collector:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - HHC_INIT
+    - id: q_date_completed
+      page: 2
+      exact_wording: "Date Completed: / /"
+      section: completion
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - HHC_COMPDTE
+evidence_packs:
+  by_variable:
+    SUBJID:
+      exact_pdf_wording: "Household contact ID:"
+      pdf_annotation: SUBJID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FID:
+      exact_pdf_wording: "Family ID:"
+      pdf_annotation: FID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_VISDAT:
+      exact_pdf_wording: "Date of Screening:"
+      pdf_annotation: HHC_VISDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_SEX:
+      exact_pdf_wording: "1. Gender at birth:"
+      pdf_annotation: SEX
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_BINCL01:
+      exact_pdf_wording: "2. For at least the past 3 months, the participant has:"
+      pdf_annotation: BINCL01
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_ICF:
+      exact_pdf_wording: 3.  Did you sign the Household Contact Consent?
+      pdf_annotation: ICF
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_ICFDT:
+      exact_pdf_wording: "If YES, date consent signed: / /"
+      pdf_annotation: HHC_ICFDT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_ICFV:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC_ICFREAS:
+      exact_pdf_wording: "If NO, specify reason:"
+      pdf_annotation: HHC_ICFREAS
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_AGEY:
+      exact_pdf_wording: 4.  Are you 6 years of age or older?
+      pdf_annotation: HHC_AGEY
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_BRTHDAT:
+      exact_pdf_wording: "Date of Birth*: / /"
+      pdf_annotation: HHC_BRTHDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_AGE:
+      exact_pdf_wording: "Age: years"
+      pdf_annotation: HHC_AGE
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_AGEEST:
+      exact_pdf_wording: Tick here if the date or age entered above is an estimate.
+      pdf_annotation: HHC_AGEEST
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_BEXCL01:
+      exact_pdf_wording: "5.   Do you intend to reside with the Index Case for the upcoming year?"
+      pdf_annotation: HHC_BEXCL01
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_BINCL02:
+      exact_pdf_wording: "6.   Are you willing to have a Tuberculin Skin Test placed?"
+      pdf_annotation: HHC_BINCL02
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_WILLING:
+      exact_pdf_wording: "7.   Are you willing and able to participate in the study?"
+      pdf_annotation: HHC_WILLING
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_TBHX:
+      exact_pdf_wording: 8.   Do you have a previous history of TB?
+      pdf_annotation: HHC_TBHX
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_ELIGIBLE:
+      exact_pdf_wording: 9.   Is the candidate eligible? Inclusion questions are answered YES and the exclusion question is answered NO.
+      pdf_annotation: HHC_ELIGIBLE
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_ENROLL:
+      exact_pdf_wording: 10.   Was the candidate enrolled?
+      pdf_annotation: HHC_ENROLL
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_NOTENROLL:
+      exact_pdf_wording: "If candidate was eligible but not enrolled, specify the reason they were not enrolled:"
+      pdf_annotation: HHC_NOTENROLL
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    SUBJID2:
+      exact_pdf_wording: "Household contact ID:"
+      pdf_annotation: SUBJID2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_CP1:
+      exact_pdf_wording: 1.   Do you have a persistent cough (about two weeks or longer), cough up blood, draining lymph node or other evidence of extrapulmonary TB, fever, weight loss or failure to thrive (child), fatigue or lethargy, night sweats, or sharp chest pain that gets worse with deep breath?
+      pdf_annotation: HHC_CP1
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_CP1a:
+      exact_pdf_wording: 1a. If yes, have you had a chest x-ray and/or sputum culture that has ruled out active TB?
+      pdf_annotation: HHC_CP1a
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_STORAGE1:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC_STORAGE2:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC_ELIGIBLECP:
+      exact_pdf_wording: "2.   Is the candidate eligible for the specimen repository?"
+      pdf_annotation: HHC_ELIGIBLECP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_ENROLLCP:
+      exact_pdf_wording: "3.   Was the candidate enrolled in the specimen repository?"
+      pdf_annotation: HHC-ENROLLCP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_BEXCL02:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC_BEXCL03:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC_SIGN:
+      exact_pdf_wording: "Signature of Data Collector:"
+      pdf_annotation: HHC_SIGN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_PTBfemale:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC_PTBmarried:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC_PTBage:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC_PTBtstigra:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC_PTBeligible:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC_PTBenroll:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    IS_PTBNOTENROLL:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC_OTHENRPP:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC_INIT:
+      exact_pdf_wording: "Initials of Data Collector:"
+      pdf_annotation: HHC_INIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_COMPDTE:
+      exact_pdf_wording: "Date Completed: / /"
+      pdf_annotation: HHC_COMPDTE
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    Time_Stamp:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+catalog_refs:
+  by_variable:
+    SUBJID:
+      display_label: Participant ID
+      normalized_meaning: Pseudonymized identifier for the household-contact study participant.
+      search_terms:
+        - SUBJID
+        - Household contact ID
+        - participant id
+        - subject id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FID:
+      display_label: Family ID
+      normalized_meaning: Pseudonymized family/household identifier linking household contacts to an index case.
+      search_terms:
+        - FID
+        - Family ID
+        - household identifier
+        - family identifier
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_VISDAT:
+      display_label: Date of Screening
+      normalized_meaning: Date the household contact screening was performed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - HHC_VISDAT
+        - Date of Screening
+        - screening date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_SEX:
+      display_label: Gender at Birth
+      normalized_meaning: Gender at birth recorded for the household contact (Male/Female).
+      search_terms:
+        - HHC_SEX
+        - SEX
+        - Gender at birth
+        - sex
+        - gender
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_BINCL01:
+      display_label: 3-Month Cohabitation Criterion
+      normalized_meaning: Inclusion indicator for the past-3-months household-contact cohabitation criteria (slept under same roof / shared meal / watched TV — multiple choices possible).
+      search_terms:
+        - HHC_BINCL01
+        - BINCL01
+        - past 3 months
+        - cohabitation
+        - inclusion criterion
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_ICF:
+      display_label: Informed Consent Signed
+      normalized_meaning: Whether the household contact signed the Household Contact Consent form (Yes/No).
+      search_terms:
+        - HHC_ICF
+        - ICF
+        - Household Contact Consent
+        - informed consent
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_ICFDT:
+      display_label: Consent Signed Date
+      normalized_meaning: Date the household contact consent was signed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - HHC_ICFDT
+        - date consent signed
+        - consent date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_ICFV:
+      display_label: Consent Version
+      normalized_meaning: Consent form version indicator paired with HHC_ICF — review_required because no PDF visible text or annotation matched.
+      search_terms:
+        - HHC_ICFV
+        - consent version
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_ICFREAS:
+      display_label: Reason Consent Not Signed
+      normalized_meaning: Free-text reason captured when consent was not signed ("If NO, specify reason:").
+      search_terms:
+        - HHC_ICFREAS
+        - If NO, specify reason
+        - reason consent not signed
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    HHC_AGEY:
+      display_label: Age 6 Years or Older
+      normalized_meaning: Inclusion indicator — whether the household contact is 6 years of age or older (Yes/No).
+      search_terms:
+        - HHC_AGEY
+        - 6 years of age or older
+        - age 6 years
+        - age threshold
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_BRTHDAT:
+      display_label: Date of Birth
+      normalized_meaning: Date of birth of the household contact (Day/Month/Year, with 99 indicating unknown day/month), jittered for PHI handling.
+      search_terms:
+        - HHC_BRTHDAT
+        - Date of Birth
+        - DOB
+        - birth date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_AGE:
+      display_label: Age in Years
+      normalized_meaning: Age in years recorded as an alternative to date of birth.
+      search_terms:
+        - HHC_AGE
+        - Age
+        - age in years
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_AGEEST:
+      display_label: Date or Age Estimated
+      normalized_meaning: Tick indicator that the date of birth or age recorded is an estimate.
+      search_terms:
+        - HHC_AGEEST
+        - estimate
+        - age estimate
+        - date estimate
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_BEXCL01:
+      display_label: Intends to Reside With Index Case
+      normalized_meaning: Inclusion criterion — whether the candidate intends to reside with the Index Case for the upcoming year (Yes/No).
+      search_terms:
+        - HHC_BEXCL01
+        - reside with Index Case
+        - upcoming year
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_BINCL02:
+      display_label: Willing for Tuberculin Skin Test
+      normalized_meaning: Inclusion criterion — whether the candidate is willing to have a Tuberculin Skin Test placed (Yes/No).
+      search_terms:
+        - HHC_BINCL02
+        - Tuberculin Skin Test
+        - TST
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_WILLING:
+      display_label: Willing and Able to Participate
+      normalized_meaning: Inclusion criterion — whether the candidate is willing and able to participate in the study (Yes/No).
+      search_terms:
+        - HHC_WILLING
+        - willing and able
+        - participate in the study
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_TBHX:
+      display_label: Previous History of TB
+      normalized_meaning: Exclusion criterion — whether the candidate has a previous history of TB (Yes/No). For eligibility this question must be answered NO.
+      search_terms:
+        - HHC_TBHX
+        - previous history of TB
+        - TB history
+        - exclusion criterion
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_ELIGIBLE:
+      display_label: Candidate Eligible
+      normalized_meaning: Final screening result — whether the candidate is eligible (inclusion answered YES, exclusion answered NO).
+      search_terms:
+        - HHC_ELIGIBLE
+        - candidate eligible
+        - final screening
+        - eligibility
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_ENROLL:
+      display_label: Candidate Enrolled
+      normalized_meaning: Final screening result — whether the candidate was enrolled in the parent protocol (Yes/No).
+      search_terms:
+        - HHC_ENROLL
+        - candidate enrolled
+        - enrollment
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_NOTENROLL:
+      display_label: Reason Not Enrolled
+      normalized_meaning: Free-text reason captured when an eligible candidate was not enrolled.
+      search_terms:
+        - HHC_NOTENROLL
+        - reason not enrolled
+        - not enrolled
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    SUBJID2:
+      display_label: Participant ID (Page 2)
+      normalized_meaning: Pseudonymized identifier repeated on page 2 for cross-page traceability — duplicate candidate of SUBJID.
+      search_terms:
+        - SUBJID2
+        - Household contact ID
+        - participant id page 2
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_CP1:
+      display_label: Repository Cough Symptom Screen
+      normalized_meaning: Repository criterion — whether the candidate reports persistent cough or other TB-suggestive symptoms (Yes/No).
+      search_terms:
+        - HHC_CP1
+        - persistent cough
+        - cough up blood
+        - extrapulmonary TB
+        - night sweats
+        - repository criteria
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_CP1a:
+      display_label: Chest X-Ray or Sputum Ruled Out TB
+      normalized_meaning: Repository criterion follow-up — whether a chest x-ray and/or sputum culture has ruled out active TB (asked when HHC_CP1 = YES).
+      search_terms:
+        - HHC_CP1a
+        - chest x-ray
+        - sputum culture
+        - ruled out active TB
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_STORAGE1:
+      display_label: Specimen Storage Indicator 1
+      normalized_meaning: Specimen-storage indicator paired with the repository criteria — review_required because no PDF visible text or annotation matched.
+      search_terms:
+        - HHC_STORAGE1
+        - specimen storage
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_STORAGE2:
+      display_label: Specimen Storage Indicator 2
+      normalized_meaning: Specimen-storage indicator paired with the repository criteria — review_required because no PDF visible text or annotation matched.
+      search_terms:
+        - HHC_STORAGE2
+        - specimen storage
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_ELIGIBLECP:
+      display_label: Repository Eligible
+      normalized_meaning: Repository criterion result — whether the candidate is eligible for the specimen repository (Yes/No).
+      search_terms:
+        - HHC_ELIGIBLECP
+        - eligible for the specimen repository
+        - repository eligible
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_ENROLLCP:
+      display_label: Repository Enrolled
+      normalized_meaning: Repository criterion result — whether the candidate was enrolled in the specimen repository (Yes/No). Annotation literal "HHC-ENROLLCP" maps to dataset column HHC_ENROLLCP (hyphen-vs-underscore difference).
+      search_terms:
+        - HHC_ENROLLCP
+        - HHC-ENROLLCP
+        - enrolled in the specimen repository
+        - repository enrolled
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    HHC_BEXCL02:
+      display_label: Additional Exclusion Indicator (Repository)
+      normalized_meaning: Repository-section exclusion indicator — review_required because no PDF visible text or annotation matched.
+      search_terms:
+        - HHC_BEXCL02
+        - exclusion indicator
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_BEXCL03:
+      display_label: Additional Exclusion Indicator (Repository)
+      normalized_meaning: Repository-section exclusion indicator — review_required because no PDF visible text or annotation matched.
+      search_terms:
+        - HHC_BEXCL03
+        - exclusion indicator
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_SIGN:
+      display_label: Data Collector Signature
+      normalized_meaning: Signature of the data collector who completed the form (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - HHC_SIGN
+        - Signature of Data Collector
+        - signature
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_PTBfemale:
+      display_label: PTB Female Indicator
+      normalized_meaning: PTB-prefixed indicator — review_required because no PDF visible text or annotation matched.
+      search_terms:
+        - HHC_PTBfemale
+        - PTB female
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_PTBmarried:
+      display_label: PTB Married Indicator
+      normalized_meaning: PTB-prefixed indicator — review_required because no PDF visible text or annotation matched.
+      search_terms:
+        - HHC_PTBmarried
+        - PTB married
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_PTBage:
+      display_label: PTB Age Indicator
+      normalized_meaning: PTB-prefixed indicator — review_required because no PDF visible text or annotation matched.
+      search_terms:
+        - HHC_PTBage
+        - PTB age
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_PTBtstigra:
+      display_label: PTB TST/IGRA Indicator
+      normalized_meaning: PTB-prefixed indicator referencing TST/IGRA — review_required because no PDF visible text or annotation matched.
+      search_terms:
+        - HHC_PTBtstigra
+        - PTB TST IGRA
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_PTBeligible:
+      display_label: PTB Eligible Indicator
+      normalized_meaning: PTB-prefixed eligibility indicator — review_required because no PDF visible text or annotation matched.
+      search_terms:
+        - HHC_PTBeligible
+        - PTB eligible
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_PTBenroll:
+      display_label: PTB Enroll Indicator
+      normalized_meaning: PTB-prefixed enrollment indicator — review_required because no PDF visible text or annotation matched.
+      search_terms:
+        - HHC_PTBenroll
+        - PTB enroll
+      catalog_tier: source_only
+      analysis_queryable: false
+    IS_PTBNOTENROLL:
+      display_label: Index Subject PTB Not Enrolled Reason
+      normalized_meaning: Free-text or coded indicator (column-name-only) suggesting an Index-Subject-side reason linked to PTB not-enrolled — review_required because no PDF visible text or annotation matched.
+      search_terms:
+        - IS_PTBNOTENROLL
+        - PTB not enrolled
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_OTHENRPP:
+      display_label: Other Enrollment Indicator
+      normalized_meaning: Other enrollment-purpose indicator (column-name-only) — review_required because no PDF visible text or annotation matched.
+      search_terms:
+        - HHC_OTHENRPP
+        - other enrollment
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_INIT:
+      display_label: Data Collector Initials
+      normalized_meaning: Initials of the data collector who completed the form (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - HHC_INIT
+        - Initials of Data Collector
+        - initials
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_COMPDTE:
+      display_label: Form Completion Date
+      normalized_meaning: Date the form was completed by the data collector (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - HHC_COMPDTE
+        - Date Completed
+        - form completion date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    Time_Stamp:
+      display_label: Capture Timestamp
+      normalized_meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      search_terms:
+        - Time_Stamp
+        - timestamp
+        - capture timestamp
+      catalog_tier: source_only
+      analysis_queryable: false
+ledger_expectations:
+  phi_handling:
+    - SUBJID
+    - SUBJID2
+    - FID
+    - HHC_VISDAT
+    - HHC_ICFDT
+    - HHC_ICFREAS
+    - HHC_BRTHDAT
+    - HHC_NOTENROLL
+    - HHC_SIGN
+    - HHC_INIT
+    - HHC_COMPDTE
+    - HHC_ICFV
+    - HHC_STORAGE1
+    - HHC_STORAGE2
+    - HHC_BEXCL02
+    - HHC_BEXCL03
+    - HHC_PTBfemale
+    - HHC_PTBmarried
+    - HHC_PTBage
+    - HHC_PTBtstigra
+    - HHC_PTBeligible
+    - HHC_PTBenroll
+    - IS_PTBNOTENROLL
+    - HHC_OTHENRPP
+  dataset_cleanup:
+    - SUBJID2
+    - Time_Stamp
+variables:
+  SUBJID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Household contact ID:"
+      pdf_annotation: SUBJID
+      column_name: SUBJID
+    normalized_metadata:
+      display_label: Participant ID
+      meaning: Pseudonymized identifier for the household-contact study participant.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  FID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Family ID:"
+      pdf_annotation: FID
+      column_name: FID
+    normalized_metadata:
+      display_label: Family ID
+      meaning: Pseudonymized family/household identifier linking household contacts to an index case.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: family_or_household_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: family_or_household_identifier
+      label: FAM
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  HHC_VISDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date of Screening:"
+      pdf_annotation: HHC_VISDAT
+      column_name: HHC_VISDAT
+    normalized_metadata:
+      display_label: Date of Screening
+      meaning: Date the household contact screening was performed.
+      section: participant_header
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  HHC_SEX:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "1. Gender at birth:"
+      pdf_annotation: SEX
+      column_name: HHC_SEX
+    normalized_metadata:
+      display_label: Gender at Birth
+      meaning: Gender at birth recorded for the household contact.
+      section: gender_and_residency
+      data_type: categorical
+      options_ref: sex_pdf
+    options:
+      source_defined:
+        - Male
+        - Female
+      values:
+        - Male
+        - Female
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: gender_and_residency
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_BINCL01:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "2. For at least the past 3 months, the participant has:"
+      pdf_annotation: BINCL01
+      column_name: HHC_BINCL01
+    normalized_metadata:
+      display_label: 3-Month Cohabitation Criterion
+      meaning: Inclusion indicator capturing the past-3-months cohabitation criteria (slept under the same roof / shared a meal / watched TV — multiple choices possible).
+      section: gender_and_residency
+      data_type: categorical
+      options_ref: three_month_residency_pdf
+    options:
+      source_defined:
+        - Slept under the same roof on average at least 5 days a week
+        - Shared a meal on average at least 5 days a week
+        - Watched TV or equivalent on average at least 5 days per week
+      values:
+        - Slept under the same roof on average at least 5 days a week
+        - Shared a meal on average at least 5 days a week
+        - Watched TV or equivalent on average at least 5 days per week
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: gender_and_residency
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_ICF:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 3.  Did you sign the Household Contact Consent?
+      pdf_annotation: ICF
+      column_name: HHC_ICF
+    normalized_metadata:
+      display_label: Informed Consent Signed
+      meaning: Whether the household contact signed the Household Contact Consent form.
+      section: inclusion_criteria
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - HHC_ICFDT
+        - HHC_ICFREAS
+        - HHC_ICFV
+      skip_logic: "If NO, specify reason: STOP; do not continue with screening."
+      visit_grouping: null
+      section_grouping: inclusion_criteria
+      other_specify: HHC_ICFREAS
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_ICFDT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "If YES, date consent signed: / /"
+      pdf_annotation: HHC_ICFDT
+      column_name: HHC_ICFDT
+    normalized_metadata:
+      display_label: Consent Signed Date
+      meaning: Date the household contact consent was signed.
+      section: inclusion_criteria
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: HHC_ICF
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: inclusion_criteria
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  HHC_ICFV:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: HHC_ICFV
+    normalized_metadata:
+      display_label: Consent Version
+      meaning: Consent form version indicator paired with HHC_ICF (column-name-only — no PDF visible text or annotation matched).
+      section: inclusion_criteria
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC_ICF
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: inclusion_criteria
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: HHC_ICFV has no PDF visible text or annotation. Is it a consent-version indicator paired with HHC_ICF, and is it safe to expose in the PHI-handled dataset?
+    clean_output_presence: absent
+  HHC_ICFREAS:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "If NO, specify reason:"
+      pdf_annotation: HHC_ICFREAS
+      column_name: HHC_ICFREAS
+    normalized_metadata:
+      display_label: Reason Consent Not Signed
+      meaning: Free-text reason captured when the Household Contact Consent was not signed.
+      section: inclusion_criteria
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC_ICF
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: inclusion_criteria
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: Is the free-text "If NO, specify reason:" content allowed in the PHI-handled dataset, or should it be dropped/redacted?
+    clean_output_presence: absent
+  HHC_AGEY:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 4.  Are you 6 years of age or older?
+      pdf_annotation: HHC_AGEY
+      column_name: HHC_AGEY
+    normalized_metadata:
+      display_label: Age 6 Years or Older
+      meaning: Inclusion indicator — whether the household contact is 6 years of age or older.
+      section: inclusion_criteria
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: inclusion_criteria
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_BRTHDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date of Birth*: / /"
+      pdf_annotation: HHC_BRTHDAT
+      column_name: HHC_BRTHDAT
+    normalized_metadata:
+      display_label: Date of Birth
+      meaning: Date of birth of the household contact (with 99 indicating unknown day or month).
+      section: inclusion_criteria
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: inclusion_criteria
+      other_specify: null
+    phi_sensitive_category: age_or_birthdate
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  HHC_AGE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Age: years"
+      pdf_annotation: HHC_AGE
+      column_name: HHC_AGE
+    normalized_metadata:
+      display_label: Age in Years
+      meaning: Age in years recorded as an alternative to date of birth.
+      section: inclusion_criteria
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: inclusion_criteria
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_AGEEST:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Tick here if the date or age entered above is an estimate.
+      pdf_annotation: HHC_AGEEST
+      column_name: HHC_AGEEST
+    normalized_metadata:
+      display_label: Date or Age Estimated
+      meaning: Tick indicator that the date of birth or age recorded is an estimate.
+      section: inclusion_criteria
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: inclusion_criteria
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_BEXCL01:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "5.   Do you intend to reside with the Index Case for the upcoming year?"
+      pdf_annotation: HHC_BEXCL01
+      column_name: HHC_BEXCL01
+    normalized_metadata:
+      display_label: Intends to Reside With Index Case
+      meaning: Inclusion criterion — whether the candidate intends to reside with the Index Case for the upcoming year.
+      section: inclusion_criteria
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: inclusion_criteria
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_BINCL02:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "6.   Are you willing to have a Tuberculin Skin Test placed?"
+      pdf_annotation: HHC_BINCL02
+      column_name: HHC_BINCL02
+    normalized_metadata:
+      display_label: Willing for Tuberculin Skin Test
+      meaning: Inclusion criterion — whether the candidate is willing to have a Tuberculin Skin Test placed.
+      section: inclusion_criteria
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: inclusion_criteria
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_WILLING:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "7.   Are you willing and able to participate in the study?"
+      pdf_annotation: HHC_WILLING
+      column_name: HHC_WILLING
+    normalized_metadata:
+      display_label: Willing and Able to Participate
+      meaning: Inclusion criterion — whether the candidate is willing and able to participate in the study.
+      section: inclusion_criteria
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: inclusion_criteria
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_TBHX:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 8.   Do you have a previous history of TB?
+      pdf_annotation: HHC_TBHX
+      column_name: HHC_TBHX
+    normalized_metadata:
+      display_label: Previous History of TB
+      meaning: Exclusion criterion — whether the candidate has a previous history of TB. For eligibility this question must be answered NO.
+      section: exclusion_criterion
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: exclusion_criterion
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_ELIGIBLE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 9.   Is the candidate eligible? Inclusion questions are answered YES and the exclusion question is answered NO.
+      pdf_annotation: HHC_ELIGIBLE
+      column_name: HHC_ELIGIBLE
+    normalized_metadata:
+      display_label: Candidate Eligible
+      meaning: Final screening result — whether the candidate is eligible (inclusion answered YES, exclusion answered NO).
+      section: final_screening_result
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - HHC_ENROLL
+        - HHC_NOTENROLL
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: final_screening_result
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_ENROLL:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 10.   Was the candidate enrolled?
+      pdf_annotation: HHC_ENROLL
+      column_name: HHC_ENROLL
+    normalized_metadata:
+      display_label: Candidate Enrolled
+      meaning: Final screening result — whether the candidate was enrolled in the parent protocol.
+      section: final_screening_result
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: HHC_ELIGIBLE
+      children:
+        - HHC_NOTENROLL
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: final_screening_result
+      other_specify: HHC_NOTENROLL
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_NOTENROLL:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "If candidate was eligible but not enrolled, specify the reason they were not enrolled:"
+      pdf_annotation: HHC_NOTENROLL
+      column_name: HHC_NOTENROLL
+    normalized_metadata:
+      display_label: Reason Not Enrolled
+      meaning: Free-text reason captured when an eligible candidate was not enrolled.
+      section: final_screening_result
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC_ENROLL
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: final_screening_result
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: Is the free-text not-enrolled reason content allowed in the PHI-handled dataset, or should it be dropped/redacted?
+    clean_output_presence: absent
+  SUBJID2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Household contact ID:"
+      pdf_annotation: SUBJID2
+      column_name: SUBJID2
+    normalized_metadata:
+      display_label: Participant ID (Page 2)
+      meaning: Pseudonymized identifier repeated on page 2 for cross-page traceability — duplicate candidate of SUBJID.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: SUBJID
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+      - phi_scrub
+      - dataset_cleanup
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - dataset_cleanup_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  HHC_CP1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 1.   Do you have a persistent cough (about two weeks or longer), cough up blood, draining lymph node or other evidence of extrapulmonary TB, fever, weight loss or failure to thrive (child), fatigue or lethargy, night sweats, or sharp chest pain that gets worse with deep breath?
+      pdf_annotation: HHC_CP1
+      column_name: HHC_CP1
+    normalized_metadata:
+      display_label: Repository Cough Symptom Screen
+      meaning: Repository criterion — whether the candidate reports persistent cough or other TB-suggestive symptoms.
+      section: repository_criteria
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - HHC_CP1a
+      skip_logic: For a candidate to be eligible, the question 1 below must be answered NO, OR if answered YES, then question 1a must be answered YES.
+      visit_grouping: null
+      section_grouping: repository_criteria
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_CP1a:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 1a. If yes, have you had a chest x-ray and/or sputum culture that has ruled out active TB?
+      pdf_annotation: HHC_CP1a
+      column_name: HHC_CP1a
+    normalized_metadata:
+      display_label: Chest X-Ray or Sputum Ruled Out TB
+      meaning: Repository criterion follow-up — whether a chest x-ray and/or sputum culture has ruled out active TB.
+      section: repository_criteria
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: HHC_CP1
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: repository_criteria
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_STORAGE1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: HHC_STORAGE1
+    normalized_metadata:
+      display_label: Specimen Storage Indicator 1
+      meaning: Specimen-storage indicator paired with the repository criteria (column-name-only — no PDF visible text or annotation matched).
+      section: repository_criteria
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: repository_criteria
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: HHC_STORAGE1 has no PDF visible text or annotation. Is it a specimen-storage indicator paired with the repository criteria, and is it safe to expose?
+    clean_output_presence: absent
+  HHC_STORAGE2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: HHC_STORAGE2
+    normalized_metadata:
+      display_label: Specimen Storage Indicator 2
+      meaning: Specimen-storage indicator paired with the repository criteria (column-name-only — no PDF visible text or annotation matched).
+      section: repository_criteria
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: repository_criteria
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: HHC_STORAGE2 has no PDF visible text or annotation. Is it a specimen-storage indicator paired with the repository criteria, and is it safe to expose?
+    clean_output_presence: absent
+  HHC_ELIGIBLECP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "2.   Is the candidate eligible for the specimen repository?"
+      pdf_annotation: HHC_ELIGIBLECP
+      column_name: HHC_ELIGIBLECP
+    normalized_metadata:
+      display_label: Repository Eligible
+      meaning: Repository criterion result — whether the candidate is eligible for the specimen repository.
+      section: repository_criteria
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - HHC_ENROLLCP
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: repository_criteria
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_ENROLLCP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3.   Was the candidate enrolled in the specimen repository?"
+      pdf_annotation: HHC-ENROLLCP
+      column_name: HHC_ENROLLCP
+    normalized_metadata:
+      display_label: Repository Enrolled
+      meaning: Repository criterion result — whether the candidate was enrolled in the specimen repository. Annotation literal "HHC-ENROLLCP" maps to dataset column HHC_ENROLLCP (hyphen-vs-underscore difference).
+      section: repository_criteria
+      data_type: categorical
+      options_ref: yes_no_pdf
+    options:
+      source_defined:
+        - "Yes"
+        - "No"
+      values:
+        - "Yes"
+        - "No"
+      unknown: true
+    relationships:
+      parent: HHC_ELIGIBLECP
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: repository_criteria
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: medium
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  HHC_BEXCL02:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: HHC_BEXCL02
+    normalized_metadata:
+      display_label: Additional Exclusion Indicator (Repository)
+      meaning: Repository-section exclusion indicator (column-name-only — no PDF visible text or annotation matched).
+      section: repository_criteria
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: repository_criteria
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: HHC_BEXCL02 has no PDF visible text or annotation. Is it a repository-section exclusion indicator, and is it safe to expose?
+    clean_output_presence: absent
+  HHC_BEXCL03:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: HHC_BEXCL03
+    normalized_metadata:
+      display_label: Additional Exclusion Indicator (Repository)
+      meaning: Repository-section exclusion indicator (column-name-only — no PDF visible text or annotation matched).
+      section: repository_criteria
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: repository_criteria
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: HHC_BEXCL03 has no PDF visible text or annotation. Is it a repository-section exclusion indicator, and is it safe to expose?
+    clean_output_presence: absent
+  HHC_SIGN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Signature of Data Collector:"
+      pdf_annotation: HHC_SIGN
+      column_name: HHC_SIGN
+    normalized_metadata:
+      display_label: Data Collector Signature
+      meaning: Signature of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: signature_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  HHC_PTBfemale:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: HHC_PTBfemale
+    normalized_metadata:
+      display_label: PTB Female Indicator
+      meaning: PTB-prefixed indicator (column-name-only — no PDF visible text or annotation matched).
+      section: ptb_repository_followup
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: ptb_repository_followup
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: HHC_PTBfemale has no PDF visible text or annotation. Confirm meaning and PHI safety; is this column derived from another form?
+    clean_output_presence: absent
+  HHC_PTBmarried:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: HHC_PTBmarried
+    normalized_metadata:
+      display_label: PTB Married Indicator
+      meaning: PTB-prefixed indicator (column-name-only — no PDF visible text or annotation matched).
+      section: ptb_repository_followup
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: ptb_repository_followup
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: HHC_PTBmarried has no PDF visible text or annotation. Confirm meaning and PHI safety; is this column derived from another form?
+    clean_output_presence: absent
+  HHC_PTBage:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: HHC_PTBage
+    normalized_metadata:
+      display_label: PTB Age Indicator
+      meaning: PTB-prefixed indicator (column-name-only — no PDF visible text or annotation matched).
+      section: ptb_repository_followup
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: ptb_repository_followup
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: HHC_PTBage has no PDF visible text or annotation. Confirm meaning and PHI safety; is this column derived from another form?
+    clean_output_presence: absent
+  HHC_PTBtstigra:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: HHC_PTBtstigra
+    normalized_metadata:
+      display_label: PTB TST/IGRA Indicator
+      meaning: PTB-prefixed indicator referencing TST/IGRA (column-name-only — no PDF visible text or annotation matched).
+      section: ptb_repository_followup
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: ptb_repository_followup
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: HHC_PTBtstigra has no PDF visible text or annotation. Confirm meaning and PHI safety; is this column derived from another form?
+    clean_output_presence: absent
+  HHC_PTBeligible:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: HHC_PTBeligible
+    normalized_metadata:
+      display_label: PTB Eligible Indicator
+      meaning: PTB-prefixed eligibility indicator (column-name-only — no PDF visible text or annotation matched).
+      section: ptb_repository_followup
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: ptb_repository_followup
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: HHC_PTBeligible has no PDF visible text or annotation. Confirm meaning and PHI safety; is this column derived from another form?
+    clean_output_presence: absent
+  HHC_PTBenroll:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: HHC_PTBenroll
+    normalized_metadata:
+      display_label: PTB Enroll Indicator
+      meaning: PTB-prefixed enrollment indicator (column-name-only — no PDF visible text or annotation matched).
+      section: ptb_repository_followup
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: ptb_repository_followup
+      other_specify: null
+    phi_sensitive_category: unknown
+    handling_intent:
+      action: review_required
+      reason: column_name_only
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: HHC_PTBenroll has no PDF visible text or annotation. Confirm meaning and PHI safety; is this column derived from another form?
+    clean_output_presence: absent
+  IS_PTBNOTENROLL:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: IS_PTBNOTENROLL
+    normalized_metadata:
+      display_label: Index Subject PTB Not Enrolled Reason
+      meaning: Free-text or coded indicator (column-name-only) suggesting an Index-Subject-side reason linked to PTB not-enrolled — no PDF visible text or annotation matched.
+      section: ptb_repository_followup
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: ptb_repository_followup
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: IS_PTBNOTENROLL has no PDF visible text or annotation; the IS_ prefix suggests cross-form (Index Subject) origin. Confirm meaning, free-text status, and PHI safety.
+    clean_output_presence: absent
+  HHC_OTHENRPP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: HHC_OTHENRPP
+    normalized_metadata:
+      display_label: Other Enrollment Indicator
+      meaning: Other enrollment-purpose indicator (column-name-only — no PDF visible text or annotation matched).
+      section: ptb_repository_followup
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: ptb_repository_followup
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: column_name_only
+      reviewer_question: HHC_OTHENRPP has no PDF visible text or annotation. Confirm meaning, free-text status, and PHI safety.
+    clean_output_presence: absent
+  HHC_INIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Initials of Data Collector:"
+      pdf_annotation: HHC_INIT
+      column_name: HHC_INIT
+    normalized_metadata:
+      display_label: Data Collector Initials
+      meaning: Initials of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: initials_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  HHC_COMPDTE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date Completed: / /"
+      pdf_annotation: HHC_COMPDTE
+      column_name: HHC_COMPDTE
+    normalized_metadata:
+      display_label: Form Completion Date
+      meaning: Date the form was completed by the data collector.
+      section: completion
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  Time_Stamp:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: Time_Stamp
+    normalized_metadata:
+      display_label: Capture Timestamp
+      meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      section: system_metadata
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: system_metadata
+      other_specify: null
+    phi_sensitive_category: system_timestamp
+    handling_intent:
+      action: drop
+      reason: non_pdf_system_timestamp_metadata
+      label: null
+    runtime_binding:
+      - dataset_cleanup
+    derivation_targets:
+      - dataset_cleanup_ledger
+    evidence:
+      level: high
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+validation:
+  forbidden_keys_absent: true
+  columns_unique: true
+  pdf_annotation_unmatched:
+    - "HHC_UNWILLING (page 1 free-text annotation under Q7 'If NO, specify the reason:'; no matching dataset column — likely a PDF-only specify field whose response is not captured as a separate column)"
+    - "9 empty-content FreeText annotations (checkbox indicator markers with empty Contents — not variable names; same pattern as 6_HIV's '1' markers)"
+  dataset_columns_unmatched: []
+  excluded_pdf_artifacts:
+    - "05/15/2014 (form version date — excluded per PDF Extraction Boundary)"
+    - "Indo-US VAP Household Contact Screening v1.0 (form version footer — excluded)"
+    - "Page 1 of 2 (page footer — excluded)"
+    - "Page 2 of 2 (page footer — excluded)"
+    - "58990 (artifact-version code in footer — excluded)"
+    - "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner — retained as form context heading not as a variable; not excluded but recorded as heading block)"

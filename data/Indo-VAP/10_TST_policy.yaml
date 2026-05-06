@@ -1,0 +1,6982 @@
+schema_version: 2
+policy_status: draft_for_human_review
+study: Indo-VAP
+form: 10_TST
+source:
+  dataset_file: 10_TST.xlsx
+  pdf_file: data/raw/Indo-VAP/annotated_pdfs/10 TST screening v1.0.pdf
+pdf_form_metadata:
+  form_number: Form 10
+  form_title: HOUSEHOLD CONTACT TST SCREENING
+  form_version: v1.0
+  page_count: 1
+coverage:
+  column_count: 93
+  columns_mapped: 93
+  pdf_annotation_count: 65
+  pdf_annotation_variables: 61
+  annotated_columns: 61
+  non_annotated_columns:
+  - TST_TU
+  - TST_TUOTHER
+  - TST_PPDSOURCE
+  - TST_PPDOTHER
+  - TST_SUBST1
+  - TST_COUGH1
+  - TST_SPUTUM1
+  - TST_SPLACE1
+  - TST_SUBST2
+  - TST_COUGH2
+  - TST_SPUTUM2
+  - TST_SPLACE2
+  - TST_SUBST3
+  - TST_ENTIM3
+  - TST_COUGH3
+  - TST_SPUTUM3
+  - TST_SPLACE3
+  - TST_SUBST4
+  - TST_COUGH4
+  - TST_SPUTUM4
+  - TST_SPLACE4
+  - TST_SUBST5
+  - TST_BLIST5
+  - TST_COUGH5
+  - TST_SPUTUM5
+  - TST_SPLACE5
+  - TST_SUBST6
+  - TST_BLIST6
+  - TST_COUGH6
+  - TST_SPUTUM6
+  - TST_SPLACE6
+  - Time_Stamp
+  unresolved_review_required:
+  - TST_TU
+  - TST_TUOTHER
+  - TST_PPDSOURCE
+  - TST_PPDOTHER
+  - TST_SUBST1
+  - TST_COUGH1
+  - TST_SPUTUM1
+  - TST_SPLACE1
+  - TST_STRENOTH1
+  - TST_SUBST2
+  - TST_COUGH2
+  - TST_SPUTUM2
+  - TST_SPLACE2
+  - TST_STRENOTH2
+  - TST_SUBST3
+  - TST_ENTIM3
+  - TST_COUGH3
+  - TST_SPUTUM3
+  - TST_SPLACE3
+  - TST_STRENOTH3
+  - TST_SUBST4
+  - TST_COUGH4
+  - TST_SPUTUM4
+  - TST_SPLACE4
+  - TST_STRENOTH4
+  - TST_SUBST5
+  - TST_BLIST5
+  - TST_COUGH5
+  - TST_SPUTUM5
+  - TST_SPLACE5
+  - TST_STRENOTH5
+  - TST_SUBST6
+  - TST_BLIST6
+  - TST_COUGH6
+  - TST_SPUTUM6
+  - TST_SPLACE6
+  - TST_STRENOTH6
+pdf_sections:
+  participant_header:
+    section_label: null
+    fields:
+    - FID
+    visible_text: 'Family ID #:
+
+      '
+  tst_setup:
+    section_label: null
+    fields:
+    - TST_TU
+    - TST_TUOTHER
+    - TST_PPDSOURCE
+    - TST_PPDOTHER
+    visible_text: '(No PDF visible text directly supports these dataset-only setup columns; TST_TU/TST_TUOTHER/TST_PPDSOURCE/TST_PPDOTHER are not present as labels or FreeText annotations on the form.)
+
+      '
+  tst_visits:
+    section_label: HOUSEHOLD CONTACT TST SCREENING
+    fields:
+    - HHC1
+    - TST_SUBST1
+    - TST_ND1
+    - TST_DAT1
+    - TST_TIM1
+    - TST_ENDAT1
+    - TST_ENTIM1
+    - TST_INDUR1
+    - TST_BLIST1
+    - TST_COUGH1
+    - TST_SPUTUM1
+    - TST_SPLACE1
+    - TST_STREN1
+    - TST_STRENOTH1
+    - HHC2
+    - TST_SUBST2
+    - TST_ND2
+    - TST_DAT2
+    - TST_TIM2
+    - TST_ENDAT2
+    - TST_ENTIM2
+    - TST_INDUR2
+    - TST_BLIST2
+    - TST_COUGH2
+    - TST_SPUTUM2
+    - TST_SPLACE2
+    - TST_STREN2
+    - TST_STRENOTH2
+    - HHC3
+    - TST_SUBST3
+    - TST_ND3
+    - TST_DAT3
+    - TST_TIM3
+    - TST_ENDAT3
+    - TST_ENTIM3
+    - TST_INDUR3
+    - TST_BLIST3
+    - TST_COUGH3
+    - TST_SPUTUM3
+    - TST_SPLACE3
+    - TST_STREN3
+    - TST_STRENOTH3
+    - HHC4
+    - TST_SUBST4
+    - TST_ND4
+    - TST_DAT4
+    - TST_TIM4
+    - TST_ENDAT4
+    - TST_ENTIM4
+    - TST_INDUR4
+    - TST_BLIST4
+    - TST_COUGH4
+    - TST_SPUTUM4
+    - TST_SPLACE4
+    - TST_STREN4
+    - TST_STRENOTH4
+    - HHC5
+    - TST_SUBST5
+    - TST_ND5
+    - TST_DAT5
+    - TST_TIM5
+    - TST_ENDAT5
+    - TST_ENTIM5
+    - TST_INDUR5
+    - TST_BLIST5
+    - TST_COUGH5
+    - TST_SPUTUM5
+    - TST_SPLACE5
+    - TST_STREN5
+    - TST_STRENOTH5
+    - HHC6
+    - TST_SUBST6
+    - TST_ND6
+    - TST_DAT6
+    - TST_TIM6
+    - TST_ENDAT6
+    - TST_ENTIM6
+    - TST_INDUR6
+    - TST_BLIST6
+    - TST_COUGH6
+    - TST_SPUTUM6
+    - TST_SPLACE6
+    - TST_STREN6
+    - TST_STRENOTH6
+    visible_text: 'HOUSEHOLD CONTACT TST SCREENING
+
+      Household Contact ID #
+
+      Not Done
+
+      TST application date and 24 hour time
+
+      D    D   /  M  M   /   Y    Y        H   H  :  M  M
+
+      TST reading date and 24 hour time
+
+      D    D   /  M  M   /   Y    Y        H   H  :  M  M
+
+      TST Result
+
+      mm
+
+      Blistering
+
+      Ulceration
+
+      PPD Strength
+
+      2 TU 5 TU
+
+      Other, specify
+
+      '
+  completion:
+    section_label: null
+    fields:
+    - HHC_SIGN
+    - HHC_INIT
+    - HHC_COMPDAT
+    visible_text: 'Signature of Data Collector:
+
+      Initials of Data Collector:
+
+      Date Completed: / /
+
+      Day                       Month                  Year
+
+      '
+  system_metadata:
+    section_label: null
+    fields:
+    - Time_Stamp
+    visible_text: '(No PDF visible text — column derived from dataset capture timestamp.)
+
+      '
+option_sets:
+  date_dmy_pdf:
+    source: PDF date boxes
+    source_text: D    D   /  M  M   /   Y    Y
+    values:
+    - Day
+    - Month
+    - Year
+    unknown: true
+  time_hm_pdf:
+    source: PDF time boxes
+    source_text: 'H   H  :  M  M'
+    values:
+    - Hour
+    - Minute
+    unknown: true
+  date_dmy_completion_pdf:
+    source: PDF date caption
+    source_text: Day                       Month                  Year
+    values:
+    - Day
+    - Month
+    - Year
+    unknown: true
+  not_done_pdf:
+    source: PDF option text
+    source_text: Not Done
+    values:
+    - Not Done
+    unknown: true
+  tst_blister_ulcer_pdf:
+    source: PDF option text
+    source_text: 'Blistering
+
+      Ulceration'
+    values:
+    - Blistering
+    - Ulceration
+    unknown: true
+  ppd_strength_pdf:
+    source: PDF option text
+    source_text: '2 TU 5 TU
+
+      Other, specify'
+    values:
+    - 2 TU
+    - 5 TU
+    - Other, specify
+    unknown: true
+pdf_annotation_pages:
+- page: 1
+  annotations:
+  - FID
+  - HHC1
+  - HHC2
+  - HHC3
+  - HHC4
+  - HHC5
+  - HHC6
+  - TST_ND1
+  - TST_ND2
+  - TST_ND3
+  - TST_ND4
+  - TST_ND5
+  - TST_ND6
+  - TST_DAT1
+  - TST_DAT2
+  - TST_DAT3
+  - TST_DAT4
+  - TST_DAT5
+  - TST_DAT6
+  - TST_TIM1
+  - TST_TIM2
+  - TST_TIM3
+  - TST_TIM4
+  - TST_TIM5
+  - TST_TIM6
+  - TST_ENDAT1
+  - TST_ENDAT2
+  - TST_ENDAT3
+  - TST_ENDAT4
+  - TST_ENDAT5
+  - TST_ENDAT6
+  - TST_ENTIM1
+  - TST_ENTIM2
+  - TST_ENTIM2
+  - TST_ENTIM4
+  - '3'
+  - TST_ENTIM5
+  - TST_ENTIM6
+  - TST_INDUR1
+  - TST_INDUR2
+  - TST_INDUR3
+  - TST_INDUR4
+  - TST_INDUR5
+  - TST_INDUR6
+  - TST_BLIST1
+  - TST_BLIST2
+  - TST_BLIST3
+  - TST_BLIST4
+  - TST_BLIST6
+  - TST_BLIST7
+  - TST_STREN1
+  - TST_STREN2
+  - TST_STREN3
+  - TST_STREN4
+  - TST_STREN5
+  - TST_STREN6
+  - TST_STRENOTH1
+  - TST_STRENOTH2
+  - TST_STRENOTH3
+  - TST_STRENOTH4
+  - TST_STRENOTH5
+  - TST_STRENOTH6
+  - HHC_SIGN
+  - HHC_INIT
+  - HHC_COMPDAT
+pdf_visible_text:
+  by_page:
+  - page: 1
+    blocks:
+    - type: heading
+      text: Form 10
+      related_variables: []
+    - type: heading
+      text: Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse
+      related_variables: []
+    - type: heading
+      text: HOUSEHOLD CONTACT TST SCREENING
+      related_variables: []
+    - type: question
+      text: 'Family ID #:'
+      related_variables:
+      - FID
+    - type: caption
+      text: 'Household Contact ID #'
+      related_variables:
+      - HHC1
+      - HHC2
+      - HHC3
+      - HHC4
+      - HHC5
+      - HHC6
+    - type: caption
+      text: TST application date  and 24 hour time
+      related_variables:
+      - TST_DAT1
+      - TST_TIM1
+      - TST_DAT2
+      - TST_TIM2
+      - TST_DAT3
+      - TST_TIM3
+      - TST_DAT4
+      - TST_TIM4
+      - TST_DAT5
+      - TST_TIM5
+      - TST_DAT6
+      - TST_TIM6
+    - type: caption
+      text: TST reading date and 24 hour time
+      related_variables:
+      - TST_ENDAT1
+      - TST_ENTIM1
+      - TST_ENDAT2
+      - TST_ENTIM2
+      - TST_ENDAT3
+      - TST_ENTIM3
+      - TST_ENDAT4
+      - TST_ENTIM4
+      - TST_ENDAT5
+      - TST_ENTIM5
+      - TST_ENDAT6
+      - TST_ENTIM6
+    - type: caption
+      text: TST Result
+      related_variables:
+      - TST_INDUR1
+      - TST_INDUR2
+      - TST_INDUR3
+      - TST_INDUR4
+      - TST_INDUR5
+      - TST_INDUR6
+      - TST_BLIST1
+      - TST_BLIST2
+      - TST_BLIST3
+      - TST_BLIST4
+      - TST_BLIST5
+      - TST_BLIST6
+    - type: caption
+      text: PPD Strength
+      related_variables:
+      - TST_STREN1
+      - TST_STREN2
+      - TST_STREN3
+      - TST_STREN4
+      - TST_STREN5
+      - TST_STREN6
+      - TST_STRENOTH1
+      - TST_STRENOTH2
+      - TST_STRENOTH3
+      - TST_STRENOTH4
+      - TST_STRENOTH5
+      - TST_STRENOTH6
+    - type: instruction
+      text: '1.'
+      related_variables:
+      - HHC1
+    - type: option_block
+      text: Not Done
+      related_variables:
+      - TST_ND1
+    - type: caption
+      text: D    D   /  M  M   /   Y    Y
+      related_variables:
+      - TST_DAT1
+      - TST_ENDAT1
+    - type: caption
+      text: 'H   H  :  M  M'
+      related_variables:
+      - TST_TIM1
+      - TST_ENTIM1
+    - type: caption
+      text: mm
+      related_variables:
+      - TST_INDUR1
+    - type: option_block
+      text: 'Blistering
+
+        Ulceration'
+      related_variables:
+      - TST_BLIST1
+    - type: option_block
+      text: 2 TU 5 TU
+      related_variables:
+      - TST_STREN1
+    - type: option_block
+      text: Other, specify
+      related_variables:
+      - TST_STREN1
+      - TST_STRENOTH1
+    - type: instruction
+      text: '2.'
+      related_variables:
+      - HHC2
+    - type: option_block
+      text: Not Done
+      related_variables:
+      - TST_ND2
+    - type: caption
+      text: D    D   /  M  M   /   Y    Y
+      related_variables:
+      - TST_DAT2
+      - TST_ENDAT2
+    - type: caption
+      text: 'H   H  :  M  M'
+      related_variables:
+      - TST_TIM2
+      - TST_ENTIM2
+    - type: caption
+      text: mm
+      related_variables:
+      - TST_INDUR2
+    - type: option_block
+      text: 'Blistering
+
+        Ulceration'
+      related_variables:
+      - TST_BLIST2
+    - type: option_block
+      text: 2 TU 5 TU
+      related_variables:
+      - TST_STREN2
+    - type: option_block
+      text: Other, specify
+      related_variables:
+      - TST_STREN2
+      - TST_STRENOTH2
+    - type: instruction
+      text: '3.'
+      related_variables:
+      - HHC3
+    - type: option_block
+      text: Not Done
+      related_variables:
+      - TST_ND3
+    - type: caption
+      text: D    D   /  M  M   /   Y    Y
+      related_variables:
+      - TST_DAT3
+      - TST_ENDAT3
+    - type: caption
+      text: 'H   H  :  M  M'
+      related_variables:
+      - TST_TIM3
+      - TST_ENTIM3
+    - type: caption
+      text: mm
+      related_variables:
+      - TST_INDUR3
+    - type: option_block
+      text: 'Blistering
+
+        Ulceration'
+      related_variables:
+      - TST_BLIST3
+    - type: option_block
+      text: 2 TU 5 TU
+      related_variables:
+      - TST_STREN3
+    - type: option_block
+      text: Other, specify
+      related_variables:
+      - TST_STREN3
+      - TST_STRENOTH3
+    - type: instruction
+      text: '4.'
+      related_variables:
+      - HHC4
+    - type: option_block
+      text: Not Done
+      related_variables:
+      - TST_ND4
+    - type: caption
+      text: D    D   /  M  M   /   Y    Y
+      related_variables:
+      - TST_DAT4
+      - TST_ENDAT4
+    - type: caption
+      text: 'H   H  :  M  M'
+      related_variables:
+      - TST_TIM4
+      - TST_ENTIM4
+    - type: caption
+      text: mm
+      related_variables:
+      - TST_INDUR4
+    - type: option_block
+      text: 'Blistering
+
+        Ulceration'
+      related_variables:
+      - TST_BLIST4
+    - type: option_block
+      text: 2 TU 5 TU
+      related_variables:
+      - TST_STREN4
+    - type: option_block
+      text: Other, specify
+      related_variables:
+      - TST_STREN4
+      - TST_STRENOTH4
+    - type: instruction
+      text: '5.'
+      related_variables:
+      - HHC5
+    - type: option_block
+      text: Not Done
+      related_variables:
+      - TST_ND5
+    - type: caption
+      text: D    D   /  M  M   /   Y    Y
+      related_variables:
+      - TST_DAT5
+      - TST_ENDAT5
+    - type: caption
+      text: 'H   H  :  M  M'
+      related_variables:
+      - TST_TIM5
+      - TST_ENTIM5
+    - type: caption
+      text: mm
+      related_variables:
+      - TST_INDUR5
+    - type: option_block
+      text: 'Blistering
+
+        Ulceration'
+      related_variables:
+      - TST_BLIST5
+    - type: option_block
+      text: 2 TU 5 TU
+      related_variables:
+      - TST_STREN5
+    - type: option_block
+      text: Other, specify
+      related_variables:
+      - TST_STREN5
+      - TST_STRENOTH5
+    - type: instruction
+      text: '6.'
+      related_variables:
+      - HHC6
+    - type: option_block
+      text: Not Done
+      related_variables:
+      - TST_ND6
+    - type: caption
+      text: D    D   /  M  M   /   Y    Y
+      related_variables:
+      - TST_DAT6
+      - TST_ENDAT6
+    - type: caption
+      text: 'H   H  :  M  M'
+      related_variables:
+      - TST_TIM6
+      - TST_ENTIM6
+    - type: caption
+      text: mm
+      related_variables:
+      - TST_INDUR6
+    - type: option_block
+      text: 'Blistering
+
+        Ulceration'
+      related_variables:
+      - TST_BLIST6
+    - type: option_block
+      text: 2 TU 5 TU
+      related_variables:
+      - TST_STREN6
+    - type: option_block
+      text: Other, specify
+      related_variables:
+      - TST_STREN6
+      - TST_STRENOTH6
+    - type: question
+      text: 'Signature of Data Collector:'
+      related_variables:
+      - HHC_SIGN
+    - type: question
+      text: 'Initials of Data Collector:'
+      related_variables:
+      - HHC_INIT
+    - type: question
+      text: 'Date Completed: / /'
+      related_variables:
+      - HHC_COMPDAT
+    - type: caption
+      text: Day                       Month                  Year
+      related_variables:
+      - HHC_COMPDAT
+  questions:
+  - id: q_family_id
+    page: 1
+    exact_wording: 'Family ID #:'
+    section: participant_header
+    options_ref: null
+    units: null
+    skip_logic: null
+    notes: Family/household identifier captured in the form header.
+    related_variables:
+    - FID
+  - id: q_hhc_id
+    page: 1
+    exact_wording: 'Household Contact ID #'
+    section: tst_visits
+    options_ref: null
+    units: null
+    skip_logic: null
+    notes: Per-visit household contact identifier column heading; one column per visit (1-6).
+    related_variables:
+    - HHC1
+    - HHC2
+    - HHC3
+    - HHC4
+    - HHC5
+    - HHC6
+  - id: q_not_done
+    page: 1
+    exact_wording: Not Done
+    section: tst_visits
+    options_ref: not_done_pdf
+    units: null
+    skip_logic: null
+    notes: '''Not Done'' indicator; one per visit (1-6).'
+    related_variables:
+    - TST_ND1
+    - TST_ND2
+    - TST_ND3
+    - TST_ND4
+    - TST_ND5
+    - TST_ND6
+  - id: q_tst_app_dt
+    page: 1
+    exact_wording: TST application date  and 24 hour time
+    section: tst_visits
+    options_ref: date_dmy_pdf
+    units: null
+    skip_logic: null
+    notes: 'Compound TST application date (D D / M M / Y Y) and 24-hour time (H H : M M); one per visit (1-6).'
+    related_variables:
+    - TST_DAT1
+    - TST_DAT2
+    - TST_DAT3
+    - TST_DAT4
+    - TST_DAT5
+    - TST_DAT6
+    - TST_TIM1
+    - TST_TIM2
+    - TST_TIM3
+    - TST_TIM4
+    - TST_TIM5
+    - TST_TIM6
+  - id: q_tst_app_time
+    page: 1
+    exact_wording: 'H   H  :  M  M'
+    section: tst_visits
+    options_ref: time_hm_pdf
+    units: null
+    skip_logic: null
+    notes: 24-hour time caption paired with TST application date.
+    related_variables:
+    - TST_TIM1
+    - TST_TIM2
+    - TST_TIM3
+    - TST_TIM4
+    - TST_TIM5
+    - TST_TIM6
+  - id: q_tst_read_dt
+    page: 1
+    exact_wording: TST reading date and 24 hour time
+    section: tst_visits
+    options_ref: date_dmy_pdf
+    units: null
+    skip_logic: null
+    notes: Compound TST reading date and 24-hour time; one per visit (1-6).
+    related_variables:
+    - TST_ENDAT1
+    - TST_ENDAT2
+    - TST_ENDAT3
+    - TST_ENDAT4
+    - TST_ENDAT5
+    - TST_ENDAT6
+    - TST_ENTIM1
+    - TST_ENTIM2
+    - TST_ENTIM3
+    - TST_ENTIM4
+    - TST_ENTIM5
+    - TST_ENTIM6
+  - id: q_tst_read_time
+    page: 1
+    exact_wording: 'H   H  :  M  M'
+    section: tst_visits
+    options_ref: time_hm_pdf
+    units: null
+    skip_logic: null
+    notes: 24-hour time caption paired with TST reading date.
+    related_variables:
+    - TST_ENTIM1
+    - TST_ENTIM2
+    - TST_ENTIM3
+    - TST_ENTIM4
+    - TST_ENTIM5
+    - TST_ENTIM6
+  - id: q_tst_result
+    page: 1
+    exact_wording: TST Result
+    section: tst_visits
+    options_ref: null
+    units: mm
+    skip_logic: null
+    notes: TST induration measurement (mm) and Blistering/Ulceration indicators; one per visit (1-6).
+    related_variables:
+    - TST_INDUR1
+    - TST_INDUR2
+    - TST_INDUR3
+    - TST_INDUR4
+    - TST_INDUR5
+    - TST_INDUR6
+    - TST_BLIST1
+    - TST_BLIST2
+    - TST_BLIST3
+    - TST_BLIST4
+    - TST_BLIST5
+    - TST_BLIST6
+  - id: q_blister_ulcer
+    page: 1
+    exact_wording: 'Blistering
+
+      Ulceration'
+    section: tst_visits
+    options_ref: tst_blister_ulcer_pdf
+    units: null
+    skip_logic: null
+    notes: Blistering / Ulceration option block adjacent to the TST Result mm reading.
+    related_variables:
+    - TST_BLIST1
+    - TST_BLIST2
+    - TST_BLIST3
+    - TST_BLIST4
+    - TST_BLIST5
+    - TST_BLIST6
+  - id: q_ppd_strength
+    page: 1
+    exact_wording: PPD Strength
+    section: tst_visits
+    options_ref: ppd_strength_pdf
+    units: null
+    skip_logic: null
+    notes: PPD Strength options 2 TU / 5 TU / Other, specify; one per visit (1-6).
+    related_variables:
+    - TST_STREN1
+    - TST_STREN2
+    - TST_STREN3
+    - TST_STREN4
+    - TST_STREN5
+    - TST_STREN6
+    - TST_STRENOTH1
+    - TST_STRENOTH2
+    - TST_STRENOTH3
+    - TST_STRENOTH4
+    - TST_STRENOTH5
+    - TST_STRENOTH6
+  - id: q_other_specify
+    page: 1
+    exact_wording: Other, specify
+    section: tst_visits
+    options_ref: null
+    units: null
+    skip_logic: null
+    notes: Free-text 'Other, specify' annotation paired with PPD Strength; one per visit (1-6).
+    related_variables:
+    - TST_STRENOTH1
+    - TST_STRENOTH2
+    - TST_STRENOTH3
+    - TST_STRENOTH4
+    - TST_STRENOTH5
+    - TST_STRENOTH6
+  - id: q_sig
+    page: 1
+    exact_wording: 'Signature of Data Collector:'
+    section: completion
+    options_ref: null
+    units: null
+    skip_logic: null
+    notes: null
+    related_variables:
+    - HHC_SIGN
+  - id: q_initials
+    page: 1
+    exact_wording: 'Initials of Data Collector:'
+    section: completion
+    options_ref: null
+    units: null
+    skip_logic: null
+    notes: null
+    related_variables:
+    - HHC_INIT
+  - id: q_date_completed
+    page: 1
+    exact_wording: 'Date Completed: / /'
+    section: completion
+    options_ref: date_dmy_completion_pdf
+    units: null
+    skip_logic: null
+    notes: Day / Month / Year date boxes for form completion.
+    related_variables:
+    - HHC_COMPDAT
+evidence_packs:
+  by_variable:
+    FID:
+      exact_pdf_wording: 'Family ID #:'
+      pdf_annotation: FID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_TU:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_TUOTHER:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_PPDSOURCE:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_PPDOTHER:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC1:
+      exact_pdf_wording: 'Household Contact ID #'
+      pdf_annotation: HHC1
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ND1:
+      exact_pdf_wording: Not Done
+      pdf_annotation: TST_ND1
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_DAT1:
+      exact_pdf_wording: TST application date  and 24 hour time
+      pdf_annotation: TST_DAT1
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_TIM1:
+      exact_pdf_wording: 'H   H  :  M  M'
+      pdf_annotation: TST_TIM1
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ENDAT1:
+      exact_pdf_wording: TST reading date and 24 hour time
+      pdf_annotation: TST_ENDAT1
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_INDUR1:
+      exact_pdf_wording: TST Result
+      pdf_annotation: TST_INDUR1
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_STREN1:
+      exact_pdf_wording: PPD Strength
+      pdf_annotation: TST_STREN1
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_STRENOTH1:
+      exact_pdf_wording: Other, specify
+      pdf_annotation: TST_STRENOTH1
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ENTIM1:
+      exact_pdf_wording: 'H   H  :  M  M'
+      pdf_annotation: TST_ENTIM1
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_BLIST1:
+      exact_pdf_wording: 'Blistering
+
+        Ulceration'
+      pdf_annotation: TST_BLIST1
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_SUBST1:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_COUGH1:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_SPUTUM1:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_SPLACE1:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC2:
+      exact_pdf_wording: 'Household Contact ID #'
+      pdf_annotation: HHC2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ND2:
+      exact_pdf_wording: Not Done
+      pdf_annotation: TST_ND2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_DAT2:
+      exact_pdf_wording: TST application date  and 24 hour time
+      pdf_annotation: TST_DAT2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_TIM2:
+      exact_pdf_wording: 'H   H  :  M  M'
+      pdf_annotation: TST_TIM2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ENDAT2:
+      exact_pdf_wording: TST reading date and 24 hour time
+      pdf_annotation: TST_ENDAT2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_INDUR2:
+      exact_pdf_wording: TST Result
+      pdf_annotation: TST_INDUR2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_STREN2:
+      exact_pdf_wording: PPD Strength
+      pdf_annotation: TST_STREN2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_STRENOTH2:
+      exact_pdf_wording: Other, specify
+      pdf_annotation: TST_STRENOTH2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ENTIM2:
+      exact_pdf_wording: 'H   H  :  M  M'
+      pdf_annotation: TST_ENTIM2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_BLIST2:
+      exact_pdf_wording: 'Blistering
+
+        Ulceration'
+      pdf_annotation: TST_BLIST2
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_SUBST2:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_COUGH2:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_SPUTUM2:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_SPLACE2:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC3:
+      exact_pdf_wording: 'Household Contact ID #'
+      pdf_annotation: HHC3
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ND3:
+      exact_pdf_wording: Not Done
+      pdf_annotation: TST_ND3
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_DAT3:
+      exact_pdf_wording: TST application date  and 24 hour time
+      pdf_annotation: TST_DAT3
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_TIM3:
+      exact_pdf_wording: 'H   H  :  M  M'
+      pdf_annotation: TST_TIM3
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ENDAT3:
+      exact_pdf_wording: TST reading date and 24 hour time
+      pdf_annotation: TST_ENDAT3
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_INDUR3:
+      exact_pdf_wording: TST Result
+      pdf_annotation: TST_INDUR3
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_STREN3:
+      exact_pdf_wording: PPD Strength
+      pdf_annotation: TST_STREN3
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_STRENOTH3:
+      exact_pdf_wording: Other, specify
+      pdf_annotation: TST_STRENOTH3
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ENTIM3:
+      exact_pdf_wording: 'H   H  :  M  M'
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: pdf_visible_text
+    TST_BLIST3:
+      exact_pdf_wording: 'Blistering
+
+        Ulceration'
+      pdf_annotation: TST_BLIST3
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_SUBST3:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_COUGH3:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_SPUTUM3:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_SPLACE3:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC4:
+      exact_pdf_wording: 'Household Contact ID #'
+      pdf_annotation: HHC4
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ND4:
+      exact_pdf_wording: Not Done
+      pdf_annotation: TST_ND4
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_DAT4:
+      exact_pdf_wording: TST application date  and 24 hour time
+      pdf_annotation: TST_DAT4
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_TIM4:
+      exact_pdf_wording: 'H   H  :  M  M'
+      pdf_annotation: TST_TIM4
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ENDAT4:
+      exact_pdf_wording: TST reading date and 24 hour time
+      pdf_annotation: TST_ENDAT4
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_INDUR4:
+      exact_pdf_wording: TST Result
+      pdf_annotation: TST_INDUR4
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_STREN4:
+      exact_pdf_wording: PPD Strength
+      pdf_annotation: TST_STREN4
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_STRENOTH4:
+      exact_pdf_wording: Other, specify
+      pdf_annotation: TST_STRENOTH4
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ENTIM4:
+      exact_pdf_wording: 'H   H  :  M  M'
+      pdf_annotation: TST_ENTIM4
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_BLIST4:
+      exact_pdf_wording: 'Blistering
+
+        Ulceration'
+      pdf_annotation: TST_BLIST4
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_SUBST4:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_COUGH4:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_SPUTUM4:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_SPLACE4:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC5:
+      exact_pdf_wording: 'Household Contact ID #'
+      pdf_annotation: HHC5
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ND5:
+      exact_pdf_wording: Not Done
+      pdf_annotation: TST_ND5
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_DAT5:
+      exact_pdf_wording: TST application date  and 24 hour time
+      pdf_annotation: TST_DAT5
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_TIM5:
+      exact_pdf_wording: 'H   H  :  M  M'
+      pdf_annotation: TST_TIM5
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ENDAT5:
+      exact_pdf_wording: TST reading date and 24 hour time
+      pdf_annotation: TST_ENDAT5
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_INDUR5:
+      exact_pdf_wording: TST Result
+      pdf_annotation: TST_INDUR5
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_STREN5:
+      exact_pdf_wording: PPD Strength
+      pdf_annotation: TST_STREN5
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_STRENOTH5:
+      exact_pdf_wording: Other, specify
+      pdf_annotation: TST_STRENOTH5
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ENTIM5:
+      exact_pdf_wording: 'H   H  :  M  M'
+      pdf_annotation: TST_ENTIM5
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_BLIST5:
+      exact_pdf_wording: 'Blistering
+
+        Ulceration'
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: pdf_visible_text
+    TST_SUBST5:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_COUGH5:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_SPUTUM5:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_SPLACE5:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC6:
+      exact_pdf_wording: 'Household Contact ID #'
+      pdf_annotation: HHC6
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ND6:
+      exact_pdf_wording: Not Done
+      pdf_annotation: TST_ND6
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_DAT6:
+      exact_pdf_wording: TST application date  and 24 hour time
+      pdf_annotation: TST_DAT6
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_TIM6:
+      exact_pdf_wording: 'H   H  :  M  M'
+      pdf_annotation: TST_TIM6
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ENDAT6:
+      exact_pdf_wording: TST reading date and 24 hour time
+      pdf_annotation: TST_ENDAT6
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_INDUR6:
+      exact_pdf_wording: TST Result
+      pdf_annotation: TST_INDUR6
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_STREN6:
+      exact_pdf_wording: PPD Strength
+      pdf_annotation: TST_STREN6
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_STRENOTH6:
+      exact_pdf_wording: Other, specify
+      pdf_annotation: TST_STRENOTH6
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_ENTIM6:
+      exact_pdf_wording: 'H   H  :  M  M'
+      pdf_annotation: TST_ENTIM6
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    TST_BLIST6:
+      exact_pdf_wording: 'Blistering
+
+        Ulceration'
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: pdf_visible_text
+    TST_SUBST6:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_COUGH6:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_SPUTUM6:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    TST_SPLACE6:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    HHC_SIGN:
+      exact_pdf_wording: 'Signature of Data Collector:'
+      pdf_annotation: HHC_SIGN
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_INIT:
+      exact_pdf_wording: 'Initials of Data Collector:'
+      pdf_annotation: HHC_INIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    HHC_COMPDAT:
+      exact_pdf_wording: 'Date Completed: / /'
+      pdf_annotation: HHC_COMPDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    Time_Stamp:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+catalog_refs:
+  by_variable:
+    FID:
+      display_label: Family ID
+      normalized_meaning: Pseudonymized family/household identifier captured in the form header.
+      search_terms:
+      - FID
+      - Family ID
+      - 'Family ID #'
+      - household id
+      - family identifier
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_TU:
+      display_label: TST PPD Strength (Setup)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; appears related to TST PPD strength setup ('2 TU' / '5 TU' visible per visit, but no form-level setup field). Pending reviewer clarification.
+      search_terms:
+      - TST_TU
+      - TST PPD strength
+      - PPD strength setup
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_TUOTHER:
+      display_label: TST PPD Strength Other (Setup)
+      normalized_meaning: Dataset column with no direct PDF annotation; possible free-text/other-specify partner of TST_TU. Pending reviewer clarification.
+      search_terms:
+      - TST_TUOTHER
+      - TST PPD other
+      - PPD strength other specify
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    TST_PPDSOURCE:
+      display_label: PPD Source (Setup)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; presumed PPD source/manufacturer setup column. Pending reviewer clarification.
+      search_terms:
+      - TST_PPDSOURCE
+      - PPD source
+      - PPD manufacturer
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_PPDOTHER:
+      display_label: PPD Source Other (Setup)
+      normalized_meaning: Dataset column with no direct PDF annotation; possible free-text/other-specify partner of TST_PPDSOURCE. Pending reviewer clarification.
+      search_terms:
+      - TST_PPDOTHER
+      - PPD source other
+      - PPD source other specify
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    HHC1:
+      display_label: 'Household Contact ID #1'
+      normalized_meaning: Pseudonymized household contact identifier for visit 1.
+      search_terms:
+      - HHC1
+      - Household Contact ID
+      - household contact 1
+      - household contact id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SUBST1:
+      display_label: TST Substitute Indicator (Visit 1)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible substitute/replacement indicator for visit 1. Pending reviewer clarification.
+      search_terms:
+      - TST_SUBST1
+      - TST substitute
+      - visit 1 substitute
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ND1:
+      display_label: TST Not Done (Visit 1)
+      normalized_meaning: Indicator that the TST was not done at visit 1; paired with the 'Not Done' checkbox on the form.
+      search_terms:
+      - TST_ND1
+      - Not Done
+      - TST not done
+      - visit 1 not done
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_DAT1:
+      display_label: TST Application Date (Visit 1)
+      normalized_meaning: Date the TST was applied at visit 1 (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+      - TST_DAT1
+      - TST application date
+      - visit 1 application date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_TIM1:
+      display_label: TST Application Time (Visit 1)
+      normalized_meaning: 24-hour time the TST was applied at visit 1.
+      search_terms:
+      - TST_TIM1
+      - TST application time
+      - 24 hour time
+      - visit 1 time
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ENDAT1:
+      display_label: TST Reading Date (Visit 1)
+      normalized_meaning: Date the TST was read at visit 1 (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+      - TST_ENDAT1
+      - TST reading date
+      - visit 1 reading date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ENTIM1:
+      display_label: TST Reading Time (Visit 1)
+      normalized_meaning: 24-hour time the TST was read at visit 1.
+      search_terms:
+      - TST_ENTIM1
+      - TST reading time
+      - visit 1 reading time
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_INDUR1:
+      display_label: TST Induration Result (Visit 1)
+      normalized_meaning: TST induration measurement in mm at visit 1.
+      search_terms:
+      - TST_INDUR1
+      - TST Result
+      - induration
+      - mm
+      - visit 1 TST result
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_BLIST1:
+      display_label: TST Blistering / Ulceration (Visit 1)
+      normalized_meaning: Indicator for Blistering or Ulceration adjacent to the TST Result reading at visit 1.
+      search_terms:
+      - TST_BLIST1
+      - Blistering
+      - Ulceration
+      - visit 1 blistering
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_COUGH1:
+      display_label: Cough Indicator (Visit 1)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible cough symptom indicator for visit 1. Pending reviewer clarification.
+      search_terms:
+      - TST_COUGH1
+      - cough
+      - visit 1 cough
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SPUTUM1:
+      display_label: Sputum Indicator (Visit 1)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible sputum symptom or specimen indicator for visit 1. Pending reviewer clarification.
+      search_terms:
+      - TST_SPUTUM1
+      - sputum
+      - visit 1 sputum
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SPLACE1:
+      display_label: Sputum Place / Source (Visit 1)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible sputum collection place/source for visit 1. Pending reviewer clarification.
+      search_terms:
+      - TST_SPLACE1
+      - sputum place
+      - sputum source
+      - visit 1 sputum place
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_STREN1:
+      display_label: PPD Strength (Visit 1)
+      normalized_meaning: 'PPD strength administered at visit 1: 2 TU, 5 TU, or Other, specify.'
+      search_terms:
+      - TST_STREN1
+      - PPD Strength
+      - 2 TU
+      - 5 TU
+      - visit 1 PPD strength
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_STRENOTH1:
+      display_label: PPD Strength Other (Visit 1)
+      normalized_meaning: Free-text 'Other, specify' value for PPD Strength at visit 1.
+      search_terms:
+      - TST_STRENOTH1
+      - Other, specify
+      - PPD strength other
+      - visit 1 PPD other
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    HHC2:
+      display_label: 'Household Contact ID #2'
+      normalized_meaning: Pseudonymized household contact identifier for visit 2.
+      search_terms:
+      - HHC2
+      - Household Contact ID
+      - household contact 2
+      - household contact id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SUBST2:
+      display_label: TST Substitute Indicator (Visit 2)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible substitute/replacement indicator for visit 2. Pending reviewer clarification.
+      search_terms:
+      - TST_SUBST2
+      - TST substitute
+      - visit 2 substitute
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ND2:
+      display_label: TST Not Done (Visit 2)
+      normalized_meaning: Indicator that the TST was not done at visit 2; paired with the 'Not Done' checkbox on the form.
+      search_terms:
+      - TST_ND2
+      - Not Done
+      - TST not done
+      - visit 2 not done
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_DAT2:
+      display_label: TST Application Date (Visit 2)
+      normalized_meaning: Date the TST was applied at visit 2 (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+      - TST_DAT2
+      - TST application date
+      - visit 2 application date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_TIM2:
+      display_label: TST Application Time (Visit 2)
+      normalized_meaning: 24-hour time the TST was applied at visit 2.
+      search_terms:
+      - TST_TIM2
+      - TST application time
+      - 24 hour time
+      - visit 2 time
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ENDAT2:
+      display_label: TST Reading Date (Visit 2)
+      normalized_meaning: Date the TST was read at visit 2 (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+      - TST_ENDAT2
+      - TST reading date
+      - visit 2 reading date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ENTIM2:
+      display_label: TST Reading Time (Visit 2)
+      normalized_meaning: 24-hour time the TST was read at visit 2.
+      search_terms:
+      - TST_ENTIM2
+      - TST reading time
+      - visit 2 reading time
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_INDUR2:
+      display_label: TST Induration Result (Visit 2)
+      normalized_meaning: TST induration measurement in mm at visit 2.
+      search_terms:
+      - TST_INDUR2
+      - TST Result
+      - induration
+      - mm
+      - visit 2 TST result
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_BLIST2:
+      display_label: TST Blistering / Ulceration (Visit 2)
+      normalized_meaning: Indicator for Blistering or Ulceration adjacent to the TST Result reading at visit 2.
+      search_terms:
+      - TST_BLIST2
+      - Blistering
+      - Ulceration
+      - visit 2 blistering
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_COUGH2:
+      display_label: Cough Indicator (Visit 2)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible cough symptom indicator for visit 2. Pending reviewer clarification.
+      search_terms:
+      - TST_COUGH2
+      - cough
+      - visit 2 cough
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SPUTUM2:
+      display_label: Sputum Indicator (Visit 2)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible sputum symptom or specimen indicator for visit 2. Pending reviewer clarification.
+      search_terms:
+      - TST_SPUTUM2
+      - sputum
+      - visit 2 sputum
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SPLACE2:
+      display_label: Sputum Place / Source (Visit 2)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible sputum collection place/source for visit 2. Pending reviewer clarification.
+      search_terms:
+      - TST_SPLACE2
+      - sputum place
+      - sputum source
+      - visit 2 sputum place
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_STREN2:
+      display_label: PPD Strength (Visit 2)
+      normalized_meaning: 'PPD strength administered at visit 2: 2 TU, 5 TU, or Other, specify.'
+      search_terms:
+      - TST_STREN2
+      - PPD Strength
+      - 2 TU
+      - 5 TU
+      - visit 2 PPD strength
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_STRENOTH2:
+      display_label: PPD Strength Other (Visit 2)
+      normalized_meaning: Free-text 'Other, specify' value for PPD Strength at visit 2.
+      search_terms:
+      - TST_STRENOTH2
+      - Other, specify
+      - PPD strength other
+      - visit 2 PPD other
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    HHC3:
+      display_label: 'Household Contact ID #3'
+      normalized_meaning: Pseudonymized household contact identifier for visit 3.
+      search_terms:
+      - HHC3
+      - Household Contact ID
+      - household contact 3
+      - household contact id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SUBST3:
+      display_label: TST Substitute Indicator (Visit 3)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible substitute/replacement indicator for visit 3. Pending reviewer clarification.
+      search_terms:
+      - TST_SUBST3
+      - TST substitute
+      - visit 3 substitute
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ND3:
+      display_label: TST Not Done (Visit 3)
+      normalized_meaning: Indicator that the TST was not done at visit 3; paired with the 'Not Done' checkbox on the form.
+      search_terms:
+      - TST_ND3
+      - Not Done
+      - TST not done
+      - visit 3 not done
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_DAT3:
+      display_label: TST Application Date (Visit 3)
+      normalized_meaning: Date the TST was applied at visit 3 (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+      - TST_DAT3
+      - TST application date
+      - visit 3 application date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_TIM3:
+      display_label: TST Application Time (Visit 3)
+      normalized_meaning: 24-hour time the TST was applied at visit 3.
+      search_terms:
+      - TST_TIM3
+      - TST application time
+      - 24 hour time
+      - visit 3 time
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ENDAT3:
+      display_label: TST Reading Date (Visit 3)
+      normalized_meaning: Date the TST was read at visit 3 (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+      - TST_ENDAT3
+      - TST reading date
+      - visit 3 reading date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ENTIM3:
+      display_label: TST Reading Time (Visit 3)
+      normalized_meaning: 24-hour time the TST was read at visit 3.
+      search_terms:
+      - TST_ENTIM3
+      - TST reading time
+      - visit 3 reading time
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_INDUR3:
+      display_label: TST Induration Result (Visit 3)
+      normalized_meaning: TST induration measurement in mm at visit 3.
+      search_terms:
+      - TST_INDUR3
+      - TST Result
+      - induration
+      - mm
+      - visit 3 TST result
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_BLIST3:
+      display_label: TST Blistering / Ulceration (Visit 3)
+      normalized_meaning: Indicator for Blistering or Ulceration adjacent to the TST Result reading at visit 3.
+      search_terms:
+      - TST_BLIST3
+      - Blistering
+      - Ulceration
+      - visit 3 blistering
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_COUGH3:
+      display_label: Cough Indicator (Visit 3)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible cough symptom indicator for visit 3. Pending reviewer clarification.
+      search_terms:
+      - TST_COUGH3
+      - cough
+      - visit 3 cough
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SPUTUM3:
+      display_label: Sputum Indicator (Visit 3)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible sputum symptom or specimen indicator for visit 3. Pending reviewer clarification.
+      search_terms:
+      - TST_SPUTUM3
+      - sputum
+      - visit 3 sputum
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SPLACE3:
+      display_label: Sputum Place / Source (Visit 3)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible sputum collection place/source for visit 3. Pending reviewer clarification.
+      search_terms:
+      - TST_SPLACE3
+      - sputum place
+      - sputum source
+      - visit 3 sputum place
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_STREN3:
+      display_label: PPD Strength (Visit 3)
+      normalized_meaning: 'PPD strength administered at visit 3: 2 TU, 5 TU, or Other, specify.'
+      search_terms:
+      - TST_STREN3
+      - PPD Strength
+      - 2 TU
+      - 5 TU
+      - visit 3 PPD strength
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_STRENOTH3:
+      display_label: PPD Strength Other (Visit 3)
+      normalized_meaning: Free-text 'Other, specify' value for PPD Strength at visit 3.
+      search_terms:
+      - TST_STRENOTH3
+      - Other, specify
+      - PPD strength other
+      - visit 3 PPD other
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    HHC4:
+      display_label: 'Household Contact ID #4'
+      normalized_meaning: Pseudonymized household contact identifier for visit 4.
+      search_terms:
+      - HHC4
+      - Household Contact ID
+      - household contact 4
+      - household contact id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SUBST4:
+      display_label: TST Substitute Indicator (Visit 4)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible substitute/replacement indicator for visit 4. Pending reviewer clarification.
+      search_terms:
+      - TST_SUBST4
+      - TST substitute
+      - visit 4 substitute
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ND4:
+      display_label: TST Not Done (Visit 4)
+      normalized_meaning: Indicator that the TST was not done at visit 4; paired with the 'Not Done' checkbox on the form.
+      search_terms:
+      - TST_ND4
+      - Not Done
+      - TST not done
+      - visit 4 not done
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_DAT4:
+      display_label: TST Application Date (Visit 4)
+      normalized_meaning: Date the TST was applied at visit 4 (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+      - TST_DAT4
+      - TST application date
+      - visit 4 application date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_TIM4:
+      display_label: TST Application Time (Visit 4)
+      normalized_meaning: 24-hour time the TST was applied at visit 4.
+      search_terms:
+      - TST_TIM4
+      - TST application time
+      - 24 hour time
+      - visit 4 time
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ENDAT4:
+      display_label: TST Reading Date (Visit 4)
+      normalized_meaning: Date the TST was read at visit 4 (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+      - TST_ENDAT4
+      - TST reading date
+      - visit 4 reading date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ENTIM4:
+      display_label: TST Reading Time (Visit 4)
+      normalized_meaning: 24-hour time the TST was read at visit 4.
+      search_terms:
+      - TST_ENTIM4
+      - TST reading time
+      - visit 4 reading time
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_INDUR4:
+      display_label: TST Induration Result (Visit 4)
+      normalized_meaning: TST induration measurement in mm at visit 4.
+      search_terms:
+      - TST_INDUR4
+      - TST Result
+      - induration
+      - mm
+      - visit 4 TST result
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_BLIST4:
+      display_label: TST Blistering / Ulceration (Visit 4)
+      normalized_meaning: Indicator for Blistering or Ulceration adjacent to the TST Result reading at visit 4.
+      search_terms:
+      - TST_BLIST4
+      - Blistering
+      - Ulceration
+      - visit 4 blistering
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_COUGH4:
+      display_label: Cough Indicator (Visit 4)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible cough symptom indicator for visit 4. Pending reviewer clarification.
+      search_terms:
+      - TST_COUGH4
+      - cough
+      - visit 4 cough
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SPUTUM4:
+      display_label: Sputum Indicator (Visit 4)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible sputum symptom or specimen indicator for visit 4. Pending reviewer clarification.
+      search_terms:
+      - TST_SPUTUM4
+      - sputum
+      - visit 4 sputum
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SPLACE4:
+      display_label: Sputum Place / Source (Visit 4)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible sputum collection place/source for visit 4. Pending reviewer clarification.
+      search_terms:
+      - TST_SPLACE4
+      - sputum place
+      - sputum source
+      - visit 4 sputum place
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_STREN4:
+      display_label: PPD Strength (Visit 4)
+      normalized_meaning: 'PPD strength administered at visit 4: 2 TU, 5 TU, or Other, specify.'
+      search_terms:
+      - TST_STREN4
+      - PPD Strength
+      - 2 TU
+      - 5 TU
+      - visit 4 PPD strength
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_STRENOTH4:
+      display_label: PPD Strength Other (Visit 4)
+      normalized_meaning: Free-text 'Other, specify' value for PPD Strength at visit 4.
+      search_terms:
+      - TST_STRENOTH4
+      - Other, specify
+      - PPD strength other
+      - visit 4 PPD other
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    HHC5:
+      display_label: 'Household Contact ID #5'
+      normalized_meaning: Pseudonymized household contact identifier for visit 5.
+      search_terms:
+      - HHC5
+      - Household Contact ID
+      - household contact 5
+      - household contact id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SUBST5:
+      display_label: TST Substitute Indicator (Visit 5)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible substitute/replacement indicator for visit 5. Pending reviewer clarification.
+      search_terms:
+      - TST_SUBST5
+      - TST substitute
+      - visit 5 substitute
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ND5:
+      display_label: TST Not Done (Visit 5)
+      normalized_meaning: Indicator that the TST was not done at visit 5; paired with the 'Not Done' checkbox on the form.
+      search_terms:
+      - TST_ND5
+      - Not Done
+      - TST not done
+      - visit 5 not done
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_DAT5:
+      display_label: TST Application Date (Visit 5)
+      normalized_meaning: Date the TST was applied at visit 5 (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+      - TST_DAT5
+      - TST application date
+      - visit 5 application date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_TIM5:
+      display_label: TST Application Time (Visit 5)
+      normalized_meaning: 24-hour time the TST was applied at visit 5.
+      search_terms:
+      - TST_TIM5
+      - TST application time
+      - 24 hour time
+      - visit 5 time
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ENDAT5:
+      display_label: TST Reading Date (Visit 5)
+      normalized_meaning: Date the TST was read at visit 5 (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+      - TST_ENDAT5
+      - TST reading date
+      - visit 5 reading date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ENTIM5:
+      display_label: TST Reading Time (Visit 5)
+      normalized_meaning: 24-hour time the TST was read at visit 5.
+      search_terms:
+      - TST_ENTIM5
+      - TST reading time
+      - visit 5 reading time
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_INDUR5:
+      display_label: TST Induration Result (Visit 5)
+      normalized_meaning: TST induration measurement in mm at visit 5.
+      search_terms:
+      - TST_INDUR5
+      - TST Result
+      - induration
+      - mm
+      - visit 5 TST result
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_BLIST5:
+      display_label: TST Blistering / Ulceration (Visit 5)
+      normalized_meaning: Indicator for Blistering or Ulceration adjacent to the TST Result reading at visit 5.
+      search_terms:
+      - TST_BLIST5
+      - Blistering
+      - Ulceration
+      - visit 5 blistering
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_COUGH5:
+      display_label: Cough Indicator (Visit 5)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible cough symptom indicator for visit 5. Pending reviewer clarification.
+      search_terms:
+      - TST_COUGH5
+      - cough
+      - visit 5 cough
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SPUTUM5:
+      display_label: Sputum Indicator (Visit 5)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible sputum symptom or specimen indicator for visit 5. Pending reviewer clarification.
+      search_terms:
+      - TST_SPUTUM5
+      - sputum
+      - visit 5 sputum
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SPLACE5:
+      display_label: Sputum Place / Source (Visit 5)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible sputum collection place/source for visit 5. Pending reviewer clarification.
+      search_terms:
+      - TST_SPLACE5
+      - sputum place
+      - sputum source
+      - visit 5 sputum place
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_STREN5:
+      display_label: PPD Strength (Visit 5)
+      normalized_meaning: 'PPD strength administered at visit 5: 2 TU, 5 TU, or Other, specify.'
+      search_terms:
+      - TST_STREN5
+      - PPD Strength
+      - 2 TU
+      - 5 TU
+      - visit 5 PPD strength
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_STRENOTH5:
+      display_label: PPD Strength Other (Visit 5)
+      normalized_meaning: Free-text 'Other, specify' value for PPD Strength at visit 5.
+      search_terms:
+      - TST_STRENOTH5
+      - Other, specify
+      - PPD strength other
+      - visit 5 PPD other
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    HHC6:
+      display_label: 'Household Contact ID #6'
+      normalized_meaning: Pseudonymized household contact identifier for visit 6.
+      search_terms:
+      - HHC6
+      - Household Contact ID
+      - household contact 6
+      - household contact id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SUBST6:
+      display_label: TST Substitute Indicator (Visit 6)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible substitute/replacement indicator for visit 6. Pending reviewer clarification.
+      search_terms:
+      - TST_SUBST6
+      - TST substitute
+      - visit 6 substitute
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ND6:
+      display_label: TST Not Done (Visit 6)
+      normalized_meaning: Indicator that the TST was not done at visit 6; paired with the 'Not Done' checkbox on the form.
+      search_terms:
+      - TST_ND6
+      - Not Done
+      - TST not done
+      - visit 6 not done
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_DAT6:
+      display_label: TST Application Date (Visit 6)
+      normalized_meaning: Date the TST was applied at visit 6 (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+      - TST_DAT6
+      - TST application date
+      - visit 6 application date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_TIM6:
+      display_label: TST Application Time (Visit 6)
+      normalized_meaning: 24-hour time the TST was applied at visit 6.
+      search_terms:
+      - TST_TIM6
+      - TST application time
+      - 24 hour time
+      - visit 6 time
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ENDAT6:
+      display_label: TST Reading Date (Visit 6)
+      normalized_meaning: Date the TST was read at visit 6 (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+      - TST_ENDAT6
+      - TST reading date
+      - visit 6 reading date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_ENTIM6:
+      display_label: TST Reading Time (Visit 6)
+      normalized_meaning: 24-hour time the TST was read at visit 6.
+      search_terms:
+      - TST_ENTIM6
+      - TST reading time
+      - visit 6 reading time
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_INDUR6:
+      display_label: TST Induration Result (Visit 6)
+      normalized_meaning: TST induration measurement in mm at visit 6.
+      search_terms:
+      - TST_INDUR6
+      - TST Result
+      - induration
+      - mm
+      - visit 6 TST result
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_BLIST6:
+      display_label: TST Blistering / Ulceration (Visit 6)
+      normalized_meaning: Indicator for Blistering or Ulceration adjacent to the TST Result reading at visit 6.
+      search_terms:
+      - TST_BLIST6
+      - Blistering
+      - Ulceration
+      - visit 6 blistering
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_COUGH6:
+      display_label: Cough Indicator (Visit 6)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible cough symptom indicator for visit 6. Pending reviewer clarification.
+      search_terms:
+      - TST_COUGH6
+      - cough
+      - visit 6 cough
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SPUTUM6:
+      display_label: Sputum Indicator (Visit 6)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible sputum symptom or specimen indicator for visit 6. Pending reviewer clarification.
+      search_terms:
+      - TST_SPUTUM6
+      - sputum
+      - visit 6 sputum
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_SPLACE6:
+      display_label: Sputum Place / Source (Visit 6)
+      normalized_meaning: Dataset column with no direct PDF annotation or visible label; possible sputum collection place/source for visit 6. Pending reviewer clarification.
+      search_terms:
+      - TST_SPLACE6
+      - sputum place
+      - sputum source
+      - visit 6 sputum place
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_STREN6:
+      display_label: PPD Strength (Visit 6)
+      normalized_meaning: 'PPD strength administered at visit 6: 2 TU, 5 TU, or Other, specify.'
+      search_terms:
+      - TST_STREN6
+      - PPD Strength
+      - 2 TU
+      - 5 TU
+      - visit 6 PPD strength
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    TST_STRENOTH6:
+      display_label: PPD Strength Other (Visit 6)
+      normalized_meaning: Free-text 'Other, specify' value for PPD Strength at visit 6.
+      search_terms:
+      - TST_STRENOTH6
+      - Other, specify
+      - PPD strength other
+      - visit 6 PPD other
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    HHC_SIGN:
+      display_label: Data Collector Signature
+      normalized_meaning: Signature of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+      - HHC_SIGN
+      - Signature of Data Collector
+      - signature
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_INIT:
+      display_label: Data Collector Initials
+      normalized_meaning: Initials of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+      - HHC_INIT
+      - Initials of Data Collector
+      - initials
+      catalog_tier: source_only
+      analysis_queryable: false
+    HHC_COMPDAT:
+      display_label: Form Completion Date
+      normalized_meaning: Date the form was completed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+      - HHC_COMPDAT
+      - Date Completed
+      - form completion date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    Time_Stamp:
+      display_label: Capture Timestamp
+      normalized_meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      search_terms:
+      - Time_Stamp
+      - timestamp
+      - capture timestamp
+      catalog_tier: source_only
+      analysis_queryable: false
+ledger_expectations:
+  phi_handling:
+  - FID
+  - HHC1
+  - TST_DAT1
+  - TST_ENDAT1
+  - TST_STRENOTH1
+  - HHC2
+  - TST_DAT2
+  - TST_ENDAT2
+  - TST_STRENOTH2
+  - HHC3
+  - TST_DAT3
+  - TST_ENDAT3
+  - TST_STRENOTH3
+  - HHC4
+  - TST_DAT4
+  - TST_ENDAT4
+  - TST_STRENOTH4
+  - HHC5
+  - TST_DAT5
+  - TST_ENDAT5
+  - TST_STRENOTH5
+  - HHC6
+  - TST_DAT6
+  - TST_ENDAT6
+  - TST_STRENOTH6
+  - TST_TUOTHER
+  - TST_PPDOTHER
+  - HHC_SIGN
+  - HHC_INIT
+  - HHC_COMPDAT
+  dataset_cleanup:
+  - Time_Stamp
+variables:
+  FID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Family ID #:'
+      pdf_annotation: FID
+      column_name: FID
+    normalized_metadata:
+      display_label: Family ID
+      meaning: Pseudonymized family/household identifier captured in the form header.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: family_or_household_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: family_or_household_identifier
+      label: FAM
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_TU:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_TU
+    normalized_metadata:
+      display_label: TST PPD Strength (Setup)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible TST/PPD strength setup column. Per-visit PPD strength is captured in TST_STREN{1-6}.
+      section: tst_setup
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tst_setup
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_TU has no PDF annotation or visible label. Confirm whether this is a setup column for the form-level PPD strength selection or a dictionary-only field, and whether it should be retained, dropped, or treated as another category.
+    clean_output_presence: present
+  TST_TUOTHER:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_TUOTHER
+    normalized_metadata:
+      display_label: TST PPD Strength Other (Setup)
+      meaning: Dataset column with no direct PDF annotation; possible free-text/other-specify partner of TST_TU.
+      section: tst_setup
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: TST_TU
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tst_setup
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+      - derived_pattern
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: TST_TUOTHER appears to be a free-text/other-specify partner for TST_TU but has no PDF evidence. Confirm whether free-text content is allowed in the PHI-handled dataset, or should be dropped/redacted.
+    clean_output_presence: absent
+  TST_PPDSOURCE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_PPDSOURCE
+    normalized_metadata:
+      display_label: PPD Source (Setup)
+      meaning: Dataset column with no direct PDF annotation or visible label; presumed PPD source/manufacturer setup column.
+      section: tst_setup
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tst_setup
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_PPDSOURCE has no PDF annotation or visible label. Confirm intended meaning (PPD manufacturer/source) and retention/handling.
+    clean_output_presence: present
+  TST_PPDOTHER:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_PPDOTHER
+    normalized_metadata:
+      display_label: PPD Source Other (Setup)
+      meaning: Dataset column with no direct PDF annotation; possible free-text/other-specify partner of TST_PPDSOURCE.
+      section: tst_setup
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: TST_PPDSOURCE
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tst_setup
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+      - derived_pattern
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: TST_PPDOTHER appears to be a free-text/other-specify partner for TST_PPDSOURCE but has no PDF evidence. Confirm PHI handling.
+    clean_output_presence: absent
+  HHC1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Household Contact ID #'
+      pdf_annotation: HHC1
+      column_name: HHC1
+    normalized_metadata:
+      display_label: 'Household Contact ID #1'
+      meaning: 'Pseudonymized household contact identifier for visit 1; column heading ''Household Contact ID #'' on the form.'
+      section: tst_visits
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: visit_1
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_SUBST1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SUBST1
+    normalized_metadata:
+      display_label: TST Substitute Indicator (Visit 1)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible substitute/replacement indicator for visit 1.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC1
+      children: []
+      skip_logic: null
+      visit_grouping: visit_1
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SUBST1 has no PDF evidence. Confirm intended meaning (substitute / replacement indicator) and handling.
+    clean_output_presence: present
+  TST_ND1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Not Done
+      pdf_annotation: TST_ND1
+      column_name: TST_ND1
+    normalized_metadata:
+      display_label: TST Not Done (Visit 1)
+      meaning: Indicator that the TST was not done at visit 1; paired with the 'Not Done' checkbox.
+      section: tst_visits
+      data_type: categorical
+      options_ref: not_done_pdf
+    options:
+      source_defined:
+      - Not Done
+      values:
+      - Not Done
+      unknown: true
+    relationships:
+      parent: HHC1
+      children: []
+      skip_logic: null
+      visit_grouping: visit_1
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_DAT1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST application date  and 24 hour time
+      pdf_annotation: TST_DAT1
+      column_name: TST_DAT1
+    normalized_metadata:
+      display_label: TST Application Date (Visit 1)
+      meaning: Date the TST was applied at visit 1; D D / M M / Y Y date boxes.
+      section: tst_visits
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+      - Day
+      - Month
+      - Year
+      values:
+      - Day
+      - Month
+      - Year
+      unknown: true
+    relationships:
+      parent: HHC1
+      children: []
+      skip_logic: null
+      visit_grouping: visit_1
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+    - date_jitter
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_TIM1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'H   H  :  M  M'
+      pdf_annotation: TST_TIM1
+      column_name: TST_TIM1
+    normalized_metadata:
+      display_label: TST Application Time (Visit 1)
+      meaning: '24-hour time the TST was applied at visit 1; H H : M M time boxes.'
+      section: tst_visits
+      data_type: time
+      options_ref: time_hm_pdf
+    options:
+      source_defined:
+      - Hour
+      - Minute
+      values:
+      - Hour
+      - Minute
+      unknown: true
+    relationships:
+      parent: TST_DAT1
+      children: []
+      skip_logic: null
+      visit_grouping: visit_1
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_time
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_ENDAT1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST reading date and 24 hour time
+      pdf_annotation: TST_ENDAT1
+      column_name: TST_ENDAT1
+    normalized_metadata:
+      display_label: TST Reading Date (Visit 1)
+      meaning: Date the TST was read at visit 1; D D / M M / Y Y date boxes.
+      section: tst_visits
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+      - Day
+      - Month
+      - Year
+      values:
+      - Day
+      - Month
+      - Year
+      unknown: true
+    relationships:
+      parent: HHC1
+      children: []
+      skip_logic: null
+      visit_grouping: visit_1
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+    - date_jitter
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_ENTIM1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'H   H  :  M  M'
+      pdf_annotation: TST_ENTIM1
+      column_name: TST_ENTIM1
+    normalized_metadata:
+      display_label: TST Reading Time (Visit 1)
+      meaning: '24-hour time the TST was read at visit 1; H H : M M time boxes.'
+      section: tst_visits
+      data_type: time
+      options_ref: time_hm_pdf
+    options:
+      source_defined:
+      - Hour
+      - Minute
+      values:
+      - Hour
+      - Minute
+      unknown: true
+    relationships:
+      parent: TST_ENDAT1
+      children: []
+      skip_logic: null
+      visit_grouping: visit_1
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_time
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_INDUR1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST Result
+      pdf_annotation: TST_INDUR1
+      column_name: TST_INDUR1
+    normalized_metadata:
+      display_label: TST Induration Result (Visit 1)
+      meaning: TST induration measurement (mm) at visit 1.
+      section: tst_visits
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC1
+      children: []
+      skip_logic: null
+      visit_grouping: visit_1
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_BLIST1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Blistering
+
+        Ulceration'
+      pdf_annotation: TST_BLIST1
+      column_name: TST_BLIST1
+    normalized_metadata:
+      display_label: TST Blistering / Ulceration (Visit 1)
+      meaning: Indicator for Blistering or Ulceration adjacent to the TST Result reading at visit 1.
+      section: tst_visits
+      data_type: categorical
+      options_ref: tst_blister_ulcer_pdf
+    options:
+      source_defined:
+      - Blistering
+      - Ulceration
+      values:
+      - Blistering
+      - Ulceration
+      unknown: true
+    relationships:
+      parent: TST_INDUR1
+      children: []
+      skip_logic: null
+      visit_grouping: visit_1
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_COUGH1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_COUGH1
+    normalized_metadata:
+      display_label: Cough Indicator (Visit 1)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible cough symptom indicator for visit 1.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC1
+      children: []
+      skip_logic: null
+      visit_grouping: visit_1
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_COUGH1 has no PDF evidence. Confirm intended meaning (cough indicator) and handling.
+    clean_output_presence: present
+  TST_SPUTUM1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SPUTUM1
+    normalized_metadata:
+      display_label: Sputum Indicator (Visit 1)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible sputum symptom or specimen indicator for visit 1.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC1
+      children: []
+      skip_logic: null
+      visit_grouping: visit_1
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SPUTUM1 has no PDF evidence. Confirm intended meaning (sputum indicator/specimen) and handling.
+    clean_output_presence: present
+  TST_SPLACE1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SPLACE1
+    normalized_metadata:
+      display_label: Sputum Place / Source (Visit 1)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible sputum collection place/source for visit 1.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC1
+      children: []
+      skip_logic: null
+      visit_grouping: visit_1
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SPLACE1 has no PDF evidence. Confirm intended meaning (sputum place/source) and handling.
+    clean_output_presence: present
+  TST_STREN1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: PPD Strength
+      pdf_annotation: TST_STREN1
+      column_name: TST_STREN1
+    normalized_metadata:
+      display_label: PPD Strength (Visit 1)
+      meaning: PPD strength administered at visit 1; options 2 TU, 5 TU, or Other, specify.
+      section: tst_visits
+      data_type: categorical
+      options_ref: ppd_strength_pdf
+    options:
+      source_defined:
+      - 2 TU
+      - 5 TU
+      - Other, specify
+      values:
+      - 2 TU
+      - 5 TU
+      - Other, specify
+      unknown: true
+    relationships:
+      parent: HHC1
+      children:
+      - TST_STRENOTH1
+      skip_logic: null
+      visit_grouping: visit_1
+      section_grouping: tst_visits
+      other_specify: TST_STRENOTH1
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_STRENOTH1:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Other, specify
+      pdf_annotation: TST_STRENOTH1
+      column_name: TST_STRENOTH1
+    normalized_metadata:
+      display_label: PPD Strength Other (Visit 1)
+      meaning: Free-text 'Other, specify' value for PPD Strength at visit 1.
+      section: tst_visits
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: TST_STREN1
+      children: []
+      skip_logic: null
+      visit_grouping: visit_1
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: TST_STRENOTH1 is the 'Other, specify' free-text partner of TST_STREN1. Confirm whether free-text content is allowed in the PHI-handled dataset, or should be dropped/redacted.
+    clean_output_presence: absent
+  HHC2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Household Contact ID #'
+      pdf_annotation: HHC2
+      column_name: HHC2
+    normalized_metadata:
+      display_label: 'Household Contact ID #2'
+      meaning: 'Pseudonymized household contact identifier for visit 2; column heading ''Household Contact ID #'' on the form.'
+      section: tst_visits
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: visit_2
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_SUBST2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SUBST2
+    normalized_metadata:
+      display_label: TST Substitute Indicator (Visit 2)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible substitute/replacement indicator for visit 2.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC2
+      children: []
+      skip_logic: null
+      visit_grouping: visit_2
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SUBST2 has no PDF evidence. Confirm intended meaning (substitute / replacement indicator) and handling.
+    clean_output_presence: present
+  TST_ND2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Not Done
+      pdf_annotation: TST_ND2
+      column_name: TST_ND2
+    normalized_metadata:
+      display_label: TST Not Done (Visit 2)
+      meaning: Indicator that the TST was not done at visit 2; paired with the 'Not Done' checkbox.
+      section: tst_visits
+      data_type: categorical
+      options_ref: not_done_pdf
+    options:
+      source_defined:
+      - Not Done
+      values:
+      - Not Done
+      unknown: true
+    relationships:
+      parent: HHC2
+      children: []
+      skip_logic: null
+      visit_grouping: visit_2
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_DAT2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST application date  and 24 hour time
+      pdf_annotation: TST_DAT2
+      column_name: TST_DAT2
+    normalized_metadata:
+      display_label: TST Application Date (Visit 2)
+      meaning: Date the TST was applied at visit 2; D D / M M / Y Y date boxes.
+      section: tst_visits
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+      - Day
+      - Month
+      - Year
+      values:
+      - Day
+      - Month
+      - Year
+      unknown: true
+    relationships:
+      parent: HHC2
+      children: []
+      skip_logic: null
+      visit_grouping: visit_2
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+    - date_jitter
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_TIM2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'H   H  :  M  M'
+      pdf_annotation: TST_TIM2
+      column_name: TST_TIM2
+    normalized_metadata:
+      display_label: TST Application Time (Visit 2)
+      meaning: '24-hour time the TST was applied at visit 2; H H : M M time boxes.'
+      section: tst_visits
+      data_type: time
+      options_ref: time_hm_pdf
+    options:
+      source_defined:
+      - Hour
+      - Minute
+      values:
+      - Hour
+      - Minute
+      unknown: true
+    relationships:
+      parent: TST_DAT2
+      children: []
+      skip_logic: null
+      visit_grouping: visit_2
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_time
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_ENDAT2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST reading date and 24 hour time
+      pdf_annotation: TST_ENDAT2
+      column_name: TST_ENDAT2
+    normalized_metadata:
+      display_label: TST Reading Date (Visit 2)
+      meaning: Date the TST was read at visit 2; D D / M M / Y Y date boxes.
+      section: tst_visits
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+      - Day
+      - Month
+      - Year
+      values:
+      - Day
+      - Month
+      - Year
+      unknown: true
+    relationships:
+      parent: HHC2
+      children: []
+      skip_logic: null
+      visit_grouping: visit_2
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+    - date_jitter
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_ENTIM2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'H   H  :  M  M'
+      pdf_annotation: TST_ENTIM2
+      column_name: TST_ENTIM2
+    normalized_metadata:
+      display_label: TST Reading Time (Visit 2)
+      meaning: '24-hour time the TST was read at visit 2; H H : M M time boxes.'
+      section: tst_visits
+      data_type: time
+      options_ref: time_hm_pdf
+    options:
+      source_defined:
+      - Hour
+      - Minute
+      values:
+      - Hour
+      - Minute
+      unknown: true
+    relationships:
+      parent: TST_ENDAT2
+      children: []
+      skip_logic: null
+      visit_grouping: visit_2
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_time
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_INDUR2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST Result
+      pdf_annotation: TST_INDUR2
+      column_name: TST_INDUR2
+    normalized_metadata:
+      display_label: TST Induration Result (Visit 2)
+      meaning: TST induration measurement (mm) at visit 2.
+      section: tst_visits
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC2
+      children: []
+      skip_logic: null
+      visit_grouping: visit_2
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_BLIST2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Blistering
+
+        Ulceration'
+      pdf_annotation: TST_BLIST2
+      column_name: TST_BLIST2
+    normalized_metadata:
+      display_label: TST Blistering / Ulceration (Visit 2)
+      meaning: Indicator for Blistering or Ulceration adjacent to the TST Result reading at visit 2.
+      section: tst_visits
+      data_type: categorical
+      options_ref: tst_blister_ulcer_pdf
+    options:
+      source_defined:
+      - Blistering
+      - Ulceration
+      values:
+      - Blistering
+      - Ulceration
+      unknown: true
+    relationships:
+      parent: TST_INDUR2
+      children: []
+      skip_logic: null
+      visit_grouping: visit_2
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_COUGH2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_COUGH2
+    normalized_metadata:
+      display_label: Cough Indicator (Visit 2)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible cough symptom indicator for visit 2.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC2
+      children: []
+      skip_logic: null
+      visit_grouping: visit_2
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_COUGH2 has no PDF evidence. Confirm intended meaning (cough indicator) and handling.
+    clean_output_presence: present
+  TST_SPUTUM2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SPUTUM2
+    normalized_metadata:
+      display_label: Sputum Indicator (Visit 2)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible sputum symptom or specimen indicator for visit 2.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC2
+      children: []
+      skip_logic: null
+      visit_grouping: visit_2
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SPUTUM2 has no PDF evidence. Confirm intended meaning (sputum indicator/specimen) and handling.
+    clean_output_presence: present
+  TST_SPLACE2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SPLACE2
+    normalized_metadata:
+      display_label: Sputum Place / Source (Visit 2)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible sputum collection place/source for visit 2.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC2
+      children: []
+      skip_logic: null
+      visit_grouping: visit_2
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SPLACE2 has no PDF evidence. Confirm intended meaning (sputum place/source) and handling.
+    clean_output_presence: present
+  TST_STREN2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: PPD Strength
+      pdf_annotation: TST_STREN2
+      column_name: TST_STREN2
+    normalized_metadata:
+      display_label: PPD Strength (Visit 2)
+      meaning: PPD strength administered at visit 2; options 2 TU, 5 TU, or Other, specify.
+      section: tst_visits
+      data_type: categorical
+      options_ref: ppd_strength_pdf
+    options:
+      source_defined:
+      - 2 TU
+      - 5 TU
+      - Other, specify
+      values:
+      - 2 TU
+      - 5 TU
+      - Other, specify
+      unknown: true
+    relationships:
+      parent: HHC2
+      children:
+      - TST_STRENOTH2
+      skip_logic: null
+      visit_grouping: visit_2
+      section_grouping: tst_visits
+      other_specify: TST_STRENOTH2
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_STRENOTH2:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Other, specify
+      pdf_annotation: TST_STRENOTH2
+      column_name: TST_STRENOTH2
+    normalized_metadata:
+      display_label: PPD Strength Other (Visit 2)
+      meaning: Free-text 'Other, specify' value for PPD Strength at visit 2.
+      section: tst_visits
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: TST_STREN2
+      children: []
+      skip_logic: null
+      visit_grouping: visit_2
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: TST_STRENOTH2 is the 'Other, specify' free-text partner of TST_STREN2. Confirm whether free-text content is allowed in the PHI-handled dataset, or should be dropped/redacted.
+    clean_output_presence: absent
+  HHC3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Household Contact ID #'
+      pdf_annotation: HHC3
+      column_name: HHC3
+    normalized_metadata:
+      display_label: 'Household Contact ID #3'
+      meaning: 'Pseudonymized household contact identifier for visit 3; column heading ''Household Contact ID #'' on the form.'
+      section: tst_visits
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: visit_3
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_SUBST3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SUBST3
+    normalized_metadata:
+      display_label: TST Substitute Indicator (Visit 3)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible substitute/replacement indicator for visit 3.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC3
+      children: []
+      skip_logic: null
+      visit_grouping: visit_3
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SUBST3 has no PDF evidence. Confirm intended meaning (substitute / replacement indicator) and handling.
+    clean_output_presence: present
+  TST_ND3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Not Done
+      pdf_annotation: TST_ND3
+      column_name: TST_ND3
+    normalized_metadata:
+      display_label: TST Not Done (Visit 3)
+      meaning: Indicator that the TST was not done at visit 3; paired with the 'Not Done' checkbox.
+      section: tst_visits
+      data_type: categorical
+      options_ref: not_done_pdf
+    options:
+      source_defined:
+      - Not Done
+      values:
+      - Not Done
+      unknown: true
+    relationships:
+      parent: HHC3
+      children: []
+      skip_logic: null
+      visit_grouping: visit_3
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_DAT3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST application date  and 24 hour time
+      pdf_annotation: TST_DAT3
+      column_name: TST_DAT3
+    normalized_metadata:
+      display_label: TST Application Date (Visit 3)
+      meaning: Date the TST was applied at visit 3; D D / M M / Y Y date boxes.
+      section: tst_visits
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+      - Day
+      - Month
+      - Year
+      values:
+      - Day
+      - Month
+      - Year
+      unknown: true
+    relationships:
+      parent: HHC3
+      children: []
+      skip_logic: null
+      visit_grouping: visit_3
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+    - date_jitter
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_TIM3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'H   H  :  M  M'
+      pdf_annotation: TST_TIM3
+      column_name: TST_TIM3
+    normalized_metadata:
+      display_label: TST Application Time (Visit 3)
+      meaning: '24-hour time the TST was applied at visit 3; H H : M M time boxes.'
+      section: tst_visits
+      data_type: time
+      options_ref: time_hm_pdf
+    options:
+      source_defined:
+      - Hour
+      - Minute
+      values:
+      - Hour
+      - Minute
+      unknown: true
+    relationships:
+      parent: TST_DAT3
+      children: []
+      skip_logic: null
+      visit_grouping: visit_3
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_time
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_ENDAT3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST reading date and 24 hour time
+      pdf_annotation: TST_ENDAT3
+      column_name: TST_ENDAT3
+    normalized_metadata:
+      display_label: TST Reading Date (Visit 3)
+      meaning: Date the TST was read at visit 3; D D / M M / Y Y date boxes.
+      section: tst_visits
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+      - Day
+      - Month
+      - Year
+      values:
+      - Day
+      - Month
+      - Year
+      unknown: true
+    relationships:
+      parent: HHC3
+      children: []
+      skip_logic: null
+      visit_grouping: visit_3
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+    - date_jitter
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_ENTIM3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'H   H  :  M  M'
+      pdf_annotation: null
+      column_name: TST_ENTIM3
+    normalized_metadata:
+      display_label: TST Reading Time (Visit 3)
+      meaning: '24-hour time the TST was read at visit 3; H H : M M time boxes.'
+      section: tst_visits
+      data_type: time
+      options_ref: time_hm_pdf
+    options:
+      source_defined:
+      - Hour
+      - Minute
+      values:
+      - Hour
+      - Minute
+      unknown: true
+    relationships:
+      parent: TST_ENDAT3
+      children: []
+      skip_logic: null
+      visit_grouping: visit_3
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_time
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: medium
+      basis:
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: pdf_annotation_anomaly
+      reviewer_question: 'PDF has no FreeText annotation labelled TST_ENTIM3; instead a duplicate TST_ENTIM2 annotation appears in the row-3 column area and a stray ''3'' marker sits in the row-3 ENTIM region. Confirm TST_ENTIM3 maps to the row-3 TST reading time (H H : M M) box.'
+    clean_output_presence: present
+  TST_INDUR3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST Result
+      pdf_annotation: TST_INDUR3
+      column_name: TST_INDUR3
+    normalized_metadata:
+      display_label: TST Induration Result (Visit 3)
+      meaning: TST induration measurement (mm) at visit 3.
+      section: tst_visits
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC3
+      children: []
+      skip_logic: null
+      visit_grouping: visit_3
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_BLIST3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Blistering
+
+        Ulceration'
+      pdf_annotation: TST_BLIST3
+      column_name: TST_BLIST3
+    normalized_metadata:
+      display_label: TST Blistering / Ulceration (Visit 3)
+      meaning: Indicator for Blistering or Ulceration adjacent to the TST Result reading at visit 3.
+      section: tst_visits
+      data_type: categorical
+      options_ref: tst_blister_ulcer_pdf
+    options:
+      source_defined:
+      - Blistering
+      - Ulceration
+      values:
+      - Blistering
+      - Ulceration
+      unknown: true
+    relationships:
+      parent: TST_INDUR3
+      children: []
+      skip_logic: null
+      visit_grouping: visit_3
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_COUGH3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_COUGH3
+    normalized_metadata:
+      display_label: Cough Indicator (Visit 3)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible cough symptom indicator for visit 3.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC3
+      children: []
+      skip_logic: null
+      visit_grouping: visit_3
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_COUGH3 has no PDF evidence. Confirm intended meaning (cough indicator) and handling.
+    clean_output_presence: present
+  TST_SPUTUM3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SPUTUM3
+    normalized_metadata:
+      display_label: Sputum Indicator (Visit 3)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible sputum symptom or specimen indicator for visit 3.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC3
+      children: []
+      skip_logic: null
+      visit_grouping: visit_3
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SPUTUM3 has no PDF evidence. Confirm intended meaning (sputum indicator/specimen) and handling.
+    clean_output_presence: present
+  TST_SPLACE3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SPLACE3
+    normalized_metadata:
+      display_label: Sputum Place / Source (Visit 3)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible sputum collection place/source for visit 3.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC3
+      children: []
+      skip_logic: null
+      visit_grouping: visit_3
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SPLACE3 has no PDF evidence. Confirm intended meaning (sputum place/source) and handling.
+    clean_output_presence: present
+  TST_STREN3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: PPD Strength
+      pdf_annotation: TST_STREN3
+      column_name: TST_STREN3
+    normalized_metadata:
+      display_label: PPD Strength (Visit 3)
+      meaning: PPD strength administered at visit 3; options 2 TU, 5 TU, or Other, specify.
+      section: tst_visits
+      data_type: categorical
+      options_ref: ppd_strength_pdf
+    options:
+      source_defined:
+      - 2 TU
+      - 5 TU
+      - Other, specify
+      values:
+      - 2 TU
+      - 5 TU
+      - Other, specify
+      unknown: true
+    relationships:
+      parent: HHC3
+      children:
+      - TST_STRENOTH3
+      skip_logic: null
+      visit_grouping: visit_3
+      section_grouping: tst_visits
+      other_specify: TST_STRENOTH3
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_STRENOTH3:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Other, specify
+      pdf_annotation: TST_STRENOTH3
+      column_name: TST_STRENOTH3
+    normalized_metadata:
+      display_label: PPD Strength Other (Visit 3)
+      meaning: Free-text 'Other, specify' value for PPD Strength at visit 3.
+      section: tst_visits
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: TST_STREN3
+      children: []
+      skip_logic: null
+      visit_grouping: visit_3
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: TST_STRENOTH3 is the 'Other, specify' free-text partner of TST_STREN3. Confirm whether free-text content is allowed in the PHI-handled dataset, or should be dropped/redacted.
+    clean_output_presence: absent
+  HHC4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Household Contact ID #'
+      pdf_annotation: HHC4
+      column_name: HHC4
+    normalized_metadata:
+      display_label: 'Household Contact ID #4'
+      meaning: 'Pseudonymized household contact identifier for visit 4; column heading ''Household Contact ID #'' on the form.'
+      section: tst_visits
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: visit_4
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_SUBST4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SUBST4
+    normalized_metadata:
+      display_label: TST Substitute Indicator (Visit 4)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible substitute/replacement indicator for visit 4.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC4
+      children: []
+      skip_logic: null
+      visit_grouping: visit_4
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SUBST4 has no PDF evidence. Confirm intended meaning (substitute / replacement indicator) and handling.
+    clean_output_presence: present
+  TST_ND4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Not Done
+      pdf_annotation: TST_ND4
+      column_name: TST_ND4
+    normalized_metadata:
+      display_label: TST Not Done (Visit 4)
+      meaning: Indicator that the TST was not done at visit 4; paired with the 'Not Done' checkbox.
+      section: tst_visits
+      data_type: categorical
+      options_ref: not_done_pdf
+    options:
+      source_defined:
+      - Not Done
+      values:
+      - Not Done
+      unknown: true
+    relationships:
+      parent: HHC4
+      children: []
+      skip_logic: null
+      visit_grouping: visit_4
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_DAT4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST application date  and 24 hour time
+      pdf_annotation: TST_DAT4
+      column_name: TST_DAT4
+    normalized_metadata:
+      display_label: TST Application Date (Visit 4)
+      meaning: Date the TST was applied at visit 4; D D / M M / Y Y date boxes.
+      section: tst_visits
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+      - Day
+      - Month
+      - Year
+      values:
+      - Day
+      - Month
+      - Year
+      unknown: true
+    relationships:
+      parent: HHC4
+      children: []
+      skip_logic: null
+      visit_grouping: visit_4
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+    - date_jitter
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_TIM4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'H   H  :  M  M'
+      pdf_annotation: TST_TIM4
+      column_name: TST_TIM4
+    normalized_metadata:
+      display_label: TST Application Time (Visit 4)
+      meaning: '24-hour time the TST was applied at visit 4; H H : M M time boxes.'
+      section: tst_visits
+      data_type: time
+      options_ref: time_hm_pdf
+    options:
+      source_defined:
+      - Hour
+      - Minute
+      values:
+      - Hour
+      - Minute
+      unknown: true
+    relationships:
+      parent: TST_DAT4
+      children: []
+      skip_logic: null
+      visit_grouping: visit_4
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_time
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_ENDAT4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST reading date and 24 hour time
+      pdf_annotation: TST_ENDAT4
+      column_name: TST_ENDAT4
+    normalized_metadata:
+      display_label: TST Reading Date (Visit 4)
+      meaning: Date the TST was read at visit 4; D D / M M / Y Y date boxes.
+      section: tst_visits
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+      - Day
+      - Month
+      - Year
+      values:
+      - Day
+      - Month
+      - Year
+      unknown: true
+    relationships:
+      parent: HHC4
+      children: []
+      skip_logic: null
+      visit_grouping: visit_4
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+    - date_jitter
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_ENTIM4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'H   H  :  M  M'
+      pdf_annotation: TST_ENTIM4
+      column_name: TST_ENTIM4
+    normalized_metadata:
+      display_label: TST Reading Time (Visit 4)
+      meaning: '24-hour time the TST was read at visit 4; H H : M M time boxes.'
+      section: tst_visits
+      data_type: time
+      options_ref: time_hm_pdf
+    options:
+      source_defined:
+      - Hour
+      - Minute
+      values:
+      - Hour
+      - Minute
+      unknown: true
+    relationships:
+      parent: TST_ENDAT4
+      children: []
+      skip_logic: null
+      visit_grouping: visit_4
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_time
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_INDUR4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST Result
+      pdf_annotation: TST_INDUR4
+      column_name: TST_INDUR4
+    normalized_metadata:
+      display_label: TST Induration Result (Visit 4)
+      meaning: TST induration measurement (mm) at visit 4.
+      section: tst_visits
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC4
+      children: []
+      skip_logic: null
+      visit_grouping: visit_4
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_BLIST4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Blistering
+
+        Ulceration'
+      pdf_annotation: TST_BLIST4
+      column_name: TST_BLIST4
+    normalized_metadata:
+      display_label: TST Blistering / Ulceration (Visit 4)
+      meaning: Indicator for Blistering or Ulceration adjacent to the TST Result reading at visit 4.
+      section: tst_visits
+      data_type: categorical
+      options_ref: tst_blister_ulcer_pdf
+    options:
+      source_defined:
+      - Blistering
+      - Ulceration
+      values:
+      - Blistering
+      - Ulceration
+      unknown: true
+    relationships:
+      parent: TST_INDUR4
+      children: []
+      skip_logic: null
+      visit_grouping: visit_4
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_COUGH4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_COUGH4
+    normalized_metadata:
+      display_label: Cough Indicator (Visit 4)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible cough symptom indicator for visit 4.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC4
+      children: []
+      skip_logic: null
+      visit_grouping: visit_4
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_COUGH4 has no PDF evidence. Confirm intended meaning (cough indicator) and handling.
+    clean_output_presence: present
+  TST_SPUTUM4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SPUTUM4
+    normalized_metadata:
+      display_label: Sputum Indicator (Visit 4)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible sputum symptom or specimen indicator for visit 4.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC4
+      children: []
+      skip_logic: null
+      visit_grouping: visit_4
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SPUTUM4 has no PDF evidence. Confirm intended meaning (sputum indicator/specimen) and handling.
+    clean_output_presence: present
+  TST_SPLACE4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SPLACE4
+    normalized_metadata:
+      display_label: Sputum Place / Source (Visit 4)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible sputum collection place/source for visit 4.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC4
+      children: []
+      skip_logic: null
+      visit_grouping: visit_4
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SPLACE4 has no PDF evidence. Confirm intended meaning (sputum place/source) and handling.
+    clean_output_presence: present
+  TST_STREN4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: PPD Strength
+      pdf_annotation: TST_STREN4
+      column_name: TST_STREN4
+    normalized_metadata:
+      display_label: PPD Strength (Visit 4)
+      meaning: PPD strength administered at visit 4; options 2 TU, 5 TU, or Other, specify.
+      section: tst_visits
+      data_type: categorical
+      options_ref: ppd_strength_pdf
+    options:
+      source_defined:
+      - 2 TU
+      - 5 TU
+      - Other, specify
+      values:
+      - 2 TU
+      - 5 TU
+      - Other, specify
+      unknown: true
+    relationships:
+      parent: HHC4
+      children:
+      - TST_STRENOTH4
+      skip_logic: null
+      visit_grouping: visit_4
+      section_grouping: tst_visits
+      other_specify: TST_STRENOTH4
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_STRENOTH4:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Other, specify
+      pdf_annotation: TST_STRENOTH4
+      column_name: TST_STRENOTH4
+    normalized_metadata:
+      display_label: PPD Strength Other (Visit 4)
+      meaning: Free-text 'Other, specify' value for PPD Strength at visit 4.
+      section: tst_visits
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: TST_STREN4
+      children: []
+      skip_logic: null
+      visit_grouping: visit_4
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: TST_STRENOTH4 is the 'Other, specify' free-text partner of TST_STREN4. Confirm whether free-text content is allowed in the PHI-handled dataset, or should be dropped/redacted.
+    clean_output_presence: absent
+  HHC5:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Household Contact ID #'
+      pdf_annotation: HHC5
+      column_name: HHC5
+    normalized_metadata:
+      display_label: 'Household Contact ID #5'
+      meaning: 'Pseudonymized household contact identifier for visit 5; column heading ''Household Contact ID #'' on the form.'
+      section: tst_visits
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: visit_5
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_SUBST5:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SUBST5
+    normalized_metadata:
+      display_label: TST Substitute Indicator (Visit 5)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible substitute/replacement indicator for visit 5.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC5
+      children: []
+      skip_logic: null
+      visit_grouping: visit_5
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SUBST5 has no PDF evidence. Confirm intended meaning (substitute / replacement indicator) and handling.
+    clean_output_presence: present
+  TST_ND5:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Not Done
+      pdf_annotation: TST_ND5
+      column_name: TST_ND5
+    normalized_metadata:
+      display_label: TST Not Done (Visit 5)
+      meaning: Indicator that the TST was not done at visit 5; paired with the 'Not Done' checkbox.
+      section: tst_visits
+      data_type: categorical
+      options_ref: not_done_pdf
+    options:
+      source_defined:
+      - Not Done
+      values:
+      - Not Done
+      unknown: true
+    relationships:
+      parent: HHC5
+      children: []
+      skip_logic: null
+      visit_grouping: visit_5
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_DAT5:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST application date  and 24 hour time
+      pdf_annotation: TST_DAT5
+      column_name: TST_DAT5
+    normalized_metadata:
+      display_label: TST Application Date (Visit 5)
+      meaning: Date the TST was applied at visit 5; D D / M M / Y Y date boxes.
+      section: tst_visits
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+      - Day
+      - Month
+      - Year
+      values:
+      - Day
+      - Month
+      - Year
+      unknown: true
+    relationships:
+      parent: HHC5
+      children: []
+      skip_logic: null
+      visit_grouping: visit_5
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+    - date_jitter
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_TIM5:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'H   H  :  M  M'
+      pdf_annotation: TST_TIM5
+      column_name: TST_TIM5
+    normalized_metadata:
+      display_label: TST Application Time (Visit 5)
+      meaning: '24-hour time the TST was applied at visit 5; H H : M M time boxes.'
+      section: tst_visits
+      data_type: time
+      options_ref: time_hm_pdf
+    options:
+      source_defined:
+      - Hour
+      - Minute
+      values:
+      - Hour
+      - Minute
+      unknown: true
+    relationships:
+      parent: TST_DAT5
+      children: []
+      skip_logic: null
+      visit_grouping: visit_5
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_time
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_ENDAT5:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST reading date and 24 hour time
+      pdf_annotation: TST_ENDAT5
+      column_name: TST_ENDAT5
+    normalized_metadata:
+      display_label: TST Reading Date (Visit 5)
+      meaning: Date the TST was read at visit 5; D D / M M / Y Y date boxes.
+      section: tst_visits
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+      - Day
+      - Month
+      - Year
+      values:
+      - Day
+      - Month
+      - Year
+      unknown: true
+    relationships:
+      parent: HHC5
+      children: []
+      skip_logic: null
+      visit_grouping: visit_5
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+    - date_jitter
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_ENTIM5:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'H   H  :  M  M'
+      pdf_annotation: TST_ENTIM5
+      column_name: TST_ENTIM5
+    normalized_metadata:
+      display_label: TST Reading Time (Visit 5)
+      meaning: '24-hour time the TST was read at visit 5; H H : M M time boxes.'
+      section: tst_visits
+      data_type: time
+      options_ref: time_hm_pdf
+    options:
+      source_defined:
+      - Hour
+      - Minute
+      values:
+      - Hour
+      - Minute
+      unknown: true
+    relationships:
+      parent: TST_ENDAT5
+      children: []
+      skip_logic: null
+      visit_grouping: visit_5
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_time
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_INDUR5:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST Result
+      pdf_annotation: TST_INDUR5
+      column_name: TST_INDUR5
+    normalized_metadata:
+      display_label: TST Induration Result (Visit 5)
+      meaning: TST induration measurement (mm) at visit 5.
+      section: tst_visits
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC5
+      children: []
+      skip_logic: null
+      visit_grouping: visit_5
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_BLIST5:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Blistering
+
+        Ulceration'
+      pdf_annotation: null
+      column_name: TST_BLIST5
+    normalized_metadata:
+      display_label: TST Blistering / Ulceration (Visit 5)
+      meaning: Indicator for Blistering or Ulceration adjacent to the TST Result reading at visit 5.
+      section: tst_visits
+      data_type: categorical
+      options_ref: tst_blister_ulcer_pdf
+    options:
+      source_defined:
+      - Blistering
+      - Ulceration
+      values:
+      - Blistering
+      - Ulceration
+      unknown: true
+    relationships:
+      parent: TST_INDUR5
+      children: []
+      skip_logic: null
+      visit_grouping: visit_5
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: medium
+      basis:
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: pdf_annotation_anomaly
+      reviewer_question: PDF has no FreeText annotation labelled TST_BLIST5; the BLIST annotations skip 5 and contain TST_BLIST6 (in row-5 spatial position) and TST_BLIST7 (in row-6 spatial position). Confirm TST_BLIST5 maps to the row-5 Blistering/Ulceration option block.
+    clean_output_presence: present
+  TST_COUGH5:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_COUGH5
+    normalized_metadata:
+      display_label: Cough Indicator (Visit 5)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible cough symptom indicator for visit 5.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC5
+      children: []
+      skip_logic: null
+      visit_grouping: visit_5
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_COUGH5 has no PDF evidence. Confirm intended meaning (cough indicator) and handling.
+    clean_output_presence: present
+  TST_SPUTUM5:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SPUTUM5
+    normalized_metadata:
+      display_label: Sputum Indicator (Visit 5)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible sputum symptom or specimen indicator for visit 5.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC5
+      children: []
+      skip_logic: null
+      visit_grouping: visit_5
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SPUTUM5 has no PDF evidence. Confirm intended meaning (sputum indicator/specimen) and handling.
+    clean_output_presence: present
+  TST_SPLACE5:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SPLACE5
+    normalized_metadata:
+      display_label: Sputum Place / Source (Visit 5)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible sputum collection place/source for visit 5.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC5
+      children: []
+      skip_logic: null
+      visit_grouping: visit_5
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SPLACE5 has no PDF evidence. Confirm intended meaning (sputum place/source) and handling.
+    clean_output_presence: present
+  TST_STREN5:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: PPD Strength
+      pdf_annotation: TST_STREN5
+      column_name: TST_STREN5
+    normalized_metadata:
+      display_label: PPD Strength (Visit 5)
+      meaning: PPD strength administered at visit 5; options 2 TU, 5 TU, or Other, specify.
+      section: tst_visits
+      data_type: categorical
+      options_ref: ppd_strength_pdf
+    options:
+      source_defined:
+      - 2 TU
+      - 5 TU
+      - Other, specify
+      values:
+      - 2 TU
+      - 5 TU
+      - Other, specify
+      unknown: true
+    relationships:
+      parent: HHC5
+      children:
+      - TST_STRENOTH5
+      skip_logic: null
+      visit_grouping: visit_5
+      section_grouping: tst_visits
+      other_specify: TST_STRENOTH5
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_STRENOTH5:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Other, specify
+      pdf_annotation: TST_STRENOTH5
+      column_name: TST_STRENOTH5
+    normalized_metadata:
+      display_label: PPD Strength Other (Visit 5)
+      meaning: Free-text 'Other, specify' value for PPD Strength at visit 5.
+      section: tst_visits
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: TST_STREN5
+      children: []
+      skip_logic: null
+      visit_grouping: visit_5
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: TST_STRENOTH5 is the 'Other, specify' free-text partner of TST_STREN5. Confirm whether free-text content is allowed in the PHI-handled dataset, or should be dropped/redacted.
+    clean_output_presence: absent
+  HHC6:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Household Contact ID #'
+      pdf_annotation: HHC6
+      column_name: HHC6
+    normalized_metadata:
+      display_label: 'Household Contact ID #6'
+      meaning: 'Pseudonymized household contact identifier for visit 6; column heading ''Household Contact ID #'' on the form.'
+      section: tst_visits
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: visit_6
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_SUBST6:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SUBST6
+    normalized_metadata:
+      display_label: TST Substitute Indicator (Visit 6)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible substitute/replacement indicator for visit 6.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC6
+      children: []
+      skip_logic: null
+      visit_grouping: visit_6
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SUBST6 has no PDF evidence. Confirm intended meaning (substitute / replacement indicator) and handling.
+    clean_output_presence: present
+  TST_ND6:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Not Done
+      pdf_annotation: TST_ND6
+      column_name: TST_ND6
+    normalized_metadata:
+      display_label: TST Not Done (Visit 6)
+      meaning: Indicator that the TST was not done at visit 6; paired with the 'Not Done' checkbox.
+      section: tst_visits
+      data_type: categorical
+      options_ref: not_done_pdf
+    options:
+      source_defined:
+      - Not Done
+      values:
+      - Not Done
+      unknown: true
+    relationships:
+      parent: HHC6
+      children: []
+      skip_logic: null
+      visit_grouping: visit_6
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_DAT6:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST application date  and 24 hour time
+      pdf_annotation: TST_DAT6
+      column_name: TST_DAT6
+    normalized_metadata:
+      display_label: TST Application Date (Visit 6)
+      meaning: Date the TST was applied at visit 6; D D / M M / Y Y date boxes.
+      section: tst_visits
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+      - Day
+      - Month
+      - Year
+      values:
+      - Day
+      - Month
+      - Year
+      unknown: true
+    relationships:
+      parent: HHC6
+      children: []
+      skip_logic: null
+      visit_grouping: visit_6
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+    - date_jitter
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_TIM6:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'H   H  :  M  M'
+      pdf_annotation: TST_TIM6
+      column_name: TST_TIM6
+    normalized_metadata:
+      display_label: TST Application Time (Visit 6)
+      meaning: '24-hour time the TST was applied at visit 6; H H : M M time boxes.'
+      section: tst_visits
+      data_type: time
+      options_ref: time_hm_pdf
+    options:
+      source_defined:
+      - Hour
+      - Minute
+      values:
+      - Hour
+      - Minute
+      unknown: true
+    relationships:
+      parent: TST_DAT6
+      children: []
+      skip_logic: null
+      visit_grouping: visit_6
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_time
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_ENDAT6:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST reading date and 24 hour time
+      pdf_annotation: TST_ENDAT6
+      column_name: TST_ENDAT6
+    normalized_metadata:
+      display_label: TST Reading Date (Visit 6)
+      meaning: Date the TST was read at visit 6; D D / M M / Y Y date boxes.
+      section: tst_visits
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+      - Day
+      - Month
+      - Year
+      values:
+      - Day
+      - Month
+      - Year
+      unknown: true
+    relationships:
+      parent: HHC6
+      children: []
+      skip_logic: null
+      visit_grouping: visit_6
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+    - date_jitter
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  TST_ENTIM6:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'H   H  :  M  M'
+      pdf_annotation: TST_ENTIM6
+      column_name: TST_ENTIM6
+    normalized_metadata:
+      display_label: TST Reading Time (Visit 6)
+      meaning: '24-hour time the TST was read at visit 6; H H : M M time boxes.'
+      section: tst_visits
+      data_type: time
+      options_ref: time_hm_pdf
+    options:
+      source_defined:
+      - Hour
+      - Minute
+      values:
+      - Hour
+      - Minute
+      unknown: true
+    relationships:
+      parent: TST_ENDAT6
+      children: []
+      skip_logic: null
+      visit_grouping: visit_6
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_time
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_INDUR6:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: TST Result
+      pdf_annotation: TST_INDUR6
+      column_name: TST_INDUR6
+    normalized_metadata:
+      display_label: TST Induration Result (Visit 6)
+      meaning: TST induration measurement (mm) at visit 6.
+      section: tst_visits
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC6
+      children: []
+      skip_logic: null
+      visit_grouping: visit_6
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_BLIST6:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Blistering
+
+        Ulceration'
+      pdf_annotation: null
+      column_name: TST_BLIST6
+    normalized_metadata:
+      display_label: TST Blistering / Ulceration (Visit 6)
+      meaning: Indicator for Blistering or Ulceration adjacent to the TST Result reading at visit 6.
+      section: tst_visits
+      data_type: categorical
+      options_ref: tst_blister_ulcer_pdf
+    options:
+      source_defined:
+      - Blistering
+      - Ulceration
+      values:
+      - Blistering
+      - Ulceration
+      unknown: true
+    relationships:
+      parent: TST_INDUR6
+      children: []
+      skip_logic: null
+      visit_grouping: visit_6
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: medium
+      basis:
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: pdf_annotation_anomaly
+      reviewer_question: PDF FreeText annotation labelled TST_BLIST6 sits in the row-5 spatial position (label-shift). The annotation labelled TST_BLIST7 sits in the row-6 spatial position but TST_BLIST7 is not a dataset column. Confirm TST_BLIST6 maps to the row-6 Blistering/Ulceration option block.
+    clean_output_presence: present
+  TST_COUGH6:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_COUGH6
+    normalized_metadata:
+      display_label: Cough Indicator (Visit 6)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible cough symptom indicator for visit 6.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC6
+      children: []
+      skip_logic: null
+      visit_grouping: visit_6
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_COUGH6 has no PDF evidence. Confirm intended meaning (cough indicator) and handling.
+    clean_output_presence: present
+  TST_SPUTUM6:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SPUTUM6
+    normalized_metadata:
+      display_label: Sputum Indicator (Visit 6)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible sputum symptom or specimen indicator for visit 6.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC6
+      children: []
+      skip_logic: null
+      visit_grouping: visit_6
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SPUTUM6 has no PDF evidence. Confirm intended meaning (sputum indicator/specimen) and handling.
+    clean_output_presence: present
+  TST_SPLACE6:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: TST_SPLACE6
+    normalized_metadata:
+      display_label: Sputum Place / Source (Visit 6)
+      meaning: Dataset column with no direct PDF annotation or visible label; possible sputum collection place/source for visit 6.
+      section: tst_visits
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: HHC6
+      children: []
+      skip_logic: null
+      visit_grouping: visit_6
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: low
+      basis:
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: dataset_only_no_pdf_evidence
+      reviewer_question: TST_SPLACE6 has no PDF evidence. Confirm intended meaning (sputum place/source) and handling.
+    clean_output_presence: present
+  TST_STREN6:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: PPD Strength
+      pdf_annotation: TST_STREN6
+      column_name: TST_STREN6
+    normalized_metadata:
+      display_label: PPD Strength (Visit 6)
+      meaning: PPD strength administered at visit 6; options 2 TU, 5 TU, or Other, specify.
+      section: tst_visits
+      data_type: categorical
+      options_ref: ppd_strength_pdf
+    options:
+      source_defined:
+      - 2 TU
+      - 5 TU
+      - Other, specify
+      values:
+      - 2 TU
+      - 5 TU
+      - Other, specify
+      unknown: true
+    relationships:
+      parent: HHC6
+      children:
+      - TST_STRENOTH6
+      skip_logic: null
+      visit_grouping: visit_6
+      section_grouping: tst_visits
+      other_specify: TST_STRENOTH6
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+    - none
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - pdf_option_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  TST_STRENOTH6:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: Other, specify
+      pdf_annotation: TST_STRENOTH6
+      column_name: TST_STRENOTH6
+    normalized_metadata:
+      display_label: PPD Strength Other (Visit 6)
+      meaning: Free-text 'Other, specify' value for PPD Strength at visit 6.
+      section: tst_visits
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: TST_STREN6
+      children: []
+      skip_logic: null
+      visit_grouping: visit_6
+      section_grouping: tst_visits
+      other_specify: null
+    phi_sensitive_category: free_text_or_specify
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - phi_handling_ledger
+    evidence:
+      level: medium
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: review_required
+      reason: free_text_specify_field_phi_risk
+      reviewer_question: TST_STRENOTH6 is the 'Other, specify' free-text partner of TST_STREN6. Confirm whether free-text content is allowed in the PHI-handled dataset, or should be dropped/redacted.
+    clean_output_presence: absent
+  HHC_SIGN:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Signature of Data Collector:'
+      pdf_annotation: HHC_SIGN
+      column_name: HHC_SIGN
+    normalized_metadata:
+      display_label: Data Collector Signature
+      meaning: Signature of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: signature_field
+      label: null
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  HHC_INIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Initials of Data Collector:'
+      pdf_annotation: HHC_INIT
+      column_name: HHC_INIT
+    normalized_metadata:
+      display_label: Data Collector Initials
+      meaning: Initials of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: initials_field
+      label: null
+    runtime_binding:
+    - phi_scrub
+    derivation_targets:
+    - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  HHC_COMPDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: 'Date Completed: / /'
+      pdf_annotation: HHC_COMPDAT
+      column_name: HHC_COMPDAT
+    normalized_metadata:
+      display_label: Form Completion Date
+      meaning: Date the form was completed by the data collector; D / M / Y date boxes.
+      section: completion
+      data_type: date
+      options_ref: date_dmy_completion_pdf
+    options:
+      source_defined:
+      - Day
+      - Month
+      - Year
+      values:
+      - Day
+      - Month
+      - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+    - date_jitter
+    derivation_targets:
+    - study_metadata_catalog
+    - phi_handling_ledger
+    - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+      - pdf_annotation
+      - pdf_visible_text
+      - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  Time_Stamp:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: Time_Stamp
+    normalized_metadata:
+      display_label: Capture Timestamp
+      meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      section: system_metadata
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: system_metadata
+      other_specify: null
+    phi_sensitive_category: system_timestamp
+    handling_intent:
+      action: drop
+      reason: non_pdf_system_timestamp_metadata
+      label: null
+    runtime_binding:
+    - dataset_cleanup
+    derivation_targets:
+    - dataset_cleanup_ledger
+    evidence:
+      level: high
+      basis:
+      - dataset_column_name
+      - derived_pattern
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+validation:
+  forbidden_keys_absent: true
+  columns_unique: true
+  pdf_annotation_unmatched:
+  - TST_ENTIM2 (duplicate annotation positioned in the row-3 ENTIM column area; the literal Contents text is TST_ENTIM2 but the placement coincides with the missing TST_ENTIM3 annotation — flagged for reviewer in TST_ENTIM3.review.reviewer_question)
+  - 3 (stray row-indicator '3' annotation near the row-3 ENTIM area; not a variable name)
+  - TST_BLIST7 (no matching dataset column; appears in the row-6 spatial area where TST_BLIST6 would be expected — flagged for reviewer in TST_BLIST6.review.reviewer_question)
+  dataset_columns_unmatched: []
+  excluded_pdf_artifacts:
+  - 05/15/2014 (form version date — excluded per PDF Extraction Boundary)
+  - Indo-US VAP TST Screening v1.0 (form version footer — excluded)
+  - Page 1 of 1 (page footer — excluded)
+  - 37765 (artifact-version code in footer — excluded)
+  - 56773 (artifact-version code in footer — excluded)
+  - Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner — retained as form context heading not as a variable; not excluded but recorded as heading block)

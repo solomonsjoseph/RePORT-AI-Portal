@@ -1,0 +1,2311 @@
+schema_version: 2
+policy_status: draft_for_human_review
+study: Indo-VAP
+form: 5_CBC
+source:
+  dataset_file: 5_CBC.xlsx
+  pdf_file: data/raw/Indo-VAP/annotated_pdfs/5 CBC v2.0.pdf
+pdf_form_metadata:
+  form_number: Form 5
+  form_title: COMPLETE BLOOD COUNT TEST RESULTS
+  form_version: v1.0
+  page_count: 1
+coverage:
+  column_count: 27
+  columns_mapped: 27
+  pdf_annotation_count: 21
+  pdf_annotation_variables: 21
+  annotated_columns: 21
+  non_annotated_columns:
+    - CBC_MCV
+    - CBC_RDW
+    - CBC_EOSINO
+    - CBC_EOSINOLE
+    - CBC_HBA1CPRLQ
+    - Time_Stamp
+  unresolved_review_required:
+    - CBC_MCV
+    - CBC_RDW
+    - CBC_EOSINO
+    - CBC_EOSINOLE
+    - CBC_HBA1CPRLQ
+pdf_sections:
+  participant_header:
+    section_label: null
+    fields:
+      - SUBJID
+      - FID
+      - CBC_VISDAT
+    visible_text: |
+      Participant ID number:
+      1 0 2 0 - -
+      Family ID number:
+      Date of blood draw:
+      Day                       Month                    Year
+      This form should be completed for all index cases at baseline, all household contacts who develop active TB, and selected
+      household contact controls at month 12.
+  visit_type:
+    section_label: null
+    fields:
+      - CBC_VISIT
+    visible_text: |
+      1. Visit type:
+      Index case baseline
+      Household contact co-prevalent TB case
+      Household contact incident TB case
+      Household contact control
+  diabetes_related_lab:
+    section_label: A. DIABETES RELATED LAB
+    fields:
+      - CBC_HBAND
+      - CBC_HBADAT
+      - CBC_HGAPCT
+      - CBC_HGAPROP
+    visible_text: |
+      A. DIABETES RELATED LAB
+      Not Done (Go to Section B)
+      2. Date HbA1C processed: / /
+      Day                       Month                    Year
+      2a. HbA1C: . % OR mmol/mol
+  complete_blood_count:
+    section_label: B. COMPLETE BLOOD COUNT (CBC)
+    fields:
+      - CBC_HEMND
+      - CBC_HEMDAT
+      - CBC_WBC
+      - CBC_RBC
+      - CBC_HGB
+      - CBC_HCT
+      - CBC_PLATLET
+      - CBC_NEUT
+      - CBC_NEUTLE
+      - CBC_LYMP
+      - CBC_LYMPLE
+    visible_text: |
+      B. COMPLETE BLOOD COUNT (CBC)
+      Not Done
+      3. Date CBC processed: / /
+      Day                       Month                    Year
+      3a. White Blood cell count: cmm
+      3b. Red Blood Cell count: . mill/cumm
+      3c. Hemoglobin: . gm%
+      3d. Hematocrit: . %
+      3e. Platelets: cmm
+      3f. Absolute Neutrophil count: cmm OR . %
+      3g. Absolute Lymphocyte count: cmm OR . %
+  completion:
+    section_label: null
+    fields:
+      - CBC_COMPDAT
+      - CBC_INIT
+    visible_text: |
+      Date Completed: / /
+      Day                       Month                    Year
+      Initials:
+  cbc_unmapped_dataset_columns:
+    section_label: null
+    fields:
+      - CBC_MCV
+      - CBC_RDW
+      - CBC_EOSINO
+      - CBC_EOSINOLE
+      - CBC_HBA1CPRLQ
+    visible_text: |
+      (No PDF visible text — dataset columns present in 5_CBC.xlsx but not represented on the v1.0/v2.0 CBC PDF; flagged for human review.)
+  system_metadata:
+    section_label: null
+    fields:
+      - Time_Stamp
+    visible_text: |
+      (No PDF visible text — column derived from dataset capture timestamp.)
+option_sets:
+  date_dmy_pdf:
+    source: PDF date boxes
+    source_text: "Day                       Month                    Year"
+    values:
+      - Day
+      - Month
+      - Year
+    unknown: true
+  not_done_pdf:
+    source: PDF option text
+    source_text: "Not Done"
+    values:
+      - Not Done
+    unknown: true
+  not_done_go_to_section_b_pdf:
+    source: PDF option text
+    source_text: "Not Done (Go to Section B)"
+    values:
+      - Not Done (Go to Section B)
+    unknown: true
+  visit_type_pdf:
+    source: PDF option text
+    source_text: |
+      Index case baseline
+      Household contact co-prevalent TB case
+      Household contact incident TB case
+      Household contact control
+    values:
+      - Index case baseline
+      - Household contact co-prevalent TB case
+      - Household contact incident TB case
+      - Household contact control
+    unknown: true
+  hba1c_units_pdf:
+    source: PDF option text
+    source_text: "% OR mmol/mol"
+    values:
+      - "%"
+      - mmol/mol
+    unknown: true
+  neut_lymp_units_pdf:
+    source: PDF option text
+    source_text: "cmm OR . %"
+    values:
+      - cmm
+      - "%"
+    unknown: true
+pdf_annotation_pages:
+  - page: 1
+    annotations:
+      - SUBJID
+      - FID
+      - CBC_VISDAT
+      - CBC_VISIT
+      - CBC_HBAND
+      - CBC_HBADAT
+      - CBC_HGAPCT
+      - CBC_HGAPROP
+      - CBC_HEMND
+      - CBC_HEMDAT
+      - CBC_WBC
+      - CBC_RBC
+      - CBC_HGB
+      - CBC_HCT
+      - CBC_PLATLET
+      - CBC_NEUT
+      - CBC_NEUTLE
+      - CBC_LYMP
+      - CBC_LYMPLE
+      - CBC_COMPDAT
+      - CBC_INIT
+pdf_visible_text:
+  by_page:
+    - page: 1
+      blocks:
+        - type: heading
+          text: Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse
+          related_variables: []
+        - type: heading
+          text: COMPLETE BLOOD COUNT TEST RESULTS
+          related_variables: []
+        - type: instruction
+          text: This form should be completed for all index cases at baseline, all household contacts who develop active TB, and selected household contact controls at month 12.
+          related_variables: []
+        - type: question
+          text: "Participant ID number:"
+          related_variables:
+            - SUBJID
+        - type: caption
+          text: "1 0 2 0 - -"
+          related_variables:
+            - SUBJID
+        - type: question
+          text: "Family ID number:"
+          related_variables:
+            - FID
+        - type: question
+          text: "Date of blood draw:"
+          related_variables:
+            - CBC_VISDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - CBC_VISDAT
+        - type: question
+          text: "1. Visit type:"
+          related_variables:
+            - CBC_VISIT
+        - type: option_block
+          text: |
+            Index case baseline
+            Household contact co-prevalent TB case
+            Household contact incident TB case
+            Household contact control
+          related_variables:
+            - CBC_VISIT
+        - type: section_label
+          text: A. DIABETES RELATED LAB
+          related_variables:
+            - CBC_HBAND
+            - CBC_HBADAT
+            - CBC_HGAPCT
+            - CBC_HGAPROP
+        - type: option_block
+          text: "Not Done (Go to Section B)"
+          related_variables:
+            - CBC_HBAND
+        - type: question
+          text: "2. Date HbA1C processed: / /"
+          related_variables:
+            - CBC_HBADAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - CBC_HBADAT
+        - type: question
+          text: "2a. HbA1C: . % OR mmol/mol"
+          related_variables:
+            - CBC_HGAPCT
+            - CBC_HGAPROP
+        - type: section_label
+          text: B. COMPLETE BLOOD COUNT (CBC)
+          related_variables:
+            - CBC_HEMND
+            - CBC_HEMDAT
+            - CBC_WBC
+            - CBC_RBC
+            - CBC_HGB
+            - CBC_HCT
+            - CBC_PLATLET
+            - CBC_NEUT
+            - CBC_NEUTLE
+            - CBC_LYMP
+            - CBC_LYMPLE
+        - type: option_block
+          text: Not Done
+          related_variables:
+            - CBC_HEMND
+        - type: question
+          text: "3. Date CBC processed: / /"
+          related_variables:
+            - CBC_HEMDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - CBC_HEMDAT
+        - type: question
+          text: "3a. White Blood cell count:"
+          related_variables:
+            - CBC_WBC
+        - type: caption
+          text: cmm
+          related_variables:
+            - CBC_WBC
+        - type: question
+          text: "3b. Red Blood Cell count:"
+          related_variables:
+            - CBC_RBC
+        - type: caption
+          text: ". mill/cumm"
+          related_variables:
+            - CBC_RBC
+        - type: question
+          text: "3c. Hemoglobin:"
+          related_variables:
+            - CBC_HGB
+        - type: caption
+          text: ". gm%"
+          related_variables:
+            - CBC_HGB
+        - type: question
+          text: "3d. Hematocrit:"
+          related_variables:
+            - CBC_HCT
+        - type: caption
+          text: ". %"
+          related_variables:
+            - CBC_HCT
+        - type: question
+          text: "3e. Platelets:"
+          related_variables:
+            - CBC_PLATLET
+        - type: caption
+          text: cmm
+          related_variables:
+            - CBC_PLATLET
+        - type: question
+          text: "3f. Absolute Neutrophil count:"
+          related_variables:
+            - CBC_NEUT
+            - CBC_NEUTLE
+        - type: caption
+          text: "cmm OR . %"
+          related_variables:
+            - CBC_NEUT
+            - CBC_NEUTLE
+        - type: question
+          text: "3g. Absolute Lymphocyte count:"
+          related_variables:
+            - CBC_LYMP
+            - CBC_LYMPLE
+        - type: caption
+          text: "cmm OR . %"
+          related_variables:
+            - CBC_LYMP
+            - CBC_LYMPLE
+        - type: question
+          text: "Date Completed: / /"
+          related_variables:
+            - CBC_COMPDAT
+        - type: caption
+          text: "Day                       Month                    Year"
+          related_variables:
+            - CBC_COMPDAT
+        - type: question
+          text: "Initials:"
+          related_variables:
+            - CBC_INIT
+  questions:
+    - id: q_subjid
+      page: 1
+      exact_wording: "Participant ID number:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: "Caption '1 0 2 0 - -' shown next to the entry boxes is a participant ID format hint."
+      related_variables:
+        - SUBJID
+    - id: q_fid
+      page: 1
+      exact_wording: "Family ID number:"
+      section: participant_header
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - FID
+    - id: q_blood_draw_date
+      page: 1
+      exact_wording: "Date of blood draw:"
+      section: participant_header
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - CBC_VISDAT
+    - id: q1
+      page: 1
+      exact_wording: "1. Visit type:"
+      section: visit_type
+      options_ref: visit_type_pdf
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - CBC_VISIT
+    - id: q_section_a
+      page: 1
+      exact_wording: A. DIABETES RELATED LAB
+      section: diabetes_related_lab
+      options_ref: not_done_go_to_section_b_pdf
+      units: null
+      skip_logic: "Not Done (Go to Section B) — when CBC_HBAND indicates not done, skip to Section B."
+      notes: "Section header carries a 'Not Done (Go to Section B)' checkbox annotated as CBC_HBAND."
+      related_variables:
+        - CBC_HBAND
+    - id: q2
+      page: 1
+      exact_wording: "2. Date HbA1C processed: / /"
+      section: diabetes_related_lab
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - CBC_HBADAT
+    - id: q2a
+      page: 1
+      exact_wording: "2a. HbA1C: . % OR mmol/mol"
+      section: diabetes_related_lab
+      options_ref: hba1c_units_pdf
+      units: "% or mmol/mol"
+      skip_logic: null
+      notes: "HbA1C measurement captured as percent (CBC_HGAPCT) OR mmol/mol (CBC_HGAPROP); only one unit is filled."
+      related_variables:
+        - CBC_HGAPCT
+        - CBC_HGAPROP
+    - id: q_section_b
+      page: 1
+      exact_wording: B. COMPLETE BLOOD COUNT (CBC)
+      section: complete_blood_count
+      options_ref: not_done_pdf
+      units: null
+      skip_logic: "Not Done — when CBC_HEMND indicates not done, the CBC measurements are skipped."
+      notes: "Section header carries a 'Not Done' checkbox annotated as CBC_HEMND."
+      related_variables:
+        - CBC_HEMND
+    - id: q3
+      page: 1
+      exact_wording: "3. Date CBC processed: / /"
+      section: complete_blood_count
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - CBC_HEMDAT
+    - id: q3a
+      page: 1
+      exact_wording: "3a. White Blood cell count:"
+      section: complete_blood_count
+      options_ref: null
+      units: cmm
+      skip_logic: null
+      notes: null
+      related_variables:
+        - CBC_WBC
+    - id: q3b
+      page: 1
+      exact_wording: "3b. Red Blood Cell count:"
+      section: complete_blood_count
+      options_ref: null
+      units: mill/cumm
+      skip_logic: null
+      notes: "Decimal value (one digit after the decimal)."
+      related_variables:
+        - CBC_RBC
+    - id: q3c
+      page: 1
+      exact_wording: "3c. Hemoglobin:"
+      section: complete_blood_count
+      options_ref: null
+      units: gm%
+      skip_logic: null
+      notes: "Decimal value (one digit after the decimal)."
+      related_variables:
+        - CBC_HGB
+    - id: q3d
+      page: 1
+      exact_wording: "3d. Hematocrit:"
+      section: complete_blood_count
+      options_ref: null
+      units: "%"
+      skip_logic: null
+      notes: "Decimal value (one digit after the decimal)."
+      related_variables:
+        - CBC_HCT
+    - id: q3e
+      page: 1
+      exact_wording: "3e. Platelets:"
+      section: complete_blood_count
+      options_ref: null
+      units: cmm
+      skip_logic: null
+      notes: null
+      related_variables:
+        - CBC_PLATLET
+    - id: q3f
+      page: 1
+      exact_wording: "3f. Absolute Neutrophil count:"
+      section: complete_blood_count
+      options_ref: neut_lymp_units_pdf
+      units: "cmm or %"
+      skip_logic: null
+      notes: "Absolute count (cmm) OR percentage (one decimal). Captured by CBC_NEUT (cmm) and CBC_NEUTLE (%)."
+      related_variables:
+        - CBC_NEUT
+        - CBC_NEUTLE
+    - id: q3g
+      page: 1
+      exact_wording: "3g. Absolute Lymphocyte count:"
+      section: complete_blood_count
+      options_ref: neut_lymp_units_pdf
+      units: "cmm or %"
+      skip_logic: null
+      notes: "Absolute count (cmm) OR percentage (one decimal). Captured by CBC_LYMP (cmm) and CBC_LYMPLE (%)."
+      related_variables:
+        - CBC_LYMP
+        - CBC_LYMPLE
+    - id: q_date_completed
+      page: 1
+      exact_wording: "Date Completed: / /"
+      section: completion
+      options_ref: date_dmy_pdf
+      units: null
+      skip_logic: null
+      notes: Day / Month / Year date boxes.
+      related_variables:
+        - CBC_COMPDAT
+    - id: q_initials
+      page: 1
+      exact_wording: "Initials:"
+      section: completion
+      options_ref: null
+      units: null
+      skip_logic: null
+      notes: null
+      related_variables:
+        - CBC_INIT
+evidence_packs:
+  by_variable:
+    SUBJID:
+      exact_pdf_wording: "Participant ID number:"
+      pdf_annotation: SUBJID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    FID:
+      exact_pdf_wording: "Family ID number:"
+      pdf_annotation: FID
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_VISDAT:
+      exact_pdf_wording: "Date of blood draw:"
+      pdf_annotation: CBC_VISDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_VISIT:
+      exact_pdf_wording: "1. Visit type:"
+      pdf_annotation: CBC_VISIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_HBAND:
+      exact_pdf_wording: "Not Done (Go to Section B)"
+      pdf_annotation: CBC_HBAND
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_HBADAT:
+      exact_pdf_wording: "2. Date HbA1C processed: / /"
+      pdf_annotation: CBC_HBADAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_HGAPCT:
+      exact_pdf_wording: "2a. HbA1C: . %"
+      pdf_annotation: CBC_HGAPCT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_HGAPROP:
+      exact_pdf_wording: "2a. HbA1C: mmol/mol"
+      pdf_annotation: CBC_HGAPROP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_HEMND:
+      exact_pdf_wording: "B. COMPLETE BLOOD COUNT (CBC) Not Done"
+      pdf_annotation: CBC_HEMND
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_HEMDAT:
+      exact_pdf_wording: "3. Date CBC processed: / /"
+      pdf_annotation: CBC_HEMDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_WBC:
+      exact_pdf_wording: "3a. White Blood cell count: cmm"
+      pdf_annotation: CBC_WBC
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_RBC:
+      exact_pdf_wording: "3b. Red Blood Cell count: . mill/cumm"
+      pdf_annotation: CBC_RBC
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_HGB:
+      exact_pdf_wording: "3c. Hemoglobin: . gm%"
+      pdf_annotation: CBC_HGB
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_HCT:
+      exact_pdf_wording: "3d. Hematocrit: . %"
+      pdf_annotation: CBC_HCT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_PLATLET:
+      exact_pdf_wording: "3e. Platelets: cmm"
+      pdf_annotation: CBC_PLATLET
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_NEUT:
+      exact_pdf_wording: "3f. Absolute Neutrophil count: cmm"
+      pdf_annotation: CBC_NEUT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_NEUTLE:
+      exact_pdf_wording: "3f. Absolute Neutrophil count: . %"
+      pdf_annotation: CBC_NEUTLE
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_LYMP:
+      exact_pdf_wording: "3g. Absolute Lymphocyte count: cmm"
+      pdf_annotation: CBC_LYMP
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_LYMPLE:
+      exact_pdf_wording: "3g. Absolute Lymphocyte count: . %"
+      pdf_annotation: CBC_LYMPLE
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_MCV:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CBC_RDW:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CBC_EOSINO:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CBC_EOSINOLE:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CBC_HBA1CPRLQ:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+    CBC_COMPDAT:
+      exact_pdf_wording: "Date Completed: / /"
+      pdf_annotation: CBC_COMPDAT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    CBC_INIT:
+      exact_pdf_wording: "Initials:"
+      pdf_annotation: CBC_INIT
+      dictionary_wording: null
+      normalization_basis: pdf_annotation
+    Time_Stamp:
+      exact_pdf_wording: null
+      pdf_annotation: null
+      dictionary_wording: null
+      normalization_basis: dataset_column_name
+catalog_refs:
+  by_variable:
+    SUBJID:
+      display_label: Participant ID
+      normalized_meaning: Pseudonymized identifier for the study participant.
+      search_terms:
+        - SUBJID
+        - Participant ID number
+        - participant id
+        - subject id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    FID:
+      display_label: Family ID
+      normalized_meaning: Pseudonymized family/household identifier linking participants from the same household.
+      search_terms:
+        - FID
+        - Family ID number
+        - family id
+        - household id
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_VISDAT:
+      display_label: Date of Blood Draw
+      normalized_meaning: Date the blood specimen for the CBC visit was drawn (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - CBC_VISDAT
+        - Date of blood draw
+        - blood draw date
+        - specimen collection date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_VISIT:
+      display_label: CBC Visit Type
+      normalized_meaning: Visit type for the CBC form (Index case baseline, Household contact co-prevalent TB case, Household contact incident TB case, Household contact control).
+      search_terms:
+        - CBC_VISIT
+        - Visit type
+        - Index case baseline
+        - Household contact co-prevalent TB case
+        - Household contact incident TB case
+        - Household contact control
+        - cohort
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_HBAND:
+      display_label: HbA1C Not Done (Section A)
+      normalized_meaning: Indicator that the diabetes-related lab (HbA1C) was not done; selecting this skips Section A and goes to Section B.
+      search_terms:
+        - CBC_HBAND
+        - Not Done (Go to Section B)
+        - HbA1C not done
+        - diabetes lab not done
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_HBADAT:
+      display_label: HbA1C Processing Date
+      normalized_meaning: Date the HbA1C test was processed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - CBC_HBADAT
+        - Date HbA1C processed
+        - HbA1C date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_HGAPCT:
+      display_label: HbA1C (%)
+      normalized_meaning: HbA1C result expressed as a percentage (one decimal place).
+      search_terms:
+        - CBC_HGAPCT
+        - HbA1C
+        - HbA1C percent
+        - "HbA1C %"
+        - glycated hemoglobin
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_HGAPROP:
+      display_label: HbA1C (mmol/mol)
+      normalized_meaning: HbA1C result expressed in mmol/mol (alternate unit for HbA1C).
+      search_terms:
+        - CBC_HGAPROP
+        - HbA1C mmol/mol
+        - HbA1C IFCC
+        - glycated hemoglobin mmol/mol
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_HEMND:
+      display_label: CBC Not Done (Section B)
+      normalized_meaning: Indicator that the complete blood count (CBC) was not done.
+      search_terms:
+        - CBC_HEMND
+        - Not Done
+        - CBC not done
+        - hematology not done
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_HEMDAT:
+      display_label: CBC Processing Date
+      normalized_meaning: Date the CBC was processed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - CBC_HEMDAT
+        - Date CBC processed
+        - CBC date
+        - hematology date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_WBC:
+      display_label: White Blood Cell Count
+      normalized_meaning: White Blood cell count (WBC) in cmm (cells per cubic millimeter).
+      search_terms:
+        - CBC_WBC
+        - White Blood cell count
+        - WBC
+        - leukocytes
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_RBC:
+      display_label: Red Blood Cell Count
+      normalized_meaning: Red Blood Cell count in mill/cumm (millions per cubic millimeter).
+      search_terms:
+        - CBC_RBC
+        - Red Blood Cell count
+        - RBC
+        - erythrocytes
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_HGB:
+      display_label: Hemoglobin
+      normalized_meaning: Hemoglobin concentration in gm% (g/dL).
+      search_terms:
+        - CBC_HGB
+        - Hemoglobin
+        - Hb
+        - HGB
+        - "gm%"
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_HCT:
+      display_label: Hematocrit
+      normalized_meaning: Hematocrit (packed cell volume) as a percentage.
+      search_terms:
+        - CBC_HCT
+        - Hematocrit
+        - HCT
+        - PCV
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_PLATLET:
+      display_label: Platelet Count
+      normalized_meaning: Platelet count in cmm (cells per cubic millimeter).
+      search_terms:
+        - CBC_PLATLET
+        - Platelets
+        - Platelet count
+        - thrombocytes
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_NEUT:
+      display_label: Absolute Neutrophil Count
+      normalized_meaning: Absolute Neutrophil count in cmm (cells per cubic millimeter).
+      search_terms:
+        - CBC_NEUT
+        - Absolute Neutrophil count
+        - ANC
+        - neutrophils absolute
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_NEUTLE:
+      display_label: Neutrophil Percent
+      normalized_meaning: Neutrophil percentage (one decimal place); alternate representation of the neutrophil count for question 3f.
+      search_terms:
+        - CBC_NEUTLE
+        - Neutrophil percent
+        - "neutrophils %"
+        - Absolute Neutrophil count percent
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_LYMP:
+      display_label: Absolute Lymphocyte Count
+      normalized_meaning: Absolute Lymphocyte count in cmm (cells per cubic millimeter).
+      search_terms:
+        - CBC_LYMP
+        - Absolute Lymphocyte count
+        - lymphocytes absolute
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_LYMPLE:
+      display_label: Lymphocyte Percent
+      normalized_meaning: Lymphocyte percentage (one decimal place); alternate representation of the lymphocyte count for question 3g.
+      search_terms:
+        - CBC_LYMPLE
+        - Lymphocyte percent
+        - "lymphocytes %"
+        - Absolute Lymphocyte count percent
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_MCV:
+      display_label: Mean Corpuscular Volume (review)
+      normalized_meaning: Dataset column suggesting Mean Corpuscular Volume (MCV); not represented on the v1.0/v2.0 CBC PDF and pending human review.
+      search_terms:
+        - CBC_MCV
+        - MCV
+        - Mean Corpuscular Volume
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CBC_RDW:
+      display_label: Red Cell Distribution Width (review)
+      normalized_meaning: Dataset column suggesting Red Cell Distribution Width (RDW); not represented on the v1.0/v2.0 CBC PDF and pending human review.
+      search_terms:
+        - CBC_RDW
+        - RDW
+        - Red Cell Distribution Width
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CBC_EOSINO:
+      display_label: Absolute Eosinophil Count (review)
+      normalized_meaning: Dataset column suggesting Absolute Eosinophil count; not represented on the v1.0/v2.0 CBC PDF and pending human review.
+      search_terms:
+        - CBC_EOSINO
+        - Eosinophil count
+        - Absolute Eosinophil
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CBC_EOSINOLE:
+      display_label: Eosinophil Percent (review)
+      normalized_meaning: Dataset column suggesting Eosinophil percentage; not represented on the v1.0/v2.0 CBC PDF and pending human review.
+      search_terms:
+        - CBC_EOSINOLE
+        - Eosinophil percent
+        - "eosinophils %"
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CBC_HBA1CPRLQ:
+      display_label: HbA1C Below LLOQ (review)
+      normalized_meaning: Dataset column whose name suggests an HbA1C below-lower-limit-of-quantitation indicator; not represented on the v1.0/v2.0 CBC PDF and pending human review.
+      search_terms:
+        - CBC_HBA1CPRLQ
+        - HbA1C
+        - below LLOQ
+        - lower limit of quantitation
+      catalog_tier: dataset_backed
+      analysis_queryable: false
+    CBC_COMPDAT:
+      display_label: Form Completion Date
+      normalized_meaning: Date the CBC form was completed (Day/Month/Year), jittered for PHI handling.
+      search_terms:
+        - CBC_COMPDAT
+        - Date Completed
+        - form completion date
+      catalog_tier: dataset_backed
+      analysis_queryable: true
+    CBC_INIT:
+      display_label: Data Collector Initials
+      normalized_meaning: Initials of the data collector (PHI — dropped from PHI-handled dataset).
+      search_terms:
+        - CBC_INIT
+        - Initials
+        - data collector initials
+      catalog_tier: source_only
+      analysis_queryable: false
+    Time_Stamp:
+      display_label: Capture Timestamp
+      normalized_meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      search_terms:
+        - Time_Stamp
+        - timestamp
+        - capture timestamp
+      catalog_tier: source_only
+      analysis_queryable: false
+ledger_expectations:
+  phi_handling:
+    - SUBJID
+    - FID
+    - CBC_VISDAT
+    - CBC_HBADAT
+    - CBC_HEMDAT
+    - CBC_COMPDAT
+    - CBC_INIT
+  dataset_cleanup:
+    - Time_Stamp
+variables:
+  SUBJID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Participant ID number:"
+      pdf_annotation: SUBJID
+      column_name: SUBJID
+    normalized_metadata:
+      display_label: Participant ID
+      meaning: Pseudonymized identifier for the study participant.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  FID:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Family ID number:"
+      pdf_annotation: FID
+      column_name: FID
+    normalized_metadata:
+      display_label: Family ID
+      meaning: Pseudonymized family/household identifier linking participants from the same household.
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: family_or_household_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: family_or_household_identifier
+      label: FAM
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  CBC_VISDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date of blood draw:"
+      pdf_annotation: CBC_VISDAT
+      column_name: CBC_VISDAT
+    normalized_metadata:
+      display_label: Date of Blood Draw
+      meaning: Date the blood specimen for the CBC visit was drawn.
+      section: participant_header
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  CBC_VISIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "1. Visit type:"
+      pdf_annotation: CBC_VISIT
+      column_name: CBC_VISIT
+    normalized_metadata:
+      display_label: CBC Visit Type
+      meaning: Visit type for the CBC form; selects one of the four PDF participant boxes.
+      section: visit_type
+      data_type: categorical
+      options_ref: visit_type_pdf
+    options:
+      source_defined:
+        - Index case baseline
+        - Household contact co-prevalent TB case
+        - Household contact incident TB case
+        - Household contact control
+      values:
+        - Index case baseline
+        - Household contact co-prevalent TB case
+        - Household contact incident TB case
+        - Household contact control
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: visit_type
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CBC_HBAND:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Not Done (Go to Section B)"
+      pdf_annotation: CBC_HBAND
+      column_name: CBC_HBAND
+    normalized_metadata:
+      display_label: HbA1C Not Done (Section A)
+      meaning: Indicator that the diabetes-related lab (HbA1C) was not done; selecting this skips Section A and goes to Section B.
+      section: diabetes_related_lab
+      data_type: categorical
+      options_ref: not_done_go_to_section_b_pdf
+    options:
+      source_defined:
+        - Not Done (Go to Section B)
+      values:
+        - Not Done (Go to Section B)
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - CBC_HBADAT
+        - CBC_HGAPCT
+        - CBC_HGAPROP
+      skip_logic: "Not Done (Go to Section B) — skip remaining diabetes-related-lab questions."
+      visit_grouping: null
+      section_grouping: diabetes_related_lab
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CBC_HBADAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "2. Date HbA1C processed: / /"
+      pdf_annotation: CBC_HBADAT
+      column_name: CBC_HBADAT
+    normalized_metadata:
+      display_label: HbA1C Processing Date
+      meaning: Date the HbA1C test was processed.
+      section: diabetes_related_lab
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: CBC_HBAND
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: diabetes_related_lab
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  CBC_HGAPCT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "2a. HbA1C: . %"
+      pdf_annotation: CBC_HGAPCT
+      column_name: CBC_HGAPCT
+    normalized_metadata:
+      display_label: HbA1C (%)
+      meaning: HbA1C result expressed as a percentage (one decimal place).
+      section: diabetes_related_lab
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: CBC_HBAND
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: diabetes_related_lab
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CBC_HGAPROP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "2a. HbA1C: mmol/mol"
+      pdf_annotation: CBC_HGAPROP
+      column_name: CBC_HGAPROP
+    normalized_metadata:
+      display_label: HbA1C (mmol/mol)
+      meaning: HbA1C result expressed in mmol/mol (alternate unit for HbA1C).
+      section: diabetes_related_lab
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: CBC_HBAND
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: diabetes_related_lab
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CBC_HEMND:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "B. COMPLETE BLOOD COUNT (CBC) Not Done"
+      pdf_annotation: CBC_HEMND
+      column_name: CBC_HEMND
+    normalized_metadata:
+      display_label: CBC Not Done (Section B)
+      meaning: Indicator that the complete blood count (CBC) was not done.
+      section: complete_blood_count
+      data_type: categorical
+      options_ref: not_done_pdf
+    options:
+      source_defined:
+        - Not Done
+      values:
+        - Not Done
+      unknown: true
+    relationships:
+      parent: null
+      children:
+        - CBC_HEMDAT
+        - CBC_WBC
+        - CBC_RBC
+        - CBC_HGB
+        - CBC_HCT
+        - CBC_PLATLET
+        - CBC_NEUT
+        - CBC_NEUTLE
+        - CBC_LYMP
+        - CBC_LYMPLE
+      skip_logic: "Not Done — skip remaining CBC questions."
+      visit_grouping: null
+      section_grouping: complete_blood_count
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - pdf_option_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CBC_HEMDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3. Date CBC processed: / /"
+      pdf_annotation: CBC_HEMDAT
+      column_name: CBC_HEMDAT
+    normalized_metadata:
+      display_label: CBC Processing Date
+      meaning: Date the CBC was processed.
+      section: complete_blood_count
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: CBC_HEMND
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: complete_blood_count
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  CBC_WBC:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3a. White Blood cell count: cmm"
+      pdf_annotation: CBC_WBC
+      column_name: CBC_WBC
+    normalized_metadata:
+      display_label: White Blood Cell Count
+      meaning: White Blood cell count (WBC) in cmm (cells per cubic millimeter).
+      section: complete_blood_count
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: CBC_HEMND
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: complete_blood_count
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CBC_RBC:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3b. Red Blood Cell count: . mill/cumm"
+      pdf_annotation: CBC_RBC
+      column_name: CBC_RBC
+    normalized_metadata:
+      display_label: Red Blood Cell Count
+      meaning: Red Blood Cell count in mill/cumm (millions per cubic millimeter).
+      section: complete_blood_count
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: CBC_HEMND
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: complete_blood_count
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CBC_HGB:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3c. Hemoglobin: . gm%"
+      pdf_annotation: CBC_HGB
+      column_name: CBC_HGB
+    normalized_metadata:
+      display_label: Hemoglobin
+      meaning: Hemoglobin concentration in gm% (g/dL).
+      section: complete_blood_count
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: CBC_HEMND
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: complete_blood_count
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CBC_HCT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3d. Hematocrit: . %"
+      pdf_annotation: CBC_HCT
+      column_name: CBC_HCT
+    normalized_metadata:
+      display_label: Hematocrit
+      meaning: Hematocrit (packed cell volume) as a percentage.
+      section: complete_blood_count
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: CBC_HEMND
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: complete_blood_count
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CBC_PLATLET:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3e. Platelets: cmm"
+      pdf_annotation: CBC_PLATLET
+      column_name: CBC_PLATLET
+    normalized_metadata:
+      display_label: Platelet Count
+      meaning: Platelet count in cmm (cells per cubic millimeter).
+      section: complete_blood_count
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: CBC_HEMND
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: complete_blood_count
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CBC_NEUT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3f. Absolute Neutrophil count: cmm"
+      pdf_annotation: CBC_NEUT
+      column_name: CBC_NEUT
+    normalized_metadata:
+      display_label: Absolute Neutrophil Count
+      meaning: Absolute Neutrophil count in cmm (cells per cubic millimeter).
+      section: complete_blood_count
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: CBC_HEMND
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: complete_blood_count
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CBC_NEUTLE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3f. Absolute Neutrophil count: . %"
+      pdf_annotation: CBC_NEUTLE
+      column_name: CBC_NEUTLE
+    normalized_metadata:
+      display_label: Neutrophil Percent
+      meaning: Neutrophil percentage (one decimal place); alternate representation of question 3f.
+      section: complete_blood_count
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: CBC_HEMND
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: complete_blood_count
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CBC_LYMP:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3g. Absolute Lymphocyte count: cmm"
+      pdf_annotation: CBC_LYMP
+      column_name: CBC_LYMP
+    normalized_metadata:
+      display_label: Absolute Lymphocyte Count
+      meaning: Absolute Lymphocyte count in cmm (cells per cubic millimeter).
+      section: complete_blood_count
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: CBC_HEMND
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: complete_blood_count
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CBC_LYMPLE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "3g. Absolute Lymphocyte count: . %"
+      pdf_annotation: CBC_LYMPLE
+      column_name: CBC_LYMPLE
+    normalized_metadata:
+      display_label: Lymphocyte Percent
+      meaning: Lymphocyte percentage (one decimal place); alternate representation of question 3g.
+      section: complete_blood_count
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: CBC_HEMND
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: complete_blood_count
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: clinical_numeric
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: present
+  CBC_MCV:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CBC_MCV
+    normalized_metadata:
+      display_label: Mean Corpuscular Volume (review)
+      meaning: Dataset column whose name suggests Mean Corpuscular Volume (MCV); not represented on the v1.0/v2.0 CBC PDF.
+      section: cbc_unmapped_dataset_columns
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cbc_unmapped_dataset_columns
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: pdf_evidence_missing
+      reviewer_question: "CBC_MCV appears in the dataset header but is not present on the v1.0/v2.0 CBC PDF or any annotation. Confirm whether this column reflects a later form revision (Mean Corpuscular Volume) and how it should be handled."
+    clean_output_presence: review_required
+  CBC_RDW:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CBC_RDW
+    normalized_metadata:
+      display_label: Red Cell Distribution Width (review)
+      meaning: Dataset column whose name suggests Red Cell Distribution Width (RDW); not represented on the v1.0/v2.0 CBC PDF.
+      section: cbc_unmapped_dataset_columns
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cbc_unmapped_dataset_columns
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: pdf_evidence_missing
+      reviewer_question: "CBC_RDW appears in the dataset header but is not present on the v1.0/v2.0 CBC PDF or any annotation. Confirm whether this column reflects a later form revision (Red Cell Distribution Width) and how it should be handled."
+    clean_output_presence: review_required
+  CBC_EOSINO:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CBC_EOSINO
+    normalized_metadata:
+      display_label: Absolute Eosinophil Count (review)
+      meaning: Dataset column whose name suggests Absolute Eosinophil count; not represented on the v1.0/v2.0 CBC PDF.
+      section: cbc_unmapped_dataset_columns
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cbc_unmapped_dataset_columns
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: pdf_evidence_missing
+      reviewer_question: "CBC_EOSINO appears in the dataset header but is not present on the v1.0/v2.0 CBC PDF or any annotation. Confirm whether this column reflects a later form revision (Absolute Eosinophil count) and how it should be handled."
+    clean_output_presence: review_required
+  CBC_EOSINOLE:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CBC_EOSINOLE
+    normalized_metadata:
+      display_label: Eosinophil Percent (review)
+      meaning: Dataset column whose name suggests Eosinophil percentage; not represented on the v1.0/v2.0 CBC PDF.
+      section: cbc_unmapped_dataset_columns
+      data_type: numeric
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cbc_unmapped_dataset_columns
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: pdf_evidence_missing
+      reviewer_question: "CBC_EOSINOLE appears in the dataset header but is not present on the v1.0/v2.0 CBC PDF or any annotation. Confirm whether this column reflects a later form revision (Eosinophil percent) and how it should be handled."
+    clean_output_presence: review_required
+  CBC_HBA1CPRLQ:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CBC_HBA1CPRLQ
+    normalized_metadata:
+      display_label: HbA1C Below LLOQ (review)
+      meaning: Dataset column whose name suggests an HbA1C below-lower-limit-of-quantitation (LLOQ) indicator; not represented on the v1.0/v2.0 CBC PDF.
+      section: cbc_unmapped_dataset_columns
+      data_type: categorical
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: cbc_unmapped_dataset_columns
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: review_required
+      reason: not_directly_mapped_in_pdf_annotation
+      label: null
+    runtime_binding:
+      - none
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+    review:
+      state: review_required
+      reason: pdf_evidence_missing
+      reviewer_question: "CBC_HBA1CPRLQ appears in the dataset header but is not present on the v1.0/v2.0 CBC PDF or any annotation. The suffix 'PRLQ' suggests a below-lower-limit-of-quantitation indicator linked to HbA1C; confirm intended meaning, value set, and handling."
+    clean_output_presence: review_required
+  CBC_COMPDAT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Date Completed: / /"
+      pdf_annotation: CBC_COMPDAT
+      column_name: CBC_COMPDAT
+    normalized_metadata:
+      display_label: Form Completion Date
+      meaning: Date the CBC form was completed by the data collector.
+      section: completion
+      data_type: date
+      options_ref: date_dmy_pdf
+    options:
+      source_defined:
+        - Day
+        - Month
+        - Year
+      values:
+        - Day
+        - Month
+        - Year
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: date
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+    runtime_binding:
+      - date_jitter
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
+  CBC_INIT:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: present
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: "Initials:"
+      pdf_annotation: CBC_INIT
+      column_name: CBC_INIT
+    normalized_metadata:
+      display_label: Data Collector Initials
+      meaning: Initials of the data collector who completed the form.
+      section: completion
+      data_type: free_text
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion
+      other_specify: null
+    phi_sensitive_category: signature_or_initials
+    handling_intent:
+      action: drop
+      reason: initials_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+    derivation_targets:
+      - phi_handling_ledger
+    evidence:
+      level: high
+      basis:
+        - pdf_annotation
+        - pdf_visible_text
+        - dataset_column_name
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+  Time_Stamp:
+    record_type: variable
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: Time_Stamp
+    normalized_metadata:
+      display_label: Capture Timestamp
+      meaning: System-generated capture timestamp from the dataset; not part of clinical/study content.
+      section: system_metadata
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: system_metadata
+      other_specify: null
+    phi_sensitive_category: system_timestamp
+    handling_intent:
+      action: drop
+      reason: non_pdf_system_timestamp_metadata
+      label: null
+    runtime_binding:
+      - dataset_cleanup
+    derivation_targets:
+      - dataset_cleanup_ledger
+    evidence:
+      level: high
+      basis:
+        - dataset_column_name
+        - derived_pattern
+    review:
+      state: resolved
+      reason: null
+      reviewer_question: null
+    clean_output_presence: absent
+validation:
+  forbidden_keys_absent: true
+  columns_unique: true
+  pdf_annotation_unmatched: []
+  dataset_columns_unmatched: []
+  excluded_pdf_artifacts:
+    - "08/25/2014 (form version date — excluded per PDF Extraction Boundary)"
+    - "Indo-US VAP CBC v1.0 08/25/2014 (form version footer — excluded as creation/version-date artifact; form_version v1.0 retained in pdf_form_metadata)"
+    - "Page 1 of 1 (page footer — excluded)"
+    - "5783 (artifact-version code in footer — excluded)"
+    - "Form 5 (form-number badge in header — retained as form_number metadata, not a variable)"
+    - "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse (study title banner — retained as form context heading not as a variable)"
+  notes:
+    - "PDF filename is '5 CBC v2.0.pdf' but the visible PDF footer states 'Indo-US VAP CBC v1.0 08/25/2014'. form_version is recorded as v1.0 per visible text; filename divergence is preserved in source.pdf_file."
+    - "Five dataset columns (CBC_MCV, CBC_RDW, CBC_EOSINO, CBC_EOSINOLE, CBC_HBA1CPRLQ) have no PDF question or annotation; flagged review_required."
