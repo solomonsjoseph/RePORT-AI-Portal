@@ -18,7 +18,7 @@ cohorts:
     member_variables:
       - {form: 1A_ICScreening,    variable_id: SUBJID,   role: identifier}
       - {form: 17_EligConfirmation, variable_id: EC_ELIG, role: eligibility_flag}
-      - {form: 2A_ICBaseline,     variable_id: IC_AGE,   role: covariate}
+      - {form: 2A_ICBaseline,     variable_id: IC_WEIGHT, role: covariate}
     evidence_pack_refs: [EC_ELIG]
 
   cohort_b:
