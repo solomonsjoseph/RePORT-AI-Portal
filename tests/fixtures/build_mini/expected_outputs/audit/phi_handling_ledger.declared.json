@@ -1,0 +1,1012 @@
+{
+  "artifact_type": "phi_handling_ledger",
+  "entries": [
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "subject_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "subject_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "SUBJID"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "family_or_household_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "family_or_household_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "CM_FID"
+      }
+    },
+    {
+      "action": "jitter_date",
+      "field_class": null,
+      "reason": "date_field",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "date"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "CM_MBDAT2"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "operational_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "operational_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "CM_MBREFID2"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "facility_or_site_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "facility_or_site_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "CM_MBLABID2"
+      }
+    },
+    {
+      "action": "jitter_date",
+      "field_class": null,
+      "reason": "date_field",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "date"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "CM_COMPDAT"
+      }
+    },
+    {
+      "action": "drop",
+      "field_class": null,
+      "reason": "initials_field",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "signature_or_initials"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "CM_INIT"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "subject_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "subject_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "SUBJID"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "family_or_household_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "family_or_household_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "FID"
+      }
+    },
+    {
+      "action": "jitter_date",
+      "field_class": null,
+      "reason": "date_field",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "date"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_VISDAT"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "subject_identifier",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "subject_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_PRIORBID"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "location_field_requires_generalize_keep_or_drop_decision",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "location_or_geography"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_MUNIC"
+      }
+    },
+    {
+      "action": "jitter_date",
+      "field_class": null,
+      "reason": "date_field",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "date"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_ICFDT"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "not_directly_mapped_in_pdf_annotation",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_ICFV"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_specify",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "free_text_or_specify"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_ICFREAS"
+      }
+    },
+    {
+      "action": "jitter_date",
+      "field_class": null,
+      "reason": "date_field",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "date"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_BIRTHDAT"
+      }
+    },
+    {
+      "action": "jitter_date",
+      "field_class": null,
+      "reason": "date_field",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "date"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_TBTXDT"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "subject_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "subject_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "SUBJID2"
+      }
+    },
+    {
+      "action": "drop",
+      "field_class": null,
+      "reason": "signature_field",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "signature_or_initials"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_SIGN"
+      }
+    },
+    {
+      "action": "drop",
+      "field_class": null,
+      "reason": "initials_field",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "signature_or_initials"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_INIT"
+      }
+    },
+    {
+      "action": "jitter_date",
+      "field_class": null,
+      "reason": "date_field",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "date"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_COMPDAT"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_specify",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "free_text_or_specify"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_UNWILLING"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_specify",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "free_text_or_specify"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_NOTENROLL"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "not_directly_mapped_in_pdf_annotation",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_TBDIAG"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_or_other_specify_or_unproven_supplemental_field",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_STORAGE1"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_or_other_specify_or_unproven_supplemental_field",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_STORAGE2"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "not_directly_mapped_in_pdf_annotation",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_SPUTHIV"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "not_directly_mapped_in_pdf_annotation",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_HIV_WILLING"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_or_other_specify_or_unproven_supplemental_field",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_PTBNOTENROLL"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "not_directly_mapped_in_pdf_annotation",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_PTBfemale"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "not_directly_mapped_in_pdf_annotation",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_PTBmarried"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "not_directly_mapped_in_pdf_annotation",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_PTBeligible"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "not_directly_mapped_in_pdf_annotation",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_PTBenroll"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "subject_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "subject_identifier"
+      ],
+      "source_kind": "dataset_only",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "SUBJID3"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "not_directly_mapped_in_pdf_annotation",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_CP1A"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "not_directly_mapped_in_pdf_annotation",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_CP1B"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "not_directly_mapped_in_pdf_annotation",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_AEXCL03"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "not_directly_mapped_in_pdf_annotation",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_AEXCL04"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_or_other_specify_or_unproven_supplemental_field",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "review_required"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IS_OTHENRPP"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "subject_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "subject_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "SUBJID"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "family_or_household_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "family_or_household_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "FID"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "facility_or_site_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "facility_or_site_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "PHCID"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "facility_or_site_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "facility_or_site_identifier"
+      ],
+      "source_kind": "dataset_only",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_TUID"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "facility_or_site_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "facility_or_site_identifier"
+      ],
+      "source_kind": "dataset_only",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_DMCID"
+      }
+    },
+    {
+      "action": "jitter_date",
+      "field_class": null,
+      "reason": "date_field",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "date"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_VISDAT"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_specify",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "free_text_or_specify"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_RELIGIONSP"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_specify",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "free_text_or_specify"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_LANGUAGESP"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "subject_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "subject_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "SUBJID2"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_specify",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "free_text_or_specify"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_JOBSP"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "location_field_requires_generalize_keep_or_drop_decision",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "location"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_LOC"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "subject_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "subject_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "SUBJID3"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_specify",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "free_text_or_specify"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "TBKNOWOTHER"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "subject_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "subject_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "SUBJID4"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_specify",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "free_text_or_specify"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_SMOSP"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "subject_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "subject_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "SUBJID5"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "location_field_requires_generalize_keep_or_drop_decision",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "location"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_HIVLOC"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_specify",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "free_text_or_specify"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_HIVLOCSP"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_specify",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "free_text_or_specify"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_DMTXSP"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "facility_or_site_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "facility_or_site_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_CLINIC"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "facility_or_site_identifier",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "facility_or_site_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_CLINICSP"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_specify",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "free_text_or_specify"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "CareOther"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_specify",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "free_text_or_specify"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "Other"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "subject_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "subject_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "SUBJID6"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_specify",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "free_text_or_specify"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_OTHERSYMP"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "subject_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "subject_identifier"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "SUBJID7"
+      }
+    },
+    {
+      "action": "pseudonymize",
+      "field_class": null,
+      "reason": "subject_identifier",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "subject_identifier"
+      ],
+      "source_kind": "dataset_only",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "SUBJID4_2"
+      }
+    },
+    {
+      "action": "jitter_date",
+      "field_class": null,
+      "reason": "clinical_categorical",
+      "review_state": "reviewed",
+      "sensitivity_flags": [],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_RESPNDT"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_specify",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "free_text_or_specify"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_RESPDTSP"
+      }
+    },
+    {
+      "action": "review_required",
+      "field_class": null,
+      "reason": "possible_free_text_specify",
+      "review_state": "review_required",
+      "sensitivity_flags": [
+        "free_text_or_specify"
+      ],
+      "source_kind": "review_required",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_MENSESOTH"
+      }
+    },
+    {
+      "action": "drop",
+      "field_class": null,
+      "reason": "signature_field",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "signature_or_initials"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_SIGN"
+      }
+    },
+    {
+      "action": "drop",
+      "field_class": null,
+      "reason": "initials_field",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "signature_or_initials"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_INIT"
+      }
+    },
+    {
+      "action": "jitter_date",
+      "field_class": null,
+      "reason": "date_field",
+      "review_state": "reviewed",
+      "sensitivity_flags": [
+        "date"
+      ],
+      "source_kind": "matched",
+      "source_truth_ref": {
+        "artifact_type": "study_variable_source_truth",
+        "variable_id": "IC_COMPDAT"
+      }
+    }
+  ],
+  "kind": "declared"
+}
