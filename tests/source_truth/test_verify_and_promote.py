@@ -59,11 +59,16 @@ def _write_real_phi_audit(
     ``_emit_audit`` because that helper enforces an output-zone assertion
     that does not apply to a tmp_path test fixture.
     """
+    # Production builds these keys via ``_bump(scope, field)`` which emits
+    # ``f"phi-scrub-{scope}:{field}"`` (see scripts/security/phi_scrub.py).
+    # The reconciliation reader filters on the prefixed form, so the test
+    # fixture MUST also use that prefix or the reader silently drops
+    # everything (the bug uncovered by the first real-data smoke).
     counts_by_file: dict[str, dict[str, int]] = {}
     for form, cols in drops_by_form.items():
         per_file = counts_by_file.setdefault(f"{form}.jsonl", {})
         for col in cols:
-            per_file[f"drop:{col}"] = 1
+            per_file[f"phi-scrub-drop:{col}"] = 1
 
     events = _events_from_counts(counts_by_file)
 

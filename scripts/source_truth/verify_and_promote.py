@@ -7,6 +7,16 @@ The gate orchestrates the per-form reconciliation rule:
      − set(cleanup_dropped_aswritten(form))
      == set(scrubbed_columns(form))
 
+This is a **schema-promotion gate, not a JSONL-promotion gate.** The
+extraction pipeline publishes scrubbed JSONLs to
+``output/{study}/trio_bundle/datasets/`` and clears the staging
+``tmp/`` directory *before* this gate runs. So when reconciliation
+fails, the JSONLs already sit in their published location — only
+``dataset_schema.json`` is held back from GREEN. Downstream consumers
+that read the trio_bundle directly will still see the scrubbed JSONLs
+even on a failed run; only the canonical schema file remains
+unchanged.
+
 Outcomes:
     - All forms pass:   exit code 0. The staging dataset_schema is then
                         promoted from
@@ -379,7 +389,13 @@ def main(argv: list[str] | None = None) -> int:
         "--staging-root",
         type=Path,
         default=None,
-        help="Path to staging root (default: tmp/<study>)",
+        help=(
+            "Path to the directory containing scrubbed JSONLs at "
+            "<staging-root>/datasets/<form>.jsonl "
+            "(default: output/<study>/trio_bundle — the post-publish "
+            "location). The historical name 'staging-root' is kept for "
+            "API stability; in practice this is the published trio_bundle."
+        ),
     )
     parser.add_argument(
         "--scrub-report",
@@ -412,8 +428,13 @@ def main(argv: list[str] | None = None) -> int:
 
     study = args.study
     sot_dir = args.sot_dir or (config.DATA_DIR / study / "SoT")
-    staging_root = args.staging_root or (config.TMP_DIR / study)
     output_root = args.output_root or (config.OUTPUT_DIR / study)
+    # Default reads from the published trio_bundle: the scrub leg is
+    # immediately followed by a publish step that moves the JSONLs out
+    # of tmp/<study>/datasets/ into output/<study>/trio_bundle/datasets/
+    # and removes tmp/<study>. Keeping the default at tmp/ caused the
+    # gate to silently SKIP on every real run.
+    staging_root = args.staging_root or (output_root / "trio_bundle")
     scrub_report = args.scrub_report or (output_root / "audit" / "phi_scrub_report.json")
     cleanup_report = args.cleanup_report or (output_root / "audit" / "dataset_cleanup_report.json")
 

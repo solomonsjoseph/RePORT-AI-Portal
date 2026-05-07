@@ -18,9 +18,13 @@ PHI scrub event::
 
     {"scope": str, "field": str, "file": str, "count": int}
 
-Drop scopes are exactly ``"drop"`` and ``"birthdate-drop"`` (see
-``scripts/security/phi_scrub.py`` lines 178, 184). ``file`` is the staging
-JSONL filename (e.g. ``"10_TST.jsonl"``).
+Drop scopes are exactly ``"phi-scrub-drop"`` and
+``"phi-scrub-birthdate-drop"``. The emitter prefixes every internal
+action with ``"phi-scrub-"`` (see ``scripts/security/phi_scrub.py``
+``_bump`` helper, where ``k = f"phi-scrub-{scope}:{field}"``). The
+unprefixed ``_ACTION_DROP``/``_ACTION_BIRTHDATE_DROP`` constants in that
+module are *internal* action labels — they are never written to the
+report. ``file`` is the staging JSONL filename (e.g. ``"10_TST.jsonl"``).
 
 Dataset cleanup event (within ``"removed"``)::
 
@@ -49,7 +53,9 @@ __all__ = [
 ]
 
 
-_PHI_DROP_SCOPES: frozenset[str] = frozenset({"drop", "birthdate-drop"})
+_PHI_DROP_SCOPES: frozenset[str] = frozenset(
+    {"phi-scrub-drop", "phi-scrub-birthdate-drop"}
+)
 _CLEANUP_COLUMN_SCOPE: str = "dataset-column"
 
 
@@ -64,7 +70,8 @@ def _form_from_jsonl_filename(filename: str) -> str:
 def load_phi_dropped_columns(report: Mapping[str, Any]) -> dict[str, frozenset[str]]:
     """Return ``{form_name: frozenset(field_names)}`` for PHI-scrub drops.
 
-    Only events with ``scope in {"drop", "birthdate-drop"}`` contribute.
+    Only events with
+    ``scope in {"phi-scrub-drop", "phi-scrub-birthdate-drop"}`` contribute.
     Form name is derived by stripping the ``.jsonl`` suffix from the event's
     ``file``. An empty/partial report yields an empty dict.
     """

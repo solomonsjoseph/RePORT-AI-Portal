@@ -30,16 +30,18 @@ def test_phi_reader_extracts_drop_events_grouped_by_form() -> None:
         "generated_utc": "2026-05-07T00:00:00Z",
         "leg": "phi-scrub",
         "compliance_posture": "research-deid",
+        # Scope strings MUST match the as-written prefixed form emitted by
+        # scripts/security/phi_scrub.py:_bump (k = f"phi-scrub-{scope}:{field}").
         "scrubbed": [
-            {"scope": "drop", "field": "PATIENT_NAME", "file": "1A_ICScreening.jsonl", "count": 3},
-            {"scope": "drop", "field": "ADDRESS", "file": "1A_ICScreening.jsonl", "count": 3},
-            {"scope": "birthdate-drop", "field": "DOB", "file": "2A_ICBaseline.jsonl", "count": 5},
+            {"scope": "phi-scrub-drop", "field": "PATIENT_NAME", "file": "1A_ICScreening.jsonl", "count": 3},
+            {"scope": "phi-scrub-drop", "field": "ADDRESS", "file": "1A_ICScreening.jsonl", "count": 3},
+            {"scope": "phi-scrub-birthdate-drop", "field": "DOB", "file": "2A_ICBaseline.jsonl", "count": 5},
             # non-drop scopes must be ignored
-            {"scope": "id", "field": "FID", "file": "1A_ICScreening.jsonl", "count": 3},
-            {"scope": "date", "field": "VISIT_DT", "file": "2A_ICBaseline.jsonl", "count": 5},
-            {"scope": "cap", "field": "AGE", "file": "2A_ICBaseline.jsonl", "count": 5},
-            {"scope": "generalize", "field": "ZIP", "file": "1A_ICScreening.jsonl", "count": 3},
-            {"scope": "suppress-small-cell", "field": "CELL", "file": "1A_ICScreening.jsonl", "count": 3},
+            {"scope": "phi-scrub-id", "field": "FID", "file": "1A_ICScreening.jsonl", "count": 3},
+            {"scope": "phi-scrub-date", "field": "VISIT_DT", "file": "2A_ICBaseline.jsonl", "count": 5},
+            {"scope": "phi-scrub-cap", "field": "AGE", "file": "2A_ICBaseline.jsonl", "count": 5},
+            {"scope": "phi-scrub-generalize", "field": "ZIP", "file": "1A_ICScreening.jsonl", "count": 3},
+            {"scope": "phi-scrub-suppress-small-cell", "field": "CELL", "file": "1A_ICScreening.jsonl", "count": 3},
         ],
         "orphan_rows": {},
     }
@@ -62,7 +64,7 @@ def test_phi_reader_returns_empty_when_no_drops() -> None:
         "leg": "phi-scrub",
         "compliance_posture": "research-deid",
         "scrubbed": [
-            {"scope": "id", "field": "FID", "file": "10_TST.jsonl", "count": 3},
+            {"scope": "phi-scrub-id", "field": "FID", "file": "10_TST.jsonl", "count": 3},
         ],
         "orphan_rows": {},
     }
@@ -79,9 +81,9 @@ def test_phi_reader_handles_missing_scrubbed_key() -> None:
 def test_phi_reader_strips_jsonl_suffix_from_file() -> None:
     report = {
         "scrubbed": [
-            {"scope": "drop", "field": "X", "file": "Form_A.jsonl", "count": 1},
+            {"scope": "phi-scrub-drop", "field": "X", "file": "Form_A.jsonl", "count": 1},
             # File without .jsonl suffix passes through unchanged
-            {"scope": "drop", "field": "Y", "file": "Form_B", "count": 1},
+            {"scope": "phi-scrub-drop", "field": "Y", "file": "Form_B", "count": 1},
         ]
     }
     result = load_phi_dropped_columns(report)
