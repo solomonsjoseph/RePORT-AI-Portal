@@ -1,16 +1,34 @@
 """Hard cutover validation gate (issue #80).
 
-Final integration gate for the Source Truth architecture. The gate
-COMPOSES the existing per-slice validators (catalog, dataset schema,
-analysis binding, distribution runner, epidemiology planner, ledgers,
-lineage, all-form validation, file-access boundary) and produces a
-structured per-AC report with ``status in {"pass", "warn", "fail"}``.
+Role: **CI integration gate, not pipeline runtime.** This module is
+invoked exclusively from `make cutover-gate` (and the two test files
+`tests/test_hard_cutover_validation_gate.py` +
+`tests/test_hard_cutover_default.py`). It is NOT called by the
+build/scrub/promote pipeline; `make build-llm-source` does not import
+it. Removing it would only break CI.
 
-The gate is a pure orchestrator. It does NOT introduce a hidden keyword
-router; the only inputs are filesystem roots and the gate function takes
-no user-input strings. Every assertion that surfaces here is already
-covered by a per-slice test file -- this module proves the slices work
-together on the cutover-ready worktree.
+What this module covers vs. what `verify_and_promote.py` covers:
+
+* `scripts/source_truth/verify_and_promote.py` is the **Stage-3
+  reconciliation gate** wired into `make build-llm-source`. It
+  reconciles SoT-declared columns vs. the scrubbed dataset per form,
+  classifies drops as `explained_by_phi` / `explained_by_cleanup` /
+  `missing_unexplained`, and either promotes `dataset_schema.json` to
+  GREEN or writes per-form `output/{study}/human_review/<form>_
+  discrepancies.json` and exits non-zero. This is the runtime gate.
+* This `cutover_gate.py` is the **AC1-AC9 cross-slice conformance
+  smoke**. It composes per-slice validators (catalog, dataset schema,
+  analysis binding, distribution runner, epidemiology planner,
+  ledgers, lineage, all-form validation, file-access boundary) and
+  proves they agree on a cutover-ready worktree. The gate function
+  takes no user-input strings — only filesystem roots — so it cannot
+  become a hidden keyword router.
+
+Planned future work: refactor into the **Stage-4 four-axis verifier**
+described in `CONTEXT.md` lines 423-432 and 615-640 (SoT ↔ built
+artifacts ↔ as-written ledger ↔ runtime retrieval ↔ lineage manifest
+fingerprints). Until that lands, this module plus the two test files
+above are the cross-slice integration smoke and must be kept passing.
 """
 
 from __future__ import annotations
