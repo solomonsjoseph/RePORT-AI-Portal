@@ -11,7 +11,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "SUBJID"
       },
-      "form": null,
+      "form": "19_Smear",
       "handling_action": "pseudonymize",
       "handling_reason": "subject_identifier",
       "handling_status": {
@@ -62,7 +62,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "CM_VISIT"
       },
-      "form": null,
+      "form": "19_Smear",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -111,7 +111,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "CM_FID"
       },
-      "form": null,
+      "form": "19_Smear",
       "handling_action": "pseudonymize",
       "handling_reason": "family_or_household_identifier",
       "handling_status": {
@@ -164,7 +164,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "CM_FEVER"
       },
-      "form": null,
+      "form": "19_Smear",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -216,7 +216,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "CM_FEVER_2"
       },
-      "form": null,
+      "form": "19_Smear",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -268,7 +268,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "CM_FEVER_3"
       },
-      "form": null,
+      "form": "19_Smear",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -320,7 +320,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "CM_FEVER_4"
       },
-      "form": null,
+      "form": "19_Smear",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -375,7 +375,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "CM_MBND2"
       },
-      "form": null,
+      "form": "19_Smear",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -427,7 +427,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "CM_MBDAT2"
       },
-      "form": null,
+      "form": "19_Smear",
       "handling_action": "jitter_date",
       "handling_reason": "date_field",
       "handling_status": {
@@ -483,7 +483,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "CM_MBREFID2"
       },
-      "form": null,
+      "form": "19_Smear",
       "handling_action": "pseudonymize",
       "handling_reason": "operational_identifier",
       "handling_status": {
@@ -538,7 +538,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "CM_MBLABID2"
       },
-      "form": null,
+      "form": "19_Smear",
       "handling_action": "pseudonymize",
       "handling_reason": "facility_or_site_identifier",
       "handling_status": {
@@ -593,7 +593,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "CM_AFBQUAN2"
       },
-      "form": null,
+      "form": "19_Smear",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -643,7 +643,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "CM_COMPDAT"
       },
-      "form": null,
+      "form": "19_Smear",
       "handling_action": "jitter_date",
       "handling_reason": "date_field",
       "handling_status": {
@@ -696,7 +696,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "FID"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "pseudonymize",
       "handling_reason": "family_or_household_identifier",
       "handling_status": {
@@ -748,7 +748,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_VISDAT"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "jitter_date",
       "handling_reason": "date_field",
       "handling_status": {
@@ -803,7 +803,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_PENRB"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -857,7 +857,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_PRIORBID"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "pseudonymize",
       "handling_reason": "subject_identifier",
       "handling_status": {
@@ -911,7 +911,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_CONTACTS"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -963,7 +963,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_SEX"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -1014,7 +1014,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_ICF"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -1066,7 +1066,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_ICFDT"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "jitter_date",
       "handling_reason": "date_field",
       "handling_status": {
@@ -1121,7 +1121,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_AGEY"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -1174,7 +1174,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_BIRTHDAT"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "jitter_date",
       "handling_reason": "date_field",
       "handling_status": {
@@ -1229,7 +1229,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_AGE"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -1279,7 +1279,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_AGEEST"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -1330,7 +1330,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_SMEAR"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -1381,7 +1381,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_KNOWSMEAR"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -1436,7 +1436,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_TBHX"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -1487,7 +1487,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_TBHXTX"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -1539,7 +1539,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_TBTXDT"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "jitter_date",
       "handling_reason": "date_field",
       "handling_status": {
@@ -1595,7 +1595,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_INDIA"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -1651,7 +1651,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_WILLNG"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -1703,7 +1703,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_HIVTEST"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -1757,7 +1757,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "SUBJID2"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "pseudonymize",
       "handling_reason": "subject_identifier",
       "handling_status": {
@@ -1812,7 +1812,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_WEEKTX"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -1867,7 +1867,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_FLUORO"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -1919,7 +1919,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_MXDR"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -1971,7 +1971,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_MXDRCONT"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -2023,7 +2023,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_DOTS"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -2073,7 +2073,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_ELIGIBLE"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -2123,7 +2123,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_ENROLL"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -2174,7 +2174,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_CP1"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -2228,7 +2228,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_CP2"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -2285,7 +2285,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_CP2a"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -2344,7 +2344,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_ELIGIBLECP"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -2399,7 +2399,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_ENROLLCP"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -2454,7 +2454,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_COMPDAT"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "jitter_date",
       "handling_reason": "date_field",
       "handling_status": {
@@ -2507,7 +2507,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_CONTACTS_TOTAL"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "non_annotated_but_likely_derived_numeric_or_status_field",
       "handling_status": {
@@ -2558,7 +2558,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_CONTACTS_6YRS"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "non_annotated_but_likely_derived_numeric_or_status_field",
       "handling_status": {
@@ -2612,7 +2612,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_TXDAYS"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "non_annotated_but_likely_derived_numeric_or_status_field",
       "handling_status": {
@@ -2663,7 +2663,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_TXESTIMATE"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "non_annotated_but_likely_derived_numeric_or_status_field",
       "handling_status": {
@@ -2715,7 +2715,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IS_PTBage"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "keep",
       "handling_reason": "non_annotated_but_likely_derived_numeric_or_status_field",
       "handling_status": {
@@ -2767,7 +2767,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "SUBJID3"
       },
-      "form": null,
+      "form": "1A_ICScreening",
       "handling_action": "pseudonymize",
       "handling_reason": "subject_identifier",
       "handling_status": {
@@ -2821,7 +2821,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "PHCID"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "pseudonymize",
       "handling_reason": "facility_or_site_identifier",
       "handling_status": {
@@ -2873,7 +2873,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_TUID"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "pseudonymize",
       "handling_reason": "facility_or_site_identifier",
       "handling_status": {
@@ -2927,7 +2927,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_DMCID"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "pseudonymize",
       "handling_reason": "facility_or_site_identifier",
       "handling_status": {
@@ -2982,7 +2982,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_VISDAT"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "jitter_date",
       "handling_reason": "date_field",
       "handling_status": {
@@ -3037,7 +3037,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_RELIGION"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -3085,7 +3085,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CASTE"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -3133,7 +3133,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_LANGUAGE"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -3182,7 +3182,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_MASCHOOLDU"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -3234,7 +3234,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_MASCHOOLDK"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -3288,7 +3288,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_SCHOOLDU"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -3340,7 +3340,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_SCHOOLDK"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -3394,7 +3394,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_SCHOOLINF"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -3445,7 +3445,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_JOB"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -3497,7 +3497,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HHINCOME"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -3547,7 +3547,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HHEARNER"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -3597,7 +3597,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HOMETIME"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -3648,7 +3648,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HHMEMNUM"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -3698,7 +3698,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HOMEHOUR"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -3751,7 +3751,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HHTBDX"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -3801,7 +3801,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HHTBTIME"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -3853,7 +3853,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_TBSPREAD"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -3905,7 +3905,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "Cough"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -3956,7 +3956,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "Utensils"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -4007,7 +4007,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "Cigarettes"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -4058,7 +4058,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "Touch"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -4109,7 +4109,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "Food"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -4160,7 +4160,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "SexContact"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -4213,7 +4213,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "Mosquito"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -4264,7 +4264,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_TBCURE"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -4316,7 +4316,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_ALCFRQ"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -4366,7 +4366,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_ALCDOSTX"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -4417,7 +4417,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_ALCUSE"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -4468,7 +4468,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_SMOKHX"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -4517,7 +4517,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "SUBJID4"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "pseudonymize",
       "handling_reason": "subject_identifier",
       "handling_status": {
@@ -4574,7 +4574,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_SMKTYP"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -4625,7 +4625,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "BIDIYN"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -4676,7 +4676,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_BIDIDURY"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -4728,7 +4728,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_BIDIDURM"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -4780,7 +4780,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_BIDIPAST"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -4833,7 +4833,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_BIDICURR"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -4886,7 +4886,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_BIDIQUITY"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -4938,7 +4938,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_BIDIQUITM"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -4990,7 +4990,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "CIGYN"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -5041,7 +5041,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CIGDURY"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5092,7 +5092,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CIGDURM"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5143,7 +5143,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CIGPAST"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5196,7 +5196,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CIGCURR"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5249,7 +5249,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CIGQUITY"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5301,7 +5301,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CIGQUITM"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5353,7 +5353,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "CGRYN"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -5404,7 +5404,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CGRDURY"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5455,7 +5455,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CGRDURM"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5506,7 +5506,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CGRPAST"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5559,7 +5559,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CGRCURR"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5612,7 +5612,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CGRQUITY"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5664,7 +5664,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CGRQUITM"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5716,7 +5716,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "HOOYN"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -5767,7 +5767,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HOODURY"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5818,7 +5818,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HOODURM"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5869,7 +5869,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HOOPASTH"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5922,7 +5922,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HOOPASTM"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -5975,7 +5975,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HOOCURRH"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -6028,7 +6028,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HOOCURRM"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -6081,7 +6081,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HOOQUITY"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -6133,7 +6133,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HOOQUITM"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -6185,7 +6185,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "OSMOYN"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -6236,7 +6236,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_SMODURY"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -6289,7 +6289,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_SMODURM"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -6342,7 +6342,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_SMOPAST"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -6395,7 +6395,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_SMOCURR"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -6448,7 +6448,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_SMOQUITY"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -6501,7 +6501,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_SMOQUITM"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -6554,7 +6554,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "SUBJID5"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "pseudonymize",
       "handling_reason": "subject_identifier",
       "handling_status": {
@@ -6611,7 +6611,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_MEDHX"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -6661,7 +6661,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HIVTEST"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -6712,7 +6712,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_DMDX"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -6764,7 +6764,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_DMDXY"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -6815,7 +6815,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_DMTX"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -6867,7 +6867,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CLINIC"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "pseudonymize",
       "handling_reason": "facility_or_site_identifier",
       "handling_status": {
@@ -6922,7 +6922,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CLINICSP"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "pseudonymize",
       "handling_reason": "facility_or_site_identifier",
       "handling_status": {
@@ -6978,7 +6978,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "SUBJID6"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "pseudonymize",
       "handling_reason": "subject_identifier",
       "handling_status": {
@@ -7035,7 +7035,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_COUGH"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -7084,7 +7084,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_COUGHDUR"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -7133,7 +7133,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_COUGHUNK"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -7183,7 +7183,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_COUGHBLD"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -7234,7 +7234,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_COUGHCAT"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -7284,7 +7284,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_FEVER"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -7333,7 +7333,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_FEVERDUR"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -7382,7 +7382,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_FEVERUNK"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -7432,7 +7432,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_NIGHTSWT"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -7483,7 +7483,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_NIGHTSWTDUR"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -7533,7 +7533,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_NIGHTSWTUNK"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -7584,7 +7584,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_WTLOSS"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -7635,7 +7635,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_WTLOSSDUR"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -7685,7 +7685,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_WTLOSSRUNK"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -7736,7 +7736,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_WTLOSSAMT"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -7786,7 +7786,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_WTLOSSAMTUNK"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -7837,7 +7837,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_FAILTHRV"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -7888,7 +7888,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_CHSTPAIN"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -7938,7 +7938,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_FATIGUE"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -7986,7 +7986,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_KARN"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -8036,7 +8036,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_STEROIDS"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -8086,7 +8086,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "SUBJID7"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "pseudonymize",
       "handling_reason": "subject_identifier",
       "handling_status": {
@@ -8143,7 +8143,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "SUBJID4_2"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "pseudonymize",
       "handling_reason": "subject_identifier",
       "handling_status": {
@@ -8199,7 +8199,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_DIETA"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -8251,7 +8251,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_DIETB"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -8303,7 +8303,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_DIETC"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -8355,7 +8355,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_RESPNDT"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "jitter_date",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -8405,7 +8405,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_BCGSCAR"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -8456,7 +8456,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_ARM"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -8506,7 +8506,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_WEIGHT"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -8554,7 +8554,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_HEIGHT"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -8602,7 +8602,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_KNEEHT"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -8652,7 +8652,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_RBS"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -8703,7 +8703,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_RBSND"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -8754,7 +8754,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_PREGTEST"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -8804,7 +8804,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_PREGNANT"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_categorical",
       "handling_status": {
@@ -8853,7 +8853,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_GESTAGE"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -8903,7 +8903,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_MENSES"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "keep",
       "handling_reason": "clinical_numeric",
       "handling_status": {
@@ -8952,7 +8952,7 @@
         "artifact_type": "study_variable_evidence_pack",
         "variable_id": "IC_COMPDAT"
       },
-      "form": null,
+      "form": "2A_ICBaseline",
       "handling_action": "jitter_date",
       "handling_reason": "date_field",
       "handling_status": {

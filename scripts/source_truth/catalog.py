@@ -223,7 +223,7 @@ def _compact_record(
         "display_label": label,
         "normalized_meaning": label,
         "search_terms": _search_terms(variable_id, normalized),
-        "form": source_truth_artifact.get("source_file"),
+        "form": source_truth_artifact.get("form"),
         "dataset_column": _dataset_column(record),
         "source_presence": _source_presence(record),
         "catalog_tier": "variable",

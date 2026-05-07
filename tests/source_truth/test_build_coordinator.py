@@ -167,6 +167,26 @@ def test_run_build_stage2_emits_schema_and_enriched_concept_index_to_staging(tmp
         assert member["analysis_queryable"] in (True, False)
 
 
+def test_compact_records_have_form_field_populated(tmp_path):
+    import json
+    fixture = Path("tests/fixtures/build_mini").resolve()
+    output_root = tmp_path / "output" / "Mini"
+    run_build(
+        study="Mini",
+        policies_dir=fixture / "data" / "Mini",
+        concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
+        output_root=output_root,
+        column_inventory=None,
+    )
+    catalog = json.loads((output_root / "llm_source" / "study_metadata_catalog.json").read_text())
+    expected_forms = {"19_Smear", "1A_ICScreening", "2A_ICBaseline"}
+    for record in catalog["compact_records"]:
+        assert record.get("form") in expected_forms, (
+            f"variable {record['variable_id']} has form={record.get('form')!r}; "
+            f"expected one of {expected_forms}"
+        )
+
+
 GOLDEN_DIR = Path("tests/fixtures/build_mini/expected_outputs")
 
 
