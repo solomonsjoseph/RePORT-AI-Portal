@@ -19,7 +19,74 @@ import yaml
 from scripts.source_truth import builder as _builder
 from scripts.source_truth.record import SourceTruthValidationError, validate_record
 
-__all__ = ["PolicyLoaderError", "load_policy_yaml"]
+__all__ = [
+    "DuplicateFormNameError",
+    "PolicyLoaderError",
+    "load_policy_yaml",
+    "validate_unique_form_names",
+]
+
+
+class DuplicateFormNameError(ValueError):
+    """Raised when two or more policy YAMLs declare the same ``form:`` value.
+
+    Two policy files declaring the same ``form:`` name would silently clobber
+    each other downstream — aggregated catalogs, ledgers, and the concept index
+    would all be corrupt. This error is raised eagerly at policy-load time, in
+    both the build coordinator and the verify-and-promote gate, so the
+    collision is impossible to miss.
+    """
+
+
+def validate_unique_form_names(
+    policy_artifacts: list[dict[str, Any]],
+    *,
+    sources: list[Path] | None = None,
+) -> None:
+    """Raise ``DuplicateFormNameError`` if two policy artifacts share a ``form:`` name.
+
+    Args:
+        policy_artifacts: Loaded policy mappings (each must contain a string
+            ``form`` key — artifacts without one are skipped silently, matching
+            the previous gate behavior).
+        sources: Optional list of source paths parallel to ``policy_artifacts``.
+            When provided, the error message includes the YAML filenames that
+            declared each duplicate; when ``None``, only form names are listed.
+
+    The function is the single source of truth for this invariant. Both
+    ``scripts.source_truth.build.run_build`` and
+    ``scripts.source_truth.verify_and_promote.run_verification`` call it
+    immediately after loading policies and before any aggregation runs.
+    """
+    if sources is not None and len(sources) != len(policy_artifacts):
+        raise ValueError(
+            "validate_unique_form_names: sources length must match policy_artifacts length"
+        )
+
+    form_sources: dict[str, list[Path | None]] = {}
+    for index, artifact in enumerate(policy_artifacts):
+        form_name = artifact.get("form")
+        if not isinstance(form_name, str):
+            continue
+        source_path = sources[index] if sources is not None else None
+        form_sources.setdefault(form_name, []).append(source_path)
+
+    duplicates = {f: ps for f, ps in form_sources.items() if len(ps) > 1}
+    if not duplicates:
+        return
+
+    if sources is not None:
+        details = "; ".join(
+            f"{form}={[str(p) for p in paths]}"
+            for form, paths in sorted(duplicates.items())
+        )
+    else:
+        details = ", ".join(
+            f"{form}({len(paths)} policies)" for form, paths in sorted(duplicates.items())
+        )
+    raise DuplicateFormNameError(
+        f"duplicate form name(s) declared across policy YAMLs: {details}"
+    )
 
 
 class PolicyLoaderError(ValueError):

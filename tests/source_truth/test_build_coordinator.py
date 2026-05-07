@@ -3,8 +3,10 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
 from scripts.source_truth.build import BuildCoordinatorError, run_build
+from scripts.source_truth.policy_loader import DuplicateFormNameError
 
 
 def test_run_build_resolves_paths_and_creates_output_dirs(tmp_path):
@@ -217,6 +219,96 @@ def test_run_build_stage2_dataset_schema_reflects_column_inventory(tmp_path):
 
 
 GOLDEN_DIR = Path("tests/fixtures/build_mini/expected_outputs")
+
+
+def test_run_build_rejects_duplicate_form_names(tmp_path):
+    """Two policy YAMLs declaring the same ``form:`` value would silently
+    clobber each other in the aggregated catalog, ledgers, and concept index.
+    The build coordinator must raise before any artifacts are emitted."""
+    sot_dir = tmp_path / "sot"
+    sot_dir.mkdir()
+
+    policy_a = {
+        "schema_version": 2,
+        "study": "Mini",
+        "form": "form_dup",
+        "source": {"dataset_file": "form_dup_a.xlsx"},
+        "variables": {"A": {"record_type": "variable"}},
+    }
+    policy_b = {
+        "schema_version": 2,
+        "study": "Mini",
+        "form": "form_dup",
+        "source": {"dataset_file": "form_dup_b.xlsx"},
+        "variables": {"B": {"record_type": "variable"}},
+    }
+    (sot_dir / "form_dup_a_policy.yaml").write_text(
+        yaml.safe_dump(policy_a), encoding="utf-8"
+    )
+    (sot_dir / "form_dup_b_policy.yaml").write_text(
+        yaml.safe_dump(policy_b), encoding="utf-8"
+    )
+
+    output_root = tmp_path / "output" / "Mini"
+
+    with pytest.raises(DuplicateFormNameError, match="form_dup"):
+        run_build(
+            study="Mini",
+            policies_dir=sot_dir,
+            output_root=output_root,
+            column_inventory=None,
+        )
+
+    # Hard invariant: NO artifacts emitted when duplicate detection trips.
+    assert not (output_root / "llm_source" / "study_metadata_catalog.json").exists()
+    assert not (output_root / "audit" / "phi_handling_ledger.declared.json").exists()
+    assert not (
+        output_root / "llm_source" / "concept" / "concept_index.json"
+    ).exists()
+
+
+def test_build_cli_returns_2_on_duplicate_form_names(tmp_path):
+    """The CLI ``main()`` must convert the duplicate-form ``ValueError`` into
+    a clean exit code 2 — not a Python stack trace."""
+    sot_dir = tmp_path / "sot"
+    sot_dir.mkdir()
+    for letter, var in (("a", "A"), ("b", "B")):
+        policy = {
+            "schema_version": 2,
+            "study": "Mini",
+            "form": "form_dup",
+            "source": {"dataset_file": f"form_dup_{letter}.xlsx"},
+            "variables": {var: {"record_type": "variable"}},
+        }
+        (sot_dir / f"form_dup_{letter}_policy.yaml").write_text(
+            yaml.safe_dump(policy), encoding="utf-8"
+        )
+
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "--all-groups",
+            "python",
+            "-m",
+            "scripts.source_truth.build",
+            "--study",
+            "Mini",
+            "--policies-dir",
+            str(sot_dir),
+            "--output-root",
+            str(tmp_path / "cli_run"),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 2, (
+        f"expected exit 2, got {result.returncode}; "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    assert "duplicate form name" in result.stderr.lower()
+    assert "form_dup" in result.stderr
 
 
 @pytest.mark.parametrize(

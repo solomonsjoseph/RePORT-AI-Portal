@@ -44,7 +44,11 @@ from scripts.source_truth.ledgers import (
     build_dataset_cleanup_ledger,
     build_phi_handling_ledger,
 )
-from scripts.source_truth.policy_loader import load_policy_yaml
+from scripts.source_truth.policy_loader import (
+    DuplicateFormNameError,
+    load_policy_yaml,
+    validate_unique_form_names,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +209,13 @@ def run_build(
         raise BuildCoordinatorError(f"no *_policy.yaml files in {policies_dir}")
     policy_artifacts = [load_policy_yaml(p) for p in policy_paths]
 
+    # Reject duplicate ``form:`` declarations BEFORE any aggregation runs.
+    # Two policy YAMLs sharing the same form name would silently clobber each
+    # other in the aggregated catalog, ledgers, and concept index. This is the
+    # same invariant enforced by the verify-and-promote gate; both call sites
+    # share the helper in ``policy_loader``.
+    validate_unique_form_names(policy_artifacts, sources=list(policy_paths))
+
     aggregated = _aggregate_catalog(policy_artifacts)
     compact_only, packs = split_catalog_artifact(aggregated)
 
@@ -268,6 +279,9 @@ def main(argv: list[str] | None = None) -> int:
             column_inventory=args.column_inventory,
         )
     except BuildCoordinatorError as exc:
+        logger.error("build failed: %s", exc)
+        return 2
+    except DuplicateFormNameError as exc:
         logger.error("build failed: %s", exc)
         return 2
 

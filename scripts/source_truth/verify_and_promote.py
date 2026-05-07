@@ -42,6 +42,10 @@ from scripts.source_truth.ledger_readers import (
     load_cleanup_dropped_columns,
     load_phi_dropped_columns,
 )
+from scripts.source_truth.policy_loader import (
+    DuplicateFormNameError,
+    validate_unique_form_names,
+)
 from scripts.source_truth.reconciliation import (
     ReconciliationResult,
     load_scrubbed_columns,
@@ -193,38 +197,32 @@ def run_verification(
         )
         return 2
 
-    # Load policies and build source→form map. Track (form, path) pairs so
-    # duplicate ``form:`` declarations across policy YAMLs are rejected
-    # eagerly (otherwise discrepancy files would silently clobber each
-    # other later in the run).
+    # Load policies and build source→form map. Duplicate ``form:`` declarations
+    # across policy YAMLs are rejected eagerly via the shared
+    # ``validate_unique_form_names`` helper (same invariant enforced by the
+    # build coordinator). Otherwise discrepancy files would silently clobber
+    # each other later in the run.
     policy_artifacts: list[dict[str, Any]] = []
+    policy_sources: list[Path] = []
     source_to_form: dict[str, str] = {}
-    form_sources: dict[str, list[Path]] = {}
     for policy_path in policy_paths:
         artifact = _load_yaml(policy_path)
         if not isinstance(artifact.get("form"), str):
             logger.warning("Skipping malformed policy (no `form`): %s", policy_path)
             continue
         form_name = artifact["form"]
-        form_sources.setdefault(form_name, []).append(policy_path)
         policy_artifacts.append(artifact)
+        policy_sources.append(policy_path)
         source = artifact.get("source") or {}
         dataset_file = source.get("dataset_file") if isinstance(source, dict) else None
         if isinstance(dataset_file, str) and dataset_file:
             source_to_form[dataset_file] = form_name
 
-    duplicates = {f: ps for f, ps in form_sources.items() if len(ps) > 1}
-    if duplicates:
-        details = "; ".join(
-            f"{form}={[str(p) for p in paths]}" for form, paths in sorted(duplicates.items())
-        )
-        logger.error(
-            "verify-and-promote: duplicate form name(s) declared across policy YAMLs: %s",
-            details,
-        )
-        raise ValueError(
-            f"duplicate form name(s) declared across policy YAMLs: {details}"
-        )
+    try:
+        validate_unique_form_names(policy_artifacts, sources=policy_sources)
+    except DuplicateFormNameError as exc:
+        logger.error("verify-and-promote: %s", exc)
+        raise
 
     phi_drops = load_phi_dropped_columns(phi_report)
     cleanup_drops = load_cleanup_dropped_columns(
