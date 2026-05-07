@@ -78,7 +78,7 @@ N := \033[0m
 .DEFAULT_GOAL := help
 .PHONY: \
 	help quickstart debug sync version \
-	pipeline dictionary extract-datasets build-llm-source consolidate-dictionary bundle pdf-extract \
+	pipeline dictionary extract-datasets build-llm-source verify-and-promote consolidate-dictionary bundle pdf-extract \
 	chat-deps chat-cli-deps chat-cli chat build-variables \
 	snapshot snapshot-study restore-study list-snapshots \
 	test test-all lint typecheck security ci verify release-check \
@@ -215,6 +215,15 @@ build-llm-source: ## Run SoT-driven build coordinator (Branch Y of pipeline)
 		--output-root output/$(STUDY) \
 		$(if $(COLUMN_INVENTORY),--column-inventory $(COLUMN_INVENTORY))
 	@$(MAKE) consolidate-dictionary STUDY=$(STUDY) --no-print-directory 2>/dev/null || true
+	@$(MAKE) verify-and-promote STUDY=$(STUDY) --no-print-directory
+
+verify-and-promote: ## Reconcile SoT vs scrubbed dataset; emit per-form discrepancies on mismatch
+	@if [ ! -d "data/$(STUDY)/SoT" ]; then \
+		printf "$(Y)>> SKIP verify-and-promote for STUDY=$(STUDY): data/$(STUDY)/SoT/ not found.$(N)\n"; \
+		exit 0; \
+	fi
+	@printf "$(C)$(B)>> Running verify-and-promote gate for STUDY=$(STUDY)$(N)\n"
+	$(UV) run --all-groups python -m scripts.source_truth.verify_and_promote --study $(STUDY)
 
 consolidate-dictionary: ## Merge trio_bundle/dictionary/*.json → llm_source/data_dictionary.json
 	@if [ ! -d "output/$(STUDY)/trio_bundle/dictionary" ]; then \
