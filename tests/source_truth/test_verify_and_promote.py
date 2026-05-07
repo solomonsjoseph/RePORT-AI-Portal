@@ -348,6 +348,70 @@ def test_run_verification_returns_2_on_corrupt_phi_audit_envelope(
     )
 
 
+def test_run_verification_returns_2_on_duplicate_form_names(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Issue 4 — two policy YAMLs declaring the same ``form:`` value must be
+    rejected with exit code 2 and a log line naming the duplicate."""
+    sot_dir = tmp_path / "sot"
+    sot_dir.mkdir()
+    staging = tmp_path / "staging"
+    audit = tmp_path / "audit"
+    output_root = tmp_path / "output"
+
+    # Two policies, different filenames, same ``form: form_dup``.
+    policy_a = {
+        "schema_version": 2,
+        "study": "Mini",
+        "form": "form_dup",
+        "source": {"dataset_file": "form_dup_a.xlsx"},
+        "variables": {"A": {"record_type": "variable"}},
+    }
+    policy_b = {
+        "schema_version": 2,
+        "study": "Mini",
+        "form": "form_dup",
+        "source": {"dataset_file": "form_dup_b.xlsx"},
+        "variables": {"B": {"record_type": "variable"}},
+    }
+    (sot_dir / "form_dup_a_policy.yaml").write_text(yaml.safe_dump(policy_a), encoding="utf-8")
+    (sot_dir / "form_dup_b_policy.yaml").write_text(yaml.safe_dump(policy_b), encoding="utf-8")
+
+    # Need a scrubbed JSONL so the gate progresses past the staging-empty
+    # graceful skip and reaches the policy-loading duplicate check.
+    _write_scrubbed_jsonl(staging, "form_dup", ["A"])
+    scrub_path = _write_real_phi_audit(audit, drops_by_form={})
+    cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
+
+    # Use main() so we exercise the CLI-level catch that converts the
+    # ValueError into exit code 2 (the orchestrator path).
+    from scripts.source_truth.verify_and_promote import main
+
+    with caplog.at_level("ERROR"):
+        code = main(
+            [
+                "--study",
+                "Mini",
+                "--sot-dir",
+                str(sot_dir),
+                "--staging-root",
+                str(staging),
+                "--scrub-report",
+                str(scrub_path),
+                "--cleanup-report",
+                str(cleanup_path),
+                "--output-root",
+                str(output_root),
+            ]
+        )
+    assert code == 2
+    assert any(
+        "duplicate form name" in record.getMessage().lower()
+        and "form_dup" in record.getMessage()
+        for record in caplog.records
+    )
+
+
 def test_run_verification_only_writes_failing_form_discrepancies(tmp_path: Path) -> None:
     """When 1 of 2 forms fails, only the failing form gets a discrepancy
     file."""

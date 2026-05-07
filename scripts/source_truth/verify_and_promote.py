@@ -193,19 +193,38 @@ def run_verification(
         )
         return 2
 
-    # Load policies and build source→form map.
+    # Load policies and build source→form map. Track (form, path) pairs so
+    # duplicate ``form:`` declarations across policy YAMLs are rejected
+    # eagerly (otherwise discrepancy files would silently clobber each
+    # other later in the run).
     policy_artifacts: list[dict[str, Any]] = []
     source_to_form: dict[str, str] = {}
+    form_sources: dict[str, list[Path]] = {}
     for policy_path in policy_paths:
         artifact = _load_yaml(policy_path)
         if not isinstance(artifact.get("form"), str):
             logger.warning("Skipping malformed policy (no `form`): %s", policy_path)
             continue
+        form_name = artifact["form"]
+        form_sources.setdefault(form_name, []).append(policy_path)
         policy_artifacts.append(artifact)
         source = artifact.get("source") or {}
         dataset_file = source.get("dataset_file") if isinstance(source, dict) else None
         if isinstance(dataset_file, str) and dataset_file:
-            source_to_form[dataset_file] = artifact["form"]
+            source_to_form[dataset_file] = form_name
+
+    duplicates = {f: ps for f, ps in form_sources.items() if len(ps) > 1}
+    if duplicates:
+        details = "; ".join(
+            f"{form}={[str(p) for p in paths]}" for form, paths in sorted(duplicates.items())
+        )
+        logger.error(
+            "verify-and-promote: duplicate form name(s) declared across policy YAMLs: %s",
+            details,
+        )
+        raise ValueError(
+            f"duplicate form name(s) declared across policy YAMLs: {details}"
+        )
 
     phi_drops = load_phi_dropped_columns(phi_report)
     cleanup_drops = load_cleanup_dropped_columns(
@@ -320,14 +339,20 @@ def main(argv: list[str] | None = None) -> int:
     scrub_report = args.scrub_report or (output_root / "audit" / "phi_scrub_report.json")
     cleanup_report = args.cleanup_report or (output_root / "audit" / "dataset_cleanup_report.json")
 
-    return run_verification(
-        study=study,
-        sot_dir=sot_dir,
-        staging_root=staging_root,
-        scrub_report_path=scrub_report,
-        cleanup_report_path=cleanup_report,
-        output_root=output_root,
-    )
+    try:
+        return run_verification(
+            study=study,
+            sot_dir=sot_dir,
+            staging_root=staging_root,
+            scrub_report_path=scrub_report,
+            cleanup_report_path=cleanup_report,
+            output_root=output_root,
+        )
+    except ValueError as exc:
+        # Configuration errors (e.g. duplicate form names across policy
+        # YAMLs) are gate failures, not crashes — return exit code 2.
+        logger.error("verify-and-promote: aborting — %s", exc)
+        return 2
 
 
 if __name__ == "__main__":
