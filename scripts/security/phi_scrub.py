@@ -112,6 +112,7 @@ from typing import Any
 import yaml
 
 import config
+from scripts.audit.ledger import LedgerWriter
 from scripts.extraction.io import atomic_write_json, atomic_write_jsonl, parse_date
 from scripts.security.secure_env import assert_output_zone, assert_write_zone
 
@@ -1102,6 +1103,45 @@ def _emit_audit(
     atomic_write_json(audit_path, payload)
 
 
+_SCOPE_TO_ACTION: dict[str, str] = {
+    "phi-scrub-drop": "drop",
+    "phi-scrub-birthdate-drop": "birthdate_drop",
+    "phi-scrub-id": "pseudonymize",
+    "phi-scrub-date": "jitter_date",
+    "phi-scrub-cap": "cap",
+    "phi-scrub-generalize": "generalize",
+    "phi-scrub-suppress-small-cell": "suppress_small_cell",
+}
+
+
+def _emit_as_written_ledger(
+    *,
+    events: list[dict[str, Any]],
+    audit_path: Path,
+) -> None:
+    """Write phi_handling_ledger.as_written.json alongside the legacy audit report."""
+    assert_output_zone(audit_path.parent)
+    ledger_path = audit_path.parent / "phi_handling_ledger.as_written.json"
+    writer = LedgerWriter(output_path=ledger_path)
+    for event in events:
+        action = _SCOPE_TO_ACTION.get(event["scope"])
+        if action is None:
+            # phi-scrub-keep and any unrecognized scopes are not PHI handling actions
+            continue
+        writer.add_phi_event(
+            form=Path(event["file"]).stem,
+            variable_id=event["field"],
+            action=action,
+            rule_taxonomy=None,
+            rule_project_category=None,
+            rationale="Applied by PHI scrubber per phi_scrub.yaml configuration",
+            dataset_file=event["file"],
+            pdf_source=None,
+            count=event["count"],
+        )
+    writer.flush()
+
+
 def run_scrub(study_name: str | None = None) -> None:
     """Orchestrate the scrub: load key + config, walk staging, emit audit.
 
@@ -1158,6 +1198,7 @@ def run_scrub(study_name: str | None = None) -> None:
             orphans={},
             audit_path=audit_path,
         )
+        _emit_as_written_ledger(events=[], audit_path=audit_path)
         return
 
     # Sentinel short-circuit — prevents accidental double-scrub on restart.
@@ -1183,6 +1224,7 @@ def run_scrub(study_name: str | None = None) -> None:
             orphans={},
             audit_path=audit_path,
         )
+        _emit_as_written_ledger(events=[], audit_path=audit_path)
         return
 
     assert_write_zone(staging_datasets)
@@ -1225,6 +1267,7 @@ def run_scrub(study_name: str | None = None) -> None:
         orphans=orphan_totals,
         audit_path=audit_path,
     )
+    _emit_as_written_ledger(events=events, audit_path=audit_path)
 
     with sentinel.open("w", encoding="utf-8") as _sf:
         _sf.write(_SCRUB_VERSION)

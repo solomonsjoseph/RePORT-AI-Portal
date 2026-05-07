@@ -40,6 +40,7 @@ from scripts.source_truth.concepts import (
 )
 from scripts.source_truth.dataset_schema import build_dataset_schema
 from scripts.source_truth.evidence_pack_splitter import split_catalog_artifact
+from scripts.source_truth.builder import DERIVATION_CLEANUP_LEDGER, DERIVATION_PHI_LEDGER
 from scripts.source_truth.ledgers import (
     build_dataset_cleanup_ledger,
     build_phi_handling_ledger,
@@ -86,6 +87,87 @@ def _aggregate_declared_ledgers(
         {"artifact_type": "phi_handling_ledger", "kind": "declared", "entries": phi_entries},
         {"artifact_type": "dataset_cleanup_ledger", "kind": "declared", "entries": cleanup_entries},
     )
+
+
+def _build_new_phi_declared_entries(
+    policy_artifacts: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build new-schema PHI declared entries from all policy artifacts.
+
+    Includes one entry per record whose ``derivation_targets`` contains
+    ``DERIVATION_PHI_LEDGER``.  Fields are sourced directly from the
+    translated policy artifact; no runtime data is included (``count``
+    is always ``None``).
+    """
+    entries: list[dict[str, Any]] = []
+    for art in policy_artifacts:
+        form = art.get("form")
+        source = art.get("source") or {}
+        dataset_file = source.get("dataset_file")
+        pdf_source = source.get("pdf_file")
+        for record in art.get("records") or []:
+            if DERIVATION_PHI_LEDGER not in record.get("derivation_targets", []):
+                continue
+            normalized = record.get("normalized") or {}
+            sensitivity_flags = normalized.get("sensitivity_flags") or []
+            entries.append(
+                {
+                    "form": form,
+                    "variable_id": record.get("variable_id"),
+                    "action": normalized.get("handling_action"),
+                    "rule": {
+                        "taxonomy": None,
+                        "project_category": sensitivity_flags[0] if sensitivity_flags else None,
+                    },
+                    "rationale": normalized.get("handling_reason"),
+                    "where": {
+                        "dataset_file": dataset_file,
+                        "pdf_source": pdf_source,
+                    },
+                    "count": None,
+                }
+            )
+    return entries
+
+
+def _build_new_cleanup_declared_entries(
+    policy_artifacts: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build new-schema dataset cleanup declared entries from all policy artifacts.
+
+    Includes one entry per record whose ``derivation_targets`` contains
+    ``DERIVATION_CLEANUP_LEDGER``.  SoT only declares column-level drops,
+    so ``action`` is always ``"dataset_column_drop"`` and
+    ``rule.project_category`` is always ``"cleanup"``.
+    ``where.pdf_source`` is always ``None`` (cleanup is dataset-only).
+    """
+    entries: list[dict[str, Any]] = []
+    for art in policy_artifacts:
+        form = art.get("form")
+        source = art.get("source") or {}
+        dataset_file = source.get("dataset_file")
+        for record in art.get("records") or []:
+            if DERIVATION_CLEANUP_LEDGER not in record.get("derivation_targets", []):
+                continue
+            normalized = record.get("normalized") or {}
+            entries.append(
+                {
+                    "form": form,
+                    "variable_id": record.get("variable_id"),
+                    "action": "dataset_column_drop",
+                    "rule": {
+                        "taxonomy": None,
+                        "project_category": "cleanup",
+                    },
+                    "rationale": normalized.get("handling_reason"),
+                    "where": {
+                        "dataset_file": dataset_file,
+                        "pdf_source": None,
+                    },
+                    "count": None,
+                }
+            )
+    return entries
 
 
 def _aggregate_catalog(policy_artifacts: list[dict[str, Any]]) -> dict[str, Any]:
@@ -259,9 +341,16 @@ def run_build(
     summary["compact_record_count"] = len(compact_only.get("compact_records") or [])
     summary["evidence_pack_count"] = len(packs)
 
-    phi_declared, cleanup_declared = _aggregate_declared_ledgers(policy_artifacts)
-    _write_canonical_json(audit_dir / "phi_handling_ledger.declared.json", phi_declared)
-    _write_canonical_json(audit_dir / "dataset_cleanup_ledger.declared.json", cleanup_declared)
+    phi_entries = _build_new_phi_declared_entries(policy_artifacts)
+    cleanup_entries = _build_new_cleanup_declared_entries(policy_artifacts)
+    _write_canonical_json(
+        audit_dir / "phi_handling_ledger.declared.json",
+        {"artifact_type": "phi_handling_ledger", "kind": "declared", "entries": phi_entries},
+    )
+    _write_canonical_json(
+        audit_dir / "dataset_cleanup_ledger.declared.json",
+        {"artifact_type": "dataset_cleanup_ledger", "kind": "declared", "entries": cleanup_entries},
+    )
     summary["emitted"].extend([
         "audit/phi_handling_ledger.declared.json",
         "audit/dataset_cleanup_ledger.declared.json",

@@ -39,6 +39,7 @@ from typing import Any
 import pandas as pd
 
 import config
+from scripts.audit.ledger import LedgerWriter
 from scripts.extraction.io import (
     atomic_write_dataframe_jsonl,
     atomic_write_json,
@@ -326,6 +327,63 @@ def _serialize_audit(
     atomic_write_json(out_path, payload)
 
 
+def _emit_as_written_ledger(
+    *,
+    extracted_drop_events: list[dict[str, Any]],
+    report: CleanupReport,
+    audit_path: Path,
+) -> None:
+    """Write dataset_cleanup_ledger.as_written.json alongside the legacy audit.
+
+    Dual-write only — does not modify the legacy audit report.
+    """
+    ledger_path = audit_path.parent / "dataset_cleanup_ledger.as_written.json"
+    writer = LedgerWriter(output_path=ledger_path)
+
+    # Column-drop events (scope == "dataset-column" only)
+    for event in extracted_drop_events:
+        if event.get("scope") != "dataset-column":
+            continue
+        writer.add_cleanup_event(
+            form=Path(event["file"]).stem,
+            variable_id=event["name"],
+            action="dataset_column_drop",
+            rule_project_category="cleanup",
+            rationale=event.get("reason", ""),
+            dataset_file=event["file"],
+            count=None,
+        )
+
+    # Junk file removals
+    for filename in report.junk_removed:
+        stem = Path(filename).stem
+        writer.add_cleanup_event(
+            form=stem,
+            variable_id=stem,
+            action="dataset_junk_file",
+            rule_project_category="cleanup",
+            rationale="known junk artifact",
+            dataset_file=filename,
+            count=None,
+        )
+
+    # Duplicate-pair merges
+    for dup in report.duplicates_merged:
+        removed_file = dup.get("removed", "")
+        stem = Path(removed_file).stem
+        writer.add_cleanup_event(
+            form=stem,
+            variable_id=stem,
+            action="dataset_duplicate_file",
+            rule_project_category="cleanup",
+            rationale=dup.get("reason", ""),
+            dataset_file=removed_file,
+            count=None,
+        )
+
+    writer.flush()
+
+
 def clean_trio_datasets(
     datasets_dir: Path | None = None,
     *,
@@ -404,5 +462,12 @@ def clean_trio_datasets(
 
     # Phase 3: Always emit unified audit (even on empty/missing input)
     _serialize_audit(report, extracted_drop_events, study_name, audit_path)
+
+    # Phase 4: Dual-write new as_written ledger (additive, does not modify legacy audit)
+    _emit_as_written_ledger(
+        extracted_drop_events=extracted_drop_events,
+        report=report,
+        audit_path=audit_path,
+    )
 
     return report

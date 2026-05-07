@@ -571,6 +571,96 @@ class TestRunScrub:
             phi_scrub.run_scrub(study_name="TEST")
 
 
+# ── As-written ledger (dual-write) ──────────────────────────────────────────
+
+
+class TestAsWrittenLedger:
+    """Verify phi_handling_ledger.as_written.json is written alongside the legacy report."""
+
+    def test_ledger_created_after_scrub(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        _write_config(scrub_config_path)
+        rows = [
+            {"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15"},
+        ]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        ledger_path = Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        assert ledger_path.is_file(), "phi_handling_ledger.as_written.json must be created"
+        payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+        assert "run_id" in payload
+        assert "iso_timestamp" in payload
+        assert "events" in payload
+
+    def test_ledger_event_shape(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        _write_config(scrub_config_path)  # safe_harbor: DOB dropped, VISDAT shifted, SUBJID pseudonymized
+        rows = [
+            {"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15"},
+        ]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        ledger_path = Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+        assert len(payload["events"]) >= 1, "Expected at least one PHI handling event"
+        event = payload["events"][0]
+        assert set(event.keys()) == {"form", "variable_id", "action", "rule", "rationale", "where", "count"}
+
+    def test_ledger_empty_on_disabled_mode(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("REPORTALIN_ALLOW_DISABLED_SCRUB", "1")
+        rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        ledger_path = Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        assert ledger_path.is_file()
+        payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+        assert payload["events"] == []
+
+    def test_keep_scope_not_in_ledger(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        # keep_fields covers SUBJID AND VISDAT — neither should be emitted as PHI actions.
+        # DOB is also absent from the row. Only _phi_scrubbed marker is written.
+        # Result: the as_written ledger has zero events (keep is not a PHI handling action).
+        _write_config(
+            scrub_config_path,
+            keep_fields=["^SUBJID$", "^VISDAT$"],
+            # no drop / date / id / birthdate that would fire
+            id_fields=[],
+            date_fields=[],
+        )
+        rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        ledger_path = Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        assert ledger_path.is_file()
+        payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+        assert payload["events"] == [], (
+            "keep-scoped fields must not appear in the as_written ledger"
+        )
+
+
 # ── Determinism across subject_id values (SANT spot-check) ──────────────────
 
 

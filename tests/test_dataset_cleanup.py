@@ -368,3 +368,114 @@ class TestAuditSerialization:
         payload = json.loads(config.AUDIT_DATASET_REPORT_PATH.read_text())
         assert payload["errors"] == []
         assert payload["skipped"] == []
+
+
+class TestAsWrittenLedger:
+    """Phase 1C: clean_trio_datasets dual-writes dataset_cleanup_ledger.as_written.json."""
+
+    def _ledger_path(self) -> "Path":
+        import config
+
+        return config.AUDIT_DATASET_REPORT_PATH.parent / "dataset_cleanup_ledger.as_written.json"
+
+    def test_as_written_ledger_created(self, monkeypatch_config: Path) -> None:
+        import config
+
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
+
+        clean_trio_datasets(
+            ds,
+            extracted_drop_events=[],
+            study_name="TestStudy",
+        )
+
+        ledger_path = self._ledger_path()
+        assert ledger_path.exists(), "ledger.as_written.json was not created"
+
+        envelope = json.loads(ledger_path.read_text())
+        assert "run_id" in envelope
+        assert "iso_timestamp" in envelope
+        assert "events" in envelope
+        assert isinstance(envelope["events"], list)
+
+    def test_as_written_ledger_column_drop_shape(self, monkeypatch_config: Path) -> None:
+        import config
+
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
+
+        drop_event = {
+            "scope": "dataset-column",
+            "name": "DUP_COL_1",
+            "file": "1A_ICScreening.xlsx",
+            "sheet": "Sheet1",
+            "reason": "100% identical to 'DUP_COL'",
+            "kept": "DUP_COL",
+        }
+
+        clean_trio_datasets(
+            ds,
+            extracted_drop_events=[drop_event],
+            study_name="TestStudy",
+        )
+
+        envelope = json.loads(self._ledger_path().read_text())
+        col_drops = [e for e in envelope["events"] if e["action"] == "dataset_column_drop"]
+        assert len(col_drops) == 1
+
+        ev = col_drops[0]
+        assert ev["action"] == "dataset_column_drop"
+        assert ev["form"] == "1A_ICScreening"
+        assert ev["variable_id"] == "DUP_COL_1"
+        assert ev["where"]["dataset_file"] == "1A_ICScreening.xlsx"
+
+    def test_as_written_ledger_junk_file_shape(self, monkeypatch_config: Path) -> None:
+        import config
+
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
+        _write_jsonl(ds / "Paste Errors.jsonl", [{"a": 1}])
+
+        clean_trio_datasets(
+            ds,
+            extracted_drop_events=[],
+            study_name="TestStudy",
+        )
+
+        envelope = json.loads(self._ledger_path().read_text())
+        junk_events = [e for e in envelope["events"] if e["action"] == "dataset_junk_file"]
+        assert len(junk_events) == 1
+
+        ev = junk_events[0]
+        assert ev["action"] == "dataset_junk_file"
+        assert ev["form"] == "Paste Errors"
+        assert ev["variable_id"] == "Paste Errors"
+        assert ev["where"]["dataset_file"] == "Paste Errors.jsonl"
+
+    def test_non_column_scope_not_in_ledger(self, monkeypatch_config: Path) -> None:
+        """extracted_drop_events with scope != 'dataset-column' must not produce column-drop events."""
+        import config
+
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
+
+        # Only a non-column-scope event — should be filtered out of column-drop section
+        non_column_event = {
+            "scope": "dataset-junk-file",
+            "name": "Paste Errors",
+            "file": "Paste Errors.jsonl",
+            "sheet": None,
+            "reason": "known junk artifact",
+            "kept": None,
+        }
+
+        clean_trio_datasets(
+            ds,
+            extracted_drop_events=[non_column_event],
+            study_name="TestStudy",
+        )
+
+        envelope = json.loads(self._ledger_path().read_text())
+        col_drops = [e for e in envelope["events"] if e["action"] == "dataset_column_drop"]
+        assert col_drops == [], "non-column scope must not produce dataset_column_drop events"

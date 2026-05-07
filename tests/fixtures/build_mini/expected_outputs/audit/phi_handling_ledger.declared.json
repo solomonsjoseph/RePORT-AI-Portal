@@ -3,1008 +3,572 @@
   "entries": [
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "subject_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "subject_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "SUBJID"
+      "count": null,
+      "form": "19_Smear",
+      "rationale": "subject_identifier",
+      "rule": {
+        "project_category": "subject_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "SUBJID",
+      "where": {
+        "dataset_file": "19_Smear.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/19 Smear V1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "family_or_household_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "family_or_household_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "CM_FID"
+      "count": null,
+      "form": "19_Smear",
+      "rationale": "family_or_household_identifier",
+      "rule": {
+        "project_category": "family_or_household_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "CM_FID",
+      "where": {
+        "dataset_file": "19_Smear.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/19 Smear V1.0.pdf"
       }
     },
     {
       "action": "jitter_date",
-      "field_class": null,
-      "reason": "date_field",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "date"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "CM_MBDAT2"
+      "count": null,
+      "form": "19_Smear",
+      "rationale": "date_field",
+      "rule": {
+        "project_category": "date",
+        "taxonomy": null
+      },
+      "variable_id": "CM_MBDAT2",
+      "where": {
+        "dataset_file": "19_Smear.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/19 Smear V1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "operational_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "operational_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "CM_MBREFID2"
+      "count": null,
+      "form": "19_Smear",
+      "rationale": "operational_identifier",
+      "rule": {
+        "project_category": "operational_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "CM_MBREFID2",
+      "where": {
+        "dataset_file": "19_Smear.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/19 Smear V1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "facility_or_site_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "facility_or_site_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "CM_MBLABID2"
+      "count": null,
+      "form": "19_Smear",
+      "rationale": "facility_or_site_identifier",
+      "rule": {
+        "project_category": "facility_or_site_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "CM_MBLABID2",
+      "where": {
+        "dataset_file": "19_Smear.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/19 Smear V1.0.pdf"
       }
     },
     {
       "action": "jitter_date",
-      "field_class": null,
-      "reason": "date_field",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "date"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "CM_COMPDAT"
+      "count": null,
+      "form": "19_Smear",
+      "rationale": "date_field",
+      "rule": {
+        "project_category": "date",
+        "taxonomy": null
+      },
+      "variable_id": "CM_COMPDAT",
+      "where": {
+        "dataset_file": "19_Smear.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/19 Smear V1.0.pdf"
       }
     },
     {
       "action": "drop",
-      "field_class": null,
-      "reason": "initials_field",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "signature_or_initials"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "CM_INIT"
+      "count": null,
+      "form": "19_Smear",
+      "rationale": "initials_field",
+      "rule": {
+        "project_category": "signature_or_initials",
+        "taxonomy": null
+      },
+      "variable_id": "CM_INIT",
+      "where": {
+        "dataset_file": "19_Smear.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/19 Smear V1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "subject_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "subject_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "SUBJID"
+      "count": null,
+      "form": "1A_ICScreening",
+      "rationale": "subject_identifier",
+      "rule": {
+        "project_category": "subject_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "SUBJID",
+      "where": {
+        "dataset_file": "1A_ICScreening.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/1A Index Case Screening v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "family_or_household_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "family_or_household_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "FID"
+      "count": null,
+      "form": "1A_ICScreening",
+      "rationale": "family_or_household_identifier",
+      "rule": {
+        "project_category": "family_or_household_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "FID",
+      "where": {
+        "dataset_file": "1A_ICScreening.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/1A Index Case Screening v1.0.pdf"
       }
     },
     {
       "action": "jitter_date",
-      "field_class": null,
-      "reason": "date_field",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "date"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_VISDAT"
+      "count": null,
+      "form": "1A_ICScreening",
+      "rationale": "date_field",
+      "rule": {
+        "project_category": "date",
+        "taxonomy": null
+      },
+      "variable_id": "IS_VISDAT",
+      "where": {
+        "dataset_file": "1A_ICScreening.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/1A Index Case Screening v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "subject_identifier",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "subject_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_PRIORBID"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "location_field_requires_generalize_keep_or_drop_decision",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "location_or_geography"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_MUNIC"
+      "count": null,
+      "form": "1A_ICScreening",
+      "rationale": "subject_identifier",
+      "rule": {
+        "project_category": "subject_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "IS_PRIORBID",
+      "where": {
+        "dataset_file": "1A_ICScreening.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/1A Index Case Screening v1.0.pdf"
       }
     },
     {
       "action": "jitter_date",
-      "field_class": null,
-      "reason": "date_field",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "date"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_ICFDT"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "not_directly_mapped_in_pdf_annotation",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_ICFV"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_specify",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "free_text_or_specify"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_ICFREAS"
+      "count": null,
+      "form": "1A_ICScreening",
+      "rationale": "date_field",
+      "rule": {
+        "project_category": "date",
+        "taxonomy": null
+      },
+      "variable_id": "IS_ICFDT",
+      "where": {
+        "dataset_file": "1A_ICScreening.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/1A Index Case Screening v1.0.pdf"
       }
     },
     {
       "action": "jitter_date",
-      "field_class": null,
-      "reason": "date_field",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "date"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_BIRTHDAT"
+      "count": null,
+      "form": "1A_ICScreening",
+      "rationale": "date_field",
+      "rule": {
+        "project_category": "date",
+        "taxonomy": null
+      },
+      "variable_id": "IS_BIRTHDAT",
+      "where": {
+        "dataset_file": "1A_ICScreening.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/1A Index Case Screening v1.0.pdf"
       }
     },
     {
       "action": "jitter_date",
-      "field_class": null,
-      "reason": "date_field",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "date"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_TBTXDT"
+      "count": null,
+      "form": "1A_ICScreening",
+      "rationale": "date_field",
+      "rule": {
+        "project_category": "date",
+        "taxonomy": null
+      },
+      "variable_id": "IS_TBTXDT",
+      "where": {
+        "dataset_file": "1A_ICScreening.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/1A Index Case Screening v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "subject_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "subject_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "SUBJID2"
+      "count": null,
+      "form": "1A_ICScreening",
+      "rationale": "subject_identifier",
+      "rule": {
+        "project_category": "subject_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "SUBJID2",
+      "where": {
+        "dataset_file": "1A_ICScreening.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/1A Index Case Screening v1.0.pdf"
       }
     },
     {
       "action": "drop",
-      "field_class": null,
-      "reason": "signature_field",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "signature_or_initials"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_SIGN"
+      "count": null,
+      "form": "1A_ICScreening",
+      "rationale": "signature_field",
+      "rule": {
+        "project_category": "signature_or_initials",
+        "taxonomy": null
+      },
+      "variable_id": "IS_SIGN",
+      "where": {
+        "dataset_file": "1A_ICScreening.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/1A Index Case Screening v1.0.pdf"
       }
     },
     {
       "action": "drop",
-      "field_class": null,
-      "reason": "initials_field",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "signature_or_initials"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_INIT"
+      "count": null,
+      "form": "1A_ICScreening",
+      "rationale": "initials_field",
+      "rule": {
+        "project_category": "signature_or_initials",
+        "taxonomy": null
+      },
+      "variable_id": "IS_INIT",
+      "where": {
+        "dataset_file": "1A_ICScreening.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/1A Index Case Screening v1.0.pdf"
       }
     },
     {
       "action": "jitter_date",
-      "field_class": null,
-      "reason": "date_field",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "date"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_COMPDAT"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_specify",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "free_text_or_specify"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_UNWILLING"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_specify",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "free_text_or_specify"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_NOTENROLL"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "not_directly_mapped_in_pdf_annotation",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_TBDIAG"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_or_other_specify_or_unproven_supplemental_field",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_STORAGE1"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_or_other_specify_or_unproven_supplemental_field",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_STORAGE2"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "not_directly_mapped_in_pdf_annotation",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_SPUTHIV"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "not_directly_mapped_in_pdf_annotation",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_HIV_WILLING"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_or_other_specify_or_unproven_supplemental_field",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_PTBNOTENROLL"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "not_directly_mapped_in_pdf_annotation",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_PTBfemale"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "not_directly_mapped_in_pdf_annotation",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_PTBmarried"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "not_directly_mapped_in_pdf_annotation",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_PTBeligible"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "not_directly_mapped_in_pdf_annotation",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_PTBenroll"
+      "count": null,
+      "form": "1A_ICScreening",
+      "rationale": "date_field",
+      "rule": {
+        "project_category": "date",
+        "taxonomy": null
+      },
+      "variable_id": "IS_COMPDAT",
+      "where": {
+        "dataset_file": "1A_ICScreening.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/1A Index Case Screening v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "subject_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "subject_identifier"
-      ],
-      "source_kind": "dataset_only",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "SUBJID3"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "not_directly_mapped_in_pdf_annotation",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_CP1A"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "not_directly_mapped_in_pdf_annotation",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_CP1B"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "not_directly_mapped_in_pdf_annotation",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_AEXCL03"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "not_directly_mapped_in_pdf_annotation",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_AEXCL04"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_or_other_specify_or_unproven_supplemental_field",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "review_required"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IS_OTHENRPP"
+      "count": null,
+      "form": "1A_ICScreening",
+      "rationale": "subject_identifier",
+      "rule": {
+        "project_category": "subject_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "SUBJID3",
+      "where": {
+        "dataset_file": "1A_ICScreening.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/1A Index Case Screening v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "subject_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "subject_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "SUBJID"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "subject_identifier",
+      "rule": {
+        "project_category": "subject_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "SUBJID",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "family_or_household_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "family_or_household_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "FID"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "family_or_household_identifier",
+      "rule": {
+        "project_category": "family_or_household_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "FID",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "facility_or_site_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "facility_or_site_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "PHCID"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "facility_or_site_identifier",
+      "rule": {
+        "project_category": "facility_or_site_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "PHCID",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "facility_or_site_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "facility_or_site_identifier"
-      ],
-      "source_kind": "dataset_only",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_TUID"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "facility_or_site_identifier",
+      "rule": {
+        "project_category": "facility_or_site_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "IC_TUID",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "facility_or_site_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "facility_or_site_identifier"
-      ],
-      "source_kind": "dataset_only",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_DMCID"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "facility_or_site_identifier",
+      "rule": {
+        "project_category": "facility_or_site_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "IC_DMCID",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "jitter_date",
-      "field_class": null,
-      "reason": "date_field",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "date"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_VISDAT"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_specify",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "free_text_or_specify"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_RELIGIONSP"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_specify",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "free_text_or_specify"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_LANGUAGESP"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "date_field",
+      "rule": {
+        "project_category": "date",
+        "taxonomy": null
+      },
+      "variable_id": "IC_VISDAT",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "subject_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "subject_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "SUBJID2"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_specify",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "free_text_or_specify"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_JOBSP"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "location_field_requires_generalize_keep_or_drop_decision",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "location"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_LOC"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "subject_identifier",
+      "rule": {
+        "project_category": "subject_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "SUBJID2",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "subject_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "subject_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "SUBJID3"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_specify",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "free_text_or_specify"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "TBKNOWOTHER"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "subject_identifier",
+      "rule": {
+        "project_category": "subject_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "SUBJID3",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "subject_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "subject_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "SUBJID4"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_specify",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "free_text_or_specify"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_SMOSP"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "subject_identifier",
+      "rule": {
+        "project_category": "subject_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "SUBJID4",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "subject_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "subject_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "SUBJID5"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "location_field_requires_generalize_keep_or_drop_decision",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "location"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_HIVLOC"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_specify",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "free_text_or_specify"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_HIVLOCSP"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_specify",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "free_text_or_specify"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_DMTXSP"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "subject_identifier",
+      "rule": {
+        "project_category": "subject_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "SUBJID5",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "facility_or_site_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "facility_or_site_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_CLINIC"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "facility_or_site_identifier",
+      "rule": {
+        "project_category": "facility_or_site_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "IC_CLINIC",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "facility_or_site_identifier",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "facility_or_site_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_CLINICSP"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_specify",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "free_text_or_specify"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "CareOther"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_specify",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "free_text_or_specify"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "Other"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "facility_or_site_identifier",
+      "rule": {
+        "project_category": "facility_or_site_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "IC_CLINICSP",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "subject_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "subject_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "SUBJID6"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_specify",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "free_text_or_specify"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_OTHERSYMP"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "subject_identifier",
+      "rule": {
+        "project_category": "subject_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "SUBJID6",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "subject_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "subject_identifier"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "SUBJID7"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "subject_identifier",
+      "rule": {
+        "project_category": "subject_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "SUBJID7",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "pseudonymize",
-      "field_class": null,
-      "reason": "subject_identifier",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "subject_identifier"
-      ],
-      "source_kind": "dataset_only",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "SUBJID4_2"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "subject_identifier",
+      "rule": {
+        "project_category": "subject_identifier",
+        "taxonomy": null
+      },
+      "variable_id": "SUBJID4_2",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "jitter_date",
-      "field_class": null,
-      "reason": "clinical_categorical",
-      "review_state": "reviewed",
-      "sensitivity_flags": [],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_RESPNDT"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_specify",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "free_text_or_specify"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_RESPDTSP"
-      }
-    },
-    {
-      "action": "review_required",
-      "field_class": null,
-      "reason": "possible_free_text_specify",
-      "review_state": "review_required",
-      "sensitivity_flags": [
-        "free_text_or_specify"
-      ],
-      "source_kind": "review_required",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_MENSESOTH"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "clinical_categorical",
+      "rule": {
+        "project_category": null,
+        "taxonomy": null
+      },
+      "variable_id": "IC_RESPNDT",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "drop",
-      "field_class": null,
-      "reason": "signature_field",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "signature_or_initials"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_SIGN"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "signature_field",
+      "rule": {
+        "project_category": "signature_or_initials",
+        "taxonomy": null
+      },
+      "variable_id": "IC_SIGN",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "drop",
-      "field_class": null,
-      "reason": "initials_field",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "signature_or_initials"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_INIT"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "initials_field",
+      "rule": {
+        "project_category": "signature_or_initials",
+        "taxonomy": null
+      },
+      "variable_id": "IC_INIT",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     },
     {
       "action": "jitter_date",
-      "field_class": null,
-      "reason": "date_field",
-      "review_state": "reviewed",
-      "sensitivity_flags": [
-        "date"
-      ],
-      "source_kind": "matched",
-      "source_truth_ref": {
-        "artifact_type": "study_variable_source_truth",
-        "variable_id": "IC_COMPDAT"
+      "count": null,
+      "form": "2A_ICBaseline",
+      "rationale": "date_field",
+      "rule": {
+        "project_category": "date",
+        "taxonomy": null
+      },
+      "variable_id": "IC_COMPDAT",
+      "where": {
+        "dataset_file": "2A_ICBaseline.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/2A Index- Baseline v1.0.pdf"
       }
     }
   ],
