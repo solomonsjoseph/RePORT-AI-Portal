@@ -192,6 +192,10 @@ def _runtime_events(
         raise SourceTruthLedgerError(f"runtime_metadata.{key} must be a list")
     if not all(isinstance(event, Mapping) for event in events):
         raise SourceTruthLedgerError(f"runtime_metadata.{key} entries must be mappings")
+    # Scope the forbidden-key scan to the runtime-event subtree the ledger
+    # actually consumes (e.g. catches ``before_value`` leaking into a removed-
+    # event mapping) without rejecting unrelated top-level runtime keys.
+    _reject_forbidden_keys(f"runtime_metadata.{key}", {key: events})
     return events
 
 
@@ -316,14 +320,21 @@ def build_phi_handling_ledger(
     source_truth_artifact: Mapping[str, Any],
     runtime_metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build a metadata-only PHI handling ledger from Source Truth decisions."""
+    """Build a metadata-only PHI handling ledger from Source Truth decisions.
+
+    Forbidden-key scanning is scoped to the subtrees the ledger actually
+    consumes (records, and runtime events when present). Unrelated
+    top-level keys on the policy artifact (e.g. ``option_sets``,
+    ``pdf_sections``, ``coverage``) are ignored — they are not part of the
+    ledger contract.
+    """
     if not isinstance(source_truth_artifact, Mapping):
         raise SourceTruthLedgerError("source_truth_artifact must be a mapping")
     if runtime_metadata is not None and not isinstance(runtime_metadata, Mapping):
         raise SourceTruthLedgerError("runtime_metadata must be a mapping when provided")
-    _reject_forbidden_keys("source_truth_artifact", source_truth_artifact)
-    if runtime_metadata is not None:
-        _reject_forbidden_keys("runtime_metadata", runtime_metadata)
+    _reject_forbidden_keys(
+        "source_truth_artifact.records", {"records": _records(source_truth_artifact)}
+    )
 
     decisions = [_decision_entry(record) for record in _phi_ledger_records(source_truth_artifact)]
     return {
@@ -346,14 +357,20 @@ def build_dataset_cleanup_ledger(
     source_truth_artifact: Mapping[str, Any],
     runtime_metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build a metadata-only dataset cleanup ledger from policy and runtime facts."""
+    """Build a metadata-only dataset cleanup ledger from policy and runtime facts.
+
+    Forbidden-key scanning is scoped to the subtrees the ledger actually
+    consumes (records, and runtime events when present). Unrelated
+    top-level keys on the policy artifact (e.g. ``option_sets``) are
+    ignored — they are not part of the ledger contract.
+    """
     if not isinstance(source_truth_artifact, Mapping):
         raise SourceTruthLedgerError("source_truth_artifact must be a mapping")
     if runtime_metadata is not None and not isinstance(runtime_metadata, Mapping):
         raise SourceTruthLedgerError("runtime_metadata must be a mapping when provided")
-    _reject_forbidden_keys("source_truth_artifact", source_truth_artifact)
-    if runtime_metadata is not None:
-        _reject_forbidden_keys("runtime_metadata", runtime_metadata)
+    _reject_forbidden_keys(
+        "source_truth_artifact.records", {"records": _records(source_truth_artifact)}
+    )
 
     records_by_id = _record_index(source_truth_artifact)
     cleanup_records = _targeted_records(source_truth_artifact, DERIVATION_CLEANUP_LEDGER)

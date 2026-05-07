@@ -65,28 +65,21 @@ def _write_canonical_json(path: Path, payload: Any) -> None:
     path.write_text(encoded + "\n", encoding="utf-8")
 
 
-def _strip_ledger_forbidden_keys(policy_artifact: dict[str, Any]) -> dict[str, Any]:
-    """Return a shallow copy of the policy artifact with keys that the
-    ledger builders reject (e.g. `option_sets`, which carries `values`
-    sub-keys) removed.
-
-    These keys belong in catalog/evidence-pack derivation paths but are
-    not consumed by ledger builders.
-    """
-    forbidden_top_level = {"option_sets"}
-    return {k: v for k, v in policy_artifact.items() if k not in forbidden_top_level}
-
-
 def _aggregate_declared_ledgers(
     policy_artifacts: list[dict[str, Any]],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Aggregate per-form declared ledger entries into study-wide ledgers."""
+    """Aggregate per-form declared ledger entries into study-wide ledgers.
+
+    Ledger builders accept the full policy artifact unchanged; they read
+    only the subtrees they consume (``records`` and, when provided,
+    runtime-event lists) and ignore unrelated top-level keys such as
+    ``option_sets``.
+    """
     phi_entries: list[dict[str, Any]] = []
     cleanup_entries: list[dict[str, Any]] = []
     for art in policy_artifacts:
-        ledger_input = _strip_ledger_forbidden_keys(art)
-        phi = build_phi_handling_ledger(ledger_input)
-        cleanup = build_dataset_cleanup_ledger(ledger_input)
+        phi = build_phi_handling_ledger(art)
+        cleanup = build_dataset_cleanup_ledger(art)
         phi_entries.extend(phi.get("entries") or [])
         cleanup_entries.extend(cleanup.get("entries") or [])
     return (

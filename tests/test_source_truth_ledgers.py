@@ -283,6 +283,32 @@ def test_cleanup_ledger_reports_policy_runtime_mismatches() -> None:
     assert ledger["summary"]["policy_runtime_mismatch_count"] == 1
 
 
+def test_ledgers_accept_artifacts_with_unrelated_top_level_keys() -> None:
+    """Ledger builders ignore top-level keys they don't consume.
+
+    A policy artifact carries fields like ``option_sets`` (which legitimately
+    nests a ``values`` sub-key holding form-defined option labels). The
+    ledger builders consume only ``records`` (and, when provided, the
+    runtime-event lists). Unrelated top-level keys must NOT cause rejection
+    and must NOT influence the emitted ledger entries.
+    """
+    artifact = _source_truth_artifact()
+    enriched = copy.deepcopy(artifact)
+    enriched["option_sets"] = {
+        "yes_no": {"values": [{"code": "Y", "label": "Yes"}, {"code": "N", "label": "No"}]},
+    }
+    enriched["pdf_sections"] = {"header": {"title": "Header"}}
+    enriched["coverage"] = {"boundary": "metadata only"}
+
+    phi_baseline = build_phi_handling_ledger(artifact)
+    cleanup_baseline = build_dataset_cleanup_ledger(artifact)
+    phi_enriched = build_phi_handling_ledger(enriched)
+    cleanup_enriched = build_dataset_cleanup_ledger(enriched)
+
+    assert phi_enriched == phi_baseline
+    assert cleanup_enriched == cleanup_baseline
+
+
 def test_ledgers_reject_raw_value_boundaries() -> None:
     artifact = _source_truth_artifact()
     unsafe_artifact = copy.deepcopy(artifact)
