@@ -46,6 +46,10 @@ from scripts.source_truth.concepts import (
     enrich_concept_index_with_schema,
     load_study_concepts,
 )
+from scripts.source_truth.dictionary_consolidator import (
+    DictionaryConsolidatorError,
+    consolidate_dictionary,
+)
 from scripts.source_truth.dataset_schema import (
     DatasetSchemaError,
     build_dataset_schema,
@@ -112,6 +116,7 @@ __all__ = [
     "BuildCoordinatorError",
     "CatalogAnswer",
     "ConceptIndexError",
+    "DictionaryConsolidatorError",
     "DatasetSchemaError",
     "DistributionRequestError",
     "PolicyLoaderError",
@@ -123,6 +128,7 @@ __all__ = [
     "SourceTruthRetriever",
     "SourceTruthValidationError",
     "artifact_ref",
+    "consolidate_dictionary",
     "build_catalog_artifact",
     "build_concept_index",
     "build_dataset_cleanup_ledger",
