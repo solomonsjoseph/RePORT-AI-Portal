@@ -242,6 +242,15 @@ def run_build(
     _write_canonical_json(concept_dir / "concept_index.json", concept_index)
     summary["emitted"].append("llm_source/concept/concept_index.json")
 
+    # Defensive cleanup: Phase 2 of Plan B moved concept_index.json from the
+    # flat ``llm_source/`` path to the nested ``llm_source/concept/`` path.
+    # On developer machines that built a previous revision, a stale flat
+    # artifact can persist and silently shadow the new nested one for any
+    # downstream consumer that still resolves the legacy path. Unlink the
+    # legacy flat path AFTER the new nested write succeeds so a failed
+    # nested write does not also wipe the previous good copy.
+    (llm_source_dir / "concept_index.json").unlink(missing_ok=True)
+
     if column_inventory is not None:
         if not column_inventory.is_file():
             raise BuildCoordinatorError(f"column_inventory not found: {column_inventory}")
@@ -258,6 +267,13 @@ def run_build(
         enriched = enrich_concept_index_with_schema(concept_index, dataset_schema=dataset_schema)
         _write_canonical_json(staging_concept_dir / "concept_index.json", enriched)
         summary["emitted"].append("staging/llm_source/concept/concept_index.json")
+
+        # Defensive cleanup: same rationale as the llm_source/ unlink above —
+        # the staging mirror also previously emitted a flat
+        # ``staging/llm_source/concept_index.json`` before Phase 2 nested it
+        # under ``concept/``. Remove the legacy flat staging artifact only
+        # after the new nested staging write succeeds.
+        (staging_llm_source_dir / "concept_index.json").unlink(missing_ok=True)
 
     return summary
 
