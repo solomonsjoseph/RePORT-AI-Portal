@@ -49,6 +49,12 @@ from typing import Any
 import yaml
 
 from scripts.extraction.io import atomic_write_json
+from scripts.source_truth.gate_checks import (
+    GateFinding,
+    check_c_phi_ledger_alignment,
+    check_d_phi_action_mismatch,
+    check_g_phi_dropped_vars_absent,
+)
 from scripts.source_truth.ledger_readers import (
     load_cleanup_dropped_columns,
     load_phi_dropped_columns,
@@ -296,6 +302,70 @@ def run_verification(
         cleanup_report,
         source_to_form=source_to_form,
     )
+
+    # ---------------------------------------------------------------------------
+    # Gate checks C, D, G — PHI ledger alignment pre-flight
+    # ---------------------------------------------------------------------------
+    declared_ledger_path = output_root / "audit" / "phi_handling_ledger.declared.json"
+    as_written_ledger_path = output_root / "audit" / "phi_handling_ledger.as_written.json"
+
+    try:
+        declared_ledger = _load_json_or_empty(declared_ledger_path)
+        as_written_ledger = _load_json_or_empty(as_written_ledger_path)
+    except AuditEnvelopeCorruptError:
+        logger.error(
+            "verify-and-promote: aborting — PHI ledger file corruption detected; "
+            "fix or regenerate the ledger files and re-run."
+        )
+        return 2
+
+    declared_entries: list[dict] = declared_ledger.get("entries", [])
+    as_written_events: list[dict] = as_written_ledger.get("events", [])
+
+    scrubbed_cols_by_form: dict[str, frozenset[str]] = {}
+    for _form in {e["form"] for e in as_written_events}:
+        _cols = load_scrubbed_columns(_form, staging_root)
+        if _cols is not None:
+            scrubbed_cols_by_form[_form] = _cols
+
+    preflight_findings: list[GateFinding] = []
+    preflight_findings.extend(check_c_phi_ledger_alignment(declared_entries, as_written_events))
+    preflight_findings.extend(check_d_phi_action_mismatch(declared_entries, as_written_events))
+    preflight_findings.extend(check_g_phi_dropped_vars_absent(as_written_events, scrubbed_cols_by_form))
+
+    if preflight_findings:
+        preflight_path = output_root / "audit" / "preflight_mismatch.json"
+        preflight_path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_json(
+            preflight_path,
+            {
+                "generated_utc": _now_utc_iso(),
+                "finding_count": len(preflight_findings),
+                "findings": [
+                    {
+                        "check": f.check,
+                        "form": f.form,
+                        "variable_id": f.variable_id,
+                        "issue": f.issue,
+                    }
+                    for f in preflight_findings
+                ],
+            },
+        )
+        for f in preflight_findings:
+            logger.error(
+                "verify-and-promote: gate check %s — form=%s variable_id=%s: %s",
+                f.check,
+                f.form,
+                f.variable_id,
+                f.issue,
+            )
+        logger.error(
+            "verify-and-promote: %d preflight finding(s); see %s",
+            len(preflight_findings),
+            preflight_path,
+        )
+        return 2
 
     # Surface cleanup-ledger entries that no policy claims. These would
     # otherwise vanish silently from the explanation set; the gate should
