@@ -17,9 +17,8 @@ cohorts:
     exclusion_criteria: []
     member_variables:
       - {form: 1A_ICScreening,    variable_id: SUBJID,   role: identifier}
-      - {form: 17_EligConfirmation, variable_id: EC_ELIG, role: eligibility_flag}
       - {form: 2A_ICBaseline,     variable_id: IC_WEIGHT, role: covariate}
-    evidence_pack_refs: [EC_ELIG]
+    evidence_pack_refs: []
 
   cohort_b:
     name: Cohort B — Household Contacts
@@ -34,7 +33,6 @@ cohorts:
     exclusion_criteria: []
     member_variables:
       - {form: 1B_HCScreening, variable_id: SUBJID, role: identifier}
-      - {form: 2B_HCBaseline,  variable_id: HC_AGE, role: covariate}
     evidence_pack_refs: []
 
 outcomes:
@@ -49,9 +47,7 @@ outcomes:
       pdf_page: null
       evidence_gap: true
     composite_logic: any_of
-    member_variables:
-      - {form: 95_SAE,   variable_id: SAE_RELAPSE_FLAG, role: outcome}
-      - {form: 12B_FUB,  variable_id: FUB_RELAPSE_DT,   role: outcome_date}
+    member_variables: []
     evidence_pack_refs: []
 
   incident_tb:
@@ -64,8 +60,7 @@ outcomes:
       pdf_page: null
       evidence_gap: true
     composite_logic: any_of
-    member_variables:
-      - {form: 12B_FUB, variable_id: FUB_INCIDENT_TB, role: outcome}
+    member_variables: []
     evidence_pack_refs: []
 
   tb_relapse_vs_failure:
@@ -90,7 +85,6 @@ exposures:
         threshold: "<18.5"
       alternates: []
     member_variables:
-      - {form: 2A_ICBaseline, variable_id: IC_BMI,    role: primary_indicator}
       - {form: 2A_ICBaseline, variable_id: IC_WEIGHT, role: support}
       - {form: 2A_ICBaseline, variable_id: IC_HEIGHT, role: support}
 
@@ -102,8 +96,7 @@ exposures:
         variable_id: IC_DIABETES
         threshold: "yes"
       alternates: []
-    member_variables:
-      - {form: 2A_ICBaseline, variable_id: IC_DIABETES, role: primary_indicator}
+    member_variables: []
 
   alcohol_use:
     name: Alcohol use
@@ -114,7 +107,7 @@ exposures:
         threshold: "any"
       alternates: []
     member_variables:
-      - {form: 2A_ICBaseline, variable_id: IC_ALCOHOL, role: primary_indicator}
+      - {form: 2A_ICBaseline, variable_id: IC_ALCUSE, role: primary_indicator}
 
   smoking:
     name: Smoking
@@ -125,7 +118,7 @@ exposures:
         threshold: "yes"
       alternates: []
     member_variables:
-      - {form: 2A_ICBaseline, variable_id: IC_SMOKE, role: primary_indicator}
+      - {form: 2A_ICBaseline, variable_id: IC_SMOKHX, role: primary_indicator}
 
 schedules:
   follow_up_household_contact:
