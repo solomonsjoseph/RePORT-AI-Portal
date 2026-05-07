@@ -2,7 +2,7 @@
 """SoT-driven build coordinator.
 
 CLI entrypoint that reads:
-    - data/{study}/{form_id}_policy.yaml × N (manual SoT, frozen)
+    - data/{study}/SoT/{form_id}_policy.yaml × N (manual SoT, frozen)
     - data/{study}/study_concepts.yaml (concept SoT)
     - optional column inventory from dataset extraction
 

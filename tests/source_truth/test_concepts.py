@@ -13,13 +13,14 @@ from scripts.source_truth.concepts import (
 from scripts.source_truth.policy_loader import load_policy_yaml
 
 FIXTURE_DIR = Path("tests/fixtures/build_mini/data/Mini")
+POLICIES_DIR = FIXTURE_DIR / "SoT"
 
 
 def _load_fixture_artifacts():
     return [
-        load_policy_yaml(FIXTURE_DIR / "1A_ICScreening_policy.yaml"),
-        load_policy_yaml(FIXTURE_DIR / "2A_ICBaseline_policy.yaml"),
-        load_policy_yaml(FIXTURE_DIR / "19_Smear_policy.yaml"),
+        load_policy_yaml(POLICIES_DIR / "1A_ICScreening_policy.yaml"),
+        load_policy_yaml(POLICIES_DIR / "2A_ICBaseline_policy.yaml"),
+        load_policy_yaml(POLICIES_DIR / "19_Smear_policy.yaml"),
     ]
 
 

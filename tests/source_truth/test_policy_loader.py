@@ -9,7 +9,7 @@ from scripts.source_truth.policy_loader import (
     load_policy_yaml,
 )
 
-FIXTURE_DIR = Path("tests/fixtures/build_mini/data/Mini")
+FIXTURE_DIR = Path("tests/fixtures/build_mini/data/Mini/SoT")
 
 
 def test_load_policy_yaml_returns_source_truth_artifact_shape():

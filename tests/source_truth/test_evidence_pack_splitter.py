@@ -8,7 +8,7 @@ from scripts.source_truth.catalog import build_catalog_artifact
 from scripts.source_truth.evidence_pack_splitter import split_catalog_artifact
 from scripts.source_truth.policy_loader import load_policy_yaml
 
-FIXTURE_DIR = Path("tests/fixtures/build_mini/data/Mini")
+FIXTURE_DIR = Path("tests/fixtures/build_mini/data/Mini/SoT")
 
 
 def _build_for(form: str):

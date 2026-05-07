@@ -211,7 +211,7 @@ build-llm-source: ## Run SoT-driven build coordinator (Branch Y of pipeline)
 	@printf "$(C)$(B)>> Running build coordinator for STUDY=$(STUDY)$(N)\n"
 	$(UV) run --all-groups python -m scripts.source_truth.build \
 		--study $(STUDY) \
-		--policies-dir data/$(STUDY) \
+		--policies-dir data/$(STUDY)/SoT \
 		--concepts-file data/$(STUDY)/study_concepts.yaml \
 		--output-root output/$(STUDY) \
 		$(if $(COLUMN_INVENTORY),--column-inventory $(COLUMN_INVENTORY))

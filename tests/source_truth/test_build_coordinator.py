@@ -12,7 +12,7 @@ def test_run_build_resolves_paths_and_creates_output_dirs(tmp_path):
     output_root = tmp_path / "output" / "Mini"
     run_build(
         study="Mini",
-        policies_dir=fixture / "data" / "Mini",
+        policies_dir=fixture / "data" / "Mini" / "SoT",
         concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=None,
@@ -40,7 +40,7 @@ def test_cli_module_invocable(tmp_path):
         [
             "uv", "run", "--all-groups", "python", "-m", "scripts.source_truth.build",
             "--study", "Mini",
-            "--policies-dir", str(fixture / "data" / "Mini"),
+            "--policies-dir", str(fixture / "data" / "Mini" / "SoT"),
             "--concepts-file", str(fixture / "data" / "Mini" / "study_concepts.yaml"),
             "--output-root", str(tmp_path / "cli_run"),
         ],
@@ -57,7 +57,7 @@ def test_run_build_emits_catalog_and_evidence_packs(tmp_path):
     output_root = tmp_path / "output" / "Mini"
     run_build(
         study="Mini",
-        policies_dir=fixture / "data" / "Mini",
+        policies_dir=fixture / "data" / "Mini" / "SoT",
         concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=None,
@@ -84,7 +84,7 @@ def test_run_build_idempotent_byte_identical(tmp_path):
     for out in (out_a, out_b):
         run_build(
             study="Mini",
-            policies_dir=fixture / "data" / "Mini",
+            policies_dir=fixture / "data" / "Mini" / "SoT",
             concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
             output_root=out,
             column_inventory=None,
@@ -101,7 +101,7 @@ def test_run_build_emits_declared_ledgers(tmp_path):
     output_root = tmp_path / "output" / "Mini"
     run_build(
         study="Mini",
-        policies_dir=fixture / "data" / "Mini",
+        policies_dir=fixture / "data" / "Mini" / "SoT",
         concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=None,
@@ -125,7 +125,7 @@ def test_run_build_emits_initial_concept_index(tmp_path):
     output_root = tmp_path / "output" / "Mini"
     run_build(
         study="Mini",
-        policies_dir=fixture / "data" / "Mini",
+        policies_dir=fixture / "data" / "Mini" / "SoT",
         concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=None,
@@ -147,7 +147,7 @@ def test_run_build_stage2_emits_schema_and_enriched_concept_index_to_staging(tmp
     output_root = tmp_path / "output" / "Mini"
     run_build(
         study="Mini",
-        policies_dir=fixture / "data" / "Mini",
+        policies_dir=fixture / "data" / "Mini" / "SoT",
         concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=fixture / "data" / "Mini" / "column_inventory.json",
@@ -173,7 +173,7 @@ def test_compact_records_have_form_field_populated(tmp_path):
     output_root = tmp_path / "output" / "Mini"
     run_build(
         study="Mini",
-        policies_dir=fixture / "data" / "Mini",
+        policies_dir=fixture / "data" / "Mini" / "SoT",
         concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=None,
@@ -193,7 +193,7 @@ def test_run_build_stage2_dataset_schema_reflects_column_inventory(tmp_path):
     output_root = tmp_path / "output" / "Mini"
     run_build(
         study="Mini",
-        policies_dir=fixture / "data" / "Mini",
+        policies_dir=fixture / "data" / "Mini" / "SoT",
         concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=fixture / "data" / "Mini" / "column_inventory.json",
@@ -241,7 +241,7 @@ def test_run_build_byte_identical_to_golden(tmp_path, rel_path):
     output_root = tmp_path / "output" / "Mini"
     run_build(
         study="Mini",
-        policies_dir=fixture / "data" / "Mini",
+        policies_dir=fixture / "data" / "Mini" / "SoT",
         concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=fixture / "data" / "Mini" / "column_inventory.json",
