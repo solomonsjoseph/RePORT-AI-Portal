@@ -115,13 +115,17 @@ _EXPOSURE_SECTION_TOKENS = (
 
 # Schedule phase classification.
 #
-# Each rule has two regexes — one matched against form_title and one
-# matched against form_id — plus a phase label. The first rule that
-# matches either the title or the id wins. Order matters: more
-# specific patterns first (adverse_event/final_outcome before
-# follow_up/screening/baseline so that ``98A_FOA`` is classified as
-# final_outcome rather than its title containing the word "Form").
-_SCHEDULE_RULES: tuple[tuple[re.Pattern[str], re.Pattern[str], str], ...] = (
+# Each rule has a title pattern, an optional id pattern, and a phase
+# label. The first rule whose title pattern matches the form_title — or
+# whose id pattern (when provided) matches the form_id — wins. ``None``
+# in the id slot means "this rule is title-only"; we skip the id-match
+# entirely rather than relying on a never-match sentinel regex.
+#
+# Order matters: more specific patterns first (adverse_event/
+# final_outcome before follow_up/screening/baseline so that ``98A_FOA``
+# is classified as final_outcome rather than via a title containing the
+# word "Form").
+_SCHEDULE_RULES: tuple[tuple[re.Pattern[str], re.Pattern[str] | None, str], ...] = (
     (
         re.compile(r"serious adverse event|\bsae\b", re.IGNORECASE),
         re.compile(r"^95_SAE($|_)"),
@@ -144,7 +148,7 @@ _SCHEDULE_RULES: tuple[tuple[re.Pattern[str], re.Pattern[str], str], ...] = (
     ),
     (
         re.compile(r"follow.?up", re.IGNORECASE),
-        re.compile(r"^(?!).*"),  # never matches an id directly
+        None,  # title-only rule — no id match
         "follow_up_a",
     ),
     (
@@ -392,7 +396,7 @@ def derive_schedules(forms: list[dict]) -> dict[str, dict]:
         title = _form_title(form)
         phase = "other"
         for title_rule, id_rule, label in _SCHEDULE_RULES:
-            if title_rule.search(title) or id_rule.search(fid):
+            if title_rule.search(title) or (id_rule is not None and id_rule.search(fid)):
                 phase = label
                 break
         out[fid] = {"phase": phase, "member_forms": [fid]}
