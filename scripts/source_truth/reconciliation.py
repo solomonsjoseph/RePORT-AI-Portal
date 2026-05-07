@@ -19,9 +19,12 @@ ledger explains a missing column the other did not).
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "ReconciliationResult",
@@ -146,15 +149,23 @@ def load_scrubbed_columns(form: str, staging_root: Path) -> frozenset[str] | Non
         return None
 
     with jsonl_path.open("r", encoding="utf-8") as fh:
-        for raw in fh:
+        for lineno, raw in enumerate(fh, start=1):
             stripped = raw.strip()
             if not stripped:
                 continue
             try:
                 row = json.loads(stripped)
-            except json.JSONDecodeError:
-                # Skip malformed lines — continue scanning. The first
-                # parseable row supplies the column set.
+            except json.JSONDecodeError as exc:
+                # Surface malformed lines as warnings — silent malformation
+                # is too lenient for a verification gate. We still continue
+                # scanning so the first parseable row supplies the column
+                # set (a single bad line should not prevent reconciliation).
+                logger.warning(
+                    "malformed JSON in %s line %d: %s",
+                    jsonl_path,
+                    lineno,
+                    exc,
+                )
                 continue
             if not isinstance(row, dict):
                 continue

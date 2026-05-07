@@ -206,3 +206,32 @@ def test_load_scrubbed_columns_empty_file_returns_empty(tmp_path: Path) -> None:
     # File exists but is empty — return empty frozenset (not None) so
     # the form participates in reconciliation as a degenerate case.
     assert load_scrubbed_columns("form_x", tmp_path) == frozenset()
+
+
+def test_load_scrubbed_columns_logs_malformed_lines_and_continues(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Issue 2 — malformed JSONL lines must be logged at WARNING (not silently
+    dropped), and the scanner must continue to the next line so a single
+    bad row does not derail reconciliation."""
+    datasets = tmp_path / "datasets"
+    datasets.mkdir()
+    body = "{not json,," + "\n" + json.dumps({"A": 1, "B": 2}) + "\n"
+    jsonl_path = datasets / "form_x.jsonl"
+    jsonl_path.write_text(body, encoding="utf-8")
+
+    with caplog.at_level("WARNING", logger="scripts.source_truth.reconciliation"):
+        cols = load_scrubbed_columns("form_x", tmp_path)
+
+    # Fallthrough still works: returns the column set from the second row.
+    assert cols == frozenset({"A", "B"})
+    # And the malformed line is surfaced as a warning that names the file
+    # and the line number.
+    matching = [
+        r
+        for r in caplog.records
+        if "malformed json" in r.getMessage().lower()
+        and str(jsonl_path) in r.getMessage()
+        and "line 1" in r.getMessage()
+    ]
+    assert matching, f"expected malformed-line warning, got {[r.getMessage() for r in caplog.records]}"
