@@ -311,6 +311,169 @@ def test_build_cli_returns_2_on_duplicate_form_names(tmp_path):
     assert "form_dup" in result.stderr
 
 
+def _make_minimal_policy(form: str, variables: dict[str, dict]) -> dict:
+    """Build a minimal policy artifact with compact-target variables.
+
+    Each entry in ``variables`` declares a ``variable_id`` and the policy
+    fields required by ``catalog.build_catalog_artifact`` to emit a compact
+    record (presence.dataset.present=True, normalized.analysis_queryable=True,
+    derivation_targets=['catalog']). The intent is to exercise
+    ``_aggregate_catalog`` on a tiny in-memory fixture without writing
+    YAMLs to disk.
+    """
+    records = []
+    for vid in variables:
+        records.append(
+            {
+                "variable_id": vid,
+                "source_kind": "form_field",
+                "review_state": "approved",
+                "derivation_targets": ["catalog"],
+                "presence": {
+                    "dataset": {"present": True, "column": vid},
+                    "pdf": {"present": False},
+                    "dictionary": {"present": False},
+                },
+                "normalized": {
+                    "label": vid,
+                    "handling_action": "retain",
+                    "analysis_queryable": True,
+                },
+                "exact_source_wording": {},
+                "source_references": {},
+            }
+        )
+    return {
+        "artifact_type": "source_truth_policy",
+        "study": "Synth",
+        "form": form,
+        "source_file": f"{form}_policy.yaml",
+        "records": records,
+    }
+
+
+def test_aggregate_catalog_tracks_seen_in_forms_two_form_duplicate():
+    """Cross-form duplicate gains seen_in_forms with both forms; first-form-wins
+    keeps the canonical record content from the first form encountered."""
+    from scripts.source_truth.build import _aggregate_catalog
+
+    artifacts = [
+        _make_minimal_policy("FORM_A", {"SUBJID": {}, "ONLY_A": {}}),
+        _make_minimal_policy("FORM_B", {"SUBJID": {}, "ONLY_B": {}}),
+    ]
+    aggregated = _aggregate_catalog(artifacts)
+    by_vid = {r["variable_id"]: r for r in aggregated["compact_records"]}
+    # First-form-wins: SUBJID appears once.
+    assert sorted(by_vid) == ["ONLY_A", "ONLY_B", "SUBJID"]
+    # Canonical form is the first one encountered.
+    assert by_vid["SUBJID"]["form"] == "FORM_A"
+    # Cross-form duplicate: seen_in_forms lists both, sorted.
+    assert by_vid["SUBJID"]["seen_in_forms"] == ["FORM_A", "FORM_B"]
+    # Single-form variables list exactly one form each.
+    assert by_vid["ONLY_A"]["seen_in_forms"] == ["FORM_A"]
+    assert by_vid["ONLY_B"]["seen_in_forms"] == ["FORM_B"]
+
+
+def test_aggregate_catalog_tracks_seen_in_forms_three_form_duplicate():
+    """When a vid appears in three forms, seen_in_forms has all three sorted."""
+    from scripts.source_truth.build import _aggregate_catalog
+
+    artifacts = [
+        _make_minimal_policy("FORM_C", {"SUBJID": {}}),
+        _make_minimal_policy("FORM_A", {"SUBJID": {}}),
+        _make_minimal_policy("FORM_B", {"SUBJID": {}}),
+    ]
+    aggregated = _aggregate_catalog(artifacts)
+    [record] = aggregated["compact_records"]
+    # First-form-wins: canonical form is FORM_C (first artifact in list).
+    assert record["form"] == "FORM_C"
+    # seen_in_forms is sorted alphabetically, NOT iteration order.
+    assert record["seen_in_forms"] == ["FORM_A", "FORM_B", "FORM_C"]
+
+
+def test_aggregate_catalog_tracks_seen_in_forms_on_evidence_packs():
+    """Evidence packs gain the same seen_in_forms metadata."""
+    from scripts.source_truth.build import _aggregate_catalog
+
+    artifacts = [
+        _make_minimal_policy("FORM_A", {"SUBJID": {}, "ONLY_A": {}}),
+        _make_minimal_policy("FORM_B", {"SUBJID": {}, "ONLY_B": {}}),
+    ]
+    aggregated = _aggregate_catalog(artifacts)
+    packs = {p["variable_id"]: p for p in aggregated["evidence_packs"]}
+    assert sorted(packs) == ["ONLY_A", "ONLY_B", "SUBJID"]
+    assert packs["SUBJID"]["seen_in_forms"] == ["FORM_A", "FORM_B"]
+    assert packs["ONLY_A"]["seen_in_forms"] == ["FORM_A"]
+    assert packs["ONLY_B"]["seen_in_forms"] == ["FORM_B"]
+
+
+def test_aggregate_catalog_first_form_wins_record_content_unchanged():
+    """The canonical record's content (other than seen_in_forms) is identical
+    to what would be emitted if only the first form were processed."""
+    from scripts.source_truth.build import _aggregate_catalog
+
+    artifacts_dup = [
+        _make_minimal_policy("FORM_A", {"SUBJID": {}}),
+        _make_minimal_policy("FORM_B", {"SUBJID": {}}),
+    ]
+    artifacts_solo = [_make_minimal_policy("FORM_A", {"SUBJID": {}})]
+    dup = _aggregate_catalog(artifacts_dup)["compact_records"][0]
+    solo = _aggregate_catalog(artifacts_solo)["compact_records"][0]
+    dup_no_seen = {k: v for k, v in dup.items() if k != "seen_in_forms"}
+    solo_no_seen = {k: v for k, v in solo.items() if k != "seen_in_forms"}
+    assert dup_no_seen == solo_no_seen
+
+
+def test_run_build_mini_seen_in_forms_subjid_three_forms(tmp_path):
+    """Real Mini fixture smoke: SUBJID appears in all three Mini forms."""
+    import json
+    fixture = Path("tests/fixtures/build_mini").resolve()
+    output_root = tmp_path / "output" / "Mini"
+    run_build(
+        study="Mini",
+        policies_dir=fixture / "data" / "Mini" / "SoT",
+        output_root=output_root,
+        column_inventory=None,
+    )
+    catalog = json.loads(
+        (output_root / "llm_source" / "study_metadata_catalog.json").read_text()
+    )
+    by_vid = {r["variable_id"]: r for r in catalog["compact_records"]}
+    assert "SUBJID" in by_vid, "SUBJID expected in Mini catalog"
+    assert by_vid["SUBJID"]["seen_in_forms"] == [
+        "19_Smear",
+        "1A_ICScreening",
+        "2A_ICBaseline",
+    ]
+    # Every compact record carries the field, sorted, with canonical form in it.
+    for r in catalog["compact_records"]:
+        assert "seen_in_forms" in r
+        assert isinstance(r["seen_in_forms"], list)
+        assert r["seen_in_forms"] == sorted(r["seen_in_forms"])
+        assert r["form"] in r["seen_in_forms"]
+
+
+def test_run_build_mini_seen_in_forms_on_evidence_packs(tmp_path):
+    """Evidence packs emitted by the build also carry seen_in_forms."""
+    import json
+    fixture = Path("tests/fixtures/build_mini").resolve()
+    output_root = tmp_path / "output" / "Mini"
+    run_build(
+        study="Mini",
+        policies_dir=fixture / "data" / "Mini" / "SoT",
+        output_root=output_root,
+        column_inventory=None,
+    )
+    pack_path = output_root / "llm_source" / "evidence_packs" / "SUBJID.json"
+    assert pack_path.is_file()
+    pack = json.loads(pack_path.read_text())
+    assert pack["seen_in_forms"] == [
+        "19_Smear",
+        "1A_ICScreening",
+        "2A_ICBaseline",
+    ]
+
+
 @pytest.mark.parametrize(
     "rel_path",
     [

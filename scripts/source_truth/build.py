@@ -92,25 +92,61 @@ def _aggregate_catalog(policy_artifacts: list[dict[str, Any]]) -> dict[str, Any]
     """Aggregate per-form catalogs into a single study-wide catalog mapping.
 
     Cross-form duplicates (e.g. SUBJID appearing in every form) are resolved
-    with first-form-wins semantics. The merge semantics for conflicting records
-    is a Plan-A.1 follow-up — for now we skip subsequent forms' copies silently.
+    with first-form-wins semantics: the first policy artifact in iteration
+    order whose emitted catalog declares a given ``variable_id`` produces the
+    canonical record / evidence pack; subsequent forms' copies are skipped.
+
+    The decision rule itself does not merge record content — semantic merging
+    (taking max option_set, longest meaning, etc.) is risky. Instead, every
+    canonical record and evidence pack gains an additive
+    ``seen_in_forms: [sorted form names]`` field listing every form whose
+    emitted catalog (compact_records OR evidence_packs) declared that
+    variable_id. For variables that appear in only one form, the list has
+    exactly one element. For cross-form duplicates, the list has all forms.
+    Downstream consumers can use this metadata to discover and reason about
+    cross-form occurrence without altering the canonical record's content.
     """
-    aggregated_compact: list[dict[str, Any]] = []
-    aggregated_packs: list[dict[str, Any]] = []
-    seen_vids: set[str] = set()
+    # Single pass over each policy artifact. For each form we capture the
+    # emitted (compact_records, evidence_packs) along with the form name so
+    # that we can (a) build a vid -> {forms} cross-form map and (b) perform
+    # the first-form-wins aggregation in a deterministic second pass without
+    # re-running the per-form catalog builder.
+    per_form_outputs: list[tuple[str, dict[str, Any], dict[str, dict[str, Any]]]] = []
+    vid_to_forms: dict[str, set[str]] = {}
     for art in policy_artifacts:
+        form = art.get("form")
+        if not isinstance(form, str) or not form:
+            raise BuildCoordinatorError(
+                "policy artifact missing required 'form' for catalog aggregation"
+            )
         per_form = build_catalog_artifact(art)
         compact_only, packs = split_catalog_artifact(per_form)
+        per_form_outputs.append((form, compact_only, packs))
+        for record in compact_only.get("compact_records") or []:
+            vid_to_forms.setdefault(record["variable_id"], set()).add(form)
+        for vid in packs.keys():
+            vid_to_forms.setdefault(vid, set()).add(form)
+
+    aggregated_compact: list[dict[str, Any]] = []
+    aggregated_packs: list[dict[str, Any]] = []
+    seen_compact_vids: set[str] = set()
+    seen_pack_vids: set[str] = set()
+    for _form, compact_only, packs in per_form_outputs:
         for record in compact_only.get("compact_records") or []:
             vid = record["variable_id"]
-            if vid in seen_vids:
+            if vid in seen_compact_vids:
                 continue  # cross-form duplicate (e.g. SUBJID); first form wins
-            seen_vids.add(vid)
-            aggregated_compact.append(record)
+            seen_compact_vids.add(vid)
+            enriched = dict(record)
+            enriched["seen_in_forms"] = sorted(vid_to_forms[vid])
+            aggregated_compact.append(enriched)
         for vid, pack in packs.items():
-            if any(p.get("variable_id") == vid for p in aggregated_packs):
+            if vid in seen_pack_vids:
                 continue  # cross-form duplicate; first form wins
-            aggregated_packs.append(pack)
+            seen_pack_vids.add(vid)
+            enriched_pack = dict(pack)
+            enriched_pack["seen_in_forms"] = sorted(vid_to_forms[vid])
+            aggregated_packs.append(enriched_pack)
     return {
         "artifact_type": "study_metadata_catalog",
         "compact_records": aggregated_compact,
