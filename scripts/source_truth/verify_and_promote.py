@@ -8,23 +8,23 @@ The gate orchestrates the per-form reconciliation rule:
      == set(scrubbed_columns(form))
 
 Outcomes:
-    - All forms pass:   exit code 0. Build coordinator's emissions to
-                        ``output/{study}/llm_source/`` are the production
-                        promotion; this gate confirms they are not
-                        stale relative to the scrubbed dataset.
+    - All forms pass:   exit code 0. The staging dataset_schema is then
+                        promoted from
+                        ``output/{study}/staging/llm_source/phi_handled_dataset_schema.json``
+                        to
+                        ``output/{study}/llm_source/dataset_schema.json``
+                        atomically (when the staging file exists; if it
+                        does not — e.g. the build coordinator was run
+                        without ``--column-inventory`` — promotion is
+                        skipped with a warning, but the gate still passes).
     - Any form fails:   exit code 2. A per-form discrepancy file is written
                         to ``output/{study}/human_review/<form>_discrepancies.json``.
+                        No promotion happens — the schema stays in staging.
     - No scrubbed data: exit code 0 with a clear log message — the developer
                         ran the build before scrub. This is by design so
                         ``make build-llm-source`` does not break in early
-                        bootstrapping.
-
-The build coordinator does not emit a ``dataset_schema.json`` at
-``llm_source/`` (it writes ``study_metadata_catalog.json``,
-``concept/concept_index.json``, and evidence packs there). There is
-therefore no explicit "promotion" file move; the gate's job is purely
-verification + per-form discrepancy emission. See the design note in
-``CONTEXT.md`` (Plan B Phase 4).
+                        bootstrapping. No promotion happens (there is
+                        nothing verified to promote).
 """
 
 from __future__ import annotations
@@ -38,6 +38,7 @@ from typing import Any
 
 import yaml
 
+from scripts.extraction.io import atomic_write_json
 from scripts.source_truth.ledger_readers import (
     load_cleanup_dropped_columns,
     load_phi_dropped_columns,
@@ -111,6 +112,62 @@ def _staging_has_jsonl(staging_root: Path) -> bool:
     if not datasets.is_dir():
         return False
     return any(datasets.glob("*.jsonl"))
+
+
+def _promote_dataset_schema(
+    *,
+    output_root: Path,
+) -> int:
+    """Atomically promote the staging dataset_schema to ``llm_source/``.
+
+    Reads ``<output_root>/staging/llm_source/phi_handled_dataset_schema.json``
+    and atomically writes it to
+    ``<output_root>/llm_source/dataset_schema.json``. The destination
+    filename is the canonical ``dataset_schema.json`` — the
+    ``phi_handled_`` prefix was a staging-zone marker and is stripped on
+    promotion.
+
+    Returns:
+        - ``0`` on a successful promotion *or* when the staging file
+          simply does not exist (e.g. the build coordinator was run
+          without ``--column-inventory``). The latter is a benign skip:
+          a warning is logged and the gate is not failed.
+        - ``2`` when the staging file exists but is corrupt/unreadable
+          as JSON. Promotion does not proceed; this is a hard error.
+
+    Args:
+        output_root: Per-study output root (e.g. ``output/Indo-VAP``).
+    """
+    staging_schema_path = (
+        output_root / "staging" / "llm_source" / "phi_handled_dataset_schema.json"
+    )
+    promoted_path = output_root / "llm_source" / "dataset_schema.json"
+
+    if not staging_schema_path.is_file():
+        logger.warning(
+            "verify-and-promote: staging dataset_schema not found at %s — "
+            "skipping promotion. (Run the build coordinator with "
+            "--column-inventory to emit it.)",
+            staging_schema_path,
+        )
+        return 0
+
+    try:
+        payload = json.loads(staging_schema_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        logger.error(
+            "verify-and-promote: cannot promote — staging dataset_schema at %s "
+            "is malformed JSON: %s",
+            staging_schema_path,
+            exc,
+        )
+        return 2
+
+    atomic_write_json(promoted_path, payload)
+    logger.info(
+        "verify-and-promote: PROMOTED dataset_schema.json from staging to llm_source/"
+    )
+    return 0
 
 
 def _serialize_discrepancy(result: ReconciliationResult) -> dict[str, Any]:
@@ -296,6 +353,15 @@ def run_verification(
         len(policy_artifacts),
         study,
     )
+
+    # Promotion: gate has passed AND scrubbed data was actually verified
+    # (we know this because we passed the ``_staging_has_jsonl`` check
+    # above). Atomic write; corrupt staging schema → exit 2; missing
+    # staging schema → warning + still pass.
+    promote_code = _promote_dataset_schema(output_root=output_root)
+    if promote_code != 0:
+        return promote_code
+
     return 0
 
 

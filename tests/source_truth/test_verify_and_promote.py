@@ -455,6 +455,172 @@ def test_run_verification_warns_on_orphan_cleanup_form(
     assert "1" in msg  # one dropped column
 
 
+# ---------------------------------------------------------------------------
+# Promotion: staging → llm_source/ on gate pass
+# ---------------------------------------------------------------------------
+
+
+def _write_staging_dataset_schema(
+    output_root: Path, payload: dict[str, object]
+) -> Path:
+    """Write a fake staging dataset_schema at the path the build coordinator
+    uses (``staging/llm_source/phi_handled_dataset_schema.json``)."""
+    staging_dir = output_root / "staging" / "llm_source"
+    staging_dir.mkdir(parents=True, exist_ok=True)
+    path = staging_dir / "phi_handled_dataset_schema.json"
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    return path
+
+
+def test_run_verification_promotes_dataset_schema_on_success(tmp_path: Path) -> None:
+    """On gate pass with scrubbed data verified AND staging schema present,
+    the staging dataset_schema is atomically copied to
+    ``llm_source/dataset_schema.json`` (canonical name, no
+    ``phi_handled_`` prefix)."""
+    sot_dir = tmp_path / "sot"
+    sot_dir.mkdir()
+    staging = tmp_path / "staging"
+    audit = tmp_path / "audit"
+    output_root = tmp_path / "output"
+
+    _write_policy(sot_dir, "form_a", ["A", "B"])
+    _write_scrubbed_jsonl(staging, "form_a", ["A", "B"])
+    scrub_path = _write_real_phi_audit(audit, drops_by_form={})
+    cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
+
+    schema_payload = {
+        "artifact_type": "study_dataset_schema",
+        "entries": [{"form": "form_a", "columns": ["A", "B"]}],
+    }
+    staging_schema = _write_staging_dataset_schema(output_root, schema_payload)
+    expected_content = json.loads(staging_schema.read_text(encoding="utf-8"))
+
+    code = run_verification(
+        study="Mini",
+        sot_dir=sot_dir,
+        staging_root=staging,
+        scrub_report_path=scrub_path,
+        cleanup_report_path=cleanup_path,
+        output_root=output_root,
+    )
+    assert code == 0
+
+    promoted = output_root / "llm_source" / "dataset_schema.json"
+    assert promoted.is_file(), "promoted dataset_schema.json must exist on success"
+    assert json.loads(promoted.read_text(encoding="utf-8")) == expected_content
+
+
+def test_run_verification_does_not_promote_on_failure(tmp_path: Path) -> None:
+    """An unexplained drop fails the gate (exit 2). Even when a staging
+    dataset_schema is present, promotion must not happen."""
+    sot_dir = tmp_path / "sot"
+    sot_dir.mkdir()
+    staging = tmp_path / "staging"
+    audit = tmp_path / "audit"
+    output_root = tmp_path / "output"
+
+    # form_a: SoT={A,B,C}; scrubbed has only {A}; B explained, C unexplained.
+    _write_policy(sot_dir, "form_a", ["A", "B", "C"])
+    _write_scrubbed_jsonl(staging, "form_a", ["A"])
+    scrub_path = _write_real_phi_audit(audit, drops_by_form={"form_a": ["B"]})
+    cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
+
+    _write_staging_dataset_schema(
+        output_root,
+        {"artifact_type": "study_dataset_schema", "entries": []},
+    )
+
+    code = run_verification(
+        study="Mini",
+        sot_dir=sot_dir,
+        staging_root=staging,
+        scrub_report_path=scrub_path,
+        cleanup_report_path=cleanup_path,
+        output_root=output_root,
+    )
+    assert code == 2
+    promoted = output_root / "llm_source" / "dataset_schema.json"
+    assert not promoted.exists(), (
+        "no promotion on failure: dataset_schema.json must not appear in llm_source/"
+    )
+
+
+def test_run_verification_does_not_promote_on_graceful_skip(tmp_path: Path) -> None:
+    """Empty staging (scrub never ran) → exit 0, but promotion must NOT
+    happen. Even if a stale staging schema exists, the gate cannot
+    promote it because nothing was verified."""
+    sot_dir = tmp_path / "sot"
+    sot_dir.mkdir()
+    staging = tmp_path / "staging"  # no datasets/ subdir → graceful skip
+    audit = tmp_path / "audit"
+    output_root = tmp_path / "output"
+
+    _write_policy(sot_dir, "form_a", ["A", "B"])
+    scrub_path = _write_real_phi_audit(audit, drops_by_form={})
+    cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
+
+    # Even with a staging schema sitting around, graceful skip must not
+    # promote it.
+    _write_staging_dataset_schema(
+        output_root,
+        {"artifact_type": "study_dataset_schema", "entries": []},
+    )
+
+    code = run_verification(
+        study="Mini",
+        sot_dir=sot_dir,
+        staging_root=staging,
+        scrub_report_path=scrub_path,
+        cleanup_report_path=cleanup_path,
+        output_root=output_root,
+    )
+    assert code == 0
+    promoted = output_root / "llm_source" / "dataset_schema.json"
+    assert not promoted.exists(), (
+        "graceful skip must not promote: dataset_schema.json must not appear"
+    )
+
+
+def test_run_verification_passes_without_promotion_when_staging_schema_missing(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """All forms reconcile, but staging dataset_schema does not exist
+    (e.g. the build coordinator was run without ``--column-inventory``).
+    The gate must still pass (exit 0) and emit a warning; promotion
+    does not occur."""
+    sot_dir = tmp_path / "sot"
+    sot_dir.mkdir()
+    staging = tmp_path / "staging"
+    audit = tmp_path / "audit"
+    output_root = tmp_path / "output"
+
+    _write_policy(sot_dir, "form_a", ["A", "B"])
+    _write_scrubbed_jsonl(staging, "form_a", ["A", "B"])
+    scrub_path = _write_real_phi_audit(audit, drops_by_form={})
+    cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
+    # Note: no staging dataset_schema written.
+
+    with caplog.at_level("WARNING"):
+        code = run_verification(
+            study="Mini",
+            sot_dir=sot_dir,
+            staging_root=staging,
+            scrub_report_path=scrub_path,
+            cleanup_report_path=cleanup_path,
+            output_root=output_root,
+        )
+    assert code == 0
+    promoted = output_root / "llm_source" / "dataset_schema.json"
+    assert not promoted.exists(), (
+        "missing staging schema: nothing to promote, destination must not exist"
+    )
+    # Warning emitted that flags the missing staging schema.
+    assert any(
+        "staging dataset_schema not found" in record.getMessage().lower()
+        for record in caplog.records
+    ), "expected a warning naming the missing staging dataset_schema"
+
+
 def test_run_verification_only_writes_failing_form_discrepancies(tmp_path: Path) -> None:
     """When 1 of 2 forms fails, only the failing form gets a discrepancy
     file."""
