@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from scripts.source_truth.builder import DERIVATION_DATASET_SCHEMA
@@ -118,8 +118,51 @@ def _status_from_record(record: Mapping[str, Any], *, clean_output_present: bool
     }
 
 
-def build_dataset_schema(source_truth_artifact: Mapping[str, Any]) -> dict[str, Any]:
-    """Build a metadata-only Dataset Schema sidecar from Source Truth records."""
+def _inventory_only_entry(variable_id: str) -> dict[str, Any]:
+    """Build a minimal schema entry for a column present in the runtime inventory
+    but absent from the Source Truth policy records (dataset-only column)."""
+    return {
+        "variable_id": variable_id,
+        "dataset_column": variable_id,
+        "source_truth_ref": None,
+        "catalog_ref": None,
+        "handling_status": {
+            "action": "review_required",
+        },
+        "clean_output": {
+            "present": False,
+            "basis": "dataset_only_column_not_in_source_truth",
+        },
+        "analysis_queryable": False,
+        "review_state": "review_required",
+        "source_kind": "dataset_only",
+        "runtime_present": True,
+    }
+
+
+def build_dataset_schema(
+    source_truth_artifact: Mapping[str, Any],
+    *,
+    dataset_columns: Sequence[str] | None = None,
+) -> dict[str, Any]:
+    """Build a metadata-only Dataset Schema sidecar from Source Truth records.
+
+    Args:
+        source_truth_artifact: The policy artifact produced by ``load_policy_yaml``.
+        dataset_columns: Optional sequence of column names present in the runtime
+            dataset extraction (from the column inventory).  When provided:
+
+            * Each SoT-derived entry gains a ``runtime_present`` field (``True``
+              if the variable's ``variable_id`` is in *dataset_columns*,
+              ``False`` otherwise).
+            * Columns in *dataset_columns* that have no matching SoT record are
+              emitted as inventory-only entries (``source_kind="dataset_only"``,
+              ``review_state="review_required"``).
+
+            When *None* (default), behavior is identical to the pre-inventory
+            version: no ``runtime_present`` field is added and no inventory-only
+            entries are emitted.
+    """
     if not isinstance(source_truth_artifact, Mapping):
         raise DatasetSchemaError("source_truth_artifact must be a mapping")
     forbidden = _forbidden_key_paths(source_truth_artifact)
@@ -133,15 +176,32 @@ def build_dataset_schema(source_truth_artifact: Mapping[str, Any]) -> dict[str, 
     if not isinstance(records, list):
         raise DatasetSchemaError("source_truth_artifact.records must be a list")
 
+    # Normalise dataset_columns to a set for O(1) lookup, or None when absent.
+    col_set: set[str] | None = set(dataset_columns) if dataset_columns is not None else None
+
     entries: list[dict[str, Any]] = []
     excluded_records: list[dict[str, Any]] = []
+    matched_cols: set[str] = set()  # inventory cols matched to SoT records
+
     for record in records:
         if not isinstance(record, Mapping):
             raise DatasetSchemaError("source_truth_artifact.records entries must be mappings")
         if DERIVATION_DATASET_SCHEMA in record.get("derivation_targets", []):
-            entries.append(_entry_from_record(record))
+            entry = _entry_from_record(record)
+            if col_set is not None:
+                vid = entry["variable_id"]
+                entry["runtime_present"] = vid in col_set
+                if vid in col_set:
+                    matched_cols.add(vid)
+            entries.append(entry)
         else:
             excluded_records.append(_status_from_record(record, clean_output_present=False))
+
+    # Emit inventory-only entries for columns not matched by any SoT record.
+    if col_set is not None:
+        for col in sorted(col_set - matched_cols):
+            entries.append(_inventory_only_entry(col))
+
     return {
         "artifact_type": "study_dataset_schema",
         "study": source_truth_artifact.get("study"),

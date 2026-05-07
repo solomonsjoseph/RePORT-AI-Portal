@@ -187,6 +187,43 @@ def test_compact_records_have_form_field_populated(tmp_path):
         )
 
 
+def test_run_build_stage2_dataset_schema_reflects_column_inventory(tmp_path):
+    import json
+    fixture = Path("tests/fixtures/build_mini").resolve()
+    output_root = tmp_path / "output" / "Mini"
+    run_build(
+        study="Mini",
+        policies_dir=fixture / "data" / "Mini",
+        concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
+        output_root=output_root,
+        column_inventory=fixture / "data" / "Mini" / "column_inventory.json",
+    )
+    schema = json.loads(
+        (output_root / "staging" / "llm_source" / "phi_handled_dataset_schema.json").read_text()
+    )
+    entries_by_form: dict[str, list[str]] = {}
+    for entry in schema["entries"]:
+        form = entry.get("form")
+        if form is None:
+            # Per-entry form may be derived from elsewhere — accept absence
+            continue
+        entries_by_form.setdefault(form, []).append(entry.get("variable_id"))
+
+    # Sanity: at least one entry per form in the inventory
+    inventory = json.loads(
+        (fixture / "data" / "Mini" / "column_inventory.json").read_text()
+    )["forms"]
+    for form, body in inventory.items():
+        for col in body["columns"]:
+            # Each inventory column should produce at least one schema entry
+            # whose variable_id matches (whether or not 'form' is on the entry,
+            # the variable_id presence is enforceable).
+            schema_vids = {e.get("variable_id") for e in schema["entries"]}
+            assert col in schema_vids, (
+                f"column {col!r} in inventory for form {form!r} not present in schema entries"
+            )
+
+
 GOLDEN_DIR = Path("tests/fixtures/build_mini/expected_outputs")
 
 

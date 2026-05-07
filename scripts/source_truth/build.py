@@ -132,7 +132,9 @@ def _build_combined_dataset_schema(
     """Build a study-wide dataset schema by combining per-form builds."""
     entries: list[dict[str, Any]] = []
     for art in policy_artifacts:
-        per_form = build_dataset_schema(art)
+        form = art["form"]
+        cols = inventory.get(form, [])
+        per_form = build_dataset_schema(art, dataset_columns=cols)
         entries.extend(per_form.get("entries") or [])
     return {"artifact_type": "study_dataset_schema", "entries": entries}
 
