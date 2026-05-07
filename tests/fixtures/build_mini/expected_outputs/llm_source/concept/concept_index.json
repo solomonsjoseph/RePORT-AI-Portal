@@ -2269,26 +2269,26 @@
   "outcomes": {},
   "policy_status": "derived_from_sot",
   "schedules": {
-    "19_Smear": {
+    "baseline": {
+      "member_forms": [
+        "2A_ICBaseline"
+      ],
+      "member_variables": [],
+      "phase": "baseline"
+    },
+    "other": {
       "member_forms": [
         "19_Smear"
       ],
       "member_variables": [],
       "phase": "other"
     },
-    "1A_ICScreening": {
+    "screening": {
       "member_forms": [
         "1A_ICScreening"
       ],
       "member_variables": [],
       "phase": "screening"
-    },
-    "2A_ICBaseline": {
-      "member_forms": [
-        "2A_ICBaseline"
-      ],
-      "member_variables": [],
-      "phase": "baseline"
     }
   },
   "schema_version": 1,

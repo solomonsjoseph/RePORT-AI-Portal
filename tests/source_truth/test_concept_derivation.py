@@ -264,12 +264,41 @@ def test_derive_schedules_classifies_by_form_title():
         _make_synthetic_form("95_SAE", title="SERIOUS ADVERSE EVENT FORM"),
     ]
     schedules = derive_schedules(forms)
-    phases = {entry["phase"] for entry in schedules.values()}
-    assert "screening" in phases
-    assert "baseline" in phases
-    assert "follow_up_a" in phases
-    assert "follow_up_b" in phases
-    assert "adverse_event" in phases
+    # Output is phase-keyed: each phase label maps to one entry holding
+    # every form classified to that phase under member_forms.
+    assert set(schedules.keys()) == {
+        "screening",
+        "baseline",
+        "follow_up_a",
+        "follow_up_b",
+        "adverse_event",
+    }
+    for phase_label, entry in schedules.items():
+        assert entry["phase"] == phase_label
+        assert entry["member_forms"], f"phase {phase_label} has no member_forms"
+    assert "1A_ICScreening" in schedules["screening"]["member_forms"]
+    assert "2A_ICBaseline" in schedules["baseline"]["member_forms"]
+    assert "12A_FUA" in schedules["follow_up_a"]["member_forms"]
+    assert "12B_FUB" in schedules["follow_up_b"]["member_forms"]
+    assert "95_SAE" in schedules["adverse_event"]["member_forms"]
+
+
+def test_derive_schedules_groups_multiple_forms_per_phase():
+    """Several screening forms collapse to a single ``screening`` entry."""
+    forms = [
+        _make_synthetic_form("1A_ICScreening", title="Index Case Screening"),
+        _make_synthetic_form("1B_HCScreening", title="Household Contact Screening"),
+        _make_synthetic_form("17_EligConfirmation", title="Screening Eligibility Confirmation"),
+    ]
+    schedules = derive_schedules(forms)
+    assert list(schedules.keys()) == ["screening"]
+    members = schedules["screening"]["member_forms"]
+    assert members == sorted(members)  # canonical order
+    assert set(members) == {
+        "1A_ICScreening",
+        "1B_HCScreening",
+        "17_EligConfirmation",
+    }
 
 
 def test_derive_schedules_final_outcome_phase():
@@ -278,8 +307,17 @@ def test_derive_schedules_final_outcome_phase():
         _make_synthetic_form("99A_FSA", title="Off Study Form for Cohort A"),
     ]
     schedules = derive_schedules(forms)
-    phases = {entry["phase"] for entry in schedules.values()}
-    assert "final_outcome" in phases
+    assert "final_outcome" in schedules
+    assert schedules["final_outcome"]["phase"] == "final_outcome"
+    assert set(schedules["final_outcome"]["member_forms"]) == {"98A_FOA", "99A_FSA"}
+
+
+def test_derive_schedules_omits_phases_with_zero_members():
+    """No emitted phase entry has an empty member_forms list."""
+    forms = [_make_synthetic_form("19_Smear", title="AFB Microscopy")]
+    schedules = derive_schedules(forms)
+    for entry in schedules.values():
+        assert entry["member_forms"], "phase entry must have ≥1 member form"
 
 
 # ---------------------------------------------------------------------------

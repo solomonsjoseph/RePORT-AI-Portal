@@ -387,8 +387,13 @@ def derive_schedules(forms: list[dict]) -> dict[str, dict]:
     Falls back to form-id pattern when the title alone is ambiguous —
     e.g. ``2A_ICBaseline`` has title ``"INDEX CASE: Clinical/Demographic
     Form"`` which lacks the word "baseline", but the form id does.
+
+    Output is **phase-keyed**: each phase entry collects every form
+    classified to that phase under ``member_forms`` (sorted, unique).
+    Phases with zero members are not emitted, mirroring the
+    ``derive_cohorts`` / ``derive_exposures`` shape.
     """
-    out: dict[str, dict[str, Any]] = {}
+    grouped: dict[str, list[str]] = {}
     for form in forms:
         fid = form.get("form")
         if not isinstance(fid, str):
@@ -399,8 +404,13 @@ def derive_schedules(forms: list[dict]) -> dict[str, dict]:
             if title_rule.search(title) or (id_rule is not None and id_rule.search(fid)):
                 phase = label
                 break
-        out[fid] = {"phase": phase, "member_forms": [fid]}
-    return out
+        grouped.setdefault(phase, []).append(fid)
+
+    return {
+        phase: {"phase": phase, "member_forms": sorted(set(form_ids))}
+        for phase, form_ids in grouped.items()
+        if form_ids
+    }
 
 
 # ---------------------------------------------------------------------------
