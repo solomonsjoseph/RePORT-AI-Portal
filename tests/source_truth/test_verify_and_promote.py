@@ -412,6 +412,49 @@ def test_run_verification_returns_2_on_duplicate_form_names(
     )
 
 
+def test_run_verification_warns_on_orphan_cleanup_form(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Issue 5 — cleanup ledger references an .xlsx that no policy maps to a
+    form. The orphan must be logged as a warning but the gate must still run
+    to completion."""
+    sot_dir = tmp_path / "sot"
+    sot_dir.mkdir()
+    staging = tmp_path / "staging"
+    audit = tmp_path / "audit"
+    output_root = tmp_path / "output"
+
+    # form_a is fully reconcilable. Mystery_Form.xlsx is in the cleanup
+    # ledger but has no matching policy → orphan.
+    _write_policy(sot_dir, "form_a", ["A", "B"])
+    _write_scrubbed_jsonl(staging, "form_a", ["A", "B"])
+    scrub_path = _write_real_phi_audit(audit, drops_by_form={})
+    cleanup_path = _write_real_cleanup_audit(
+        audit,
+        column_drops_by_source={"Mystery_Form.xlsx": ["GHOST_COL"]},
+    )
+
+    with caplog.at_level("WARNING"):
+        code = run_verification(
+            study="Mini",
+            sot_dir=sot_dir,
+            staging_root=staging,
+            scrub_report_path=scrub_path,
+            cleanup_report_path=cleanup_path,
+            output_root=output_root,
+        )
+    # Gate still runs to completion: form_a reconciles cleanly, exit 0.
+    assert code == 0
+    # Orphan emits a warning that names the form and the dropped count.
+    orphan_logs = [
+        r for r in caplog.records if "unmatched form" in r.getMessage().lower()
+    ]
+    assert orphan_logs, "expected at least one orphan-form warning"
+    msg = orphan_logs[0].getMessage()
+    assert "Mystery_Form" in msg
+    assert "1" in msg  # one dropped column
+
+
 def test_run_verification_only_writes_failing_form_discrepancies(tmp_path: Path) -> None:
     """When 1 of 2 forms fails, only the failing form gets a discrepancy
     file."""

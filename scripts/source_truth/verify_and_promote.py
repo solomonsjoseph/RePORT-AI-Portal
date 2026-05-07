@@ -232,6 +232,20 @@ def run_verification(
         source_to_form=source_to_form,
     )
 
+    # Surface cleanup-ledger entries that no policy claims. These would
+    # otherwise vanish silently from the explanation set; the gate should
+    # not fail on them (the policies that ARE present can still
+    # reconcile), but a developer should see the warning.
+    policy_form_names = {a["form"] for a in policy_artifacts}
+    orphan_forms = [f for f in cleanup_drops if f not in policy_form_names]
+    for orphan in sorted(orphan_forms):
+        logger.warning(
+            "cleanup ledger references unmatched form %r with %d dropped columns; "
+            "explanation will not be applied",
+            orphan,
+            len(cleanup_drops[orphan]),
+        )
+
     review_dir = output_root / "human_review"
     failures: list[ReconciliationResult] = []
 
