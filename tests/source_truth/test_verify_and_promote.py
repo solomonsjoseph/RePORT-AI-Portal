@@ -310,6 +310,44 @@ def test_run_verification_handles_missing_audit_files(tmp_path: Path) -> None:
     assert code == 0
 
 
+def test_run_verification_returns_2_on_corrupt_phi_audit_envelope(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Issue 1 — corrupt audit envelope (truncated JSON) must produce a clean
+    exit code 2 with a clear log line, not a stack trace."""
+    sot_dir = tmp_path / "sot"
+    sot_dir.mkdir()
+    staging = tmp_path / "staging"
+    audit = tmp_path / "audit"
+    audit.mkdir()
+    output_root = tmp_path / "output"
+
+    _write_policy(sot_dir, "form_a", ["A", "B"])
+    _write_scrubbed_jsonl(staging, "form_a", ["A", "B"])
+
+    # Truncated JSON — fails json.loads.
+    bad_phi = audit / "phi_scrub_report.json"
+    bad_phi.write_text('{"study": "Mini", "scrubbed": [{"scope":', encoding="utf-8")
+    cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
+
+    with caplog.at_level("ERROR"):
+        code = run_verification(
+            study="Mini",
+            sot_dir=sot_dir,
+            staging_root=staging,
+            scrub_report_path=bad_phi,
+            cleanup_report_path=cleanup_path,
+            output_root=output_root,
+        )
+    assert code == 2
+    # Clear log line referencing the path of the corrupt file.
+    assert any(
+        "malformed audit envelope" in record.getMessage().lower()
+        and str(bad_phi) in record.getMessage()
+        for record in caplog.records
+    )
+
+
 def test_run_verification_only_writes_failing_form_discrepancies(tmp_path: Path) -> None:
     """When 1 of 2 forms fails, only the failing form gets a discrepancy
     file."""

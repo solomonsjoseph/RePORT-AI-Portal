@@ -51,7 +51,17 @@ from scripts.source_truth.reconciliation import (
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["main", "run_verification"]
+__all__ = ["AuditEnvelopeCorruptError", "main", "run_verification"]
+
+
+class AuditEnvelopeCorruptError(RuntimeError):
+    """Raised when an audit-envelope JSON file fails to parse.
+
+    Distinct from the ``file does not exist`` case (which is benign and
+    returns ``{}``). A corrupt envelope is a data-integrity failure: the
+    gate must refuse to proceed against partial data and exit cleanly
+    rather than dying with a stack trace.
+    """
 
 
 def _now_utc_iso() -> str:
@@ -69,10 +79,27 @@ def _load_json_or_empty(path: Path) -> dict[str, Any]:
 
     Empty dict is the neutral element for both ledger readers — they
     simply return ``{}`` when no events are present.
+
+    Raises:
+        AuditEnvelopeCorruptError: file exists but its contents fail to
+            parse as JSON. Logged at error level with the file path and
+            parse error so the gate fails cleanly instead of dying with
+            a bare stack trace.
     """
     if not path.is_file():
         return {}
-    return json.loads(path.read_text(encoding="utf-8"))
+    raw = path.read_text(encoding="utf-8")
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        logger.error(
+            "verify-and-promote: malformed audit envelope at %s: %s",
+            path,
+            exc,
+        )
+        raise AuditEnvelopeCorruptError(
+            f"malformed audit envelope at {path}: {exc}"
+        ) from exc
 
 
 def _staging_has_jsonl(staging_root: Path) -> bool:
@@ -118,6 +145,14 @@ def run_verification(
           reconcile (graceful skip).
         - ``2`` when at least one form fails. Per-form discrepancy files
           are written under ``output_root/human_review/``.
+
+    Graceful-skip asymmetry (intentional):
+        Empty staging exits 0 (graceful). Empty SoT exits 2 (error).
+        Empty staging is benign — scrub hasn't run; the gate simply
+        skips. Empty SoT is a misconfiguration: the build coordinator
+        and the Makefile both gate on SoT presence, so reaching this
+        code path with no policies indicates an environmental problem,
+        not a workflow stage.
     """
     sot_dir = Path(sot_dir)
     staging_root = Path(staging_root)
@@ -145,8 +180,18 @@ def run_verification(
         )
         return 0
 
-    phi_report = _load_json_or_empty(scrub_report_path)
-    cleanup_report = _load_json_or_empty(cleanup_report_path)
+    try:
+        phi_report = _load_json_or_empty(scrub_report_path)
+        cleanup_report = _load_json_or_empty(cleanup_report_path)
+    except AuditEnvelopeCorruptError:
+        # _load_json_or_empty already logged the file path + parse error.
+        # Refuse to proceed against partial data; emit a clear summary line
+        # and return the gate-failure exit code.
+        logger.error(
+            "verify-and-promote: aborting — audit envelope corruption detected; "
+            "fix or regenerate the audit file and re-run."
+        )
+        return 2
 
     # Load policies and build source→form map.
     policy_artifacts: list[dict[str, Any]] = []
