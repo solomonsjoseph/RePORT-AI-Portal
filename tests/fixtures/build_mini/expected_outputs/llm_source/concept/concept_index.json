@@ -1,0 +1,2296 @@
+{
+  "artifact_type": "study_concept_index",
+  "cohorts": {
+    "cohort_a": {
+      "member_forms": [
+        "1A_ICScreening",
+        "2A_ICBaseline"
+      ],
+      "member_variables": [
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "FID"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_AEXCL03"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_AEXCL04"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_AGE"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_AGEEST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_AGEY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_BIRTHDAT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_COMPDAT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_CONTACTS"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_CONTACTS_6YRS"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_CONTACTS_TOTAL"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_CP1"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_CP1A"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_CP1B"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_CP2"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_CP2a"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_DOTS"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_ELIGIBLE"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_ELIGIBLECP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_ENROLL"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_ENROLLCP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_FLUORO"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_HIVTEST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_HIV_WILLING"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_ICF"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_ICFDT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_ICFREAS"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_ICFV"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_INDIA"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_INIT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_KNOWSMEAR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_MUNIC"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_MXDR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_MXDRCONT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_NOTENROLL"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_OTHENRPP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_PENRB"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "identifier",
+          "variable_id": "IS_PRIORBID"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_PTBNOTENROLL"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_PTBage"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_PTBeligible"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_PTBenroll"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_PTBfemale"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_PTBmarried"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_SEX"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_SIGN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_SMEAR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_SPUTHIV"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_STORAGE1"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_STORAGE2"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_TBDIAG"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_TBHX"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_TBHXTX"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_TBTXDT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_TXDAYS"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_TXESTIMATE"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_UNWILLING"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_VISDAT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_WEEKTX"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "IS_WILLNG"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "identifier",
+          "variable_id": "SUBJID"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "identifier",
+          "variable_id": "SUBJID2"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "identifier",
+          "variable_id": "SUBJID3"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "1A_ICScreening",
+          "role": "member",
+          "variable_id": "Time_Stamp"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "BIDIYN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "CGRYN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "CHEWING"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "CIGYN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "COPD"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Cancer"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "CareOther"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Cigarettes"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Clothes"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Cough"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Diet"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "FID"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Food"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Govthosp"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "HOOYN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Hepatitis"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_ALCDOSTX"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_ALCFRQ"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_ALCUSE"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_ARM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_ASTHMA"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_BCGRTPT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_BCGSCAR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_BIDICURR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_BIDIDURM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_BIDIDURY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_BIDIPAST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_BIDIQUITM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_BIDIQUITY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CASTE"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CGRCURR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CGRDURM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CGRDURY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CGRPAST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CGRQUITM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CGRQUITY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CHEWCURR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CHEWDURM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CHEWDURY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CHEWPAST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CHEWQUITM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CHEWQUITY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CHSTPAIN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CIGCURR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CIGDURM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CIGDURY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CIGPAST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CIGQUITM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CIGQUITY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CLINIC"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CLINICSP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_COMPDAT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CONSTRUCTION"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_CONSTRUCTIONYRS"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_COUGH"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_COUGHBLD"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_COUGHCAT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_COUGHDUR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_COUGHUNK"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_DIETA"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_DIETB"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_DIETC"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_DIETD"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_DIETE"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_DIETF"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_DIETG"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_DIETH"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_DIETI"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_DMCID"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_DMDX"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_DMDXY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_DMTX"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_DMTXSP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_ESTWEIGHT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_FAILTHRV"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_FATIGUE"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_FEVER"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_FEVERDUR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_FEVERUNK"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_GESTAGE"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HEIGHT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HHEARNER"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HHINCOME"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HHMEMNUM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HHTBDX"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HHTBTIME"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HIVLOC"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HIVLOCSP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HIVTEST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HOMEHOUR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HOMETIME"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HOMETIME_MONTHS"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HOOCURRH"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HOOCURRM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HOODURM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HOODURY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HOOPASTH"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HOOPASTM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HOOQUITM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_HOOQUITY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_IDNA"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_INHALED"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_INHALER"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_INHALEUSE"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_INIT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_JOB"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_JOBSP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_KARN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_KNEEHT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_LANGUAGE"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_LANGUAGESP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_LOC"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_MARISTAT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_MASCHOOLDK"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_MASCHOOLDU"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_MEDHX"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_MEDHXYN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_MENSES"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_MENSESOTH"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_NIGHTSWT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_NIGHTSWTDUR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_NIGHTSWTUNK"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_OTHERSYMP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_OTHERSYMP_NOUNKN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_PREGNANT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_PREGTEST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_RATION"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_RBS"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_RBSND"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_RELIGION"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_RELIGIONSP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_RESPDTSP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_RESPNDT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SCHOOLDK"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SCHOOLDU"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SCHOOLINF"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SIGN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SMKTYP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SMKTYP_2"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SMOCURR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SMODURM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SMODURY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SMOKHX"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SMOPAST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SMOQUITM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SMOQUITY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SMOSP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SNUFFCURR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SNUFFDURM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SNUFFDURY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SNUFFPAST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SNUFFQUITM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_SNUFFQUITY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_STEROIDS"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_TBCURE"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_TBSPREAD"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_TUID"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_VISDAT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_WEIGHT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_WTLOSS"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_WTLOSSAMT"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_WTLOSSAMTUNK"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_WTLOSSDUR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "IC_WTLOSSRUNK"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Insulin"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Kidneyfail"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "MedColl"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Medshop"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Mosquito"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Munhosp"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Nonallo"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "OSMOYN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Oinject"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Oralmed"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Other"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "PHC"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "PHCID"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Private"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Removstom"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "SNUFF"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "identifier",
+          "variable_id": "SUBJID"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "identifier",
+          "variable_id": "SUBJID2"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "identifier",
+          "variable_id": "SUBJID3"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "identifier",
+          "variable_id": "SUBJID4"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "identifier",
+          "variable_id": "SUBJID4_2"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "identifier",
+          "variable_id": "SUBJID5"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "identifier",
+          "variable_id": "SUBJID6"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "identifier",
+          "variable_id": "SUBJID7"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "SexContact"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Shortbreath"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Silicosis"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "TBKNOWOTHER"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "TBKNOWUNK"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Time_Stamp"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Touch"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Unknown"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "member",
+          "variable_id": "Utensils"
+        }
+      ],
+      "name": "Cohort A — Index Cases"
+    }
+  },
+  "definitions": {
+    "19_Smear": {
+      "form": "19_Smear",
+      "form_title": "CONCENTRATED AFB MICROSCOPY RESULTS (ZIEHL-NEELSEN)",
+      "member_variables": [],
+      "section_labels": [
+        "A.  Sputum Quality",
+        "B.  Sputum Concentrated Smear Result"
+      ]
+    },
+    "1A_ICScreening": {
+      "form": "1A_ICScreening",
+      "form_title": "Index Case Screening",
+      "member_variables": [],
+      "section_labels": [
+        "INCLUSION CRITERIA",
+        "EXCLUSION CRITERIA",
+        "COMMON PROTOCOL CRITERIA"
+      ]
+    },
+    "2A_ICBaseline": {
+      "form": "2A_ICBaseline",
+      "form_title": "INDEX CASE: Clinical/Demographic Form",
+      "member_variables": [],
+      "section_labels": [
+        "DEMOGRAPHIC INFORMATION",
+        "TUBERCULOSIS SOURCE EVALUATION",
+        "TUBERCULOSIS KNOWLEDGE",
+        "RISK BEHAVIOURS",
+        "CLINICAL EVALUATION",
+        "HIV",
+        "DIABETES MELLITUS",
+        "DIETARY QUESTIONS",
+        "CLINICAL ASSESSMENT"
+      ]
+    }
+  },
+  "exposures": {
+    "alcohol": {
+      "member_forms": [
+        "2A_ICBaseline"
+      ],
+      "member_variables": [
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_ALCDOSTX"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_ALCFRQ"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_ALCUSE"
+        }
+      ],
+      "name": "Alcohol"
+    },
+    "diet": {
+      "member_forms": [
+        "2A_ICBaseline"
+      ],
+      "member_variables": [
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_DIETA"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_DIETB"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_DIETC"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_DIETD"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_DIETE"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_DIETF"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_DIETG"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_DIETH"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_DIETI"
+        }
+      ],
+      "name": "Diet"
+    },
+    "medical_history": {
+      "member_forms": [
+        "2A_ICBaseline"
+      ],
+      "member_variables": [
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "COPD"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Cancer"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "CareOther"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Diet"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Govthosp"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Hepatitis"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_ASTHMA"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CLINIC"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CLINICSP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_DMDX"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_DMDXY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_DMTX"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_DMTXSP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_HIVLOC"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_HIVLOCSP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_HIVTEST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_INHALED"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_INHALER"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_INHALEUSE"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_MEDHX"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_MEDHXYN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Insulin"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Kidneyfail"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "MedColl"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Medshop"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Munhosp"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Nonallo"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Oinject"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Oralmed"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Other"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "PHC"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Private"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Removstom"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Shortbreath"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Silicosis"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "Unknown"
+        }
+      ],
+      "name": "Medical history"
+    },
+    "smoking_history": {
+      "member_forms": [
+        "2A_ICBaseline"
+      ],
+      "member_variables": [
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "BIDIYN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "CGRYN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "CHEWING"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "CIGYN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "HOOYN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_BIDICURR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_BIDIDURM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_BIDIDURY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_BIDIPAST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_BIDIQUITM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_BIDIQUITY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CGRCURR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CGRDURM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CGRDURY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CGRPAST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CGRQUITM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CGRQUITY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CHEWCURR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CHEWDURM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CHEWDURY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CHEWPAST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CHEWQUITM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CHEWQUITY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CIGCURR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CIGDURM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CIGDURY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CIGPAST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CIGQUITM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_CIGQUITY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_HOOCURRH"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_HOOCURRM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_HOODURM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_HOODURY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_HOOPASTH"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_HOOPASTM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_HOOQUITM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_HOOQUITY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SMKTYP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SMKTYP_2"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SMOCURR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SMODURM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SMODURY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SMOKHX"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SMOPAST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SMOQUITM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SMOQUITY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SMOSP"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SNUFFCURR"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SNUFFDURM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SNUFFDURY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SNUFFPAST"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SNUFFQUITM"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "IC_SNUFFQUITY"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "OSMOYN"
+        },
+        {
+          "analysis_queryable": null,
+          "form": "2A_ICBaseline",
+          "role": "exposure",
+          "variable_id": "SNUFF"
+        }
+      ],
+      "name": "Smoking history"
+    }
+  },
+  "outcomes": {},
+  "policy_status": "derived_from_sot",
+  "schedules": {
+    "19_Smear": {
+      "member_forms": [
+        "19_Smear"
+      ],
+      "member_variables": [],
+      "phase": "other"
+    },
+    "1A_ICScreening": {
+      "member_forms": [
+        "1A_ICScreening"
+      ],
+      "member_variables": [],
+      "phase": "screening"
+    },
+    "2A_ICBaseline": {
+      "member_forms": [
+        "2A_ICBaseline"
+      ],
+      "member_variables": [],
+      "phase": "baseline"
+    }
+  },
+  "schema_version": 1,
+  "study": "Mini"
+}

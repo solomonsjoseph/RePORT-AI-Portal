@@ -40,11 +40,19 @@ from scripts.source_truth.completeness import (
     FOOTER_EXCLUSION_BOUNDARY_NOTE,
     report_completeness,
 )
+from scripts.source_truth.concept_derivation import (
+    ConceptDerivationError,
+    derive_cohorts,
+    derive_concept_index,
+    derive_definitions,
+    derive_exposures,
+    derive_outcomes,
+    derive_schedules,
+)
 from scripts.source_truth.concepts import (
     ConceptIndexError,
     build_concept_index,
     enrich_concept_index_with_schema,
-    load_study_concepts,
 )
 from scripts.source_truth.dictionary_consolidator import (
     DictionaryConsolidatorError,
@@ -115,6 +123,7 @@ __all__ = [
     "PDF_EVIDENCE_NO_USEFUL_TEXT_LEFT",
     "BuildCoordinatorError",
     "CatalogAnswer",
+    "ConceptDerivationError",
     "ConceptIndexError",
     "DictionaryConsolidatorError",
     "DatasetSchemaError",
@@ -139,13 +148,18 @@ __all__ = [
     "build_records",
     "build_source_truth_artifact",
     "check_pdf_evidence_completeness",
+    "derive_cohorts",
+    "derive_concept_index",
+    "derive_definitions",
+    "derive_exposures",
     "derive_generation_id",
+    "derive_outcomes",
+    "derive_schedules",
     "discover_policy_pilot_forms",
     "enrich_concept_index_with_schema",
     "extract_pdf_evidence",
     "get_dataset_schema_status",
     "load_policy_yaml",
-    "load_study_concepts",
     "report_completeness",
     "resolve_analysis_binding",
     "run_build",

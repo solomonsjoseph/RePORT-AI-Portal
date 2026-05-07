@@ -13,12 +13,12 @@ def test_run_build_resolves_paths_and_creates_output_dirs(tmp_path):
     run_build(
         study="Mini",
         policies_dir=fixture / "data" / "Mini" / "SoT",
-        concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=None,
     )
     assert (output_root / "llm_source").is_dir()
     assert (output_root / "llm_source" / "evidence_packs").is_dir()
+    assert (output_root / "llm_source" / "concept").is_dir()
     assert (output_root / "audit").is_dir()
     assert (output_root / "staging" / "llm_source").is_dir()
 
@@ -28,7 +28,6 @@ def test_run_build_blocks_on_missing_policies_dir(tmp_path):
         run_build(
             study="Mini",
             policies_dir=tmp_path / "does_not_exist",
-            concepts_file=tmp_path / "concepts.yaml",
             output_root=tmp_path / "output",
             column_inventory=None,
         )
@@ -41,7 +40,6 @@ def test_cli_module_invocable(tmp_path):
             "uv", "run", "--all-groups", "python", "-m", "scripts.source_truth.build",
             "--study", "Mini",
             "--policies-dir", str(fixture / "data" / "Mini" / "SoT"),
-            "--concepts-file", str(fixture / "data" / "Mini" / "study_concepts.yaml"),
             "--output-root", str(tmp_path / "cli_run"),
         ],
         check=False,
@@ -58,7 +56,6 @@ def test_run_build_emits_catalog_and_evidence_packs(tmp_path):
     run_build(
         study="Mini",
         policies_dir=fixture / "data" / "Mini" / "SoT",
-        concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=None,
     )
@@ -85,7 +82,6 @@ def test_run_build_idempotent_byte_identical(tmp_path):
         run_build(
             study="Mini",
             policies_dir=fixture / "data" / "Mini" / "SoT",
-            concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
             output_root=out,
             column_inventory=None,
         )
@@ -102,7 +98,6 @@ def test_run_build_emits_declared_ledgers(tmp_path):
     run_build(
         study="Mini",
         policies_dir=fixture / "data" / "Mini" / "SoT",
-        concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=None,
     )
@@ -126,15 +121,15 @@ def test_run_build_emits_initial_concept_index(tmp_path):
     run_build(
         study="Mini",
         policies_dir=fixture / "data" / "Mini" / "SoT",
-        concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=None,
     )
 
-    index_path = output_root / "llm_source" / "concept_index.json"
+    index_path = output_root / "llm_source" / "concept" / "concept_index.json"
     assert index_path.is_file()
     index = json.loads(index_path.read_text())
     assert index["artifact_type"] == "study_concept_index"
+    assert index["policy_status"] == "derived_from_sot"
     assert "cohort_a" in index["cohorts"]
     members = index["cohorts"]["cohort_a"]["member_variables"]
     for member in members:
@@ -148,7 +143,6 @@ def test_run_build_stage2_emits_schema_and_enriched_concept_index_to_staging(tmp
     run_build(
         study="Mini",
         policies_dir=fixture / "data" / "Mini" / "SoT",
-        concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=fixture / "data" / "Mini" / "column_inventory.json",
     )
@@ -159,7 +153,7 @@ def test_run_build_stage2_emits_schema_and_enriched_concept_index_to_staging(tmp
     assert schema["artifact_type"] == "study_dataset_schema"
     assert isinstance(schema["entries"], list)
 
-    enriched_path = output_root / "staging" / "llm_source" / "concept_index.json"
+    enriched_path = output_root / "staging" / "llm_source" / "concept" / "concept_index.json"
     assert enriched_path.is_file()
     enriched = json.loads(enriched_path.read_text())
     members = enriched["cohorts"]["cohort_a"]["member_variables"]
@@ -174,7 +168,6 @@ def test_compact_records_have_form_field_populated(tmp_path):
     run_build(
         study="Mini",
         policies_dir=fixture / "data" / "Mini" / "SoT",
-        concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=None,
     )
@@ -194,7 +187,6 @@ def test_run_build_stage2_dataset_schema_reflects_column_inventory(tmp_path):
     run_build(
         study="Mini",
         policies_dir=fixture / "data" / "Mini" / "SoT",
-        concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=fixture / "data" / "Mini" / "column_inventory.json",
     )
@@ -231,7 +223,7 @@ GOLDEN_DIR = Path("tests/fixtures/build_mini/expected_outputs")
     "rel_path",
     [
         "llm_source/study_metadata_catalog.json",
-        "llm_source/concept_index.json",
+        "llm_source/concept/concept_index.json",
         "audit/phi_handling_ledger.declared.json",
         "audit/dataset_cleanup_ledger.declared.json",
     ],
@@ -242,7 +234,6 @@ def test_run_build_byte_identical_to_golden(tmp_path, rel_path):
     run_build(
         study="Mini",
         policies_dir=fixture / "data" / "Mini" / "SoT",
-        concepts_file=fixture / "data" / "Mini" / "study_concepts.yaml",
         output_root=output_root,
         column_inventory=fixture / "data" / "Mini" / "column_inventory.json",
     )

@@ -209,6 +209,12 @@ STUDY_LLM_SOURCE_DIR = STUDY_OUTPUT_DIR / "llm_source"
 # Canonical output path for the extracted data dictionary JSON.
 DICTIONARY_OUTPUT_PATH: Path = STUDY_LLM_SOURCE_DIR / "data_dictionary.json"
 
+# Concept index lives under a dedicated concept/ subfolder so future
+# concept-related artifacts (per-concept evidence references, derivation
+# audit trails) can land alongside it without polluting the llm_source
+# root namespace.
+STUDY_CONCEPT_INDEX_PATH: Path = STUDY_LLM_SOURCE_DIR / "concept" / "concept_index.json"
+
 STUDY_AUDIT_DIR = STUDY_OUTPUT_DIR / "audit"
 
 # Audit-report paths (written by the cleanup/dedup pipeline).

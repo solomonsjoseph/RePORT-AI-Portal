@@ -113,16 +113,50 @@ _EXPOSURE_SECTION_TOKENS = (
 )
 
 
-# Schedule phase classification (regex matched against form_title).
-# Order matters: more specific patterns first.
-_SCHEDULE_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
-    (re.compile(r"serious adverse event|\bsae\b", re.IGNORECASE), "adverse_event"),
-    (re.compile(r"final outcome|\bfoa\b|\bfob\b|\bfsa\b|\bfsb\b|off[- ]?study", re.IGNORECASE), "final_outcome"),
-    (re.compile(r"follow.?up.*\bb\b|\bfub\b|household contact follow", re.IGNORECASE), "follow_up_b"),
-    (re.compile(r"follow.?up.*\ba\b|\bfua\b|index case follow", re.IGNORECASE), "follow_up_a"),
-    (re.compile(r"follow.?up", re.IGNORECASE), "follow_up_a"),
-    (re.compile(r"screening", re.IGNORECASE), "screening"),
-    (re.compile(r"baseline", re.IGNORECASE), "baseline"),
+# Schedule phase classification.
+#
+# Each rule has two regexes — one matched against form_title and one
+# matched against form_id — plus a phase label. The first rule that
+# matches either the title or the id wins. Order matters: more
+# specific patterns first (adverse_event/final_outcome before
+# follow_up/screening/baseline so that ``98A_FOA`` is classified as
+# final_outcome rather than its title containing the word "Form").
+_SCHEDULE_RULES: tuple[tuple[re.Pattern[str], re.Pattern[str], str], ...] = (
+    (
+        re.compile(r"serious adverse event|\bsae\b", re.IGNORECASE),
+        re.compile(r"^95_SAE($|_)"),
+        "adverse_event",
+    ),
+    (
+        re.compile(r"final outcome|\bfoa\b|\bfob\b|\bfsa\b|\bfsb\b|off[- ]?study", re.IGNORECASE),
+        re.compile(r"^9[89][AB]_(FO|FS)[AB]($|_)"),
+        "final_outcome",
+    ),
+    (
+        re.compile(r"follow.?up.*\bb\b|\bfub\b|household contact follow", re.IGNORECASE),
+        re.compile(r"^12B_FUB($|_)"),
+        "follow_up_b",
+    ),
+    (
+        re.compile(r"follow.?up.*\ba\b|\bfua\b|index case follow", re.IGNORECASE),
+        re.compile(r"^12A_FUA($|_)"),
+        "follow_up_a",
+    ),
+    (
+        re.compile(r"follow.?up", re.IGNORECASE),
+        re.compile(r"^(?!).*"),  # never matches an id directly
+        "follow_up_a",
+    ),
+    (
+        re.compile(r"screening", re.IGNORECASE),
+        re.compile(r"Screening", re.IGNORECASE),
+        "screening",
+    ),
+    (
+        re.compile(r"baseline", re.IGNORECASE),
+        re.compile(r"Baseline", re.IGNORECASE),
+        "baseline",
+    ),
 )
 
 
@@ -344,7 +378,12 @@ def derive_exposures(forms: list[dict]) -> dict[str, dict]:
 
 
 def derive_schedules(forms: list[dict]) -> dict[str, dict]:
-    """Group forms by phase via form-title regex match."""
+    """Group forms by phase via form-title and form-id regex match.
+
+    Falls back to form-id pattern when the title alone is ambiguous —
+    e.g. ``2A_ICBaseline`` has title ``"INDEX CASE: Clinical/Demographic
+    Form"`` which lacks the word "baseline", but the form id does.
+    """
     out: dict[str, dict[str, Any]] = {}
     for form in forms:
         fid = form.get("form")
@@ -352,8 +391,8 @@ def derive_schedules(forms: list[dict]) -> dict[str, dict]:
             continue
         title = _form_title(form)
         phase = "other"
-        for rule, label in _SCHEDULE_RULES:
-            if rule.search(title):
+        for title_rule, id_rule, label in _SCHEDULE_RULES:
+            if title_rule.search(title) or id_rule.search(fid):
                 phase = label
                 break
         out[fid] = {"phase": phase, "member_forms": [fid]}

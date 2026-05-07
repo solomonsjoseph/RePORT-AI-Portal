@@ -203,16 +203,15 @@ extract-datasets:
 	@printf "$(G)✓ Dataset processing complete$(N)\n"
 
 build-llm-source: ## Run SoT-driven build coordinator (Branch Y of pipeline)
-	@if [ ! -f "data/$(STUDY)/study_concepts.yaml" ]; then \
-		printf "$(Y)>> SKIP build-llm-source for STUDY=$(STUDY): data/$(STUDY)/study_concepts.yaml not found.$(N)\n"; \
-		printf "$(Y)>> To enable, add data/$(STUDY)/study_concepts.yaml (cross-form concept SoT).$(N)\n"; \
+	@if [ ! -d "data/$(STUDY)/SoT" ]; then \
+		printf "$(Y)>> SKIP build-llm-source for STUDY=$(STUDY): data/$(STUDY)/SoT/ not found.$(N)\n"; \
+		printf "$(Y)>> To enable, add per-form policy YAMLs under data/$(STUDY)/SoT/.$(N)\n"; \
 		exit 0; \
 	fi
 	@printf "$(C)$(B)>> Running build coordinator for STUDY=$(STUDY)$(N)\n"
 	$(UV) run --all-groups python -m scripts.source_truth.build \
 		--study $(STUDY) \
 		--policies-dir data/$(STUDY)/SoT \
-		--concepts-file data/$(STUDY)/study_concepts.yaml \
 		--output-root output/$(STUDY) \
 		$(if $(COLUMN_INVENTORY),--column-inventory $(COLUMN_INVENTORY))
 	@$(MAKE) consolidate-dictionary STUDY=$(STUDY) --no-print-directory 2>/dev/null || true

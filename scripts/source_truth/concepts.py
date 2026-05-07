@@ -1,26 +1,31 @@
 # scripts/source_truth/concepts.py
-"""Loader/validator for `study_concepts.yaml` and renderer for
-`concept_index.json`.
+"""Concept-index validator and dataset-schema enricher.
 
-`study_concepts.yaml` is the cross-form concept SoT introduced in
-`CONTEXT.md` §"Build Pipeline — May 2026". The 28 per-form policy
-YAMLs are NOT modified; this module reads them only for cross-reference
-validation.
+The concept index is now STRUCTURALLY DERIVED from the SoT policy
+files — see ``scripts.source_truth.concept_derivation``. This module
+covers the two wrapper passes the build coordinator runs against the
+derived index:
+
+* :func:`build_concept_index` — cross-checks every ``member_variable``
+  against the policy artifacts to catch derivation bugs and renders
+  the artifact body with ``analysis_queryable: null`` placeholders.
+* :func:`enrich_concept_index_with_schema` — Stage-2 pass that patches
+  ``analysis_queryable`` for every member by looking up the dataset
+  schema once it has been built.
+
+Hand-authored ``study_concepts.yaml`` files were removed in Phase 2 of
+the SoT reorg; ``load_study_concepts`` is no longer exposed.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from pathlib import Path
 from typing import Any
-
-import yaml
 
 __all__ = [
     "ConceptIndexError",
     "build_concept_index",
     "enrich_concept_index_with_schema",
-    "load_study_concepts",
 ]
 
 _REQUIRED_SECTIONS = ("cohorts", "outcomes", "exposures", "schedules", "definitions")
@@ -30,29 +35,6 @@ class ConceptIndexError(ValueError):
     """Raised when concept index cannot be built or validated."""
 
 
-def load_study_concepts(path: str | Path) -> dict[str, Any]:
-    """Load `study_concepts.yaml` and ensure required top-level sections exist."""
-    path = Path(path)
-    try:
-        loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except yaml.YAMLError as exc:
-        raise ConceptIndexError(f"{path}: failed to parse YAML — {exc}") from exc
-    if not isinstance(loaded, Mapping):
-        raise ConceptIndexError(f"{path}: top-level must be a mapping")
-
-    if "study" not in loaded:
-        raise ConceptIndexError(f"{path}: missing 'study'")
-
-    result: dict[str, Any] = {
-        "schema_version": loaded.get("schema_version", 1),
-        "policy_status": loaded.get("policy_status", "draft_for_human_review"),
-        "study": loaded["study"],
-    }
-    for section in _REQUIRED_SECTIONS:
-        result[section] = dict(loaded.get(section) or {})
-    return result
-
-
 def build_concept_index(
     concepts: Mapping[str, Any],
     *,
@@ -60,10 +42,10 @@ def build_concept_index(
 ) -> dict[str, Any]:
     """Render the concept_index artifact body.
 
-    Validates that every `member_variables` entry's (form, variable_id)
+    Validates that every ``member_variables`` entry's (form, variable_id)
     pair exists in the supplied policy artifacts. Initial
-    `analysis_queryable` is null for every member; the value is patched
-    later by `enrich_concept_index_with_schema()` once the dataset
+    ``analysis_queryable`` is null for every member; the value is patched
+    later by :func:`enrich_concept_index_with_schema` once the dataset
     schema is built.
 
     Raises:
@@ -115,10 +97,10 @@ def enrich_concept_index_with_schema(
     *,
     dataset_schema: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Patch `analysis_queryable` on every member by looking up the dataset schema.
+    """Patch ``analysis_queryable`` on every member by looking up the dataset schema.
 
     Stage 2 enrichment of the build pipeline. Members not present in the
-    dataset schema retain `analysis_queryable: false`.
+    dataset schema retain ``analysis_queryable: false``.
     """
     entries = dataset_schema.get("entries") or []
     by_vid: dict[str, Mapping[str, Any]] = {
