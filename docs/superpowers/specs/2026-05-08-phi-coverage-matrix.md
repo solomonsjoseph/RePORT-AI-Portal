@@ -370,6 +370,28 @@ the natural place to introduce DP if and when the data-sharing model
 changes. Documenting this scope boundary explicitly is itself a remediation
 — it converts the absence from a silent gap into a deliberate design choice.
 
-## 6. Live sweep result (placeholder for Task 8)
+## 6. Live sweep result
 
-> _This section will be filled in by Task 8 with the live sweep summary from `tmp/phi_sweep_findings.json`._
+The deterministic SoT-driven sweep (`scripts/security/phi_sot_sweep.py`) ran
+against `data/SoT/Indo-VAP/` and `data/SoT/Indo-VAP/dataset_policies/` on
+**2026-05-08T14:07:41+00:00**. Findings are at `tmp/phi_sweep_findings.json`
+(masked variable_ids only; 0 cleartext leaks).
+
+| Category | Count |
+|---|---|
+| `total_variables` | **1996** |
+| `covered` | 1452 |
+| `name_phi_uncovered` | 0 |
+| `column_shape_phi_uncovered` | 0 (Phase 2 reserved) |
+| `review_required_open` | 544 |
+
+**Interpretation.** Every PHI-suggestive variable name in the SoT YAMLs already
+maps to a covered handling action (drop, pseudonymize, jitter_date, cap,
+generalize, suppress_small_cell), which is the correct posture: zero
+`name_phi_uncovered` is a strong signal that the policy authors are not
+leaving PHI-named columns in clear text. The 544 `review_required_open`
+entries are policy decisions awaiting human sign-off; the Task 9 emitter
+produced one HITL draft per entry under `tmp/phi_sweep_hitl_drafts/`. The
+Task 10 verifier (`scripts/security/phi_sweep_verify.py`) confirms every
+variable maps to either `covered` or an open HITL draft (`make
+phi-audit-verify` exits 0).
