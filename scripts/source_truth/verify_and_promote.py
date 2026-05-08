@@ -49,6 +49,7 @@ from typing import Any
 import yaml
 
 from scripts.extraction.io import atomic_write_json
+from scripts.source_truth.cross_verify_pipeline import run as run_cross_verify
 from scripts.source_truth.dataset_schema_writer import dual_write_form
 from scripts.source_truth.gate_checks import (
     GateFinding,
@@ -468,6 +469,15 @@ def run_verification(
             legacy_path=legacy_jsonl,
             new_path=new_files_dir / f"{form}.jsonl",
         )
+
+    # Phase 3: cross-verify (mid-pipeline, accumulate-don't-block).
+    # Runs after dataset_schema/files/ is populated. Scanner-only mode by
+    # default (no llm_call, no gh_runner). When the orchestrator wants live
+    # LLM/gh, it wires those callables explicitly.
+    try:
+        run_cross_verify()
+    except Exception as exc:  # noqa: BLE001 -- never block verify_and_promote on cross-verify failure
+        logger.warning("cross_verify_pipeline.failed err=%s", exc)
 
     return 0
 
