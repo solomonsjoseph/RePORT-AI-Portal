@@ -25,7 +25,21 @@ def test_dictionary_catalog_path() -> None:
     p = config.LLM_SOURCE_DICTIONARY_CATALOG_PATH
     assert isinstance(p, Path)
     assert p.name == "catalog.json"
-    assert p.parent == config.STUDY_LLM_SOURCE_DIR / "dictionary"
+    assert p.parent == config.LLM_SOURCE_DICTIONARY_MAPPING_DIR
+
+
+def test_llm_source_dictionary_mapping_dir() -> None:
+    p = config.LLM_SOURCE_DICTIONARY_MAPPING_DIR
+    assert isinstance(p, Path)
+    assert p.name == "dictionary_mapping"
+    assert p.parent == config.STUDY_LLM_SOURCE_DIR
+
+
+def test_llm_source_dictionary_mapping_jsonl_dir() -> None:
+    p = config.LLM_SOURCE_DICTIONARY_MAPPING_JSONL_DIR
+    assert isinstance(p, Path)
+    assert p.name == "jsonl"
+    assert p.parent == config.LLM_SOURCE_DICTIONARY_MAPPING_DIR
 
 
 def test_evidence_packs_dir() -> None:
