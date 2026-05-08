@@ -1,0 +1,13 @@
+schema_version: 1
+study: Mini
+form: name_phi_form
+variables:
+  - variable_id: PT_NAME
+    handling_intent:
+      action: keep
+  - variable_id: HHC_PHONE
+    handling_intent:
+      action: keep
+  - variable_id: AADHAAR
+    handling_intent:
+      action: keep

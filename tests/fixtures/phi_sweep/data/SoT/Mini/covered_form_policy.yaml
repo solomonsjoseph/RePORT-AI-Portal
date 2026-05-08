@@ -1,0 +1,13 @@
+schema_version: 1
+study: Mini
+form: covered_form
+variables:
+  - variable_id: SUBJID
+    handling_intent:
+      action: pseudonymize
+  - variable_id: VISITDAT
+    handling_intent:
+      action: jitter_date
+  - variable_id: AGEYRS
+    handling_intent:
+      action: cap
