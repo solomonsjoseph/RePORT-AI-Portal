@@ -17,8 +17,14 @@ _LOG = get_logger(__name__)
 
 def gate(coverage: dict[str, Any]) -> int:
     forms = coverage.get("forms", {})
+    if not forms:
+        _LOG.error("sot_coverage_gate.fail no forms found in coverage")
+        return 1
     failures: list[str] = []
     for form, info in forms.items():
+        if not isinstance(info, dict):
+            failures.append(f"{form}: malformed coverage entry (expected dict, got {type(info).__name__})")
+            continue
         if not info.get("sot_present"):
             failures.append(f"{form}: SoT YAML missing")
         elif not info.get("sot_complete"):
