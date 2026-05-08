@@ -49,6 +49,7 @@ from typing import Any
 import yaml
 
 from scripts.extraction.io import atomic_write_json
+from scripts.source_truth.dataset_schema_writer import dual_write_form
 from scripts.source_truth.gate_checks import (
     GateFinding,
     check_c_phi_ledger_alignment,
@@ -441,6 +442,32 @@ def run_verification(
     promote_code = _promote_dataset_schema(output_root=output_root)
     if promote_code != 0:
         return promote_code
+
+    # Phase 2 dual-write: also publish each verified per-form JSONL to
+    # ``output/<study>/llm_source/dataset_schema/files/<form>.jsonl`` so
+    # downstream LLM-source consumers can read from the canonical location.
+    # The legacy path under ``trio_bundle/datasets/`` continues to receive
+    # a byte-identical copy until Phase 5 retires the legacy layout. We
+    # source from the legacy path that already holds the verified data
+    # (``staging_root`` is ``output/<study>/trio_bundle``), and pass it as
+    # both source AND legacy so ``dual_write_form`` skips the redundant
+    # legacy copy and only writes the new target. The new dir mirrors
+    # ``config.LLM_SOURCE_DATASET_SCHEMA_FILES_DIR`` but is derived from
+    # ``output_root`` so per-study CLI overrides are honoured.
+    new_files_dir = output_root / "llm_source" / "dataset_schema" / "files"
+    legacy_datasets_dir = staging_root / "datasets"
+    for artifact in policy_artifacts:
+        form = artifact["form"]
+        legacy_jsonl = legacy_datasets_dir / f"{form}.jsonl"
+        if not legacy_jsonl.is_file():
+            # Skipped during reconciliation (no scrubbed JSONL); nothing
+            # to dual-write for this form.
+            continue
+        dual_write_form(
+            source_path=legacy_jsonl,
+            legacy_path=legacy_jsonl,
+            new_path=new_files_dir / f"{form}.jsonl",
+        )
 
     return 0
 
