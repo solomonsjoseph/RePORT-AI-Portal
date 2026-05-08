@@ -285,6 +285,11 @@ CROSS_VERIFY_PR_DRAFTS_DIR: Path = TMP_DIR / "cross_verify_pr_drafts"
 CROSS_VERIFY_HITL_DRAFTS_DIR: Path = TMP_DIR / "cross_verify_hitl_drafts"
 CROSS_VERIFY_REPEAT_THRESHOLD: int = 2
 
+# --- Phase 4: audit-zone hardening -------------------------------------------
+AUDIT_NO_LLM_SENTINEL_NAME: str = ".NO_LLM_ZONE"
+AUDIT_SENTINEL_ALARM_PATH: Path = TMP_DIR / "audit_sentinel_alarms.jsonl"
+AUDIT_NO_LLM_ZONE_ATTRIBUTE: str = "report-ai-portal-no-llm"
+
 # ----------------------------------------------------------------------------
 # AGENT STATE TIER (per-session state, NOT study output)
 # ----------------------------------------------------------------------------
