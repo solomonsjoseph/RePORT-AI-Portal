@@ -7,8 +7,11 @@ from pathlib import Path
 
 import pytest
 
+import config
+
 from scripts.source_truth.llm_source_catalogs import (
     build_dictionary_catalog,
+    build_study_metadata_catalog,
     relocate_dictionary,
 )
 
@@ -70,7 +73,6 @@ def test_catalog_under_size_threshold(tmp_path: Path) -> None:
         (sub / f"form_{i:02d}_table.jsonl").write_text("{}\n")
     catalog_path = tmp_path / "dictionary_mapping" / "catalog.json"
     build_dictionary_catalog(jsonl_dir=jsonl_dir, output_path=catalog_path)
-    import config
     assert catalog_path.stat().st_size <= config.LEAN_CATALOG_DICTIONARY_MAX_BYTES
 
 
@@ -89,3 +91,63 @@ def test_catalog_excludes_self(tmp_path: Path) -> None:
     catalog = json.loads(catalog_path.read_text())
     assert "catalog" not in catalog["forms"]
     assert set(catalog["forms"].keys()) == {"tblENROL"}
+
+
+def test_study_metadata_catalog_is_lean_toc(tmp_path: Path) -> None:
+    ep_dir = tmp_path / "evidence_packs"
+    ep_dir.mkdir()
+    (ep_dir / "10_TST.json").write_text(
+        json.dumps(
+            {
+                "form": "10_TST",
+                "study": "Mini",
+                "variables": [{"variable_id": "A"}, {"variable_id": "B"}],
+            }
+        )
+    )
+    (ep_dir / "11_IGRA.json").write_text(
+        json.dumps({"form": "11_IGRA", "study": "Mini", "variables": [{"variable_id": "X"}]})
+    )
+    out = tmp_path / "study_metadata_catalog.json"
+    build_study_metadata_catalog(evidence_packs_dir=ep_dir, output_path=out)
+    catalog = json.loads(out.read_text())
+    assert catalog["schema_version"] == 1
+    assert catalog["study"] == "Mini"
+    assert set(catalog["forms"].keys()) == {"10_TST", "11_IGRA"}
+    assert catalog["forms"]["10_TST"]["evidence_pack"] == "evidence_packs/10_TST.json"
+    assert catalog["forms"]["10_TST"]["variable_count"] == 2
+
+
+def test_study_metadata_catalog_skips_legacy_per_variable_packs(tmp_path: Path) -> None:
+    """Legacy per-variable JSONs in the same dir must be skipped."""
+    ep_dir = tmp_path / "evidence_packs"
+    ep_dir.mkdir()
+    # New per-form (kept)
+    (ep_dir / "10_TST.json").write_text(
+        json.dumps({"form": "10_TST", "study": "Mini", "variables": [{"variable_id": "A"}]})
+    )
+    # Legacy per-variable (skipped)
+    (ep_dir / "AE_AGE.json").write_text(json.dumps({"variable_id": "AE_AGE", "type": "integer"}))
+    (ep_dir / "AE_DEATHDAT.json").write_text(json.dumps({"variable_id": "AE_DEATHDAT"}))
+    out = tmp_path / "study_metadata_catalog.json"
+    build_study_metadata_catalog(evidence_packs_dir=ep_dir, output_path=out)
+    catalog = json.loads(out.read_text())
+    assert set(catalog["forms"].keys()) == {"10_TST"}
+
+
+def test_study_metadata_catalog_under_size_threshold(tmp_path: Path) -> None:
+    ep_dir = tmp_path / "evidence_packs"
+    ep_dir.mkdir()
+    for i in range(40):
+        (ep_dir / f"form_{i:02d}.json").write_text(
+            json.dumps(
+                {
+                    "form": f"form_{i:02d}",
+                    "study": "Mini",
+                    "variables": [{"variable_id": "A"}] * 50,
+                }
+            )
+        )
+    out = tmp_path / "study_metadata_catalog.json"
+    build_study_metadata_catalog(evidence_packs_dir=ep_dir, output_path=out)
+    assert out.stat().st_size <= config.LEAN_CATALOG_STUDY_METADATA_MAX_BYTES

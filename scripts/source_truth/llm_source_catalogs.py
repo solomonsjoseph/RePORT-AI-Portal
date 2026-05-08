@@ -11,6 +11,7 @@ Every catalog stores pointers only — never inline payloads.
 
 from __future__ import annotations
 
+import json
 import shutil
 import tempfile
 from pathlib import Path
@@ -102,6 +103,59 @@ def build_dictionary_catalog(
     logger.info("dictionary_catalog.written forms=%d output=%s", len(forms), str(output_path))
 
 
+def build_study_metadata_catalog(
+    *,
+    evidence_packs_dir: Path | None = None,
+    output_path: Path | None = None,
+) -> None:
+    """Walk per-form evidence packs and write a lean study-metadata ToC.
+
+    Skips legacy per-variable JSONs that share the directory (they have a
+    ``variable_id`` field; new packs have ``form`` + ``variables[]``).
+    """
+
+    evidence_packs_dir = (
+        evidence_packs_dir
+        if evidence_packs_dir is not None
+        else config.LLM_SOURCE_EVIDENCE_PACKS_DIR
+    )
+    output_path = (
+        output_path
+        if output_path is not None
+        else config.STUDY_LLM_SOURCE_DIR / "study_metadata_catalog.json"
+    )
+    forms: dict[str, dict[str, Any]] = {}
+    study: str | None = None
+    if evidence_packs_dir.is_dir():
+        for f in sorted(evidence_packs_dir.glob("*.json")):
+            try:
+                body = json.loads(f.read_text())
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(body, dict):
+                continue
+            # Distinguish new per-form pack (form + variables[]) from legacy per-variable
+            if "form" not in body or "variables" not in body:
+                continue
+            form_name = body.get("form") or f.stem
+            forms[form_name] = {
+                "evidence_pack": f"evidence_packs/{f.name}",
+                "variable_count": len(body.get("variables") or []),
+            }
+            if study is None:
+                study = body.get("study")
+    payload: dict[str, Any] = {
+        "schema_version": _SCHEMA_VERSION,
+        "study": study or "unknown",
+        "forms": forms,
+    }
+    atomic_write_json(output_path, payload)
+    logger.info(
+        "study_metadata_catalog.written forms=%d output=%s", len(forms), str(output_path)
+    )
+
+
 if __name__ == "__main__":
     relocate_dictionary()
     build_dictionary_catalog()
+    build_study_metadata_catalog()
