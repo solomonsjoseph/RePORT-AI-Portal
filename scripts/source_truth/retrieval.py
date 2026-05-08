@@ -5,8 +5,10 @@ from __future__ import annotations
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
+from scripts.audit.zone_guards import deny_if_audit_zone
 from scripts.source_truth.catalog import AUDIT_ONLY_NOTE
 
 __all__ = [
@@ -25,6 +27,16 @@ DROPPED_OR_UNAVAILABLE_NOTE = (
     "If you believe it should be available, please reach out to the "
     "project maintainer."
 )
+
+
+def _open_for_retrieval(path: Path) -> None:
+    """Phase 4 deny: refuse to read any path in the audit zone.
+
+    Call this before reading any file in the retriever. The check uses
+    realpath + .gitattributes attribute checks.
+    """
+
+    deny_if_audit_zone(path)
 
 
 class SourceTruthRetrievalError(ValueError):
