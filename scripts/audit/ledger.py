@@ -50,6 +50,7 @@ class LedgerWriter:
             datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         )
         self._events: list[dict] = []
+        self._sentinel_seen: bool = False
 
     # ------------------------------------------------------------------
     # Phase 4 runtime guard + sentinel
@@ -67,23 +68,30 @@ class LedgerWriter:
         self._ensure_sentinel()
 
     def _ensure_sentinel(self) -> None:
-        """Idempotently write the .NO_LLM_ZONE sentinel.
+        """Ensure the .NO_LLM_ZONE sentinel exists in the audit dir.
 
-        If the audit dir is non-empty AND the sentinel is missing, treat it
-        as tampering: alarm + refuse the write.
+        First call (per LedgerWriter instance): if sentinel missing, create it.
+        No tampering alarm — co-tenant writers (phi_scrub, dataset_cleanup)
+        legitimately populate the audit dir before the first ledger write.
+
+        Subsequent calls: if the sentinel was previously confirmed and is now
+        missing, treat it as tampering — alarm + refuse the write.
         """
         audit_dir = self._output_path.parent
         sentinel = audit_dir / config.AUDIT_NO_LLM_SENTINEL_NAME
         if sentinel.is_file():
+            self._sentinel_seen = True
             return
-        if audit_dir.is_dir() and any(audit_dir.iterdir()):
-            # Existing audit dir with no sentinel -> tampering. Alarm + refuse.
+        if self._sentinel_seen:
+            # Sentinel disappeared after we saw it — tampering.
             self._emit_sentinel_alarm()
             raise PermissionError(
                 f"audit sentinel missing at {sentinel}; ledger write refused"
             )
+        # First time we look and sentinel is missing — create it. Idempotent.
         audit_dir.mkdir(parents=True, exist_ok=True)
         sentinel.write_text("")  # presence is the signal
+        self._sentinel_seen = True
 
     def _emit_sentinel_alarm(self) -> None:
         alarm = {
