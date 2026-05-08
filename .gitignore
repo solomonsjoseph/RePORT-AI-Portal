@@ -366,3 +366,9 @@ test-results/
 # NOTE: ``data/snapshots/{STUDY}/`` is intentionally trackable. It holds the
 # human-reviewed cleaned trio bundle baseline used to repair a broken live
 # ``output/{STUDY}/trio_bundle/``. Raw PHI remains ignored under ``data/raw/``.
+
+# Test fixture exceptions — synthetic mini-fixtures under tests/fixtures/sot_gap
+# contain no real data and must be tracked even though their paths match the
+# broad output/ and tmp/ ignore patterns above.
+!tests/fixtures/sot_gap/
+!tests/fixtures/sot_gap/**
