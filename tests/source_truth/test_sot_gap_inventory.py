@@ -73,3 +73,54 @@ def test_production_format_yaml_parses_correctly():
     assert info["sot_present"] is True
     assert info["sot_complete"] is True
     assert info["missing_variables"] == []
+
+
+def test_inventory_skips_pipeline_metadata_columns(tmp_path):
+    """Pipeline-injected columns must not count as missing variables."""
+    sot_dir = tmp_path / "SoT"
+    sot_dir.mkdir()
+    dataset_dir = tmp_path / "datasets"
+    dataset_dir.mkdir()
+    raw_pdf_dir = tmp_path / "raw_pdfs"
+    raw_pdf_dir.mkdir()
+    pilot_dir = tmp_path / "pilots"
+    pilot_dir.mkdir()
+
+    # SoT declares only the real form variables
+    (sot_dir / "TEST_policy.yaml").write_text(
+        "form_id: TEST\nvariables:\n  - variable_id: SUBJID\n  - variable_id: AGE\n"
+    )
+    # Dataset has the real vars PLUS pipeline metadata
+    (dataset_dir / "TEST.jsonl").write_text(
+        '{"SUBJID": "X", "AGE": 30, "source_file": "f.csv", "_provenance": "pipe", "_phi_scrubbed": true}\n'
+    )
+
+    coverage = build_coverage(sot_dir=sot_dir, raw_pdf_dir=raw_pdf_dir, dataset_dir=dataset_dir, pilot_dir=pilot_dir)
+    info = coverage["forms"]["TEST"]
+    assert info["sot_present"] is True
+    assert info["sot_complete"] is True
+    assert info["missing_variables"] == []
+
+
+def test_inventory_finds_pdf_with_real_indo_vap_naming(tmp_path):
+    """PDFs named '<id> <human readable> vX.Y.pdf' under nested subdirs are matched to form ids."""
+    sot_dir = tmp_path / "SoT"
+    sot_dir.mkdir()
+    dataset_dir = tmp_path / "datasets"
+    dataset_dir.mkdir()
+    raw_pdf_dir = tmp_path / "raw_pdfs"
+    nested = raw_pdf_dir / "annotated_pdfs"
+    nested.mkdir(parents=True)
+    pilot_dir = tmp_path / "pilots"
+    pilot_dir.mkdir()
+
+    (sot_dir / "10_TST_policy.yaml").write_text(
+        "form_id: 10_TST\nvariables:\n  - variable_id: SUBJID\n"
+    )
+    (dataset_dir / "10_TST.jsonl").write_text('{"SUBJID": "X"}\n')
+    (nested / "10 TST screening v1.0.pdf").write_bytes(b"%PDF-1.4\n%%EOF\n")
+
+    coverage = build_coverage(sot_dir=sot_dir, raw_pdf_dir=raw_pdf_dir, dataset_dir=dataset_dir, pilot_dir=pilot_dir)
+    info = coverage["forms"]["10_TST"]
+    assert "pdf" in info["observed_in"]
+    assert info["pdf_path"].endswith("10 TST screening v1.0.pdf")

@@ -18,6 +18,12 @@ from scripts.utils.logging_system import get_logger
 
 _LOG = get_logger(__name__)
 
+DEFAULT_PIPELINE_METADATA_COLUMNS: frozenset[str] = frozenset({
+    "source_file",
+    "_provenance",
+    "_phi_scrubbed",
+})
+
 
 def _atomic_write_text(target: Path, content: str) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -58,11 +64,30 @@ def _read_sot_variables(sot_path: Path) -> list[str]:
     return out
 
 
+def _resolve_pdf_for_form(raw_pdf_dir: Path, form_id: str) -> Path | None:
+    """Find the PDF for a form by matching its leading token.
+
+    Form IDs look like '10_TST', '1A_ICScreening', '99B_FSB'.
+    PDFs are named like '10 TST screening v1.0.pdf', '1A Index Case Screening v1.0.pdf'.
+    The leading token (before the first underscore in form_id, or the
+    first space in the PDF name) is the matching key.
+    """
+    if not raw_pdf_dir.is_dir():
+        return None
+    leading = form_id.split("_", 1)[0]  # "10", "1A", "99B"
+    for pdf in raw_pdf_dir.rglob("*.pdf"):
+        first_token = pdf.stem.split(" ", 1)[0]
+        if first_token == leading:
+            return pdf
+    return None
+
+
 def build_coverage(
     sot_dir: Path,
     raw_pdf_dir: Path,
     dataset_dir: Path,
     pilot_dir: Path,
+    pipeline_metadata_columns: frozenset[str] = DEFAULT_PIPELINE_METADATA_COLUMNS,
 ) -> dict[str, Any]:
     sot_dir = Path(sot_dir)
     raw_pdf_dir = Path(raw_pdf_dir)
@@ -79,17 +104,18 @@ def build_coverage(
             forms[form]["observed_in"].append("dataset")
             observed_cols[form] = _read_column_keys_only(jsonl)
 
-    if raw_pdf_dir.is_dir():
-        for pdf in sorted(raw_pdf_dir.glob("*.pdf")):
-            form = _form_id_from_filename(pdf.name)
-            forms.setdefault(form, {"observed_in": []})
-            forms[form]["observed_in"].append("pdf")
-
     if pilot_dir.is_dir():
         for form_dir in sorted(p for p in pilot_dir.glob("policy_pilot_*") if p.is_dir()):
             form = form_dir.name.removeprefix("policy_pilot_")
             forms.setdefault(form, {"observed_in": []})
             forms[form]["pilot_present"] = True
+
+    # Resolve PDFs for all known forms using fuzzy leading-token matching (recursive).
+    for form, info in forms.items():
+        pdf_path = _resolve_pdf_for_form(raw_pdf_dir, form)
+        if pdf_path:
+            info.setdefault("observed_in", []).append("pdf")
+            info["pdf_path"] = str(pdf_path)
 
     for form, info in forms.items():
         sot_path = sot_dir / f"{form}_policy.yaml"
@@ -97,7 +123,7 @@ def build_coverage(
         if sot_path.is_file():
             info["sot_present"] = True
             declared = set(_read_sot_variables(sot_path))
-            observed = set(cols)
+            observed = set(cols) - pipeline_metadata_columns
             missing = sorted(observed - declared)
             info["missing_variables"] = missing
             info["sot_complete"] = bool(observed) and not missing
