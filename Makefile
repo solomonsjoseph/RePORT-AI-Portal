@@ -236,6 +236,9 @@ llm-source-build: ## Build per-form evidence packs + lean catalogs for llm_sourc
 	$(UV) run --all-groups python -m scripts.source_truth.evidence_pack_consolidator
 	$(UV) run --all-groups python -m scripts.source_truth.llm_source_catalogs
 
+cross-verify: ## Run mid-pipeline cross-verifier (scanner + fix agent), emit drafts and live PRs/issues
+	$(UV) run --all-groups python -m scripts.source_truth.cross_verify_pipeline
+
 consolidate-dictionary: ## Merge trio_bundle/dictionary/*.json → llm_source/data_dictionary.json
 	@if [ ! -d "output/$(STUDY)/trio_bundle/dictionary" ]; then \
 		printf ">> SKIP consolidate-dictionary for STUDY=$(STUDY): no trio_bundle/dictionary/ found.\n"; \

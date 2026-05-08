@@ -275,6 +275,16 @@ LEAN_CATALOG_DICTIONARY_MAX_BYTES: int = 20 * 1024
 LEAN_CATALOG_DATASET_SCHEMA_MAX_BYTES: int = 50 * 1024
 LEAN_CATALOG_STUDY_METADATA_MAX_BYTES: int = 200 * 1024
 
+# --- Phase 3: cross-verify ---------------------------------------------------
+# STUDY_AUDIT_DIR is defined above in the study-paths block; reuse it here.
+PHI_ID_MAPPING_PATH: Path = STUDY_AUDIT_DIR / "phi_id_mapping.json"
+CROSS_VERIFY_REPEAT_LEDGER_PATH: Path = STUDY_AUDIT_DIR / "cross_verify_repeat_ledger.json"
+CROSS_VERIFY_SAFE_REPORT_PATH: Path = TMP_DIR / "cross_verify_safe_report.json"
+CROSS_VERIFY_AGENT_WORKDIR: Path = TMP_DIR / "cross_verify_agent_workdir"
+CROSS_VERIFY_PR_DRAFTS_DIR: Path = TMP_DIR / "cross_verify_pr_drafts"
+CROSS_VERIFY_HITL_DRAFTS_DIR: Path = TMP_DIR / "cross_verify_hitl_drafts"
+CROSS_VERIFY_REPEAT_THRESHOLD: int = 2
+
 # ----------------------------------------------------------------------------
 # AGENT STATE TIER (per-session state, NOT study output)
 # ----------------------------------------------------------------------------
