@@ -22,9 +22,11 @@ def merge_approved_draft(
 ) -> None:
     sot_dir.mkdir(parents=True, exist_ok=True)
     target = sot_dir / f"{form}_policy.yaml"
-    shutil.copyfile(draft_yaml_path, target)
+    tmp = target.with_suffix(".yaml.tmp")
+    shutil.copyfile(draft_yaml_path, tmp)
+    tmp.replace(target)
     _LOG.info(
-        "sot_merge.applied form=%s target=%s evidence_pack_kept=%s",
+        "sot_merge.applied form=%s target=%s evidence_pack_path=%s",
         form,
         target,
         draft_pack_path,
