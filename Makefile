@@ -232,6 +232,10 @@ phi-audit: ## Run SoT-driven PHI sweep and emit drafts under tmp/
 phi-audit-verify: ## Fail if any SoT variable lacks coverage AND no open HITL draft
 	$(UV) run --all-groups python -m scripts.security.phi_sweep_verify
 
+llm-source-build: ## Build per-form evidence packs + lean catalogs for llm_source/
+	$(UV) run --all-groups python -m scripts.source_truth.evidence_pack_consolidator
+	$(UV) run --all-groups python -m scripts.source_truth.llm_source_catalogs
+
 consolidate-dictionary: ## Merge trio_bundle/dictionary/*.json → llm_source/data_dictionary.json
 	@if [ ! -d "output/$(STUDY)/trio_bundle/dictionary" ]; then \
 		printf ">> SKIP consolidate-dictionary for STUDY=$(STUDY): no trio_bundle/dictionary/ found.\n"; \
