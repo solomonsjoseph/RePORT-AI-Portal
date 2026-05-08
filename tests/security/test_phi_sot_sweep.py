@@ -26,8 +26,9 @@ def test_covered_variables_classified_as_covered(tmp_path: Path) -> None:
     run_sweep(sot_dir=_FIXTURE, output_path=findings_path, key_path=keyfile)
     data = json.loads(findings_path.read_text())
     covered = [f for f in data["findings"] if f["category"] == "covered"]
-    assert len(covered) == 3
-    assert all(f["form"] == "covered_form" for f in covered)
+    assert len(covered) == 4
+    forms = {f["form"] for f in covered}
+    assert forms == {"covered_form", "dict_form"}
 
 
 def test_name_phi_kept_flagged_uncovered(tmp_path: Path) -> None:
@@ -37,9 +38,9 @@ def test_name_phi_kept_flagged_uncovered(tmp_path: Path) -> None:
     run_sweep(sot_dir=_FIXTURE, output_path=findings_path, key_path=keyfile)
     data = json.loads(findings_path.read_text())
     name_phi = [f for f in data["findings"] if f["category"] == "name_phi_uncovered"]
-    assert len(name_phi) == 3
+    assert len(name_phi) == 4
     forms = {f["form"] for f in name_phi}
-    assert forms == {"name_phi_form"}
+    assert forms == {"name_phi_form", "dict_form"}
 
 
 def test_review_required_action_classified(tmp_path: Path) -> None:
@@ -59,7 +60,17 @@ def test_variable_id_never_appears_in_clear(tmp_path: Path) -> None:
     findings_path = tmp_path / "findings.json"
     run_sweep(sot_dir=_FIXTURE, output_path=findings_path, key_path=keyfile)
     raw = findings_path.read_text()
-    forbidden_clear = ["SUBJID", "VISITDAT", "PT_NAME", "HHC_PHONE", "AADHAAR", "FIELD1", "AGEYRS"]
+    forbidden_clear = [
+        "SUBJID",
+        "VISITDAT",
+        "PT_NAME",
+        "HHC_PHONE",
+        "AADHAAR",
+        "FIELD1",
+        "AGEYRS",
+        "STUDY_DATE",
+        "PT_PHONE",
+    ]
     for v in forbidden_clear:
         assert v not in raw, f"clear-text variable_id {v!r} leaked into findings JSON"
 
@@ -70,7 +81,19 @@ def test_summary_counts_match(tmp_path: Path) -> None:
     findings_path = tmp_path / "findings.json"
     run_sweep(sot_dir=_FIXTURE, output_path=findings_path, key_path=keyfile)
     data = json.loads(findings_path.read_text())
-    assert data["summary"]["covered"] == 3
-    assert data["summary"]["name_phi_uncovered"] == 3
+    assert data["summary"]["covered"] == 4
+    assert data["summary"]["name_phi_uncovered"] == 4
     assert data["summary"]["review_required_open"] == 1
-    assert data["summary"]["total_variables"] == 7
+    assert data["summary"]["total_variables"] == 9
+
+
+def test_dict_form_policies_supported(tmp_path: Path) -> None:
+    keyfile = tmp_path / "phi.key"
+    _write_key(keyfile, 0)
+    findings_path = tmp_path / "findings.json"
+    run_sweep(sot_dir=_FIXTURE, output_path=findings_path, key_path=keyfile)
+    data = json.loads(findings_path.read_text())
+    dict_form = [f for f in data["findings"] if f["form"] == "dict_form"]
+    assert len(dict_form) == 2, f"expected 2 vars from dict-form fixture, got {len(dict_form)}"
+    cats = {f["category"] for f in dict_form}
+    assert cats == {"covered", "name_phi_uncovered"}

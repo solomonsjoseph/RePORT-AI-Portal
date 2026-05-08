@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import re
 import tempfile
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -107,6 +108,35 @@ def _classify_variable(
     return ("name_phi_uncovered", "uncategorized")
 
 
+def _iter_variables(
+    variables: Any, policy_path: Path
+) -> Iterator[tuple[str, dict[str, Any]]]:
+    """Normalize SoT variables to ``(variable_id, var_dict)`` pairs.
+
+    Supports both shapes:
+
+    * **List form** (used by fixtures): ``[{"variable_id": ..., ...}, ...]``
+    * **Dict form** (used by production SoT YAMLs): ``{vid: {meta...}, ...}``
+    """
+    if isinstance(variables, list):
+        for var in variables:
+            if not isinstance(var, dict):
+                continue
+            vid = var.get("variable_id")
+            if not vid:
+                continue
+            yield str(vid), var
+    elif isinstance(variables, dict):
+        for vid, var in variables.items():
+            if not isinstance(var, dict):
+                continue
+            yield str(vid), var
+    else:
+        raise PHISweepError(
+            f"{policy_path}: variables must be list or dict, got {type(variables).__name__}"
+        )
+
+
 def run_sweep(
     *,
     sot_dir: Path | None = None,
@@ -125,17 +155,12 @@ def run_sweep(
     for policy_path in _iter_policy_files(sot_dir):
         policy = _load_policy(policy_path)
         form = policy.get("form") or policy_path.stem.replace("_policy", "")
-        variables = policy.get("variables") or []
-        if not isinstance(variables, list):
-            raise PHISweepError(f"{policy_path}: variables must be a list")
-        for var in variables:
-            if not isinstance(var, dict):
-                continue
-            variable_id = var.get("variable_id")
+        variables = policy.get("variables")
+        if variables is None:
+            continue
+        for variable_id, var in _iter_variables(variables, policy_path):
             handling = var.get("handling_intent") or {}
             action = (handling.get("action") if isinstance(handling, dict) else None) or "unknown"
-            if not variable_id:
-                continue
             category, anchor = _classify_variable(form, variable_id, action)
             counters[category] += 1
             findings.append(
