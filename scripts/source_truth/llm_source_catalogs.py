@@ -14,8 +14,11 @@ from __future__ import annotations
 import json
 import shutil
 import tempfile
+from collections import Counter
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 import config
 from scripts.extraction.io.file_io import atomic_write_json
@@ -155,7 +158,88 @@ def build_study_metadata_catalog(
     )
 
 
+def build_dataset_schema_catalog(
+    *,
+    sot_dir: Path | None = None,
+    dataset_files_dir: Path | None = None,
+    evidence_packs_dir: Path | None = None,
+    output_path: Path | None = None,
+) -> None:
+    """Build the dataset_schema lean ToC with per-form handling summaries.
+
+    Walks every SoT YAML, computes a histogram of handling actions, and
+    records {file, sot_yaml, evidence_pack, handling_summary} per form.
+    """
+
+    sot_dir = sot_dir if sot_dir is not None else config.SOT_DIR
+    dataset_files_dir = (
+        dataset_files_dir
+        if dataset_files_dir is not None
+        else config.LLM_SOURCE_DATASET_SCHEMA_FILES_DIR
+    )
+    evidence_packs_dir = (
+        evidence_packs_dir
+        if evidence_packs_dir is not None
+        else config.LLM_SOURCE_EVIDENCE_PACKS_DIR
+    )
+    output_path = (
+        output_path
+        if output_path is not None
+        else config.LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH
+    )
+    policy_files = sorted(sot_dir.glob("*_policy.yaml"))
+    dataset_policies = sot_dir / "dataset_policies"
+    if dataset_policies.is_dir():
+        policy_files.extend(sorted(dataset_policies.glob("*_policy.yaml")))
+    forms: dict[str, dict[str, Any]] = {}
+    study: str | None = None
+    for policy_path in policy_files:
+        policy = yaml.safe_load(policy_path.read_text()) or {}
+        if not isinstance(policy, dict):
+            continue
+        form = policy.get("form") or policy_path.stem.replace("_policy", "")
+        if study is None:
+            study = policy.get("study")
+        # Compute handling_summary
+        actions: Counter[str] = Counter()
+        variables = policy.get("variables")
+        if isinstance(variables, list):
+            for v in variables:
+                if isinstance(v, dict):
+                    handling = v.get("handling_intent") or {}
+                    action = (handling.get("action") if isinstance(handling, dict) else None) or "unknown"
+                    actions[action] += 1
+        elif isinstance(variables, dict):
+            for v in variables.values():
+                if isinstance(v, dict):
+                    handling = v.get("handling_intent") or {}
+                    action = (handling.get("action") if isinstance(handling, dict) else None) or "unknown"
+                    actions[action] += 1
+        # Resolve relative paths
+        sot_yaml_rel = str(policy_path)
+        try:
+            sot_yaml_rel = str(policy_path.relative_to(config.BASE_DIR))
+        except ValueError:
+            pass
+        forms[form] = {
+            "file": f"files/{form}.jsonl",
+            "sot_yaml": sot_yaml_rel,
+            "evidence_pack": f"../evidence_packs/{form}.json",
+            "handling_summary": dict(sorted(actions.items())),
+        }
+    payload = {
+        "schema_version": _SCHEMA_VERSION,
+        "study": study or "unknown",
+        "forms": forms,
+    }
+    atomic_write_json(output_path, payload)
+    logger.info(
+        "dataset_schema_catalog.written forms=%d output=%s", len(forms), str(output_path)
+    )
+
+
 if __name__ == "__main__":
     relocate_dictionary()
     build_dictionary_catalog()
     build_study_metadata_catalog()
+    build_dataset_schema_catalog()

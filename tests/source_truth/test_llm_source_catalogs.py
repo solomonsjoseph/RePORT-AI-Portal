@@ -14,6 +14,7 @@ from scripts.source_truth.llm_source_catalogs import (
     build_study_metadata_catalog,
     relocate_dictionary,
 )
+from scripts.source_truth.llm_source_catalogs import build_dataset_schema_catalog
 
 
 def _make_legacy_subdir_layout(legacy: Path, forms: list[str]) -> None:
@@ -151,3 +152,88 @@ def test_study_metadata_catalog_under_size_threshold(tmp_path: Path) -> None:
     out = tmp_path / "study_metadata_catalog.json"
     build_study_metadata_catalog(evidence_packs_dir=ep_dir, output_path=out)
     assert out.stat().st_size <= config.LEAN_CATALOG_STUDY_METADATA_MAX_BYTES
+
+
+def test_dataset_schema_catalog_lean_toc_with_handling_summary(tmp_path: Path) -> None:
+    sot_dir = tmp_path / "sot"
+    sot_dir.mkdir()
+    (sot_dir / "10_TST_policy.yaml").write_text(
+        "schema_version: 1\nstudy: Mini\nform: 10_TST\nvariables:\n"
+        "  - variable_id: A\n    handling_intent:\n      action: keep\n"
+        "  - variable_id: B\n    handling_intent:\n      action: pseudonymize\n"
+        "  - variable_id: C\n    handling_intent:\n      action: review_required\n"
+    )
+    files_dir = tmp_path / "dataset_schema" / "files"
+    files_dir.mkdir(parents=True)
+    (files_dir / "10_TST.jsonl").write_text("{}\n")
+    ep_dir = tmp_path / "evidence_packs"
+    ep_dir.mkdir()
+    (ep_dir / "10_TST.json").write_text("{}")
+    out = tmp_path / "dataset_schema" / "catalog.json"
+    build_dataset_schema_catalog(
+        sot_dir=sot_dir,
+        dataset_files_dir=files_dir,
+        evidence_packs_dir=ep_dir,
+        output_path=out,
+    )
+    catalog = json.loads(out.read_text())
+    assert catalog["forms"]["10_TST"]["file"] == "files/10_TST.jsonl"
+    assert catalog["forms"]["10_TST"]["sot_yaml"].endswith("10_TST_policy.yaml")
+    assert catalog["forms"]["10_TST"]["evidence_pack"] == "../evidence_packs/10_TST.json"
+    assert catalog["forms"]["10_TST"]["handling_summary"] == {
+        "keep": 1,
+        "pseudonymize": 1,
+        "review_required": 1,
+    }
+
+
+def test_dataset_schema_catalog_supports_dict_form_variables(tmp_path: Path) -> None:
+    """Real production SoT YAMLs use dict-keyed variables (not lists)."""
+    sot_dir = tmp_path / "sot"
+    sot_dir.mkdir()
+    (sot_dir / "F_policy.yaml").write_text(
+        "schema_version: 1\nstudy: Mini\nform: F\nvariables:\n"
+        "  V1:\n    handling_intent:\n      action: keep\n"
+        "  V2:\n    handling_intent:\n      action: drop\n"
+    )
+    files_dir = tmp_path / "dataset_schema" / "files"
+    files_dir.mkdir(parents=True)
+    (files_dir / "F.jsonl").write_text("{}\n")
+    ep_dir = tmp_path / "evidence_packs"
+    ep_dir.mkdir()
+    out = tmp_path / "dataset_schema" / "catalog.json"
+    build_dataset_schema_catalog(
+        sot_dir=sot_dir,
+        dataset_files_dir=files_dir,
+        evidence_packs_dir=ep_dir,
+        output_path=out,
+    )
+    catalog = json.loads(out.read_text())
+    assert catalog["forms"]["F"]["handling_summary"] == {"keep": 1, "drop": 1}
+
+
+def test_dataset_schema_catalog_under_size_threshold(tmp_path: Path) -> None:
+    sot_dir = tmp_path / "sot"
+    sot_dir.mkdir()
+    files_dir = tmp_path / "dataset_schema" / "files"
+    files_dir.mkdir(parents=True)
+    ep_dir = tmp_path / "evidence_packs"
+    ep_dir.mkdir()
+    for i in range(40):
+        form = f"form_{i:02d}"
+        (sot_dir / f"{form}_policy.yaml").write_text(
+            f"schema_version: 1\nstudy: Mini\nform: {form}\nvariables:\n"
+            + "".join(
+                f"  - variable_id: V{j:03d}\n    handling_intent:\n      action: keep\n"
+                for j in range(50)
+            )
+        )
+        (files_dir / f"{form}.jsonl").write_text("{}\n")
+    out = tmp_path / "dataset_schema" / "catalog.json"
+    build_dataset_schema_catalog(
+        sot_dir=sot_dir,
+        dataset_files_dir=files_dir,
+        evidence_packs_dir=ep_dir,
+        output_path=out,
+    )
+    assert out.stat().st_size <= config.LEAN_CATALOG_DATASET_SCHEMA_MAX_BYTES
