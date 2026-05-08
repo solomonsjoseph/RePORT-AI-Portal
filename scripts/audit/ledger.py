@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
+import config
 from scripts.extraction.io import atomic_write_json
 
 __all__ = ["LedgerWriter"]
@@ -50,6 +51,50 @@ class LedgerWriter:
         )
         self._events: list[dict] = []
 
+    # ------------------------------------------------------------------
+    # Phase 4 runtime guard + sentinel
+    # ------------------------------------------------------------------
+
+    def _phase4_guard(self) -> None:
+        """Phase 4: refuse writes when LLM-agent role; ensure sentinel."""
+        # Local import avoids a circular import via ``scripts.utils.__init__``.
+        from scripts.utils.process_role import is_llm_agent
+
+        if is_llm_agent():
+            raise PermissionError(
+                "audit ledger write refused: REPORTAL_PROCESS_ROLE=llm-agent"
+            )
+        self._ensure_sentinel()
+
+    def _ensure_sentinel(self) -> None:
+        """Idempotently write the .NO_LLM_ZONE sentinel.
+
+        If the audit dir is non-empty AND the sentinel is missing, treat it
+        as tampering: alarm + refuse the write.
+        """
+        audit_dir = self._output_path.parent
+        sentinel = audit_dir / config.AUDIT_NO_LLM_SENTINEL_NAME
+        if sentinel.is_file():
+            return
+        if audit_dir.is_dir() and any(audit_dir.iterdir()):
+            # Existing audit dir with no sentinel -> tampering. Alarm + refuse.
+            self._emit_sentinel_alarm()
+            raise PermissionError(
+                f"audit sentinel missing at {sentinel}; ledger write refused"
+            )
+        audit_dir.mkdir(parents=True, exist_ok=True)
+        sentinel.write_text("")  # presence is the signal
+
+    def _emit_sentinel_alarm(self) -> None:
+        alarm = {
+            "event": "sentinel_missing",
+            "path": str(self._output_path),
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+        config.AUDIT_SENTINEL_ALARM_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(config.AUDIT_SENTINEL_ALARM_PATH, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(alarm, sort_keys=True) + "\n")
+
     def add_phi_event(
         self,
         *,
@@ -64,6 +109,7 @@ class LedgerWriter:
         count: int | None,
     ) -> None:
         """Append one PHI handling event. Raises ValueError on unknown action."""
+        self._phase4_guard()
         if not form:
             raise ValueError("form must not be empty")
         if not variable_id:
@@ -102,6 +148,7 @@ class LedgerWriter:
         count: int | None,
     ) -> None:
         """Append one dataset cleanup event. Raises ValueError on unknown action."""
+        self._phase4_guard()
         if not form:
             raise ValueError("form must not be empty")
         if not variable_id:
@@ -130,6 +177,7 @@ class LedgerWriter:
 
     def flush(self) -> None:
         """Write events to output_path atomically. Safe to call multiple times (overwrites)."""
+        self._phase4_guard()
         self._output_path.parent.mkdir(parents=True, exist_ok=True)
         envelope: dict = {
             "run_id": self._run_id,
