@@ -21,6 +21,6 @@ def test_phase0_paths_exist_and_are_path_like():
 
 
 def test_sot_dir_resolves_to_default_study():
-    indo_vap = Path(str(config.SOT_DIR))
-    assert indo_vap.name == "SoT"
-    assert "Indo-VAP" in str(indo_vap)
+    sot_dir = Path(str(config.SOT_DIR))
+    assert sot_dir.name == "Indo-VAP"
+    assert sot_dir.parent.name == "SoT"

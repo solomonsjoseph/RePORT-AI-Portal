@@ -30,8 +30,8 @@ Confirm each of these before running step 1.
 - **Raw study data is laid out** under `data/raw/Indo-VAP/` — workbooks
   and dictionaries as the extraction stages expect.
 
-- **`data/Indo-VAP/SoT/` exists** with the 28 per-form policy YAMLs.
-  Without `SoT/`, both `make build-llm-source` and `make verify-and-
+- **`data/SoT/Indo-VAP/` exists** with the 28 per-form policy YAMLs.
+  Without `SoT/Indo-VAP/`, both `make build-llm-source` and `make verify-and-
   promote` short-circuit with a yellow `>> SKIP` message.
 
 ## 2. Steps
@@ -152,7 +152,7 @@ under `missing_unexplained`, decide which of these is the cause:
   intended to be PHI. Fix `scripts/security/phi_scrub.yaml`, delete
   the sentinel (see §6 Rollback), rerun from step 3.
 - **SoT gap.** The form's policy YAML at
-  `data/Indo-VAP/SoT/<form>_policy.yaml` declares a column that no
+  `data/SoT/Indo-VAP/<form>_policy.yaml` declares a column that no
   longer exists in the workbook (or is misnamed). Update the YAML and
   rerun from step 5.
 - **Cleanup miss.** The dataset cleanup pass dropped the column for a
