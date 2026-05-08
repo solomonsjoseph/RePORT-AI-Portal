@@ -1,0 +1,7 @@
+schema_version: 1
+study: Mini
+exclusions:
+  30_DeprecatedForm:
+    reason: deprecated_stub
+    notes: |
+      Test fixture: form has only admin columns, no measurement variables.

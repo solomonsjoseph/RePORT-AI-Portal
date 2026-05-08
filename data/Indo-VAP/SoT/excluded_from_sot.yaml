@@ -1,0 +1,15 @@
+# Forms registered with a form-id but explicitly excluded from SoT scope.
+#
+# Reasons include: deprecated stubs, derived data tables (no source CRF),
+# and naming variants whose canonical policy lives elsewhere.
+schema_version: 1
+study: Indo-VAP
+exclusions:
+  30_Air_Quality:
+    reason: deprecated_stub
+    notes: |
+      Source XLSX has only 4 admin columns (Time_Stamp, AP_COMPDAT,
+      AP_SIGN, AP_INIT) and 3 data rows. No measurement variables. The
+      canonical environmental-evaluation form is 9_EEval. Recommended
+      disposition (per Phase 0 HITL flag at
+      tmp/sot_pdf_sweep/30_Air_Quality.diff.md): mark deprecated.

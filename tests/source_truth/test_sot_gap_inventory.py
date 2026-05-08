@@ -102,6 +102,51 @@ def test_inventory_skips_pipeline_metadata_columns(tmp_path):
     assert info["missing_variables"] == []
 
 
+def test_alias_form_resolves_to_canonical_when_canonical_complete():
+    """19_Smear_alias → 19_Smear; canonical policy exists, so alias is sot_present+complete."""
+    coverage = build_coverage(
+        sot_dir=FIXTURE / "data/Mini/SoT",
+        raw_pdf_dir=FIXTURE / "data/raw/Mini",
+        dataset_dir=FIXTURE / "output/Mini/trio_bundle/datasets",
+        pilot_dir=FIXTURE / "tmp/results",
+    )
+    alias_info = coverage["forms"]["19_Smear_alias"]
+    assert alias_info["alias_of"] == "19_Smear"
+    assert alias_info["sot_present"] is True
+    assert alias_info["sot_complete"] is True
+    assert alias_info["missing_variables"] == []
+
+
+def test_dataset_only_policy_directory_satisfies_sot_present():
+    """30_Air_Sample has no PDF-derived policy but one in dataset_policies/; sot_present=True."""
+    coverage = build_coverage(
+        sot_dir=FIXTURE / "data/Mini/SoT",
+        raw_pdf_dir=FIXTURE / "data/raw/Mini",
+        dataset_dir=FIXTURE / "output/Mini/trio_bundle/datasets",
+        pilot_dir=FIXTURE / "tmp/results",
+    )
+    info = coverage["forms"]["30_Air_Sample"]
+    assert info["sot_present"] is True
+    assert info["policy_source"] == "dataset_columns_only"
+    # SUBJID declared in dataset_policies YAML; source_file is pipeline metadata → no gap
+    assert info["sot_complete"] is True
+    assert info["missing_variables"] == []
+
+
+def test_excluded_form_does_not_block_gate():
+    """30_DeprecatedForm is in excluded_from_sot.yaml; sot_complete=True vacuously."""
+    coverage = build_coverage(
+        sot_dir=FIXTURE / "data/Mini/SoT",
+        raw_pdf_dir=FIXTURE / "data/raw/Mini",
+        dataset_dir=FIXTURE / "output/Mini/trio_bundle/datasets",
+        pilot_dir=FIXTURE / "tmp/results",
+    )
+    info = coverage["forms"]["30_DeprecatedForm"]
+    assert info["excluded"] is True
+    assert info["sot_complete"] is True
+    assert info["missing_variables"] == []
+
+
 def test_inventory_finds_pdf_with_real_indo_vap_naming(tmp_path):
     """PDFs named '<id> <human readable> vX.Y.pdf' under nested subdirs are matched to form ids."""
     sot_dir = tmp_path / "SoT"

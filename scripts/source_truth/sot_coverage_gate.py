@@ -25,6 +25,15 @@ def gate(coverage: dict[str, Any]) -> int:
         if not isinstance(info, dict):
             failures.append(f"{form}: malformed coverage entry (expected dict, got {type(info).__name__})")
             continue
+        # Excluded forms are vacuously complete — skip gate check.
+        if info.get("excluded"):
+            _LOG.info("sot_coverage_gate.excluded form=%s reason=%s", form, info.get("exclusion_reason", ""))
+            continue
+        # Alias forms: gate passes if canonical policy is present (sot_complete set by walker).
+        if info.get("alias_of"):
+            if not info.get("sot_complete"):
+                failures.append(f"{form}: alias of {info['alias_of']} but canonical SoT YAML missing")
+            continue
         if not info.get("sot_present"):
             failures.append(f"{form}: SoT YAML missing")
         elif not info.get("sot_complete"):

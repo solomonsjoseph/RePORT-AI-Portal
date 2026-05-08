@@ -1,0 +1,9 @@
+schema_version: 1
+study: Mini
+form: 30_Air_Sample
+policy_source: dataset_columns_only
+variables:
+  - variable_id: SUBJID
+    action: pseudonymize
+    category: identifier
+    claude_drafted: true

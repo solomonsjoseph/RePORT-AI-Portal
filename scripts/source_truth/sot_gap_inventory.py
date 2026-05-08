@@ -4,6 +4,11 @@ For each form in raw_pdf_dir or dataset_dir, report whether a SoT YAML
 exists and whether every observed dataset column key is declared as a
 variable in the SoT YAML. Reads ONLY column keys from the dataset (line 1
 parsed, then discarded) — never row values.
+
+Phase 0 additions:
+- alias map: runtime form-id variants resolve to canonical form-ids.
+- dataset_policies subdir: forms with no PDF but a dataset-only YAML.
+- exclusions registry: deprecated / out-of-scope forms skip gap failures.
 """
 
 from __future__ import annotations
@@ -64,6 +69,30 @@ def _read_sot_variables(sot_path: Path) -> list[str]:
     return out
 
 
+def _load_alias_map(alias_map_path: Path) -> dict[str, str]:
+    """Return {variant: canonical} from aliases.yaml, or empty dict if missing."""
+    if not alias_map_path.is_file():
+        return {}
+    raw = alias_map_path.read_text(encoding="utf-8")
+    data = yaml.safe_load(raw)
+    if not isinstance(data, dict):
+        return {}
+    aliases = data.get("aliases") or {}
+    return {str(k): str(v) for k, v in aliases.items()} if isinstance(aliases, dict) else {}
+
+
+def _load_exclusions(excluded_path: Path) -> dict[str, dict[str, Any]]:
+    """Return {form_id: {reason, notes, ...}} from excluded_from_sot.yaml, or empty dict."""
+    if not excluded_path.is_file():
+        return {}
+    raw = excluded_path.read_text(encoding="utf-8")
+    data = yaml.safe_load(raw)
+    if not isinstance(data, dict):
+        return {}
+    exclusions = data.get("exclusions") or {}
+    return dict(exclusions) if isinstance(exclusions, dict) else {}
+
+
 def _resolve_pdf_for_form(raw_pdf_dir: Path, form_id: str) -> Path | None:
     """Find the PDF for a form by matching its leading token.
 
@@ -88,11 +117,25 @@ def build_coverage(
     dataset_dir: Path,
     pilot_dir: Path,
     pipeline_metadata_columns: frozenset[str] = DEFAULT_PIPELINE_METADATA_COLUMNS,
+    alias_map_path: Path | None = None,
+    excluded_path: Path | None = None,
 ) -> dict[str, Any]:
     sot_dir = Path(sot_dir)
     raw_pdf_dir = Path(raw_pdf_dir)
     dataset_dir = Path(dataset_dir)
     pilot_dir = Path(pilot_dir)
+
+    # Resolve default paths from sot_dir parent (or sot_dir itself for exclusions).
+    if alias_map_path is None:
+        alias_map_path = sot_dir.parent / "aliases.yaml"
+        if not alias_map_path.is_file():
+            alias_map_path = sot_dir / "aliases.yaml"
+    if excluded_path is None:
+        excluded_path = sot_dir / "excluded_from_sot.yaml"
+
+    alias_map = _load_alias_map(Path(alias_map_path))
+    exclusions = _load_exclusions(Path(excluded_path))
+    dataset_policies_dir = sot_dir / "dataset_policies"
 
     forms: dict[str, dict[str, Any]] = {}
     observed_cols: dict[str, list[str]] = {}
@@ -118,11 +161,71 @@ def build_coverage(
             info["pdf_path"] = str(pdf_path)
 
     for form, info in forms.items():
-        sot_path = sot_dir / f"{form}_policy.yaml"
         cols = observed_cols.get(form, [])
+
+        # --- Exclusions check ---
+        if form in exclusions:
+            exc = exclusions[form]
+            info["excluded"] = True
+            info["exclusion_reason"] = exc.get("reason", "")
+            info["sot_present"] = True   # vacuously satisfied
+            info["sot_complete"] = True  # vacuously satisfied
+            info["missing_variables"] = []
+            _LOG.info("sot_gap_inventory.excluded form=%s reason=%s", form, info["exclusion_reason"])
+            continue
+
+        # --- Alias resolution ---
+        canonical = alias_map.get(form)
+        if canonical is not None:
+            info["alias_of"] = canonical
+            # Check whether the canonical form has a policy in either location.
+            canonical_path = sot_dir / f"{canonical}_policy.yaml"
+            canonical_dataset_path = (
+                dataset_policies_dir / f"{canonical}_policy.yaml"
+                if dataset_policies_dir.is_dir()
+                else None
+            )
+            canonical_present = canonical_path.is_file() or (
+                canonical_dataset_path is not None and canonical_dataset_path.is_file()
+            )
+            info["sot_present"] = canonical_present
+            info["sot_complete"] = canonical_present  # alias: presence implies complete
+            info["missing_variables"] = []
+            if canonical_present:
+                policy_src = (
+                    "dataset_columns_only"
+                    if canonical_dataset_path is not None and canonical_dataset_path.is_file()
+                    else "pdf_derived"
+                )
+                info["policy_source"] = policy_src
+            _LOG.info(
+                "sot_gap_inventory.alias form=%s canonical=%s present=%s",
+                form, canonical, canonical_present,
+            )
+            continue
+
+        # --- Normal form: look in sot_dir then dataset_policies ---
+        sot_path = sot_dir / f"{form}_policy.yaml"
+        dataset_policy_path = (
+            dataset_policies_dir / f"{form}_policy.yaml"
+            if dataset_policies_dir.is_dir()
+            else None
+        )
+
         if sot_path.is_file():
+            active_path = sot_path
+            policy_source = "pdf_derived"
+        elif dataset_policy_path is not None and dataset_policy_path.is_file():
+            active_path = dataset_policy_path
+            policy_source = "dataset_columns_only"
+        else:
+            active_path = None
+            policy_source = None
+
+        if active_path is not None:
             info["sot_present"] = True
-            declared = set(_read_sot_variables(sot_path))
+            info["policy_source"] = policy_source
+            declared = set(_read_sot_variables(active_path))
             observed = set(cols) - pipeline_metadata_columns
             missing = sorted(observed - declared)
             info["missing_variables"] = missing
