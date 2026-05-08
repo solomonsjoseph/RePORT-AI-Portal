@@ -8,17 +8,10 @@ dataset row values.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
-import yaml
-
-from scripts.source_truth.sot_gap_inventory import (
-    _form_id_from_filename,
-    _read_column_keys_only,
-    _read_sot_variables,
-)
+from scripts.source_truth.sot_gap_inventory import _read_column_keys_only
 from scripts.utils.logging_system import get_logger
 
 _LOG = get_logger(__name__)
@@ -35,9 +28,14 @@ def _read_pdf_text(pdf_path: Path) -> str:
 
 def _read_pilot_artifact(pilot_dir: Path, form: str) -> str:
     folder = pilot_dir / f"policy_pilot_{form}"
-    candidates = list(folder.glob("*.yaml")) if folder.is_dir() else []
+    candidates = sorted(folder.glob("*.yaml")) if folder.is_dir() else []
     if not candidates:
         return ""
+    if len(candidates) > 1:
+        _LOG.warning(
+            "sot_extractor.pilot_multiple_artifacts form=%s count=%d picked=%s",
+            form, len(candidates), candidates[0].name,
+        )
     return candidates[0].read_text(encoding="utf-8")
 
 
