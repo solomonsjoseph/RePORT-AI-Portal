@@ -28,6 +28,33 @@ def test_merge_overwrites_sot_yaml_and_keeps_evidence_pack(tmp_path):
     assert pack_draft.is_file()
 
 
+def test_merge_rejects_malformed_yaml(tmp_path):
+    sot_dir = tmp_path / "SoT"
+    sot_dir.mkdir()
+    drafts_dir = tmp_path / "drafts"
+    drafts_dir.mkdir()
+    pack_drafts_dir = drafts_dir / "evidence_packs"
+    pack_drafts_dir.mkdir()
+
+    yaml_draft = drafts_dir / "8_CXR_policy.yaml.draft"
+    yaml_draft.write_text("form_id: 8_CXR\n  invalid:: indent\n")
+    pack_draft = pack_drafts_dir / "8_CXR.json"
+    pack_draft.write_text('{"form": "8_CXR"}')
+
+    import pytest
+    with pytest.raises(ValueError, match="malformed"):
+        merge_approved_draft(
+            form="8_CXR",
+            draft_yaml_path=yaml_draft,
+            draft_pack_path=pack_draft,
+            sot_dir=sot_dir,
+        )
+
+    # SoT YAML must NOT have been written
+    assert not (sot_dir / "8_CXR_policy.yaml").exists()
+    assert not (sot_dir / "8_CXR_policy.yaml.tmp").exists()
+
+
 def test_merge_raises_file_not_found_for_missing_draft(tmp_path):
     sot_dir = tmp_path / "SoT"
     sot_dir.mkdir()

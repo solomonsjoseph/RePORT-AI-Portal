@@ -91,6 +91,41 @@ def test_dispatch_forms_collects_errors_without_aborting(tmp_path, monkeypatch):
     assert [(form, type(exc).__name__) for form, exc in errors] == [("8_CXR", "RuntimeError")]
 
 
+def test_dispatch_forms_records_form_when_reviewer_fails_after_extractor(tmp_path, monkeypatch):
+    """When extractor succeeds and reviewer raises, the form is in errors,
+    not in results — the dispatcher must not silently lose the failure."""
+    def fake_run_extractor(*, form, **_kwargs):
+        return {
+            "form": form,
+            "yaml_path": str(tmp_path / f"{form}.yaml.draft"),
+            "evidence_pack_path": str(tmp_path / f"{form}.json"),
+        }
+
+    def fake_run_reviewer(*, form, **_kwargs):
+        raise RuntimeError(f"reviewer-down for {form}")
+
+    monkeypatch.setattr("scripts.source_truth.sot_gap_dispatcher.run_extractor", fake_run_extractor)
+    monkeypatch.setattr("scripts.source_truth.sot_gap_dispatcher.run_reviewer", fake_run_reviewer)
+
+    results, errors = dispatch_forms(
+        forms=["8_CXR"],
+        sot_dir=FIXTURE / "data/Mini/SoT",
+        raw_pdf_dir=FIXTURE / "data/raw/Mini",
+        dataset_dir=FIXTURE / "output/Mini/trio_bundle/datasets",
+        pilot_dir=FIXTURE / "tmp/results",
+        drafts_dir=tmp_path,
+        evidence_pack_drafts_dir=tmp_path,
+        reviews_dir=tmp_path,
+        concurrency=1,
+    )
+
+    assert results == []
+    assert len(errors) == 1
+    form, exc = errors[0]
+    assert form == "8_CXR"
+    assert isinstance(exc, RuntimeError)
+
+
 @pytest.mark.parametrize(
     "concurrency_arg,expected_workers",
     [(0, 1), (1, 1), (4, 4), (8, 8), (99, 8)],

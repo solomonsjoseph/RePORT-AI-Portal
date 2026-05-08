@@ -15,7 +15,7 @@ from typing import Any
 from anthropic import Anthropic
 
 import config
-from scripts.source_truth.sot_gap_inventory import _read_column_keys_only
+from scripts.source_truth.sot_gap_inventory import _atomic_write_text, _read_column_keys_only
 from scripts.utils.logging_system import get_logger
 
 _LOG = get_logger(__name__)
@@ -160,12 +160,10 @@ def run_extractor(
             f"Extractor agent returned non-JSON for form {form!r}"
         ) from exc
 
-    drafts_dir.mkdir(parents=True, exist_ok=True)
-    evidence_pack_drafts_dir.mkdir(parents=True, exist_ok=True)
     yaml_path = drafts_dir / f"{form}_policy.yaml.draft"
     pack_path = evidence_pack_drafts_dir / f"{form}.json"
-    yaml_path.write_text(out["yaml"], encoding="utf-8")
-    pack_path.write_text(out["evidence_pack"], encoding="utf-8")
+    _atomic_write_text(yaml_path, out["yaml"])
+    _atomic_write_text(pack_path, out["evidence_pack"])
 
     _LOG.info("sot_extractor.draft_written form=%s", form)
     return {

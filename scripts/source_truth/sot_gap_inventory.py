@@ -19,6 +19,13 @@ from scripts.utils.logging_system import get_logger
 _LOG = get_logger(__name__)
 
 
+def _atomic_write_text(target: Path, content: str) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_suffix(target.suffix + ".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    tmp.replace(target)
+
+
 def _form_id_from_filename(name: str) -> str:
     return name.rsplit(".", 1)[0]
 
@@ -107,8 +114,7 @@ def write_reports(
     coverage_json_path: Path,
     report_md_path: Path,
 ) -> None:
-    coverage_json_path.parent.mkdir(parents=True, exist_ok=True)
-    coverage_json_path.write_text(json.dumps(coverage, indent=2, sort_keys=True))
+    _atomic_write_text(coverage_json_path, json.dumps(coverage, indent=2, sort_keys=True))
 
     lines = ["# SoT gap coverage report", ""]
     for form, info in sorted(coverage["forms"].items()):
@@ -124,8 +130,7 @@ def write_reports(
                 lines.append(m)
             lines.append("```")
         lines.append("")
-    report_md_path.parent.mkdir(parents=True, exist_ok=True)
-    report_md_path.write_text("\n".join(lines))
+    _atomic_write_text(report_md_path, "\n".join(lines))
 
 
 def main() -> None:
