@@ -65,3 +65,27 @@ def test_enforce_idempotent(tmp_path: Path) -> None:
         assert not os.access(target, os.R_OK)
     finally:
         restore_read_access([target])
+
+
+def test_restore_dir_also_restores_children(tmp_path: Path) -> None:
+    """Regression: restore must reach files inside a mode-0 directory.
+
+    Walking a chmod-0 directory yields no children via rglob (the dir is
+    unreadable), so the restore loop missed them and left files orphaned
+    at mode 0. Without this guard, downstream tests in the same pytest
+    session would hit PermissionError when reading published datasets.
+    """
+
+    d = tmp_path / "row_jsonls"
+    d.mkdir()
+    a = d / "a.jsonl"
+    b = d / "b.jsonl"
+    a.write_text("a\n")
+    b.write_text("b\n")
+    enforce_read_deny([d])
+    restore_read_access([d])
+    # Both children must be readable again.
+    assert os.access(a, os.R_OK), "child a.jsonl should be readable after restore"
+    assert os.access(b, os.R_OK), "child b.jsonl should be readable after restore"
+    assert a.read_text() == "a\n"
+    assert b.read_text() == "b\n"

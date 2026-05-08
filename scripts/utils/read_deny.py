@@ -75,12 +75,21 @@ def restore_read_access(paths: list[Path]) -> None:
     # Restore in reverse order so directories regain readability before
     # their contents are restored (otherwise we cannot stat children).
     for p in paths:
-        nodes = list(reversed(_walk_tree(p)))
-        # If parent dir is mode 0, walking it returns []; fall back to recorded keys.
-        if not nodes:
-            nodes = [k for k in _ORIGINAL_MODES if k == p or p in k.parents]
-            # Restore parent dirs first (shorter path), then deeper children.
-            nodes.sort(key=lambda n: len(n.parts))
+        # Walking a mode-0 directory: rglob returns [] silently, so we miss
+        # children. Always union the walk result with anything we recorded
+        # under this path so files orphaned by an unreadable parent dir are
+        # still restored. Sort shortest-path-first so dirs come back to
+        # readable before their children are restored.
+        walk_nodes = _walk_tree(p)
+        recorded_under_p = [
+            k for k in _ORIGINAL_MODES if k == p or p in k.parents
+        ]
+        union: dict[Path, None] = {}
+        for n in walk_nodes:
+            union[n] = None
+        for n in recorded_under_p:
+            union[n] = None
+        nodes = sorted(union.keys(), key=lambda n: len(n.parts))
         for node in nodes:
             mode = _ORIGINAL_MODES.get(node)
             if mode is None:
