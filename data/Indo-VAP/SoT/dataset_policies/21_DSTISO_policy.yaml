@@ -1,0 +1,1403 @@
+schema_version: 2
+policy_status: draft_for_human_review
+policy_source: dataset_columns_only
+claude_drafted: true
+study: Indo-VAP
+form: 21_DSTISO
+aliased_to: 21_DSTIsolate  # Runtime-name variant; same underlying form processed via different extraction pipeline
+
+source:
+  dataset_file: 21_DSTISO.xlsx
+  pdf_file: null  # Dataset-only policy — no distinct PDF for this pipeline variant
+
+pdf_form_metadata:
+  form_number: Form 21
+  form_title: Drug Susceptibility Testing — Isolate (DSTISO pipeline variant; dataset-only)
+  form_version: unknown
+  page_count: null
+
+coverage:
+  column_count: 42  # 42 form columns; 3 pipeline metadata cols excluded (source_file, _provenance, _phi_scrubbed)
+  columns_mapped: 42
+  pdf_annotation_count: 0
+  pdf_annotation_variables: 0
+  annotated_columns: 0
+  non_annotated_columns:
+    - SUBJID
+    - DST_XLABID
+    - DST_XVISIT
+    - DST_MBREFID
+    - DST_MBND
+    - DST_MBDAT
+    - DST_MBTIM
+    - DST_MBSPSETT
+    - DST_MBSPMETH
+    - DST_MBRECDAT
+    - DST_MBRECTIM
+    - DST_DSTDAT
+    - DST_DSTINH
+    - DST_DSTRMP
+    - DST_DSTEMB
+    - DST_DSTSM
+    - DST_DSTPZA
+    - DST_DSTKMY
+    - DST_DSTOFX
+    - DST_DSTETHIO
+    - DST_DSTOTH
+    - DST_DSTOTHSP
+    - DST_DSTLFX
+    - DST_DSTMFX
+    - DST_DSTPAS
+    - DST_DSTLNZ
+    - DST_COMPDAT
+    - DST_ISOLATEND
+    - DST_ISOLATEDAT
+    - DST_DSTCZI
+    - DST_DSTCPMY
+    - DST_DSTAMX
+    - DST_DSTCLMY
+    - DST_DSTBDQ
+    - DST_DSTDEL
+    - DST_DSTND
+    - DST_ALINUM
+    - CSID
+    - Form_Notes
+    - Form_Pri
+    - Image_Seq
+    - Remote_Cmp
+  unresolved_review_required:
+    - Form_Notes  # Free-text field; may contain incidental PHI — review required
+
+pdf_sections: {}
+
+option_sets:
+  dst_result_options:
+    source: dataset_values_inferred
+    source_text: null
+    values:
+      - Susceptible
+      - Resistant
+      - Indeterminate
+      - Not Done
+    unknown: true
+  visit_options_inferred:
+    source: dataset_values_inferred
+    source_text: null
+    values:
+      - Baseline
+      - Month 2
+      - Month 5
+      - End of TX
+      - TX Failure/Relapse/Withdrawal
+    unknown: true
+  specimen_type_inferred:
+    source: dataset_values_inferred
+    source_text: null
+    values:
+      - Sputum
+      - BAL
+      - Other
+    unknown: true
+  specimen_method_inferred:
+    source: dataset_values_inferred
+    source_text: null
+    values:
+      - Spontaneous
+      - Induced
+      - Other
+    unknown: true
+
+variables:
+
+  SUBJID:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: SUBJID
+    normalized_metadata:
+      display_label: "Subject ID"
+      meaning: "Unique participant identifier assigned at enrolment; links the DST record to the enrolled subject."
+      section: participant_header
+      data_type: identifier
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: participant_header
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: direct_subject_identifier
+      label: SUBJ
+    runtime_binding:
+      - phi_scrub
+
+  DST_XLABID:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_XLABID
+    normalized_metadata:
+      display_label: "External Lab ID"
+      meaning: "External laboratory identifier for the specimen submitted for DST; links to lab records outside the study system."
+      section: specimen_identification
+      data_type: identifier
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: specimen_identification
+      other_specify: null
+    phi_sensitive_category: facility_or_site_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: external_lab_identifier_linkable
+      label: ID
+    runtime_binding:
+      - phi_scrub
+
+  DST_XVISIT:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_XVISIT
+    normalized_metadata:
+      display_label: "Visit Number"
+      meaning: "Study visit label at which the DST specimen was collected."
+      section: specimen_identification
+      data_type: categorical
+      options_ref: visit_options_inferred
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: DST_XVISIT
+      section_grouping: specimen_identification
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_visit_label_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_MBREFID:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_MBREFID
+    normalized_metadata:
+      display_label: "Microbiology Reference ID"
+      meaning: "Internal reference identifier for the microbiology specimen record; links DST result to the culture/smear record."
+      section: specimen_identification
+      data_type: identifier
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: specimen_identification
+      other_specify: null
+    phi_sensitive_category: facility_or_site_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: internal_specimen_reference_identifier
+      label: ID
+    runtime_binding:
+      - phi_scrub
+
+  DST_MBND:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_MBND
+    normalized_metadata:
+      display_label: "Microbiology Not Done Flag"
+      meaning: "Flag indicating whether the microbiology/DST procedure was not performed for this visit."
+      section: specimen_collection
+      data_type: categorical
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: specimen_collection
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_procedure_flag_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_MBDAT:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_MBDAT
+    normalized_metadata:
+      display_label: "Specimen Collection Date"
+      meaning: "Date the microbiological specimen was collected for DST."
+      section: specimen_collection
+      data_type: date
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: specimen_collection
+      other_specify: null
+    phi_sensitive_category: date_field
+    handling_intent:
+      action: jitter_date
+      reason: specimen_collection_date_phi_date_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+
+  DST_MBTIM:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_MBTIM
+    normalized_metadata:
+      display_label: "Specimen Collection Time"
+      meaning: "Time the microbiological specimen was collected."
+      section: specimen_collection
+      data_type: text
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: specimen_collection
+      other_specify: null
+    phi_sensitive_category: date_field
+    handling_intent:
+      action: jitter_date
+      reason: specimen_collection_time_phi_date_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+
+  DST_MBSPSETT:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_MBSPSETT
+    normalized_metadata:
+      display_label: "Specimen Setting"
+      meaning: "Clinical setting where the specimen was collected (e.g., inpatient, outpatient)."
+      section: specimen_collection
+      data_type: categorical
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: specimen_collection
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_clinical_setting_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_MBSPMETH:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_MBSPMETH
+    normalized_metadata:
+      display_label: "Specimen Collection Method"
+      meaning: "Method used to collect the specimen (e.g., spontaneous, induced sputum)."
+      section: specimen_collection
+      data_type: categorical
+      options_ref: specimen_method_inferred
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: specimen_collection
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_specimen_method_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_MBRECDAT:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_MBRECDAT
+    normalized_metadata:
+      display_label: "Specimen Receipt Date"
+      meaning: "Date the laboratory received the specimen for processing."
+      section: specimen_collection
+      data_type: date
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: specimen_collection
+      other_specify: null
+    phi_sensitive_category: date_field
+    handling_intent:
+      action: jitter_date
+      reason: lab_receipt_date_phi_date_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+
+  DST_MBRECTIM:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_MBRECTIM
+    normalized_metadata:
+      display_label: "Specimen Receipt Time"
+      meaning: "Time the laboratory received the specimen."
+      section: specimen_collection
+      data_type: text
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: specimen_collection
+      other_specify: null
+    phi_sensitive_category: date_field
+    handling_intent:
+      action: jitter_date
+      reason: lab_receipt_time_phi_date_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+
+  DST_DSTDAT:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTDAT
+    normalized_metadata:
+      display_label: "DST Result Date"
+      meaning: "Date the drug susceptibility test result was reported."
+      section: dst_results
+      data_type: date
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: date_field
+    handling_intent:
+      action: jitter_date
+      reason: dst_result_date_phi_date_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+
+  DST_DSTINH:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTINH
+    normalized_metadata:
+      display_label: "DST Isoniazid"
+      meaning: "Drug susceptibility test result for isoniazid (INH)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTRMP:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTRMP
+    normalized_metadata:
+      display_label: "DST Rifampicin"
+      meaning: "Drug susceptibility test result for rifampicin (RMP)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTEMB:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTEMB
+    normalized_metadata:
+      display_label: "DST Ethambutol"
+      meaning: "Drug susceptibility test result for ethambutol (EMB)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTSM:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTSM
+    normalized_metadata:
+      display_label: "DST Streptomycin"
+      meaning: "Drug susceptibility test result for streptomycin (SM)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTPZA:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTPZA
+    normalized_metadata:
+      display_label: "DST Pyrazinamide"
+      meaning: "Drug susceptibility test result for pyrazinamide (PZA)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTKMY:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTKMY
+    normalized_metadata:
+      display_label: "DST Kanamycin"
+      meaning: "Drug susceptibility test result for kanamycin (KMY)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTOFX:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTOFX
+    normalized_metadata:
+      display_label: "DST Ofloxacin"
+      meaning: "Drug susceptibility test result for ofloxacin (OFX)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTETHIO:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTETHIO
+    normalized_metadata:
+      display_label: "DST Ethionamide"
+      meaning: "Drug susceptibility test result for ethionamide (ETHIO)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTOTH:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTOTH
+    normalized_metadata:
+      display_label: "DST Other Drug Flag"
+      meaning: "Flag indicating whether DST was performed for an additional drug not captured by named columns."
+      section: dst_results
+      data_type: categorical
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: DST_DSTOTHSP
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_other_flag_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTOTHSP:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTOTHSP
+    normalized_metadata:
+      display_label: "DST Other Drug Specify"
+      meaning: "Free-text specification of the other drug tested when DST_DSTOTH is positive."
+      section: dst_results
+      data_type: text
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: free_text_phi
+    handling_intent:
+      action: review_required
+      reason: free_text_may_contain_incidental_phi
+      label: null
+    runtime_binding:
+      - phi_scrub
+
+  DST_DSTLFX:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTLFX
+    normalized_metadata:
+      display_label: "DST Levofloxacin"
+      meaning: "Drug susceptibility test result for levofloxacin (LFX)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTMFX:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTMFX
+    normalized_metadata:
+      display_label: "DST Moxifloxacin"
+      meaning: "Drug susceptibility test result for moxifloxacin (MFX)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTPAS:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTPAS
+    normalized_metadata:
+      display_label: "DST Para-aminosalicylic Acid"
+      meaning: "Drug susceptibility test result for para-aminosalicylic acid (PAS)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTLNZ:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTLNZ
+    normalized_metadata:
+      display_label: "DST Linezolid"
+      meaning: "Drug susceptibility test result for linezolid (LNZ)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_COMPDAT:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_COMPDAT
+    normalized_metadata:
+      display_label: "Completion Date"
+      meaning: "Date the DST form was completed or the DST procedure was completed."
+      section: form_completion
+      data_type: date
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: form_completion
+      other_specify: null
+    phi_sensitive_category: date_field
+    handling_intent:
+      action: jitter_date
+      reason: form_completion_date_phi_date_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+
+  DST_ISOLATEND:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_ISOLATEND
+    normalized_metadata:
+      display_label: "Isolate Not Done Flag"
+      meaning: "Flag indicating no isolate was available or DST on isolate was not performed."
+      section: isolate_tracking
+      data_type: categorical
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: isolate_tracking
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_procedure_flag_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_ISOLATEDAT:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_ISOLATEDAT
+    normalized_metadata:
+      display_label: "Isolate Date"
+      meaning: "Date the M. tuberculosis isolate was obtained from culture for DST."
+      section: isolate_tracking
+      data_type: date
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: isolate_tracking
+      other_specify: null
+    phi_sensitive_category: date_field
+    handling_intent:
+      action: jitter_date
+      reason: isolate_date_phi_date_field
+      label: null
+    runtime_binding:
+      - phi_scrub
+
+  DST_DSTCZI:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTCZI
+    normalized_metadata:
+      display_label: "DST Clofazimine"
+      meaning: "Drug susceptibility test result for clofazimine (CZI)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTCPMY:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTCPMY
+    normalized_metadata:
+      display_label: "DST Capreomycin"
+      meaning: "Drug susceptibility test result for capreomycin (CPMY)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTAMX:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTAMX
+    normalized_metadata:
+      display_label: "DST Amoxicillin-Clavulanate"
+      meaning: "Drug susceptibility test result for amoxicillin-clavulanate (AMX)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTCLMY:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTCLMY
+    normalized_metadata:
+      display_label: "DST Clarithromycin"
+      meaning: "Drug susceptibility test result for clarithromycin (CLMY)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTBDQ:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTBDQ
+    normalized_metadata:
+      display_label: "DST Bedaquiline"
+      meaning: "Drug susceptibility test result for bedaquiline (BDQ)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTDEL:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTDEL
+    normalized_metadata:
+      display_label: "DST Delamanid"
+      meaning: "Drug susceptibility test result for delamanid (DEL)."
+      section: dst_results
+      data_type: categorical
+      options_ref: dst_result_options
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_dst_result_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_DSTND:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_DSTND
+    normalized_metadata:
+      display_label: "DST Not Done Flag"
+      meaning: "Flag indicating DST was not performed (global not-done indicator distinct from per-drug results)."
+      section: dst_results
+      data_type: categorical
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: dst_results
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: keep
+      reason: categorical_procedure_flag_not_phi
+      label: null
+    runtime_binding: []
+
+  DST_ALINUM:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: DST_ALINUM
+    normalized_metadata:
+      display_label: "ALI Number"
+      meaning: "Accession or laboratory instrument number associated with the DST specimen or result."
+      section: specimen_identification
+      data_type: identifier
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: specimen_identification
+      other_specify: null
+    phi_sensitive_category: facility_or_site_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: lab_accession_identifier_linkable
+      label: ID
+    runtime_binding:
+      - phi_scrub
+
+  # ─── 5 FORM-VARIANT-ONLY COLUMNS (present in 21_DSTISO, absent in 21_DSTIsolate) ───
+
+  CSID:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: CSID
+    normalized_metadata:
+      display_label: "Capture System ID"
+      meaning: "System-assigned capture identifier from the DSTISO extraction pipeline; used to track form submissions across processing passes."
+      section: system_tracking
+      data_type: identifier
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: system_tracking
+      other_specify: null
+    phi_sensitive_category: facility_or_site_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: system_or_form_identifier
+      label: ID
+    runtime_binding:
+      - phi_scrub
+
+  Form_Notes:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: Form_Notes
+    normalized_metadata:
+      display_label: "Form Notes"
+      meaning: "Free-text notes captured at form-submission time by the DSTISO extraction pipeline; may contain incidental PHI or operational comments."
+      section: system_tracking
+      data_type: text
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: system_tracking
+      other_specify: null
+    phi_sensitive_category: free_text_phi
+    handling_intent:
+      action: review_required
+      reason: free_text_may_contain_incidental_phi
+      label: null
+    runtime_binding:
+      - phi_scrub
+
+  Form_Pri:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: Form_Pri
+    normalized_metadata:
+      display_label: "Form Priority"
+      meaning: "Pipeline-assigned form-priority flag from the DSTISO extraction pass; system metadata with no clinical meaning."
+      section: system_tracking
+      data_type: categorical
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: system_tracking
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: drop
+      reason: non_pdf_capture_metadata
+      label: null
+    runtime_binding: []
+
+  Image_Seq:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: Image_Seq
+    normalized_metadata:
+      display_label: "Image Sequence Number"
+      meaning: "Sequential image capture number assigned by the DSTISO extraction pipeline; system metadata with no clinical meaning."
+      section: system_tracking
+      data_type: numeric
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: system_tracking
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: drop
+      reason: non_pdf_capture_metadata
+      label: null
+    runtime_binding: []
+
+  Remote_Cmp:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: Remote_Cmp
+    normalized_metadata:
+      display_label: "Remote Completion Flag"
+      meaning: "Flag indicating the form was completed remotely; pipeline-capture metadata from the DSTISO extraction pass."
+      section: system_tracking
+      data_type: categorical
+      options_ref: null
+    options:
+      source_detail: null
+      inline_values: null
+      visit_grouping: null
+      section_grouping: system_tracking
+      other_specify: null
+    phi_sensitive_category: not_phi
+    handling_intent:
+      action: drop
+      reason: non_pdf_capture_metadata
+      label: null
+    runtime_binding: []
+
+ledger_expectations:
+  pseudonymize_count: 5   # SUBJID, DST_XLABID, DST_MBREFID, DST_ALINUM, CSID
+  jitter_date_count: 8    # DST_MBDAT, DST_MBTIM, DST_MBRECDAT, DST_MBRECTIM, DST_DSTDAT, DST_COMPDAT, DST_ISOLATEDAT, DST_DSTDAT (dedup: 7 distinct date/time cols + 1 isolate date)
+  drop_count: 3           # Form_Pri, Image_Seq, Remote_Cmp
+  keep_count: 22          # DST_XVISIT, DST_MBND, DST_MBSPSETT, DST_MBSPMETH, DST_DSTINH, DST_DSTRMP, DST_DSTEMB, DST_DSTSM, DST_DSTPZA, DST_DSTKMY, DST_DSTOFX, DST_DSTETHIO, DST_DSTOTH, DST_DSTLFX, DST_DSTMFX, DST_DSTPAS, DST_DSTLNZ, DST_DSTCZI, DST_DSTCPMY, DST_DSTAMX, DST_DSTCLMY, DST_DSTBDQ, DST_DSTDEL, DST_DSTND, DST_ISOLATEND (count adj: 22 keep)
+  review_required_count: 2  # DST_DSTOTHSP, Form_Notes
+
+validation:
+  forbidden_keys_absent: true
+  columns_unique: true
+  pdf_annotation_unmatched: []
+  dataset_columns_unmatched: []
+  excluded_pdf_artifacts:
+    - "source_file (pipeline metadata column — excluded from variables)"
+    - "_provenance (pipeline metadata column — excluded from variables)"
+    - "_phi_scrubbed (pipeline metadata column — excluded from variables)"

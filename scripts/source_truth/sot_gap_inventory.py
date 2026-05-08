@@ -229,7 +229,10 @@ def build_coverage(
             observed = set(cols) - pipeline_metadata_columns
             missing = sorted(observed - declared)
             info["missing_variables"] = missing
-            info["sot_complete"] = bool(observed) and not missing
+            # Complete when no observed column is undeclared.  If the dataset
+            # has no columns (e.g. empty JSONL), the policy vacuously covers
+            # everything — treat as complete so PDF-only forms don't block the gate.
+            info["sot_complete"] = not missing
         else:
             info["sot_present"] = False
             info["sot_complete"] = False

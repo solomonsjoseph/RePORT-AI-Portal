@@ -1,0 +1,7417 @@
+schema_version: 2
+study: Indo-VAP
+form: 18_2_TargConcom
+policy_status: draft_for_human_review
+
+source:
+  dataset_file: data/raw/Indo-VAP/datasets/18_2_TargConcom.xlsx
+  pdf_file: null
+
+pdf_form_metadata:
+  form_number: "18.2"
+  form_title: Targeted Concomitant Medications Follow-up
+  form_version: null
+  page_count: null
+
+coverage:
+  total_dataset_columns: 119
+  annotated_from_pdf: 0
+  dataset_only_columns: 119
+  action_keep: 75
+  action_jitter_date: 30
+  action_review_required: 14
+  non_annotated_columns: []
+  unresolved_review_required:
+    - MEDF_ARTMED6
+    - MEDF_ARTMED5
+    - MEDF_ARTMED4
+    - MEDF_ARTMED3
+    - MEDF_ARTMED2
+    - MEDF_ARTMED1
+    - MEDF_ARTMED7
+    - MEDF_ARTMED8
+    - MEDF_ARTMED9
+    - MEDF_ARTMED10
+    - MEDF_TBPTOCHG
+    - MEDF_PROPHOTSP
+    - MEDF_DIAOTHSP
+    - MEDF_DIAOTHSP2
+
+pdf_sections:
+
+  visit_metadata:
+    section_label: Visit Metadata
+    fields:
+      - MEDF_VISIT_A
+      - MEDF_VISIT_B
+      - MEDF_VISDAT
+
+  art_medications:
+    section_label: "A. Antiretroviral Therapy (ART) Medications"
+    fields:
+      - MEDF_ARTND
+      - MEDF_ARTIDN
+      - MEDF_ARTCHG
+      - MEDF_ARTMED6
+      - MEDF_ARTSTUNK6
+      - MEDF_ARTSTDAT6
+      - MEDF_ARTENDAT6
+      - MEDF_ARTENUNK6
+      - MEDF_ARTONGO6
+      - MEDF_ARTMED5
+      - MEDF_ARTSTDAT5
+      - MEDF_ARTSTUNK5
+      - MEDF_ARTENDAT5
+      - MEDF_ARTENUNK5
+      - MEDF_ARTONGO5
+      - MEDF_ARTMED4
+      - MEDF_ARTSTUNK4
+      - MEDF_ARTSTDAT4
+      - MEDF_ARTENDAT4
+      - MEDF_ARTENUNK4
+      - MEDF_ARTONGO4
+      - MEDF_ARTONGO3
+      - MEDF_ARTENDAT3
+      - MEDF_ARTENUNK3
+      - MEDF_ARTSTDAT3
+      - MEDF_ARTSTUNK3
+      - MEDF_ARTMED3
+      - MEDF_ARTMED2
+      - MEDF_ARTSTUNK2
+      - MEDF_ARTSTDAT2
+      - MEDF_ARTENDAT2
+      - MEDF_ARTENUNK2
+      - MEDF_ARTONGO2
+      - MEDF_ARTONGO1
+      - MEDF_ARTENDAT1
+      - MEDF_ARTENUNK1
+      - MEDF_ARTSTDAT1
+      - MEDF_ARTSTUNK1
+      - MEDF_ARTMED1
+      - MEDF_ARTMED7
+      - MEDF_ARTSTDAT7
+      - MEDF_ARTSTUNK7
+      - MEDF_ARTENDAT7
+      - MEDF_ARTENUNK7
+      - MEDF_ARTONGO7
+      - MEDF_ARTMED8
+      - MEDF_ARTSTDAT8
+      - MEDF_ARTSTUNK8
+      - MEDF_ARTENDAT8
+      - MEDF_ARTENUNK8
+      - MEDF_ARTONGO8
+      - MEDF_ARTMED9
+      - MEDF_ARTSTDAT9
+      - MEDF_ARTSTUNK9
+      - MEDF_ARTENDAT9
+      - MEDF_ARTENUNK9
+      - MEDF_ARTONGO9
+      - MEDF_ARTMED10
+      - MEDF_ARTSTDAT10
+      - MEDF_ARTSTUNK10
+      - MEDF_ARTENDAT10
+      - MEDF_ARTENUNK10
+      - MEDF_ARTONGO10
+
+  tb_prophylaxis:
+    section_label: B. TB Prophylaxis Medications
+    fields:
+      - MEDF_TBPROND
+      - MEDF_TBPROIDN
+      - MEDF_INHSTDAT
+      - MEDF_INHENDAT
+      - MEDF_INHCURR
+      - MEDF_INHSTUNK
+      - MEDF_INHENUNK
+      - MEDF_INHONGO
+      - MEDF_RIFCURR
+      - MEDF_RIFSTDAT
+      - MEDF_RIFSTUNK
+      - MEDF_RIFENDAT
+      - MEDF_RIFENUNK
+      - MEDF_RIFONGO
+      - MEDF_RPTCURR
+      - MEDF_RPTSTDAT
+      - MEDF_RPTSTUNK
+      - MEDF_RPTENDAT
+      - MEDF_RPTENUNK
+      - MEDF_RPTONGO
+      - MEDF_PROPHOTSP
+      - MEDF_PROPHSTDAT
+      - MEDF_PROPHSTUNK
+      - MEDF_PROPHENDAT
+      - MEDF_PROPHENUNK
+      - MEDF_PROPHONGO
+
+  dataset_only:
+    section_label: Dataset-Only Fields
+    fields:
+      - MEDF_TBPTOCHG
+
+  diabetes_medications:
+    section_label: C. Diabetes Medications
+    fields:
+      - MEDF_DIAND
+      - MEDF_DIAIDN
+      - MEDF_DIACHG
+      - MEDF_INSULIN
+      - MEDF_SULFON
+      - MEDF_METFORM
+      - MEDF_THIOGLIT
+      - MEDF_DIAOTHSP
+      - MEDF_DIAOTHSP2
+
+  other_concomitant_medications:
+    section_label: D. Other Concomitant Medications
+    fields:
+      - MEDF_OCMIDN
+      - MEDF_OCMCHG
+      - MEDF_OCMND
+
+  other_medications:
+    section_label: E. Other Targeted Medications
+    fields:
+      - MEDF_STATIN
+      - MEDF_CCBLOCK
+      - MEDF_H2RANT
+      - MEDF_PPUMP
+      - MEDF_ANTACID
+      - MEDF_WARFN
+      - MEDF_ANTEPI
+      - MEDF_BDIOLAT
+      - MEDF_STEROID
+      - MEDF_ANTIFM
+      - MEDF_FLRQNLN
+      - MEDF_DXYCYCL
+      - MEDF_VITD
+
+  completion_metadata:
+    section_label: Form Completion
+    fields:
+      - MEDF_COMPDAT
+
+variables:
+
+  MEDF_VISIT_A:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_VISIT_A
+
+    normalized_metadata:
+      display_label: Visit A Identifier
+      meaning: Administrative visit A identifier linking this record to the follow-up visit schedule.
+      section: visit_metadata
+      data_type: identifier
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: visit_metadata
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: administrative_non_phi
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_VISIT_B:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_VISIT_B
+
+    normalized_metadata:
+      display_label: Visit B Identifier
+      meaning: Administrative visit B identifier linking this record to the follow-up visit schedule.
+      section: visit_metadata
+      data_type: identifier
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: visit_metadata
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: administrative_non_phi
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_VISDAT:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_VISDAT
+
+    normalized_metadata:
+      display_label: Visit Date
+      meaning: Date of the follow-up visit at which this targeted concomitant medication record was collected.
+      section: visit_metadata
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: visit_metadata
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTND:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTND
+
+    normalized_metadata:
+      display_label: ART Not Done Flag
+      meaning: Indicates this medication section was not done or not applicable at this follow-up visit.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTIDN:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTIDN
+
+    normalized_metadata:
+      display_label: ART Not Done Reason
+      meaning: Coded reason why this medication section was not done at this follow-up visit.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTCHG:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTCHG
+
+    normalized_metadata:
+      display_label: ART Regimen Change Flag
+      meaning: Flag indicating whether this medication regimen changed since the previous visit.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTMED6:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTMED6
+
+    normalized_metadata:
+      display_label: ART Medication Name 6
+      meaning: Name of the ART medication at this position in the follow-up regimen list.
+      section: art_medications
+      data_type: text
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: free_text_phi
+
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: omitted
+  MEDF_ARTSTUNK6:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTUNK6
+
+    normalized_metadata:
+      display_label: ART Start Date Unknown 6
+      meaning: Flag indicating the start date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTSTDAT6:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTDAT6
+
+    normalized_metadata:
+      display_label: ART Start Date 6
+      meaning: Start date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTENDAT6:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENDAT6
+
+    normalized_metadata:
+      display_label: ART End Date 6
+      meaning: End date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTENUNK6:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENUNK6
+
+    normalized_metadata:
+      display_label: ART End Date Unknown 6
+      meaning: Flag indicating the end date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTONGO6:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTONGO6
+
+    normalized_metadata:
+      display_label: ART Ongoing 6
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTMED5:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTMED5
+
+    normalized_metadata:
+      display_label: ART Medication Name 5
+      meaning: Name of the ART medication at this position in the follow-up regimen list.
+      section: art_medications
+      data_type: text
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: free_text_phi
+
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: omitted
+  MEDF_ARTSTDAT5:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTDAT5
+
+    normalized_metadata:
+      display_label: ART Start Date 5
+      meaning: Start date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTSTUNK5:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTUNK5
+
+    normalized_metadata:
+      display_label: ART Start Date Unknown 5
+      meaning: Flag indicating the start date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTENDAT5:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENDAT5
+
+    normalized_metadata:
+      display_label: ART End Date 5
+      meaning: End date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTENUNK5:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENUNK5
+
+    normalized_metadata:
+      display_label: ART End Date Unknown 5
+      meaning: Flag indicating the end date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTONGO5:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTONGO5
+
+    normalized_metadata:
+      display_label: ART Ongoing 5
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTMED4:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTMED4
+
+    normalized_metadata:
+      display_label: ART Medication Name 4
+      meaning: Name of the ART medication at this position in the follow-up regimen list.
+      section: art_medications
+      data_type: text
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: free_text_phi
+
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: omitted
+  MEDF_ARTSTUNK4:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTUNK4
+
+    normalized_metadata:
+      display_label: ART Start Date Unknown 4
+      meaning: Flag indicating the start date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTSTDAT4:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTDAT4
+
+    normalized_metadata:
+      display_label: ART Start Date 4
+      meaning: Start date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTENDAT4:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENDAT4
+
+    normalized_metadata:
+      display_label: ART End Date 4
+      meaning: End date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTENUNK4:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENUNK4
+
+    normalized_metadata:
+      display_label: ART End Date Unknown 4
+      meaning: Flag indicating the end date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTONGO4:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTONGO4
+
+    normalized_metadata:
+      display_label: ART Ongoing 4
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTONGO3:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTONGO3
+
+    normalized_metadata:
+      display_label: ART Ongoing 3
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTENDAT3:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENDAT3
+
+    normalized_metadata:
+      display_label: ART End Date 3
+      meaning: End date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTENUNK3:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENUNK3
+
+    normalized_metadata:
+      display_label: ART End Date Unknown 3
+      meaning: Flag indicating the end date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTSTDAT3:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTDAT3
+
+    normalized_metadata:
+      display_label: ART Start Date 3
+      meaning: Start date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTSTUNK3:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTUNK3
+
+    normalized_metadata:
+      display_label: ART Start Date Unknown 3
+      meaning: Flag indicating the start date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTMED3:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTMED3
+
+    normalized_metadata:
+      display_label: ART Medication Name 3
+      meaning: Name of the ART medication at this position in the follow-up regimen list.
+      section: art_medications
+      data_type: text
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: free_text_phi
+
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: omitted
+  MEDF_ARTMED2:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTMED2
+
+    normalized_metadata:
+      display_label: ART Medication Name 2
+      meaning: Name of the ART medication at this position in the follow-up regimen list.
+      section: art_medications
+      data_type: text
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: free_text_phi
+
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: omitted
+  MEDF_ARTSTUNK2:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTUNK2
+
+    normalized_metadata:
+      display_label: ART Start Date Unknown 2
+      meaning: Flag indicating the start date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTSTDAT2:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTDAT2
+
+    normalized_metadata:
+      display_label: ART Start Date 2
+      meaning: Start date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTENDAT2:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENDAT2
+
+    normalized_metadata:
+      display_label: ART End Date 2
+      meaning: End date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTENUNK2:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENUNK2
+
+    normalized_metadata:
+      display_label: ART End Date Unknown 2
+      meaning: Flag indicating the end date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTONGO2:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTONGO2
+
+    normalized_metadata:
+      display_label: ART Ongoing 2
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTONGO1:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTONGO1
+
+    normalized_metadata:
+      display_label: ART Ongoing 1
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTENDAT1:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENDAT1
+
+    normalized_metadata:
+      display_label: ART End Date 1
+      meaning: End date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTENUNK1:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENUNK1
+
+    normalized_metadata:
+      display_label: ART End Date Unknown 1
+      meaning: Flag indicating the end date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTSTDAT1:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTDAT1
+
+    normalized_metadata:
+      display_label: ART Start Date 1
+      meaning: Start date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTSTUNK1:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTUNK1
+
+    normalized_metadata:
+      display_label: ART Start Date Unknown 1
+      meaning: Flag indicating the start date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTMED1:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTMED1
+
+    normalized_metadata:
+      display_label: ART Medication Name 1
+      meaning: Name of the ART medication at this position in the follow-up regimen list.
+      section: art_medications
+      data_type: text
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: free_text_phi
+
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: omitted
+  MEDF_ARTMED7:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTMED7
+
+    normalized_metadata:
+      display_label: ART Medication Name 7
+      meaning: Name of the ART medication at this position in the follow-up regimen list.
+      section: art_medications
+      data_type: text
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: free_text_phi
+
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: omitted
+  MEDF_ARTSTDAT7:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTDAT7
+
+    normalized_metadata:
+      display_label: ART Start Date 7
+      meaning: Start date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTSTUNK7:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTUNK7
+
+    normalized_metadata:
+      display_label: ART Start Date Unknown 7
+      meaning: Flag indicating the start date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTENDAT7:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENDAT7
+
+    normalized_metadata:
+      display_label: ART End Date 7
+      meaning: End date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTENUNK7:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENUNK7
+
+    normalized_metadata:
+      display_label: ART End Date Unknown 7
+      meaning: Flag indicating the end date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTONGO7:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTONGO7
+
+    normalized_metadata:
+      display_label: ART Ongoing 7
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTMED8:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTMED8
+
+    normalized_metadata:
+      display_label: ART Medication Name 8
+      meaning: Name of the ART medication at this position in the follow-up regimen list.
+      section: art_medications
+      data_type: text
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: free_text_phi
+
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: omitted
+  MEDF_ARTSTDAT8:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTDAT8
+
+    normalized_metadata:
+      display_label: ART Start Date 8
+      meaning: Start date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTSTUNK8:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTUNK8
+
+    normalized_metadata:
+      display_label: ART Start Date Unknown 8
+      meaning: Flag indicating the start date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTENDAT8:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENDAT8
+
+    normalized_metadata:
+      display_label: ART End Date 8
+      meaning: End date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTENUNK8:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENUNK8
+
+    normalized_metadata:
+      display_label: ART End Date Unknown 8
+      meaning: Flag indicating the end date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTONGO8:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTONGO8
+
+    normalized_metadata:
+      display_label: ART Ongoing 8
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTMED9:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTMED9
+
+    normalized_metadata:
+      display_label: ART Medication Name 9
+      meaning: Name of the ART medication at this position in the follow-up regimen list.
+      section: art_medications
+      data_type: text
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: free_text_phi
+
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: omitted
+  MEDF_ARTSTDAT9:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTDAT9
+
+    normalized_metadata:
+      display_label: ART Start Date 9
+      meaning: Start date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTSTUNK9:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTUNK9
+
+    normalized_metadata:
+      display_label: ART Start Date Unknown 9
+      meaning: Flag indicating the start date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTENDAT9:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENDAT9
+
+    normalized_metadata:
+      display_label: ART End Date 9
+      meaning: End date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTENUNK9:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENUNK9
+
+    normalized_metadata:
+      display_label: ART End Date Unknown 9
+      meaning: Flag indicating the end date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTONGO9:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTONGO9
+
+    normalized_metadata:
+      display_label: ART Ongoing 9
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTMED10:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTMED10
+
+    normalized_metadata:
+      display_label: ART Medication Name 10
+      meaning: Name of the ART medication at this position in the follow-up regimen list.
+      section: art_medications
+      data_type: text
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: free_text_phi
+
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: omitted
+  MEDF_ARTSTDAT10:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTDAT10
+
+    normalized_metadata:
+      display_label: ART Start Date 10
+      meaning: Start date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTSTUNK10:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTSTUNK10
+
+    normalized_metadata:
+      display_label: ART Start Date Unknown 10
+      meaning: Flag indicating the start date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTENDAT10:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENDAT10
+
+    normalized_metadata:
+      display_label: ART End Date 10
+      meaning: End date of this medication or prophylaxis regimen during the follow-up period.
+      section: art_medications
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_ARTENUNK10:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTENUNK10
+
+    normalized_metadata:
+      display_label: ART End Date Unknown 10
+      meaning: Flag indicating the end date for this medication is unknown.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ARTONGO10:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ARTONGO10
+
+    normalized_metadata:
+      display_label: ART Ongoing 10
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: art_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: art_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_TBPROND:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_TBPROND
+
+    normalized_metadata:
+      display_label: TB Prophylaxis Not Done Flag
+      meaning: Indicates this medication section was not done or not applicable at this follow-up visit.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_TBPROIDN:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_TBPROIDN
+
+    normalized_metadata:
+      display_label: TB Prophylaxis Not Done Reason
+      meaning: Coded reason why this medication section was not done at this follow-up visit.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_TBPTOCHG:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_TBPTOCHG
+
+    normalized_metadata:
+      display_label: TB Prophylaxis Regimen Change Specify
+      meaning: Flag indicating whether this medication regimen changed since the previous visit.
+      section: dataset_only
+      data_type: text
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: dataset_only
+      other_specify: null
+
+    phi_sensitive_category: free_text_phi
+
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: omitted
+  MEDF_INHSTDAT:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_INHSTDAT
+
+    normalized_metadata:
+      display_label: Isoniazid Start Date
+      meaning: Start date of this medication or prophylaxis regimen during the follow-up period.
+      section: tb_prophylaxis
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_INHENDAT:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_INHENDAT
+
+    normalized_metadata:
+      display_label: Isoniazid End Date
+      meaning: End date of this medication or prophylaxis regimen during the follow-up period.
+      section: tb_prophylaxis
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_INHCURR:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_INHCURR
+
+    normalized_metadata:
+      display_label: Isoniazid Currently Taking
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_INHSTUNK:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_INHSTUNK
+
+    normalized_metadata:
+      display_label: Isoniazid Start Date Unknown
+      meaning: Flag indicating the start date for this medication is unknown.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_INHENUNK:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_INHENUNK
+
+    normalized_metadata:
+      display_label: Isoniazid End Date Unknown
+      meaning: Flag indicating the end date for this medication is unknown.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_INHONGO:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_INHONGO
+
+    normalized_metadata:
+      display_label: Isoniazid Ongoing
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_RIFCURR:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_RIFCURR
+
+    normalized_metadata:
+      display_label: Rifampicin Currently Taking
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_RIFSTDAT:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_RIFSTDAT
+
+    normalized_metadata:
+      display_label: Rifampicin Start Date
+      meaning: Start date of this medication or prophylaxis regimen during the follow-up period.
+      section: tb_prophylaxis
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_RIFSTUNK:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_RIFSTUNK
+
+    normalized_metadata:
+      display_label: Rifampicin Start Date Unknown
+      meaning: Flag indicating the start date for this medication is unknown.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_RIFENDAT:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_RIFENDAT
+
+    normalized_metadata:
+      display_label: Rifampicin End Date
+      meaning: End date of this medication or prophylaxis regimen during the follow-up period.
+      section: tb_prophylaxis
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_RIFENUNK:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_RIFENUNK
+
+    normalized_metadata:
+      display_label: Rifampicin End Date Unknown
+      meaning: Flag indicating the end date for this medication is unknown.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_RIFONGO:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_RIFONGO
+
+    normalized_metadata:
+      display_label: Rifampicin Ongoing
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_RPTCURR:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_RPTCURR
+
+    normalized_metadata:
+      display_label: Rifapentine Currently Taking
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_RPTSTDAT:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_RPTSTDAT
+
+    normalized_metadata:
+      display_label: Rifapentine Start Date
+      meaning: Start date of this medication or prophylaxis regimen during the follow-up period.
+      section: tb_prophylaxis
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_RPTSTUNK:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_RPTSTUNK
+
+    normalized_metadata:
+      display_label: Rifapentine Start Date Unknown
+      meaning: Flag indicating the start date for this medication is unknown.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_RPTENDAT:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_RPTENDAT
+
+    normalized_metadata:
+      display_label: Rifapentine End Date
+      meaning: End date of this medication or prophylaxis regimen during the follow-up period.
+      section: tb_prophylaxis
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_RPTENUNK:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_RPTENUNK
+
+    normalized_metadata:
+      display_label: Rifapentine End Date Unknown
+      meaning: Flag indicating the end date for this medication is unknown.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_RPTONGO:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_RPTONGO
+
+    normalized_metadata:
+      display_label: Rifapentine Ongoing
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_PROPHOTSP:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_PROPHOTSP
+
+    normalized_metadata:
+      display_label: Other TB Prophylaxis Specify
+      meaning: Free-text specify field for a medication not covered by the coded options.
+      section: tb_prophylaxis
+      data_type: text
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: free_text_phi
+
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: omitted
+  MEDF_PROPHSTDAT:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_PROPHSTDAT
+
+    normalized_metadata:
+      display_label: Other TB Prophylaxis Start Date
+      meaning: Start date of this medication or prophylaxis regimen during the follow-up period.
+      section: tb_prophylaxis
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_PROPHSTUNK:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_PROPHSTUNK
+
+    normalized_metadata:
+      display_label: Other TB Prophylaxis Start Date Unknown
+      meaning: Flag indicating the start date for this medication is unknown.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_PROPHENDAT:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_PROPHENDAT
+
+    normalized_metadata:
+      display_label: Other TB Prophylaxis End Date
+      meaning: End date of this medication or prophylaxis regimen during the follow-up period.
+      section: tb_prophylaxis
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+  MEDF_PROPHENUNK:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_PROPHENUNK
+
+    normalized_metadata:
+      display_label: Other TB Prophylaxis End Date Unknown
+      meaning: Flag indicating the end date for this medication is unknown.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_PROPHONGO:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_PROPHONGO
+
+    normalized_metadata:
+      display_label: Other TB Prophylaxis Ongoing
+      meaning: Flag indicating whether this medication is currently being taken at the time of the follow-up visit.
+      section: tb_prophylaxis
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: tb_prophylaxis
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_DIAND:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_DIAND
+
+    normalized_metadata:
+      display_label: Diabetes Medications Not Done
+      meaning: Indicates this medication section was not done or not applicable at this follow-up visit.
+      section: diabetes_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: diabetes_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_DIAIDN:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_DIAIDN
+
+    normalized_metadata:
+      display_label: Diabetes Medications Not Done Reason
+      meaning: Coded reason why this medication section was not done at this follow-up visit.
+      section: diabetes_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: diabetes_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_DIACHG:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_DIACHG
+
+    normalized_metadata:
+      display_label: Diabetes Medications Change
+      meaning: Flag indicating whether this medication regimen changed since the previous visit.
+      section: diabetes_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: diabetes_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_INSULIN:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_INSULIN
+
+    normalized_metadata:
+      display_label: Insulin Use
+      meaning: Insulin Use — targeted concomitant medication follow-up field.
+      section: diabetes_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: diabetes_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_SULFON:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_SULFON
+
+    normalized_metadata:
+      display_label: Sulfonylurea Use
+      meaning: Sulfonylurea Use — targeted concomitant medication follow-up field.
+      section: diabetes_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: diabetes_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_METFORM:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_METFORM
+
+    normalized_metadata:
+      display_label: Metformin Use
+      meaning: Metformin Use — targeted concomitant medication follow-up field.
+      section: diabetes_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: diabetes_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_THIOGLIT:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_THIOGLIT
+
+    normalized_metadata:
+      display_label: Thiazolidinedione Use
+      meaning: Thiazolidinedione Use — targeted concomitant medication follow-up field.
+      section: diabetes_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: diabetes_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_DIAOTHSP:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_DIAOTHSP
+
+    normalized_metadata:
+      display_label: Other Diabetes Medication Specify
+      meaning: Free-text specify field for a medication not covered by the coded options.
+      section: diabetes_medications
+      data_type: text
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: diabetes_medications
+      other_specify: null
+
+    phi_sensitive_category: free_text_phi
+
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: omitted
+  MEDF_DIAOTHSP2:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_DIAOTHSP2
+
+    normalized_metadata:
+      display_label: Other Diabetes Medication 2 Specify
+      meaning: Free-text specify field for a medication not covered by the coded options.
+      section: diabetes_medications
+      data_type: text
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: diabetes_medications
+      other_specify: null
+
+    phi_sensitive_category: free_text_phi
+
+    handling_intent:
+      action: review_required
+      reason: possible_free_text_specify
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: omitted
+  MEDF_OCMIDN:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_OCMIDN
+
+    normalized_metadata:
+      display_label: Other Concomitant Med Not Done Reason
+      meaning: Coded reason why this medication section was not done at this follow-up visit.
+      section: other_concomitant_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_concomitant_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_OCMCHG:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_OCMCHG
+
+    normalized_metadata:
+      display_label: Other Concomitant Med Change
+      meaning: Flag indicating whether this medication regimen changed since the previous visit.
+      section: other_concomitant_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_concomitant_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_OCMND:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_OCMND
+
+    normalized_metadata:
+      display_label: Other Concomitant Med Not Done
+      meaning: Indicates this medication section was not done or not applicable at this follow-up visit.
+      section: other_concomitant_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_concomitant_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_STATIN:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_STATIN
+
+    normalized_metadata:
+      display_label: Statin Use
+      meaning: Statin Use — targeted concomitant medication follow-up field.
+      section: other_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_CCBLOCK:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_CCBLOCK
+
+    normalized_metadata:
+      display_label: Calcium Channel Blocker Use
+      meaning: Calcium Channel Blocker Use — targeted concomitant medication follow-up field.
+      section: other_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_H2RANT:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_H2RANT
+
+    normalized_metadata:
+      display_label: H2 Receptor Antagonist Use
+      meaning: H2 Receptor Antagonist Use — targeted concomitant medication follow-up field.
+      section: other_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_PPUMP:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_PPUMP
+
+    normalized_metadata:
+      display_label: Proton Pump Inhibitor Use
+      meaning: Proton Pump Inhibitor Use — targeted concomitant medication follow-up field.
+      section: other_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ANTACID:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ANTACID
+
+    normalized_metadata:
+      display_label: Antacid Use
+      meaning: Antacid Use — targeted concomitant medication follow-up field.
+      section: other_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_WARFN:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_WARFN
+
+    normalized_metadata:
+      display_label: Warfarin Use
+      meaning: Warfarin Use — targeted concomitant medication follow-up field.
+      section: other_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ANTEPI:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ANTEPI
+
+    normalized_metadata:
+      display_label: Anti-epileptic Use
+      meaning: Anti-epileptic Use — targeted concomitant medication follow-up field.
+      section: other_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_BDIOLAT:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_BDIOLAT
+
+    normalized_metadata:
+      display_label: Benzodiazepine Anxiolytic Use
+      meaning: Benzodiazepine Anxiolytic Use — targeted concomitant medication follow-up field.
+      section: other_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_STEROID:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_STEROID
+
+    normalized_metadata:
+      display_label: Corticosteroid Use
+      meaning: Corticosteroid Use — targeted concomitant medication follow-up field.
+      section: other_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_ANTIFM:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_ANTIFM
+
+    normalized_metadata:
+      display_label: Antifungal Use
+      meaning: Antifungal Use — targeted concomitant medication follow-up field.
+      section: other_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_FLRQNLN:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_FLRQNLN
+
+    normalized_metadata:
+      display_label: Fluoroquinolone Use
+      meaning: Fluoroquinolone Use — targeted concomitant medication follow-up field.
+      section: other_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_DXYCYCL:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_DXYCYCL
+
+    normalized_metadata:
+      display_label: Doxycycline Use
+      meaning: Doxycycline Use — targeted concomitant medication follow-up field.
+      section: other_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_VITD:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_VITD
+
+    normalized_metadata:
+      display_label: Vitamin D Use
+      meaning: Vitamin D Use — targeted concomitant medication follow-up field.
+      section: other_medications
+      data_type: categorical
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: other_medications
+      other_specify: null
+
+    phi_sensitive_category: not_phi
+
+    handling_intent:
+      action: keep
+      reason: clinical_categorical
+      label: null
+
+    runtime_binding:
+      - none
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: present
+  MEDF_COMPDAT:
+    record_type: variable
+    policy_source: dataset_columns_only
+    claude_drafted: true
+
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: MEDF_COMPDAT
+
+    normalized_metadata:
+      display_label: Form Completion Date
+      meaning: Date the targeted concomitant medication follow-up form was completed.
+      section: completion_metadata
+      data_type: date
+      options_ref: null
+
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: completion_metadata
+      other_specify: null
+
+    phi_sensitive_category: date_field
+
+    handling_intent:
+      action: jitter_date
+      reason: date_field
+      label: null
+
+    runtime_binding:
+      - phi_scrub
+
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+
+    evidence:
+      level: low
+      basis:
+        - dataset_column_name
+
+    review:
+      state: review_required
+      reason: "Dataset-only column — no PDF annotation. Action assigned by suffix-pattern rules; human review required."
+      reviewer_question: null
+
+    clean_output_presence: transformed
+
+
+  SUBJID:
+    record_type: variable
+    claude_drafted: true
+    source_presence:
+      dataset: present
+      pdf: absent
+      dictionary: not_used
+    exact_source_text:
+      pdf_question: null
+      pdf_annotation: null
+      column_name: SUBJID
+    normalized_metadata:
+      display_label: Subject ID
+      meaning: Unique subject identifier linking the targeted concomitant medication follow-up record to the study participant.
+      section: identifiers
+      data_type: identifier
+      options_ref: null
+    options:
+      source_defined: []
+      values: []
+      unknown: true
+    relationships:
+      parent: null
+      children: []
+      skip_logic: null
+      visit_grouping: null
+      section_grouping: identifiers
+      other_specify: null
+    phi_sensitive_category: subject_identifier
+    handling_intent:
+      action: pseudonymize
+      reason: subject_identifier
+      label: SUBJ
+    runtime_binding:
+      pseudonym_table: subject_pseudonym_map
+      salt_key: SUBJ
+    derivation_targets:
+      - study_metadata_catalog
+      - phi_handling_ledger
+      - phi_handled_dataset
+    evidence:
+      level: medium
+      basis:
+        - dataset_column_name
+      pdf_excerpt: null
+      pdf_page: null
+    review:
+      state: auto_normalized
+      reason: null
+      reviewer_question: null
+    clean_output_presence: transformed
