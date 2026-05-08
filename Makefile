@@ -226,11 +226,11 @@ verify-and-promote: ## Reconcile SoT vs scrubbed dataset; emit per-form discrepa
 	$(UV) run --all-groups python -m scripts.source_truth.verify_and_promote --study $(STUDY)
 
 phi-audit: ## Run SoT-driven PHI sweep and emit drafts under tmp/
-	python -m scripts.security.phi_sot_sweep
-	python -m scripts.security.phi_sweep_emit
+	$(UV) run --all-groups python -m scripts.security.phi_sot_sweep
+	$(UV) run --all-groups python -m scripts.security.phi_sweep_emit
 
 phi-audit-verify: ## Fail if any SoT variable lacks coverage AND no open HITL draft
-	python -m scripts.security.phi_sweep_verify
+	$(UV) run --all-groups python -m scripts.security.phi_sweep_verify
 
 consolidate-dictionary: ## Merge trio_bundle/dictionary/*.json → llm_source/data_dictionary.json
 	@if [ ! -d "output/$(STUDY)/trio_bundle/dictionary" ]; then \
