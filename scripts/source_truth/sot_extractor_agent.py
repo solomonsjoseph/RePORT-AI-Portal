@@ -121,6 +121,11 @@ def invoke_subagent(prompt: str) -> dict[str, str]:
         ),
         messages=[{"role": "user", "content": prompt}],
     )
+    if not msg.content or not getattr(msg.content[0], "text", None):
+        raise ValueError(
+            "Anthropic SDK returned no text block "
+            f"(stop_reason={getattr(msg, 'stop_reason', 'unknown')!r})"
+        )
     text = msg.content[0].text  # type: ignore[union-attr]
     return json.loads(text)
 
@@ -148,7 +153,12 @@ def run_extractor(
         dataset_columns="\n".join(inputs["dataset_columns"]) or "(none)",
         pilot_artifact=inputs["pilot_artifact"] or "(none)",
     )
-    out = invoke_subagent(prompt)
+    try:
+        out = invoke_subagent(prompt)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"Extractor agent returned non-JSON for form {form!r}"
+        ) from exc
 
     drafts_dir.mkdir(parents=True, exist_ok=True)
     evidence_pack_drafts_dir.mkdir(parents=True, exist_ok=True)

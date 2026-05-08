@@ -73,6 +73,11 @@ def invoke_reviewer_subagent(prompt: str) -> dict[str, str]:
         ),
         messages=[{"role": "user", "content": prompt}],
     )
+    if not msg.content or not getattr(msg.content[0], "text", None):
+        raise ValueError(
+            "Anthropic SDK returned no text block "
+            f"(stop_reason={getattr(msg, 'stop_reason', 'unknown')!r})"
+        )
     text = msg.content[0].text  # type: ignore[union-attr]
     return json.loads(text)
 
@@ -103,7 +108,12 @@ def run_reviewer(
         draft_yaml=draft_yaml_path.read_text(encoding="utf-8"),
         draft_pack=draft_pack_path.read_text(encoding="utf-8"),
     )
-    out = invoke_reviewer_subagent(prompt)
+    try:
+        out = invoke_reviewer_subagent(prompt)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"Reviewer agent returned non-JSON for form {form!r}"
+        ) from exc
 
     verdict = out.get("verdict")
     if verdict not in _VALID_VERDICTS:

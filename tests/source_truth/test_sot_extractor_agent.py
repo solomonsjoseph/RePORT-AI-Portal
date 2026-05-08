@@ -57,3 +57,32 @@ def test_run_extractor_writes_yaml_and_evidence_pack(tmp_path, monkeypatch):
     assert (pack_dir / "8_CXR.json").read_text() == fake_pack
     assert result["form"] == "8_CXR"
     assert result["yaml_path"].endswith("8_CXR_policy.yaml.draft")
+
+
+import json
+
+
+def test_run_extractor_wraps_json_decode_error_with_form_context(tmp_path, monkeypatch):
+    def fake_invoke(prompt: str) -> dict:
+        raise json.JSONDecodeError("Expecting value", "doc", 0)
+
+    monkeypatch.setattr(
+        "scripts.source_truth.sot_extractor_agent.invoke_subagent",
+        fake_invoke,
+    )
+
+    out_dir = tmp_path / "drafts"
+    pack_dir = out_dir / "evidence_packs"
+    out_dir.mkdir()
+    pack_dir.mkdir()
+
+    with pytest.raises(ValueError, match="non-JSON for form"):
+        run_extractor(
+            form="8_CXR",
+            sot_dir=FIXTURE / "data/Mini/SoT",
+            raw_pdf_dir=FIXTURE / "data/raw/Mini",
+            dataset_dir=FIXTURE / "output/Mini/trio_bundle/datasets",
+            pilot_dir=FIXTURE / "tmp/results",
+            drafts_dir=out_dir,
+            evidence_pack_drafts_dir=pack_dir,
+        )
