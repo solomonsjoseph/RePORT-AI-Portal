@@ -1,0 +1,10 @@
+form_id: 4_Smear
+variables:
+  SUBJID:
+    description: Subject ID
+    handling_intent:
+      action: keep
+  Z_SMEAR:
+    description: Smear result
+    handling_intent:
+      action: keep

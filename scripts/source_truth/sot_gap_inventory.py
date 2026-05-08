@@ -28,10 +28,7 @@ def _read_column_keys_only(jsonl_path: Path) -> list[str]:
         first = fh.readline()
     if not first.strip():
         return []
-    obj = json.loads(first)
-    keys = list(obj.keys())
-    del obj
-    return keys
+    return list(json.loads(first).keys())
 
 
 def _read_sot_variables(sot_path: Path) -> list[str]:
@@ -66,13 +63,14 @@ def build_coverage(
     pilot_dir = Path(pilot_dir)
 
     forms: dict[str, dict[str, Any]] = {}
+    observed_cols: dict[str, list[str]] = {}
 
     if dataset_dir.is_dir():
         for jsonl in sorted(dataset_dir.glob("*.jsonl")):
             form = _form_id_from_filename(jsonl.name)
             forms.setdefault(form, {"observed_in": []})
             forms[form]["observed_in"].append("dataset")
-            forms[form]["dataset_columns"] = _read_column_keys_only(jsonl)
+            observed_cols[form] = _read_column_keys_only(jsonl)
 
     if raw_pdf_dir.is_dir():
         for pdf in sorted(raw_pdf_dir.glob("*.pdf")):
@@ -88,17 +86,18 @@ def build_coverage(
 
     for form, info in forms.items():
         sot_path = sot_dir / f"{form}_policy.yaml"
+        cols = observed_cols.get(form, [])
         if sot_path.is_file():
             info["sot_present"] = True
             declared = set(_read_sot_variables(sot_path))
-            observed = set(info.get("dataset_columns", []) or [])
+            observed = set(cols)
             missing = sorted(observed - declared)
             info["missing_variables"] = missing
             info["sot_complete"] = bool(observed) and not missing
         else:
             info["sot_present"] = False
             info["sot_complete"] = False
-            info["missing_variables"] = list(info.get("dataset_columns", []) or [])
+            info["missing_variables"] = list(cols)
 
     return {"forms": forms}
 
