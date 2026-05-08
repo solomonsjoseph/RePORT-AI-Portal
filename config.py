@@ -236,8 +236,8 @@ PDF_EXTRACTIONS_DIR = TRIO_BUNDLE_DIR / "pdfs"
 # ----------------------------------------------------------------------------
 # Source-of-Truth directory lives under data/<study>/SoT/ (not under raw/).
 SOT_DIR: Path = DATA_DIR / STUDY_NAME / "SoT"
-# Raw form PDFs live at the root of the raw study directory.
-RAW_PDF_DIR: Path = STUDY_DATA_DIR
+# Raw form PDFs live at the root of RAW_DATA_DIR / STUDY_NAME.
+RAW_PDF_DIR: Path = RAW_DATA_DIR / STUDY_NAME
 # Pilot extraction results land under tmp/results/.
 PILOT_RESULTS_DIR: Path = TMP_DIR / "results"
 # Working drafts for SoT-gap analysis live under tmp/sot_gap_drafts/.

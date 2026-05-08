@@ -5,7 +5,7 @@ from pathlib import Path
 import config
 
 
-def test_phase0_paths_exist_and_are_strings():
+def test_phase0_paths_exist_and_are_path_like():
     for name in (
         "SOT_DIR",
         "RAW_PDF_DIR",
@@ -20,7 +20,7 @@ def test_phase0_paths_exist_and_are_strings():
         assert str(value), f"{name} is empty"
 
 
-def test_phase0_paths_are_study_aware():
+def test_sot_dir_resolves_to_default_study():
     indo_vap = Path(str(config.SOT_DIR))
     assert indo_vap.name == "SoT"
     assert "Indo-VAP" in str(indo_vap)
