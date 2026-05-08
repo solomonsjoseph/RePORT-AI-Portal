@@ -15,6 +15,7 @@ from scripts.utils.logging_system import get_logger
 
 _LOG = get_logger(__name__)
 
+_VALID_VERDICTS: frozenset[str] = frozenset({"agree", "disagree_minor", "disagree_major"})
 
 _PROMPT_TEMPLATE = """\
 You are the SoT reviewer for the form `{form}`.
@@ -85,13 +86,20 @@ def run_reviewer(
     )
     out = invoke_reviewer_subagent(prompt)
 
+    verdict = out.get("verdict")
+    if verdict not in _VALID_VERDICTS:
+        raise ValueError(
+            f"Unexpected verdict {verdict!r} for form {form!r}. "
+            f"Expected one of {sorted(_VALID_VERDICTS)}."
+        )
+
     reviews_dir.mkdir(parents=True, exist_ok=True)
     review_md = reviews_dir / f"{form}_review.md"
     review_md.write_text(
         f"# Review for {form}\n\n"
-        f"verdict: {out['verdict']}\n\n"
+        f"verdict: {verdict}\n\n"
         f"## notes\n\n{out['notes']}\n",
         encoding="utf-8",
     )
-    _LOG.info("sot_reviewer.review_written form=%s verdict=%s", form, out["verdict"])
-    return {"form": form, "verdict": out["verdict"], "review_md": str(review_md)}
+    _LOG.info("sot_reviewer.review_written form=%s verdict=%s", form, verdict)
+    return {"form": form, "verdict": verdict, "review_md": str(review_md)}
