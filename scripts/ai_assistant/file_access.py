@@ -27,6 +27,7 @@ import os
 from pathlib import Path
 
 import config
+from scripts.audit.zone_guards import deny_if_audit_zone
 from scripts.security.secure_env import ZoneViolationError
 
 __all__ = [
@@ -85,7 +86,9 @@ def validate_agent_read(path: str | Path) -> Path:
 
     Raises:
         ZoneViolationError: *path* is outside the agent's permitted read zones.
+        AuditZoneViolation: *path* resolves into ``output/*/audit/``.
     """
+    deny_if_audit_zone(path)  # Phase 4 audit-zone deny
     read_roots, _, allowlist = _zones()
     resolved = _resolve(path)
     if resolved in allowlist:
@@ -104,7 +107,9 @@ def validate_agent_write(path: str | Path) -> Path:
 
     Raises:
         ZoneViolationError: *path* is outside ``AGENT_STATE_DIR``.
+        AuditZoneViolation: *path* resolves into ``output/*/audit/``.
     """
+    deny_if_audit_zone(path)  # Phase 4 audit-zone deny
     _, write_roots, _ = _zones()
     resolved = _resolve(path)
     for root in write_roots:
@@ -117,10 +122,15 @@ def validate_agent_write(path: str | Path) -> Path:
 
 
 def is_agent_readable(path: str | Path) -> bool:
-    """Non-raising variant of :func:`validate_agent_read` for sentinel checks."""
+    """Non-raising variant of :func:`validate_agent_read` for sentinel checks.
+
+    Catches both ``ZoneViolationError`` (zone outside allowlist) and the
+    Phase 4 ``AuditZoneViolation`` (audit-zone deny) — both are
+    ``PermissionError`` subclasses.
+    """
     try:
         validate_agent_read(path)
-    except ZoneViolationError:
+    except PermissionError:
         return False
     return True
 
