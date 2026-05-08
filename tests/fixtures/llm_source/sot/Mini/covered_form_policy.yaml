@@ -1,0 +1,12 @@
+schema_version: 1
+study: Mini
+form: covered_form
+variables:
+  - variable_id: SUBJID
+    handling_intent:
+      action: pseudonymize
+    description: Subject identifier
+  - variable_id: VISITDAT
+    handling_intent:
+      action: jitter_date
+    description: Visit date
