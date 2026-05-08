@@ -232,6 +232,23 @@ DICTIONARY_JSON_OUTPUT_DIR = TRIO_BUNDLE_DIR / "dictionary"
 PDF_EXTRACTIONS_DIR = TRIO_BUNDLE_DIR / "pdfs"
 
 # ----------------------------------------------------------------------------
+# PHASE 0 — SoT GAP CONSTANTS
+# ----------------------------------------------------------------------------
+# Source-of-Truth directory lives under data/<study>/SoT/ (not under raw/).
+SOT_DIR: Path = DATA_DIR / STUDY_NAME / "SoT"
+# Raw form PDFs live at the root of the raw study directory.
+RAW_PDF_DIR: Path = STUDY_DATA_DIR
+# Pilot extraction results land under tmp/results/.
+PILOT_RESULTS_DIR: Path = TMP_DIR / "results"
+# Working drafts for SoT-gap analysis live under tmp/sot_gap_drafts/.
+SOT_GAP_DRAFTS_DIR: Path = TMP_DIR / "sot_gap_drafts"
+# Coverage and report artefacts written at the end of a gap run.
+SOT_GAP_COVERAGE_PATH: Path = TMP_DIR / "sot_gap_coverage.json"
+SOT_GAP_REPORT_PATH: Path = TMP_DIR / "sot_gap_report.md"
+# Evidence packs are subdirectories of the gap-drafts workspace.
+SOT_EVIDENCE_PACK_DRAFTS_DIR: Path = SOT_GAP_DRAFTS_DIR / "evidence_packs"
+
+# ----------------------------------------------------------------------------
 # AGENT STATE TIER (per-session state, NOT study output)
 # ----------------------------------------------------------------------------
 # Per-session, agent-owned operational state — analysis runs, conversation
