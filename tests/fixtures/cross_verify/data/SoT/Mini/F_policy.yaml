@@ -1,0 +1,13 @@
+schema_version: 1
+study: Mini
+form: F
+variables:
+  - variable_id: KEEPER
+    handling_intent:
+      action: keep
+  - variable_id: DROPPED_VAR
+    handling_intent:
+      action: drop
+  - variable_id: PSEUDO_VAR
+    handling_intent:
+      action: pseudonymize
