@@ -1,4 +1,11 @@
-"""Per-form dispatcher: extractor + reviewer in parallel batches of 4-8."""
+"""Per-form dispatcher: extractor + reviewer in parallel batches of 4-8.
+
+Returns a tuple `(results, errors)`:
+- `results`: list of merged extractor+reviewer dicts for forms that
+  completed successfully.
+- `errors`: list of `(form, exception)` tuples for forms that failed.
+  Failures are logged but do not abort the remaining work.
+"""
 
 from __future__ import annotations
 
@@ -55,9 +62,18 @@ def dispatch_forms(
     evidence_pack_drafts_dir: Path,
     reviews_dir: Path,
     concurrency: int = 4,
-) -> list[dict[str, Any]]:
-    forms = list(forms)
+) -> tuple[list[dict[str, Any]], list[tuple[str, BaseException]]]:
+    """Per-form dispatcher: extractor + reviewer in parallel batches of 4-8.
+
+    Returns a tuple `(results, errors)`:
+    - `results`: list of merged extractor+reviewer dicts for forms that
+      completed successfully.
+    - `errors`: list of `(form, exception)` tuples for forms that failed.
+      Failures are logged but do not abort the remaining work.
+    """
+    form_list = list(forms)
     out: list[dict[str, Any]] = []
+    errors: list[tuple[str, BaseException]] = []
     with ThreadPoolExecutor(max_workers=max(1, min(8, concurrency))) as pool:
         futures = {
             pool.submit(
@@ -71,13 +87,13 @@ def dispatch_forms(
                 evidence_pack_drafts_dir=evidence_pack_drafts_dir,
                 reviews_dir=reviews_dir,
             ): form
-            for form in forms
+            for form in form_list
         }
         for fut in as_completed(futures):
             form = futures[fut]
             try:
                 out.append(fut.result())
-            except Exception:
+            except Exception as exc:
                 _LOG.exception("sot_dispatch.failed form=%s", form)
-                raise
-    return out
+                errors.append((form, exc))
+    return out, errors
