@@ -7,9 +7,13 @@ Same column-keys-only contract as the extractor.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
+from anthropic import Anthropic
+
+import config
 from scripts.source_truth.sot_extractor_agent import gather_inputs
 from scripts.utils.logging_system import get_logger
 
@@ -53,9 +57,24 @@ Output JSON shape:
 
 
 def invoke_reviewer_subagent(prompt: str) -> dict[str, str]:
-    """Real implementation calls the Claude Agent SDK with the reviewer
-    role. Tests monkeypatch this. Task 0-8 wires the SDK call."""
-    raise NotImplementedError("Wire to Claude Agent SDK in Task 0-8")
+    """Call the Claude Agent SDK with the reviewer role.
+
+    Returns a JSON-decoded dict with keys 'verdict' and 'notes'.
+    Tests monkeypatch this function.
+    """
+    client = Anthropic()
+    msg = client.messages.create(
+        model=config.AGENT_MODEL_ID,
+        max_tokens=4096,
+        system=(
+            "You are a clinical-data SoT reviewer. Output strict JSON "
+            "with keys 'verdict' (one of 'agree', 'disagree_minor', "
+            "'disagree_major') and 'notes' (string). No prose outside the JSON."
+        ),
+        messages=[{"role": "user", "content": prompt}],
+    )
+    text = msg.content[0].text  # type: ignore[union-attr]
+    return json.loads(text)
 
 
 def run_reviewer(

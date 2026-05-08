@@ -264,6 +264,7 @@ exclude = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --tb=short"
+markers = ["slow: marks tests as slow (live API)"]
 
 # Pyright - Static Type Checking (VS Code / LSP default)
 [tool.pyright]

@@ -8,9 +8,13 @@ dataset row values.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
+from anthropic import Anthropic
+
+import config
 from scripts.source_truth.sot_gap_inventory import _read_column_keys_only
 from scripts.utils.logging_system import get_logger
 
@@ -101,9 +105,24 @@ Schema constraints:
 
 
 def invoke_subagent(prompt: str) -> dict[str, str]:
-    """Real implementation calls the Claude Agent SDK with a constrained
-    role. Tests monkeypatch this function. Task 0-8 wires the SDK call."""
-    raise NotImplementedError("Wire to Claude Agent SDK in Task 0-8")
+    """Call the Claude Agent SDK with the extractor role.
+
+    Returns a JSON-decoded dict with keys 'yaml' and 'evidence_pack'.
+    Tests monkeypatch this function.
+    """
+    client = Anthropic()
+    msg = client.messages.create(
+        model=config.AGENT_MODEL_ID,
+        max_tokens=8192,
+        system=(
+            "You are a clinical-data SoT extractor. Output strict JSON "
+            "with exactly the keys 'yaml' (string) and 'evidence_pack' "
+            "(string). No prose outside the JSON."
+        ),
+        messages=[{"role": "user", "content": prompt}],
+    )
+    text = msg.content[0].text  # type: ignore[union-attr]
+    return json.loads(text)
 
 
 def run_extractor(

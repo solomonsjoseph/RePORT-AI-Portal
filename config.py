@@ -120,6 +120,8 @@ LOG_NAME = "report_ai_portal"
 LOG_LEVEL = _get_env("LOG_LEVEL", yaml_get("app", "log_level", default=DEFAULT_LOG_LEVEL))
 logger = logging.getLogger(LOG_NAME)
 
+AGENT_MODEL_ID: str = os.environ.get("REPORTAL_AGENT_MODEL", "claude-opus-4-7")
+
 
 # ----------------------------------------------------------------------------
 # BASE PATHS
