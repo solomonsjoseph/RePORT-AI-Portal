@@ -9,7 +9,10 @@ from scripts.source_truth.build import BuildCoordinatorError, run_build
 from scripts.source_truth.policy_loader import DuplicateFormNameError
 
 
-def test_run_build_resolves_paths_and_creates_output_dirs(tmp_path):
+def test_run_build_resolves_paths_and_creates_output_dirs(tmp_path, monkeypatch):
+    import config as cfg
+    monkeypatch.setattr(cfg, "TMP_DIR", tmp_path / "tmp")
+
     fixture = Path("tests/fixtures/build_mini").resolve()
     output_root = tmp_path / "output" / "Mini"
     run_build(
@@ -22,7 +25,8 @@ def test_run_build_resolves_paths_and_creates_output_dirs(tmp_path):
     assert (output_root / "llm_source" / "evidence_packs").is_dir()
     assert (output_root / "llm_source" / "concept").is_dir()
     assert (output_root / "audit").is_dir()
-    assert (output_root / "staging" / "llm_source").is_dir()
+    # staging lives under tmp per spec §6.4
+    assert (tmp_path / "tmp" / "Mini" / "staging" / "llm_source").is_dir()
 
 
 def test_run_build_blocks_on_missing_policies_dir(tmp_path):
@@ -138,8 +142,11 @@ def test_run_build_emits_initial_concept_index(tmp_path):
         assert member["analysis_queryable"] is None
 
 
-def test_run_build_stage2_emits_schema_and_enriched_concept_index_to_staging(tmp_path):
+def test_run_build_stage2_emits_schema_and_enriched_concept_index_to_staging(tmp_path, monkeypatch):
     import json
+    import config as cfg
+    monkeypatch.setattr(cfg, "TMP_DIR", tmp_path / "tmp")
+
     fixture = Path("tests/fixtures/build_mini").resolve()
     output_root = tmp_path / "output" / "Mini"
     run_build(
@@ -149,13 +156,14 @@ def test_run_build_stage2_emits_schema_and_enriched_concept_index_to_staging(tmp
         column_inventory=fixture / "data" / "Mini" / "column_inventory.json",
     )
 
-    schema_path = output_root / "staging" / "llm_source" / "phi_handled_dataset_schema.json"
+    staging_llm = tmp_path / "tmp" / "Mini" / "staging" / "llm_source"
+    schema_path = staging_llm / "phi_handled_dataset_schema.json"
     assert schema_path.is_file()
     schema = json.loads(schema_path.read_text())
     assert schema["artifact_type"] == "study_dataset_schema"
     assert isinstance(schema["entries"], list)
 
-    enriched_path = output_root / "staging" / "llm_source" / "concept" / "concept_index.json"
+    enriched_path = staging_llm / "concept" / "concept_index.json"
     assert enriched_path.is_file()
     enriched = json.loads(enriched_path.read_text())
     members = enriched["cohorts"]["cohort_a"]["member_variables"]
@@ -182,8 +190,11 @@ def test_compact_records_have_form_field_populated(tmp_path):
         )
 
 
-def test_run_build_stage2_dataset_schema_reflects_column_inventory(tmp_path):
+def test_run_build_stage2_dataset_schema_reflects_column_inventory(tmp_path, monkeypatch):
     import json
+    import config as cfg
+    monkeypatch.setattr(cfg, "TMP_DIR", tmp_path / "tmp")
+
     fixture = Path("tests/fixtures/build_mini").resolve()
     output_root = tmp_path / "output" / "Mini"
     run_build(
@@ -193,7 +204,7 @@ def test_run_build_stage2_dataset_schema_reflects_column_inventory(tmp_path):
         column_inventory=fixture / "data" / "Mini" / "column_inventory.json",
     )
     schema = json.loads(
-        (output_root / "staging" / "llm_source" / "phi_handled_dataset_schema.json").read_text()
+        (tmp_path / "tmp" / "Mini" / "staging" / "llm_source" / "phi_handled_dataset_schema.json").read_text()
     )
     entries_by_form: dict[str, list[str]] = {}
     for entry in schema["entries"]:
@@ -451,6 +462,40 @@ def test_run_build_mini_seen_in_forms_subjid_three_forms(tmp_path):
         assert isinstance(r["seen_in_forms"], list)
         assert r["seen_in_forms"] == sorted(r["seen_in_forms"])
         assert r["form"] in r["seen_in_forms"]
+
+
+def test_staging_dir_is_under_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """build.py staging dirs must live under tmp/, never under output/."""
+    import config as cfg
+
+    monkeypatch.setattr(cfg, "TMP_DIR", tmp_path / "tmp")
+
+    policies_dir = tmp_path / "policies"
+    policies_dir.mkdir()
+    # write a minimal valid policy YAML so run_build doesn't explode before mkdir
+    (policies_dir / "TestForm_policy.yaml").write_text(
+        "form: TestForm\npolicy_status: draft\nvariables: {}\n"
+    )
+    output_root = tmp_path / "output" / "TestStudy"
+
+    from scripts.source_truth.build import run_build
+
+    try:
+        run_build(
+            study="TestStudy",
+            policies_dir=policies_dir,
+            output_root=output_root,
+            column_inventory=None,
+        )
+    except Exception:
+        pass  # We only care about which dirs were created
+
+    # staging must be under tmp, NOT under output_root
+    assert not (output_root / "staging").exists(), (
+        "staging/ must not be created under output_root"
+    )
+    staging_tmp = tmp_path / "tmp" / "TestStudy" / "staging"
+    assert staging_tmp.exists(), f"expected staging at {staging_tmp}"
 
 
 def test_run_build_mini_seen_in_forms_on_evidence_packs(tmp_path):
