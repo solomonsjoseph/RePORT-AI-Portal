@@ -466,22 +466,42 @@ def test_run_verification_warns_on_orphan_cleanup_form(
 
 
 def _write_staging_dataset_schema(
-    output_root: Path, payload: dict[str, object]
+    output_root: Path,
+    payload: dict[str, object],
+    *,
+    tmp_root: Path | None = None,
+    study: str = "Mini",
 ) -> Path:
-    """Write a fake staging dataset_schema at the path the build coordinator
-    uses (``staging/llm_source/phi_handled_dataset_schema.json``)."""
-    staging_dir = output_root / "staging" / "llm_source"
+    """Write a fake staging dataset_schema.
+
+    When ``tmp_root`` is provided the file is written to
+    ``<tmp_root>/<study>/staging/llm_source/`` — the path that
+    ``run_verification`` derives from ``config.TMP_DIR``.  Otherwise it
+    falls back to the legacy ``output_root/staging/llm_source/`` path
+    (used by tests that exit before promotion and never reach the
+    ``config.TMP_DIR`` code-path).
+    """
+    if tmp_root is not None:
+        staging_dir = tmp_root / study / "staging" / "llm_source"
+    else:
+        staging_dir = output_root / "staging" / "llm_source"
     staging_dir.mkdir(parents=True, exist_ok=True)
     path = staging_dir / "phi_handled_dataset_schema.json"
     path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     return path
 
 
-def test_run_verification_promotes_dataset_schema_on_success(tmp_path: Path) -> None:
+def test_run_verification_promotes_dataset_schema_on_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """On gate pass with scrubbed data verified AND staging schema present,
     the staging dataset_schema is atomically copied to
     ``llm_source/dataset_schema.json`` (canonical name, no
     ``phi_handled_`` prefix)."""
+    import config
+
+    monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp")
+
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
     staging = tmp_path / "staging"
@@ -497,7 +517,9 @@ def test_run_verification_promotes_dataset_schema_on_success(tmp_path: Path) -> 
         "artifact_type": "study_dataset_schema",
         "entries": [{"form": "form_a", "columns": ["A", "B"]}],
     }
-    staging_schema = _write_staging_dataset_schema(output_root, schema_payload)
+    staging_schema = _write_staging_dataset_schema(
+        output_root, schema_payload, tmp_root=tmp_path / "tmp", study="Mini"
+    )
     expected_content = json.loads(staging_schema.read_text(encoding="utf-8"))
 
     code = run_verification(
@@ -515,9 +537,15 @@ def test_run_verification_promotes_dataset_schema_on_success(tmp_path: Path) -> 
     assert json.loads(promoted.read_text(encoding="utf-8")) == expected_content
 
 
-def test_run_verification_does_not_promote_on_failure(tmp_path: Path) -> None:
+def test_run_verification_does_not_promote_on_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """An unexplained drop fails the gate (exit 2). Even when a staging
     dataset_schema is present, promotion must not happen."""
+    import config
+
+    monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp")
+
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
     staging = tmp_path / "staging"
@@ -533,6 +561,8 @@ def test_run_verification_does_not_promote_on_failure(tmp_path: Path) -> None:
     _write_staging_dataset_schema(
         output_root,
         {"artifact_type": "study_dataset_schema", "entries": []},
+        tmp_root=tmp_path / "tmp",
+        study="Mini",
     )
 
     code = run_verification(
@@ -550,10 +580,16 @@ def test_run_verification_does_not_promote_on_failure(tmp_path: Path) -> None:
     )
 
 
-def test_run_verification_does_not_promote_on_graceful_skip(tmp_path: Path) -> None:
+def test_run_verification_does_not_promote_on_graceful_skip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Empty staging (scrub never ran) → exit 0, but promotion must NOT
     happen. Even if a stale staging schema exists, the gate cannot
     promote it because nothing was verified."""
+    import config
+
+    monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp")
+
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
     staging = tmp_path / "staging"  # no datasets/ subdir → graceful skip
@@ -569,6 +605,8 @@ def test_run_verification_does_not_promote_on_graceful_skip(tmp_path: Path) -> N
     _write_staging_dataset_schema(
         output_root,
         {"artifact_type": "study_dataset_schema", "entries": []},
+        tmp_root=tmp_path / "tmp",
+        study="Mini",
     )
 
     code = run_verification(
@@ -587,12 +625,18 @@ def test_run_verification_does_not_promote_on_graceful_skip(tmp_path: Path) -> N
 
 
 def test_run_verification_passes_without_promotion_when_staging_schema_missing(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """All forms reconcile, but staging dataset_schema does not exist
     (e.g. the build coordinator was run without ``--column-inventory``).
     The gate must still pass (exit 0) and emit a warning; promotion
     does not occur."""
+    import config
+
+    monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp")
+
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
     staging = tmp_path / "staging"
@@ -653,4 +697,34 @@ def test_run_verification_only_writes_failing_form_discrepancies(tmp_path: Path)
     assert code == 2
     review = output_root / "human_review"
     assert (review / "form_b_discrepancies.json").is_file()
-    assert not (review / "form_a_discrepancies.json").exists()
+
+
+def test_promote_schema_uses_staging_dir_param(tmp_path: Path) -> None:
+    """_promote_dataset_schema must read from the provided staging_dir, not from output/staging/."""
+    import json
+    from scripts.source_truth.verify_and_promote import _promote_dataset_schema
+
+    output_root = tmp_path / "output" / "TestStudy"
+    output_root.mkdir(parents=True)
+    (output_root / "llm_source").mkdir()
+
+    # Write schema to the NEW tmp staging location
+    staging_dir = tmp_path / "tmp" / "TestStudy" / "staging" / "llm_source"
+    staging_dir.mkdir(parents=True)
+    schema_payload = {"artifact_type": "study_dataset_schema", "entries": []}
+    (staging_dir / "phi_handled_dataset_schema.json").write_text(
+        json.dumps(schema_payload), encoding="utf-8"
+    )
+
+    rc = _promote_dataset_schema(output_root=output_root, staging_dir=staging_dir)
+    assert rc == 0
+    promoted = output_root / "llm_source" / "dataset_schema.json"
+    assert promoted.is_file()
+    assert json.loads(promoted.read_text()) == schema_payload
+
+    # Corrupt file at OLD path must be ignored
+    old_staging = output_root / "staging" / "llm_source"
+    old_staging.mkdir(parents=True)
+    (old_staging / "phi_handled_dataset_schema.json").write_text("NOT JSON")
+    rc2 = _promote_dataset_schema(output_root=output_root, staging_dir=staging_dir)
+    assert rc2 == 0

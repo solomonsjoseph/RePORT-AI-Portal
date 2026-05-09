@@ -48,6 +48,7 @@ from typing import Any
 
 import yaml
 
+import config
 from scripts.extraction.io import atomic_write_json
 from scripts.source_truth.cross_verify_pipeline import run as run_cross_verify
 from scripts.source_truth.dataset_schema_writer import dual_write_form
@@ -135,11 +136,12 @@ def _staging_has_jsonl(staging_root: Path) -> bool:
 def _promote_dataset_schema(
     *,
     output_root: Path,
+    staging_dir: Path,
 ) -> int:
     """Atomically promote the staging dataset_schema to ``llm_source/``.
 
-    Reads ``<output_root>/staging/llm_source/phi_handled_dataset_schema.json``
-    and atomically writes it to
+    Reads ``staging_dir / "phi_handled_dataset_schema.json"`` and
+    atomically writes it to
     ``<output_root>/llm_source/dataset_schema.json``. The destination
     filename is the canonical ``dataset_schema.json`` — the
     ``phi_handled_`` prefix was a staging-zone marker and is stripped on
@@ -155,10 +157,10 @@ def _promote_dataset_schema(
 
     Args:
         output_root: Per-study output root (e.g. ``output/Indo-VAP``).
+        staging_dir: Directory holding the staged schema file
+            (e.g. ``config.TMP_DIR / study / "staging" / "llm_source"``).
     """
-    staging_schema_path = (
-        output_root / "staging" / "llm_source" / "phi_handled_dataset_schema.json"
-    )
+    staging_schema_path = staging_dir / "phi_handled_dataset_schema.json"
     promoted_path = output_root / "llm_source" / "dataset_schema.json"
 
     if not staging_schema_path.is_file():
@@ -440,7 +442,8 @@ def run_verification(
     # (we know this because we passed the ``_staging_has_jsonl`` check
     # above). Atomic write; corrupt staging schema → exit 2; missing
     # staging schema → warning + still pass.
-    promote_code = _promote_dataset_schema(output_root=output_root)
+    staging_dir = config.TMP_DIR / study / "staging" / "llm_source"
+    promote_code = _promote_dataset_schema(output_root=output_root, staging_dir=staging_dir)
     if promote_code != 0:
         return promote_code
 
