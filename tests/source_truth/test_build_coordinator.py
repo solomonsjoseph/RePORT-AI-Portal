@@ -474,7 +474,7 @@ def test_staging_dir_is_under_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     policies_dir.mkdir()
     # write a minimal valid policy YAML so run_build doesn't explode before mkdir
     (policies_dir / "TestForm_policy.yaml").write_text(
-        "form: TestForm\npolicy_status: draft\nvariables: {}\n"
+        "schema_version: 2\nstudy: TestStudy\nform: TestForm\nvariables: {}\n"
     )
     output_root = tmp_path / "output" / "TestStudy"
 
@@ -487,7 +487,7 @@ def test_staging_dir_is_under_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
             output_root=output_root,
             column_inventory=None,
         )
-    except Exception:
+    except BuildCoordinatorError:
         pass  # We only care about which dirs were created
 
     # staging must be under tmp, NOT under output_root

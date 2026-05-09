@@ -28,11 +28,11 @@ from __future__ import annotations
 
 import argparse
 import json
-
-import config
 import logging
 from pathlib import Path
 from typing import Any
+
+import config
 
 from scripts.source_truth.catalog import build_catalog_artifact
 from scripts.source_truth.concept_derivation import derive_concept_index
@@ -295,7 +295,7 @@ def run_build(
     llm_source_dir = output_root / "llm_source"
     audit_dir = output_root / "audit"
     # Intermediate staging lives under tmp/<study>/ per spec §6.4.
-    staging_root = Path(config.TMP_DIR) / study / "staging"
+    staging_root = config.TMP_DIR / study / "staging"
     staging_llm_source_dir = staging_root / "llm_source"
     staging_audit_dir = staging_root / "audit"
     evidence_pack_dir = llm_source_dir / "evidence_packs"
