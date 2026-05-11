@@ -28,7 +28,7 @@ Outcomes:
                         without ``--column-inventory`` — promotion is
                         skipped with a warning, but the gate still passes).
     - Any form fails:   exit code 2. A per-form discrepancy file is written
-                        to ``output/{study}/human_review/<form>_discrepancies.json``.
+                        to ``tmp/{study}/human_review/<form>_discrepancies.json``.
                         No promotion happens — the schema stays in staging.
     - No scrubbed data: exit code 0 with a clear log message — the developer
                         ran the build before scrub. This is by design so
@@ -219,13 +219,13 @@ def run_verification(
         scrub_report_path: Path to ``phi_scrub_report.json``.
         cleanup_report_path: Path to ``dataset_cleanup_report.json``.
         output_root: Per-study output root (e.g. ``output/Indo-VAP``); the
-            gate writes failures to ``output_root/human_review/``.
+            gate writes failures to ``tmp/{study}/human_review/``.
 
     Returns:
         - ``0`` when all forms pass *or* there is no scrubbed data to
           reconcile (graceful skip).
         - ``2`` when at least one form fails. Per-form discrepancy files
-          are written under ``output_root/human_review/``.
+          are written under ``tmp/{study}/human_review/``.
 
     Graceful-skip asymmetry (intentional):
         Empty staging exits 0 (graceful). Empty SoT exits 2 (error).
@@ -385,7 +385,7 @@ def run_verification(
             len(cleanup_drops[orphan]),
         )
 
-    review_dir = output_root / "human_review"
+    review_dir = config.TMP_DIR / study / "human_review"
     failures: list[ReconciliationResult] = []
 
     for artifact in policy_artifacts:

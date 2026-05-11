@@ -164,7 +164,13 @@ def test_run_verification_passes_when_all_match(tmp_path: Path) -> None:
     assert not human_review.exists() or not list(human_review.glob("*_discrepancies.json"))
 
 
-def test_run_verification_emits_discrepancy_on_unexplained_drop(tmp_path: Path) -> None:
+def test_run_verification_emits_discrepancy_on_unexplained_drop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import config
+
+    monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp")
+
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
     staging = tmp_path / "staging"
@@ -188,7 +194,7 @@ def test_run_verification_emits_discrepancy_on_unexplained_drop(tmp_path: Path) 
     )
 
     assert code == 2
-    discrepancy = output_root / "human_review" / "form_a_discrepancies.json"
+    discrepancy = config.TMP_DIR / "Mini" / "human_review" / "form_a_discrepancies.json"
     assert discrepancy.is_file()
     payload = json.loads(discrepancy.read_text(encoding="utf-8"))
     assert payload["form"] == "form_a"
@@ -199,7 +205,13 @@ def test_run_verification_emits_discrepancy_on_unexplained_drop(tmp_path: Path) 
     assert "generated_utc" in payload
 
 
-def test_run_verification_emits_discrepancy_on_extra_column(tmp_path: Path) -> None:
+def test_run_verification_emits_discrepancy_on_extra_column(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import config
+
+    monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp")
+
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
     staging = tmp_path / "staging"
@@ -223,7 +235,7 @@ def test_run_verification_emits_discrepancy_on_extra_column(tmp_path: Path) -> N
 
     assert code == 2
     payload = json.loads(
-        (output_root / "human_review" / "form_a_discrepancies.json").read_text(encoding="utf-8")
+        (config.TMP_DIR / "Mini" / "human_review" / "form_a_discrepancies.json").read_text(encoding="utf-8")
     )
     assert payload["extra_in_scrubbed"] == ["X"]
 
@@ -670,9 +682,15 @@ def test_run_verification_passes_without_promotion_when_staging_schema_missing(
     ), "expected a warning naming the missing staging dataset_schema"
 
 
-def test_run_verification_only_writes_failing_form_discrepancies(tmp_path: Path) -> None:
+def test_run_verification_only_writes_failing_form_discrepancies(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """When 1 of 2 forms fails, only the failing form gets a discrepancy
     file."""
+    import config
+
+    monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp")
+
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
     staging = tmp_path / "staging"
@@ -695,8 +713,52 @@ def test_run_verification_only_writes_failing_form_discrepancies(tmp_path: Path)
         output_root=output_root,
     )
     assert code == 2
-    review = output_root / "human_review"
+    review = config.TMP_DIR / "Mini" / "human_review"
     assert (review / "form_b_discrepancies.json").is_file()
+
+
+def test_human_review_writes_to_tmp_not_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Phase 5a Task 3 — discrepancy files must be written under
+    ``config.TMP_DIR / <study> / human_review/`` rather than the legacy
+    ``output_root / human_review/`` location."""
+    import config
+
+    monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp")
+
+    sot_dir = tmp_path / "sot"
+    sot_dir.mkdir()
+    staging = tmp_path / "staging"
+    audit = tmp_path / "audit"
+    output_root = tmp_path / "output"
+    study = "Mini"
+
+    # Force a reconciliation failure: SoT={A,B,C}, scrubbed={A}, no explanation.
+    _write_policy(sot_dir, "form_a", ["A", "B", "C"])
+    _write_scrubbed_jsonl(staging, "form_a", ["A"])
+    scrub_path = _write_real_phi_audit(audit, drops_by_form={})
+    cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
+
+    code = run_verification(
+        study=study,
+        sot_dir=sot_dir,
+        staging_root=staging,
+        scrub_report_path=scrub_path,
+        cleanup_report_path=cleanup_path,
+        output_root=output_root,
+    )
+    assert code == 2
+
+    legacy = output_root / "human_review"
+    new_loc = config.TMP_DIR / study / "human_review"
+    assert not legacy.exists(), (
+        f"human_review must NOT be written to legacy output_root path; found {legacy}"
+    )
+    assert new_loc.exists(), (
+        f"human_review must be written under tmp/<study>/; expected {new_loc}"
+    )
+    assert (new_loc / "form_a_discrepancies.json").is_file()
 
 
 def test_promote_schema_uses_staging_dir_param(tmp_path: Path) -> None:

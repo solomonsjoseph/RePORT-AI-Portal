@@ -14,7 +14,7 @@ What this module covers vs. what `verify_and_promote.py` covers:
   reconciles SoT-declared columns vs. the scrubbed dataset per form,
   classifies drops as `explained_by_phi` / `explained_by_cleanup` /
   `missing_unexplained`, and either promotes `dataset_schema.json` to
-  GREEN or writes per-form `output/{study}/human_review/<form>_
+  GREEN or writes per-form `tmp/{study}/human_review/<form>_
   discrepancies.json` and exits non-zero. This is the runtime gate.
 * This `cutover_gate.py` is the **AC1-AC9 cross-slice conformance
   smoke**. It composes per-slice validators (catalog, dataset schema,
