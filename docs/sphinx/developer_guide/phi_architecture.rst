@@ -185,40 +185,12 @@ for the rationale.
 The PDF Orchestrator's Redact-Then-Call Posture
 -----------------------------------------------
 
-ADR-012. The wizard's "Load Study" button
-selects this path. Per PDF:
+.. note::
 
-1. **Code path always runs.** ``pdfplumber`` extracts text + a
-   heuristic candidate via
-   :func:`scripts.extraction.pdf_pipeline._candidate_from_text`.
-2. **Capability + provider gate.**
-   :func:`scripts.utils.llm_capabilities.is_capable_model` enforces
-   the model allowlist;
-   :data:`scripts.extraction.pdf_pipeline.ORCHESTRATOR_SUPPORTED_PROVIDERS`
-   restricts to anthropic + google.
-3. **Redact-then-call.** Extracted text is scrubbed via
-   :func:`scripts.extraction.pdf_pipeline._redact_text_for_llm`
-   (which uses ``phi_patterns.BLOCKING_PATTERNS``). A defensive
-   ``_assert_no_raw_phi_in_payload`` re-checks and raises if any
-   blocking pattern survives. Only the redacted text reaches the
-   LLM.
-4. **Re-scrub the response.** The LLM response is parsed and every
-   string field is re-scrubbed through
-   :func:`scripts.ai_assistant.phi_safe.guard_text` before merge.
-5. **Merge.** :func:`scripts.extraction.pdf_pipeline._merge`
-   reconciles LLM + code candidates.
-6. **Per-PDF snapshot fallback.** When the LLM tier is unavailable,
-   the orchestrator publishes ``data/snapshots/{STUDY}/pdfs/{stem}_variables.json``
-   instead. **Code-only output is never published** — heuristic-only
-   metadata without LLM oversight is too unreliable for IRB-grade
-   work.
-
-**No raw PDF bytes leave the host on the orchestrator path.** The
-legacy raw-PDF API path
-(:func:`scripts.extraction.extract_pdf_data._resolve_pdf_provider`)
-remains as the back-compat fallback gated by the two-part
-attestation (``REPORTALIN_PDF_PHI_FREE=1`` + non-empty
-``authorities/phi_free_pdfs.md``).
+   The PDF extraction pipeline (ADR-012) was removed in Phase 5b. See
+   the superseded note on ADR-012 in :doc:`decisions` for the
+   historical record. The source-truth catalog is now the sole
+   metadata layer.
 
 The Integrity Chain
 -------------------

@@ -416,6 +416,17 @@ in-app (Streamlit/CLI-REPL) lifetimes.
 ADR-012 — Two-way PDF orchestrator (pdfplumber + redacted-text LLM merge)
 -------------------------------------------------------------------------
 
+.. note::
+
+   **Status: Superseded / Removed in Phase 5b.** The PDF extraction
+   pipeline (``scripts/extraction/pdf_pipeline.py``,
+   ``scripts/extraction/extract_pdf_data.py``, and
+   ``scripts/utils/llm_capabilities.py``) was retired in Phase 5b after
+   the trio bundle / catalog cutover made the source-truth catalog the
+   sole metadata layer. The ADR is preserved as historical record; the
+   modules, snapshot baseline, and agent ``search_pdf_context`` tool no
+   longer exist.
+
 **What.** PDF extraction has two co-existing paths. The default path
 (``scripts/extraction/pdf_pipeline.py``, the wizard's "Load Study"
 selection) extracts text locally with ``pdfplumber``, redacts the

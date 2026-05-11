@@ -19,9 +19,6 @@ Start by Role
      - Change extraction, PHI scrub, cleanup, publish, variables, or
        lineage behavior.
      - :doc:`architecture`, then :doc:`data_extraction_datasets`
-   * - PDF pipeline developer
-     - Change PDF extraction, redaction, merge, or snapshot fallback.
-     - :doc:`data_extraction_pdfs`, then :doc:`phi_architecture`
    * - Agent/tool developer
      - Add or change assistant tools without breaking file-zone and PHI
        gates.
@@ -56,7 +53,6 @@ Contents
    :caption: Pipeline Components
 
    data_extraction_datasets
-   data_extraction_pdfs
    operations
    production_readiness
    sandbox

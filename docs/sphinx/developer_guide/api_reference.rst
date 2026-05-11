@@ -57,30 +57,6 @@ Dataset Extraction
    :undoc-members:
    :show-inheritance:
 
-PDF Extraction
-~~~~~~~~~~~~~~
-
-.. automodule:: scripts.extraction.extract_pdf_data
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-PDF Orchestrator
-~~~~~~~~~~~~~~~~
-
-.. automodule:: scripts.extraction.pdf_pipeline
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-LLM Capability Gate
-~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: scripts.utils.llm_capabilities
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Security Modules
 ----------------
 

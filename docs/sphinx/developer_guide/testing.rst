@@ -110,16 +110,13 @@ normal and security suites:
    tests/test_secure_staging.py
    tests/test_log_hygiene.py
    tests/test_lineage_manifest.py
-   tests/test_pdf_phi_flag.py
    tests/test_pipeline_provenance.py
    tests/security/test_adversarial_phi_safe.py
    tests/security/test_kanon_l_diversity.py
    tests/security/test_keystore.py
-   tests/security/test_llm_capabilities.py
    tests/security/test_llm_construction_smoke.py
    tests/security/test_log_hygiene_keys.py
    tests/security/test_no_keys_in_parent_environ.py
-   tests/security/test_pdf_redaction_pipeline.py
    tests/security/test_phase2_pipeline_polish.py
    tests/security/test_phase2_polish_permissions.py
    tests/security/test_sandbox_isolation.py
