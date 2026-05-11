@@ -1,4 +1,4 @@
-"""Tests for the pre-delete manifest writer."""
+"""Tests for the pre-delete manifest writer + clean-legacy CLI."""
 from __future__ import annotations
 
 import hashlib
@@ -25,6 +25,11 @@ def _patch_output_marker(monkeypatch: pytest.MonkeyPatch, output_marker: Path) -
     )
 
 
+# ---------------------------------------------------------------------------
+# manifest writer + delete_legacy_dirs
+# ---------------------------------------------------------------------------
+
+
 def test_manifest_captures_all_files_in_legacy_dirs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -34,7 +39,6 @@ def test_manifest_captures_all_files_in_legacy_dirs(
     audit.mkdir(parents=True)
     _patch_output_marker(monkeypatch, tmp_path / "output")
 
-    # Simulate legacy dirs with files
     trio = output_root / "trio_bundle" / "datasets"
     trio.mkdir(parents=True)
     f1 = trio / "form_a.jsonl"
@@ -110,8 +114,6 @@ def test_manifest_rejects_path_outside_output_zone(
     from scripts.security.secure_env import ZoneViolationError
     from scripts.utils.pre_delete_cleanup import write_pre_delete_manifest
 
-    # Point _OUTPUT_MARKER at tmp_path/output, then attempt to write the
-    # manifest into a sibling dir that is NOT under that marker.
     _patch_output_marker(monkeypatch, tmp_path / "output")
 
     output_root = tmp_path / "output" / "Indo-VAP"
@@ -124,3 +126,100 @@ def test_manifest_rejects_path_outside_output_zone(
         write_pre_delete_manifest(
             output_root=output_root, manifest_path=manifest_path
         )
+
+
+# ---------------------------------------------------------------------------
+# main() CLI orchestration
+# ---------------------------------------------------------------------------
+
+
+def test_cli_orchestrates_in_correct_order(tmp_path: Path, monkeypatch) -> None:
+    """main() must: (1) write manifest, (2) prune packs, (3) delete dirs - in order."""
+    from scripts.utils import pre_delete_cleanup
+
+    call_order: list[str] = []
+
+    def fake_write_manifest(**kwargs):
+        call_order.append("write_manifest")
+        assert "audit" in str(kwargs["manifest_path"])
+        return {}
+
+    def fake_prune(**kwargs):
+        call_order.append("prune")
+        return 42
+
+    def fake_delete(**kwargs):
+        call_order.append("delete")
+
+    monkeypatch.setattr(pre_delete_cleanup, "write_pre_delete_manifest", fake_write_manifest)
+    monkeypatch.setattr(pre_delete_cleanup, "prune_per_variable_packs", fake_prune)
+    monkeypatch.setattr(pre_delete_cleanup, "delete_legacy_dirs", fake_delete)
+
+    rc = pre_delete_cleanup.main([])
+
+    assert rc == 0
+    assert call_order == ["write_manifest", "prune", "delete"]
+
+
+def test_cli_module_exposes_main() -> None:
+    from scripts.utils import pre_delete_cleanup
+    assert callable(pre_delete_cleanup.main)
+
+
+def test_cli_dry_run_does_not_call_destructive_functions(tmp_path: Path, monkeypatch, capsys) -> None:
+    """--dry-run must not call prune or delete; it MAY still call write_manifest."""
+    import config
+    from scripts.utils import pre_delete_cleanup
+
+    called: list[str] = []
+
+    def fake_write(**kwargs):
+        called.append("write_manifest")
+        return {}
+
+    def fake_prune(**kwargs):
+        called.append("prune")
+        return 0
+
+    def fake_delete(**kwargs):
+        called.append("delete")
+
+    monkeypatch.setattr(pre_delete_cleanup, "write_pre_delete_manifest", fake_write)
+    monkeypatch.setattr(pre_delete_cleanup, "prune_per_variable_packs", fake_prune)
+    monkeypatch.setattr(pre_delete_cleanup, "delete_legacy_dirs", fake_delete)
+
+    monkeypatch.setattr(config, "STUDY_OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr(config, "STUDY_AUDIT_DIR", tmp_path / "audit")
+    monkeypatch.setattr(config, "SOT_DIR", tmp_path / "sot")
+    monkeypatch.setattr(config, "LLM_SOURCE_EVIDENCE_PACKS_DIR", tmp_path / "packs")
+
+    rc = pre_delete_cleanup.main(["--dry-run"])
+    assert rc == 0
+    assert "prune" not in called
+    assert "delete" not in called
+    out = capsys.readouterr().out
+    assert "DRY RUN" in out
+
+
+def test_cli_no_dry_run_calls_all(tmp_path: Path, monkeypatch) -> None:
+    """No --dry-run keeps existing behavior (all 3 calls in order)."""
+    import config
+    from scripts.utils import pre_delete_cleanup
+
+    called: list[str] = []
+
+    monkeypatch.setattr(pre_delete_cleanup, "write_pre_delete_manifest",
+                        lambda **kw: called.append("write_manifest") or {})
+    monkeypatch.setattr(pre_delete_cleanup, "prune_per_variable_packs",
+                        lambda **kw: called.append("prune") or 0)
+    monkeypatch.setattr(pre_delete_cleanup, "delete_legacy_dirs",
+                        lambda **kw: called.append("delete"))
+
+    monkeypatch.setattr(config, "STUDY_OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr(config, "STUDY_AUDIT_DIR", tmp_path / "audit")
+    monkeypatch.setattr(config, "SOT_DIR", tmp_path / "sot")
+    monkeypatch.setattr(config, "LLM_SOURCE_EVIDENCE_PACKS_DIR", tmp_path / "packs")
+
+    rc = pre_delete_cleanup.main([])
+    assert rc == 0
+    assert called == ["write_manifest", "prune", "delete"]

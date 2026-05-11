@@ -38,7 +38,6 @@ Skipped files (the file itself legitimately names the legacy strings):
   - ``lint_doc_freshness.py``     (sibling doc-freshness linter — catalogs
     legacy strings as detection patterns)
   - ``pre_delete_cleanup.py``     (the legacy-deletion tool)
-  - ``pre_delete_cleanup_cli.py`` (CLI wrapper that imports the deletion tool)
 """
 from __future__ import annotations
 
@@ -83,7 +82,6 @@ _SKIP_FILES: frozenset[str] = frozenset(
         "lint_legacy_dirs.py",
         "lint_doc_freshness.py",
         "pre_delete_cleanup.py",
-        "pre_delete_cleanup_cli.py",
     }
 )
 

@@ -397,10 +397,10 @@ clean:
 	@printf "$(G)✓ Caches, sessions, stale logs cleaned$(N)\n"
 
 clean-legacy: ## Phase 5b: write pre-delete manifest, prune per-variable packs, delete legacy output dirs
-	$(UV) run --all-groups python -m scripts.utils.pre_delete_cleanup_cli
+	$(UV) run --all-groups python -m scripts.utils.pre_delete_cleanup
 
 clean-legacy-dry-run: ## Phase 5b: print what clean-legacy would delete (no filesystem changes)
-	$(UV) run --all-groups python -m scripts.utils.pre_delete_cleanup_cli --dry-run
+	$(UV) run --all-groups python -m scripts.utils.pre_delete_cleanup --dry-run
 
 nuke:
 	@printf "$(R)This removes generated state: .venv, output/, .logs/, logs/, tmp/, docs/sphinx/_build/, caches.$(N)\n"
