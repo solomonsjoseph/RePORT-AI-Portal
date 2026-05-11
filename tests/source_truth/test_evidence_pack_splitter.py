@@ -1,8 +1,5 @@
-# tests/source_truth/test_evidence_pack_splitter.py
 import json
 from pathlib import Path
-
-import pytest
 
 from scripts.source_truth.catalog import build_catalog_artifact
 from scripts.source_truth.evidence_pack_splitter import split_catalog_artifact
