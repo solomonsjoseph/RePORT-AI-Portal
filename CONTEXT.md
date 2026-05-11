@@ -46,14 +46,14 @@ The **Study Metadata Catalog** should include a concept index in addition to com
 
 The Study Metadata Catalog is the LLM/tool-facing derivative and the replacement for the current variables reference. It exposes safe source metadata for variables that remain available after PHI handling and cleanup: variable meaning, PDF question text, options, sections, units, parent-child relationships, skip logic, source associations, and dictionary-derived metadata when available. It must not expose raw participant values or raw PHI. PDF-only or dictionary-only information can be preserved as context, but first-class catalog variables are the variables that exist in the PHI-handled dataset.
 
-The catalog lives at `output/<study>/llm_source/study_metadata_catalog.json` and is a **lean table-of-contents (ToC)** under the [Lean-Catalog Principle](#lean-catalog-principle). It carries pointers and minimal index keys only — never full per-form payloads. The full per-form metadata payload lives in the per-form [Evidence Pack](#evidence-pack-per-form). This lean ToC replaces the legacy 1.4 MB mega-catalog and replaces "PDF extraction" as the user-facing concept.
+The catalog lives at `output/<study>/llm_source/study_metadata/catalog.json` and is a **lean table-of-contents (ToC)** under the [Lean-Catalog Principle](#lean-catalog-principle). It carries pointers and minimal index keys only — never full per-form payloads. The full per-form metadata payload lives in the per-form [Evidence Pack](#evidence-pack-per-form). This lean ToC replaces the legacy 1.4 MB mega-catalog and replaces "PDF extraction" as the user-facing concept.
 
 
 ### Lean-Catalog Principle
 
 Every catalog file inside `llm_source/` is a lean table-of-contents only: it lists pointers, names, form, file paths, handling-status flags, and evidence-pack references — never full per-form or per-variable payloads. Per-form payloads always live in sibling per-form files. This principle applies to:
 
-- `llm_source/study_metadata_catalog.json` — points at `evidence_packs/<form>.json`.
+- `llm_source/study_metadata/catalog.json` — points at `evidence_packs/<form>.json`.
 - `llm_source/dataset_schema/catalog.json` — points at `dataset_schema/files/<form>.jsonl`.
 - `llm_source/dictionary/catalog.json` — points at `dictionary/<form>.json`.
 
@@ -61,7 +61,7 @@ The dictionary's per-form payloads live at `llm_source/dictionary/<form>.json`, 
 
 ### Evidence Pack (per-form)
 
-Each form has exactly one evidence pack at `output/<study>/llm_source/evidence_packs/<form>.json`. The per-form pack holds the complete PDF metadata for that form — variable descriptions, options, codings — sourced from the SoT YAML and the manual PDF + dataset-column extraction. It carries no row values.
+Each form has exactly one evidence pack at `output/<study>/llm_source/study_metadata/evidence_packs/<form>.json`. The per-form pack holds the complete PDF metadata for that form — variable descriptions, options, codings — sourced from the SoT YAML and the manual PDF + dataset-column extraction. It carries no row values.
 
 This per-form layout replaces the legacy 949 per-variable evidence pack files. A migration script translates legacy per-variable evidence packs into the per-form shape and writes a deletion manifest for the legacy files; the deletions execute under the Phase 5 clean slate. Per spec 2026-05-07-llm-source-restructure-design; implementation tracked in PHI_handing_review branch.
 
@@ -443,8 +443,8 @@ prose, these sections are authoritative.
 The user-facing output folder under `output/{STUDY}/` is named `llm_source/`,
 replacing the prior `trio_bundle/` name. The folder holds the artifacts the
 LLM reads at runtime: the lean **Study Metadata Catalog**
-(`study_metadata_catalog.json`), per-form **Evidence Packs**
-(`evidence_packs/<form>.json`), the **Dataset Schema** folder
+(`study_metadata/catalog.json`), per-form **Evidence Packs**
+(`study_metadata/evidence_packs/<form>.json`), the **Dataset Schema** folder
 (`dataset_schema/catalog.json` + `dataset_schema/files/<form>.jsonl`),
 the relocated per-form **Dictionary** payloads
 (`dictionary/<form>.json` with lean `dictionary/catalog.json` ToC),
@@ -518,8 +518,8 @@ ledger event, or stale Source-of-Truth.
 The locked [design spec](docs/superpowers/specs/2026-05-07-llm-source-restructure-design.md) reshapes the canonical LLM-facing bundle. Where it conflicts with earlier prose in this section, the spec is authoritative.
 
 - **End-state per study is `output/<study>/{llm_source/, audit/}` only.** `trio_bundle/`, `staging/`, `agent/`, `human_review/` are deleted in Phase 5; pipeline intermediates relocate to `tmp/<study>/<stage>/...`.
-- **Lean-catalog principle.** Every catalog file in `llm_source/` is a lean ToC of pointers — `study_metadata_catalog.json`, `dataset_schema/catalog.json`, `dictionary/catalog.json`. Per-form payloads live in sibling files. No consolidated `data_dictionary.json` artifact exists; per-form dictionary payloads at `dictionary/<form>.json` are the canonical surface.
-- **Per-form evidence packs replace the legacy 949 per-variable packs.** One JSON per FORM at `evidence_packs/<form>.json`, sourced from SoT YAML + manual PDF/dataset-column extraction, no row values.
+- **Lean-catalog principle.** Every catalog file in `llm_source/` is a lean ToC of pointers — `study_metadata/catalog.json`, `dataset_schema/catalog.json`, `dictionary/catalog.json`. Per-form payloads live in sibling files. No consolidated `data_dictionary.json` artifact exists; per-form dictionary payloads at `dictionary/<form>.json` are the canonical surface.
+- **Per-form evidence packs replace the legacy 949 per-variable packs.** One JSON per FORM at `study_metadata/evidence_packs/<form>.json`, sourced from SoT YAML + manual PDF/dataset-column extraction, no row values.
 - **PHI ledger is dual-half (declared + as-written) with reconciliation.** The declared ledger is the contract built at policy-load time; the as-written ledger is the receipt emitted live by `phi_scrub.py` and `dataset_cleanup.py`. The audit folder is the [No-LLM Zone](#no-llm-zone) with path deny + runtime guard + `.gitattributes` + sentinel + 0700.
 - **Phase 1 PHI-rule audit posture.** First enumerate every PHI-handling technique already in `scripts/security/` (HMAC-SHA256 pseudonymization, SANT per-subject date jitter, drop, cap, generalize, suppress_small_cell, keep allowlist, birthdate handling under safe_harbor / limited_dataset, subject-id orphan quarantine, blocking/warn/subject-id regex tiers, file exclusions, free-text whole-value drop). Then research-extend in parallel against HIPAA §164.514(b)(2)(i)(A-R), DPDPA 2023, Aadhaar Act §29 + SPDI Rule 3, ICMR 2017 §11, and NIST SP 800-188; synthesis includes a SoT-driven sweep that flags any variable whose name suggests PHI but whose SoT handling does not match a covered technique.
 - **Cross-verifier (mid-pipeline, additive).** Deterministic Python scanner emits a SAFE counts-only report; the isolated LLM fix agent runs in a separate subprocess with OS read-deny on row JSONL files, opens PRs (never direct commits), opens HITL issues on ambiguity, and stops with `auto_fix_exhausted: true` after 2× repeat findings.
@@ -655,9 +655,9 @@ The build pipeline must hold these invariants:
 2. **`output/{STUDY}/llm_source/` contents are exactly these
    artifacts**, no more, no less (per the locked
    [design spec](docs/superpowers/specs/2026-05-07-llm-source-restructure-design.md)):
-   - `study_metadata_catalog.json` (lean ToC; pointers only)
-   - `evidence_packs/{form}.json` (one JSON per FORM; replaces the
-     legacy 949 per-variable evidence packs)
+   - `study_metadata/catalog.json` (lean ToC; pointers only)
+   - `study_metadata/evidence_packs/{form}.json` (one JSON per FORM;
+     replaces the legacy 949 per-variable evidence packs)
    - `dataset_schema/catalog.json` + `dataset_schema/files/{form}.jsonl`
      (lean ToC + PHI-cleaned rows, one JSONL per form)
    - `concept/concept_index.json` (study concepts, derived from the
@@ -752,9 +752,10 @@ Stage 4 — Post-publication verifier (maintainer CLI)
 ```
 output/{STUDY}/
   llm_source/                   GREEN; chat read surface
-    study_metadata_catalog.json     (lean ToC → evidence_packs/<form>.json)
-    evidence_packs/
-      {form}.json                   (one JSON per FORM; PDF metadata; no values)
+    study_metadata/
+      catalog.json                  (lean ToC → evidence_packs/<form>.json)
+      evidence_packs/
+        {form}.json                 (one JSON per FORM; PDF metadata; no values)
     dataset_schema/
       catalog.json                  (lean ToC → files/<form>.jsonl + handling flags)
       files/
@@ -812,7 +813,7 @@ concept index.
 Chat-path retrieval consults artifacts in this order, falling through
 when an earlier tier is insufficient:
 
-1. **Compact catalog** (lean ToC `llm_source/study_metadata_catalog.json`) —
+1. **Compact catalog** (lean ToC `llm_source/study_metadata/catalog.json`) —
    variable meaning, form, section, options, source presence; pointers
    into per-form evidence packs.
 2. **Dataset schema + values**
@@ -820,7 +821,7 @@ when an earlier tier is insufficient:
    `llm_source/dataset_schema/files/{form}.jsonl`) — analysis queries.
 3. **Concept index + per-form evidence packs**
    (`llm_source/concept/concept_index.json`,
-   `llm_source/evidence_packs/{form}.json`) — concept questions, exact
+   `llm_source/study_metadata/evidence_packs/{form}.json`) — concept questions, exact
    PDF wording, full provenance. Note the per-form (not per-variable)
    evidence-pack shape per the locked design.
 4. **Dictionary** (per-form payloads at
@@ -908,13 +909,13 @@ as-written ledger files for write.
 The cutover affects:
 
 - `scripts/ai_assistant/agent_tools.py` — `_load_variables_json()` reads
-  `llm_source/study_metadata_catalog.json` (lean ToC). Heavy-field
+  `llm_source/study_metadata/catalog.json` (lean ToC). Heavy-field
   reads (exact PDF wording, full relationships) lazy-fetch the
-  per-form pack `llm_source/evidence_packs/{form}.json` and locate the
-  variable record inside that file. Catalog resolution unifies on
-  `output/{STUDY}/llm_source/study_metadata_catalog.json`.
+  per-form pack `llm_source/study_metadata/evidence_packs/{form}.json`
+  and locate the variable record inside that file. Catalog resolution
+  unifies on `output/{STUDY}/llm_source/study_metadata/catalog.json`.
 - `scripts/utils/snapshots.py` and `scripts/utils/restore_drill.py` —
-  root-marker check uses `study_metadata_catalog.json` instead of
+  root-marker check uses `study_metadata/catalog.json` instead of
   `variables.json`.
 - `scripts/security/secure_env.py` — `assert_trio_bundle_zone` renamed
   to `assert_llm_source_zone`. Allowed root: `llm_source/` only

@@ -2,7 +2,7 @@
 """Split the unified catalog artifact returned by
 `catalog.build_catalog_artifact()` into a compact-only catalog mapping
 plus a {variable_id: evidence_pack} dict suitable for per-variable
-serialization under `llm_source/evidence_packs/`.
+serialization under `llm_source/study_metadata/evidence_packs/`.
 
 Also renames `artifact_type` from the legacy `study_variable_catalog`
 to the new `study_metadata_catalog` (CONTEXT.md §"Build Pipeline —

@@ -179,7 +179,7 @@ def test_dataset_schema_catalog_lean_toc_with_handling_summary(tmp_path: Path) -
     catalog = json.loads(out.read_text())
     assert catalog["forms"]["10_TST"]["file"] == "files/10_TST.jsonl"
     assert catalog["forms"]["10_TST"]["sot_yaml"].endswith("10_TST_policy.yaml")
-    assert catalog["forms"]["10_TST"]["evidence_pack"] == "../evidence_packs/10_TST.json"
+    assert catalog["forms"]["10_TST"]["evidence_pack"] == "../study_metadata/evidence_packs/10_TST.json"
     assert catalog["forms"]["10_TST"]["handling_summary"] == {
         "keep": 1,
         "pseudonymize": 1,

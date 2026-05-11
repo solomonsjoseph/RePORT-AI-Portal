@@ -93,8 +93,8 @@ make build-llm-source STUDY=Indo-VAP
 
 This emits all of:
 
-- `output/Indo-VAP/llm_source/study_metadata_catalog.json`
-- `output/Indo-VAP/llm_source/evidence_packs/*.json`
+- `output/Indo-VAP/llm_source/study_metadata/catalog.json`
+- `output/Indo-VAP/llm_source/study_metadata/evidence_packs/*.json`
 - `output/Indo-VAP/llm_source/concept/concept_index.json`
 - `output/Indo-VAP/audit/phi_handling_ledger.declared.json`
 - `output/Indo-VAP/audit/dataset_cleanup_ledger.declared.json`

@@ -22,7 +22,7 @@ def test_run_build_resolves_paths_and_creates_output_dirs(tmp_path, monkeypatch)
         column_inventory=None,
     )
     assert (output_root / "llm_source").is_dir()
-    assert (output_root / "llm_source" / "evidence_packs").is_dir()
+    assert (output_root / "llm_source" / "study_metadata" / "evidence_packs").is_dir()
     assert (output_root / "llm_source" / "concept").is_dir()
     assert (output_root / "audit").is_dir()
     # staging lives under tmp per spec §6.4
@@ -66,14 +66,14 @@ def test_run_build_emits_catalog_and_evidence_packs(tmp_path):
         column_inventory=None,
     )
 
-    catalog_path = output_root / "llm_source" / "study_metadata_catalog.json"
+    catalog_path = output_root / "llm_source" / "study_metadata" / "catalog.json"
     assert catalog_path.is_file()
     catalog = json.loads(catalog_path.read_text())
     assert catalog["artifact_type"] == "study_metadata_catalog"
     assert isinstance(catalog["compact_records"], list)
     assert len(catalog["compact_records"]) > 0
 
-    evidence_dir = output_root / "llm_source" / "evidence_packs"
+    evidence_dir = output_root / "llm_source" / "study_metadata" / "evidence_packs"
     pack_files = list(evidence_dir.glob("*.json"))
     assert len(pack_files) > 0
     sample = json.loads(pack_files[0].read_text())
@@ -92,8 +92,8 @@ def test_run_build_idempotent_byte_identical(tmp_path):
             column_inventory=None,
         )
 
-    cat_a = (out_a / "llm_source" / "study_metadata_catalog.json").read_bytes()
-    cat_b = (out_b / "llm_source" / "study_metadata_catalog.json").read_bytes()
+    cat_a = (out_a / "llm_source" / "study_metadata" / "catalog.json").read_bytes()
+    cat_b = (out_b / "llm_source" / "study_metadata" / "catalog.json").read_bytes()
     assert cat_a == cat_b
 
 
@@ -181,7 +181,7 @@ def test_compact_records_have_form_field_populated(tmp_path):
         output_root=output_root,
         column_inventory=None,
     )
-    catalog = json.loads((output_root / "llm_source" / "study_metadata_catalog.json").read_text())
+    catalog = json.loads((output_root / "llm_source" / "study_metadata" / "catalog.json").read_text())
     expected_forms = {"19_Smear", "1A_ICScreening", "2A_ICBaseline"}
     for record in catalog["compact_records"]:
         assert record.get("form") in expected_forms, (
@@ -271,7 +271,7 @@ def test_run_build_rejects_duplicate_form_names(tmp_path):
         )
 
     # Hard invariant: NO artifacts emitted when duplicate detection trips.
-    assert not (output_root / "llm_source" / "study_metadata_catalog.json").exists()
+    assert not (output_root / "llm_source" / "study_metadata" / "catalog.json").exists()
     assert not (output_root / "audit" / "phi_handling_ledger.declared.json").exists()
     assert not (
         output_root / "llm_source" / "concept" / "concept_index.json"
@@ -447,7 +447,7 @@ def test_run_build_mini_seen_in_forms_subjid_three_forms(tmp_path):
         column_inventory=None,
     )
     catalog = json.loads(
-        (output_root / "llm_source" / "study_metadata_catalog.json").read_text()
+        (output_root / "llm_source" / "study_metadata" / "catalog.json").read_text()
     )
     by_vid = {r["variable_id"]: r for r in catalog["compact_records"]}
     assert "SUBJID" in by_vid, "SUBJID expected in Mini catalog"
@@ -509,7 +509,7 @@ def test_run_build_mini_seen_in_forms_on_evidence_packs(tmp_path):
         output_root=output_root,
         column_inventory=None,
     )
-    pack_path = output_root / "llm_source" / "evidence_packs" / "SUBJID.json"
+    pack_path = output_root / "llm_source" / "study_metadata" / "evidence_packs" / "SUBJID.json"
     assert pack_path.is_file()
     pack = json.loads(pack_path.read_text())
     assert pack["seen_in_forms"] == [
@@ -522,7 +522,7 @@ def test_run_build_mini_seen_in_forms_on_evidence_packs(tmp_path):
 @pytest.mark.parametrize(
     "rel_path",
     [
-        "llm_source/study_metadata_catalog.json",
+        "llm_source/study_metadata/catalog.json",
         "llm_source/concept/concept_index.json",
         "audit/phi_handling_ledger.declared.json",
         "audit/dataset_cleanup_ledger.declared.json",

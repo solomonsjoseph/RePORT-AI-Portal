@@ -1,6 +1,6 @@
 """Legacy 947-pack reconciler.
 
-Walks `output/<study>/llm_source/evidence_packs/` where legacy per-variable
+Walks `output/<study>/llm_source/study_metadata/evidence_packs/` where legacy per-variable
 JSONs and new per-form JSONs coexist. Legacy files are distinguished by a
 top-level `variable_id` field; new per-form files have `form` + `variables[]`.
 

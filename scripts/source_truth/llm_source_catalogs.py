@@ -4,7 +4,7 @@ Three eventual catalogs (Tasks 5, 6 add the rest):
 - ``dictionary_mapping/catalog.json`` — pointers to per-form JSONL files
   under ``dictionary_mapping/jsonl/``
 - ``dataset_schema/catalog.json`` — Task 6
-- ``study_metadata_catalog.json`` — Task 5
+- ``study_metadata/catalog.json`` — Task 5
 
 Every catalog stores pointers only — never inline payloads.
 """
@@ -125,8 +125,9 @@ def build_study_metadata_catalog(
     output_path = (
         output_path
         if output_path is not None
-        else config.STUDY_LLM_SOURCE_DIR / "study_metadata_catalog.json"
+        else config.LLM_SOURCE_STUDY_METADATA_CATALOG_PATH
     )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     forms: dict[str, dict[str, Any]] = {}
     study: str | None = None
     if evidence_packs_dir.is_dir():
@@ -224,7 +225,7 @@ def build_dataset_schema_catalog(
         forms[form] = {
             "file": f"files/{form}.jsonl",
             "sot_yaml": sot_yaml_rel,
-            "evidence_pack": f"../evidence_packs/{form}.json",
+            "evidence_pack": f"../study_metadata/evidence_packs/{form}.json",
             "handling_summary": dict(sorted(actions.items())),
         }
     payload = {

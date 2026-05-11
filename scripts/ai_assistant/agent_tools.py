@@ -227,7 +227,7 @@ def _combined_variable_reference() -> list[dict[str, Any]]:
     # Phase 5b: the unified variables.json pipeline was dead code (never
     # produced on disk and the loader silently returned []). The agent now
     # relies entirely on published dataset column schemas; the per-form
-    # evidence packs and study_metadata_catalog.json are consumed by the
+    # evidence packs and study_metadata/catalog.json are consumed by the
     # catalog-side tools, not this generic retrieval surface.
     return _load_dataset_column_variables()
 

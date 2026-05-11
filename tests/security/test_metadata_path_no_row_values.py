@@ -87,7 +87,7 @@ def test_check_catches_known_violation(tmp_path: Path) -> None:
     bad.write_text(
         "import json\n"
         "def go(rows, path):\n"
-        "    target = 'output/study/llm_source/evidence_packs/foo.json'\n"
+        "    target = 'output/study/llm_source/study_metadata/evidence_packs/foo.json'\n"
         "    json.dump(list(rows.values()), open(path, 'w'))\n"
     )
     violations = _walk_for_violations(bad)
@@ -100,7 +100,7 @@ def test_allow_pragma_suppresses(tmp_path: Path) -> None:
     good.write_text(
         "import json\n"
         "def go(rows, path):\n"
-        "    target = 'output/study/llm_source/evidence_packs/foo.json'\n"
+        "    target = 'output/study/llm_source/study_metadata/evidence_packs/foo.json'\n"
         "    # phi-static: allow row=keys-only\n"
         "    json.dump(list(rows.values()), open(path, 'w'))\n"
     )

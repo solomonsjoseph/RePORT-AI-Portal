@@ -6,8 +6,8 @@ CLI entrypoint that reads:
     - optional column inventory from dataset extraction
 
 and emits to output/{study}/:
-    - llm_source/study_metadata_catalog.json
-    - llm_source/evidence_packs/{variable_id}.json
+    - llm_source/study_metadata/catalog.json
+    - llm_source/study_metadata/evidence_packs/{variable_id}.json
     - llm_source/concept/concept_index.json (initial — analysis_queryable=null)
     - audit/phi_handling_ledger.declared.json
     - audit/dataset_cleanup_ledger.declared.json
@@ -298,7 +298,7 @@ def run_build(
     staging_root = config.TMP_DIR / study / "staging"
     staging_llm_source_dir = staging_root / "llm_source"
     staging_audit_dir = staging_root / "audit"
-    evidence_pack_dir = llm_source_dir / "evidence_packs"
+    evidence_pack_dir = llm_source_dir / "study_metadata" / "evidence_packs"
     concept_dir = llm_source_dir / "concept"
     staging_concept_dir = staging_llm_source_dir / "concept"
 
@@ -334,12 +334,12 @@ def run_build(
     aggregated = _aggregate_catalog(policy_artifacts)
     compact_only, packs = split_catalog_artifact(aggregated)
 
-    _write_canonical_json(llm_source_dir / "study_metadata_catalog.json", compact_only)
-    summary["emitted"].append("llm_source/study_metadata_catalog.json")
+    _write_canonical_json(llm_source_dir / "study_metadata" / "catalog.json", compact_only)
+    summary["emitted"].append("llm_source/study_metadata/catalog.json")
 
     for vid, pack in packs.items():
         _write_canonical_json(evidence_pack_dir / f"{vid}.json", pack)
-    summary["emitted"].append(f"llm_source/evidence_packs/*.json (count={len(packs)})")
+    summary["emitted"].append(f"llm_source/study_metadata/evidence_packs/*.json (count={len(packs)})")
 
     summary["forms_loaded"] = [art["form"] for art in policy_artifacts]
     summary["compact_record_count"] = len(compact_only.get("compact_records") or [])

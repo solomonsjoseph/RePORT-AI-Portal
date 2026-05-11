@@ -41,7 +41,7 @@ def test_live_output_structure_has_no_legacy_subdirs() -> None:
 
 
 def test_evidence_packs_contain_only_per_form_packs() -> None:
-    """No per-variable evidence packs remain in llm_source/evidence_packs/."""
+    """No per-variable evidence packs remain in llm_source/study_metadata/evidence_packs/."""
     import config
 
     packs_dir = Path(config.LLM_SOURCE_EVIDENCE_PACKS_DIR)

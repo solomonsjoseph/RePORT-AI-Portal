@@ -5,7 +5,7 @@ SoT YAML). PHI variable_ids in ``name_phi_uncovered`` or
 ``review_required_open`` categories are masked through Phase 1's
 ``mask_variable_id`` helper. Covered variables stay clear.
 
-Output: ``output/<study>/llm_source/evidence_packs/<form>.json``.
+Output: ``output/<study>/llm_source/study_metadata/evidence_packs/<form>.json``.
 No row values. Atomic temp+replace via ``atomic_write_json``.
 """
 
@@ -84,6 +84,7 @@ def build_evidence_packs(
 
     sot_dir = sot_dir if sot_dir is not None else config.SOT_DIR
     output_dir = output_dir if output_dir is not None else config.LLM_SOURCE_EVIDENCE_PACKS_DIR
+    output_dir.mkdir(parents=True, exist_ok=True)
     files = sorted(sot_dir.glob("*_policy.yaml"))
     dataset_dir = sot_dir / "dataset_policies"
     if dataset_dir.is_dir():

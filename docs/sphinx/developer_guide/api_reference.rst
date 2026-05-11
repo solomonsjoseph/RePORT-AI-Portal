@@ -329,7 +329,7 @@ Extraction Modules (continued)
    artefact it produced was never written to disk in the active pipeline
    and the agent loader silently returned ``[]``. The agent now derives
    its variable reference from published dataset JSONL column schemas
-   plus the per-form evidence packs in ``llm_source/evidence_packs/``.
+   plus the per-form evidence packs in ``llm_source/study_metadata/evidence_packs/``.
 
 Cleanup Propagation
 ~~~~~~~~~~~~~~~~~~~

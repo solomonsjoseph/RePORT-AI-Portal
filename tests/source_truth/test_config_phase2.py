@@ -46,7 +46,8 @@ def test_evidence_packs_dir() -> None:
     p = config.LLM_SOURCE_EVIDENCE_PACKS_DIR
     assert isinstance(p, Path)
     assert p.name == "evidence_packs"
-    assert p.parent == config.STUDY_LLM_SOURCE_DIR
+    assert p.parent == config.LLM_SOURCE_STUDY_METADATA_DIR
+    assert p.parent.parent == config.STUDY_LLM_SOURCE_DIR
 
 
 def test_concept_dir() -> None:
