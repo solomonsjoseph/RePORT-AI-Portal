@@ -1,21 +1,75 @@
-"""Static-analysis check: no module under scripts/ writes row values to metadata paths.
-
-Walks the AST of every .py file under scripts/, looking for:
-  json.dump(d, ...) where d is constructed from row.values() / .iterrows() /
-  similar row-level expressions, when the file path target string-matches one
-  of the protected metadata path fragments.
-
-The check is intentionally conservative: it flags suspicious patterns rather
-than proving correctness. False positives must be either fixed (preferred)
-or annotated with ``# phi-static: allow row=keys-only`` on the line above
-the call.
-"""
+"""Static-analysis security checks: scan tracked source files for prohibited patterns."""
 
 from __future__ import annotations
 
 import ast
+import re
+import shutil
+import subprocess
 from pathlib import Path
 
+import pytest
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+# ---------------------------------------------------------------------------
+# No static provider API key literals in tracked files
+# ---------------------------------------------------------------------------
+
+_TEXT_SUFFIXES = {
+    ".json",
+    ".md",
+    ".py",
+    ".rst",
+    ".sh",
+    ".toml",
+    ".yaml",
+    ".yml",
+}
+_PROVIDER_KEY_PATTERNS = {
+    "anthropic": re.compile(r"sk-ant-[A-Za-z]+\d*-[A-Za-z0-9_\-]{20,}"),
+    "openai": re.compile(r"sk-(?:proj-)?[A-Za-z0-9]{40,}"),
+    "nvidia": re.compile(r"nvapi-[A-Za-z0-9_\-]{30,}"),
+    "google": re.compile(r"AIza[A-Za-z0-9_\-]{35}"),
+}
+
+
+def _git_path() -> str:
+    git = shutil.which("git")
+    if git is None:
+        pytest.fail("git executable is required for tracked-file secret scanning")
+    return git
+
+
+def _tracked_text_files() -> list[Path]:
+    result = subprocess.run(  # noqa: S603 - static git ls-files invocation.
+        [_git_path(), "ls-files"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return [
+        ROOT / path for path in result.stdout.splitlines() if Path(path).suffix in _TEXT_SUFFIXES
+    ]
+
+
+def test_tracked_files_do_not_contain_static_provider_api_key_literals() -> None:
+    findings: list[str] = []
+    for path in _tracked_text_files():
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        for line_no, line in enumerate(text.splitlines(), start=1):
+            for provider, pattern in _PROVIDER_KEY_PATTERNS.items():
+                if pattern.search(line):
+                    findings.append(f"{path.relative_to(ROOT)}:{line_no}:{provider}")
+
+    assert findings == []
+
+
+# ---------------------------------------------------------------------------
+# No row values in metadata path writes
+# ---------------------------------------------------------------------------
 
 _PROTECTED_PATH_FRAGMENTS = (
     "evidence_packs",
@@ -25,14 +79,12 @@ _PROTECTED_PATH_FRAGMENTS = (
 )
 
 _ROW_LIKE_NAMES = {"iterrows", "itertuples", "to_dict"}
-
 _ROW_VALUES_ATTRS = {"values"}
-
 _ALLOW_PRAGMA = "# phi-static: allow row=keys-only"
 
 
 def _scripts_dir() -> Path:
-    return Path(__file__).resolve().parents[2] / "scripts"
+    return ROOT / "scripts"
 
 
 def _line_above_has_allow(source: str, lineno: int) -> bool:
@@ -51,10 +103,7 @@ def _is_row_value_node(node: ast.AST) -> bool:
 
 
 def _subtree_has_row_value(node: ast.AST) -> bool:
-    for sub in ast.walk(node):
-        if _is_row_value_node(sub):
-            return True
-    return False
+    return any(_is_row_value_node(sub) for sub in ast.walk(node))
 
 
 def _walk_for_violations(path: Path) -> list[str]:
@@ -68,7 +117,9 @@ def _walk_for_violations(path: Path) -> list[str]:
             if isinstance(node.func, ast.Attribute) and node.func.attr in {"dump", "dumps"}:
                 if any(_subtree_has_row_value(arg) for arg in node.args):
                     if not _line_above_has_allow(src, node.lineno):
-                        violations.append(f"{path}:{node.lineno} json.{node.func.attr} on row-value expression")
+                        violations.append(
+                            f"{path}:{node.lineno} json.{node.func.attr} on row-value expression"
+                        )
     return violations
 
 
@@ -81,7 +132,7 @@ def test_no_row_values_in_metadata_paths() -> None:
     assert not violations, "row values written to metadata path:\n" + "\n".join(violations)
 
 
-def test_check_catches_known_violation(tmp_path: Path) -> None:
+def test_metadata_check_catches_known_violation(tmp_path: Path) -> None:
     bad = tmp_path / "scripts" / "fake_writer.py"
     bad.parent.mkdir(parents=True)
     bad.write_text(
@@ -94,7 +145,7 @@ def test_check_catches_known_violation(tmp_path: Path) -> None:
     assert violations, "static check failed to catch a known row-value violation"
 
 
-def test_allow_pragma_suppresses(tmp_path: Path) -> None:
+def test_metadata_check_allow_pragma_suppresses(tmp_path: Path) -> None:
     good = tmp_path / "scripts" / "ok_writer.py"
     good.parent.mkdir(parents=True)
     good.write_text(
