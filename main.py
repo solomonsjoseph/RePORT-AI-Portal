@@ -1,79 +1,10 @@
 #!/usr/bin/env python3
-"""Clinical data processing pipeline for RePORT AI Portal (single-study mode).
+"""Clinical-data pipeline entry point for the RePORT AI Portal (single-study mode).
 
-This module provides the main entry point for the RePORT AI Portal clinical study
-data processing pipeline. It orchestrates a multi-step workflow that transforms
-raw study data from one fixed study under ``data/raw/{STUDY_NAME}/`` into clean,
-structured JSONL records suitable for analysis.
-
-The system processes one study only. The user provides the LLM; the system
-provides study-specific AI Assistant, agentic tools, grounding, and deterministic
-warnings.
-
-The pipeline consists of the following stages (executed in order):
-
-    1. **Dictionary Loading (Step 0):** Parse and validate the data dictionary
-       Excel file to understand field definitions, types, and constraints.
-       Writes to staging dictionary dir.
-    2. **Dataset Processing (Step 1+3):** Extract tabular study datasets via
-       ``process_datasets()``, landing cleaned JSONL into the staging datasets
-       dir along with a list of per-column drop events.
-    3. **PHI Scrub (Step 1.6):** 8-action honest-broker catalog applied to
-       the staging datasets dir — keep → birthdate → drop → cap →
-       generalize → suppress_small_cell → date jitter (SANT) → id
-       pseudonymize (HMAC-SHA256). ~200 Indo-VAP-calibrated rules in
-       ``scripts/security/phi_scrub.yaml``. Runs BEFORE cleanup so the
-       dataset audit never records raw PHI. No-op when the YAML is absent.
-    4. **Dataset Cleanup (Step 1.7):** Remove known junk files and merge
-       structural duplicates against the staging datasets dir; emit the
-       unified dataset audit report under ``output/{STUDY}/audit/``.
-    5. **Cleanup Propagation (Step 1.8):** Compute the propagation drop-set
-       from the dataset audit and prune matching rows/keys from the staging
-       dictionary leg; emit a leg audit.
-    6. **Publish (Step 2):** Atomically promote each staging leg into
-       ``trio_bundle/``. Prior trio subtrees are replaced per-leg; cross-
-       filesystem rename falls back to copy-and-remove.
-
-    Success only: the staging workspace (``tmp/{STUDY}/``) is deleted.
-    Failure path: staging is preserved for operator inspection.
-
-Architecture:
-    The pipeline follows a fail-fast philosophy. Each step is wrapped in error
-    handling via `run_step()`, which logs progress and exits immediately on
-    failure. Configuration is centralized in `config.py`, and all operations
-    are logged to both console and `.logs/` directory.
-
-Security:
-    - Zone guards enforce data/output separation at runtime
-    - Output artifacts land under ``output/{STUDY}/`` (see trio_bundle/)
-
-Usage:
-    Run the complete pipeline:
-        $ python main.py --pipeline
-
-    Skip dictionary loading:
-        $ python main.py --skip-dictionary
-
-    Verbose logging:
-        $ python main.py --pipeline --verbose
-
-Example:
-    >>> # Basic pipeline execution (requires data setup)
-    >>> # This is a conceptual example - actual execution requires data files
-    >>> import sys
-    >>> sys.argv = ['main.py', '--version']
-    >>> # Would display: RePORT AI Portal <version>
-
-Notes:
-    - Requires Python 3.11+ for compatibility with dependencies
-    - All data paths are configured in `config.py`
-    - Shell completion available if `argcomplete` is installed
-    - See README.md and Sphinx docs for detailed setup instructions
-
-See Also:
-    config.py: Central configuration and path management
-    scripts.extraction.load_dictionary: Data dictionary parsing logic
-    scripts.extraction.dataset_pipeline.process_datasets: Unified dataset pipeline
+Orchestrates dictionary loading, dataset extraction, PHI scrub, cleanup, and
+publication to ``output/{STUDY}/llm_source/``. See ``docs/sphinx/`` for the
+full step-by-step description; this file is just the CLI wrapper that wires
+the legs together via ``run_step``.
 """
 
 from __future__ import annotations
