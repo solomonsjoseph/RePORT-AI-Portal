@@ -18,7 +18,7 @@ At a high level, the portal:
 2. stages extracted files in a temporary workspace;
 3. applies the PHI-scrub rules to dataset fields;
 4. cleans and aligns the study artifacts;
-5. publishes the scrubbed bundle under ``output/{STUDY}/trio_bundle/``;
+5. publishes the scrubbed bundle under ``output/{STUDY}/llm_source/``;
 6. writes audit files under ``output/{STUDY}/audit/``;
 7. opens the assistant against the published bundle.
 
@@ -31,7 +31,6 @@ Place one study under ``data/raw/{STUDY_NAME}/``:
 
    data/raw/Indo-VAP/
    ├── datasets/          # .xlsx or .csv study files
-   ├── data_dictionary/   # data dictionary workbook or CSV
    └── annotated_pdfs/    # optional CRF templates
 
 The repository does not ship raw study data. The local study team owns
@@ -45,12 +44,12 @@ After a successful run, look under ``output/{STUDY_NAME}/``:
 .. code-block:: text
 
    output/Indo-VAP/
-   ├── trio_bundle/       # scrubbed bundle used by the assistant
+   ├── llm_source/        # scrubbed bundle used by the assistant
    ├── audit/             # counts and lineage evidence
    ├── agent/             # chat state and generated analysis
    └── README.md          # local output summary
 
-Users normally interact with ``trio_bundle/`` through the chat UI. The
+Users normally interact with ``llm_source/`` through the chat UI. The
 ``audit/`` folder is for review and troubleshooting.
 
 Running the Pipeline
@@ -75,7 +74,7 @@ operators who have already provisioned the local PHI key.
 Using an Existing Study
 -----------------------
 
-If ``output/{STUDY}/trio_bundle/`` already exists, the web UI can skip
+If ``output/{STUDY}/llm_source/`` already exists, the web UI can skip
 the pipeline and use the existing published bundle. This is useful when
 the study was already loaded and you only want to ask questions.
 

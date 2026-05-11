@@ -116,9 +116,8 @@ and regression-test representative questions after each retrieval change.
 What if my PDFs may contain PHI?
 --------------------------------
 
-Treat them as PHI-bearing by default. Do not set
-``REPORTALIN_PDF_PHI_FREE=1`` unless the study team has verified that the
-source PDFs are PHI-free and the use of the selected provider is allowed.
+Treat them as PHI-bearing by default. The portal runs PDFs through the
+PHI-scrub before any text reaches a hosted LLM provider.
 
 Can I skip PDFs?
 ----------------

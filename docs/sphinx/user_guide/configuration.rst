@@ -65,7 +65,6 @@ The expected input layout is:
 
    data/raw/{STUDY_NAME}/
    ├── datasets/
-   ├── data_dictionary/
    └── annotated_pdfs/        # optional
 
 The main output appears under:
@@ -89,15 +88,9 @@ specific decision.
    * - ``REPORTALIN_TMPFS_STAGING=1``
      - Linux-only option to place temporary staging files in memory when
        available.
-   * - ``REPORTALIN_PDF_PHI_FREE=1``
-     - Only when the study team has verified that source PDFs are
-       PHI-free and a hosted PDF extraction path is allowed.
    * - ``REPORTALIN_PDF_EXTRACTION_MODE=llm``
      - Use the assisted PDF extraction path. The web UI sets this when
        loading a study.
-
-Do not set ``REPORTALIN_PDF_PHI_FREE=1`` just to make an error go away.
-It is an operator assertion about the source PDFs.
 
 PHI Key
 -------
