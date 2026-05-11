@@ -132,9 +132,9 @@ def load_sot_columns(policy_artifact: dict[str, Any]) -> frozenset[str]:
     return frozenset(cols)
 
 
-def load_scrubbed_columns(form: str, staging_root: Path) -> frozenset[str] | None:
+def load_scrubbed_columns(form: str, datasets_dir: Path) -> frozenset[str] | None:
     """Return the set of column names observed in
-    ``staging_root/datasets/{form}.jsonl``.
+    ``datasets_dir/{form}.jsonl``.
 
     Returns:
         - ``frozenset`` of keys from the first non-empty row, with
@@ -144,7 +144,7 @@ def load_scrubbed_columns(form: str, staging_root: Path) -> frozenset[str] | Non
         - ``None`` if the file does not exist (the form has not been
           scrubbed yet — the gate uses this to skip reconciliation).
     """
-    jsonl_path = Path(staging_root) / "datasets" / f"{form}.jsonl"
+    jsonl_path = Path(datasets_dir) / f"{form}.jsonl"
     if not jsonl_path.is_file():
         return None
 

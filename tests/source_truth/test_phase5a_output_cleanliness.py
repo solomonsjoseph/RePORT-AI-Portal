@@ -87,7 +87,7 @@ def test_verify_creates_no_human_review_under_output_root(
 
     # Force a reconciliation failure: SoT={A,B,C}, scrubbed={A}, no explanation.
     _write_policy(sot_dir, "form_a", ["A", "B", "C"])
-    _write_scrubbed_jsonl(staging, "form_a", ["A"])
+    _write_scrubbed_jsonl(output_root, "form_a", ["A"])
     scrub_path = _write_real_phi_audit(audit, drops_by_form={})
     cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
 

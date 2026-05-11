@@ -155,13 +155,11 @@ def test_load_sot_columns_empty_variables() -> None:
 
 
 def test_load_scrubbed_columns_returns_first_row_keys(tmp_path: Path) -> None:
-    datasets = tmp_path / "datasets"
-    datasets.mkdir()
     rows = [
         {"FID": "1", "AGE": 30, "_phi_scrubbed": "v1"},
         {"FID": "2", "AGE": 40, "_phi_scrubbed": "v1"},
     ]
-    (datasets / "form_x.jsonl").write_text(
+    (tmp_path / "form_x.jsonl").write_text(
         "\n".join(json.dumps(r) for r in rows) + "\n",
         encoding="utf-8",
     )
@@ -171,8 +169,6 @@ def test_load_scrubbed_columns_returns_first_row_keys(tmp_path: Path) -> None:
 
 
 def test_load_scrubbed_columns_strips_provenance_fields(tmp_path: Path) -> None:
-    datasets = tmp_path / "datasets"
-    datasets.mkdir()
     row = {
         "FID": "1",
         "AGE": 30,
@@ -181,16 +177,14 @@ def test_load_scrubbed_columns_strips_provenance_fields(tmp_path: Path) -> None:
         "_provenance": {"sha": "..."},
         "_metadata": {"...": "..."},
     }
-    (datasets / "form_x.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
+    (tmp_path / "form_x.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
     cols = load_scrubbed_columns("form_x", tmp_path)
     assert cols == frozenset({"FID", "AGE"})
 
 
 def test_load_scrubbed_columns_skips_blank_lines(tmp_path: Path) -> None:
-    datasets = tmp_path / "datasets"
-    datasets.mkdir()
     body = "\n\n" + json.dumps({"A": 1, "B": 2}) + "\n"
-    (datasets / "form_x.jsonl").write_text(body, encoding="utf-8")
+    (tmp_path / "form_x.jsonl").write_text(body, encoding="utf-8")
     assert load_scrubbed_columns("form_x", tmp_path) == frozenset({"A", "B"})
 
 
@@ -200,9 +194,7 @@ def test_load_scrubbed_columns_missing_file_returns_none(tmp_path: Path) -> None
 
 
 def test_load_scrubbed_columns_empty_file_returns_empty(tmp_path: Path) -> None:
-    datasets = tmp_path / "datasets"
-    datasets.mkdir()
-    (datasets / "form_x.jsonl").write_text("", encoding="utf-8")
+    (tmp_path / "form_x.jsonl").write_text("", encoding="utf-8")
     # File exists but is empty — return empty frozenset (not None) so
     # the form participates in reconciliation as a degenerate case.
     assert load_scrubbed_columns("form_x", tmp_path) == frozenset()
@@ -214,10 +206,8 @@ def test_load_scrubbed_columns_logs_malformed_lines_and_continues(
     """Issue 2 — malformed JSONL lines must be logged at WARNING (not silently
     dropped), and the scanner must continue to the next line so a single
     bad row does not derail reconciliation."""
-    datasets = tmp_path / "datasets"
-    datasets.mkdir()
     body = "{not json,," + "\n" + json.dumps({"A": 1, "B": 2}) + "\n"
-    jsonl_path = datasets / "form_x.jsonl"
+    jsonl_path = tmp_path / "form_x.jsonl"
     jsonl_path.write_text(body, encoding="utf-8")
 
     with caplog.at_level("WARNING", logger="scripts.source_truth.reconciliation"):
@@ -235,3 +225,36 @@ def test_load_scrubbed_columns_logs_malformed_lines_and_continues(
         and "line 1" in r.getMessage()
     ]
     assert matching, f"expected malformed-line warning, got {[r.getMessage() for r in caplog.records]}"
+
+
+def test_load_scrubbed_columns_reads_from_datasets_dir_directly(tmp_path: Path) -> None:
+    """load_scrubbed_columns(form, datasets_dir) reads form.jsonl directly in datasets_dir.
+
+    Phase 5b moves the canonical scrubbed JSONL location from
+    ``staging_root/datasets/<form>.jsonl`` (with a ``datasets/`` subdir)
+    to a flat ``datasets_dir/<form>.jsonl`` layout. The reader must
+    therefore NOT prepend a ``datasets/`` subdir — passing a path that
+    contains a ``datasets/`` child must return ``None`` for the form
+    (the file isn't where we look anymore).
+    """
+    datasets_dir = tmp_path / "files"
+    datasets_dir.mkdir()
+    (datasets_dir / "smear.jsonl").write_text(
+        json.dumps({"SPUTUM_DATE": "x", "RESULT": "y", "_phi_scrubbed": True}) + "\n",
+        encoding="utf-8",
+    )
+
+    cols = load_scrubbed_columns("smear", datasets_dir)
+    assert cols == frozenset({"SPUTUM_DATE", "RESULT"})
+
+    # Old API where the caller relied on the function appending a
+    # ``datasets/`` subdir must no longer work. We pass a parent dir that
+    # has a ``datasets/`` child holding the JSONL — but the function
+    # reads ``<parent>/<form>.jsonl`` directly, so it must return None.
+    staging_root = tmp_path / "staging"
+    (staging_root / "datasets").mkdir(parents=True)
+    (staging_root / "datasets" / "smear.jsonl").write_text(
+        json.dumps({"COL_A": "x"}) + "\n", encoding="utf-8"
+    )
+    result = load_scrubbed_columns("smear", staging_root)
+    assert result is None

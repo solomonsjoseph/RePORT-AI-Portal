@@ -36,10 +36,16 @@ def _write_policy(sot_dir: Path, form: str, columns: list[str]) -> None:
     (sot_dir / f"{form}_policy.yaml").write_text(yaml.safe_dump(policy), encoding="utf-8")
 
 
-def _write_scrubbed_jsonl(staging_root: Path, form: str, columns: list[str]) -> None:
+def _write_scrubbed_jsonl(output_root: Path, form: str, columns: list[str]) -> None:
     """Write a JSONL with one row carrying exactly the given columns plus the
-    ``_phi_scrubbed`` marker."""
-    datasets = staging_root / "datasets"
+    ``_phi_scrubbed`` marker.
+
+    Phase 5b: scrubbed JSONLs live at the canonical flat path
+    ``output_root/llm_source/dataset_schema/files/<form>.jsonl`` (no
+    ``datasets/`` subdir, no ``trio_bundle/``). The first positional
+    argument is the per-study output root, NOT a staging root.
+    """
+    datasets = output_root / "llm_source" / "dataset_schema" / "files"
     datasets.mkdir(parents=True, exist_ok=True)
     row = {col: "x" for col in columns}
     row["_phi_scrubbed"] = "v1"
@@ -145,7 +151,7 @@ def test_run_verification_passes_when_all_match(tmp_path: Path) -> None:
 
     # SoT: form_a has columns {A, B, C}; PHI dropped C → scrubbed has {A, B}.
     _write_policy(sot_dir, "form_a", ["A", "B", "C"])
-    _write_scrubbed_jsonl(staging, "form_a", ["A", "B"])
+    _write_scrubbed_jsonl(output_root, "form_a", ["A", "B"])
     scrub_path = _write_real_phi_audit(audit, drops_by_form={"form_a": ["C"]})
     cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
 
@@ -180,7 +186,7 @@ def test_run_verification_emits_discrepancy_on_unexplained_drop(
     # form_a SoT={A,B,C}; scrubbed has only {A}. PHI ledger explains B.
     # C is unexplained → mismatch.
     _write_policy(sot_dir, "form_a", ["A", "B", "C"])
-    _write_scrubbed_jsonl(staging, "form_a", ["A"])
+    _write_scrubbed_jsonl(output_root, "form_a", ["A"])
     scrub_path = _write_real_phi_audit(audit, drops_by_form={"form_a": ["B"]})
     cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
 
@@ -220,7 +226,7 @@ def test_run_verification_emits_discrepancy_on_extra_column(
 
     # SoT={A,B}; scrubbed has {A,B,X}. X is extra → mismatch.
     _write_policy(sot_dir, "form_a", ["A", "B"])
-    _write_scrubbed_jsonl(staging, "form_a", ["A", "B", "X"])
+    _write_scrubbed_jsonl(output_root, "form_a", ["A", "B", "X"])
     scrub_path = _write_real_phi_audit(audit, drops_by_form={})
     cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
 
@@ -253,7 +259,7 @@ def test_run_verification_uses_cleanup_ledger_via_source_filename(tmp_path: Path
     # SoT={A,B,C}; scrubbed has {A}. Cleanup explains B (via xlsx),
     # PHI explains C.
     _write_policy(sot_dir, "form_a", ["A", "B", "C"])
-    _write_scrubbed_jsonl(staging, "form_a", ["A"])
+    _write_scrubbed_jsonl(output_root, "form_a", ["A"])
     scrub_path = _write_real_phi_audit(audit, drops_by_form={"form_a": ["C"]})
     cleanup_path = _write_real_cleanup_audit(
         audit, column_drops_by_source={"form_a.xlsx": ["B"]}
@@ -340,7 +346,7 @@ def test_run_verification_returns_2_on_corrupt_phi_audit_envelope(
     output_root = tmp_path / "output"
 
     _write_policy(sot_dir, "form_a", ["A", "B"])
-    _write_scrubbed_jsonl(staging, "form_a", ["A", "B"])
+    _write_scrubbed_jsonl(output_root, "form_a", ["A", "B"])
 
     # Truncated JSON — fails json.loads.
     bad_phi = audit / "phi_scrub_report.json"
@@ -396,7 +402,7 @@ def test_run_verification_returns_2_on_duplicate_form_names(
 
     # Need a scrubbed JSONL so the gate progresses past the staging-empty
     # graceful skip and reaches the policy-loading duplicate check.
-    _write_scrubbed_jsonl(staging, "form_dup", ["A"])
+    _write_scrubbed_jsonl(output_root, "form_dup", ["A"])
     scrub_path = _write_real_phi_audit(audit, drops_by_form={})
     cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
 
@@ -444,7 +450,7 @@ def test_run_verification_warns_on_orphan_cleanup_form(
     # form_a is fully reconcilable. Mystery_Form.xlsx is in the cleanup
     # ledger but has no matching policy → orphan.
     _write_policy(sot_dir, "form_a", ["A", "B"])
-    _write_scrubbed_jsonl(staging, "form_a", ["A", "B"])
+    _write_scrubbed_jsonl(output_root, "form_a", ["A", "B"])
     scrub_path = _write_real_phi_audit(audit, drops_by_form={})
     cleanup_path = _write_real_cleanup_audit(
         audit,
@@ -521,7 +527,7 @@ def test_run_verification_promotes_dataset_schema_on_success(
     output_root = tmp_path / "output"
 
     _write_policy(sot_dir, "form_a", ["A", "B"])
-    _write_scrubbed_jsonl(staging, "form_a", ["A", "B"])
+    _write_scrubbed_jsonl(output_root, "form_a", ["A", "B"])
     scrub_path = _write_real_phi_audit(audit, drops_by_form={})
     cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
 
@@ -566,7 +572,7 @@ def test_run_verification_does_not_promote_on_failure(
 
     # form_a: SoT={A,B,C}; scrubbed has only {A}; B explained, C unexplained.
     _write_policy(sot_dir, "form_a", ["A", "B", "C"])
-    _write_scrubbed_jsonl(staging, "form_a", ["A"])
+    _write_scrubbed_jsonl(output_root, "form_a", ["A"])
     scrub_path = _write_real_phi_audit(audit, drops_by_form={"form_a": ["B"]})
     cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
 
@@ -656,7 +662,7 @@ def test_run_verification_passes_without_promotion_when_staging_schema_missing(
     output_root = tmp_path / "output"
 
     _write_policy(sot_dir, "form_a", ["A", "B"])
-    _write_scrubbed_jsonl(staging, "form_a", ["A", "B"])
+    _write_scrubbed_jsonl(output_root, "form_a", ["A", "B"])
     scrub_path = _write_real_phi_audit(audit, drops_by_form={})
     cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
     # Note: no staging dataset_schema written.
@@ -699,8 +705,8 @@ def test_run_verification_only_writes_failing_form_discrepancies(
 
     _write_policy(sot_dir, "form_a", ["A", "B"])
     _write_policy(sot_dir, "form_b", ["X", "Y"])
-    _write_scrubbed_jsonl(staging, "form_a", ["A", "B"])
-    _write_scrubbed_jsonl(staging, "form_b", ["X"])  # missing Y, unexplained
+    _write_scrubbed_jsonl(output_root, "form_a", ["A", "B"])
+    _write_scrubbed_jsonl(output_root, "form_b", ["X"])  # missing Y, unexplained
     scrub_path = _write_real_phi_audit(audit, drops_by_form={})
     cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
 
@@ -736,7 +742,7 @@ def test_human_review_writes_to_tmp_not_output(
 
     # Force a reconciliation failure: SoT={A,B,C}, scrubbed={A}, no explanation.
     _write_policy(sot_dir, "form_a", ["A", "B", "C"])
-    _write_scrubbed_jsonl(staging, "form_a", ["A"])
+    _write_scrubbed_jsonl(output_root, "form_a", ["A"])
     scrub_path = _write_real_phi_audit(audit, drops_by_form={})
     cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={})
 

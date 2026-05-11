@@ -51,7 +51,6 @@ import yaml
 import config
 from scripts.extraction.io import atomic_write_json
 from scripts.source_truth.cross_verify_pipeline import run as run_cross_verify
-from scripts.source_truth.dataset_schema_writer import dual_write_form
 from scripts.source_truth.gate_checks import (
     GateFinding,
     check_c_phi_ledger_alignment,
@@ -126,11 +125,11 @@ def _load_json_or_empty(path: Path) -> dict[str, Any]:
         ) from exc
 
 
-def _staging_has_jsonl(staging_root: Path) -> bool:
-    datasets = staging_root / "datasets"
-    if not datasets.is_dir():
+def _staging_has_jsonl(datasets_dir: Path) -> bool:
+    datasets_dir = Path(datasets_dir)
+    if not datasets_dir.is_dir():
         return False
-    return any(datasets.glob("*.jsonl"))
+    return any(datasets_dir.glob("*.jsonl"))
 
 
 def _promote_dataset_schema(
@@ -215,7 +214,9 @@ def run_verification(
     Args:
         study: Study name (logged for context).
         sot_dir: Directory holding ``*_policy.yaml`` files (one per form).
-        staging_root: Staging tree root; expects ``staging_root/datasets/``.
+        staging_root: [Deprecated — Phase 5b] Retained for API back-compat
+            but no longer consulted. Scrubbed JSONLs are read directly from
+            ``output_root/llm_source/dataset_schema/files/``.
         scrub_report_path: Path to ``phi_scrub_report.json``.
         cleanup_report_path: Path to ``dataset_cleanup_report.json``.
         output_root: Per-study output root (e.g. ``output/Indo-VAP``); the
@@ -241,6 +242,13 @@ def run_verification(
     cleanup_report_path = Path(cleanup_report_path)
     output_root = Path(output_root)
 
+    # Phase 5b: canonical scrubbed JSONL location is the flat directory
+    # ``output/<study>/llm_source/dataset_schema/files/<form>.jsonl`` —
+    # no ``datasets/`` subdir, no ``trio_bundle/``. The legacy
+    # ``staging_root`` parameter is retained for CLI/API back-compat but
+    # is no longer consulted for JSONL reads.
+    datasets_dir = output_root / "llm_source" / "dataset_schema" / "files"
+
     if not sot_dir.is_dir():
         logger.error("SoT directory does not exist: %s — aborting verification", sot_dir)
         return 2
@@ -250,13 +258,13 @@ def run_verification(
         logger.error("no *_policy.yaml files in %s — aborting verification", sot_dir)
         return 2
 
-    if not _staging_has_jsonl(staging_root):
+    if not _staging_has_jsonl(datasets_dir):
         logger.info(
-            "verify-and-promote: SKIP — no scrubbed JSONLs at %s/datasets/. "
+            "verify-and-promote: SKIP — no scrubbed JSONLs at %s. "
             "Reconciliation requires the scrub leg to have run first; "
             "this is expected if `make build-llm-source` runs before scrub. "
             "study=%s",
-            staging_root,
+            datasets_dir,
             study,
         )
         return 0
@@ -328,7 +336,7 @@ def run_verification(
 
     scrubbed_cols_by_form: dict[str, frozenset[str]] = {}
     for _form in {e["form"] for e in as_written_events}:
-        _cols = load_scrubbed_columns(_form, staging_root)
+        _cols = load_scrubbed_columns(_form, datasets_dir)
         if _cols is not None:
             scrubbed_cols_by_form[_form] = _cols
 
@@ -391,7 +399,7 @@ def run_verification(
     for artifact in policy_artifacts:
         form = artifact["form"]
         sot_cols = load_sot_columns(artifact)
-        scrubbed_cols = load_scrubbed_columns(form, staging_root)
+        scrubbed_cols = load_scrubbed_columns(form, datasets_dir)
         if scrubbed_cols is None:
             # Scrubbed JSONL is missing for this specific form even though
             # other JSONLs exist. Log it and skip this form rather than
@@ -447,31 +455,10 @@ def run_verification(
     if promote_code != 0:
         return promote_code
 
-    # Phase 2 dual-write: also publish each verified per-form JSONL to
-    # ``output/<study>/llm_source/dataset_schema/files/<form>.jsonl`` so
-    # downstream LLM-source consumers can read from the canonical location.
-    # The legacy path under ``trio_bundle/datasets/`` continues to receive
-    # a byte-identical copy until Phase 5 retires the legacy layout. We
-    # source from the legacy path that already holds the verified data
-    # (``staging_root`` is ``output/<study>/trio_bundle``), and pass it as
-    # both source AND legacy so ``dual_write_form`` skips the redundant
-    # legacy copy and only writes the new target. The new dir mirrors
-    # ``config.LLM_SOURCE_DATASET_SCHEMA_FILES_DIR`` but is derived from
-    # ``output_root`` so per-study CLI overrides are honoured.
-    new_files_dir = output_root / "llm_source" / "dataset_schema" / "files"
-    legacy_datasets_dir = staging_root / "datasets"
-    for artifact in policy_artifacts:
-        form = artifact["form"]
-        legacy_jsonl = legacy_datasets_dir / f"{form}.jsonl"
-        if not legacy_jsonl.is_file():
-            # Skipped during reconciliation (no scrubbed JSONL); nothing
-            # to dual-write for this form.
-            continue
-        dual_write_form(
-            source_path=legacy_jsonl,
-            legacy_path=legacy_jsonl,
-            new_path=new_files_dir / f"{form}.jsonl",
-        )
+    # Phase 5b: Phase 2 dual-write to ``trio_bundle/datasets/`` removed.
+    # The scrub leg now publishes directly to
+    # ``output/<study>/llm_source/dataset_schema/files/<form>.jsonl``
+    # (computed above as ``datasets_dir``), so there is nothing to copy.
 
     # Phase 3: cross-verify (mid-pipeline, accumulate-don't-block).
     # Runs after dataset_schema/files/ is populated. Scanner-only mode by
@@ -500,11 +487,10 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         help=(
-            "Path to the directory containing scrubbed JSONLs at "
-            "<staging-root>/datasets/<form>.jsonl "
-            "(default: output/<study>/trio_bundle — the post-publish "
-            "location). The historical name 'staging-root' is kept for "
-            "API stability; in practice this is the published trio_bundle."
+            "[DEPRECATED — Phase 5b] Retained for CLI back-compat. "
+            "run_verification now reads scrubbed JSONLs directly from "
+            "output/<study>/llm_source/dataset_schema/files/, regardless "
+            "of this value."
         ),
     )
     parser.add_argument(
@@ -539,12 +525,12 @@ def main(argv: list[str] | None = None) -> int:
     study = args.study
     sot_dir = args.sot_dir or (config.DATA_DIR / study / "SoT")
     output_root = args.output_root or (config.OUTPUT_DIR / study)
-    # Default reads from the published trio_bundle: the scrub leg is
-    # immediately followed by a publish step that moves the JSONLs out
-    # of tmp/<study>/datasets/ into output/<study>/trio_bundle/datasets/
-    # and removes tmp/<study>. Keeping the default at tmp/ caused the
-    # gate to silently SKIP on every real run.
-    staging_root = args.staging_root or (output_root / "trio_bundle")
+    # Phase 5b: canonical scrubbed JSONL location is
+    # ``output/<study>/llm_source/dataset_schema/files/<form>.jsonl``.
+    # The ``staging_root`` parameter is retained for CLI back-compat but
+    # is unused by ``run_verification`` — the path is now derived from
+    # ``output_root`` directly.
+    staging_root = args.staging_root or (output_root / "llm_source" / "dataset_schema" / "files")
     scrub_report = args.scrub_report or (output_root / "audit" / "phi_scrub_report.json")
     cleanup_report = args.cleanup_report or (output_root / "audit" / "dataset_cleanup_report.json")
 
