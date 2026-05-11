@@ -144,7 +144,6 @@ def _write_real_cleanup_audit(
 def test_run_verification_passes_when_all_match(tmp_path: Path) -> None:
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
-    staging = tmp_path / "staging"
     audit = tmp_path / "audit"
     output_root = tmp_path / "output"
     (output_root / "llm_source").mkdir(parents=True, exist_ok=True)
@@ -158,7 +157,6 @@ def test_run_verification_passes_when_all_match(tmp_path: Path) -> None:
     code = run_verification(
         study="Mini",
         sot_dir=sot_dir,
-        staging_root=staging,
         scrub_report_path=scrub_path,
         cleanup_report_path=cleanup_path,
         output_root=output_root,
@@ -179,7 +177,6 @@ def test_run_verification_emits_discrepancy_on_unexplained_drop(
 
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
-    staging = tmp_path / "staging"
     audit = tmp_path / "audit"
     output_root = tmp_path / "output"
 
@@ -193,7 +190,6 @@ def test_run_verification_emits_discrepancy_on_unexplained_drop(
     code = run_verification(
         study="Mini",
         sot_dir=sot_dir,
-        staging_root=staging,
         scrub_report_path=scrub_path,
         cleanup_report_path=cleanup_path,
         output_root=output_root,
@@ -220,7 +216,6 @@ def test_run_verification_emits_discrepancy_on_extra_column(
 
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
-    staging = tmp_path / "staging"
     audit = tmp_path / "audit"
     output_root = tmp_path / "output"
 
@@ -233,7 +228,6 @@ def test_run_verification_emits_discrepancy_on_extra_column(
     code = run_verification(
         study="Mini",
         sot_dir=sot_dir,
-        staging_root=staging,
         scrub_report_path=scrub_path,
         cleanup_report_path=cleanup_path,
         output_root=output_root,
@@ -252,7 +246,6 @@ def test_run_verification_uses_cleanup_ledger_via_source_filename(tmp_path: Path
     YAMLs."""
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
-    staging = tmp_path / "staging"
     audit = tmp_path / "audit"
     output_root = tmp_path / "output"
 
@@ -268,7 +261,6 @@ def test_run_verification_uses_cleanup_ledger_via_source_filename(tmp_path: Path
     code = run_verification(
         study="Mini",
         sot_dir=sot_dir,
-        staging_root=staging,
         scrub_report_path=scrub_path,
         cleanup_report_path=cleanup_path,
         output_root=output_root,
@@ -282,7 +274,6 @@ def test_run_verification_skips_gracefully_when_staging_empty(
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
     # No staging datasets dir created — graceful skip.
-    staging = tmp_path / "staging"
     audit = tmp_path / "audit"
     output_root = tmp_path / "output"
 
@@ -294,7 +285,6 @@ def test_run_verification_skips_gracefully_when_staging_empty(
         code = run_verification(
             study="Mini",
             sot_dir=sot_dir,
-            staging_root=staging,
             scrub_report_path=scrub_path,
             cleanup_report_path=cleanup_path,
             output_root=output_root,
@@ -316,7 +306,6 @@ def test_run_verification_handles_missing_audit_files(tmp_path: Path) -> None:
     """Missing audit files (scrub never ran) → graceful skip, exit 0."""
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
-    staging = tmp_path / "staging"
     audit = tmp_path / "audit"
     output_root = tmp_path / "output"
 
@@ -325,7 +314,6 @@ def test_run_verification_handles_missing_audit_files(tmp_path: Path) -> None:
     code = run_verification(
         study="Mini",
         sot_dir=sot_dir,
-        staging_root=staging,
         scrub_report_path=audit / "phi_scrub_report.json",
         cleanup_report_path=audit / "dataset_cleanup_report.json",
         output_root=output_root,
@@ -340,7 +328,6 @@ def test_run_verification_returns_2_on_corrupt_phi_audit_envelope(
     exit code 2 with a clear log line, not a stack trace."""
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
-    staging = tmp_path / "staging"
     audit = tmp_path / "audit"
     audit.mkdir()
     output_root = tmp_path / "output"
@@ -357,7 +344,6 @@ def test_run_verification_returns_2_on_corrupt_phi_audit_envelope(
         code = run_verification(
             study="Mini",
             sot_dir=sot_dir,
-            staging_root=staging,
             scrub_report_path=bad_phi,
             cleanup_report_path=cleanup_path,
             output_root=output_root,
@@ -378,7 +364,6 @@ def test_run_verification_returns_2_on_duplicate_form_names(
     rejected with exit code 2 and a log line naming the duplicate."""
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
-    staging = tmp_path / "staging"
     audit = tmp_path / "audit"
     output_root = tmp_path / "output"
 
@@ -417,8 +402,6 @@ def test_run_verification_returns_2_on_duplicate_form_names(
                 "Mini",
                 "--sot-dir",
                 str(sot_dir),
-                "--staging-root",
-                str(staging),
                 "--scrub-report",
                 str(scrub_path),
                 "--cleanup-report",
@@ -443,7 +426,6 @@ def test_run_verification_warns_on_orphan_cleanup_form(
     to completion."""
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
-    staging = tmp_path / "staging"
     audit = tmp_path / "audit"
     output_root = tmp_path / "output"
 
@@ -461,7 +443,6 @@ def test_run_verification_warns_on_orphan_cleanup_form(
         code = run_verification(
             study="Mini",
             sot_dir=sot_dir,
-            staging_root=staging,
             scrub_report_path=scrub_path,
             cleanup_report_path=cleanup_path,
             output_root=output_root,
@@ -522,7 +503,6 @@ def test_run_verification_promotes_dataset_schema_on_success(
 
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
-    staging = tmp_path / "staging"
     audit = tmp_path / "audit"
     output_root = tmp_path / "output"
 
@@ -543,7 +523,6 @@ def test_run_verification_promotes_dataset_schema_on_success(
     code = run_verification(
         study="Mini",
         sot_dir=sot_dir,
-        staging_root=staging,
         scrub_report_path=scrub_path,
         cleanup_report_path=cleanup_path,
         output_root=output_root,
@@ -566,7 +545,6 @@ def test_run_verification_does_not_promote_on_failure(
 
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
-    staging = tmp_path / "staging"
     audit = tmp_path / "audit"
     output_root = tmp_path / "output"
 
@@ -586,7 +564,6 @@ def test_run_verification_does_not_promote_on_failure(
     code = run_verification(
         study="Mini",
         sot_dir=sot_dir,
-        staging_root=staging,
         scrub_report_path=scrub_path,
         cleanup_report_path=cleanup_path,
         output_root=output_root,
@@ -610,7 +587,6 @@ def test_run_verification_does_not_promote_on_graceful_skip(
 
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
-    staging = tmp_path / "staging"  # no datasets/ subdir → graceful skip
     audit = tmp_path / "audit"
     output_root = tmp_path / "output"
 
@@ -630,7 +606,6 @@ def test_run_verification_does_not_promote_on_graceful_skip(
     code = run_verification(
         study="Mini",
         sot_dir=sot_dir,
-        staging_root=staging,
         scrub_report_path=scrub_path,
         cleanup_report_path=cleanup_path,
         output_root=output_root,
@@ -657,7 +632,6 @@ def test_run_verification_passes_without_promotion_when_staging_schema_missing(
 
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
-    staging = tmp_path / "staging"
     audit = tmp_path / "audit"
     output_root = tmp_path / "output"
 
@@ -671,7 +645,6 @@ def test_run_verification_passes_without_promotion_when_staging_schema_missing(
         code = run_verification(
             study="Mini",
             sot_dir=sot_dir,
-            staging_root=staging,
             scrub_report_path=scrub_path,
             cleanup_report_path=cleanup_path,
             output_root=output_root,
@@ -699,7 +672,6 @@ def test_run_verification_only_writes_failing_form_discrepancies(
 
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
-    staging = tmp_path / "staging"
     audit = tmp_path / "audit"
     output_root = tmp_path / "output"
 
@@ -713,7 +685,6 @@ def test_run_verification_only_writes_failing_form_discrepancies(
     code = run_verification(
         study="Mini",
         sot_dir=sot_dir,
-        staging_root=staging,
         scrub_report_path=scrub_path,
         cleanup_report_path=cleanup_path,
         output_root=output_root,
@@ -735,7 +706,6 @@ def test_human_review_writes_to_tmp_not_output(
 
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
-    staging = tmp_path / "staging"
     audit = tmp_path / "audit"
     output_root = tmp_path / "output"
     study = "Mini"
@@ -749,7 +719,6 @@ def test_human_review_writes_to_tmp_not_output(
     code = run_verification(
         study=study,
         sot_dir=sot_dir,
-        staging_root=staging,
         scrub_report_path=scrub_path,
         cleanup_report_path=cleanup_path,
         output_root=output_root,

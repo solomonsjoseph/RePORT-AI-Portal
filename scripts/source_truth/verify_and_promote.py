@@ -1,41 +1,4 @@
-"""Reconciliation gate: verify SoT vs scrubbed dataset shapes, then promote.
-
-The gate orchestrates the per-form reconciliation rule:
-
-    set(sot_columns(form))
-     − set(phi_dropped_aswritten(form))
-     − set(cleanup_dropped_aswritten(form))
-     == set(scrubbed_columns(form))
-
-This is a **schema-promotion gate, not a JSONL-promotion gate.** The
-extraction pipeline publishes scrubbed JSONLs to
-``output/{study}/trio_bundle/datasets/`` and clears the staging
-``tmp/`` directory *before* this gate runs. So when reconciliation
-fails, the JSONLs already sit in their published location — only
-``dataset_schema.json`` is held back from GREEN. Downstream consumers
-that read the trio_bundle directly will still see the scrubbed JSONLs
-even on a failed run; only the canonical schema file remains
-unchanged.
-
-Outcomes:
-    - All forms pass:   exit code 0. The staging dataset_schema is then
-                        promoted from
-                        ``output/{study}/staging/llm_source/phi_handled_dataset_schema.json``
-                        to
-                        ``output/{study}/llm_source/dataset_schema.json``
-                        atomically (when the staging file exists; if it
-                        does not — e.g. the build coordinator was run
-                        without ``--column-inventory`` — promotion is
-                        skipped with a warning, but the gate still passes).
-    - Any form fails:   exit code 2. A per-form discrepancy file is written
-                        to ``tmp/{study}/human_review/<form>_discrepancies.json``.
-                        No promotion happens — the schema stays in staging.
-    - No scrubbed data: exit code 0 with a clear log message — the developer
-                        ran the build before scrub. This is by design so
-                        ``make build-llm-source`` does not break in early
-                        bootstrapping. No promotion happens (there is
-                        nothing verified to promote).
-"""
+"""Reconciliation gate: verify SoT vs scrubbed dataset shapes, then promote."""
 
 from __future__ import annotations
 
@@ -125,13 +88,6 @@ def _load_json_or_empty(path: Path) -> dict[str, Any]:
         ) from exc
 
 
-def _staging_has_jsonl(datasets_dir: Path) -> bool:
-    datasets_dir = Path(datasets_dir)
-    if not datasets_dir.is_dir():
-        return False
-    return any(datasets_dir.glob("*.jsonl"))
-
-
 def _promote_dataset_schema(
     *,
     output_root: Path,
@@ -204,49 +160,16 @@ def run_verification(
     *,
     study: str,
     sot_dir: Path,
-    staging_root: Path,
     scrub_report_path: Path,
     cleanup_report_path: Path,
     output_root: Path,
 ) -> int:
-    """Run reconciliation across every policy YAML in ``sot_dir``.
-
-    Args:
-        study: Study name (logged for context).
-        sot_dir: Directory holding ``*_policy.yaml`` files (one per form).
-        staging_root: [Deprecated — Phase 5b] Retained for API back-compat
-            but no longer consulted. Scrubbed JSONLs are read directly from
-            ``output_root/llm_source/dataset_schema/files/``.
-        scrub_report_path: Path to ``phi_scrub_report.json``.
-        cleanup_report_path: Path to ``dataset_cleanup_report.json``.
-        output_root: Per-study output root (e.g. ``output/Indo-VAP``); the
-            gate writes failures to ``tmp/{study}/human_review/``.
-
-    Returns:
-        - ``0`` when all forms pass *or* there is no scrubbed data to
-          reconcile (graceful skip).
-        - ``2`` when at least one form fails. Per-form discrepancy files
-          are written under ``tmp/{study}/human_review/``.
-
-    Graceful-skip asymmetry (intentional):
-        Empty staging exits 0 (graceful). Empty SoT exits 2 (error).
-        Empty staging is benign — scrub hasn't run; the gate simply
-        skips. Empty SoT is a misconfiguration: the build coordinator
-        and the Makefile both gate on SoT presence, so reaching this
-        code path with no policies indicates an environmental problem,
-        not a workflow stage.
-    """
+    """Run reconciliation across every policy YAML in ``sot_dir``."""
     sot_dir = Path(sot_dir)
-    staging_root = Path(staging_root)
     scrub_report_path = Path(scrub_report_path)
     cleanup_report_path = Path(cleanup_report_path)
     output_root = Path(output_root)
 
-    # Phase 5b: canonical scrubbed JSONL location is the flat directory
-    # ``output/<study>/llm_source/dataset_schema/files/<form>.jsonl`` —
-    # no ``datasets/`` subdir, no ``trio_bundle/``. The legacy
-    # ``staging_root`` parameter is retained for CLI/API back-compat but
-    # is no longer consulted for JSONL reads.
     datasets_dir = output_root / "llm_source" / "dataset_schema" / "files"
 
     if not sot_dir.is_dir():
@@ -258,7 +181,7 @@ def run_verification(
         logger.error("no *_policy.yaml files in %s — aborting verification", sot_dir)
         return 2
 
-    if not _staging_has_jsonl(datasets_dir):
+    if not datasets_dir.is_dir() or not any(datasets_dir.glob("*.jsonl")):
         logger.info(
             "verify-and-promote: SKIP — no scrubbed JSONLs at %s. "
             "Reconciliation requires the scrub leg to have run first; "
@@ -446,19 +369,10 @@ def run_verification(
         study,
     )
 
-    # Promotion: gate has passed AND scrubbed data was actually verified
-    # (we know this because we passed the ``_staging_has_jsonl`` check
-    # above). Atomic write; corrupt staging schema → exit 2; missing
-    # staging schema → warning + still pass.
     staging_dir = config.TMP_DIR / study / "staging" / "llm_source"
     promote_code = _promote_dataset_schema(output_root=output_root, staging_dir=staging_dir)
     if promote_code != 0:
         return promote_code
-
-    # Phase 5b: Phase 2 dual-write to ``trio_bundle/datasets/`` removed.
-    # The scrub leg now publishes directly to
-    # ``output/<study>/llm_source/dataset_schema/files/<form>.jsonl``
-    # (computed above as ``datasets_dir``), so there is nothing to copy.
 
     # Phase 3: cross-verify (mid-pipeline, accumulate-don't-block).
     # Runs after dataset_schema/files/ is populated. Scanner-only mode by
@@ -481,17 +395,6 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         help="Path to SoT directory (default: data/<study>/SoT)",
-    )
-    parser.add_argument(
-        "--staging-root",
-        type=Path,
-        default=None,
-        help=(
-            "[DEPRECATED — Phase 5b] Retained for CLI back-compat. "
-            "run_verification now reads scrubbed JSONLs directly from "
-            "output/<study>/llm_source/dataset_schema/files/, regardless "
-            "of this value."
-        ),
     )
     parser.add_argument(
         "--scrub-report",
@@ -525,12 +428,6 @@ def main(argv: list[str] | None = None) -> int:
     study = args.study
     sot_dir = args.sot_dir or (config.DATA_DIR / study / "SoT")
     output_root = args.output_root or (config.OUTPUT_DIR / study)
-    # Phase 5b: canonical scrubbed JSONL location is
-    # ``output/<study>/llm_source/dataset_schema/files/<form>.jsonl``.
-    # The ``staging_root`` parameter is retained for CLI back-compat but
-    # is unused by ``run_verification`` — the path is now derived from
-    # ``output_root`` directly.
-    staging_root = args.staging_root or (output_root / "llm_source" / "dataset_schema" / "files")
     scrub_report = args.scrub_report or (output_root / "audit" / "phi_scrub_report.json")
     cleanup_report = args.cleanup_report or (output_root / "audit" / "dataset_cleanup_report.json")
 
@@ -538,7 +435,6 @@ def main(argv: list[str] | None = None) -> int:
         return run_verification(
             study=study,
             sot_dir=sot_dir,
-            staging_root=staging_root,
             scrub_report_path=scrub_report,
             cleanup_report_path=cleanup_report,
             output_root=output_root,

@@ -81,7 +81,6 @@ def test_verify_creates_no_human_review_under_output_root(
     study = "Mini"
     sot_dir = tmp_path / "sot"
     sot_dir.mkdir()
-    staging = tmp_path / "staging"
     audit = tmp_path / "audit"
     output_root = tmp_path / "output"
 
@@ -94,7 +93,6 @@ def test_verify_creates_no_human_review_under_output_root(
     code = run_verification(
         study=study,
         sot_dir=sot_dir,
-        staging_root=staging,
         scrub_report_path=scrub_path,
         cleanup_report_path=cleanup_path,
         output_root=output_root,
