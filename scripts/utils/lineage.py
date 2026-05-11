@@ -11,7 +11,7 @@ The manifest records:
   compliance posture, study name.
 * **Inputs** — every raw file that entered the pipeline this run, with
   SHA-256 + size + mtime.
-* **Outputs** — every file in the published ``trio_bundle/`` + every
+* **Outputs** — every file in the published ``llm_source/`` + every
   audit report, with SHA-256 + size.
 * **Steps** — per-leg (datasets / dictionary / pdfs) timestamps and
   rule-action counts (read from existing audit reports; this module
@@ -19,7 +19,7 @@ The manifest records:
 
 The manifest carries only counts and hashes — never raw PHI values.
 Caller must ensure :func:`emit_lineage_manifest` runs AFTER
-``_publish_staging`` so the trio bundle exists and AFTER all audit
+``_publish_staging`` so the llm_source bundle exists and AFTER all audit
 reports are on disk.
 
 IRB-grade benchmark anchors:
@@ -113,7 +113,7 @@ def emit_lineage_manifest(
     raw_datasets_dir: Path,
     raw_dictionary_dir: Path | None,
     raw_pdfs_dir: Path | None,
-    trio_bundle_dir: Path,
+    llm_source_dir: Path,
     audit_dir: Path,
     pipeline_version: str,
     compliance_posture: str,
@@ -138,7 +138,7 @@ def emit_lineage_manifest(
         inputs["pdfs"] = _collect_files(raw_pdfs_dir)
 
     outputs = {
-        "trio_bundle": _collect_files(trio_bundle_dir),
+        "llm_source": _collect_files(llm_source_dir),
         "audit": _collect_files(audit_dir, recursive=False),
     }
 
@@ -171,7 +171,7 @@ def emit_lineage_manifest(
         "steps": steps,
     }
     # The PHI key fingerprint (SHA-256 of the HMAC key bytes) lets an IRB
-    # reviewer verify that the pseudonyms in trio_bundle/ were generated
+    # reviewer verify that the pseudonyms in llm_source/ were generated
     # with the claimed key — without exposing the key itself. Optional so
     # legacy callers without a key still emit a valid manifest.
     if phi_key_fingerprint is not None:
@@ -179,9 +179,9 @@ def emit_lineage_manifest(
 
     atomic_write_json(manifest_path, manifest)
     logger.info(
-        "lineage manifest: %d input files, %d trio output files, %d steps",
+        "lineage manifest: %d input files, %d llm_source output files, %d steps",
         sum(len(v) for v in inputs.values()),
-        len(outputs["trio_bundle"]),
+        len(outputs["llm_source"]),
         len(steps),
     )
     return manifest

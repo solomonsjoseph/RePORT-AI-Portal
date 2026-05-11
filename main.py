@@ -1329,7 +1329,7 @@ For detailed documentation, see the Sphinx docs or README.md
             raw_pdfs_dir=Path(config.ANNOTATED_PDFS_DIR)
             if Path(config.ANNOTATED_PDFS_DIR).is_dir()
             else None,
-            trio_bundle_dir=Path(config.TRIO_BUNDLE_DIR),
+            llm_source_dir=Path(config.STUDY_LLM_SOURCE_DIR),
             audit_dir=audit_dir,
             pipeline_version=__version__,
             compliance_posture=posture,
