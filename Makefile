@@ -72,7 +72,7 @@ N := \033[0m
 .PHONY: \
 	help quickstart debug sync version \
 	pipeline dictionary extract-datasets build-llm-source verify-and-promote bundle \
-	chat-deps chat-cli-deps chat-cli chat build-variables \
+	chat-deps chat-cli-deps chat-cli chat \
 	snapshot snapshot-study restore-study list-snapshots \
 	test test-all lint typecheck security ci verify release-check \
 	docs doc-freshness docs-quality docs-linkcheck docs-ci release-notes \
@@ -108,7 +108,6 @@ help:
 	@printf "$(B)$(G)  AI Assistant$(N)\n"
 	@printf "  $(C)make chat-cli$(N)         Start interactive AI Assistant chat (CLI)\n"
 	@printf "  $(C)make chat$(N)             Install needed deps → launch web UI\n"
-	@printf "  $(C)make build-variables$(N)  Build variables.json from all annotation sources\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Reviewed Snapshot$(N)  $(Y)(data/snapshots/{STUDY}/)$(N)\n"
 	@printf "  $(C)make snapshot$(N)         Copy output/{STUDY}/trio_bundle/ → data/snapshots/{STUDY}/\n"
@@ -269,11 +268,6 @@ chat-cli: chat-cli-deps
 chat: chat-deps
 	@echo Launching Streamlit web UI...
 	@$(UV) run $(CHAT_GROUPS) python main.py --web $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
-
-build-variables:
-	@printf "$(C)Building variables.json from all annotation sources...$(N)\n"
-	@$(PYTHON) main.py --build-variables $(VFLAG)
-	@printf "$(G)✓ variables.json built$(N)\n"
 
 # ═══════════════════════════════════════════════════════════════════════
 # REVIEWED SNAPSHOT BASELINE — trio_bundle backup / restore
