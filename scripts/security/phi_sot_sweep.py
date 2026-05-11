@@ -327,7 +327,7 @@ def emit_drafts(
         out = hitl_drafts_dir / f"{f['form']}_{f['variable_id_masked']}.md"
         _atomic_write_text(out, _render_hitl_body(f))
     logger.info(
-        "phi_sweep_emit.complete pr_drafts=%d hitl_drafts=%d pr_dir=%s hitl_dir=%s",
+        "phi_sot_sweep.emit.complete pr_drafts=%d hitl_drafts=%d pr_dir=%s hitl_dir=%s",
         len(by_anchor),
         sum(1 for f in payload["findings"] if f["category"] == "review_required_open"),
         str(pr_drafts_dir),
