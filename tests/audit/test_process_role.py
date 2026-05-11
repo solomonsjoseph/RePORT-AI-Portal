@@ -6,7 +6,7 @@ from typing import Iterator
 
 import pytest
 
-from scripts.utils.process_role import (
+from scripts.audit import (
     PROCESS_ROLE_ENV_VAR,
     PROCESS_ROLE_LLM_AGENT,
     current_process_role,

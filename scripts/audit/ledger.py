@@ -58,8 +58,7 @@ class LedgerWriter:
 
     def _phase4_guard(self) -> None:
         """Phase 4: refuse writes when LLM-agent role; ensure sentinel."""
-        # Local import avoids a circular import via ``scripts.utils.__init__``.
-        from scripts.utils.process_role import is_llm_agent
+        from scripts.audit import is_llm_agent
 
         if is_llm_agent():
             raise PermissionError(
