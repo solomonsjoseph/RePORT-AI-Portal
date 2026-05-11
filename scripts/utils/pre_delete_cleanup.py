@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from scripts.extraction.io import atomic_write_json
+from scripts.security.secure_env import assert_output_zone
 from scripts.utils.logging_system import get_logger
 
 logger = get_logger(__name__)
@@ -64,6 +65,7 @@ def write_pre_delete_manifest(*, output_root: Path, manifest_path: Path) -> dict
         "deleted_dirs": list(_LEGACY_DIR_NAMES),
         "deleted_files": entries,
     }
+    assert_output_zone(manifest_path.parent)
     atomic_write_json(manifest_path, manifest)
     logger.info(
         "pre-delete manifest: %d files captured for %d legacy dirs",
