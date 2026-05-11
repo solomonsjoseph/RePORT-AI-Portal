@@ -53,7 +53,6 @@ __all__ = [
     "reset_logging",
     "setup_logger",
     "setup_logging",
-    "step_progress",
     "success",
     "warning",
 ]
@@ -175,33 +174,25 @@ class VerboseLogger:
             indent = "  " * self._indent()
             self.log.debug("%s%s%s", indent, prefix, message)
 
-    class _ContextManager:
-        def __init__(
-            self, vlog: VerboseLogger, prefix: str, header: str, footer: str | None = None
-        ):
-            self.vlog = vlog
-            self.prefix = prefix
-            self.header = header
-            self.footer = footer
-
-        def __enter__(self):
-            self.vlog._log_tree(self.prefix, self.header)
-            self.vlog._set_indent(self.vlog._indent() + 1)
-            return self
-
-        def __exit__(self, *args: object) -> None:
-            self.vlog._set_indent(self.vlog._indent() - 1)
-            if self.footer:
-                self.vlog._log_tree("└─ ", self.footer)
+    @contextmanager
+    def _scope(self, prefix: str, header: str, footer: str | None = None):
+        self._log_tree(prefix, header)
+        self._set_indent(self._indent() + 1)
+        try:
+            yield
+        finally:
+            self._set_indent(self._indent() - 1)
+            if footer:
+                self._log_tree("└─ ", footer)
 
     def file_processing(self, filename: str, total_records: int | None = None):
         header = f"Processing: {filename}"
         if total_records is not None:
             header += f" ({total_records} records)"
-        return self._ContextManager(self, "├─ ", header, "✓ Complete")
+        return self._scope("├─ ", header, "✓ Complete")
 
     def step(self, step_name: str):
-        return self._ContextManager(self, "├─ ", step_name)
+        return self._scope("├─ ", step_name)
 
     def detail(self, message: str) -> None:
         self._log_tree("│  ", message)
@@ -527,10 +518,6 @@ def success(msg: str, *args: Any, **kwargs: Any) -> None:
 def exception(msg: str, *args: Any, include_log_path: bool = True, **kwargs: Any) -> None:
     kwargs.setdefault("exc_info", True)
     get_logger().error(_append_log_path(msg, include_log_path), *args, **kwargs)
-
-
-def step_progress(msg: str, *args: Any, **kwargs: Any) -> None:
-    get_logger().log(SUCCESS, msg, *args, **kwargs)
 
 
 def log_errors(logger_name: str | None = None, reraise: bool = True):

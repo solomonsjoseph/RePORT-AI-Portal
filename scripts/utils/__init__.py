@@ -38,7 +38,6 @@ from .logging_system import (
     reset_logging,
     setup_logger,
     setup_logging,
-    step_progress,
     success,
     warning,
 )
@@ -68,7 +67,6 @@ __all__ = [  # noqa: RUF022 — grouped by concept for readability, not alphabet
     "reset_logging",
     "setup_logger",
     "setup_logging",
-    "step_progress",
     "success",
     "warning",
     # AMBER-zone staging hardening
