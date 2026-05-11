@@ -217,10 +217,10 @@ verify-and-promote: ## Reconcile SoT vs scrubbed dataset; emit per-form discrepa
 
 phi-audit: ## Run SoT-driven PHI sweep and emit drafts under tmp/
 	$(UV) run --all-groups python -m scripts.security.phi_sot_sweep
-	$(UV) run --all-groups python -m scripts.security.phi_sweep_emit
+	$(UV) run --all-groups python -m scripts.security.phi_sot_sweep emit
 
 phi-audit-verify: ## Fail if any SoT variable lacks coverage AND no open HITL draft
-	$(UV) run --all-groups python -m scripts.security.phi_sweep_verify
+	$(UV) run --all-groups python -m scripts.security.phi_sot_sweep verify
 
 llm-source-build: ## Build per-form evidence packs + lean catalogs for llm_source/
 	$(UV) run --all-groups python -m scripts.source_truth.evidence_pack_consolidator

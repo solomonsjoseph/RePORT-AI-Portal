@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.security.phi_sweep_emit import emit_drafts
+from scripts.security.phi_sot_sweep import emit_drafts
 
 
 def _make_findings(tmp_path: Path) -> Path:

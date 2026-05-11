@@ -1,24 +1,26 @@
-"""Deterministic SoT-driven PHI sweep.
+"""Deterministic SoT-driven PHI sweep + Phase 1 draft emitter + verifier.
 
-Walks every SoT YAML under ``data/SoT/<study>/`` and classifies each
-``(form, variable_id)`` into one of four categories:
+Three subcommands:
 
-* ``covered`` — declared action is in the inventoried PHI-handling set.
-* ``name_phi_uncovered`` — variable name matches a PHI-shape regex but
-  declared action is not a PHI handler.
-* ``column_shape_phi_uncovered`` — reserved for Phase 2 (no source yet).
-* ``review_required_open`` — declared action is ``review_required``.
+* ``sweep`` — walk SoT YAMLs, classify each ``(form, variable_id)``, write
+  findings JSON. Categories: ``covered``, ``name_phi_uncovered``,
+  ``column_shape_phi_uncovered``, ``review_required_open``.
+* ``emit`` — convert findings into PR + HITL markdown drafts.
+* ``verify`` — fail when any non-covered finding lacks a matching draft.
 
-Findings are written to ``config.PHI_SWEEP_FINDINGS_PATH``. Variable
-ids are masked through ``phi_id_masker.mask_variable_id`` so the JSON
-file is safe to attach to LLM-visible artifacts.
+Findings are written to ``config.PHI_SWEEP_FINDINGS_PATH``. Variable ids
+are masked through ``phi_id_masker.mask_variable_id`` so the JSON is safe
+to attach to LLM-visible artifacts.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
+import sys
 import tempfile
+from collections import defaultdict
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -32,6 +34,16 @@ from scripts.security.phi_scrub import PHIScrubError
 from scripts.utils.logging_system import get_logger
 
 logger = get_logger(__name__)
+
+__all__ = [
+    "PHISweepEmitError",
+    "PHISweepError",
+    "VerificationFailed",
+    "emit_drafts",
+    "main",
+    "run_sweep",
+    "verify",
+]
 
 
 _HANDLING_ACTIONS_COVERED: frozenset[str] = frozenset(
@@ -58,20 +70,52 @@ _NAME_PHI_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
 ]
 
 
+_SLUG_RE = re.compile(r"[^A-Za-z0-9]+")
+
+
 class PHISweepError(PHIScrubError):
     """Raised when the sweep cannot complete (malformed YAML, etc.)."""
 
 
-def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
+class PHISweepEmitError(PHIScrubError):
+    """Raised when the emitter cannot read its findings input."""
+
+
+class VerificationFailed(PHIScrubError):
+    """Raised when the Phase 1 exit criterion is not met."""
+
+
+def _slug(text: str | None) -> str:
+    if not text:
+        return "uncategorized"
+    return _SLUG_RE.sub("-", text).strip("-").lower() or "uncategorized"
+
+
+def _atomic_write(path: Path, body: str | bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(prefix=path.name + ".", dir=path.parent)
     try:
-        with open(fd, "w", encoding="utf-8") as fh:
-            json.dump(payload, fh, indent=2, sort_keys=True)
+        mode = "wb" if isinstance(body, bytes) else "w"
+        encoding = None if isinstance(body, bytes) else "utf-8"
+        with open(fd, mode, encoding=encoding) as fh:
+            fh.write(body)
         Path(tmp).replace(path)
     except Exception:
         Path(tmp).unlink(missing_ok=True)
         raise
+
+
+def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
+    _atomic_write(path, json.dumps(payload, indent=2, sort_keys=True))
+
+
+def _atomic_write_text(path: Path, body: str) -> None:
+    _atomic_write(path, body)
+
+
+# ---------------------------------------------------------------------------
+# sweep
+# ---------------------------------------------------------------------------
 
 
 def _iter_policy_files(sot_dir: Path) -> list[Path]:
@@ -187,5 +231,174 @@ def run_sweep(
     return payload
 
 
+# ---------------------------------------------------------------------------
+# emit
+# ---------------------------------------------------------------------------
+
+
+def _render_pr_body(anchor: str, items: list[dict[str, Any]]) -> str:
+    lines = [
+        f"# PHI Rule Addition: {anchor}",
+        "",
+        "**Status:** DRAFT (Phase 1 emitter, not yet filed)",
+        f"**Anchor:** {anchor}",
+        f"**Affected variables:** {len(items)}",
+        "",
+        "## Variables (masked)",
+        "",
+        "| Form | Variable (masked) | Current action |",
+        "|---|---|---|",
+    ]
+    for it in sorted(items, key=lambda x: (x["form"], x["variable_id_masked"])):
+        lines.append(f"| {it['form']} | `{it['variable_id_masked']}` | {it['current_action']} |")
+    lines.extend(
+        [
+            "",
+            "## Proposed change",
+            "",
+            "Add a rule to `scripts/security/phi_scrub.yaml` (or a regex pattern to",
+            "`scripts/security/phi_patterns.py`) that covers the variables above.",
+            "Cite the anchor in the rule comment.",
+            "",
+            "## Citations",
+            "",
+            f"- Regulatory anchor: {anchor}",
+            "- Inventoried technique to extend: see "
+            "`docs/superpowers/specs/2026-05-08-phi-techniques-inventory.md`",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _render_hitl_body(item: dict[str, Any]) -> str:
+    lines = [
+        f"# HITL: review_required for {item['form']} / `{item['variable_id_masked']}`",
+        "",
+        "**Status:** DRAFT (Phase 1 emitter, not yet filed)",
+        f"**Form:** {item['form']}",
+        f"**Variable (masked):** `{item['variable_id_masked']}`",
+        f"**Current action:** `{item['current_action']}`",
+        "",
+        "## Decision needed",
+        "",
+        "The SoT for this variable carries `handling_intent.action: review_required`.",
+        "A human owner must choose one of:",
+        "- `keep` (allowlist; cite the anchor that permits)",
+        "- `drop`",
+        "- `pseudonymize`",
+        "- `jitter_date`",
+        "- `cap`",
+        "- `generalize`",
+        "- `suppress_small_cell`",
+        "",
+        "The masked variable_id above is opaque; recovery requires the HMAC key.",
+        "",
+        "## Labels",
+        "",
+        "`HITL`, `phi-audit`, `phase-1`",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def emit_drafts(
+    *,
+    findings_path: Path | None = None,
+    pr_drafts_dir: Path | None = None,
+    hitl_drafts_dir: Path | None = None,
+) -> None:
+    findings_path = findings_path if findings_path is not None else config.PHI_SWEEP_FINDINGS_PATH
+    pr_drafts_dir = pr_drafts_dir if pr_drafts_dir is not None else config.PHI_SWEEP_PR_DRAFTS_DIR
+    hitl_drafts_dir = hitl_drafts_dir if hitl_drafts_dir is not None else config.PHI_SWEEP_HITL_DRAFTS_DIR
+    if not findings_path.is_file():
+        raise PHISweepEmitError(f"findings file missing: {findings_path}")
+    payload = json.loads(findings_path.read_text())
+    by_anchor: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for f in payload["findings"]:
+        if f["category"] in {"name_phi_uncovered", "column_shape_phi_uncovered"}:
+            by_anchor[f.get("regulatory_anchor_hint") or "uncategorized"].append(f)
+    for anchor, items in sorted(by_anchor.items()):
+        out = pr_drafts_dir / f"{_slug(anchor)}.md"
+        _atomic_write_text(out, _render_pr_body(anchor, items))
+    for f in payload["findings"]:
+        if f["category"] != "review_required_open":
+            continue
+        out = hitl_drafts_dir / f"{f['form']}_{f['variable_id_masked']}.md"
+        _atomic_write_text(out, _render_hitl_body(f))
+    logger.info(
+        "phi_sweep_emit.complete pr_drafts=%d hitl_drafts=%d pr_dir=%s hitl_dir=%s",
+        len(by_anchor),
+        sum(1 for f in payload["findings"] if f["category"] == "review_required_open"),
+        str(pr_drafts_dir),
+        str(hitl_drafts_dir),
+    )
+
+
+# ---------------------------------------------------------------------------
+# verify
+# ---------------------------------------------------------------------------
+
+
+def verify(
+    *,
+    findings_path: Path | None = None,
+    hitl_drafts_dir: Path | None = None,
+    pr_drafts_dir: Path | None = None,
+) -> None:
+    findings_path = findings_path if findings_path is not None else config.PHI_SWEEP_FINDINGS_PATH
+    hitl_drafts_dir = hitl_drafts_dir if hitl_drafts_dir is not None else config.PHI_SWEEP_HITL_DRAFTS_DIR
+    pr_drafts_dir = pr_drafts_dir if pr_drafts_dir is not None else config.PHI_SWEEP_PR_DRAFTS_DIR
+    payload = json.loads(findings_path.read_text())
+    failures: list[str] = []
+    for f in payload["findings"]:
+        cat = f["category"]
+        if cat == "covered":
+            continue
+        if cat == "review_required_open":
+            expected = hitl_drafts_dir / f"{f['form']}_{f['variable_id_masked']}.md"
+            if not expected.is_file():
+                failures.append(f"missing HITL draft: {expected}")
+            continue
+        if cat in {"name_phi_uncovered", "column_shape_phi_uncovered"}:
+            expected = pr_drafts_dir / f"{_slug(f.get('regulatory_anchor_hint'))}.md"
+            if not expected.is_file():
+                failures.append(f"missing PR draft for anchor {f.get('regulatory_anchor_hint')!r}: {expected}")
+            continue
+        failures.append(f"unknown category {cat!r} for {f['form']}/{f['variable_id_masked']}")
+    if failures:
+        raise VerificationFailed("Phase 1 exit criterion not met:\n  - " + "\n  - ".join(failures))
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="scripts.security.phi_sot_sweep")
+    sub = parser.add_subparsers(dest="cmd")
+    sub.add_parser("sweep", help="run the SoT sweep (default)")
+    sub.add_parser("emit", help="convert findings into PR + HITL markdown drafts")
+    sub.add_parser("verify", help="fail when non-covered findings lack drafts")
+    args = parser.parse_args(argv)
+    cmd = args.cmd or "sweep"
+    if cmd == "sweep":
+        run_sweep()
+        return 0
+    if cmd == "emit":
+        emit_drafts()
+        return 0
+    if cmd == "verify":
+        try:
+            verify()
+        except VerificationFailed as exc:
+            sys.stderr.write(str(exc) + "\n")
+            return 1
+        return 0
+    parser.error(f"unknown subcommand: {cmd}")
+    return 2  # unreachable; parser.error exits
+
+
 if __name__ == "__main__":
-    run_sweep()
+    sys.exit(main())

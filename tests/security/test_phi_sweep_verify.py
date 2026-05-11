@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.security.phi_sweep_verify import VerificationFailed, verify
+from scripts.security.phi_sot_sweep import VerificationFailed, verify
 
 
 def _make_findings(tmp_path: Path, with_hitl: bool) -> Path:
