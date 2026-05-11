@@ -409,6 +409,9 @@ clean:
 clean-legacy: ## Phase 5b: write pre-delete manifest, prune per-variable packs, delete legacy output dirs
 	$(UV) run --all-groups python -m scripts.utils.pre_delete_cleanup_cli
 
+clean-legacy-dry-run: ## Phase 5b: print what clean-legacy would delete (no filesystem changes)
+	$(UV) run --all-groups python -m scripts.utils.pre_delete_cleanup_cli --dry-run
+
 nuke:
 	@printf "$(R)This removes generated state: .venv, output/, .logs/, logs/, tmp/, docs/sphinx/_build/, caches.$(N)\n"
 	@printf "$(Y)It preserves data/raw/ and data/snapshots/.$(N)\n"
