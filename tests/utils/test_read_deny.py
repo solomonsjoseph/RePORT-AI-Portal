@@ -8,17 +8,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import pytest
+from tests.conftest import skip_as_root
 
 from scripts.utils.read_deny import read_deny
 
-_skip_as_root = pytest.mark.skipif(
-    hasattr(os, "geteuid") and os.geteuid() == 0,
-    reason="chmod-based denial has no effect for root",
-)
 
-
-@_skip_as_root
+@skip_as_root
 def test_read_deny_blocks_os_access(tmp_path: Path) -> None:
     target = tmp_path / "secret.jsonl"
     target.write_text('{"forbidden": "value"}\n')
@@ -35,7 +30,7 @@ def test_read_deny_restores_on_exit(tmp_path: Path) -> None:
     assert os.access(target, os.R_OK)
 
 
-@_skip_as_root
+@skip_as_root
 def test_read_deny_recursive_dir(tmp_path: Path) -> None:
     """Enforcing on a directory blocks reads of files inside it."""
     d = tmp_path / "row_jsonls"

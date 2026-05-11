@@ -6,6 +6,7 @@ All fixtures use tmp_path to avoid touching real data or output directories.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -13,6 +14,11 @@ import pytest
 
 if TYPE_CHECKING:
     from scripts.ai_assistant.study_knowledge import StudyKnowledge
+
+skip_as_root = pytest.mark.skipif(
+    hasattr(os, "geteuid") and os.geteuid() == 0,
+    reason="chmod-based denial has no effect for root",
+)
 
 # ── Synthetic data helpers ──────────────────────────────────────────────────
 
