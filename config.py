@@ -205,7 +205,6 @@ TRIO_BUNDLE_DIR = STUDY_OUTPUT_DIR / "trio_bundle"
 # LLM-visible source directory — canonical home for artefacts the agent reads.
 STUDY_LLM_SOURCE_DIR = STUDY_OUTPUT_DIR / "llm_source"
 
-# Phase 5b: re-pointed from trio_bundle/ to llm_source/ — name preserved for back-compat.
 TRIO_DATASETS_DIR = STUDY_LLM_SOURCE_DIR / "dataset_schema" / "files"
 
 # Note: the concept index path
@@ -225,7 +224,6 @@ STUDY_AUDIT_DIR = STUDY_OUTPUT_DIR / "audit"
 AUDIT_DATASET_REPORT_PATH: Path = STUDY_AUDIT_DIR / "dataset_cleanup_report.json"
 AUDIT_SCRUB_REPORT_PATH: Path = STUDY_AUDIT_DIR / "phi_scrub_report.json"
 
-# Phase 5b: re-pointed from trio_bundle/ to llm_source/ — name preserved for back-compat.
 DICTIONARY_JSON_OUTPUT_DIR = STUDY_LLM_SOURCE_DIR / "dictionary_mapping" / "jsonl"
 
 # ----------------------------------------------------------------------------
