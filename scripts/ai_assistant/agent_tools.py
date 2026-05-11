@@ -29,7 +29,6 @@ Tools
 9.  run_python_analysis — sandboxed code execution for statistical analysis
 10. cross_reference_variables — cross-reference a variable across datasets + forms
 11. run_study_analysis — deterministic epidemiological analysis
-12. search_pdf_context — keyword search over extracted CRF form text (qualitative Q&A)
 """
 
 from __future__ import annotations
@@ -52,7 +51,6 @@ from scripts.ai_assistant.file_access import (
 from scripts.ai_assistant.phi_safe import (
     phi_safe_return,
     sanitise_traceback,
-    sanitise_untrusted_snippet,
 )
 from scripts.ai_assistant.tool_cache import tool_cache
 from scripts.security.secure_env import assert_output_zone
@@ -1576,220 +1574,6 @@ def find_variable_candidates(description: str, k: int = 3) -> str:
 
 
 # ============================================================================
-# Tool 12: search_pdf_context — keyword search over extracted CRF text
-# ============================================================================
-
-
-def _pdf_context_snippets() -> list[dict[str, str]]:
-    """Flatten all extracted CRF JSON files into (form, section, text) snippets.
-
-    Each snippet has a single text blob; the caller can score and rank.
-    Cached on first call per process to avoid re-reading 28 JSON files.
-    """
-    cache_key = "_pdf_context_snippets"
-    cached = tool_cache.get(cache_key)
-    if cached is not None:
-        return cached  # type: ignore[return-value]
-
-    pdf_dir = config.PDF_EXTRACTIONS_DIR
-    assert_output_zone(pdf_dir)
-    snippets: list[dict[str, str]] = []
-    if not pdf_dir.exists():
-        return snippets
-
-    for pth in sorted(pdf_dir.glob("*.json")):
-        try:
-            pth_validated = validate_agent_read(pth)
-            data = json.loads(pth_validated.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError, PermissionError):
-            logger.warning("Failed to load PDF extract: %s", pth.name)
-            continue
-
-        form_name = data.get("form_name") or pth.stem
-        source_pdf = data.get("source_pdf") or ""
-        summary = (data.get("summary") or "").strip()
-        if summary:
-            snippets.append(
-                {
-                    "form_name": form_name,
-                    "source_pdf": source_pdf,
-                    "snippet_kind": "form_summary",
-                    "variable_name": "",
-                    "section": "",
-                    "text": summary,
-                }
-            )
-
-        variables = data.get("variables") or {}
-        for var_name, var_body in variables.items():
-            if not isinstance(var_body, dict):
-                continue
-            parts: list[str] = []
-            desc = (var_body.get("description") or "").strip()
-            ctx = (var_body.get("section_context") or "").strip()
-            cond = (var_body.get("condition") or "").strip()
-            if desc:
-                parts.append(desc)
-            if cond:
-                parts.append(f"Condition: {cond}")
-            if ctx:
-                parts.append(ctx)
-            if not parts:
-                continue
-            snippets.append(
-                {
-                    "form_name": form_name,
-                    "source_pdf": source_pdf,
-                    "snippet_kind": "variable",
-                    "variable_name": str(var_name),
-                    "section": "",
-                    "text": "  ".join(parts),
-                }
-            )
-
-    tool_cache.put(cache_key, snippets)  # type: ignore[arg-type]
-    return snippets
-
-
-def _score_text(text: str, query_terms: list[str], query_phrase: str) -> int:
-    """Light keyword + phrase scoring for free-text snippets."""
-    lower = _normalise_search_text(text)
-    score = 0
-    if query_phrase and query_phrase in lower:
-        score += 25
-    for term in query_terms:
-        if _text_has_term(lower, term):
-            mentions = max(lower.count(v) for v in _term_variants(term))
-            score += 4 + min(max(mentions - 1, 0), 6)
-    if query_terms and all(_text_has_term(lower, term) for term in query_terms):
-        score += 10
-    return score
-
-
-@tool
-@phi_safe_return
-def search_pdf_context(query: str, k: int = 5) -> str:
-    """Search the extracted CRF form text for qualitative study-design questions.
-
-    Use this when the user asks about **study design, definitions, eligibility
-    criteria, schedules, or procedures** — e.g. "what are the inclusion criteria
-    for Cohort A?", "how is a household contact defined?", "what is the
-    follow-up schedule?". This tool does NOT count records and does NOT run
-    statistics — for those, use ``query_dataset`` / ``get_dataset_stats`` /
-    ``run_study_analysis``.
-
-    It searches over every extracted CRF form's summary, every variable's
-    description, and every variable's section_context (the narrative text
-    that appears above the field on the paper form). Results come back
-    ranked, each with a form citation so the user can verify.
-
-    Note: This currently searches CRF-level text only. Protocol-level
-    definitions (e.g. 'TB relapse' vs 'treatment failure') are NOT included
-    unless the protocol PDF has been added to the extraction pipeline. If the
-    top result's confidence is low, say so and suggest the user provide the
-    protocol document.
-
-    Args:
-        query: Natural-language question or keywords.
-        k: Number of snippets to return. Default 5. Clamped to [1, 15].
-
-    Returns:
-        JSON string with ``query``, ``count``, and ``snippets``. Each snippet
-        has ``rank``, ``form_name``, ``source_pdf``, ``snippet_kind``
-        ('form_summary' or 'variable'), ``variable_name`` (if applicable),
-        ``text``, and a normalised ``score`` in [0, 1].
-
-    Conversational / too-short inputs (greetings, <3-char strings) return
-    an explicit refusal so the LLM does not surface noisy substring hits
-    for small-talk against the PDF text corpus.
-    """
-    if _query_looks_conversational(query):
-        return _CONVERSATIONAL_REFUSAL_MESSAGE
-
-    k = max(1, min(int(k), 15))
-    hit = tool_cache.get("search_pdf_context", query=query, k=k)
-    if hit is not None:
-        return hit
-
-    snippets = _pdf_context_snippets()
-    if not snippets:
-        return "No extracted PDF context found. Run the PDF extraction pipeline first."
-
-    stop = {
-        "the",
-        "a",
-        "an",
-        "of",
-        "for",
-        "and",
-        "in",
-        "is",
-        "to",
-        "or",
-        "on",
-        "what",
-        "how",
-        "does",
-        "do",
-    }
-    query_terms, query_phrase = _query_terms(query, stop=stop)
-
-    scored: list[tuple[int, dict[str, str]]] = []
-    for snip in snippets:
-        searchable = " ".join(
-            [
-                snip["text"],
-                snip["form_name"],
-                snip["source_pdf"],
-                snip["variable_name"],
-            ]
-        )
-        s = _score_text(searchable, query_terms, query_phrase)
-        if s > 0:
-            scored.append((s, snip))
-
-    if not scored:
-        return json.dumps(
-            {"query": query, "count": 0, "snippets": [], "note": "No matching CRF text."},
-            indent=2,
-            ensure_ascii=False,
-        )
-
-    scored.sort(key=lambda x: (-x[0], len(x[1]["text"]), x[1]["form_name"]))
-    top = scored[:k]
-    max_score = top[0][0]
-    denom = max(max_score, 40)  # strong match threshold
-
-    out: list[dict[str, Any]] = []
-    for rank, (score, snip) in enumerate(top, start=1):
-        text = snip["text"]
-        if len(text) > 600:
-            text = text[:600].rstrip() + "…"
-        safe_text = sanitise_untrusted_snippet(text, source_label=f"PDF {snip['source_pdf']}")
-        out.append(
-            {
-                "rank": rank,
-                "form_name": snip["form_name"],
-                "source_pdf": snip["source_pdf"],
-                "snippet_kind": snip["snippet_kind"],
-                "variable_name": snip["variable_name"],
-                "text": safe_text,
-                "score": round(min(score / denom, 1.0), 3),
-            }
-        )
-
-    payload = {
-        "query": query,
-        "count": len(out),
-        "snippets": out,
-        "low_confidence": bool(out and out[0]["score"] < 0.4),
-    }
-    result = json.dumps(payload, indent=2, ensure_ascii=False)
-    tool_cache.put("search_pdf_context", result, query=query, k=k)
-    return result
-
-
-# ============================================================================
 # Tool 13: answer_catalog_question — boundary-aware catalog Q&A
 # ============================================================================
 #
@@ -1931,6 +1715,5 @@ ALL_TOOLS = [
     run_python_analysis,
     cross_reference_variables,
     run_study_analysis,
-    search_pdf_context,
     answer_catalog_question,
 ]

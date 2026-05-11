@@ -1,10 +1,10 @@
-"""Cleanup propagation — prune dictionary + PDF artifacts after dataset drops.
+"""Cleanup propagation — prune dictionary artifacts after dataset drops.
 
-Runs against the staging workspace (``tmp/{STUDY_NAME}/{datasets,dictionary,pdfs}/``)
+Runs against the staging workspace (``tmp/{STUDY_NAME}/{datasets,dictionary}/``)
 after :func:`scripts.extraction.dataset_cleanup.clean_trio_datasets` completes.
 
-Dictionary and PDF legs carry no PHI and therefore emit no audit report — the
-prune step is side-effect-only, keeping the dict and PDF schemas aligned with
+The dictionary leg carries no PHI and therefore emits no audit report — the
+prune step is side-effect-only, keeping the dictionary schema aligned with
 the surviving dataset schema so the LLM sees no dangling references. The
 dataset leg's own audit (``AUDIT_DATASET_REPORT_PATH``) remains the single
 source of truth for what was removed.
@@ -12,10 +12,10 @@ source of truth for what was removed.
 Pruning rule
 ------------
 
-A variable ``V`` is pruned from the dictionary and PDF legs **iff** it was
-dropped from at least one dataset *and* never survives in any final
-surviving dataset JSONL schema. Variables dropped from one dataset but kept
-in another are NOT pruned.
+A variable ``V`` is pruned from the dictionary leg **iff** it was dropped
+from at least one dataset *and* never survives in any final surviving
+dataset JSONL schema. Variables dropped from one dataset but kept in another
+are NOT pruned.
 
 Comparisons are case-folded; dataset provenance fields
 (``source_file``, ``_provenance``, ``_metadata``) are excluded from
@@ -33,7 +33,6 @@ import config
 from scripts.extraction._dict_keys import DICT_VAR_KEY as _DICT_VAR_KEY
 from scripts.extraction.io import (
     JSONLParseError,
-    atomic_write_json,
     atomic_write_jsonl,
     load_json_object_line,
 )
@@ -45,7 +44,6 @@ __all__ = [
     "PROVENANCE_FIELDS",
     "compute_propagation_set",
     "prune_dictionary",
-    "prune_pdfs",
     "run_propagation",
 ]
 
@@ -171,86 +169,16 @@ def prune_dictionary(drop_set: set[str], dict_dir: Path) -> int:
     return total_removed
 
 
-# ── Step 3: prune_pdfs ──────────────────────────────────────────────────────
-
-
-def prune_pdfs(drop_set: set[str], pdf_dir: Path) -> int:
-    """Walk ``pdf_dir/*_variables.json`` and drop matching entries.
-
-    For each JSON file:
-
-    1. Remove keys from the top-level ``variables: dict`` whose key
-       (case-folded) is in ``drop_set``.
-    2. For each section in ``sections: dict``, remove matching entries from
-       ``sections[name]["variables"]: list``.
-
-    Modified files are rewritten atomically; unmodified files are left alone.
-    Returns the total number of entries removed (vars + section refs).
-    No audit artifact is written — the PDF leg carries no PHI.
-    """
-    total_removed = 0
-
-    if not pdf_dir.is_dir():
-        return 0
-
-    assert_write_zone(pdf_dir)
-    for pdf_json in sorted(pdf_dir.glob("*_variables.json")):
-        try:
-            raw_text = pdf_json.read_text(encoding="utf-8")
-            data = json.loads(raw_text)
-        except (json.JSONDecodeError, OSError) as exc:
-            logger.warning("Skipping malformed PDF JSON %s: %s", pdf_json.name, exc)
-            continue
-        if not isinstance(data, dict):
-            logger.warning("Unexpected top-level type in %s — skipping", pdf_json.name)
-            continue
-        changed = False
-        removed_in_file = 0
-
-        # Top-level variables dict
-        variables_dict = data.get("variables")
-        if isinstance(variables_dict, dict):
-            for var_key in list(variables_dict.keys()):
-                if isinstance(var_key, str) and var_key.casefold() in drop_set:
-                    del variables_dict[var_key]
-                    changed = True
-                    removed_in_file += 1
-
-        # Per-section variables list
-        sections_dict = data.get("sections")
-        if isinstance(sections_dict, dict):
-            for section_body in sections_dict.values():
-                if not isinstance(section_body, dict):
-                    continue
-                section_vars = section_body.get("variables")
-                if not isinstance(section_vars, list):
-                    continue
-                kept: list[Any] = []
-                for entry in section_vars:
-                    if isinstance(entry, str) and entry.casefold() in drop_set:
-                        changed = True
-                        removed_in_file += 1
-                    else:
-                        kept.append(entry)
-                section_body["variables"] = kept
-
-        if changed:
-            atomic_write_json(pdf_json, data)
-            total_removed += removed_in_file
-            logger.info("Pruned %d entries in %s", removed_in_file, pdf_json.name)
-
-    return total_removed
-
 
 # ── Step 4: run_propagation ─────────────────────────────────────────────────
 
 
 def run_propagation() -> None:
-    """Orchestrate the propagation: compute drop set, prune dict + PDF legs.
+    """Orchestrate the propagation: compute drop set, prune the dictionary leg.
 
     All paths resolved from ``config.STAGING_*`` and ``config.AUDIT_*`` —
-    never touches the promoted trio bundle directly. Dict + PDF legs emit no
-    audit report (no PHI); only their prune counts are logged.
+    never touches the promoted trio bundle directly. The dictionary leg emits
+    no audit report (no PHI); only its prune count is logged.
     """
     drop_set = compute_propagation_set(
         config.AUDIT_DATASET_REPORT_PATH,
@@ -263,9 +191,7 @@ def run_propagation() -> None:
     )
 
     dict_removed = prune_dictionary(drop_set, config.STAGING_DICTIONARY_DIR)
-    pdf_removed = prune_pdfs(drop_set, config.STAGING_PDFS_DIR)
     logger.info(
-        "Propagation complete: %d dictionary rows + %d PDF entries pruned",
+        "Propagation complete: %d dictionary rows pruned",
         dict_removed,
-        pdf_removed,
     )

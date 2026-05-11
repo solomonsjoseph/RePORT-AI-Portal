@@ -36,7 +36,6 @@ class TestPrepareStaging:
         assert config.STUDY_STAGING_DIR.is_dir()
         assert config.STAGING_DATASETS_DIR.is_dir()
         assert config.STAGING_DICTIONARY_DIR.is_dir()
-        assert config.STAGING_PDFS_DIR.is_dir()
 
     def test_purges_existing_staging_residue(self, monkeypatch_config: Path) -> None:
         import config
@@ -56,7 +55,6 @@ class TestPrepareStaging:
         assert config.STAGING_DATASETS_DIR.is_dir()
         assert not any(config.STAGING_DATASETS_DIR.iterdir())
         assert config.STAGING_DICTIONARY_DIR.is_dir()
-        assert config.STAGING_PDFS_DIR.is_dir()
 
     def test_prepare_holds_process_lock(self, monkeypatch_config: Path) -> None:
         if os.name != "posix":
@@ -179,11 +177,11 @@ class TestPublishStaging:
         monkeypatch.setattr(main, "_publish_leg", _fake)
         result = main._publish_staging()
 
-        assert result == {"datasets": True, "dictionary": False, "pdfs": False}
-        assert len(calls) == 3
+        assert result == {"datasets": True, "dictionary": False}
+        assert len(calls) == 2
 
         legs_seen = {leg for _, _, leg in calls}
-        assert legs_seen == {"datasets", "dictionary", "pdfs"}
+        assert legs_seen == {"datasets", "dictionary"}
 
         # Each call uses the staging → trio pair for its leg.
         pairs = {leg: (staging, trio) for staging, trio, leg in calls}
@@ -194,10 +192,6 @@ class TestPublishStaging:
         assert pairs["dictionary"] == (
             Path(config.STAGING_DICTIONARY_DIR),
             Path(config.DICTIONARY_JSON_OUTPUT_DIR),
-        )
-        assert pairs["pdfs"] == (
-            Path(config.STAGING_PDFS_DIR),
-            Path(config.PDF_EXTRACTIONS_DIR),
         )
 
 

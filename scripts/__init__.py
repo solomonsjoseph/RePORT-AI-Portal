@@ -8,7 +8,6 @@ Top-level public API:
 - ``load_study_dictionary``: load the study dictionary into clean JSONL outputs
 - ``extract_datasets``: extract raw tabular datasets directly into
   ``output/{STUDY}/trio_bundle/datasets/``
-- ``extract_pdfs_to_jsonl``: extract annotated PDFs into JSONL outputs
 - ``__version__``: package version marker from the repository root
 
 Design rules:
@@ -27,7 +26,6 @@ from typing import Any
 __all__ = [
     "__version__",
     "extract_datasets",
-    "extract_pdfs_to_jsonl",
     "load_study_dictionary",
 ]
 
@@ -42,10 +40,6 @@ def __getattr__(name: str) -> Any:
         from .extraction.dataset_pipeline import extract_datasets
 
         return extract_datasets
-    if name == "extract_pdfs_to_jsonl":
-        from .extraction.extract_pdf_data import extract_pdfs_to_jsonl
-
-        return extract_pdfs_to_jsonl
     if name == "__version__":
         from __version__ import __version__
 

@@ -70,7 +70,6 @@ _verbose_logger: VerboseLogger | None = None
 MODULE_CATEGORY_MAP = {
     "scripts.extraction.extract_dataset": "data_cleaning_and_processing",
     "scripts.extraction.dataset_pipeline": "data_cleaning_and_processing",
-    "scripts.extraction.extract_pdf_data": "data_cleaning_and_processing",
     "scripts.extraction.load_dictionary": "data_cleaning_and_processing",
     "scripts.extraction.dedup": "data_cleaning_and_processing",
     "scripts.extraction.dataset_cleanup": "data_cleaning_and_processing",

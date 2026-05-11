@@ -44,13 +44,11 @@ def synthetic_jsonl_records() -> list[dict[str, Any]]:
 
 @pytest.fixture()
 def trio_bundle_dir(tmp_path: Path) -> Path:
-    """Temporary trio bundle tree with datasets/, dictionary/, and pdfs/ subdirs."""
+    """Temporary trio bundle tree with datasets/ and dictionary/ subdirs."""
     ds = tmp_path / "trio_bundle" / "datasets"
     dd = tmp_path / "trio_bundle" / "dictionary"
-    pdf = tmp_path / "trio_bundle" / "pdfs"
     ds.mkdir(parents=True)
     dd.mkdir(parents=True)
-    pdf.mkdir(parents=True)
     return tmp_path / "trio_bundle"
 
 
@@ -63,14 +61,12 @@ def monkeypatch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     trio.mkdir(exist_ok=True)
     (trio / "datasets").mkdir(exist_ok=True)
     (trio / "dictionary").mkdir(exist_ok=True)
-    (trio / "pdfs").mkdir(exist_ok=True)
     (tmp_path / "audit").mkdir(exist_ok=True)
     (tmp_path / "agent").mkdir(exist_ok=True)
 
     monkeypatch.setattr(config, "TRIO_BUNDLE_DIR", trio)
     monkeypatch.setattr(config, "TRIO_DATASETS_DIR", trio / "datasets")
     monkeypatch.setattr(config, "DICTIONARY_JSON_OUTPUT_DIR", trio / "dictionary")
-    monkeypatch.setattr(config, "PDF_EXTRACTIONS_DIR", trio / "pdfs")
     monkeypatch.setattr(config, "STUDY_AUDIT_DIR", tmp_path / "audit")
     monkeypatch.setattr(
         config,
@@ -113,11 +109,9 @@ def monkeypatch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     staging_root = tmp_dir / config.STUDY_NAME
     staging_datasets = staging_root / "datasets"
     staging_dictionary = staging_root / "dictionary"
-    staging_pdfs = staging_root / "pdfs"
     monkeypatch.setattr(config, "STUDY_STAGING_DIR", staging_root)
     monkeypatch.setattr(config, "STAGING_DATASETS_DIR", staging_datasets)
     monkeypatch.setattr(config, "STAGING_DICTIONARY_DIR", staging_dictionary)
-    monkeypatch.setattr(config, "STAGING_PDFS_DIR", staging_pdfs)
 
     # Also patch secure_env markers so zone guards accept tmp_path-based paths
     import scripts.security.secure_env as _se

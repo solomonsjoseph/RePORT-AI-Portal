@@ -124,7 +124,6 @@ class TestEnsureDirectories:
         monkeypatch.setattr(config, "STUDY_STAGING_DIR", staging_root)
         monkeypatch.setattr(config, "STAGING_DATASETS_DIR", staging_root / "datasets")
         monkeypatch.setattr(config, "STAGING_DICTIONARY_DIR", staging_root / "dictionary")
-        monkeypatch.setattr(config, "STAGING_PDFS_DIR", staging_root / "pdfs")
 
         assert not staging_root.exists()
         ensure_directories()
@@ -134,7 +133,6 @@ class TestEnsureDirectories:
         assert not staging_root.exists()
         assert not (staging_root / "datasets").exists()
         assert not (staging_root / "dictionary").exists()
-        assert not (staging_root / "pdfs").exists()
 
 
 class TestStagingPaths:
@@ -146,9 +144,6 @@ class TestStagingPaths:
 
     def test_staging_dictionary_dir(self) -> None:
         assert config.STAGING_DICTIONARY_DIR == config.STUDY_STAGING_DIR / "dictionary"
-
-    def test_staging_pdfs_dir(self) -> None:
-        assert config.STAGING_PDFS_DIR == config.STUDY_STAGING_DIR / "pdfs"
 
 
 class TestAuditReportPaths:

@@ -200,9 +200,6 @@ DATA_DICTIONARY_DIR = STUDY_DATA_DIR / "data_dictionary"
 
 # Trio bundle is the single consolidated clean-output tree.
 # Everything that was formerly split across clean/jsonl/* now lives here.
-# Phase 5b: TRIO_BUNDLE_DIR remains as a transitional constant — still used by
-# _pdf_context_snippets / extract_pdf_data and the Task 4d cleanup. Will be
-# removed once those callsites are deleted in 4d.
 TRIO_BUNDLE_DIR = STUDY_OUTPUT_DIR / "trio_bundle"
 
 # LLM-visible source directory — canonical home for artefacts the agent reads.
@@ -235,8 +232,6 @@ AUDIT_SCRUB_REPORT_PATH: Path = STUDY_AUDIT_DIR / "phi_scrub_report.json"
 
 # Phase 5b: re-pointed from trio_bundle/ to llm_source/ — name preserved for back-compat.
 DICTIONARY_JSON_OUTPUT_DIR = STUDY_LLM_SOURCE_DIR / "dictionary_mapping" / "jsonl"
-# PDF extraction artifacts still live under trio_bundle/; will be removed in Task 4c/4d.
-PDF_EXTRACTIONS_DIR = TRIO_BUNDLE_DIR / "pdfs"
 
 # ----------------------------------------------------------------------------
 # PHASE 0 — SoT GAP CONSTANTS
@@ -336,7 +331,6 @@ STUDY_SNAPSHOTS_DIR: Path = DATA_DIR / "snapshots" / STUDY_NAME
 STUDY_STAGING_DIR: Path = TMP_DIR / STUDY_NAME
 STAGING_DATASETS_DIR: Path = STUDY_STAGING_DIR / "datasets"
 STAGING_DICTIONARY_DIR: Path = STUDY_STAGING_DIR / "dictionary"
-STAGING_PDFS_DIR: Path = STUDY_STAGING_DIR / "pdfs"
 
 # ----------------------------------------------------------------------------
 # PHI SCRUB
@@ -371,18 +365,12 @@ PHI_KEY_PATH: Path = _phi_key_path()
 # Temporary-file prefixes for atomic writes.  Each module uses its own prefix
 # so crash-leftover temp files can be attributed to their source.
 TEMP_PREFIX_DATASET: str = "report_ai_portal_dataset_"
-TEMP_PREFIX_PDF: str = "report_ai_portal_pdf_extract_"
 TEMP_PREFIX_DICT: str = "report_ai_portal_dict_"
-TEMP_PREFIX_TRIO_BUNDLE: str = "report_ai_portal_trio_bundle_"
 TEMP_PREFIX_DEDUP: str = "report_ai_portal_dedup_"
 
 # Secure temp workspace — the prefix is intentionally generic+randomised so
 # the directory name leaks no information about what pipeline stage created it.
 SECURE_TEMP_PREFIX: str = "rpln_"
-
-# PDF extraction — rate-limit settings
-PDF_EXTRACTION_INTER_DELAY: float = float(_get_env("PDF_INTER_DELAY", "10.0"))
-PDF_EXTRACTION_MAX_TOKENS: int = _get_env_int("PDF_MAX_TOKENS", 64000)
 
 # Duplicate-column detection regex for dataset extraction
 DUPLICATE_COLUMN_PATTERN: str = r"^(.+?)_?(\d+)$"
@@ -538,7 +526,6 @@ def ensure_directories() -> None:
         TRIO_BUNDLE_DIR,
         TRIO_DATASETS_DIR,
         DICTIONARY_JSON_OUTPUT_DIR,
-        PDF_EXTRACTIONS_DIR,
         STUDY_AUDIT_DIR,
         AGENT_STATE_DIR,
         AGENT_OUTPUT_DIR,

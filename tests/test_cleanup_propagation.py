@@ -6,9 +6,6 @@ Covers:
 - prune_dictionary: walks STAGING_DICTIONARY_DIR/**/*.jsonl, drops rows whose
   Databank Fieldname matches the drop set, atomic rewrite. Dictionary leg
   carries no PHI — no audit artifact is emitted.
-- prune_pdfs: walks STAGING_PDFS_DIR/*_variables.json, drops matching
-  variables + section references, atomic rewrite. PDF leg carries no PHI —
-  no audit artifact is emitted.
 - run_propagation: end-to-end orchestrator from config.STAGING_* paths.
 """
 
@@ -20,7 +17,6 @@ from pathlib import Path
 from scripts.extraction.cleanup_propagation import (
     compute_propagation_set,
     prune_dictionary,
-    prune_pdfs,
     run_propagation,
 )
 from tests.conftest import _write_jsonl
@@ -317,125 +313,6 @@ class TestPruneDictionary:
         assert removed == 1
 
 
-# ── prune_pdfs ─────────────────────────────────────────────────────────────
-
-
-class TestPrunePdfs:
-    def _seed(self, pdf_dir: Path, name: str, payload: dict) -> Path:
-        pdf_dir.mkdir(parents=True, exist_ok=True)
-        path = pdf_dir / name
-        path.write_text(json.dumps(payload), encoding="utf-8")
-        return path
-
-    def test_drops_top_level_variables_and_section_entries(self, monkeypatch_config: Path) -> None:
-        import config
-
-        pdf_dir = config.STAGING_PDFS_DIR
-        path = self._seed(
-            pdf_dir,
-            "form1_variables.json",
-            {
-                "form_name": "form1",
-                "variables": {"SUBJID": {}, "AGE_DROPPED": {}, "NAME": {}},
-                "sections": {
-                    "demographics": {
-                        "context": "...",
-                        "variables": ["SUBJID", "AGE_DROPPED", "NAME"],
-                    }
-                },
-            },
-        )
-
-        removed = prune_pdfs({"age_dropped"}, pdf_dir)
-
-        data = json.loads(path.read_text(encoding="utf-8"))
-        assert "AGE_DROPPED" not in data["variables"]
-        assert set(data["variables"].keys()) == {"SUBJID", "NAME"}
-        assert "AGE_DROPPED" not in data["sections"]["demographics"]["variables"]
-        assert data["sections"]["demographics"]["variables"] == ["SUBJID", "NAME"]
-        # One top-level variable + one section reference dropped
-        assert removed == 2
-
-    def test_case_insensitive_match(self, monkeypatch_config: Path) -> None:
-        import config
-
-        pdf_dir = config.STAGING_PDFS_DIR
-        path = self._seed(
-            pdf_dir,
-            "form1_variables.json",
-            {
-                "variables": {"AGE_DROPPED": {}, "NAME": {}},
-                "sections": {"s1": {"context": "x", "variables": ["age_dropped", "NAME"]}},
-            },
-        )
-
-        removed = prune_pdfs({"age_dropped"}, pdf_dir)
-
-        data = json.loads(path.read_text(encoding="utf-8"))
-        assert "AGE_DROPPED" not in data["variables"]
-        assert data["sections"]["s1"]["variables"] == ["NAME"]
-        assert removed == 2
-
-    def test_multiple_sections(self, monkeypatch_config: Path) -> None:
-        import config
-
-        pdf_dir = config.STAGING_PDFS_DIR
-        path = self._seed(
-            pdf_dir,
-            "multi_variables.json",
-            {
-                "variables": {"X": {}, "Y": {}},
-                "sections": {
-                    "a": {"context": "...", "variables": ["X", "Y"]},
-                    "b": {"context": "...", "variables": ["X"]},
-                    "c": {"context": "...", "variables": ["Y"]},
-                },
-            },
-        )
-
-        removed = prune_pdfs({"x"}, pdf_dir)
-
-        data = json.loads(path.read_text(encoding="utf-8"))
-        assert data["variables"] == {"Y": {}}
-        assert data["sections"]["a"]["variables"] == ["Y"]
-        assert data["sections"]["b"]["variables"] == []
-        assert data["sections"]["c"]["variables"] == ["Y"]
-        # 1 top-level X + 2 section refs (a, b)
-        assert removed == 3
-
-    def test_missing_sections_key(self, monkeypatch_config: Path) -> None:
-        import config
-
-        pdf_dir = config.STAGING_PDFS_DIR
-        path = self._seed(
-            pdf_dir,
-            "form1_variables.json",
-            {"variables": {"X": {}, "Y": {}}},  # no "sections"
-        )
-
-        removed = prune_pdfs({"x"}, pdf_dir)
-
-        data = json.loads(path.read_text(encoding="utf-8"))
-        assert data["variables"] == {"Y": {}}
-        assert removed == 1
-
-    def test_empty_drop_set_no_op(self, monkeypatch_config: Path) -> None:
-        import config
-
-        pdf_dir = config.STAGING_PDFS_DIR
-        original_payload = {
-            "variables": {"X": {}, "Y": {}},
-            "sections": {"a": {"context": "...", "variables": ["X", "Y"]}},
-        }
-        path = self._seed(pdf_dir, "x_variables.json", original_payload)
-        before = path.read_text(encoding="utf-8")
-
-        removed = prune_pdfs(set(), pdf_dir)
-
-        assert path.read_text(encoding="utf-8") == before
-        assert removed == 0
-
-
 # ── run_propagation ────────────────────────────────────────────────────────
 
 
@@ -475,41 +352,16 @@ class TestRunPropagation:
             ],
         )
 
-        # 4. Staging PDFs — contains AGE_DROPPED variable + section reference.
-        pdf_dir = config.STAGING_PDFS_DIR
-        pdf_dir.mkdir(parents=True, exist_ok=True)
-        pdf_json = pdf_dir / "form1_variables.json"
-        pdf_json.write_text(
-            json.dumps(
-                {
-                    "form_name": "form1",
-                    "variables": {"SUBJID": {}, "AGE_DROPPED": {}},
-                    "sections": {
-                        "demo": {
-                            "context": "...",
-                            "variables": ["SUBJID", "AGE_DROPPED"],
-                        }
-                    },
-                }
-            ),
-            encoding="utf-8",
-        )
-
-        # 5. Run end-to-end.
+        # 4. Run end-to-end.
         run_propagation()
 
-        # 6. Assert dictionary pruned.
+        # 5. Assert dictionary pruned.
         dict_rows = [
             json.loads(line) for line in dict_jsonl.read_text(encoding="utf-8").splitlines()
         ]
         assert [r[_DICT_VAR_KEY] for r in dict_rows] == ["SUBJID"]
 
-        # 7. Assert PDF pruned.
-        pdf_data = json.loads(pdf_json.read_text(encoding="utf-8"))
-        assert "AGE_DROPPED" not in pdf_data["variables"]
-        assert pdf_data["sections"]["demo"]["variables"] == ["SUBJID"]
-
-        # 8. Dict/PDF legs emit no audit artifact — only the dataset audit
+        # 6. Dictionary leg emits no audit artifact — only the dataset audit
         #    that we seeded in step 1 should exist under STUDY_AUDIT_DIR.
         audit_files = sorted(p.name for p in config.STUDY_AUDIT_DIR.glob("*.json"))
         assert audit_files == ["dataset_cleanup_report.json"]

@@ -184,7 +184,6 @@ def test_ensure_directories_hardens_sensitive_dirs_to_0700(
             "TRIO_BUNDLE_DIR",
             "TRIO_DATASETS_DIR",
             "DICTIONARY_JSON_OUTPUT_DIR",
-            "PDF_EXTRACTIONS_DIR",
             "STUDY_AUDIT_DIR",
             "AGENT_STATE_DIR",
             "AGENT_OUTPUT_DIR",

@@ -33,7 +33,6 @@ RUFF := $(UV) run ruff
 MYPY := $(UV) run mypy
 VERBOSE ?=
 FORCE ?=
-PDF_SOURCE ?=
 PROVIDER ?=
 MODEL ?=
 
@@ -47,12 +46,6 @@ ifdef FORCE
 FFLAG := --force
 else
 FFLAG :=
-endif
-
-ifdef PDF_SOURCE
-PDFFLAG := --pdf-source $(PDF_SOURCE)
-else
-PDFFLAG :=
 endif
 
 ifdef PROVIDER
@@ -78,7 +71,7 @@ N := \033[0m
 .DEFAULT_GOAL := help
 .PHONY: \
 	help quickstart debug sync version \
-	pipeline dictionary extract-datasets build-llm-source verify-and-promote consolidate-dictionary bundle pdf-extract \
+	pipeline dictionary extract-datasets build-llm-source verify-and-promote consolidate-dictionary bundle \
 	chat-deps chat-cli-deps chat-cli chat build-variables \
 	snapshot snapshot-study restore-study list-snapshots \
 	test test-all lint typecheck security ci verify release-check \
@@ -105,13 +98,12 @@ help:
 	@printf "  $(C)make version$(N)          Show version + environment info\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Pipeline — full$(N)\n"
-	@printf "  $(C)make pipeline$(N)         Dict → Datasets → PDF → Bundle\n"
+	@printf "  $(C)make pipeline$(N)         Dict → Datasets → Bundle\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Pipeline — individual steps$(N)\n"
 	@printf "  $(C)make dictionary$(N)       Step 0  — Load data dictionary → JSON\n"
 	@printf "  $(C)make extract-datasets$(N) Step 1+3 — Extract → promote datasets\n"
-	@printf "  $(C)make bundle$(N)           Step 2   — Build Trio bundle (dict + pdf + datasets)\n"
-	@printf "  $(C)make pdf-extract$(N)      Standalone — Extract annotated PDFs → JSON\n"
+	@printf "  $(C)make bundle$(N)           Step 2   — Build Trio bundle (dict + datasets)\n"
 	@printf "\n"
 	@printf "$(B)$(G)  AI Assistant$(N)\n"
 	@printf "  $(C)make chat-cli$(N)         Start interactive AI Assistant chat (CLI)\n"
@@ -150,7 +142,6 @@ help:
 	@printf "$(Y)  Modifiers:$(N)\n"
 	@printf "  $(Y)VERBOSE=1$(N) make <target>   Enable DEBUG logging\n"
 	@printf "  $(Y)FORCE=1$(N)   make <target>   Force re-run (ignore cache)\n"
-	@printf "  $(Y)PDF_SOURCE=/path$(N)            Use pre-extracted PDF JSON files\n"
 	@printf "  $(Y)PROVIDER=anthropic$(N)          LLM provider (ollama, anthropic, openai, google-genai)\n"
 	@printf "  $(Y)MODEL=claude-opus-4-7$(N)      LLM model name\n"
 	@printf "\n"
@@ -184,8 +175,8 @@ debug:
 # ═══════════════════════════════════════════════════════════════════════
 
 pipeline: build-llm-source
-	@printf "$(C)Running full pipeline: Dict → Datasets → PDF → Bundle → Variables$(N)\n"
-	@$(PYTHON) main.py --pipeline $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG) $(FFLAG) $(PDFFLAG)
+	@printf "$(C)Running full pipeline: Dict → Datasets → Bundle$(N)\n"
+	@$(PYTHON) main.py --pipeline $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG) $(FFLAG)
 	@printf "$(G)✓ Pipeline complete$(N)\n"
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -250,14 +241,8 @@ consolidate-dictionary: ## Merge trio_bundle/dictionary/*.json → llm_source/da
 
 bundle:
 	@printf "$(C)Step 2: Building Trio bundle...$(N)\n"
-	@$(PYTHON) main.py --build-bundle $(VFLAG) $(FFLAG) $(PDFFLAG)
+	@$(PYTHON) main.py --build-bundle $(VFLAG) $(FFLAG)
 	@printf "$(G)✓ Trio bundle built$(N)\n"
-
-pdf-extract:
-	@printf "$(C)PDF Extraction: annotated PDFs → structured JSON$(N)\n"
-	@$(PYTHON) -m scripts.extraction.extract_pdf_data
-	@printf "$(G)✓ PDF extraction complete$(N)\n"
-
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -304,8 +289,8 @@ build-variables:
 # REVIEWED SNAPSHOT BASELINE — trio_bundle backup / restore
 # ═══════════════════════════════════════════════════════════════════════
 # Lands in ``data/snapshots/{STUDY}/``. This is the single human-reviewed
-# fallback copied over ``output/{STUDY}/trio_bundle/`` when PDF extraction
-# fails or the operator clicks "Use Existing Study".
+# fallback copied over ``output/{STUDY}/trio_bundle/`` when the operator
+# clicks "Use Existing Study".
 # FORCE=1           allow overwriting the existing reviewed snapshot
 
 snapshot-study:

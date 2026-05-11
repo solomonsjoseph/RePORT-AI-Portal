@@ -18,22 +18,19 @@ The pipeline consists of the following stages (executed in order):
     2. **Dataset Processing (Step 1+3):** Extract tabular study datasets via
        ``process_datasets()``, landing cleaned JSONL into the staging datasets
        dir along with a list of per-column drop events.
-    3. **PDF Preparation (Step 1.5):** Copy pre-extracted PDF JSON files from
-       ``--pdf-source`` or run automatic extraction from annotated PDFs into
-       the staging PDFs dir. If neither is available, the PDF leg is skipped.
-    4. **PHI Scrub (Step 1.6):** 8-action honest-broker catalog applied to
+    3. **PHI Scrub (Step 1.6):** 8-action honest-broker catalog applied to
        the staging datasets dir — keep → birthdate → drop → cap →
        generalize → suppress_small_cell → date jitter (SANT) → id
        pseudonymize (HMAC-SHA256). ~200 Indo-VAP-calibrated rules in
        ``scripts/security/phi_scrub.yaml``. Runs BEFORE cleanup so the
        dataset audit never records raw PHI. No-op when the YAML is absent.
-    5. **Dataset Cleanup (Step 1.7):** Remove known junk files and merge
+    4. **Dataset Cleanup (Step 1.7):** Remove known junk files and merge
        structural duplicates against the staging datasets dir; emit the
        unified dataset audit report under ``output/{STUDY}/audit/``.
-    6. **Cleanup Propagation (Step 1.8):** Compute the propagation drop-set
-       from the dataset audit and prune matching rows/keys from staging
-       dictionary + staging PDFs; emit two more leg audits.
-    7. **Publish (Step 2):** Atomically promote each staging leg into
+    5. **Cleanup Propagation (Step 1.8):** Compute the propagation drop-set
+       from the dataset audit and prune matching rows/keys from the staging
+       dictionary leg; emit a leg audit.
+    6. **Publish (Step 2):** Atomically promote each staging leg into
        ``trio_bundle/``. Prior trio subtrees are replaced per-leg; cross-
        filesystem rename falls back to copy-and-remove.
 
@@ -272,8 +269,8 @@ off-limits to the agent.
 
 ## Layout
 
-- `trio_bundle/` — GREEN zone. PHI-scrubbed datasets (JSONL), data dictionary
-  mappings, and structured PDF-form extractions. Part of
+- `trio_bundle/` — GREEN zone. PHI-scrubbed datasets (JSONL) and data
+  dictionary mappings. Part of
   the LLM agent's read surface (the other part is `agent/`, below). Each
   agent tool resolves every path through
   `scripts.ai_assistant.file_access.validate_agent_read`, which layers on
@@ -349,15 +346,13 @@ def _prepare_staging() -> None:
     # publish) read consistent paths regardless of the tmpfs opt-in.
     datasets_dir = staging / "datasets"
     dictionary_dir = staging / "dictionary"
-    pdfs_dir = staging / "pdfs"
     config.STUDY_STAGING_DIR = staging  # type: ignore[attr-defined]
     config.STAGING_DATASETS_DIR = datasets_dir  # type: ignore[attr-defined]
     config.STAGING_DICTIONARY_DIR = dictionary_dir  # type: ignore[attr-defined]
-    config.STAGING_PDFS_DIR = pdfs_dir  # type: ignore[attr-defined]
 
     prepare_staging(
         staging,
-        subdirs=(datasets_dir, dictionary_dir, pdfs_dir),
+        subdirs=(datasets_dir, dictionary_dir),
     )
     log.info("Staging workspace prepared at %s", staging)
 
@@ -431,11 +426,6 @@ def _publish_staging() -> dict[str, bool]:
             Path(config.DICTIONARY_JSON_OUTPUT_DIR),
             "dictionary",
         ),
-        "pdfs": _publish_leg(
-            Path(config.STAGING_PDFS_DIR),
-            Path(config.PDF_EXTRACTIONS_DIR),
-            "pdfs",
-        ),
     }
 
 
@@ -491,10 +481,9 @@ def _cleanup_staging() -> None:
 def _run_dict_leg(*, skip: bool) -> dict[str, Any]:
     """Extract data dictionary into ``STAGING_DICTIONARY_DIR``.
 
-    Independent of the dataset and PDF legs, so safe to run in parallel
-    with both. No PHI in the dictionary itself, so no scrub needed
-    here — the cleanup-propagation step still prunes dropped variables
-    later.
+    Independent of the dataset leg, so safe to run in parallel with it.
+    No PHI in the dictionary itself, so no scrub needed here — the
+    cleanup-propagation step still prunes dropped variables later.
     """
     if skip:
         log.info("--- Skipping Step 0: Data Dictionary Loading ---")
@@ -509,9 +498,9 @@ def _run_dataset_leg(*, force: bool, run_extraction: bool) -> dict[str, Any]:
     """Extract datasets into ``STAGING_DATASETS_DIR`` with input-hash cache.
 
     Returns ``dropped_events`` so the cleanup chain can mirror the
-    extraction-time drops into the dictionary + PDF legs. Safe to run in
-    parallel with the dictionary + PDF legs (different input dir,
-    different staging subdir, no shared mutable state).
+    extraction-time drops into the dictionary leg. Safe to run in parallel
+    with the dictionary leg (different input dir, different staging subdir,
+    no shared mutable state).
     """
     if not run_extraction:
         return {"leg": "datasets", "skipped": True, "dropped_events": []}
@@ -547,193 +536,6 @@ def _run_dataset_leg(*, force: bool, run_extraction: bool) -> dict[str, Any]:
     return {"leg": "datasets", "skipped": False, "dropped_events": dropped_events}
 
 
-def _run_pdf_leg(
-    *,
-    pdf_source: str | None,
-    run_pdf_extraction: bool,
-) -> dict[str, Any]:
-    """PDF preparation into ``STAGING_PDFS_DIR`` (one of three branches).
-
-    The PDF leg is the most likely to skip because it has the most
-    failure modes: no source PDFs, no LLM provider, capability gate
-    fails, network unreachable. Every skip path emits a *detailed*
-    diagnostic so an operator running ``--pipeline`` headlessly can
-    tell exactly why their bundle has no ``pdfs/`` leg.
-
-    Detailed skip-reason logging (PR #18 directive):
-        - missing source dir → log path + how to fix
-        - missing PDFs in source → log glob pattern + dir contents
-        - --pdf-source mode failures → log src + dest + which file
-        - extract_pdfs_to_jsonl errors → log per-file error list
-        - all-empty result → log distinguishing "no PDFs" from "all failed"
-    """
-    if not run_pdf_extraction:
-        log.info("Leg [pdfs]: skipped (--build-bundle / --pipeline not set)")
-        return {"leg": "pdfs", "skipped": True, "files_created": 0, "errors": []}
-
-    pdf_extractions_dir = Path(config.STAGING_PDFS_DIR)
-    from scripts.security.secure_env import assert_write_zone
-
-    assert_write_zone(pdf_extractions_dir)
-
-    # Branch (a): explicit --pdf-source path
-    if pdf_source is not None:
-        from scripts.security.secure_env import assert_not_raw
-
-        source_path = Path(pdf_source)
-        if not source_path.is_dir():
-            msg = f"--pdf-source directory not found: {source_path}"
-            log.error("Leg [pdfs]: %s", msg)
-            print(f"\n❌ {msg}")
-            sys.exit(1)
-        try:
-            assert_not_raw(source_path)
-        except Exception as exc:
-            log.error("Leg [pdfs]: --pdf-source rejected by zone guard: %s", exc)
-            print(f"\n❌ --pdf-source is in the raw data zone: {source_path}")
-            print("   Pre-extracted PDF files should be in an output/ or external directory.")
-            sys.exit(1)
-
-        json_files = sorted(
-            p
-            for p in source_path.glob("*_variables.json")
-            if p.is_file() and not p.name.startswith(".") and not p.name.startswith("~")
-        )
-        if not json_files:
-            msg = f"--pdf-source directory contains no *_variables.json files: {source_path}"
-            log.error("Leg [pdfs]: %s", msg)
-            print(f"\n❌ No *_variables.json files found in: {source_path}")
-            sys.exit(1)
-
-        pdf_extractions_dir.mkdir(parents=True, exist_ok=True)
-        copied = 0
-        for src_file in json_files:
-            dest_file = pdf_extractions_dir / src_file.name
-            tmp_dest = dest_file.with_suffix(".tmp")
-            try:
-                shutil.copy2(str(src_file), str(tmp_dest))
-                tmp_dest.replace(dest_file)
-                copied += 1
-            except OSError as exc:
-                log.error("Leg [pdfs]: copy failed %s: %s", src_file.name, exc)
-                if tmp_dest.exists():
-                    tmp_dest.unlink()
-                raise
-
-        log.info(
-            "Leg [pdfs]: copied %d pre-extracted JSON files from %s → %s",
-            copied,
-            source_path,
-            pdf_extractions_dir,
-        )
-        print(f"  ✓ Copied {copied} PDF extraction files from {source_path}")
-        return {"leg": "pdfs", "skipped": False, "files_created": copied, "errors": []}
-
-    # Branch (b): automatic extraction from annotated_pdfs/
-    annotated_pdfs_dir = Path(config.ANNOTATED_PDFS_DIR)
-    if not (annotated_pdfs_dir.is_dir() and list(annotated_pdfs_dir.glob("*.pdf"))):
-        # Branch (c): no source PDFs at all — detailed log so a debugger
-        # can tell whether the dir is missing entirely vs. dir exists but is empty.
-        if not annotated_pdfs_dir.exists():
-            msg = (
-                f"PDF leg skipped: source directory does not exist at {annotated_pdfs_dir}. "
-                "Create it and add annotated PDFs, or run with --pdf-source <path> "
-                "to use pre-extracted JSON files instead."
-            )
-        elif not annotated_pdfs_dir.is_dir():
-            msg = (
-                f"PDF leg skipped: {annotated_pdfs_dir} exists but is not a directory. "
-                "Inspect the path and replace with a directory of *.pdf files."
-            )
-        else:
-            try:
-                contents = sorted(p.name for p in annotated_pdfs_dir.iterdir())[:10]
-            except OSError:
-                contents = []
-            msg = (
-                f"PDF leg skipped: no *.pdf files found in {annotated_pdfs_dir}. "
-                f"Directory contents (up to 10): {contents}. "
-                "Add annotated PDFs to enable the PDF leg, or pass "
-                "--pdf-source <path> to copy pre-extracted JSON files."
-            )
-        log.warning("Leg [pdfs]: %s", msg)
-        print(f"  ⚠ {msg}")
-        return {"leg": "pdfs", "skipped": True, "files_created": 0, "errors": []}
-
-    try:
-        from scripts.extraction.extract_pdf_data import extract_pdfs_to_jsonl
-
-        log.info("Leg [pdfs]: starting automatic extraction from %s", annotated_pdfs_dir)
-        pdf_result = extract_pdfs_to_jsonl(pdf_dir=annotated_pdfs_dir)
-        files_created = int(pdf_result.get("files_created", 0))
-        pdf_errors = pdf_result.get("errors", []) or []
-        if files_created > 0:
-            log.info(
-                "Leg [pdfs]: complete (%d files created, %d errors)",
-                files_created,
-                len(pdf_errors),
-            )
-            print(f"  ✓ PDF extraction: {files_created} files created")
-        elif pdf_errors:
-            # All-failed case — emit the per-file error list at WARNING.
-            log.warning(
-                "Leg [pdfs]: extraction failed for ALL %d files. Per-file errors:",
-                len(pdf_errors),
-            )
-            for err in pdf_errors[:20]:
-                log.warning(
-                    "  - %s: %s",
-                    err.get("file", "<unknown>"),
-                    err.get("error", "<no message>"),
-                )
-            if len(pdf_errors) > 20:
-                log.warning("  … and %d more (full list in log)", len(pdf_errors) - 20)
-            print(
-                f"  ⚠ PDF extraction failed ({len(pdf_errors)} errors) "
-                f"— study forms will not be included. See log for per-file detail."
-            )
-        else:
-            log.warning(
-                "Leg [pdfs]: extraction produced no files (no errors recorded — "
-                "the source PDFs may be image-only without text, or the LLM "
-                "returned empty responses). Inspect %s and verify PDF text "
-                "is selectable. Pass --pdf-source <path> to skip the LLM tier.",
-                annotated_pdfs_dir,
-            )
-            print("  ⚠ PDF extraction produced no files — study forms not included")
-        return {
-            "leg": "pdfs",
-            "skipped": False,
-            "files_created": files_created,
-            "errors": pdf_errors,
-        }
-    except Exception as exc:
-        log.warning(
-            "Leg [pdfs]: extraction crashed: %s — study forms will not be included. "
-            "Tip: provide pre-extracted files with --pdf-source <path>.",
-            exc,
-            exc_info=True,
-        )
-        print(
-            f"  ⚠ PDF extraction failed: {exc}\n"
-            f"    Tip: provide pre-extracted files with --pdf-source <path>"
-        )
-        return {
-            "leg": "pdfs",
-            "skipped": True,
-            "files_created": 0,
-            "errors": [{"file": "", "error": str(exc)}],
-        }
-
-
-def _pdf_needs_snapshot_restore(pdf_leg_result: dict[str, Any]) -> bool:
-    """Return True when the PDF leg could not produce a clean fresh result."""
-
-    return bool(
-        pdf_leg_result.get("skipped")
-        or pdf_leg_result.get("errors")
-        or int(pdf_leg_result.get("files_created", 0) or 0) == 0
-    )
 
 
 def _restore_reviewed_snapshot_if_available(reason: str) -> bool:
@@ -966,7 +768,7 @@ For detailed documentation, see the Sphinx docs or README.md
         help="Launch the Streamlit web UI for the AI Assistant",
     )
 
-    # LLM provider / model overrides (apply to chat, web, pipeline, PDF extraction)
+    # LLM provider / model overrides (apply to chat, web, pipeline)
     parser.add_argument(
         "--provider",
         type=str,
@@ -984,7 +786,7 @@ For detailed documentation, see the Sphinx docs or README.md
     parser.add_argument(
         "--build-bundle",
         action="store_true",
-        help="Build the trio bundle contents (dictionary + PDF extractions)",
+        help="Build the trio bundle contents (dictionary leg)",
     )
     parser.add_argument(
         "--process-datasets",
@@ -996,18 +798,10 @@ For detailed documentation, see the Sphinx docs or README.md
         action="store_true",
         help="Run full pipeline: Extract → Promote → Bundle",
     )
-    parser.add_argument(
-        "--pdf-source",
-        type=str,
-        default=None,
-        metavar="PATH",
-        help="Directory of pre-extracted PDF JSON files to copy into the trio bundle. "
-        "When omitted, automatic PDF extraction is attempted.",
-    )
 
     args = parser.parse_args()
 
-    # Apply LLM overrides early — affects all paths (chat, web, pipeline, PDF).
+    # Apply LLM overrides early — affects all paths (chat, web, pipeline).
     if getattr(args, "provider", None):
         config.LLM_PROVIDER = args.provider  # type: ignore[attr-defined]
         os.environ["LLM_PROVIDER"] = args.provider
@@ -1045,7 +839,7 @@ For detailed documentation, see the Sphinx docs or README.md
         run_repl()
         return
 
-    # --build-bundle: dictionary + PDF preparation, NO dataset processing.
+    # --build-bundle: dictionary preparation, NO dataset processing.
     if args.build_bundle:
         args.skip_dictionary = False
 
@@ -1084,7 +878,6 @@ For detailed documentation, see the Sphinx docs or README.md
         print("\nPlease ensure your data directory structure is correct:")
         print(f"  data/raw/{config.STUDY_NAME}/datasets/")
         print(f"  data/raw/{config.STUDY_NAME}/data_dictionary/")
-        print(f"  data/raw/{config.STUDY_NAME}/annotated_pdfs/  (optional)")
         sys.exit(1)
 
     # Ensure required directories exist
@@ -1101,21 +894,20 @@ For detailed documentation, see the Sphinx docs or README.md
 
     force = args.force
 
-    # ── Steps 0 + 1 + 1.5: PARALLEL EXTRACTION PHASE ──
-    # Dictionary, datasets, and PDFs each read different RED inputs and write
-    # to different AMBER staging subdirs — they are fully decoupled, so we
-    # run them concurrently to amortise PDF-orchestrator HTTP latency against
-    # Excel parsing CPU. Cleanup chain (PHI scrub / dataset cleanup /
-    # propagation) and Publish are sequential AFTER the join because they
-    # have hard data dependencies on the extraction results.
-    print("\n--- Parallel extraction phase: Dictionary | Datasets | PDFs ---")
-    log.info("Starting parallel extraction phase (max_workers=3)")
+    # ── Steps 0 + 1: PARALLEL EXTRACTION PHASE ──
+    # Dictionary and datasets each read different RED inputs and write to
+    # different AMBER staging subdirs — they are fully decoupled, so we run
+    # them concurrently to amortise Excel parsing CPU against dataset I/O.
+    # Cleanup chain (PHI scrub / dataset cleanup / propagation) and Publish
+    # are sequential AFTER the join because they have hard data dependencies
+    # on the extraction results.
+    print("\n--- Parallel extraction phase: Dictionary | Datasets ---")
+    log.info("Starting parallel extraction phase (max_workers=2)")
 
     dropped_events: list[dict[str, Any]] = []
-    pdf_leg_result: dict[str, Any] = {"skipped": True, "files_created": 0, "errors": []}
     extraction_failures: list[tuple[str, BaseException]] = []
     extraction_start = time.time()
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=2) as executor:
         futures: dict[Any, str] = {
             executor.submit(_run_dict_leg, skip=args.skip_dictionary): "dictionary",
             executor.submit(
@@ -1123,11 +915,6 @@ For detailed documentation, see the Sphinx docs or README.md
                 force=force,
                 run_extraction=args.process_datasets and not args.skip_datasets,
             ): "datasets",
-            executor.submit(
-                _run_pdf_leg,
-                pdf_source=args.pdf_source,
-                run_pdf_extraction=bool(args.build_bundle or args.pipeline),
-            ): "pdfs",
         }
         for fut in as_completed(futures):
             leg_name = futures[fut]
@@ -1141,45 +928,20 @@ For detailed documentation, see the Sphinx docs or README.md
                 events = result.get("dropped_events", [])
                 if isinstance(events, list):
                     dropped_events = events
-            elif leg_name == "pdfs":
-                pdf_leg_result = result
 
     extraction_elapsed = time.time() - extraction_start
     log.info(
-        "Parallel extraction phase complete in %.1fs "
-        "(dataset drops: %d, pdfs created: %d, pdf errors: %d)",
+        "Parallel extraction phase complete in %.1fs (dataset drops: %d)",
         extraction_elapsed,
         len(dropped_events),
-        int(pdf_leg_result.get("files_created", 0) or 0),
-        len(pdf_leg_result.get("errors", []) or []),
     )
 
-    # Hard fail if a non-PDF leg crashed: the PDF leg is allowed to skip
-    # gracefully (its absence is logged in detail), but a dictionary or
-    # dataset crash leaves the cleanup chain with no input and we'd rather
-    # surface the failure here than corrupt trio_bundle.
-    blocking_failures = [(leg, err) for leg, err in extraction_failures if leg != "pdfs"]
-    if blocking_failures:
-        for leg, err in blocking_failures:
+    # Hard fail if any extraction leg crashed: the cleanup chain has no input
+    # and we'd rather surface the failure here than corrupt trio_bundle.
+    if extraction_failures:
+        for leg, err in extraction_failures:
             print(f"\n❌ Extraction leg [{leg}] failed: {err}")
         sys.exit(1)
-    # Replay any PDF leg crash now that we know the others survived.
-    for leg, err in extraction_failures:
-        if leg == "pdfs":
-            log.warning(
-                "PDF leg crashed during parallel dispatch; continuing without "
-                "PDF outputs. Cause: %s",
-                err,
-            )
-
-    if (
-        bool(args.build_bundle or args.pipeline)
-        and _pdf_needs_snapshot_restore(pdf_leg_result)
-        and _restore_reviewed_snapshot_if_available("PDF extraction failure or skip")
-    ):
-        _cleanup_staging()
-        print("\nPipeline used the reviewed snapshot baseline; fresh extraction was skipped.")
-        return
 
     # ── Step 1.6: PHI Scrub (date jitter + ID pseudonymization) ──
     # Operates on the STAGING datasets tree BEFORE Step 1.7 cleanup. Running
@@ -1225,12 +987,12 @@ For detailed documentation, see the Sphinx docs or README.md
 
             run_step("Step 1.7: Dataset Cleanup", run_cleanup)
 
-    # ── Step 1.8: Cleanup Propagation (dictionary + PDF pruning) ──
-    # Mirrors dataset drops into the dictionary and PDF staging trees. Safe
-    # no-op when nothing was dropped (emits empty-but-valid leg audits).
-    # Runs AFTER Steps 1.5/1.7 so both dict + pdf staging are populated and
-    # the dataset audit is on disk.
-    if Path(config.STAGING_DICTIONARY_DIR).is_dir() or Path(config.STAGING_PDFS_DIR).is_dir():
+    # ── Step 1.8: Cleanup Propagation (dictionary pruning) ──
+    # Mirrors dataset drops into the dictionary staging tree. Safe no-op
+    # when nothing was dropped (emits empty-but-valid leg audits). Runs
+    # AFTER Step 1.7 so dictionary staging is populated and the dataset
+    # audit is on disk.
+    if Path(config.STAGING_DICTIONARY_DIR).is_dir():
         run_step(
             "Step 1.8: Cleanup Propagation",
             lambda: run_propagation(),
@@ -1318,7 +1080,6 @@ For detailed documentation, see the Sphinx docs or README.md
     print(f"\n  Trio Bundle Root:    {trio}")
     print(f"    Datasets (JSONL):  {config.TRIO_DATASETS_DIR}")
     print(f"    Data Dictionary:   {config.DICTIONARY_JSON_OUTPUT_DIR}")
-    print(f"    PDF Extractions:   {config.PDF_EXTRACTIONS_DIR}")
     print(f"    Audit Reports:     {config.STUDY_AUDIT_DIR}")
     print(f"      Dataset Audit:     {config.AUDIT_DATASET_REPORT_PATH}")
     print(f"      PHI Scrub Audit:   {config.AUDIT_SCRUB_REPORT_PATH}")

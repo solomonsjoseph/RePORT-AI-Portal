@@ -15,7 +15,7 @@ from scripts.ai_assistant.agent_tools import ALL_TOOLS  # noqa: E402
 class TestToolRegistry:
     def test_all_tools_is_list(self) -> None:
         assert isinstance(ALL_TOOLS, list)
-        assert len(ALL_TOOLS) == 13
+        assert len(ALL_TOOLS) == 12
 
     def test_tools_have_names(self) -> None:
         for tool in ALL_TOOLS:
@@ -40,7 +40,6 @@ class TestToolRegistry:
             "run_python_analysis",
             "cross_reference_variables",
             "run_study_analysis",
-            "search_pdf_context",
             "answer_catalog_question",
         }
         assert expected == names
@@ -190,121 +189,6 @@ class TestFindVariableCandidates:
         # empty list and the tool must surface a clean diagnostic.
         raw = find_variable_candidates.invoke({"description": "anything"})
         assert "No variables reference" in raw
-
-
-class TestSearchPdfContext:
-    """Keyword search over extracted CRF form text."""
-
-    def _write_pdf_fixture(self, pdf_dir: Path) -> None:
-        pdf_dir.mkdir(parents=True, exist_ok=True)
-        (pdf_dir / "17 Eligibility.json").write_text(
-            json.dumps(
-                {
-                    "form_name": "Eligibility Confirmation Form - Cohort A",
-                    "source_pdf": "Form 17.pdf",
-                    "version": "v1.0",
-                    "summary": "Used to confirm final Cohort A eligibility "
-                    "within 6-month follow-up based on enrollment criteria.",
-                    "variables": {
-                        "EC_ELIG2A1": {
-                            "description": "Does the participant have "
-                            "culture-confirmed pulmonary TB?",
-                            "section_context": "Final Cohort A eligibility "
-                            "is confirmed within the 6-month follow-up period.",
-                        }
-                    },
-                }
-            )
-        )
-        (pdf_dir / "1B HHC.json").write_text(
-            json.dumps(
-                {
-                    "form_name": "Household Contact Screening Form",
-                    "source_pdf": "Form 1B.pdf",
-                    "summary": "Screens household contacts of index TB cases "
-                    "living in the same dwelling for at least 3 months.",
-                    "variables": {
-                        "BINCL01": {
-                            "description": "Past 3 months lived in same home",
-                            "section_context": "",
-                        }
-                    },
-                }
-            )
-        )
-
-    def test_returns_ranked_snippets(self, monkeypatch_config: Path) -> None:
-        import config
-        from scripts.ai_assistant.agent_tools import search_pdf_context
-        from scripts.ai_assistant.tool_cache import tool_cache
-
-        tool_cache.clear()
-        self._write_pdf_fixture(config.PDF_EXTRACTIONS_DIR)
-
-        raw = search_pdf_context.invoke({"query": "Cohort A eligibility", "k": 3})
-        payload = json.loads(raw)
-        assert payload["count"] >= 1
-        assert payload["snippets"][0]["rank"] == 1
-        assert 0.0 <= payload["snippets"][0]["score"] <= 1.0
-
-    def test_cites_form_name(self, monkeypatch_config: Path) -> None:
-        import config
-        from scripts.ai_assistant.agent_tools import search_pdf_context
-        from scripts.ai_assistant.tool_cache import tool_cache
-
-        tool_cache.clear()
-        self._write_pdf_fixture(config.PDF_EXTRACTIONS_DIR)
-
-        raw = search_pdf_context.invoke({"query": "household contact same dwelling"})
-        top = json.loads(raw)["snippets"][0]
-        assert "Household Contact" in top["form_name"]
-        assert top["source_pdf"] == "Form 1B.pdf"
-
-    def test_uses_abbreviation_variants(self, monkeypatch_config: Path) -> None:
-        import config
-        from scripts.ai_assistant.agent_tools import search_pdf_context
-        from scripts.ai_assistant.tool_cache import tool_cache
-
-        tool_cache.clear()
-        self._write_pdf_fixture(config.PDF_EXTRACTIONS_DIR)
-
-        raw = search_pdf_context.invoke({"query": "HHC same home"})
-        top = json.loads(raw)["snippets"][0]
-        assert "Household Contact" in top["form_name"]
-
-    def test_low_confidence_flag(self, monkeypatch_config: Path) -> None:
-        import config
-        from scripts.ai_assistant.agent_tools import search_pdf_context
-        from scripts.ai_assistant.tool_cache import tool_cache
-
-        tool_cache.clear()
-        self._write_pdf_fixture(config.PDF_EXTRACTIONS_DIR)
-
-        raw = search_pdf_context.invoke({"query": "participant enrollment"})
-        payload = json.loads(raw)
-        # low-confidence flag set on weak matches
-        assert "low_confidence" in payload
-
-    def test_no_pdfs_directory(self, monkeypatch_config: Path) -> None:
-        from scripts.ai_assistant.agent_tools import search_pdf_context
-        from scripts.ai_assistant.tool_cache import tool_cache
-
-        tool_cache.clear()
-        # monkeypatch_config points everything at tmp_path, so pdfs dir is empty
-        raw = search_pdf_context.invoke({"query": "anything"})
-        assert "No extracted PDF context" in raw or '"count": 0' in raw
-
-    def test_no_matches(self, monkeypatch_config: Path) -> None:
-        import config
-        from scripts.ai_assistant.agent_tools import search_pdf_context
-        from scripts.ai_assistant.tool_cache import tool_cache
-
-        tool_cache.clear()
-        self._write_pdf_fixture(config.PDF_EXTRACTIONS_DIR)
-
-        raw = search_pdf_context.invoke({"query": "quantum chromodynamics"})
-        payload = json.loads(raw)
-        assert payload["count"] == 0
 
 
 # ---------------------------------------------------------------------------

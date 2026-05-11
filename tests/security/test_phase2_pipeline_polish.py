@@ -37,28 +37,6 @@ def test_sandbox_runner_chmods_sandbox_result_manifest() -> None:
     ), "_sandbox_result.json must be chmod'd 0o600 in _emit_manifest (see runner.py:_emit_manifest)"
 
 
-# ── N5 — PDF staging zone assertion ─────────────────────────────────────────
-
-
-def test_main_zone_asserts_pdf_staging_destination() -> None:
-    """``main.py`` must call ``assert_write_zone(pdf_extractions_dir)`` at
-    the inlet, not just at publish time. Catches a misconfigured
-    ``STAGING_PDFS_DIR`` before any PDF write touches disk."""
-    src = Path("main.py").read_text(encoding="utf-8")
-    # Find the line where pdf_extractions_dir is assigned, then look for an
-    # assert_write_zone within the next 8 lines.
-    lines = src.splitlines()
-    for i, line in enumerate(lines):
-        if "pdf_extractions_dir = Path(config.STAGING_PDFS_DIR)" in line:
-            window = "\n".join(lines[i : i + 8])
-            assert "assert_write_zone(pdf_extractions_dir)" in window, (
-                "main.py must call assert_write_zone(pdf_extractions_dir) "
-                "immediately after resolving STAGING_PDFS_DIR"
-            )
-            return
-    pytest.fail("Could not locate pdf_extractions_dir assignment in main.py")
-
-
 # ── N2 — secure-remove old trio_bundle on republish ─────────────────────────
 
 

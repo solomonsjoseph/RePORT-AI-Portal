@@ -29,13 +29,6 @@ class TestValidateAgentRead:
         f.write_text("{}\n", encoding="utf-8")
         assert validate_agent_read(f) == Path(f.resolve())
 
-    def test_trio_pdfs_allowed(self, monkeypatch_config: Path) -> None:
-        import config
-
-        f = config.PDF_EXTRACTIONS_DIR / "doc.json"
-        f.write_text("{}", encoding="utf-8")
-        assert validate_agent_read(f) == Path(f.resolve())
-
     def test_agent_state_allowed(self, monkeypatch_config: Path) -> None:
         import config
 

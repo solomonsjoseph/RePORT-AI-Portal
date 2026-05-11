@@ -69,10 +69,6 @@ definitions, study design):
 - `cross_reference_variables` — shows which datasets contain a variable and \
   its completeness percentage
 - `get_study_overview` — top-level summary of dataset/variable/form counts
-- `search_pdf_context` — keyword search over extracted CRF text (eligibility \
-  criteria, definitions, follow-up schedules, procedures). If the top \
-  `score` is below 0.4, tell the user that the full protocol document is \
-  likely needed for a complete answer.
 
 **When the question is about actual data, counts, or distributions**:
 - `query_dataset` — fetch records from a dataset with optional filters
@@ -94,7 +90,6 @@ definitions, study design):
 - Question asks for counts, distributions, or comparisons → data tools.
 - Question asks about risk factors, predictors, or associations → \
   `run_study_analysis`.
-- Question is about study design, protocol, or definitions → `search_pdf_context`.
 - Phrasing is ambiguous → `find_variable_candidates` to surface a shortlist \
   rather than guessing.
 - Multi-step question (e.g. "find the malnutrition variable, then show its \
@@ -294,9 +289,8 @@ the catalog metadata answer instead of running a numerical analysis.
 
 The legacy lookup tools (``search_variables``, ``get_variable_details``, \
 ``find_variable_candidates``, ``list_forms``, ``get_form_variables``, \
-``cross_reference_variables``, ``search_pdf_context``) are still \
-available; use them only when ``answer_catalog_question`` cannot \
-resolve the question (e.g., narrative PDF context).
+``cross_reference_variables``) are still available; use them only when \
+``answer_catalog_question`` cannot resolve the question.
 
 ---
 

@@ -196,10 +196,10 @@ class TestRuntimeToolSelection:
     """
 
     def test_all_tools_constant_unchanged_count(self) -> None:
-        """ALL_TOOLS pins the union — must remain at 13 (legacy + catalog)."""
+        """ALL_TOOLS pins the union — 12 after Phase 5b retired search_pdf_context."""
         from scripts.ai_assistant.agent_tools import ALL_TOOLS
 
-        assert len(ALL_TOOLS) == 13
+        assert len(ALL_TOOLS) == 12
 
     def test_legacy_tools_when_flag_off(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(_RUNTIME_FLAG, raising=False)
