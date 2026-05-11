@@ -114,15 +114,18 @@ def run_fix_agent(
     proposed = 0
     rejected_no_invent = 0
     auto_fix_exhausted = 0
+    if llm_call is None:
+        return {
+            "proposed_fixes": 0,
+            "rejected_no_invent": 0,
+            "auto_fix_exhausted": 0,
+            "scanner_only": True,
+        }
+    # Ledger I/O stays outside the deny block: repeat_ledger_path lives in
+    # the audit dir, not in deny_paths, and a future caller widening
+    # deny_paths must not silently break ledger persistence.
+    ledger = _load_ledger(repeat_ledger_path)
     with read_deny(deny_paths) if deny_paths else nullcontext():
-        if llm_call is None:
-            return {
-                "proposed_fixes": 0,
-                "rejected_no_invent": 0,
-                "auto_fix_exhausted": 0,
-                "scanner_only": True,
-            }
-        ledger = _load_ledger(repeat_ledger_path)
         for f in findings:
             form = f["form"]
             vid = f["variable_id"]
@@ -194,7 +197,7 @@ def run_fix_agent(
             _write_pr_draft(output_pr_drafts_dir, form, vid, fix)
             proposed += 1
             ledger[ledger_key] = count + 1
-        _save_ledger(repeat_ledger_path, ledger)
+    _save_ledger(repeat_ledger_path, ledger)
     summary = {
         "proposed_fixes": proposed,
         "rejected_no_invent": rejected_no_invent,
