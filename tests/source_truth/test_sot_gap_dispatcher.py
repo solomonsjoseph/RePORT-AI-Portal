@@ -3,9 +3,14 @@ from pathlib import Path
 import pytest
 
 from scripts.source_truth.sot_gap_dispatcher import dispatch_forms
-
+from scripts.source_truth.sot_gap_merge import merge_approved_draft
 
 FIXTURE = Path("tests/fixtures/sot_gap")
+
+
+# ---------------------------------------------------------------------------
+# dispatcher
+# ---------------------------------------------------------------------------
 
 
 def test_dispatch_forms_runs_extractor_before_reviewer_within_each_form(tmp_path, monkeypatch):
@@ -166,3 +171,79 @@ def test_concurrency_clamping(concurrency_arg, expected_workers, monkeypatch):
         concurrency=concurrency_arg,
     )
     assert captured["max_workers"] == expected_workers
+
+
+# ---------------------------------------------------------------------------
+# merge_approved_draft
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def merge_dirs(tmp_path):
+    """Create SoT/drafts/evidence_packs scaffolding shared by merge tests."""
+    sot_dir = tmp_path / "SoT"
+    sot_dir.mkdir()
+    drafts_dir = tmp_path / "drafts"
+    drafts_dir.mkdir()
+    pack_drafts_dir = drafts_dir / "evidence_packs"
+    pack_drafts_dir.mkdir()
+    return sot_dir, drafts_dir, pack_drafts_dir
+
+
+def test_merge_overwrites_sot_yaml_and_keeps_evidence_pack(merge_dirs):
+    sot_dir, drafts_dir, pack_drafts_dir = merge_dirs
+
+    yaml_draft = drafts_dir / "8_CXR_policy.yaml.draft"
+    yaml_draft.write_text("form_id: 8_CXR\nvariables: []\n")
+    pack_draft = pack_drafts_dir / "8_CXR.json"
+    pack_draft.write_text('{"form": "8_CXR"}')
+
+    merge_approved_draft(
+        form="8_CXR",
+        draft_yaml_path=yaml_draft,
+        draft_pack_path=pack_draft,
+        sot_dir=sot_dir,
+    )
+
+    assert (sot_dir / "8_CXR_policy.yaml").read_text() == "form_id: 8_CXR\nvariables: []\n"
+    # Evidence pack draft remains in the drafts dir; final move to llm_source happens in Phase 2:
+    assert pack_draft.is_file()
+
+
+def test_merge_rejects_malformed_yaml(merge_dirs):
+    sot_dir, drafts_dir, pack_drafts_dir = merge_dirs
+
+    yaml_draft = drafts_dir / "8_CXR_policy.yaml.draft"
+    yaml_draft.write_text("form_id: 8_CXR\n  invalid:: indent\n")
+    pack_draft = pack_drafts_dir / "8_CXR.json"
+    pack_draft.write_text('{"form": "8_CXR"}')
+
+    with pytest.raises(ValueError, match="malformed"):
+        merge_approved_draft(
+            form="8_CXR",
+            draft_yaml_path=yaml_draft,
+            draft_pack_path=pack_draft,
+            sot_dir=sot_dir,
+        )
+
+    assert not (sot_dir / "8_CXR_policy.yaml").exists()
+    assert not (sot_dir / "8_CXR_policy.yaml.tmp").exists()
+
+
+def test_merge_raises_file_not_found_for_missing_draft(merge_dirs):
+    sot_dir, drafts_dir, pack_drafts_dir = merge_dirs
+
+    missing_yaml = drafts_dir / "missing_policy.yaml.draft"  # not created
+    pack_draft = pack_drafts_dir / "missing.json"
+    pack_draft.write_text('{"form": "missing"}')
+
+    with pytest.raises(FileNotFoundError):
+        merge_approved_draft(
+            form="missing",
+            draft_yaml_path=missing_yaml,
+            draft_pack_path=pack_draft,
+            sot_dir=sot_dir,
+        )
+
+    assert not (sot_dir / "missing_policy.yaml").exists()
+    assert not (sot_dir / "missing_policy.yaml.tmp").exists()
