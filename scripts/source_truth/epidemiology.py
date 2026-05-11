@@ -181,16 +181,6 @@ def _validate_role(variable_id: str, field_class: str | None, role: str) -> None
         )
 
 
-def _validate_cohort(cohort_id: str, supported: Sequence[str] | None) -> None:
-    if supported is None:
-        return
-    if cohort_id not in supported:
-        raise EpidemiologyPlanError(
-            f"cohort {cohort_id!r} is not in the supported cohorts "
-            f"({sorted(supported)!r}); cannot plan analysis."
-        )
-
-
 def _validate_timepoint(
     *,
     timepoint: str | None,
@@ -407,7 +397,11 @@ def plan_epidemiology_analysis(
             "outcome_variable_id is required; the planner refuses to pick an outcome heuristically."
         )
 
-    _validate_cohort(cohort_id, supported_cohorts)
+    if supported_cohorts is not None and cohort_id not in supported_cohorts:
+        raise EpidemiologyPlanError(
+            f"cohort {cohort_id!r} is not in the supported cohorts "
+            f"({sorted(supported_cohorts)!r}); cannot plan analysis."
+        )
 
     # Role validation runs before binding so identifier-class outcomes
     # surface as a role error rather than as a binding success that
