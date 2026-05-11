@@ -179,3 +179,16 @@ class TestConstants:
     def test_study_name_is_string(self) -> None:
         assert isinstance(config.STUDY_NAME, str)
         assert len(config.STUDY_NAME) > 0
+
+
+def test_legacy_constants_point_to_llm_source() -> None:
+    """Phase 5b: legacy trio_bundle constants must now point under llm_source/."""
+    import config
+    assert "trio_bundle" not in str(config.TRIO_DATASETS_DIR), (
+        f"TRIO_DATASETS_DIR still under trio_bundle/: {config.TRIO_DATASETS_DIR}"
+    )
+    assert str(config.TRIO_DATASETS_DIR).endswith("llm_source/dataset_schema/files")
+    assert "trio_bundle" not in str(config.DICTIONARY_JSON_OUTPUT_DIR), (
+        f"DICTIONARY_JSON_OUTPUT_DIR still under trio_bundle/: {config.DICTIONARY_JSON_OUTPUT_DIR}"
+    )
+    assert str(config.DICTIONARY_JSON_OUTPUT_DIR).endswith("llm_source/dictionary_mapping/jsonl")

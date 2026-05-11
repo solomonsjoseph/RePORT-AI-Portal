@@ -200,13 +200,18 @@ DATA_DICTIONARY_DIR = STUDY_DATA_DIR / "data_dictionary"
 
 # Trio bundle is the single consolidated clean-output tree.
 # Everything that was formerly split across clean/jsonl/* now lives here.
+# Phase 5b: TRIO_BUNDLE_DIR remains as a transitional constant — still used by
+# _pdf_context_snippets / extract_pdf_data / build_variables_reference and the
+# Task 4d cleanup. Will be removed once those callsites are deleted in 4c/4d.
 TRIO_BUNDLE_DIR = STUDY_OUTPUT_DIR / "trio_bundle"
-TRIO_DATASETS_DIR = TRIO_BUNDLE_DIR / "datasets"
 
 # LLM-visible source directory — canonical home for artefacts the agent reads.
 # Per CONTEXT.md §"Build Pipeline — May 2026", data_dictionary.json and other
 # LLM-facing files live here rather than in trio_bundle/.
 STUDY_LLM_SOURCE_DIR = STUDY_OUTPUT_DIR / "llm_source"
+
+# Phase 5b: re-pointed from trio_bundle/ to llm_source/ — name preserved for back-compat.
+TRIO_DATASETS_DIR = STUDY_LLM_SOURCE_DIR / "dataset_schema" / "files"
 
 # Canonical output path for the extracted data dictionary JSON.
 DICTIONARY_OUTPUT_PATH: Path = STUDY_LLM_SOURCE_DIR / "data_dictionary.json"
@@ -228,9 +233,9 @@ STUDY_AUDIT_DIR = STUDY_OUTPUT_DIR / "audit"
 AUDIT_DATASET_REPORT_PATH: Path = STUDY_AUDIT_DIR / "dataset_cleanup_report.json"
 AUDIT_SCRUB_REPORT_PATH: Path = STUDY_AUDIT_DIR / "phi_scrub_report.json"
 
-# Dictionary and PDF extraction artifacts live inside the trio bundle so
-# the LLM agent can read them alongside the canonical datasets.
-DICTIONARY_JSON_OUTPUT_DIR = TRIO_BUNDLE_DIR / "dictionary"
+# Phase 5b: re-pointed from trio_bundle/ to llm_source/ — name preserved for back-compat.
+DICTIONARY_JSON_OUTPUT_DIR = STUDY_LLM_SOURCE_DIR / "dictionary_mapping" / "jsonl"
+# PDF extraction artifacts still live under trio_bundle/; will be removed in Task 4c/4d.
 PDF_EXTRACTIONS_DIR = TRIO_BUNDLE_DIR / "pdfs"
 
 # ----------------------------------------------------------------------------
