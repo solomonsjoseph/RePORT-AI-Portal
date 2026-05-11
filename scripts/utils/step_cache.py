@@ -70,22 +70,10 @@ def hash_directory(
     *,
     extensions: frozenset[str] | None = None,
 ) -> dict[str, str]:
-    """Compute per-file SHA-256 hashes for every relevant file in *directory*.
+    """Recursively SHA-256 every file in *directory* and return ``{rel_path: hex}``.
 
-    Files are discovered recursively.  Hidden files, ``__pycache__`` dirs,
-    and ``.pyc`` files are excluded.  If *extensions* is provided, only
-    files whose suffix is in the set are included (e.g. ``{".xlsx", ".csv"}``).
-
-    The returned dict maps ``relative_path → hex_sha256``.  Keys are sorted
-    so that the overall dict is deterministic regardless of filesystem walk
-    order.
-
-    Args:
-        directory: Root directory to hash.
-        extensions: Optional allowlist of file suffixes to include.
-
-    Returns:
-        Sorted dict of ``{relative_path: sha256_hex}``.
+    Hidden files, ``__pycache__`` dirs, and ``.pyc`` files are excluded;
+    *extensions* (if given) restricts the walk to those suffixes.
     """
     if not directory.is_dir():
         return {}
