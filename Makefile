@@ -402,6 +402,9 @@ clean:
 	@if [ -d ".logs" ]; then find .logs/ -type f -mtime +7 -delete 2>/dev/null || true; fi
 	@printf "$(G)✓ Caches, sessions, stale logs cleaned$(N)\n"
 
+clean-legacy: ## Phase 5b: write pre-delete manifest, prune per-variable packs, delete legacy output dirs
+	$(UV) run --all-groups python -m scripts.utils.pre_delete_cleanup_cli
+
 nuke:
 	@printf "$(R)This removes generated state: .venv, output/, .logs/, logs/, tmp/, docs/sphinx/_build/, caches.$(N)\n"
 	@printf "$(Y)It preserves data/raw/ and data/snapshots/.$(N)\n"
