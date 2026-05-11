@@ -148,6 +148,10 @@ def test_repeat_threshold_marks_auto_fix_exhausted(tmp_path: Path) -> None:
     assert len(hitl) == 1
 
 
+@pytest.mark.skipif(
+    hasattr(os, "geteuid") and os.geteuid() == 0,
+    reason="chmod-based deny has no effect for root",
+)
 def test_deny_paths_enforced_during_run(tmp_path: Path) -> None:
     """When deny_paths is non-empty, those paths become unreadable during the run."""
     inp = _setup_inputs(tmp_path)

@@ -1,4 +1,4 @@
-"""Read-deny helper — `os.access(path, os.R_OK)` returns False after enforcement.
+"""Read-deny helper — `os.access(path, os.R_OK)` returns False inside the with-block.
 
 Note: tests assume non-root execution. chmod 000 has no effect for root.
 """
@@ -10,82 +10,79 @@ from pathlib import Path
 
 import pytest
 
-from scripts.utils.read_deny import enforce_read_deny, restore_read_access
+from scripts.utils.read_deny import read_deny
+
+_skip_as_root = pytest.mark.skipif(
+    hasattr(os, "geteuid") and os.geteuid() == 0,
+    reason="chmod-based denial has no effect for root",
+)
 
 
-def test_enforce_read_deny_blocks_os_access(tmp_path: Path) -> None:
+@_skip_as_root
+def test_read_deny_blocks_os_access(tmp_path: Path) -> None:
     target = tmp_path / "secret.jsonl"
     target.write_text('{"forbidden": "value"}\n')
     assert os.access(target, os.R_OK)
-    enforce_read_deny([target])
-    try:
+    with read_deny([target]):
         assert not os.access(target, os.R_OK), "read-deny should make os.R_OK return False"
-    finally:
-        restore_read_access([target])
 
 
-def test_restore_read_access_reverts(tmp_path: Path) -> None:
+def test_read_deny_restores_on_exit(tmp_path: Path) -> None:
     target = tmp_path / "secret.jsonl"
     target.write_text("payload\n")
-    enforce_read_deny([target])
-    restore_read_access([target])
+    with read_deny([target]):
+        pass
     assert os.access(target, os.R_OK)
 
 
-def test_enforce_read_deny_recursive_dir(tmp_path: Path) -> None:
+@_skip_as_root
+def test_read_deny_recursive_dir(tmp_path: Path) -> None:
     """Enforcing on a directory blocks reads of files inside it."""
     d = tmp_path / "row_jsonls"
     d.mkdir()
     inner = d / "form.jsonl"
     inner.write_text("payload\n")
-    enforce_read_deny([d])
-    try:
-        # Either the dir or the file should be unreadable (or both).
+    with read_deny([d]):
         assert not os.access(inner, os.R_OK) or not os.access(d, os.R_OK)
-    finally:
-        restore_read_access([d])
 
 
-def test_enforce_then_restore_round_trip_preserves_content(tmp_path: Path) -> None:
+def test_read_deny_round_trip_preserves_content(tmp_path: Path) -> None:
     target = tmp_path / "secret.jsonl"
     payload = '{"x": 1}\n'
     target.write_text(payload)
-    enforce_read_deny([target])
-    restore_read_access([target])
-    # After restore, content is identical (chmod doesn't touch content).
+    with read_deny([target]):
+        pass
     assert target.read_text() == payload
 
 
-def test_enforce_idempotent(tmp_path: Path) -> None:
+def test_read_deny_restores_even_when_block_raises(tmp_path: Path) -> None:
     target = tmp_path / "secret.jsonl"
     target.write_text("payload\n")
-    enforce_read_deny([target])
-    enforce_read_deny([target])  # second call must not error
     try:
-        assert not os.access(target, os.R_OK)
-    finally:
-        restore_read_access([target])
+        with read_deny([target]):
+            raise RuntimeError("boom")
+    except RuntimeError:
+        pass
+    assert os.access(target, os.R_OK)
 
 
-def test_restore_dir_also_restores_children(tmp_path: Path) -> None:
-    """Regression: restore must reach files inside a mode-0 directory.
+def test_read_deny_restores_dir_children(tmp_path: Path) -> None:
+    """Restore must reach files inside a mode-0 directory.
 
     Walking a chmod-0 directory yields no children via rglob (the dir is
-    unreadable), so the restore loop missed them and left files orphaned
-    at mode 0. Without this guard, downstream tests in the same pytest
-    session would hit PermissionError when reading published datasets.
+    unreadable), so a naive restore that re-walks misses them. The CM
+    records modes before any chmod runs and replays from the recorded
+    map on exit, so children come back.
     """
-
     d = tmp_path / "row_jsonls"
     d.mkdir()
     a = d / "a.jsonl"
     b = d / "b.jsonl"
     a.write_text("a\n")
     b.write_text("b\n")
-    enforce_read_deny([d])
-    restore_read_access([d])
-    # Both children must be readable again.
-    assert os.access(a, os.R_OK), "child a.jsonl should be readable after restore"
-    assert os.access(b, os.R_OK), "child b.jsonl should be readable after restore"
+    with read_deny([d]):
+        pass
+    assert os.access(a, os.R_OK)
+    assert os.access(b, os.R_OK)
     assert a.read_text() == "a\n"
     assert b.read_text() == "b\n"

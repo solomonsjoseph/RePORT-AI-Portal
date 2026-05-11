@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +21,7 @@ import yaml
 import config
 from scripts.extraction.io.file_io import atomic_write_json
 from scripts.utils.logging_system import get_logger
-from scripts.utils.read_deny import enforce_read_deny, restore_read_access
+from scripts.utils.read_deny import read_deny
 
 logger = get_logger(__name__)
 
@@ -113,9 +114,7 @@ def run_fix_agent(
     proposed = 0
     rejected_no_invent = 0
     auto_fix_exhausted = 0
-    if deny_paths:
-        enforce_read_deny(deny_paths)
-    try:
+    with read_deny(deny_paths) if deny_paths else nullcontext():
         if llm_call is None:
             return {
                 "proposed_fixes": 0,
@@ -196,9 +195,6 @@ def run_fix_agent(
             proposed += 1
             ledger[ledger_key] = count + 1
         _save_ledger(repeat_ledger_path, ledger)
-    finally:
-        if deny_paths:
-            restore_read_access(deny_paths)
     summary = {
         "proposed_fixes": proposed,
         "rejected_no_invent": rejected_no_invent,
