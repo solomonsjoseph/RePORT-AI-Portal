@@ -223,7 +223,7 @@ def _persist_code(
         "\n"
         "To replicate this analysis locally:\n"
         "    1. Activate the project venv: `uv sync && source .venv/bin/activate`\n"
-        "    2. Ensure the trio_bundle is present: ls output/{STUDY}/trio_bundle/datasets/\n"
+        "    2. Ensure the llm source is present: ls output/{STUDY}/llm_source/dataset_schema/files/\n"
         "    3. Run via the bundled helper: python -m scripts.ai_assistant.sandbox.replicate THIS_FILE\n"
         "\n"
         "Pre-loaded DataFrames in scope when this code ran:\n"

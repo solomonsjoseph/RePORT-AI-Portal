@@ -197,21 +197,21 @@ build-llm-source: ## Run SoT-driven build coordinator (Branch Y of pipeline)
 		printf "$(Y)>> SKIP build-llm-source for STUDY=$(STUDY): data/$(STUDY)/SoT/ not found.$(N)\n"; \
 		printf "$(Y)>> To enable, add per-form policy YAMLs under data/$(STUDY)/SoT/.$(N)\n"; \
 		exit 0; \
-	fi
-	@printf "$(C)$(B)>> Running build coordinator for STUDY=$(STUDY)$(N)\n"
+	fi; \
+	printf "$(C)$(B)>> Running build coordinator for STUDY=$(STUDY)$(N)\n"; \
 	$(UV) run --all-groups python -m scripts.source_truth.build \
 		--study $(STUDY) \
 		--policies-dir data/$(STUDY)/SoT \
 		--output-root output/$(STUDY) \
-		$(if $(COLUMN_INVENTORY),--column-inventory $(COLUMN_INVENTORY))
-	@$(MAKE) verify-and-promote STUDY=$(STUDY) --no-print-directory
+		$(if $(COLUMN_INVENTORY),--column-inventory $(COLUMN_INVENTORY)) && \
+	$(MAKE) verify-and-promote STUDY=$(STUDY) --no-print-directory
 
 verify-and-promote: ## Reconcile SoT vs scrubbed dataset; emit per-form discrepancies on mismatch
 	@if [ ! -d "data/$(STUDY)/SoT" ]; then \
 		printf "$(Y)>> SKIP verify-and-promote for STUDY=$(STUDY): data/$(STUDY)/SoT/ not found.$(N)\n"; \
 		exit 0; \
-	fi
-	@printf "$(C)$(B)>> Running verify-and-promote gate for STUDY=$(STUDY)$(N)\n"
+	fi; \
+	printf "$(C)$(B)>> Running verify-and-promote gate for STUDY=$(STUDY)$(N)\n"; \
 	$(UV) run --all-groups python -m scripts.source_truth.verify_and_promote --study $(STUDY)
 
 phi-audit: ## Run SoT-driven PHI sweep and emit drafts under tmp/

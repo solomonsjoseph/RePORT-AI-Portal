@@ -3,7 +3,7 @@
 All read-side tools resolve every path through
 ``scripts.ai_assistant.file_access.validate_agent_read`` — the unified
 agent-zone chokepoint. The permitted read zone is
-``output/{STUDY}/trio_bundle/`` (PHI-scrubbed artifacts) plus
+``output/{STUDY}/llm_source/`` (PHI-scrubbed artifacts) plus
 ``output/{STUDY}/agent/`` (the agent's own analysis outputs,
 and conversations). Telemetry lives under ``audit/`` and is
 off-limits to the agent, so is raw data and staging. Writes (analysis
@@ -420,7 +420,7 @@ def search_variables(query: str) -> str:
 
     variables = _combined_variable_reference()
     if not variables:
-        return "No variables reference found. Ensure trio_bundle/datasets/ is populated."
+        return "No variables reference found. Ensure llm_source/dataset_schema/files/ is populated."
 
     # Weighted scoring: prefer exact phrase hits in variable names/descriptions
     # and keep the payload compact for smaller local models.
@@ -538,7 +538,7 @@ def list_forms() -> str:
 
     variables = _combined_variable_reference()
     if not variables:
-        return "No variables reference found. Ensure trio_bundle/datasets/ is populated."
+        return "No variables reference found. Ensure llm_source/dataset_schema/files/ is populated."
 
     forms_dict: dict[str, dict[str, Any]] = {}
     for var in variables:
@@ -579,7 +579,7 @@ def get_form_variables(form_name: str) -> str:
 
     variables = _combined_variable_reference()
     if not variables:
-        return "No variables reference found. Ensure trio_bundle/datasets/ is populated."
+        return "No variables reference found. Ensure llm_source/dataset_schema/files/ is populated."
 
     # Word-split matching: rank forms by how many query words they contain.
     stop = {"form", "the", "a", "an", "of", "for", "and", "in", "-", "--"}
@@ -1514,7 +1514,7 @@ def find_variable_candidates(description: str, k: int = 3) -> str:
 
     variables = _combined_variable_reference()
     if not variables:
-        return "No variables reference found. Ensure trio_bundle/datasets/ is populated."
+        return "No variables reference found. Ensure llm_source/dataset_schema/files/ is populated."
 
     stop = {"the", "a", "an", "of", "for", "and", "in", "is", "to", "or", "on", "overall"}
     query_terms, query_phrase = _query_terms(description, stop=stop)

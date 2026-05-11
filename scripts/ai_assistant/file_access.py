@@ -1,11 +1,14 @@
 """Agent-world file-access boundary enforcement.
 
-The production LLM agent's permitted zones are (2026-04-24 boundary design):
+The production LLM agent's permitted zones are:
 
-* **Read** — ``TRIO_BUNDLE_DIR`` (scrubbed, k-anon-gated trio outputs) **or**
-  ``AGENT_STATE_DIR`` (its own analysis outputs and conversations).
-  A small allowlist admits read-only source-tree config files
-  (``config/study_knowledge.yaml``) that tool implementations need.
+* **Read** — ``STUDY_LLM_SOURCE_DIR`` (canonical PHI-scrubbed llm_source/
+  tree: dataset_schema, dictionary_mapping, study_metadata, concept),
+  ``TRIO_BUNDLE_DIR`` (legacy alias retained for back-compat; may be
+  empty post Phase 5b restructure) **or** ``AGENT_STATE_DIR`` (its own
+  analysis outputs and conversations). A small allowlist admits
+  read-only source-tree config files (``config/study_knowledge.yaml``)
+  that tool implementations need.
 * **Write** — ``AGENT_STATE_DIR`` only.
 
 Everything else — ``STUDY_AUDIT_DIR`` (incl. telemetry), ``RAW_DATA_DIR``,
@@ -59,10 +62,11 @@ def _zones() -> tuple[list[str], list[str], frozenset[str]]:
     """Recompute permitted zones from current config.
 
     Called per-validation so that ``conftest.py`` monkeypatches of
-    ``config.TRIO_BUNDLE_DIR`` / ``config.AGENT_STATE_DIR`` take effect.
-    Cost is trivial (two ``realpath`` calls).
+    ``config.STUDY_LLM_SOURCE_DIR`` / ``config.TRIO_BUNDLE_DIR`` /
+    ``config.AGENT_STATE_DIR`` take effect.
     """
     read_roots = [
+        _resolve(config.STUDY_LLM_SOURCE_DIR),
         _resolve(config.TRIO_BUNDLE_DIR),
         _resolve(config.AGENT_STATE_DIR),
     ]
@@ -98,7 +102,7 @@ def validate_agent_read(path: str | Path) -> Path:
             return Path(resolved)
     raise ZoneViolationError(
         f"Agent read rejected — path is outside the permitted zones "
-        f"(trio_bundle/ or agent/): {path}"
+        f"(llm_source/ or agent/): {path}"
     )
 
 
