@@ -71,7 +71,6 @@ def monkeypatch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setattr(config, "TRIO_DATASETS_DIR", trio / "datasets")
     monkeypatch.setattr(config, "DICTIONARY_JSON_OUTPUT_DIR", trio / "dictionary")
     monkeypatch.setattr(config, "PDF_EXTRACTIONS_DIR", trio / "pdfs")
-    monkeypatch.setattr(config, "VARIABLES_JSON_PATH", trio / "variables.json")
     monkeypatch.setattr(config, "STUDY_AUDIT_DIR", tmp_path / "audit")
     monkeypatch.setattr(
         config,
@@ -105,7 +104,7 @@ def monkeypatch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setattr(config, "TELEMETRY_SINK", telemetry_dir / "events.jsonl")
     monkeypatch.setattr(config, "STUDY_SNAPSHOTS_DIR", snapshots_baseline)
 
-    # Patch TMP_DIR so build_variables_reference uses isolated temp locations.
+    # Patch TMP_DIR so pipeline steps that stage tmp files use isolated locations.
     tmp_dir = tmp_path / "tmp"
     (tmp_dir / "extracted_variables").mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(config, "TMP_DIR", tmp_dir)

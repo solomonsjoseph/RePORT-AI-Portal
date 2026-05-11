@@ -43,9 +43,7 @@ def run_restore_drill() -> None:
             config.TRIO_BUNDLE_DIR = old_trio
             config.STUDY_SNAPSHOTS_DIR = old_snapshot
 
-        if not (restored / "variables.json").is_file() and not any(
-            (restored / "datasets").glob("*.jsonl")
-        ):
+        if not any((restored / "datasets").glob("*.jsonl")):
             raise snapshots.SnapshotError("Restore drill produced an empty trio bundle.")
 
 

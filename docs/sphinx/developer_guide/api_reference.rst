@@ -346,13 +346,14 @@ Web UI Modules
 Extraction Modules (continued)
 ------------------------------
 
-Build Variables Reference
-~~~~~~~~~~~~~~~~~~~~~~~~~
+.. note::
 
-.. automodule:: scripts.extraction.build_variables_reference
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   The ``scripts.extraction.build_variables_reference`` module was removed
+   in Phase 5b (Task 4c) as dead code. The unified ``variables.json``
+   artefact it produced was never written to disk in the active pipeline
+   and the agent loader silently returned ``[]``. The agent now derives
+   its variable reference from published dataset JSONL column schemas
+   plus the per-form evidence packs in ``llm_source/evidence_packs/``.
 
 Cleanup Propagation
 ~~~~~~~~~~~~~~~~~~~

@@ -74,8 +74,7 @@ def snapshot_exists() -> bool:
 
     root = _snapshot_root()
     return root.is_dir() and (
-        (root / "variables.json").is_file()
-        or any((root / "datasets").glob("*.jsonl"))
+        any((root / "datasets").glob("*.jsonl"))
         or any((root / "dictionary").glob("*.json"))
         or any((root / "pdfs").glob("*_variables.json"))
     )

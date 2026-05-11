@@ -48,12 +48,10 @@ class TestToolRegistry:
 
 class TestGetStudyOverview:
     def test_returns_string(self, monkeypatch_config: Path) -> None:
-        import config
         from scripts.ai_assistant.agent_tools import get_study_overview
 
-        vf = config.TRIO_BUNDLE_DIR / "variables.json"
-        vf.write_text(json.dumps([{"variable_name": "AGE", "description": "Age"}]))
-
+        # Phase 5b: agent reads variable metadata from published dataset
+        # JSONL column schemas, not a separate variables.json.
         result = get_study_overview.invoke({})
         assert isinstance(result, str)
 
@@ -70,9 +68,12 @@ class TestSearchVariables:
     def test_returns_string(self, monkeypatch_config: Path) -> None:
         import config
         from scripts.ai_assistant.agent_tools import search_variables
+        from scripts.ai_assistant.tool_cache import tool_cache
 
-        vf = config.TRIO_BUNDLE_DIR / "variables.json"
-        vf.write_text(json.dumps([{"variable_name": "AGE", "description": "Age at enrollment"}]))
+        tool_cache.clear()
+        (config.TRIO_DATASETS_DIR / "1A_ICScreening.jsonl").write_text(
+            json.dumps({"AGE": 30}) + "\n"
+        )
 
         result = search_variables.invoke({"query": "age"})
         assert isinstance(result, str)
@@ -83,7 +84,6 @@ class TestSearchVariables:
         from scripts.ai_assistant.tool_cache import tool_cache
 
         tool_cache.clear()
-        (config.TRIO_BUNDLE_DIR / "variables.json").write_text("[]")
         (config.TRIO_DATASETS_DIR / "1A_ICScreening.jsonl").write_text(
             json.dumps({"IS_ELIGIBLE": "Yes", "IS_VISDAT": "2014-07-02"}) + "\n"
         )
@@ -96,23 +96,14 @@ class TestSearchVariables:
 
 
 class TestGetFormVariables:
-    def test_dataset_form_match_beats_sparse_f1a_metadata(self, monkeypatch_config: Path) -> None:
+    def test_dataset_form_match_resolves_form(self, monkeypatch_config: Path) -> None:
+        """Phase 5b: form lookup now derives entirely from dataset columns,
+        no longer from sparse PDF-derived variables.json metadata."""
         import config
         from scripts.ai_assistant.agent_tools import get_form_variables
         from scripts.ai_assistant.tool_cache import tool_cache
 
         tool_cache.clear()
-        (config.TRIO_BUNDLE_DIR / "variables.json").write_text(
-            json.dumps(
-                [
-                    {
-                        "variable_name": "SUBJID",
-                        "form_name": "F1A",
-                        "description": "Participant ID",
-                    }
-                ]
-            )
-        )
         (config.TRIO_DATASETS_DIR / "1A_ICScreening.jsonl").write_text(
             json.dumps({"IS_ELIGIBLE": "Yes", "IS_AGE": 43}) + "\n"
         )
@@ -121,7 +112,6 @@ class TestGetFormVariables:
 
         names = {item["name"] for item in payload["variables"]}
         assert "IS_ELIGIBLE" in names
-        assert payload["form_name"] != "F1A"
 
 
 class TestQueryDataset:
@@ -147,88 +137,57 @@ class TestQueryDataset:
 
 
 class TestFindVariableCandidates:
-    """Fuzzy top-k disambiguator — must always return <= k ranked candidates."""
+    """Fuzzy top-k disambiguator — must always return <= k ranked candidates.
 
-    def _write_fixture(self, path: Path) -> None:
-        fixture = [
-            {
-                "variable_name": "AE_AGE",
-                "form_id": "95",
-                "form_name": "Serious Adverse Event Form",
-                "section": "Demographics",
-                "description": "Age at time of event (in Years)",
-                "data_type": "number",
-                "coded_options": "",
-            },
-            {
-                "variable_name": "AGE_ENROLL",
-                "form_id": "2A",
-                "form_name": "Index Case Clinical/Demographic Form",
-                "section": "Enrollment",
-                "description": "Age at enrollment (years)",
-                "data_type": "number",
-                "coded_options": "",
-            },
-            {
-                "variable_name": "BIDIYN",
-                "form_id": "2A",
-                "form_name": "Index Case Clinical/Demographic Form",
-                "section": "Smoking",
-                "description": "Smoked regularly: beedis, hand-rolled or unfiltered cigarettes",
-                "data_type": "enum",
-                "coded_options": "Y=Yes;N=No",
-            },
-        ]
-        path.write_text(json.dumps(fixture))
+    Phase 5b: The disambiguator now operates over dataset-column schemas
+    (the rich PDF-derived variables.json was dead code that never landed
+    on disk). Tests depending on form_id / coded_options / section fields
+    have been removed; that metadata now lives in the per-form evidence
+    packs which are consumed by ``answer_catalog_question``, not by the
+    generic ``find_variable_candidates`` retrieval tool.
+    """
+
+    def _write_jsonl_fixture(self, datasets_dir: Path) -> None:
+        # Three columns spread across two dataset files give the
+        # disambiguator material for fuzzy ranking.
+        (datasets_dir / "95_SAE.jsonl").write_text(
+            json.dumps({"AE_AGE": 42, "AE_DATE": "2020-01-01"}) + "\n"
+        )
+        (datasets_dir / "2A_IndexDemo.jsonl").write_text(
+            json.dumps({"AGE_ENROLL": 35, "BIDIYN": "Y"}) + "\n"
+        )
 
     def test_returns_valid_json(self, monkeypatch_config: Path) -> None:
         import config
         from scripts.ai_assistant.agent_tools import find_variable_candidates
+        from scripts.ai_assistant.tool_cache import tool_cache
 
-        self._write_fixture(config.TRIO_BUNDLE_DIR / "variables.json")
-        raw = find_variable_candidates.invoke({"description": "age at event", "k": 3})
+        tool_cache.clear()
+        self._write_jsonl_fixture(config.TRIO_DATASETS_DIR)
+        raw = find_variable_candidates.invoke({"description": "AGE", "k": 3})
         payload = json.loads(raw)
         assert payload["count"] >= 1
         assert payload["candidates"][0]["rank"] == 1
         assert 0.0 <= payload["candidates"][0]["confidence"] <= 1.0
 
-    def test_top_hit_is_the_right_one(self, monkeypatch_config: Path) -> None:
-        import config
-        from scripts.ai_assistant.agent_tools import find_variable_candidates
-
-        self._write_fixture(config.TRIO_BUNDLE_DIR / "variables.json")
-        raw = find_variable_candidates.invoke(
-            {"description": "age at time of serious adverse event", "k": 3}
-        )
-        payload = json.loads(raw)
-        assert payload["candidates"][0]["variable_name"] == "AE_AGE"
-        assert payload["candidates"][0]["form_id"] == "95"
-
     def test_clamps_k_to_bounds(self, monkeypatch_config: Path) -> None:
         import config
         from scripts.ai_assistant.agent_tools import find_variable_candidates
+        from scripts.ai_assistant.tool_cache import tool_cache
 
-        self._write_fixture(config.TRIO_BUNDLE_DIR / "variables.json")
+        tool_cache.clear()
+        self._write_jsonl_fixture(config.TRIO_DATASETS_DIR)
         # k=0 should behave like k=1
-        raw = find_variable_candidates.invoke({"description": "age", "k": 0})
+        raw = find_variable_candidates.invoke({"description": "AGE", "k": 0})
         assert json.loads(raw)["count"] == 1
 
-    def test_includes_form_context(self, monkeypatch_config: Path) -> None:
-        import config
-        from scripts.ai_assistant.agent_tools import find_variable_candidates
-
-        self._write_fixture(config.TRIO_BUNDLE_DIR / "variables.json")
-        raw = find_variable_candidates.invoke({"description": "beedis smoking", "k": 3})
-        top = json.loads(raw)["candidates"][0]
-        assert top["variable_name"] == "BIDIYN"
-        assert top["form_name"] == "Index Case Clinical/Demographic Form"
-        assert top["coded_options"]  # surfaced for enum disambiguation
-
     def test_empty_reference(self, monkeypatch_config: Path) -> None:
-        import config
         from scripts.ai_assistant.agent_tools import find_variable_candidates
+        from scripts.ai_assistant.tool_cache import tool_cache
 
-        (config.TRIO_BUNDLE_DIR / "variables.json").write_text("[]")
+        tool_cache.clear()
+        # No datasets, no variables.json — the loader must return an
+        # empty list and the tool must surface a clean diagnostic.
         raw = find_variable_candidates.invoke({"description": "anything"})
         assert "No variables reference" in raw
 
@@ -440,3 +399,28 @@ class TestSandboxRuntimeGuards:
         code = "import numpy as np\ndata = [1, 2, 3, 4, 5]\nprint('mean:', np.mean(data))\n"
         result = run_python_analysis.invoke(code)
         assert "mean: 3.0" in result
+
+
+# ---------------------------------------------------------------------------
+# Phase 5b Task 4c — dead variables.json pipeline must be removed
+# ---------------------------------------------------------------------------
+
+
+def test_load_variables_json_removed() -> None:
+    """_load_variables_json must not exist after Phase 5b."""
+    from scripts.ai_assistant import agent_tools
+
+    assert not hasattr(agent_tools, "_load_variables_json")
+
+
+def test_variables_json_path_removed() -> None:
+    """VARIABLES_JSON_PATH config constant must be removed."""
+    import config
+
+    assert not hasattr(config, "VARIABLES_JSON_PATH")
+
+
+def test_build_variables_reference_module_removed() -> None:
+    """The build_variables_reference module must be deleted."""
+    with pytest.raises(ImportError):
+        from scripts.extraction import build_variables_reference  # noqa: F401

@@ -74,7 +74,6 @@ MODULE_CATEGORY_MAP = {
     "scripts.extraction.load_dictionary": "data_cleaning_and_processing",
     "scripts.extraction.dedup": "data_cleaning_and_processing",
     "scripts.extraction.dataset_cleanup": "data_cleaning_and_processing",
-    "scripts.extraction.build_variables_reference": "data_cleaning_and_processing",
     "scripts.security.secure_env": "security",
     "scripts.ai_assistant.agent_graph": "AI Assistant/agent",
     "scripts.ai_assistant.agent_tools": "AI Assistant/agent",

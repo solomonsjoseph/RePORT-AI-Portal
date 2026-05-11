@@ -21,7 +21,7 @@ Tools
 1.  search_variables — fuzzy search across the unified variables reference
 2.  find_variable_candidates — always-returns-top-k ranked candidates for disambiguation
 3.  get_variable_details — full metadata for a specific variable
-4.  list_forms — list all CRF forms in the study (from variables.json)
+4.  list_forms — list all CRF forms in the study (derived from published trio bundle)
 5.  get_form_variables — list all variables belonging to a specific form
 6.  query_dataset — structural query on a JSONL dataset
 7.  get_dataset_stats — summary statistics for a dataset (record counts, columns)
@@ -62,19 +62,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
-
-def _load_variables_json() -> list[dict[str, Any]]:
-    """Load the unified variables.json from the trio bundle."""
-    path = config.VARIABLES_JSON_PATH
-    if not path.exists():
-        return []
-    try:
-        validated = validate_agent_read(path)
-        return json.loads(validated.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
-    except (json.JSONDecodeError, OSError):
-        logger.warning("Failed to load variables.json from %s", path)
-        return []
 
 
 # Pipeline-internal columns — filter from query results.
@@ -169,7 +156,7 @@ def _dataset_label(stem: str) -> str:
 def _load_dataset_column_variables() -> list[dict[str, Any]]:
     """Expose published dataset columns as retrieval candidates.
 
-    ``variables.json`` can be sparse when PDF metadata is unavailable. The
+    The per-form evidence packs may not enumerate every published column. The
     agent still needs to discover columns that are demonstrably present in the
     published trio bundle, so we build a metadata-only reference from JSONL
     headers without surfacing row values.
@@ -239,14 +226,12 @@ def _load_dataset_column_variables() -> list[dict[str, Any]]:
 
 
 def _combined_variable_reference() -> list[dict[str, Any]]:
-    variables = _load_variables_json()
-    seen = {str(v.get("variable_name") or "").upper() for v in variables}
-    dataset_only = [
-        v
-        for v in _load_dataset_column_variables()
-        if str(v.get("variable_name") or "").upper() not in seen
-    ]
-    return [*variables, *dataset_only]
+    # Phase 5b: the unified variables.json pipeline was dead code (never
+    # produced on disk and the loader silently returned []). The agent now
+    # relies entirely on published dataset column schemas; the per-form
+    # evidence packs and study_metadata_catalog.json are consumed by the
+    # catalog-side tools, not this generic retrieval surface.
+    return _load_dataset_column_variables()
 
 
 # Conservative default quasi-identifier columns for Indo-VAP. The k-anon
@@ -437,7 +422,7 @@ def search_variables(query: str) -> str:
 
     variables = _combined_variable_reference()
     if not variables:
-        return "No variables reference found. Run --build-variables first."
+        return "No variables reference found. Ensure trio_bundle/datasets/ is populated."
 
     # Weighted scoring: prefer exact phrase hits in variable names/descriptions
     # and keep the payload compact for smaller local models.
@@ -485,7 +470,7 @@ def search_variables(query: str) -> str:
                         "variable_name": name,
                         "form_name": var.get("form_name") or "",
                         "dataset": var.get("dataset") or "",
-                        "source": var.get("source") or "variables_json",
+                        "source": var.get("source") or "dataset_schema",
                         "section": var.get("section") or "",
                         "description": desc,
                         "data_type": var.get("data_type", "unknown"),
@@ -555,7 +540,7 @@ def list_forms() -> str:
 
     variables = _combined_variable_reference()
     if not variables:
-        return "No variables reference found. Run --build-variables first."
+        return "No variables reference found. Ensure trio_bundle/datasets/ is populated."
 
     forms_dict: dict[str, dict[str, Any]] = {}
     for var in variables:
@@ -596,7 +581,7 @@ def get_form_variables(form_name: str) -> str:
 
     variables = _combined_variable_reference()
     if not variables:
-        return "No variables reference found. Run --build-variables first."
+        return "No variables reference found. Ensure trio_bundle/datasets/ is populated."
 
     # Word-split matching: rank forms by how many query words they contain.
     stop = {"form", "the", "a", "an", "of", "for", "and", "in", "-", "--"}
@@ -876,8 +861,9 @@ def get_study_overview() -> str:
     if hit is not None:
         return hit
 
-    # Variables summary
-    variables = _load_variables_json()
+    # Variables summary — sourced from the published trio dataset schemas
+    # (per-form evidence packs carry PHI metadata; see Phase 5b notes).
+    variables = _combined_variable_reference()
     phi_count = sum(1 for v in variables if v.get("is_phi"))
 
     # Dataset counts
@@ -892,7 +878,9 @@ def get_study_overview() -> str:
             dataset_files.append(f.name)
             total_records += count
 
-    # Forms count (derived from unique form_name values in variables.json)
+    # Forms count (derived from unique form_name values in the combined
+    # variable reference; the per-form evidence packs are the canonical
+    # source for CRF metadata, but this overview only needs a count.)
     form_count = len({v.get("form_name") for v in variables if v.get("form_name")})
 
     overview = {
@@ -1141,8 +1129,8 @@ def cross_reference_variables(variable_name: str) -> str:
 
     pat = re.compile(re.escape(variable_name), re.IGNORECASE)
 
-    # 1. Variable definitions from reference
-    variables = _load_variables_json()
+    # 1. Variable definitions from reference (dataset column schemas)
+    variables = _combined_variable_reference()
     matching_vars = [
         {
             "variable_name": v.get("variable_name"),
@@ -1528,7 +1516,7 @@ def find_variable_candidates(description: str, k: int = 3) -> str:
 
     variables = _combined_variable_reference()
     if not variables:
-        return "No variables reference found. Run --build-variables first."
+        return "No variables reference found. Ensure trio_bundle/datasets/ is populated."
 
     stop = {"the", "a", "an", "of", "for", "and", "in", "is", "to", "or", "on", "overall"}
     query_terms, query_phrase = _query_terms(description, stop=stop)
@@ -1568,7 +1556,7 @@ def find_variable_candidates(description: str, k: int = 3) -> str:
                 "form_id": var.get("form_id") or "",
                 "form_name": var.get("form_name") or "",
                 "dataset": var.get("dataset") or "",
-                "source": var.get("source") or "variables_json",
+                "source": var.get("source") or "dataset_schema",
                 "description": var.get("description") or "",
                 "data_type": var.get("data_type") or "unknown",
                 "coded_options": coded,

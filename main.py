@@ -36,8 +36,6 @@ The pipeline consists of the following stages (executed in order):
     7. **Publish (Step 2):** Atomically promote each staging leg into
        ``trio_bundle/``. Prior trio subtrees are replaced per-leg; cross-
        filesystem rename falls back to copy-and-remove.
-    8. **Variables Reference (Step 3):** Build ``trio_bundle/variables.json``
-       from the newly-published trio artefacts.
 
     Success only: the staging workspace (``tmp/{STUDY}/``) is deleted.
     Failure path: staging is preserved for operator inspection.
@@ -275,7 +273,7 @@ off-limits to the agent.
 ## Layout
 
 - `trio_bundle/` — GREEN zone. PHI-scrubbed datasets (JSONL), data dictionary
-  mappings, structured PDF-form extractions, and `variables.json`. Part of
+  mappings, and structured PDF-form extractions. Part of
   the LLM agent's read surface (the other part is `agent/`, below). Each
   agent tool resolves every path through
   `scripts.ai_assistant.file_access.validate_agent_read`, which layers on
@@ -958,11 +956,6 @@ For detailed documentation, see the Sphinx docs or README.md
         "Bypasses the incremental cache.",
     )
     parser.add_argument(
-        "--build-variables",
-        action="store_true",
-        help="Build unified variables.json from all annotation sources (extractions, dictionary)",
-    )
-    parser.add_argument(
         "--chat",
         action="store_true",
         help="Start the interactive AI Assistant chat REPL",
@@ -1052,27 +1045,6 @@ For detailed documentation, see the Sphinx docs or README.md
         run_repl()
         return
 
-    if getattr(args, "build_variables", False):
-        from scripts.extraction.build_variables_reference import build_variables_reference
-
-        log.setup_logger(
-            name=config.LOG_NAME,
-            log_level=logging.DEBUG if args.verbose else logging.INFO,
-            simple_mode=not args.verbose,
-            verbose=args.verbose,
-        )
-        _install_log_redactor_best_effort()
-        config.ensure_directories()
-        run_step(
-            "Build Variables Reference",
-            lambda: build_variables_reference(
-                trio_bundle_dir=config.TRIO_BUNDLE_DIR,
-                output_path=config.VARIABLES_JSON_PATH,
-                tmp_dir=config.TMP_DIR,
-            ),
-        )
-        return
-
     # --build-bundle: dictionary + PDF preparation, NO dataset processing.
     if args.build_bundle:
         args.skip_dictionary = False
@@ -1134,8 +1106,8 @@ For detailed documentation, see the Sphinx docs or README.md
     # to different AMBER staging subdirs — they are fully decoupled, so we
     # run them concurrently to amortise PDF-orchestrator HTTP latency against
     # Excel parsing CPU. Cleanup chain (PHI scrub / dataset cleanup /
-    # propagation) and Publish + variables.json are sequential AFTER the join
-    # because they have hard data dependencies on the extraction results.
+    # propagation) and Publish are sequential AFTER the join because they
+    # have hard data dependencies on the extraction results.
     print("\n--- Parallel extraction phase: Dictionary | Datasets | PDFs ---")
     log.info("Starting parallel extraction phase (max_workers=3)")
 
@@ -1278,21 +1250,6 @@ For detailed documentation, see the Sphinx docs or README.md
 
     run_step("Step 2: Publish Staging → Trio Bundle", run_publish)
 
-    # ── Step 3: Variables Reference (variables.json) ──
-    # Runs AFTER publish so build_variables_reference scans the populated
-    # trio_bundle tree, not the now-empty staging tree.
-    if args.pipeline:
-        from scripts.extraction.build_variables_reference import build_variables_reference
-
-        run_step(
-            "Step 3: Build Variables Reference",
-            lambda: build_variables_reference(
-                trio_bundle_dir=config.TRIO_BUNDLE_DIR,
-                output_path=config.VARIABLES_JSON_PATH,
-                tmp_dir=config.TMP_DIR,
-            ),
-        )
-
     # ── Step 4: Lineage Manifest (audit-ready evidence package) ──
     # Emits output/{STUDY}/audit/lineage_manifest.json pairing every raw
     # input file (SHA-256) with every published trio artifact (SHA-256),
@@ -1370,8 +1327,6 @@ For detailed documentation, see the Sphinx docs or README.md
     print(f"    Conversations:     {config.CONVERSATIONS_DIR}")
     print(f"    Telemetry:         {config.TELEMETRY_DIR}")
     print(f"    Reviewed Snapshot: {config.STUDY_SNAPSHOTS_DIR}")
-    if args.pipeline:
-        print(f"    Variables JSON:    {config.VARIABLES_JSON_PATH}")
     print("\n" + "=" * 70 + "\n")
 
 

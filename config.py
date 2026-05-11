@@ -201,8 +201,8 @@ DATA_DICTIONARY_DIR = STUDY_DATA_DIR / "data_dictionary"
 # Trio bundle is the single consolidated clean-output tree.
 # Everything that was formerly split across clean/jsonl/* now lives here.
 # Phase 5b: TRIO_BUNDLE_DIR remains as a transitional constant — still used by
-# _pdf_context_snippets / extract_pdf_data / build_variables_reference and the
-# Task 4d cleanup. Will be removed once those callsites are deleted in 4c/4d.
+# _pdf_context_snippets / extract_pdf_data and the Task 4d cleanup. Will be
+# removed once those callsites are deleted in 4d.
 TRIO_BUNDLE_DIR = STUDY_OUTPUT_DIR / "trio_bundle"
 
 # LLM-visible source directory — canonical home for artefacts the agent reads.
@@ -311,10 +311,10 @@ CONVERSATIONS_DIR: Path = AGENT_STATE_DIR / "conversations"
 # SNAPSHOT TIER (human-reviewed baseline; LLM-INVISIBLE)
 # ----------------------------------------------------------------------------
 # Snapshots are separate from raw data, agent state, and the live trio bundle.
-# They hold a cleaned-and-verified trio bundle (datasets / dictionary / pdfs /
-# variables.json) saved by a human after review. When PDF extraction fails or
-# the operator clicks "Use Existing Study", this baseline is copied over the
-# live ``output/{STUDY}/trio_bundle/``.
+# They hold a cleaned-and-verified trio bundle (datasets / dictionary / pdfs)
+# saved by a human after review. When PDF extraction fails or the operator
+# clicks "Use Existing Study", this baseline is copied over the live
+# ``output/{STUDY}/trio_bundle/``.
 #
 # Read posture:
 #   - The pipeline reads this baseline when fresh PDF extraction cannot
@@ -338,8 +338,6 @@ STAGING_DATASETS_DIR: Path = STUDY_STAGING_DIR / "datasets"
 STAGING_DICTIONARY_DIR: Path = STUDY_STAGING_DIR / "dictionary"
 STAGING_PDFS_DIR: Path = STUDY_STAGING_DIR / "pdfs"
 
-# Unified variables reference (built from dictionary + PDF extractions)
-VARIABLES_JSON_PATH: Path = TRIO_BUNDLE_DIR / "variables.json"
 # ----------------------------------------------------------------------------
 # PHI SCRUB
 # ----------------------------------------------------------------------------
