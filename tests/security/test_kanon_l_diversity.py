@@ -197,7 +197,7 @@ def test_query_dataset_blocks_when_a_filter_returns_a_small_class(
     # exercised by tests/test_secure_env.py + tests/test_file_access.py).
     import scripts.ai_assistant.agent_tools as ag
 
-    monkeypatch.setattr(ag, "assert_trio_bundle_zone", lambda _p: None)
+    monkeypatch.setattr(ag, "assert_output_zone", lambda _p: None)
     monkeypatch.setattr(ag, "validate_agent_read", lambda p: p)
 
     from scripts.ai_assistant.agent_tools import query_dataset
@@ -230,7 +230,7 @@ def test_query_dataset_passes_through_safe_rows(
     monkeypatch.setattr(config, "TRIO_DATASETS_DIR", tmp_path / "trio_bundle" / "datasets")
     import scripts.ai_assistant.agent_tools as ag
 
-    monkeypatch.setattr(ag, "assert_trio_bundle_zone", lambda _p: None)
+    monkeypatch.setattr(ag, "assert_output_zone", lambda _p: None)
     monkeypatch.setattr(ag, "validate_agent_read", lambda p: p)
 
     from scripts.ai_assistant.agent_tools import query_dataset

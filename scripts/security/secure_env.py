@@ -19,7 +19,6 @@ __all__ = [
     "assert_not_raw",
     "assert_output_not_in_data",
     "assert_output_zone",
-    "assert_trio_bundle_zone",
     "assert_write_zone",
     "validate_paths",
 ]
@@ -31,7 +30,7 @@ __all__ = [
 # CLEAN_MARKER points to the study-scoped trio_bundle dir for the active study.
 
 
-def _resolve_markers() -> tuple[str, str, str, str, str, str]:
+def _resolve_markers() -> tuple[str, str, str, str, str]:
     """Resolve zone marker paths from config, with fallback for isolated testing."""
     try:
         import config as _cfg
@@ -42,7 +41,6 @@ def _resolve_markers() -> tuple[str, str, str, str, str, str]:
             os.path.realpath(_cfg.TRIO_BUNDLE_DIR),
             os.path.realpath(_cfg.OUTPUT_DIR),
             os.path.realpath(_cfg.TMP_DIR),
-            os.path.realpath(_cfg.TRIO_BUNDLE_DIR),
         )
     except ImportError:
         project = str(Path(__file__).resolve().parents[2])
@@ -52,7 +50,6 @@ def _resolve_markers() -> tuple[str, str, str, str, str, str]:
             os.path.join(project, "output"),  # conservative fallback
             os.path.join(project, "output"),
             os.path.join(project, "tmp"),
-            os.path.join(project, "output"),  # conservative fallback
         )
 
 
@@ -62,7 +59,6 @@ def _resolve_markers() -> tuple[str, str, str, str, str, str]:
     _CLEAN_MARKER,
     _OUTPUT_MARKER,
     _TMP_MARKER,
-    _TRIO_BUNDLE_MARKER,
 ) = _resolve_markers()
 
 
@@ -139,32 +135,6 @@ def assert_output_zone(path: str | Path) -> None:
     resolved = _resolve(path)
     if not _is_within(resolved, _OUTPUT_MARKER):
         raise ZoneViolationError(f"Only paths under output/ are allowed here. Got: {path}")
-    if _is_within(resolved, _RAW_MARKER):
-        raise ZoneViolationError(
-            f"Access to raw data zone is forbidden at this pipeline stage: {path}"
-        )
-
-
-def assert_trio_bundle_zone(path: str | Path) -> None:
-    """Hard-fail if *path* is not under ``output/{STUDY}/trio_bundle/``.
-
-    Pipeline-side directory-level early-reject used at agent tool call sites
-    that glob study data from the trio bundle (variables.json,
-    datasets/*.jsonl, pdfs/*.json). It is narrower than
-    :func:`assert_output_zone` (which also accepts ``audit/``, ``agent/``,
-    etc.) but broader than the agent-runtime zone: the LLM agent's actual
-    read surface is ``trio_bundle/`` plus ``agent/``, enforced per path by
-    :func:`scripts.ai_assistant.file_access.validate_agent_read`. This
-    helper remains as a directory-level pre-flight before glob iteration.
-
-    Raises:
-        ZoneViolationError: path is outside ``output/{STUDY}/trio_bundle/``.
-    """
-    resolved = _resolve(path)
-    if not _is_within(resolved, _TRIO_BUNDLE_MARKER):
-        raise ZoneViolationError(
-            f"Only paths under output/{{STUDY}}/trio_bundle/ are allowed here. Got: {path}"
-        )
     if _is_within(resolved, _RAW_MARKER):
         raise ZoneViolationError(
             f"Access to raw data zone is forbidden at this pipeline stage: {path}"

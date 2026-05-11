@@ -125,7 +125,6 @@ def monkeypatch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
     monkeypatch.setattr(_se, "_OUTPUT_MARKER", str(tmp_path.resolve()))
     monkeypatch.setattr(_se, "_CLEAN_MARKER", str(trio.resolve()))
-    monkeypatch.setattr(_se, "_TRIO_BUNDLE_MARKER", str(trio.resolve()))
     monkeypatch.setattr(_se, "_RAW_MARKER", str((tmp_path / "raw").resolve()))
     monkeypatch.setattr(_se, "_DATA_MARKER", str((tmp_path / "data").resolve()))
     # _TMP_MARKER: staging paths live under tmp_dir (tmp_path/tmp), so assert_write_zone

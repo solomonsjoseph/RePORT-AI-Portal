@@ -8,7 +8,7 @@ scrubber (:mod:`.phi_scrub`), the query-time PHI gate and k-anonymity gate
 (:mod:`.phi_allowlist`).
 
 **Why.** A single import surface keeps call sites honest — downstream modules
-write ``from scripts.security import assert_trio_bundle_zone, phi_gate_check``
+write ``from scripts.security import assert_output_zone, phi_gate_check``
 rather than digging into the per-module layout. This also gates which
 symbols are part of the stable runtime contract (the ``__all__`` below) vs.
 internal implementation detail.
@@ -38,7 +38,6 @@ from .secure_env import (
     assert_not_raw,
     assert_output_not_in_data,
     assert_output_zone,
-    assert_trio_bundle_zone,
     assert_write_zone,
     validate_paths,
 )
@@ -50,7 +49,6 @@ __all__ = [  # noqa: RUF022 — grouped by concept for readability, not alphabet
     "assert_not_raw",
     "assert_output_not_in_data",
     "assert_output_zone",
-    "assert_trio_bundle_zone",
     "assert_write_zone",
     "validate_paths",
     # PHI scrub (8-action catalog)

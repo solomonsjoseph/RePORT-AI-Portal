@@ -10,9 +10,9 @@ off-limits to the agent, so is raw data and staging. Writes (analysis
 figures and narratives) are confined to ``output/{STUDY}/agent/`` via
 ``validate_agent_write``, with a narrower ``validate_sandbox_write``
 for the ``exec_python`` path (LLM-generated code → ``agent/analysis/``
-only). The pipeline-side ``assert_trio_bundle_zone`` / ``assert_output_zone``
-helpers are still called as directory-level early-rejects before glob
-iteration — they layer beneath the unified validator, not instead of it.
+only). The pipeline-side ``assert_output_zone`` helper is still called as a
+directory-level early-reject before glob iteration — it layers beneath the
+unified validator, not instead of it.
 Each tool is decorated with ``@tool`` so it is automatically registered
 with the LangGraph ReAct agent.
 
@@ -55,7 +55,7 @@ from scripts.ai_assistant.phi_safe import (
     sanitise_untrusted_snippet,
 )
 from scripts.ai_assistant.tool_cache import tool_cache
-from scripts.security.secure_env import assert_output_zone, assert_trio_bundle_zone
+from scripts.security.secure_env import assert_output_zone
 
 logger = logging.getLogger(__name__)
 
@@ -185,7 +185,7 @@ def _load_dataset_column_variables() -> list[dict[str, Any]]:
         except json.JSONDecodeError:
             pass
 
-    assert_trio_bundle_zone(datasets_dir)
+    assert_output_zone(datasets_dir)
     if not datasets_dir.is_dir():
         return []
 
@@ -673,7 +673,7 @@ def query_dataset(
         limit: Maximum number of records to return (default 20, max 100).
     """
     datasets_dir = config.TRIO_DATASETS_DIR
-    assert_trio_bundle_zone(datasets_dir)
+    assert_output_zone(datasets_dir)
 
     if not datasets_dir.is_dir():
         return "No datasets directory found."
@@ -801,7 +801,7 @@ def get_dataset_stats(dataset_name: str | None = None) -> str:
         return hit
 
     datasets_dir = config.TRIO_DATASETS_DIR
-    assert_trio_bundle_zone(datasets_dir)
+    assert_output_zone(datasets_dir)
 
     if not datasets_dir.is_dir():
         return "No datasets directory found."
@@ -1159,7 +1159,7 @@ def cross_reference_variables(variable_name: str) -> str:
 
     # 2. Dataset presence: scan first record for column discovery, then full scan
     datasets_dir = config.TRIO_DATASETS_DIR
-    assert_trio_bundle_zone(datasets_dir)
+    assert_output_zone(datasets_dir)
     dataset_presence: list[dict[str, Any]] = []
 
     if datasets_dir.is_dir():
@@ -1604,7 +1604,7 @@ def _pdf_context_snippets() -> list[dict[str, str]]:
         return cached  # type: ignore[return-value]
 
     pdf_dir = config.PDF_EXTRACTIONS_DIR
-    assert_trio_bundle_zone(pdf_dir)
+    assert_output_zone(pdf_dir)
     snippets: list[dict[str, str]] = []
     if not pdf_dir.exists():
         return snippets

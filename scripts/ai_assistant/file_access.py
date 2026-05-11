@@ -15,10 +15,10 @@ subclass from ``scripts.security.secure_env``).
 
 This module is the chokepoint: every agent-tool file read or write should
 call :func:`validate_agent_read` or :func:`validate_agent_write` before
-touching disk. The existing ``assert_trio_bundle_zone`` and
-``assert_output_zone`` in ``scripts.security.secure_env`` remain valid
-narrower checks — this module layers the expanded agent-runtime zone on
-top without changing pipeline-side enforcement.
+touching disk. The existing ``assert_output_zone`` in
+``scripts.security.secure_env`` remains a valid narrower check — this
+module layers the expanded agent-runtime zone on top without changing
+pipeline-side enforcement.
 """
 
 from __future__ import annotations
