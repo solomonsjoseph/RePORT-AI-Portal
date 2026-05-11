@@ -28,7 +28,9 @@ def run_restore_drill() -> None:
 
     with tempfile.TemporaryDirectory(prefix="report-ai-restore-drill-") as tmp:
         root = Path(tmp)
-        drill_trio = root / "trio_bundle"
+        # Mirror the live clean-zone dir name from config (avoids a hard-coded
+        # legacy literal that the Phase 5b lint_legacy_dirs check forbids).
+        drill_trio = root / Path(config.TRIO_BUNDLE_DIR).name
         drill_snapshot = root / "snapshot"
         _copy_if_exists(live_trio, drill_trio)
         shutil.copytree(reviewed_snapshot, drill_snapshot, symlinks=False)

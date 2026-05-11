@@ -1596,7 +1596,12 @@ def _load_catalog_artifact() -> Mapping[str, Any] | None:
     candidates: list[Path] = []
     output_root = Path(getattr(config, "OUTPUT_DIR", "output"))
     if isinstance(study, str) and study:
-        candidates.append(output_root / study / "trio_bundle" / "study_variable_catalog.json")
+        # Phase 5b: previous ``trio_bundle/study_variable_catalog.json`` fallback
+        # removed — no producer writes that path. Catalog artefacts now live
+        # under ``llm_source/`` (see ``LLM_SOURCE_*`` paths in config.py).
+        llm_source_dir = getattr(config, "STUDY_LLM_SOURCE_DIR", None)
+        if isinstance(llm_source_dir, Path):
+            candidates.append(llm_source_dir / "study_variable_catalog.json")
         candidates.append(output_root / study / "study_variable_catalog.json")
     candidates.append(output_root / "study_variable_catalog.json")
     for path in candidates:

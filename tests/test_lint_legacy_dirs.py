@@ -81,3 +81,78 @@ def test_linter_exit_code_zero_on_clean_dir(tmp_path: Path) -> None:
 
     rc = lint_scripts_dir(scripts_dir)
     assert rc == 0
+
+
+def test_linter_skips_tmp_dir_staging(tmp_path: Path) -> None:
+    """TMP_DIR-rooted staging is the Phase 5a intent — must NOT trigger."""
+    f = tmp_path / "ok.py"
+    f.write_text(
+        'staging_root = config.TMP_DIR / study / "staging"\n',
+        encoding="utf-8",
+    )
+    from scripts.lint_legacy_dirs import check_file
+
+    assert check_file(f) == []
+
+
+def test_linter_skips_tmp_dir_human_review(tmp_path: Path) -> None:
+    """TMP_DIR-rooted human_review is the Phase 5a intent — must NOT trigger."""
+    f = tmp_path / "ok.py"
+    f.write_text(
+        'review_dir = config.TMP_DIR / study / "human_review"\n',
+        encoding="utf-8",
+    )
+    from scripts.lint_legacy_dirs import check_file
+
+    assert check_file(f) == []
+
+
+def test_linter_skips_comments(tmp_path: Path) -> None:
+    """Pure comment lines describing the legacy migration must NOT trigger."""
+    f = tmp_path / "ok.py"
+    f.write_text(
+        "# Historical: this was written to trio_bundle/datasets/ before Phase 5b.\n"
+        'path = "llm_source/datasets/x.json"\n',
+        encoding="utf-8",
+    )
+    from scripts.lint_legacy_dirs import check_file
+
+    assert check_file(f) == []
+
+
+def test_linter_skips_docstrings(tmp_path: Path) -> None:
+    """Triple-quoted docstrings mentioning legacy names must NOT trigger."""
+    f = tmp_path / "ok.py"
+    f.write_text(
+        "def foo():\n"
+        '    """Reads from trio_bundle/datasets/ — historical note."""\n'
+        "    pass\n",
+        encoding="utf-8",
+    )
+    from scripts.lint_legacy_dirs import check_file
+
+    assert check_file(f) == []
+
+
+def test_linter_skips_compound_identifier_human_review(tmp_path: Path) -> None:
+    """``needs_human_review`` is a status string label, not a directory name."""
+    f = tmp_path / "ok.py"
+    f.write_text(
+        'PDF_EVIDENCE_NEEDS_HUMAN_REVIEW = "needs_human_review"\n',
+        encoding="utf-8",
+    )
+    from scripts.lint_legacy_dirs import check_file
+
+    assert check_file(f) == []
+
+
+def test_linter_skips_trio_bundle_dir_constant(tmp_path: Path) -> None:
+    """``config.TRIO_BUNDLE_DIR`` references the live PHI-scrubbed zone."""
+    f = tmp_path / "ok.py"
+    f.write_text(
+        "live_trio = Path(config.TRIO_BUNDLE_DIR)\n",
+        encoding="utf-8",
+    )
+    from scripts.lint_legacy_dirs import check_file
+
+    assert check_file(f) == []

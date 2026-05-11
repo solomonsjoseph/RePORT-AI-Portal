@@ -326,10 +326,14 @@ test-all:
 	@$(PYTHON) -m pytest tests/
 	@printf "$(G)✓ All tests passed$(N)\n"
 
-lint:
+lint: lint-legacy-dirs
 	@$(RUFF) check . --fix
 	@$(RUFF) format .
 	@printf "$(G)✓ Lint + format done$(N)\n"
+
+lint-legacy-dirs: ## Phase 5b: fail on legacy output directory name strings in scripts/
+	@$(PYTHON) -m scripts.lint_legacy_dirs
+	@printf "$(G)✓ Legacy-dirs lint passed$(N)\n"
 
 typecheck:
 	@$(MYPY) scripts/ main.py config.py --ignore-missing-imports
