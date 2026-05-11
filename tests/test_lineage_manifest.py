@@ -121,7 +121,6 @@ class TestEmitLineageManifest:
 
         llm_source_dir = tmp_path / "llm_source"
         llm_source_dir.mkdir()
-        (llm_source_dir / "data_dictionary.json").write_text("{}")
 
         manifest_path = audit / "lineage_manifest.json"
 

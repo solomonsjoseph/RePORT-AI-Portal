@@ -71,7 +71,7 @@ N := \033[0m
 .DEFAULT_GOAL := help
 .PHONY: \
 	help quickstart debug sync version \
-	pipeline dictionary extract-datasets build-llm-source verify-and-promote consolidate-dictionary bundle \
+	pipeline dictionary extract-datasets build-llm-source verify-and-promote bundle \
 	chat-deps chat-cli-deps chat-cli chat build-variables \
 	snapshot snapshot-study restore-study list-snapshots \
 	test test-all lint typecheck security ci verify release-check \
@@ -205,7 +205,6 @@ build-llm-source: ## Run SoT-driven build coordinator (Branch Y of pipeline)
 		--policies-dir data/$(STUDY)/SoT \
 		--output-root output/$(STUDY) \
 		$(if $(COLUMN_INVENTORY),--column-inventory $(COLUMN_INVENTORY))
-	@$(MAKE) consolidate-dictionary STUDY=$(STUDY) --no-print-directory 2>/dev/null || true
 	@$(MAKE) verify-and-promote STUDY=$(STUDY) --no-print-directory
 
 verify-and-promote: ## Reconcile SoT vs scrubbed dataset; emit per-form discrepancies on mismatch
@@ -229,15 +228,6 @@ llm-source-build: ## Build per-form evidence packs + lean catalogs for llm_sourc
 
 cross-verify: ## Run mid-pipeline cross-verifier (scanner + fix agent), emit drafts and live PRs/issues
 	$(UV) run --all-groups python -m scripts.source_truth.cross_verify_pipeline
-
-consolidate-dictionary: ## Merge trio_bundle/dictionary/*.json → llm_source/data_dictionary.json
-	@if [ ! -d "output/$(STUDY)/trio_bundle/dictionary" ]; then \
-		printf ">> SKIP consolidate-dictionary for STUDY=$(STUDY): no trio_bundle/dictionary/ found.\n"; \
-	else \
-		printf "$(C)$(B)>> Consolidating dictionary for STUDY=$(STUDY)$(N)\n"; \
-		mkdir -p output/$(STUDY)/llm_source; \
-		$(UV) run --all-groups python -c "from pathlib import Path; from scripts.source_truth.dictionary_consolidator import consolidate_dictionary; consolidate_dictionary(study='$(STUDY)', source_dir=Path('output/$(STUDY)/trio_bundle/dictionary'), output_path=Path('output/$(STUDY)/llm_source/data_dictionary.json'))"; \
-	fi
 
 bundle:
 	@printf "$(C)Step 2: Building Trio bundle...$(N)\n"

@@ -57,7 +57,7 @@ Every catalog file inside `llm_source/` is a lean table-of-contents only: it lis
 - `llm_source/dataset_schema/catalog.json` — points at `dataset_schema/files/<form>.jsonl`.
 - `llm_source/dictionary/catalog.json` — points at `dictionary/<form>.json`.
 
-The principle does **not** apply to `llm_source/data_dictionary.json`, which keeps its existing `main`-branch shape and content unchanged. The dictionary's per-form payloads relocate from `trio_bundle/dictionary/<form>.json` to `llm_source/dictionary/<form>.json`; only the path moves.
+The dictionary's per-form payloads live at `llm_source/dictionary/<form>.json`, indexed by the lean `llm_source/dictionary/catalog.json` ToC. There is no consolidated `data_dictionary.json` artifact — the per-form payloads are the canonical dictionary surface.
 
 ### Evidence Pack (per-form)
 
@@ -447,9 +447,8 @@ LLM reads at runtime: the lean **Study Metadata Catalog**
 (`evidence_packs/<form>.json`), the **Dataset Schema** folder
 (`dataset_schema/catalog.json` + `dataset_schema/files/<form>.jsonl`),
 the relocated per-form **Dictionary** payloads
-(`dictionary/<form>.json` with lean `dictionary/catalog.json` ToC), the
-**Data Dictionary** (`data_dictionary.json`, shape unchanged from
-`main`), and the concept index (`concept/concept_index.json`). Internal
+(`dictionary/<form>.json` with lean `dictionary/catalog.json` ToC),
+and the concept index (`concept/concept_index.json`). Internal
 storage paths under `trio_bundle/` may persist during the migration, but
 the canonical name and all chat/agent retrieval paths are `llm_source/`,
 and `trio_bundle/` is deleted in Phase 5.
@@ -519,7 +518,7 @@ ledger event, or stale Source-of-Truth.
 The locked [design spec](docs/superpowers/specs/2026-05-07-llm-source-restructure-design.md) reshapes the canonical LLM-facing bundle. Where it conflicts with earlier prose in this section, the spec is authoritative.
 
 - **End-state per study is `output/<study>/{llm_source/, audit/}` only.** `trio_bundle/`, `staging/`, `agent/`, `human_review/` are deleted in Phase 5; pipeline intermediates relocate to `tmp/<study>/<stage>/...`.
-- **Lean-catalog principle.** Every catalog file in `llm_source/` is a lean ToC of pointers — `study_metadata_catalog.json`, `dataset_schema/catalog.json`, `dictionary/catalog.json`. Per-form payloads live in sibling files. The principle does not apply to `data_dictionary.json`, which keeps its `main`-branch shape.
+- **Lean-catalog principle.** Every catalog file in `llm_source/` is a lean ToC of pointers — `study_metadata_catalog.json`, `dataset_schema/catalog.json`, `dictionary/catalog.json`. Per-form payloads live in sibling files. No consolidated `data_dictionary.json` artifact exists; per-form dictionary payloads at `dictionary/<form>.json` are the canonical surface.
 - **Per-form evidence packs replace the legacy 949 per-variable packs.** One JSON per FORM at `evidence_packs/<form>.json`, sourced from SoT YAML + manual PDF/dataset-column extraction, no row values.
 - **PHI ledger is dual-half (declared + as-written) with reconciliation.** The declared ledger is the contract built at policy-load time; the as-written ledger is the receipt emitted live by `phi_scrub.py` and `dataset_cleanup.py`. The audit folder is the [No-LLM Zone](#no-llm-zone) with path deny + runtime guard + `.gitattributes` + sentinel + 0700.
 - **Phase 1 PHI-rule audit posture.** First enumerate every PHI-handling technique already in `scripts/security/` (HMAC-SHA256 pseudonymization, SANT per-subject date jitter, drop, cap, generalize, suppress_small_cell, keep allowlist, birthdate handling under safe_harbor / limited_dataset, subject-id orphan quarantine, blocking/warn/subject-id regex tiers, file exclusions, free-text whole-value drop). Then research-extend in parallel against HIPAA §164.514(b)(2)(i)(A-R), DPDPA 2023, Aadhaar Act §29 + SPDI Rule 3, ICMR 2017 §11, and NIST SP 800-188; synthesis includes a SoT-driven sweep that flags any variable whose name suggests PHI but whose SoT handling does not match a covered technique.
@@ -667,9 +666,6 @@ The build pipeline must hold these invariants:
      per-form dictionary payloads relocated from
      `trio_bundle/dictionary/{form}.json`; per-form payload shape
      unchanged)
-   - `data_dictionary.json` (existing dictionary extraction output,
-     shape unchanged from `main`; lean-catalog principle does NOT apply
-     to this file)
 3. **The `output/{STUDY}/audit/` primary deliverable is the two
    ledgers**, each in declared and as-written halves. They replace the
    existing `phi_scrub_report.json` and `dataset_cleanup_report.json`:
@@ -768,7 +764,6 @@ output/{STUDY}/
       {form}.json                   (per-form dictionary payload, shape unchanged)
     concept/
       concept_index.json            (derived from per-form SoT YAMLs)
-    data_dictionary.json            (shape unchanged from `main`)
 
   audit/                        RED; no-LLM zone (maintainer/IRB only)
     .NO_LLM_ZONE                    (sentinel; read-asserted by runtime guard)
@@ -828,8 +823,8 @@ when an earlier tier is insufficient:
    `llm_source/evidence_packs/{form}.json`) — concept questions, exact
    PDF wording, full provenance. Note the per-form (not per-variable)
    evidence-pack shape per the locked design.
-4. **Dictionary** (`llm_source/data_dictionary.json`, with per-form
-   payloads at `llm_source/dictionary/{form}.json` indexed by
+4. **Dictionary** (per-form payloads at
+   `llm_source/dictionary/{form}.json` indexed by
    `llm_source/dictionary/catalog.json`) — fallback when tiers 1–3
    yield no answer or signal an evidence gap. The form + dataset are
    the primary axis for study questions; the dictionary is consulted
