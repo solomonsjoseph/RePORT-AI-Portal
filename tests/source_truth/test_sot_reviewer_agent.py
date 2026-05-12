@@ -4,7 +4,6 @@ import pytest
 
 from scripts.source_truth.sot_reviewer_agent import run_reviewer
 
-
 FIXTURE = Path("tests/fixtures/sot_gap")
 
 
@@ -65,8 +64,6 @@ def test_run_reviewer_rejects_unknown_verdict(tmp_path, monkeypatch):
 
 
 import json as _json
-
-from scripts.source_truth.sot_reviewer_agent import run_reviewer
 
 
 def test_run_reviewer_wraps_json_decode_error_with_form_context(tmp_path, monkeypatch):

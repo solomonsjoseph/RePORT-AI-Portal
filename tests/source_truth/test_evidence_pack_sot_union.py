@@ -28,7 +28,9 @@ def _sot_variable_ids(yaml_path: Path) -> set[str]:
     body = yaml.safe_load(yaml_path.read_text()) or {}
     variables = body.get("variables") or []
     if isinstance(variables, list):
-        return {v.get("variable_id") for v in variables if isinstance(v, dict) and v.get("variable_id")}
+        return {
+            v.get("variable_id") for v in variables if isinstance(v, dict) and v.get("variable_id")
+        }
     if isinstance(variables, dict):
         return set(variables.keys())
     return set()

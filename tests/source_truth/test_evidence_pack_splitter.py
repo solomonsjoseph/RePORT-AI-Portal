@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 from scripts.source_truth.catalog import build_catalog_artifact

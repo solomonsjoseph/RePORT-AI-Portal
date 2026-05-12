@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any
 
 import config
-
+from scripts.source_truth.builder import DERIVATION_CLEANUP_LEDGER, DERIVATION_PHI_LEDGER
 from scripts.source_truth.catalog import build_catalog_artifact
 from scripts.source_truth.concept_derivation import derive_concept_index
 from scripts.source_truth.concepts import (
@@ -42,7 +42,6 @@ from scripts.source_truth.concepts import (
 )
 from scripts.source_truth.dataset_schema import build_dataset_schema
 from scripts.source_truth.evidence_pack_splitter import split_catalog_artifact
-from scripts.source_truth.builder import DERIVATION_CLEANUP_LEDGER, DERIVATION_PHI_LEDGER
 from scripts.source_truth.ledgers import (
     build_dataset_cleanup_ledger,
     build_phi_handling_ledger,
@@ -339,7 +338,9 @@ def run_build(
 
     for vid, pack in packs.items():
         _write_canonical_json(evidence_pack_dir / f"{vid}.json", pack)
-    summary["emitted"].append(f"llm_source/study_metadata/evidence_packs/*.json (count={len(packs)})")
+    summary["emitted"].append(
+        f"llm_source/study_metadata/evidence_packs/*.json (count={len(packs)})"
+    )
 
     summary["forms_loaded"] = [art["form"] for art in policy_artifacts]
     summary["compact_record_count"] = len(compact_only.get("compact_records") or [])
@@ -355,10 +356,12 @@ def run_build(
         audit_dir / "dataset_cleanup_ledger.declared.json",
         {"artifact_type": "dataset_cleanup_ledger", "kind": "declared", "entries": cleanup_entries},
     )
-    summary["emitted"].extend([
-        "audit/phi_handling_ledger.declared.json",
-        "audit/dataset_cleanup_ledger.declared.json",
-    ])
+    summary["emitted"].extend(
+        [
+            "audit/phi_handling_ledger.declared.json",
+            "audit/dataset_cleanup_ledger.declared.json",
+        ]
+    )
 
     concept_index = _validated_concept_index(policy_artifacts)
     _write_canonical_json(concept_dir / "concept_index.json", concept_index)
@@ -382,9 +385,7 @@ def run_build(
             staging_llm_source_dir / "phi_handled_dataset_schema.json",
             dataset_schema,
         )
-        summary["emitted"].append(
-            "staging/llm_source/phi_handled_dataset_schema.json"
-        )
+        summary["emitted"].append("staging/llm_source/phi_handled_dataset_schema.json")
 
         enriched = enrich_concept_index_with_schema(concept_index, dataset_schema=dataset_schema)
         _write_canonical_json(staging_concept_dir / "concept_index.json", enriched)

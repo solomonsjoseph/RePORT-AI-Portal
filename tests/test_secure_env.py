@@ -17,13 +17,13 @@ from scripts.security.secure_env import (
     validate_paths,
 )
 
-
 # ── Phase 5b: assert_trio_bundle_zone removal ──────────────────────────────
 
 
 def test_assert_trio_bundle_zone_removed() -> None:
     """assert_trio_bundle_zone must not exist after Phase 5b."""
     import scripts.security.secure_env as se
+
     assert not hasattr(se, "assert_trio_bundle_zone"), (
         "assert_trio_bundle_zone still present — remove it in Phase 5b"
     )
@@ -31,7 +31,9 @@ def test_assert_trio_bundle_zone_removed() -> None:
 
 def test_security_init_does_not_export_trio_bundle_zone() -> None:
     import scripts.security as sec
+
     assert "assert_trio_bundle_zone" not in dir(sec)
+
 
 # ── assert_not_raw ──────────────────────────────────────────────────────────
 

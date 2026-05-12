@@ -23,9 +23,7 @@ def _phi_kwargs() -> dict:
     )
 
 
-def test_write_succeeds_when_role_unset(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_write_succeeds_when_role_unset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("REPORTAL_PROCESS_ROLE", raising=False)
     audit_dir = tmp_path / "audit"
     audit_dir.mkdir(parents=True)
@@ -36,9 +34,7 @@ def test_write_succeeds_when_role_unset(
     assert out.is_file()
 
 
-def test_write_succeeds_when_role_pipeline(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_write_succeeds_when_role_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("REPORTAL_PROCESS_ROLE", "pipeline")
     audit_dir = tmp_path / "audit"
     audit_dir.mkdir(parents=True)
@@ -49,9 +45,7 @@ def test_write_succeeds_when_role_pipeline(
     assert out.is_file()
 
 
-def test_write_refused_when_role_llm_agent(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_write_refused_when_role_llm_agent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("REPORTAL_PROCESS_ROLE", "llm-agent")
     audit_dir = tmp_path / "audit"
     audit_dir.mkdir(parents=True)

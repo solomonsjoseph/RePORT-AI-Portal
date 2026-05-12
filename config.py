@@ -256,7 +256,9 @@ PHI_SWEEP_PR_DRAFTS_DIR: Path = TMP_DIR / "phi_sweep_pr_drafts"
 
 # --- Phase 2: llm_source restructure -----------------------------------------
 LLM_SOURCE_DATASET_SCHEMA_FILES_DIR: Path = STUDY_LLM_SOURCE_DIR / "dataset_schema" / "files"
-LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH: Path = STUDY_LLM_SOURCE_DIR / "dataset_schema" / "catalog.json"
+LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH: Path = (
+    STUDY_LLM_SOURCE_DIR / "dataset_schema" / "catalog.json"
+)
 LLM_SOURCE_DICTIONARY_MAPPING_DIR: Path = STUDY_LLM_SOURCE_DIR / "dictionary_mapping"
 LLM_SOURCE_DICTIONARY_MAPPING_JSONL_DIR: Path = LLM_SOURCE_DICTIONARY_MAPPING_DIR / "jsonl"
 LLM_SOURCE_DICTIONARY_CATALOG_PATH: Path = LLM_SOURCE_DICTIONARY_MAPPING_DIR / "catalog.json"

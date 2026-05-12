@@ -152,9 +152,7 @@ def _classify_variable(
     return ("name_phi_uncovered", "uncategorized")
 
 
-def _iter_variables(
-    variables: Any, policy_path: Path
-) -> Iterator[tuple[str, dict[str, Any]]]:
+def _iter_variables(variables: Any, policy_path: Path) -> Iterator[tuple[str, dict[str, Any]]]:
     """Normalize SoT variables to ``(variable_id, var_dict)`` pairs.
 
     Supports both shapes:
@@ -310,7 +308,9 @@ def emit_drafts(
 ) -> None:
     findings_path = findings_path if findings_path is not None else config.PHI_SWEEP_FINDINGS_PATH
     pr_drafts_dir = pr_drafts_dir if pr_drafts_dir is not None else config.PHI_SWEEP_PR_DRAFTS_DIR
-    hitl_drafts_dir = hitl_drafts_dir if hitl_drafts_dir is not None else config.PHI_SWEEP_HITL_DRAFTS_DIR
+    hitl_drafts_dir = (
+        hitl_drafts_dir if hitl_drafts_dir is not None else config.PHI_SWEEP_HITL_DRAFTS_DIR
+    )
     if not findings_path.is_file():
         raise PHISweepEmitError(f"findings file missing: {findings_path}")
     payload = json.loads(findings_path.read_text())
@@ -347,7 +347,9 @@ def verify(
     pr_drafts_dir: Path | None = None,
 ) -> None:
     findings_path = findings_path if findings_path is not None else config.PHI_SWEEP_FINDINGS_PATH
-    hitl_drafts_dir = hitl_drafts_dir if hitl_drafts_dir is not None else config.PHI_SWEEP_HITL_DRAFTS_DIR
+    hitl_drafts_dir = (
+        hitl_drafts_dir if hitl_drafts_dir is not None else config.PHI_SWEEP_HITL_DRAFTS_DIR
+    )
     pr_drafts_dir = pr_drafts_dir if pr_drafts_dir is not None else config.PHI_SWEEP_PR_DRAFTS_DIR
     payload = json.loads(findings_path.read_text())
     failures: list[str] = []
@@ -363,7 +365,9 @@ def verify(
         if cat in {"name_phi_uncovered", "column_shape_phi_uncovered"}:
             expected = pr_drafts_dir / f"{_slug(f.get('regulatory_anchor_hint'))}.md"
             if not expected.is_file():
-                failures.append(f"missing PR draft for anchor {f.get('regulatory_anchor_hint')!r}: {expected}")
+                failures.append(
+                    f"missing PR draft for anchor {f.get('regulatory_anchor_hint')!r}: {expected}"
+                )
             continue
         failures.append(f"unknown category {cat!r} for {f['form']}/{f['variable_id_masked']}")
     if failures:

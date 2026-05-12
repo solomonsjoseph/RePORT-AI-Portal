@@ -18,7 +18,9 @@ def _setup(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
     (ep_dir / "FOO_LEGACY.json").write_text(json.dumps({"variable_id": "FOO_LEGACY"}))
     # New per-form packs (form + variables[])
     (ep_dir / "AE.json").write_text(
-        json.dumps({"form": "AE", "variables": [{"variable_id": "AE_AGE"}, {"variable_id": "AE_NEW"}]})
+        json.dumps(
+            {"form": "AE", "variables": [{"variable_id": "AE_AGE"}, {"variable_id": "AE_NEW"}]}
+        )
     )
     (ep_dir / "PT.json").write_text(
         json.dumps({"form": "PT", "variables": [{"variable_id": "PT_NAME"}]})
@@ -33,7 +35,9 @@ def _setup(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
 
 def test_legacy_only_emits_hitl_draft(tmp_path: Path) -> None:
     ep_dir, key, hitl_dir, summary = _setup(tmp_path)
-    reconcile(evidence_packs_dir=ep_dir, key_path=key, hitl_drafts_dir=hitl_dir, summary_path=summary)
+    reconcile(
+        evidence_packs_dir=ep_dir, key_path=key, hitl_drafts_dir=hitl_dir, summary_path=summary
+    )
     drafts = list(hitl_dir.glob("*.md"))
     assert len(drafts) == 1
     body = drafts[0].read_text()
@@ -43,7 +47,9 @@ def test_legacy_only_emits_hitl_draft(tmp_path: Path) -> None:
 
 def test_summary_counters(tmp_path: Path) -> None:
     ep_dir, key, hitl_dir, summary = _setup(tmp_path)
-    reconcile(evidence_packs_dir=ep_dir, key_path=key, hitl_drafts_dir=hitl_dir, summary_path=summary)
+    reconcile(
+        evidence_packs_dir=ep_dir, key_path=key, hitl_drafts_dir=hitl_dir, summary_path=summary
+    )
     data = json.loads(summary.read_text())
     assert data["legacy_only_count"] == 1
     assert data["new_only_count"] == 1  # AE_NEW
@@ -52,7 +58,9 @@ def test_summary_counters(tmp_path: Path) -> None:
 
 def test_summary_contains_no_cleartext_variable_ids(tmp_path: Path) -> None:
     ep_dir, key, hitl_dir, summary = _setup(tmp_path)
-    reconcile(evidence_packs_dir=ep_dir, key_path=key, hitl_drafts_dir=hitl_dir, summary_path=summary)
+    reconcile(
+        evidence_packs_dir=ep_dir, key_path=key, hitl_drafts_dir=hitl_dir, summary_path=summary
+    )
     raw = summary.read_text()
     for v in ("AE_AGE", "AE_NEW", "PT_NAME", "FOO_LEGACY"):
         assert v not in raw
@@ -60,10 +68,14 @@ def test_summary_contains_no_cleartext_variable_ids(tmp_path: Path) -> None:
 
 def test_idempotent(tmp_path: Path) -> None:
     ep_dir, key, hitl_dir, summary = _setup(tmp_path)
-    reconcile(evidence_packs_dir=ep_dir, key_path=key, hitl_drafts_dir=hitl_dir, summary_path=summary)
+    reconcile(
+        evidence_packs_dir=ep_dir, key_path=key, hitl_drafts_dir=hitl_dir, summary_path=summary
+    )
     first = sorted(hitl_dir.glob("*.md"))
     first_body = first[0].read_text()
-    reconcile(evidence_packs_dir=ep_dir, key_path=key, hitl_drafts_dir=hitl_dir, summary_path=summary)
+    reconcile(
+        evidence_packs_dir=ep_dir, key_path=key, hitl_drafts_dir=hitl_dir, summary_path=summary
+    )
     second = sorted(hitl_dir.glob("*.md"))
     assert first == second
     assert second[0].read_text() == first_body

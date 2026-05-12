@@ -9,7 +9,6 @@ import pytest
 
 from scripts.source_truth.evidence_pack_consolidator import build_evidence_packs
 
-
 _FIXTURE = Path(__file__).parent.parent / "fixtures" / "llm_source" / "sot" / "Mini"
 
 

@@ -32,7 +32,7 @@ def run(
     evidence_packs_dir: Path | None = None,
     phi_scrub_yaml: Path | None = None,
     llm_call: Callable[[str], str] | None = None,
-    gh_runner: Callable[[list[str], "str | None"], int] | None = None,
+    gh_runner: Callable[[list[str], str | None], int] | None = None,
     key_path: Path | None = None,
 ) -> dict[str, Any]:
     """Run the Phase 3 cross-verify pipeline.
@@ -43,10 +43,14 @@ def run(
     """
     sot_dir = sot_dir if sot_dir is not None else config.SOT_DIR
     dataset_files_dir = (
-        dataset_files_dir if dataset_files_dir is not None else config.LLM_SOURCE_DATASET_SCHEMA_FILES_DIR
+        dataset_files_dir
+        if dataset_files_dir is not None
+        else config.LLM_SOURCE_DATASET_SCHEMA_FILES_DIR
     )
     evidence_packs_dir = (
-        evidence_packs_dir if evidence_packs_dir is not None else config.LLM_SOURCE_EVIDENCE_PACKS_DIR
+        evidence_packs_dir
+        if evidence_packs_dir is not None
+        else config.LLM_SOURCE_EVIDENCE_PACKS_DIR
     )
     phi_scrub_yaml = phi_scrub_yaml if phi_scrub_yaml is not None else _default_phi_scrub_yaml()
 

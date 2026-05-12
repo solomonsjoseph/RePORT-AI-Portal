@@ -23,9 +23,7 @@ logger = get_logger(__name__)
 GHRunner = Callable[[list[str], "str | None"], int]
 
 
-def _format_pr_body(
-    fix: dict[str, Any], token: str, description: str
-) -> tuple[str, str]:
+def _format_pr_body(fix: dict[str, Any], token: str, description: str) -> tuple[str, str]:
     form = fix.get("form", "?")
     kind = fix.get("kind", "?")
     title = f"cross-verify: {kind} for {form}/`{token}`"
@@ -148,9 +146,7 @@ def emit(
         pr_drafts_dir if pr_drafts_dir is not None else config.CROSS_VERIFY_PR_DRAFTS_DIR
     )
     hitl_drafts_dir = (
-        hitl_drafts_dir
-        if hitl_drafts_dir is not None
-        else config.CROSS_VERIFY_HITL_DRAFTS_DIR
+        hitl_drafts_dir if hitl_drafts_dir is not None else config.CROSS_VERIFY_HITL_DRAFTS_DIR
     )
     evidence_packs_dir = (
         evidence_packs_dir
@@ -179,9 +175,7 @@ def emit(
             pr_emitted += 1
         else:
             failed += 1
-            logger.warning(
-                "cross_verify_emit.pr_failed form=%s vid=%s rc=%d", form, vid, rc
-            )
+            logger.warning("cross_verify_emit.pr_failed form=%s vid=%s rc=%d", form, vid, rc)
     for hitl in _load_hitl_drafts(hitl_drafts_dir):
         form = hitl["form"]
         vid = hitl["variable_id"]
@@ -209,9 +203,7 @@ def emit(
             issue_emitted += 1
         else:
             failed += 1
-            logger.warning(
-                "cross_verify_emit.issue_failed form=%s vid=%s rc=%d", form, vid, rc
-            )
+            logger.warning("cross_verify_emit.issue_failed form=%s vid=%s rc=%d", form, vid, rc)
     summary = {
         "pr_emitted": pr_emitted,
         "issue_emitted": issue_emitted,

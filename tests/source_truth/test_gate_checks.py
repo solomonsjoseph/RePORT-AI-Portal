@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import pytest
-
 from scripts.source_truth.gate_checks import (
-    GateFinding,
     check_c_phi_ledger_alignment,
     check_d_phi_action_mismatch,
     check_g_phi_dropped_vars_absent,

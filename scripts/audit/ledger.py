@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -46,9 +46,7 @@ class LedgerWriter:
         self._run_id: str = run_id if run_id is not None else f"run_{uuid4().hex}"
         self._scrub_config_hash = scrub_config_hash
         self._input_dataset_hash = input_dataset_hash
-        self._iso_timestamp: str = (
-            datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        )
+        self._iso_timestamp: str = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         self._events: list[dict] = []
         self._sentinel_seen: bool = False
 
@@ -61,9 +59,7 @@ class LedgerWriter:
         from scripts.audit import is_llm_agent
 
         if is_llm_agent():
-            raise PermissionError(
-                "audit ledger write refused: REPORTAL_PROCESS_ROLE=llm-agent"
-            )
+            raise PermissionError("audit ledger write refused: REPORTAL_PROCESS_ROLE=llm-agent")
         self._ensure_sentinel()
 
     def _ensure_sentinel(self) -> None:
@@ -84,9 +80,7 @@ class LedgerWriter:
         if self._sentinel_seen:
             # Sentinel disappeared after we saw it — tampering.
             self._emit_sentinel_alarm()
-            raise PermissionError(
-                f"audit sentinel missing at {sentinel}; ledger write refused"
-            )
+            raise PermissionError(f"audit sentinel missing at {sentinel}; ledger write refused")
         # First time we look and sentinel is missing — create it. Idempotent.
         audit_dir.mkdir(parents=True, exist_ok=True)
         sentinel.write_text("")  # presence is the signal
@@ -96,7 +90,7 @@ class LedgerWriter:
         alarm = {
             "event": "sentinel_missing",
             "path": str(self._output_path),
-            "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "timestamp_utc": datetime.now(UTC).isoformat(timespec="seconds"),
         }
         config.AUDIT_SENTINEL_ALARM_PATH.parent.mkdir(parents=True, exist_ok=True)
         with open(config.AUDIT_SENTINEL_ALARM_PATH, "a", encoding="utf-8") as fh:

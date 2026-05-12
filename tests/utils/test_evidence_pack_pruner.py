@@ -1,10 +1,9 @@
 """Tests for evidence pack pruner."""
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
-
-import pytest
 
 
 def _make_sot(sot_dir: Path, forms: list[str]) -> None:

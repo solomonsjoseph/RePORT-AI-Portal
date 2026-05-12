@@ -12,7 +12,6 @@ from scripts.security.phi_id_masker import (
     mask_variable_id,
 )
 
-
 _HEX_TOKEN = re.compile(r"^[0-9a-f]{12}$")
 
 

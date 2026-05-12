@@ -26,9 +26,7 @@ def merge_approved_draft(
     try:
         yaml.safe_load(draft_yaml_path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
-        raise ValueError(
-            f"Draft YAML is malformed for form {form!r}: {draft_yaml_path}"
-        ) from exc
+        raise ValueError(f"Draft YAML is malformed for form {form!r}: {draft_yaml_path}") from exc
     target = sot_dir / f"{form}_policy.yaml"
     tmp = target.with_suffix(".yaml.tmp")
     shutil.copyfile(draft_yaml_path, tmp)

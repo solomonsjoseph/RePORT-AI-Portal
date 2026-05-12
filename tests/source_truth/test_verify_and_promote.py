@@ -18,7 +18,6 @@ from scripts.extraction.dataset_cleanup import CleanupReport
 from scripts.security.phi_scrub import _events_from_counts
 from scripts.source_truth.verify_and_promote import run_verification
 
-
 # ---------------------------------------------------------------------------
 # Fixture builders that exercise the real emitters
 # ---------------------------------------------------------------------------
@@ -47,7 +46,7 @@ def _write_scrubbed_jsonl(output_root: Path, form: str, columns: list[str]) -> N
     """
     datasets = output_root / "llm_source" / "dataset_schema" / "files"
     datasets.mkdir(parents=True, exist_ok=True)
-    row = {col: "x" for col in columns}
+    row = dict.fromkeys(columns, "x")
     row["_phi_scrubbed"] = "v1"
     (datasets / f"{form}.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
 
@@ -235,7 +234,9 @@ def test_run_verification_emits_discrepancy_on_extra_column(
 
     assert code == 2
     payload = json.loads(
-        (config.TMP_DIR / "Mini" / "human_review" / "form_a_discrepancies.json").read_text(encoding="utf-8")
+        (config.TMP_DIR / "Mini" / "human_review" / "form_a_discrepancies.json").read_text(
+            encoding="utf-8"
+        )
     )
     assert payload["extra_in_scrubbed"] == ["X"]
 
@@ -254,9 +255,7 @@ def test_run_verification_uses_cleanup_ledger_via_source_filename(tmp_path: Path
     _write_policy(sot_dir, "form_a", ["A", "B", "C"])
     _write_scrubbed_jsonl(output_root, "form_a", ["A"])
     scrub_path = _write_real_phi_audit(audit, drops_by_form={"form_a": ["C"]})
-    cleanup_path = _write_real_cleanup_audit(
-        audit, column_drops_by_source={"form_a.xlsx": ["B"]}
-    )
+    cleanup_path = _write_real_cleanup_audit(audit, column_drops_by_source={"form_a.xlsx": ["B"]})
 
     code = run_verification(
         study="Mini",
@@ -412,8 +411,7 @@ def test_run_verification_returns_2_on_duplicate_form_names(
         )
     assert code == 2
     assert any(
-        "duplicate form name" in record.getMessage().lower()
-        and "form_dup" in record.getMessage()
+        "duplicate form name" in record.getMessage().lower() and "form_dup" in record.getMessage()
         for record in caplog.records
     )
 
@@ -450,9 +448,7 @@ def test_run_verification_warns_on_orphan_cleanup_form(
     # Gate still runs to completion: form_a reconciles cleanly, exit 0.
     assert code == 0
     # Orphan emits a warning that names the form and the dropped count.
-    orphan_logs = [
-        r for r in caplog.records if "unmatched form" in r.getMessage().lower()
-    ]
+    orphan_logs = [r for r in caplog.records if "unmatched form" in r.getMessage().lower()]
     assert orphan_logs, "expected at least one orphan-form warning"
     msg = orphan_logs[0].getMessage()
     assert "Mystery_Form" in msg
@@ -730,15 +726,14 @@ def test_human_review_writes_to_tmp_not_output(
     assert not legacy.exists(), (
         f"human_review must NOT be written to legacy output_root path; found {legacy}"
     )
-    assert new_loc.exists(), (
-        f"human_review must be written under tmp/<study>/; expected {new_loc}"
-    )
+    assert new_loc.exists(), f"human_review must be written under tmp/<study>/; expected {new_loc}"
     assert (new_loc / "form_a_discrepancies.json").is_file()
 
 
 def test_promote_schema_uses_staging_dir_param(tmp_path: Path) -> None:
     """_promote_dataset_schema must read from the provided staging_dir, not from output/staging/."""
     import json
+
     from scripts.source_truth.verify_and_promote import _promote_dataset_schema
 
     output_root = tmp_path / "output" / "TestStudy"

@@ -6,6 +6,7 @@ The concept index is now structurally derived from SoT (see
 enrichment passes that wrap the derived index inside the build
 coordinator.
 """
+
 from __future__ import annotations
 
 import json

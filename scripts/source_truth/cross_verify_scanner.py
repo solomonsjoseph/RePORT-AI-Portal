@@ -95,9 +95,7 @@ def scan(
         if dataset_files_dir is not None
         else config.LLM_SOURCE_DATASET_SCHEMA_FILES_DIR
     )
-    output_path = (
-        output_path if output_path is not None else config.CROSS_VERIFY_SAFE_REPORT_PATH
-    )
+    output_path = output_path if output_path is not None else config.CROSS_VERIFY_SAFE_REPORT_PATH
     policy_files = sorted(sot_dir.glob("*_policy.yaml"))
     dataset_policies = sot_dir / "dataset_policies"
     if dataset_policies.is_dir():
@@ -131,9 +129,10 @@ def scan(
             # Discrepancy classification:
             # - drop + column present
             # - keep/cap/generalize/suppress + column absent
-            if action == "drop" and column_present:
-                discrepancy_count += 1
-            elif action in {"keep", "cap", "generalize", "suppress_small_cell"} and not column_present:
+            if (action == "drop" and column_present) or (
+                action in {"keep", "cap", "generalize", "suppress_small_cell"}
+                and not column_present
+            ):
                 discrepancy_count += 1
     payload = {
         "schema_version": _SCHEMA_VERSION,

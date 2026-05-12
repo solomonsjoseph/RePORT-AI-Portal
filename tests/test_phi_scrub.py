@@ -590,7 +590,9 @@ class TestAsWrittenLedger:
         _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
 
-        ledger_path = Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        ledger_path = (
+            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        )
         assert ledger_path.is_file(), "phi_handling_ledger.as_written.json must be created"
         payload = json.loads(ledger_path.read_text(encoding="utf-8"))
         assert "run_id" in payload
@@ -603,18 +605,30 @@ class TestAsWrittenLedger:
         sidecar_key: Path,
         scrub_config_path: Path,
     ) -> None:
-        _write_config(scrub_config_path)  # safe_harbor: DOB dropped, VISDAT shifted, SUBJID pseudonymized
+        _write_config(
+            scrub_config_path
+        )  # safe_harbor: DOB dropped, VISDAT shifted, SUBJID pseudonymized
         rows = [
             {"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15"},
         ]
         _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
 
-        ledger_path = Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        ledger_path = (
+            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        )
         payload = json.loads(ledger_path.read_text(encoding="utf-8"))
         assert len(payload["events"]) >= 1, "Expected at least one PHI handling event"
         event = payload["events"][0]
-        assert set(event.keys()) == {"form", "variable_id", "action", "rule", "rationale", "where", "count"}
+        assert set(event.keys()) == {
+            "form",
+            "variable_id",
+            "action",
+            "rule",
+            "rationale",
+            "where",
+            "count",
+        }
 
     def test_ledger_empty_on_disabled_mode(
         self,
@@ -628,7 +642,9 @@ class TestAsWrittenLedger:
         _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
 
-        ledger_path = Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        ledger_path = (
+            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        )
         assert ledger_path.is_file()
         payload = json.loads(ledger_path.read_text(encoding="utf-8"))
         assert payload["events"] == []
@@ -653,7 +669,9 @@ class TestAsWrittenLedger:
         _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
 
-        ledger_path = Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        ledger_path = (
+            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        )
         assert ledger_path.is_file()
         payload = json.loads(ledger_path.read_text(encoding="utf-8"))
         assert payload["events"] == [], (

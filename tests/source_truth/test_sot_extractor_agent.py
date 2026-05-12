@@ -6,7 +6,6 @@ import pytest
 
 from scripts.source_truth.sot_extractor_agent import gather_inputs, run_extractor
 
-
 FIXTURE = Path("tests/fixtures/sot_gap")
 
 
@@ -22,8 +21,9 @@ def test_gather_inputs_collects_column_keys_only():
     assert isinstance(inputs["dataset_columns"], list)
     forbidden = {"rows", "values", "samples", "row_values", "data"}
     assert not (forbidden & set(inputs.keys())), inputs.keys()
-    assert all(isinstance(c, str) for c in inputs["dataset_columns"]), \
+    assert all(isinstance(c, str) for c in inputs["dataset_columns"]), (
         "dataset_columns must be a list of column-name strings, not row objects"
+    )
 
 
 def test_run_extractor_writes_yaml_and_evidence_pack(tmp_path, monkeypatch):

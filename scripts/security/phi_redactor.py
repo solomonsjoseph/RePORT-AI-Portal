@@ -84,9 +84,7 @@ def redact(
     if not evidence_packs_dir.is_dir():
         token = mask_variable_id(form, variable_id, key_path=key_path)
         return _format_phi_token(token), ""
-    is_masked, description = _lookup(
-        evidence_packs_dir, form, variable_id, key_path=key_path
-    )
+    is_masked, description = _lookup(evidence_packs_dir, form, variable_id, key_path=key_path)
     if not is_masked:
         return variable_id, description
     token = mask_variable_id(form, variable_id, key_path=key_path)

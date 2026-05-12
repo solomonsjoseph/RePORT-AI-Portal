@@ -5,10 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
-from scripts.security.phi_redactor import redact
 from scripts.security.phi_id_masker import mask_variable_id
+from scripts.security.phi_redactor import redact
 
 
 def _write_key(p: Path, byte: int) -> None:
@@ -31,7 +29,14 @@ def test_covered_variable_returns_clear_id_and_description(tmp_path: Path) -> No
     ep_dir = _ep_dir_with_form(
         tmp_path,
         "F",
-        [{"variable_id": "AGEYRS", "id_masked": False, "handling_action": "cap", "description": "Age in years"}],
+        [
+            {
+                "variable_id": "AGEYRS",
+                "id_masked": False,
+                "handling_action": "cap",
+                "description": "Age in years",
+            }
+        ],
     )
     token, desc = redact("F", "AGEYRS", evidence_packs_dir=ep_dir, key_path=keyfile)
     assert token == "AGEYRS"

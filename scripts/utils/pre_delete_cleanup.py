@@ -7,6 +7,7 @@ The manifest captures a SHA-256 fingerprint of every file under the legacy
 output sub-trees (``trio_bundle/``, ``staging/``, ``human_review/``) before
 deletion, so the deletion is auditable and reversible-by-reconstruction.
 """
+
 from __future__ import annotations
 
 import argparse

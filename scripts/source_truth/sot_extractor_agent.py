@@ -38,7 +38,9 @@ def _read_pilot_artifact(pilot_dir: Path, form: str) -> str:
     if len(candidates) > 1:
         _LOG.warning(
             "sot_extractor.pilot_multiple_artifacts form=%s count=%d picked=%s",
-            form, len(candidates), candidates[0].name,
+            form,
+            len(candidates),
+            candidates[0].name,
         )
     return candidates[0].read_text(encoding="utf-8")
 
@@ -156,9 +158,7 @@ def run_extractor(
     try:
         out = invoke_subagent(prompt)
     except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"Extractor agent returned non-JSON for form {form!r}"
-        ) from exc
+        raise ValueError(f"Extractor agent returned non-JSON for form {form!r}") from exc
 
     yaml_path = drafts_dir / f"{form}_policy.yaml.draft"
     pack_path = evidence_pack_drafts_dir / f"{form}.json"

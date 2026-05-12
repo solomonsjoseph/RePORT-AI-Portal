@@ -77,16 +77,13 @@ def validate_unique_form_names(
 
     if sources is not None:
         details = "; ".join(
-            f"{form}={[str(p) for p in paths]}"
-            for form, paths in sorted(duplicates.items())
+            f"{form}={[str(p) for p in paths]}" for form, paths in sorted(duplicates.items())
         )
     else:
         details = ", ".join(
             f"{form}({len(paths)} policies)" for form, paths in sorted(duplicates.items())
         )
-    raise DuplicateFormNameError(
-        f"duplicate form name(s) declared across policy YAMLs: {details}"
-    )
+    raise DuplicateFormNameError(f"duplicate form name(s) declared across policy YAMLs: {details}")
 
 
 class PolicyLoaderError(ValueError):
@@ -181,12 +178,16 @@ def _translate_record(yaml_record: Mapping[str, Any], *, variable_id: str) -> di
         else []
     )
     confidence = (yaml_record.get("evidence") or {}).get("level") or "low"
-    analysis_queryable = dataset_present and _builder.DERIVATION_DATASET_SCHEMA in derivation_targets
+    analysis_queryable = (
+        dataset_present and _builder.DERIVATION_DATASET_SCHEMA in derivation_targets
+    )
 
     relationships_raw = yaml_record.get("relationships") or {}
-    has_relationships = any(
-        v not in (None, [], "") for v in relationships_raw.values()
-    ) if isinstance(relationships_raw, Mapping) else False
+    has_relationships = (
+        any(v not in (None, [], "") for v in relationships_raw.values())
+        if isinstance(relationships_raw, Mapping)
+        else False
+    )
 
     normalized: dict[str, Any] = {
         "label": _builder._normalize_label(variable_id, field_label),

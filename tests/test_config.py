@@ -179,6 +179,7 @@ class TestConstants:
 def test_legacy_constants_point_to_llm_source() -> None:
     """Phase 5b: legacy trio_bundle constants must now point under llm_source/."""
     import config
+
     assert "trio_bundle" not in str(config.TRIO_DATASETS_DIR), (
         f"TRIO_DATASETS_DIR still under trio_bundle/: {config.TRIO_DATASETS_DIR}"
     )

@@ -169,7 +169,6 @@ def prune_dictionary(drop_set: set[str], dict_dir: Path) -> int:
     return total_removed
 
 
-
 # ── Step 4: run_propagation ─────────────────────────────────────────────────
 
 

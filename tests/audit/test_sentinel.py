@@ -25,9 +25,7 @@ def _phi_kwargs() -> dict:
     )
 
 
-def test_first_write_creates_sentinel(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_first_write_creates_sentinel(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("REPORTAL_PROCESS_ROLE", raising=False)
     audit_dir = tmp_path / "audit"
     audit_dir.mkdir()

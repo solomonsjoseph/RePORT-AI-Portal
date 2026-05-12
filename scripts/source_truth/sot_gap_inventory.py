@@ -23,11 +23,13 @@ from scripts.utils.logging_system import get_logger
 
 _LOG = get_logger(__name__)
 
-DEFAULT_PIPELINE_METADATA_COLUMNS: frozenset[str] = frozenset({
-    "source_file",
-    "_provenance",
-    "_phi_scrubbed",
-})
+DEFAULT_PIPELINE_METADATA_COLUMNS: frozenset[str] = frozenset(
+    {
+        "source_file",
+        "_provenance",
+        "_phi_scrubbed",
+    }
+)
 
 
 def _atomic_write_text(target: Path, content: str) -> None:
@@ -168,10 +170,12 @@ def build_coverage(
             exc = exclusions[form]
             info["excluded"] = True
             info["exclusion_reason"] = exc.get("reason", "")
-            info["sot_present"] = True   # vacuously satisfied
+            info["sot_present"] = True  # vacuously satisfied
             info["sot_complete"] = True  # vacuously satisfied
             info["missing_variables"] = []
-            _LOG.info("sot_gap_inventory.excluded form=%s reason=%s", form, info["exclusion_reason"])
+            _LOG.info(
+                "sot_gap_inventory.excluded form=%s reason=%s", form, info["exclusion_reason"]
+            )
             continue
 
         # --- Alias resolution ---
@@ -200,16 +204,16 @@ def build_coverage(
                 info["policy_source"] = policy_src
             _LOG.info(
                 "sot_gap_inventory.alias form=%s canonical=%s present=%s",
-                form, canonical, canonical_present,
+                form,
+                canonical,
+                canonical_present,
             )
             continue
 
         # --- Normal form: look in sot_dir then dataset_policies ---
         sot_path = sot_dir / f"{form}_policy.yaml"
         dataset_policy_path = (
-            dataset_policies_dir / f"{form}_policy.yaml"
-            if dataset_policies_dir.is_dir()
-            else None
+            dataset_policies_dir / f"{form}_policy.yaml" if dataset_policies_dir.is_dir() else None
         )
 
         if sot_path.is_file():

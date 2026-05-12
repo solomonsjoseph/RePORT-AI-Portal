@@ -373,7 +373,7 @@ class TestAuditSerialization:
 class TestAsWrittenLedger:
     """Phase 1C: clean_trio_datasets dual-writes dataset_cleanup_ledger.as_written.json."""
 
-    def _ledger_path(self) -> "Path":
+    def _ledger_path(self) -> Path:
         import config
 
         return config.AUDIT_DATASET_REPORT_PATH.parent / "dataset_cleanup_ledger.as_written.json"

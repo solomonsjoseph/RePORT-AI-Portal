@@ -111,9 +111,7 @@ def run_reviewer(
     try:
         out = invoke_reviewer_subagent(prompt)
     except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"Reviewer agent returned non-JSON for form {form!r}"
-        ) from exc
+        raise ValueError(f"Reviewer agent returned non-JSON for form {form!r}") from exc
 
     verdict = out.get("verdict")
     if verdict not in _VALID_VERDICTS:
@@ -125,9 +123,7 @@ def run_reviewer(
     reviews_dir.mkdir(parents=True, exist_ok=True)
     review_md = reviews_dir / f"{form}_review.md"
     review_md.write_text(
-        f"# Review for {form}\n\n"
-        f"verdict: {verdict}\n\n"
-        f"## notes\n\n{out['notes']}\n",
+        f"# Review for {form}\n\nverdict: {verdict}\n\n## notes\n\n{out['notes']}\n",
         encoding="utf-8",
     )
     _LOG.info("sot_reviewer.review_written form=%s verdict=%s", form, verdict)

@@ -467,8 +467,6 @@ def _run_dataset_leg(*, force: bool, run_extraction: bool) -> dict[str, Any]:
     return {"leg": "datasets", "skipped": False, "dropped_events": dropped_events}
 
 
-
-
 def _restore_reviewed_snapshot_if_available(reason: str) -> bool:
     """Restore ``data/snapshots/{STUDY}/`` over the live trio bundle if present."""
 

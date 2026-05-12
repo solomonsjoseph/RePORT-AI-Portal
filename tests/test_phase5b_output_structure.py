@@ -6,6 +6,7 @@ been executed, they assert no legacy subdirs remain.
 
 If a future change accidentally recreates a legacy dir, these tests catch it.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -35,9 +36,7 @@ def test_live_output_structure_has_no_legacy_subdirs() -> None:
         )
 
     forbidden_found = actual_subdirs & FORBIDDEN_SUBDIRS
-    assert not forbidden_found, (
-        f"Legacy subdirs reappeared under {output_root}: {forbidden_found}"
-    )
+    assert not forbidden_found, f"Legacy subdirs reappeared under {output_root}: {forbidden_found}"
 
 
 def test_evidence_packs_contain_only_per_form_packs() -> None:
@@ -67,9 +66,7 @@ def test_evidence_packs_contain_only_per_form_packs() -> None:
             f"Phase 5b pruning not yet executed; {len(per_variable)} per-variable packs remain"
         )
 
-    assert not per_variable, (
-        f"Per-variable evidence packs reappeared: {sorted(per_variable)[:5]}"
-    )
+    assert not per_variable, f"Per-variable evidence packs reappeared: {sorted(per_variable)[:5]}"
 
 
 def test_pre_delete_manifest_exists_after_deletion() -> None:

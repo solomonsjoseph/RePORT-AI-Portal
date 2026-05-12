@@ -11,6 +11,7 @@ from scripts.source_truth.policy_loader import DuplicateFormNameError
 
 def test_run_build_resolves_paths_and_creates_output_dirs(tmp_path, monkeypatch):
     import config as cfg
+
     monkeypatch.setattr(cfg, "TMP_DIR", tmp_path / "tmp")
 
     fixture = Path("tests/fixtures/build_mini").resolve()
@@ -43,10 +44,18 @@ def test_cli_module_invocable(tmp_path):
     fixture = Path("tests/fixtures/build_mini").resolve()
     result = subprocess.run(
         [
-            "uv", "run", "--all-groups", "python", "-m", "scripts.source_truth.build",
-            "--study", "Mini",
-            "--policies-dir", str(fixture / "data" / "Mini" / "SoT"),
-            "--output-root", str(tmp_path / "cli_run"),
+            "uv",
+            "run",
+            "--all-groups",
+            "python",
+            "-m",
+            "scripts.source_truth.build",
+            "--study",
+            "Mini",
+            "--policies-dir",
+            str(fixture / "data" / "Mini" / "SoT"),
+            "--output-root",
+            str(tmp_path / "cli_run"),
         ],
         check=False,
         capture_output=True,
@@ -57,6 +66,7 @@ def test_cli_module_invocable(tmp_path):
 
 def test_run_build_emits_catalog_and_evidence_packs(tmp_path):
     import json
+
     fixture = Path("tests/fixtures/build_mini").resolve()
     output_root = tmp_path / "output" / "Mini"
     run_build(
@@ -99,6 +109,7 @@ def test_run_build_idempotent_byte_identical(tmp_path):
 
 def test_run_build_emits_declared_ledgers(tmp_path):
     import json
+
     fixture = Path("tests/fixtures/build_mini").resolve()
     output_root = tmp_path / "output" / "Mini"
     run_build(
@@ -122,6 +133,7 @@ def test_run_build_emits_declared_ledgers(tmp_path):
 
 def test_run_build_emits_initial_concept_index(tmp_path):
     import json
+
     fixture = Path("tests/fixtures/build_mini").resolve()
     output_root = tmp_path / "output" / "Mini"
     run_build(
@@ -144,7 +156,9 @@ def test_run_build_emits_initial_concept_index(tmp_path):
 
 def test_run_build_stage2_emits_schema_and_enriched_concept_index_to_staging(tmp_path, monkeypatch):
     import json
+
     import config as cfg
+
     monkeypatch.setattr(cfg, "TMP_DIR", tmp_path / "tmp")
 
     fixture = Path("tests/fixtures/build_mini").resolve()
@@ -173,6 +187,7 @@ def test_run_build_stage2_emits_schema_and_enriched_concept_index_to_staging(tmp
 
 def test_compact_records_have_form_field_populated(tmp_path):
     import json
+
     fixture = Path("tests/fixtures/build_mini").resolve()
     output_root = tmp_path / "output" / "Mini"
     run_build(
@@ -181,7 +196,9 @@ def test_compact_records_have_form_field_populated(tmp_path):
         output_root=output_root,
         column_inventory=None,
     )
-    catalog = json.loads((output_root / "llm_source" / "study_metadata" / "catalog.json").read_text())
+    catalog = json.loads(
+        (output_root / "llm_source" / "study_metadata" / "catalog.json").read_text()
+    )
     expected_forms = {"19_Smear", "1A_ICScreening", "2A_ICBaseline"}
     for record in catalog["compact_records"]:
         assert record.get("form") in expected_forms, (
@@ -192,7 +209,9 @@ def test_compact_records_have_form_field_populated(tmp_path):
 
 def test_run_build_stage2_dataset_schema_reflects_column_inventory(tmp_path, monkeypatch):
     import json
+
     import config as cfg
+
     monkeypatch.setattr(cfg, "TMP_DIR", tmp_path / "tmp")
 
     fixture = Path("tests/fixtures/build_mini").resolve()
@@ -204,7 +223,9 @@ def test_run_build_stage2_dataset_schema_reflects_column_inventory(tmp_path, mon
         column_inventory=fixture / "data" / "Mini" / "column_inventory.json",
     )
     schema = json.loads(
-        (tmp_path / "tmp" / "Mini" / "staging" / "llm_source" / "phi_handled_dataset_schema.json").read_text()
+        (
+            tmp_path / "tmp" / "Mini" / "staging" / "llm_source" / "phi_handled_dataset_schema.json"
+        ).read_text()
     )
     entries_by_form: dict[str, list[str]] = {}
     for entry in schema["entries"]:
@@ -215,9 +236,9 @@ def test_run_build_stage2_dataset_schema_reflects_column_inventory(tmp_path, mon
         entries_by_form.setdefault(form, []).append(entry.get("variable_id"))
 
     # Sanity: at least one entry per form in the inventory
-    inventory = json.loads(
-        (fixture / "data" / "Mini" / "column_inventory.json").read_text()
-    )["forms"]
+    inventory = json.loads((fixture / "data" / "Mini" / "column_inventory.json").read_text())[
+        "forms"
+    ]
     for form, body in inventory.items():
         for col in body["columns"]:
             # Each inventory column should produce at least one schema entry
@@ -253,12 +274,8 @@ def test_run_build_rejects_duplicate_form_names(tmp_path):
         "source": {"dataset_file": "form_dup_b.xlsx"},
         "variables": {"B": {"record_type": "variable"}},
     }
-    (sot_dir / "form_dup_a_policy.yaml").write_text(
-        yaml.safe_dump(policy_a), encoding="utf-8"
-    )
-    (sot_dir / "form_dup_b_policy.yaml").write_text(
-        yaml.safe_dump(policy_b), encoding="utf-8"
-    )
+    (sot_dir / "form_dup_a_policy.yaml").write_text(yaml.safe_dump(policy_a), encoding="utf-8")
+    (sot_dir / "form_dup_b_policy.yaml").write_text(yaml.safe_dump(policy_b), encoding="utf-8")
 
     output_root = tmp_path / "output" / "Mini"
 
@@ -273,9 +290,7 @@ def test_run_build_rejects_duplicate_form_names(tmp_path):
     # Hard invariant: NO artifacts emitted when duplicate detection trips.
     assert not (output_root / "llm_source" / "study_metadata" / "catalog.json").exists()
     assert not (output_root / "audit" / "phi_handling_ledger.declared.json").exists()
-    assert not (
-        output_root / "llm_source" / "concept" / "concept_index.json"
-    ).exists()
+    assert not (output_root / "llm_source" / "concept" / "concept_index.json").exists()
 
 
 def test_build_cli_returns_2_on_duplicate_form_names(tmp_path):
@@ -438,6 +453,7 @@ def test_aggregate_catalog_first_form_wins_record_content_unchanged():
 def test_run_build_mini_seen_in_forms_subjid_three_forms(tmp_path):
     """Real Mini fixture smoke: SUBJID appears in all three Mini forms."""
     import json
+
     fixture = Path("tests/fixtures/build_mini").resolve()
     output_root = tmp_path / "output" / "Mini"
     run_build(
@@ -491,9 +507,7 @@ def test_staging_dir_is_under_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         pass  # We only care about which dirs were created
 
     # staging must be under tmp, NOT under output_root
-    assert not (output_root / "staging").exists(), (
-        "staging/ must not be created under output_root"
-    )
+    assert not (output_root / "staging").exists(), "staging/ must not be created under output_root"
     staging_tmp = tmp_path / "tmp" / "TestStudy" / "staging"
     assert staging_tmp.exists(), f"expected staging at {staging_tmp}"
 
@@ -501,6 +515,7 @@ def test_staging_dir_is_under_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 def test_run_build_mini_seen_in_forms_on_evidence_packs(tmp_path):
     """Evidence packs emitted by the build also carry seen_in_forms."""
     import json
+
     fixture = Path("tests/fixtures/build_mini").resolve()
     output_root = tmp_path / "output" / "Mini"
     run_build(

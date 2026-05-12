@@ -36,8 +36,7 @@ def test_reviewer_sdk_returns_verdict_and_notes():
     from scripts.source_truth.sot_reviewer_agent import invoke_reviewer_subagent
 
     out = invoke_reviewer_subagent(
-        "Return JSON with keys 'verdict' (string 'agree') and "
-        "'notes' (string 'ok'). Nothing else."
+        "Return JSON with keys 'verdict' (string 'agree') and 'notes' (string 'ok'). Nothing else."
     )
     assert out["verdict"] in {"agree", "disagree_minor", "disagree_major"}
     assert isinstance(out["notes"], str)

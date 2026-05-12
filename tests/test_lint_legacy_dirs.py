@@ -1,4 +1,5 @@
 """Tests for the legacy-directory string linter."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -40,7 +41,7 @@ def test_linter_ignores_staging_in_secure_staging_context(tmp_path: Path) -> Non
     """'staging' as a concept name (not an output path component) must not trigger."""
     f = tmp_path / "secure_staging.py"
     f.write_text(
-        'STAGING_UMASK = 0o077\n_STAGING_DIR_MODE = 0o700\n',
+        "STAGING_UMASK = 0o077\n_STAGING_DIR_MODE = 0o700\n",
         encoding="utf-8",
     )
     from scripts.lint_legacy_dirs import check_file
@@ -61,7 +62,9 @@ def test_linter_catches_output_staging_path_pattern(tmp_path: Path) -> None:
     assert any("staging" in v for v in violations)
 
 
-def test_linter_exit_code_nonzero_on_violation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_linter_exit_code_nonzero_on_violation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     scripts_dir = tmp_path / "scripts"
     scripts_dir.mkdir()
     (scripts_dir / "bad.py").write_text('path = "trio_bundle/datasets"\n', encoding="utf-8")
@@ -124,9 +127,7 @@ def test_linter_skips_docstrings(tmp_path: Path) -> None:
     """Triple-quoted docstrings mentioning legacy names must NOT trigger."""
     f = tmp_path / "ok.py"
     f.write_text(
-        "def foo():\n"
-        '    """Reads from trio_bundle/datasets/ — historical note."""\n'
-        "    pass\n",
+        'def foo():\n    """Reads from trio_bundle/datasets/ — historical note."""\n    pass\n',
         encoding="utf-8",
     )
     from scripts.lint_legacy_dirs import check_file

@@ -5,10 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from scripts.security.phi_sot_sweep import run_sweep
-
 
 _FIXTURE = Path(__file__).parent.parent / "fixtures" / "phi_sweep" / "data" / "SoT" / "Mini"
 

@@ -14,7 +14,6 @@ from scripts.source_truth.reconciliation import (
     reconcile,
 )
 
-
 # ---------------------------------------------------------------------------
 # reconcile() — the core decision rule
 # ---------------------------------------------------------------------------
@@ -224,7 +223,9 @@ def test_load_scrubbed_columns_logs_malformed_lines_and_continues(
         and str(jsonl_path) in r.getMessage()
         and "line 1" in r.getMessage()
     ]
-    assert matching, f"expected malformed-line warning, got {[r.getMessage() for r in caplog.records]}"
+    assert matching, (
+        f"expected malformed-line warning, got {[r.getMessage() for r in caplog.records]}"
+    )
 
 
 def test_load_scrubbed_columns_reads_from_datasets_dir_directly(tmp_path: Path) -> None:

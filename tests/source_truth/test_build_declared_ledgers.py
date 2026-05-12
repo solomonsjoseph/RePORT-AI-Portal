@@ -17,8 +17,6 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-import pytest
-
 from scripts.source_truth.build import (
     _build_new_cleanup_declared_entries,
     _build_new_phi_declared_entries,
@@ -29,10 +27,10 @@ from scripts.source_truth.builder import (
     DERIVATION_PHI_LEDGER,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared fixture helpers
 # ---------------------------------------------------------------------------
+
 
 def _phi_record(
     variable_id: str,
@@ -143,6 +141,7 @@ def _make_policy_artifact(
 # Unit tests for _build_new_phi_declared_entries
 # ---------------------------------------------------------------------------
 
+
 class TestBuildNewPhiDeclaredEntries:
     def test_phi_declared_ledger_new_schema(self) -> None:
         """Each PHI entry has all required keys of the new schema."""
@@ -155,7 +154,15 @@ class TestBuildNewPhiDeclaredEntries:
         entries = _build_new_phi_declared_entries([artifact])
         assert len(entries) == 1
         entry = entries[0]
-        assert set(entry.keys()) == {"form", "variable_id", "action", "rule", "rationale", "where", "count"}
+        assert set(entry.keys()) == {
+            "form",
+            "variable_id",
+            "action",
+            "rule",
+            "rationale",
+            "where",
+            "count",
+        }
 
     def test_phi_declared_entry_field_mapping(self) -> None:
         """Field values map correctly from record and source keys."""
@@ -187,7 +194,11 @@ class TestBuildNewPhiDeclaredEntries:
         """count is always None in declared entries (runtime data, not declaration)."""
         artifact = _make_policy_artifact(
             "FORM_A",
-            [_phi_record("SUBJID", action="pseudonymize", sensitivity_flags=["subject_identifier"])],
+            [
+                _phi_record(
+                    "SUBJID", action="pseudonymize", sensitivity_flags=["subject_identifier"]
+                )
+            ],
             dataset_file="FORM_A.xlsx",
         )
         entries = _build_new_phi_declared_entries([artifact])
@@ -226,7 +237,11 @@ class TestBuildNewPhiDeclaredEntries:
             ),
             _make_policy_artifact(
                 "FORM_B",
-                [_phi_record("VAR_B", action="pseudonymize", sensitivity_flags=["subject_identifier"])],
+                [
+                    _phi_record(
+                        "VAR_B", action="pseudonymize", sensitivity_flags=["subject_identifier"]
+                    )
+                ],
                 dataset_file="FORM_B.xlsx",
             ),
         ]
@@ -247,6 +262,7 @@ class TestBuildNewPhiDeclaredEntries:
 # Unit tests for _build_new_cleanup_declared_entries
 # ---------------------------------------------------------------------------
 
+
 class TestBuildNewCleanupDeclaredEntries:
     def test_cleanup_declared_ledger_new_schema(self) -> None:
         """Each cleanup entry has all required keys of the new schema."""
@@ -258,7 +274,15 @@ class TestBuildNewCleanupDeclaredEntries:
         entries = _build_new_cleanup_declared_entries([artifact])
         assert len(entries) == 1
         entry = entries[0]
-        assert set(entry.keys()) == {"form", "variable_id", "action", "rule", "rationale", "where", "count"}
+        assert set(entry.keys()) == {
+            "form",
+            "variable_id",
+            "action",
+            "rule",
+            "rationale",
+            "where",
+            "count",
+        }
 
     def test_cleanup_action_always_dataset_column_drop(self) -> None:
         """action is always 'dataset_column_drop' regardless of normalized action."""
@@ -321,6 +345,7 @@ class TestBuildNewCleanupDeclaredEntries:
 # ---------------------------------------------------------------------------
 # Integration tests: run_build writes new schema to audit ledger files
 # ---------------------------------------------------------------------------
+
 
 def _write_policy_yaml_for_artifact(artifact: dict[str, Any], path: Path) -> None:
     """Serialize a policy artifact back to a minimal YAML that load_policy_yaml accepts."""
@@ -427,7 +452,9 @@ class TestRunBuildEmitsNewSchemaLedgers:
         artifact = _make_policy_artifact(
             "FORM_A",
             [
-                _phi_record("VAR_1", action="pseudonymize", sensitivity_flags=["subject_identifier"]),
+                _phi_record(
+                    "VAR_1", action="pseudonymize", sensitivity_flags=["subject_identifier"]
+                ),
                 _phi_record("VAR_2", action="drop", sensitivity_flags=["name_address"]),
             ],
             dataset_file="FORM_A.xlsx",

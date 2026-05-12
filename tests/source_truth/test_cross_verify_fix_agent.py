@@ -6,8 +6,6 @@ import json
 import os
 from pathlib import Path
 
-import pytest
-
 from scripts.source_truth.cross_verify_fix_agent import run_fix_agent
 from tests.conftest import skip_as_root
 
@@ -91,8 +89,10 @@ def test_scanner_only_mode_runs_without_llm(tmp_path: Path) -> None:
 
 def test_mock_llm_proposes_rule_add(tmp_path: Path) -> None:
     inp = _setup_inputs(tmp_path)
+
     def mock_llm(prompt: str) -> str:
         return json.dumps({"kind": "rule_add", "rule_yaml": "drop_fields:\n  - DROPPED_VAR\n"})
+
     summary = run_fix_agent(
         safe_report_path=inp["safe_report"],
         sot_dir=inp["sot_dir"],
@@ -111,8 +111,16 @@ def test_mock_llm_proposes_rule_add(tmp_path: Path) -> None:
 
 def test_no_invent_guard_rejects_rule_for_unknown_variable(tmp_path: Path) -> None:
     inp = _setup_inputs(tmp_path)
+
     def mock_llm(prompt: str) -> str:
-        return json.dumps({"kind": "rule_add", "rule_yaml": "drop_fields:\n  - GHOST_VAR\n", "variable_id": "GHOST_VAR"})
+        return json.dumps(
+            {
+                "kind": "rule_add",
+                "rule_yaml": "drop_fields:\n  - GHOST_VAR\n",
+                "variable_id": "GHOST_VAR",
+            }
+        )
+
     summary = run_fix_agent(
         safe_report_path=inp["safe_report"],
         sot_dir=inp["sot_dir"],
@@ -131,8 +139,10 @@ def test_no_invent_guard_rejects_rule_for_unknown_variable(tmp_path: Path) -> No
 def test_repeat_threshold_marks_auto_fix_exhausted(tmp_path: Path) -> None:
     inp = _setup_inputs(tmp_path)
     inp["ledger"].write_text(json.dumps({"F:DROPPED_VAR": 2}))
+
     def mock_llm(prompt: str) -> str:
         return json.dumps({"kind": "rule_add", "rule_yaml": "drop_fields:\n  - DROPPED_VAR\n"})
+
     summary = run_fix_agent(
         safe_report_path=inp["safe_report"],
         sot_dir=inp["sot_dir"],
@@ -156,9 +166,11 @@ def test_deny_paths_enforced_during_run(tmp_path: Path) -> None:
     secret = tmp_path / "row.jsonl"
     secret.write_text("{}\n")
     captured = {"could_read": None}
+
     def mock_llm(prompt: str) -> str:
         captured["could_read"] = os.access(secret, os.R_OK)
         return json.dumps({"kind": "hitl", "reason": "ok"})
+
     run_fix_agent(
         safe_report_path=inp["safe_report"],
         sot_dir=inp["sot_dir"],
@@ -170,17 +182,26 @@ def test_deny_paths_enforced_during_run(tmp_path: Path) -> None:
         output_pr_drafts_dir=inp["pr_drafts"],
         output_hitl_drafts_dir=inp["hitl_drafts"],
     )
-    assert captured["could_read"] is False, "deny_paths should make the row JSONL unreadable mid-run"
+    assert captured["could_read"] is False, (
+        "deny_paths should make the row JSONL unreadable mid-run"
+    )
     assert os.access(secret, os.R_OK), "read access restored after run"
 
 
 def test_sot_stub_sets_claude_drafted_true(tmp_path: Path) -> None:
     inp = _setup_inputs(tmp_path)
+
     def mock_llm(prompt: str) -> str:
-        return json.dumps({
-            "kind": "sot_stub_add",
-            "variable_record": {"variable_id": "DROPPED_VAR", "handling_intent": {"action": "drop"}},
-        })
+        return json.dumps(
+            {
+                "kind": "sot_stub_add",
+                "variable_record": {
+                    "variable_id": "DROPPED_VAR",
+                    "handling_intent": {"action": "drop"},
+                },
+            }
+        )
+
     summary = run_fix_agent(
         safe_report_path=inp["safe_report"],
         sot_dir=inp["sot_dir"],

@@ -101,8 +101,7 @@ def validate_agent_read(path: str | Path) -> Path:
         if _is_within(resolved, root):
             return Path(resolved)
     raise ZoneViolationError(
-        f"Agent read rejected — path is outside the permitted zones "
-        f"(llm_source/ or agent/): {path}"
+        f"Agent read rejected — path is outside the permitted zones (llm_source/ or agent/): {path}"
     )
 
 

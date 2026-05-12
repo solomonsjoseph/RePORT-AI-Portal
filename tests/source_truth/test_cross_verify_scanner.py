@@ -5,10 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from scripts.source_truth.cross_verify_scanner import scan
-
 
 _FIXTURE = Path(__file__).parent.parent / "fixtures" / "cross_verify"
 
@@ -75,7 +72,9 @@ def test_column_present_correctly_classified(tmp_path: Path) -> None:
     body = json.loads(out.read_text())
     by_vid = {f["variable_id"]: f for f in body["findings"]}
     assert by_vid["KEEPER"]["column_present"] is True
-    assert by_vid["DROPPED_VAR"]["column_present"] is True  # discrepancy: declared drop but still present
+    assert (
+        by_vid["DROPPED_VAR"]["column_present"] is True
+    )  # discrepancy: declared drop but still present
     assert by_vid["PSEUDO_VAR"]["column_present"] is True
 
 

@@ -39,6 +39,7 @@ Skipped files (the file itself legitimately names the legacy strings):
     legacy strings as detection patterns)
   - ``pre_delete_cleanup.py``     (the legacy-deletion tool)
 """
+
 from __future__ import annotations
 
 import re
@@ -136,16 +137,12 @@ def check_file(path: Path) -> list[str]:
             continue
         for pat in _FULL_MATCH_PATTERNS:
             if pat.search(line):
-                violations.append(
-                    f"{path}:{lineno}: legacy directory name found: {line.strip()}"
-                )
+                violations.append(f"{path}:{lineno}: legacy directory name found: {line.strip()}")
                 break
         else:
             for pat in _PATH_COMPONENT_PATTERNS:
                 if pat.search(line):
-                    violations.append(
-                        f"{path}:{lineno}: legacy path component: {line.strip()}"
-                    )
+                    violations.append(f"{path}:{lineno}: legacy path component: {line.strip()}")
                     break
     return violations
 

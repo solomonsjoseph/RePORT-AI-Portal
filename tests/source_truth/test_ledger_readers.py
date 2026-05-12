@@ -18,7 +18,6 @@ from scripts.source_truth.ledger_readers import (
     load_phi_dropped_columns,
 )
 
-
 # ---------------------------------------------------------------------------
 # load_phi_dropped_columns
 # ---------------------------------------------------------------------------
@@ -33,15 +32,45 @@ def test_phi_reader_extracts_drop_events_grouped_by_form() -> None:
         # Scope strings MUST match the as-written prefixed form emitted by
         # scripts/security/phi_scrub.py:_bump (k = f"phi-scrub-{scope}:{field}").
         "scrubbed": [
-            {"scope": "phi-scrub-drop", "field": "PATIENT_NAME", "file": "1A_ICScreening.jsonl", "count": 3},
-            {"scope": "phi-scrub-drop", "field": "ADDRESS", "file": "1A_ICScreening.jsonl", "count": 3},
-            {"scope": "phi-scrub-birthdate-drop", "field": "DOB", "file": "2A_ICBaseline.jsonl", "count": 5},
+            {
+                "scope": "phi-scrub-drop",
+                "field": "PATIENT_NAME",
+                "file": "1A_ICScreening.jsonl",
+                "count": 3,
+            },
+            {
+                "scope": "phi-scrub-drop",
+                "field": "ADDRESS",
+                "file": "1A_ICScreening.jsonl",
+                "count": 3,
+            },
+            {
+                "scope": "phi-scrub-birthdate-drop",
+                "field": "DOB",
+                "file": "2A_ICBaseline.jsonl",
+                "count": 5,
+            },
             # non-drop scopes must be ignored
             {"scope": "phi-scrub-id", "field": "FID", "file": "1A_ICScreening.jsonl", "count": 3},
-            {"scope": "phi-scrub-date", "field": "VISIT_DT", "file": "2A_ICBaseline.jsonl", "count": 5},
+            {
+                "scope": "phi-scrub-date",
+                "field": "VISIT_DT",
+                "file": "2A_ICBaseline.jsonl",
+                "count": 5,
+            },
             {"scope": "phi-scrub-cap", "field": "AGE", "file": "2A_ICBaseline.jsonl", "count": 5},
-            {"scope": "phi-scrub-generalize", "field": "ZIP", "file": "1A_ICScreening.jsonl", "count": 3},
-            {"scope": "phi-scrub-suppress-small-cell", "field": "CELL", "file": "1A_ICScreening.jsonl", "count": 3},
+            {
+                "scope": "phi-scrub-generalize",
+                "field": "ZIP",
+                "file": "1A_ICScreening.jsonl",
+                "count": 3,
+            },
+            {
+                "scope": "phi-scrub-suppress-small-cell",
+                "field": "CELL",
+                "file": "1A_ICScreening.jsonl",
+                "count": 3,
+            },
         ],
         "orphan_rows": {},
     }

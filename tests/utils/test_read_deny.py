@@ -8,9 +8,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from tests.conftest import skip_as_root
-
 from scripts.utils.read_deny import read_deny
+from tests.conftest import skip_as_root
 
 
 @skip_as_root

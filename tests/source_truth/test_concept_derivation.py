@@ -5,6 +5,7 @@ Concept derivation is purely structural — it reads ONLY the SoT
 policy artifacts and emits cohort/outcome/exposure/schedule/definition
 groupings without any hand-authored definition wording.
 """
+
 from __future__ import annotations
 
 import json
@@ -209,7 +210,9 @@ def test_derive_outcomes_emits_adverse_event_from_95_SAE():
 def test_derive_outcomes_empty_when_no_outcome_forms():
     forms = [
         _make_synthetic_form(
-            "1A_ICScreening", title="Index Case Screening", records=[],
+            "1A_ICScreening",
+            title="Index Case Screening",
+            records=[],
         ),
     ]
     outcomes = derive_outcomes(forms)
@@ -232,9 +235,7 @@ def test_derive_exposures_picks_up_alcohol_and_smoking_from_baseline():
     # We expect at least two exposure entries based on Mini 2A's sections
     section_keys = set(exposures.keys())
     # At least 2 keys related to alcohol/smoking/medical_history/diet
-    assert len(exposures) >= 2, (
-        f"expected ≥2 exposures from Mini 2A, got {section_keys}"
-    )
+    assert len(exposures) >= 2, f"expected ≥2 exposures from Mini 2A, got {section_keys}"
 
 
 def test_derive_exposures_skips_non_baseline_forms():

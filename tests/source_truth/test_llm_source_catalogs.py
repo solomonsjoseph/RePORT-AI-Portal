@@ -5,16 +5,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 import config
-
 from scripts.source_truth.llm_source_catalogs import (
+    build_dataset_schema_catalog,
     build_dictionary_catalog,
     build_study_metadata_catalog,
     relocate_dictionary,
 )
-from scripts.source_truth.llm_source_catalogs import build_dataset_schema_catalog
 
 
 def _make_legacy_subdir_layout(legacy: Path, forms: list[str]) -> None:
@@ -179,7 +176,10 @@ def test_dataset_schema_catalog_lean_toc_with_handling_summary(tmp_path: Path) -
     catalog = json.loads(out.read_text())
     assert catalog["forms"]["10_TST"]["file"] == "files/10_TST.jsonl"
     assert catalog["forms"]["10_TST"]["sot_yaml"].endswith("10_TST_policy.yaml")
-    assert catalog["forms"]["10_TST"]["evidence_pack"] == "../study_metadata/evidence_packs/10_TST.json"
+    assert (
+        catalog["forms"]["10_TST"]["evidence_pack"]
+        == "../study_metadata/evidence_packs/10_TST.json"
+    )
     assert catalog["forms"]["10_TST"]["handling_summary"] == {
         "keep": 1,
         "pseudonymize": 1,

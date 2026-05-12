@@ -43,7 +43,9 @@ def relocate_dictionary(
 
     legacy_dir = legacy_dir if legacy_dir is not None else config.DICTIONARY_JSON_OUTPUT_DIR
     new_jsonl_dir = (
-        new_jsonl_dir if new_jsonl_dir is not None else config.LLM_SOURCE_DICTIONARY_MAPPING_JSONL_DIR
+        new_jsonl_dir
+        if new_jsonl_dir is not None
+        else config.LLM_SOURCE_DICTIONARY_MAPPING_JSONL_DIR
     )
     if not legacy_dir.is_dir():
         logger.info("relocate_dictionary.skipped legacy_dir_missing=%s", str(legacy_dir))
@@ -123,9 +125,7 @@ def build_study_metadata_catalog(
         else config.LLM_SOURCE_EVIDENCE_PACKS_DIR
     )
     output_path = (
-        output_path
-        if output_path is not None
-        else config.LLM_SOURCE_STUDY_METADATA_CATALOG_PATH
+        output_path if output_path is not None else config.LLM_SOURCE_STUDY_METADATA_CATALOG_PATH
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     forms: dict[str, dict[str, Any]] = {}
@@ -154,9 +154,7 @@ def build_study_metadata_catalog(
         "forms": forms,
     }
     atomic_write_json(output_path, payload)
-    logger.info(
-        "study_metadata_catalog.written forms=%d output=%s", len(forms), str(output_path)
-    )
+    logger.info("study_metadata_catalog.written forms=%d output=%s", len(forms), str(output_path))
 
 
 def build_dataset_schema_catalog(
@@ -184,9 +182,7 @@ def build_dataset_schema_catalog(
         else config.LLM_SOURCE_EVIDENCE_PACKS_DIR
     )
     output_path = (
-        output_path
-        if output_path is not None
-        else config.LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH
+        output_path if output_path is not None else config.LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH
     )
     policy_files = sorted(sot_dir.glob("*_policy.yaml"))
     dataset_policies = sot_dir / "dataset_policies"
@@ -208,13 +204,17 @@ def build_dataset_schema_catalog(
             for v in variables:
                 if isinstance(v, dict):
                     handling = v.get("handling_intent") or {}
-                    action = (handling.get("action") if isinstance(handling, dict) else None) or "unknown"
+                    action = (
+                        handling.get("action") if isinstance(handling, dict) else None
+                    ) or "unknown"
                     actions[action] += 1
         elif isinstance(variables, dict):
             for v in variables.values():
                 if isinstance(v, dict):
                     handling = v.get("handling_intent") or {}
-                    action = (handling.get("action") if isinstance(handling, dict) else None) or "unknown"
+                    action = (
+                        handling.get("action") if isinstance(handling, dict) else None
+                    ) or "unknown"
                     actions[action] += 1
         # Resolve relative paths
         sot_yaml_rel = str(policy_path)
@@ -234,9 +234,7 @@ def build_dataset_schema_catalog(
         "forms": forms,
     }
     atomic_write_json(output_path, payload)
-    logger.info(
-        "dataset_schema_catalog.written forms=%d output=%s", len(forms), str(output_path)
-    )
+    logger.info("dataset_schema_catalog.written forms=%d output=%s", len(forms), str(output_path))
 
 
 if __name__ == "__main__":

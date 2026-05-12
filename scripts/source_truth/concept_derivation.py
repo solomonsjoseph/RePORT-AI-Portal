@@ -36,6 +36,7 @@ The plan's narrower form list would silently drop the canonical study
 final-outcome forms, so we widen the form set and the section-pattern
 list. See Phase-2 design notes for context.
 """
+
 from __future__ import annotations
 
 import re
@@ -318,9 +319,7 @@ def derive_outcomes(forms: list[dict]) -> dict[str, dict]:
         out[key] = {
             "name": title,
             "member_forms": [fid],
-            "member_variables": sorted(
-                members, key=lambda m: (m["form"], m["variable_id"])
-            ),
+            "member_variables": sorted(members, key=lambda m: (m["form"], m["variable_id"])),
             "section_signals": sorted(section_signals),
         }
     return out
@@ -362,9 +361,7 @@ def derive_exposures(forms: list[dict]) -> dict[str, dict]:
             )
             if fid not in entry["member_forms"]:
                 entry["member_forms"].append(fid)
-            entry["member_variables"].append(
-                {"form": fid, "variable_id": vid, "role": "exposure"}
-            )
+            entry["member_variables"].append({"form": fid, "variable_id": vid, "role": "exposure"})
 
     # Canonicalise.
     for body in grouped.values():
@@ -455,9 +452,7 @@ def derive_definitions(forms: list[dict]) -> dict[str, dict]:
 def derive_concept_index(forms: list[dict]) -> dict[str, Any]:
     """Aggregate all five derivation passes into a canonical concept index."""
     if not forms:
-        raise ConceptDerivationError(
-            "Cannot derive concept index from empty policy artifact list"
-        )
+        raise ConceptDerivationError("Cannot derive concept index from empty policy artifact list")
 
     payload: dict[str, Any] = {
         "schema_version": 1,

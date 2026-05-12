@@ -70,10 +70,6 @@ from scripts.source_truth.ledgers import (
     build_dataset_cleanup_ledger,
     build_phi_handling_ledger,
 )
-from scripts.source_truth.policy_loader import (
-    PolicyLoaderError,
-    load_policy_yaml,
-)
 from scripts.source_truth.lineage import (
     LINEAGE_VERSION,
     SourceTruthLineageError,
@@ -91,6 +87,10 @@ from scripts.source_truth.pdf_evidence import (
     build_pdf_evidence_completeness_report,
     check_pdf_evidence_completeness,
     extract_pdf_evidence,
+)
+from scripts.source_truth.policy_loader import (
+    PolicyLoaderError,
+    load_policy_yaml,
 )
 from scripts.source_truth.record import (
     SourceTruthValidationError,

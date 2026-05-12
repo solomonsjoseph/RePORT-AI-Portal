@@ -15,7 +15,6 @@ from pathlib import Path
 
 from scripts.security.phi_scrub import PHIKeyMissingError, PHIScrubError, load_key
 
-
 _TOKEN_HEX_LEN = 12
 
 
@@ -35,6 +34,6 @@ def mask_variable_id(form: str, variable_id: str, *, key_path: Path | None = Non
         key = load_key(key_path)
     except PHIKeyMissingError as exc:
         raise PHIIdMaskerError(f"PHI HMAC key unavailable: {exc}") from exc
-    payload = f"{form}|{variable_id}".encode("utf-8")
+    payload = f"{form}|{variable_id}".encode()
     digest = hmac.new(key, payload, sha256).hexdigest()
     return digest[:_TOKEN_HEX_LEN]

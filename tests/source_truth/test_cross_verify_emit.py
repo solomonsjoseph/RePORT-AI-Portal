@@ -37,8 +37,18 @@ def _setup_drafts(tmp_path: Path) -> dict[str, Path]:
                 "form": "F",
                 "study": "Mini",
                 "variables": [
-                    {"variable_id": "DROPPED_VAR", "id_masked": False, "handling_action": "drop", "description": "Dropped"},
-                    {"variable_id": "abc123def456", "id_masked": True, "handling_action": "review_required", "description": "Disambiguation needed"},
+                    {
+                        "variable_id": "DROPPED_VAR",
+                        "id_masked": False,
+                        "handling_action": "drop",
+                        "description": "Dropped",
+                    },
+                    {
+                        "variable_id": "abc123def456",
+                        "id_masked": True,
+                        "handling_action": "review_required",
+                        "description": "Disambiguation needed",
+                    },
                 ],
             }
         )
@@ -68,9 +78,11 @@ def test_no_runner_writes_body_files(tmp_path: Path) -> None:
 def test_runner_invoked_for_pr_and_issue(tmp_path: Path) -> None:
     inp = _setup_drafts(tmp_path)
     calls: list[tuple[list[str], str]] = []
+
     def mock_runner(argv: list[str], body: str | None) -> int:
         calls.append((argv, body or ""))
         return 0
+
     summary = emit(
         pr_drafts_dir=inp["pr"],
         hitl_drafts_dir=inp["hitl"],
@@ -96,9 +108,11 @@ def test_pr_body_redacts_phi_variable_id(tmp_path: Path) -> None:
         json.dumps({"kind": "rule_add", "form": "F", "variable_id": "FIELD1"})
     )
     captured: list[str] = []
+
     def mock_runner(argv: list[str], body: str | None) -> int:
         captured.append(body or "")
         return 0
+
     emit(
         pr_drafts_dir=inp["pr"],
         hitl_drafts_dir=inp["hitl"],
@@ -118,8 +132,10 @@ def test_pr_body_redacts_phi_variable_id(tmp_path: Path) -> None:
 
 def test_runner_failure_does_not_raise(tmp_path: Path) -> None:
     inp = _setup_drafts(tmp_path)
+
     def failing_runner(argv: list[str], body: str | None) -> int:
         return 1  # gh failed
+
     summary = emit(
         pr_drafts_dir=inp["pr"],
         hitl_drafts_dir=inp["hitl"],

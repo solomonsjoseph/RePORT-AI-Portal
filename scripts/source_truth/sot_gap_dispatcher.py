@@ -9,9 +9,10 @@ Returns a tuple `(results, errors)`:
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from scripts.source_truth.sot_extractor_agent import run_extractor
 from scripts.source_truth.sot_reviewer_agent import run_reviewer

@@ -43,9 +43,7 @@ PATH_CONSTANTS_BY_PHASE: dict[str, tuple[str, ...]] = {
         "CROSS_VERIFY_PR_DRAFTS_DIR",
         "CROSS_VERIFY_HITL_DRAFTS_DIR",
     ),
-    "phase4": (
-        "AUDIT_SENTINEL_ALARM_PATH",
-    ),
+    "phase4": ("AUDIT_SENTINEL_ALARM_PATH",),
 }
 
 

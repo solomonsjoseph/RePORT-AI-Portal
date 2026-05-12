@@ -83,9 +83,7 @@ def _load_json_or_empty(path: Path) -> dict[str, Any]:
             path,
             exc,
         )
-        raise AuditEnvelopeCorruptError(
-            f"malformed audit envelope at {path}: {exc}"
-        ) from exc
+        raise AuditEnvelopeCorruptError(f"malformed audit envelope at {path}: {exc}") from exc
 
 
 def _promote_dataset_schema(
@@ -139,9 +137,7 @@ def _promote_dataset_schema(
         return 2
 
     atomic_write_json(promoted_path, payload)
-    logger.info(
-        "verify-and-promote: PROMOTED dataset_schema.json from staging to llm_source/"
-    )
+    logger.info("verify-and-promote: PROMOTED dataset_schema.json from staging to llm_source/")
     return 0
 
 
@@ -266,7 +262,9 @@ def run_verification(
     preflight_findings: list[GateFinding] = []
     preflight_findings.extend(check_c_phi_ledger_alignment(declared_entries, as_written_events))
     preflight_findings.extend(check_d_phi_action_mismatch(declared_entries, as_written_events))
-    preflight_findings.extend(check_g_phi_dropped_vars_absent(as_written_events, scrubbed_cols_by_form))
+    preflight_findings.extend(
+        check_g_phi_dropped_vars_absent(as_written_events, scrubbed_cols_by_form)
+    )
 
     if preflight_findings:
         preflight_path = output_root / "audit" / "preflight_mismatch.json"
@@ -349,7 +347,9 @@ def run_verification(
         for result in failures:
             payload = _serialize_discrepancy(result)
             target = review_dir / f"{result.form}_discrepancies.json"
-            target.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            target.write_text(
+                json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            )
             logger.error(
                 "verify-and-promote: %s mismatch — missing_unexplained=%s extra_in_scrubbed=%s",
                 result.form,
@@ -380,7 +380,7 @@ def run_verification(
     # LLM/gh, it wires those callables explicitly.
     try:
         run_cross_verify()
-    except Exception as exc:  # noqa: BLE001 -- never block verify_and_promote on cross-verify failure
+    except Exception as exc:
         logger.warning("cross_verify_pipeline.failed err=%s", exc)
 
     return 0
@@ -423,7 +423,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Resolve defaults from the repo layout. We import lazily so the test
     # suite does not need a configured study to import this module.
-    import config  # noqa: PLC0415 — deliberate lazy import
+    import config
 
     study = args.study
     sot_dir = args.sot_dir or (config.DATA_DIR / study / "SoT")

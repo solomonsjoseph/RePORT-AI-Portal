@@ -53,9 +53,7 @@ __all__ = [
 ]
 
 
-_PHI_DROP_SCOPES: frozenset[str] = frozenset(
-    {"phi-scrub-drop", "phi-scrub-birthdate-drop"}
-)
+_PHI_DROP_SCOPES: frozenset[str] = frozenset({"phi-scrub-drop", "phi-scrub-birthdate-drop"})
 _CLEANUP_COLUMN_SCOPE: str = "dataset-column"
 
 

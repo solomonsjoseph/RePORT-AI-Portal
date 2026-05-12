@@ -12,11 +12,27 @@ from scripts.security.phi_sot_sweep import VerificationFailed, verify
 
 def _make_findings(tmp_path: Path, with_hitl: bool) -> Path:
     findings = [
-        {"form": "F", "variable_id_masked": "aaa", "category": "covered", "regulatory_anchor_hint": None, "current_action": "keep"},
-        {"form": "F", "variable_id_masked": "bbb", "category": "review_required_open", "regulatory_anchor_hint": None, "current_action": "review_required"},
+        {
+            "form": "F",
+            "variable_id_masked": "aaa",
+            "category": "covered",
+            "regulatory_anchor_hint": None,
+            "current_action": "keep",
+        },
+        {
+            "form": "F",
+            "variable_id_masked": "bbb",
+            "category": "review_required_open",
+            "regulatory_anchor_hint": None,
+            "current_action": "review_required",
+        },
     ]
     p = tmp_path / "findings.json"
-    p.write_text(json.dumps({"schema_version": 1, "generated_at_utc": "x", "summary": {}, "findings": findings}))
+    p.write_text(
+        json.dumps(
+            {"schema_version": 1, "generated_at_utc": "x", "summary": {}, "findings": findings}
+        )
+    )
     if with_hitl:
         h = tmp_path / "hitl"
         h.mkdir()
@@ -45,7 +61,13 @@ def test_fails_when_uncovered_with_no_pr_draft(tmp_path: Path) -> None:
                 "generated_at_utc": "x",
                 "summary": {},
                 "findings": [
-                    {"form": "F", "variable_id_masked": "ccc", "category": "name_phi_uncovered", "regulatory_anchor_hint": "HIPAA #5 (phone)", "current_action": "keep"}
+                    {
+                        "form": "F",
+                        "variable_id_masked": "ccc",
+                        "category": "name_phi_uncovered",
+                        "regulatory_anchor_hint": "HIPAA #5 (phone)",
+                        "current_action": "keep",
+                    }
                 ],
             }
         )

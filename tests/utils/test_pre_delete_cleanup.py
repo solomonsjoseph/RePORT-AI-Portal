@@ -1,4 +1,5 @@
 """Tests for the pre-delete manifest writer + clean-legacy CLI."""
+
 from __future__ import annotations
 
 import hashlib
@@ -20,9 +21,7 @@ def _patch_output_marker(monkeypatch: pytest.MonkeyPatch, output_marker: Path) -
     accept tmp_path-based manifest paths."""
     import scripts.security.secure_env as secure_env
 
-    monkeypatch.setattr(
-        secure_env, "_OUTPUT_MARKER", os.path.realpath(str(output_marker))
-    )
+    monkeypatch.setattr(secure_env, "_OUTPUT_MARKER", os.path.realpath(str(output_marker)))
 
 
 # ---------------------------------------------------------------------------
@@ -47,7 +46,7 @@ def test_manifest_captures_all_files_in_legacy_dirs(
     staging = output_root / "staging"
     staging.mkdir()
     f2 = staging / "llm_source_staging.json"
-    f2.write_text('{}', encoding="utf-8")
+    f2.write_text("{}", encoding="utf-8")
 
     manifest_path = audit / "lineage_manifest_pre_delete.json"
 
@@ -69,9 +68,7 @@ def test_manifest_captures_all_files_in_legacy_dirs(
     assert flat[key2] == _sha256(f2)
 
 
-def test_manifest_skips_missing_dirs(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_manifest_skips_missing_dirs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Missing legacy dirs are skipped silently — no error."""
     output_root = tmp_path / "output" / "Indo-VAP"
     audit = output_root / "audit"
@@ -93,7 +90,7 @@ def test_post_delete_structure(tmp_path: Path) -> None:
     (output_root / "audit").mkdir(parents=True)
     (output_root / "llm_source").mkdir()
     (output_root / "trio_bundle" / "datasets").mkdir(parents=True)
-    (output_root / "trio_bundle" / "datasets" / "f.jsonl").write_text('{}')
+    (output_root / "trio_bundle" / "datasets" / "f.jsonl").write_text("{}")
     (output_root / "staging").mkdir()
     (output_root / "human_review").mkdir()
 
@@ -123,9 +120,7 @@ def test_manifest_rejects_path_outside_output_zone(
     manifest_path.parent.mkdir(parents=True)
 
     with pytest.raises(ZoneViolationError):
-        write_pre_delete_manifest(
-            output_root=output_root, manifest_path=manifest_path
-        )
+        write_pre_delete_manifest(output_root=output_root, manifest_path=manifest_path)
 
 
 # ---------------------------------------------------------------------------
@@ -163,10 +158,13 @@ def test_cli_orchestrates_in_correct_order(tmp_path: Path, monkeypatch) -> None:
 
 def test_cli_module_exposes_main() -> None:
     from scripts.utils import pre_delete_cleanup
+
     assert callable(pre_delete_cleanup.main)
 
 
-def test_cli_dry_run_does_not_call_destructive_functions(tmp_path: Path, monkeypatch, capsys) -> None:
+def test_cli_dry_run_does_not_call_destructive_functions(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
     """--dry-run must not call prune or delete; it MAY still call write_manifest."""
     import config
     from scripts.utils import pre_delete_cleanup
@@ -208,12 +206,17 @@ def test_cli_no_dry_run_calls_all(tmp_path: Path, monkeypatch) -> None:
 
     called: list[str] = []
 
-    monkeypatch.setattr(pre_delete_cleanup, "write_pre_delete_manifest",
-                        lambda **kw: called.append("write_manifest") or {})
-    monkeypatch.setattr(pre_delete_cleanup, "prune_per_variable_packs",
-                        lambda **kw: called.append("prune") or 0)
-    monkeypatch.setattr(pre_delete_cleanup, "delete_legacy_dirs",
-                        lambda **kw: called.append("delete"))
+    monkeypatch.setattr(
+        pre_delete_cleanup,
+        "write_pre_delete_manifest",
+        lambda **kw: called.append("write_manifest") or {},
+    )
+    monkeypatch.setattr(
+        pre_delete_cleanup, "prune_per_variable_packs", lambda **kw: called.append("prune") or 0
+    )
+    monkeypatch.setattr(
+        pre_delete_cleanup, "delete_legacy_dirs", lambda **kw: called.append("delete")
+    )
 
     monkeypatch.setattr(config, "STUDY_OUTPUT_DIR", tmp_path)
     monkeypatch.setattr(config, "STUDY_AUDIT_DIR", tmp_path / "audit")

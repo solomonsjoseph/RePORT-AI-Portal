@@ -50,11 +50,7 @@ def _exists_in_sot(sot_dir: Path, form: str, variable_id: str) -> bool:
     body = yaml.safe_load(yaml_path.read_text()) or {}
     variables = body.get("variables") or []
     if isinstance(variables, list):
-        return any(
-            v.get("variable_id") == variable_id
-            for v in variables
-            if isinstance(v, dict)
-        )
+        return any(v.get("variable_id") == variable_id for v in variables if isinstance(v, dict))
     if isinstance(variables, dict):
         return variable_id in variables
     return False
@@ -75,9 +71,7 @@ def _ledger_key(form: str, variable_id: str) -> str:
     return f"{form}:{variable_id}"
 
 
-def _write_pr_draft(
-    out_dir: Path, form: str, variable_id: str, fix: dict[str, Any]
-) -> None:
+def _write_pr_draft(out_dir: Path, form: str, variable_id: str, fix: dict[str, Any]) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     atomic_write_json(out_dir / f"{form}_{variable_id}.json", fix)
 
@@ -161,9 +155,7 @@ def run_fix_agent(
                 resp = llm_call(prompt)
                 fix = json.loads(resp)
             except (json.JSONDecodeError, Exception) as exc:
-                logger.warning(
-                    "fix_agent.llm_failed form=%s vid=%s err=%s", form, vid, exc
-                )
+                logger.warning("fix_agent.llm_failed form=%s vid=%s err=%s", form, vid, exc)
                 continue
             kind = fix.get("kind")
             if kind == "rule_add":

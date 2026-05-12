@@ -69,10 +69,6 @@ def deny_if_audit_zone(path: str | Path) -> None:
 
     p = Path(path)
     if _is_inside_audit_zone_by_path(p):
-        raise AuditZoneViolation(
-            f"audit zone read denied (realpath check): {p}"
-        )
+        raise AuditZoneViolation(f"audit zone read denied (realpath check): {p}")
     if _has_no_llm_attribute(p):
-        raise AuditZoneViolation(
-            f"audit zone read denied (gitattributes attr): {p}"
-        )
+        raise AuditZoneViolation(f"audit zone read denied (gitattributes attr): {p}")

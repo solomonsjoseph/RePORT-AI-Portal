@@ -1,9 +1,6 @@
 """SoT gap inventory walker: fixture-driven."""
 
-import json
 from pathlib import Path
-
-import pytest
 
 from scripts.source_truth.sot_gap_inventory import build_coverage
 
@@ -95,7 +92,9 @@ def test_inventory_skips_pipeline_metadata_columns(tmp_path):
         '{"SUBJID": "X", "AGE": 30, "source_file": "f.csv", "_provenance": "pipe", "_phi_scrubbed": true}\n'
     )
 
-    coverage = build_coverage(sot_dir=sot_dir, raw_pdf_dir=raw_pdf_dir, dataset_dir=dataset_dir, pilot_dir=pilot_dir)
+    coverage = build_coverage(
+        sot_dir=sot_dir, raw_pdf_dir=raw_pdf_dir, dataset_dir=dataset_dir, pilot_dir=pilot_dir
+    )
     info = coverage["forms"]["TEST"]
     assert info["sot_present"] is True
     assert info["sot_complete"] is True
@@ -165,7 +164,9 @@ def test_inventory_finds_pdf_with_real_indo_vap_naming(tmp_path):
     (dataset_dir / "10_TST.jsonl").write_text('{"SUBJID": "X"}\n')
     (nested / "10 TST screening v1.0.pdf").write_bytes(b"%PDF-1.4\n%%EOF\n")
 
-    coverage = build_coverage(sot_dir=sot_dir, raw_pdf_dir=raw_pdf_dir, dataset_dir=dataset_dir, pilot_dir=pilot_dir)
+    coverage = build_coverage(
+        sot_dir=sot_dir, raw_pdf_dir=raw_pdf_dir, dataset_dir=dataset_dir, pilot_dir=pilot_dir
+    )
     info = coverage["forms"]["10_TST"]
     assert "pdf" in info["observed_in"]
     assert info["pdf_path"].endswith("10 TST screening v1.0.pdf")
