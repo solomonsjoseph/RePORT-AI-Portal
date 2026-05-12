@@ -220,7 +220,7 @@ STUDY_AUDIT_DIR = STUDY_OUTPUT_DIR / "audit"
 # Only the dataset leg produces audit reports — dictionary and PDF legs carry
 # no PHI, so their cleanup is side-effect-only (pruning without a report).
 # Step-cache manifests for dataset_processing also land under STUDY_AUDIT_DIR
-# so the LLM-visible trio_bundle/ stays content-only.
+# so the LLM-visible llm_source/ tree stays content-only.
 AUDIT_DATASET_REPORT_PATH: Path = STUDY_AUDIT_DIR / "dataset_cleanup_report.json"
 AUDIT_SCRUB_REPORT_PATH: Path = STUDY_AUDIT_DIR / "phi_scrub_report.json"
 
@@ -300,25 +300,14 @@ AGENT_OUTPUT_DIR: Path = AGENT_STATE_DIR / "analysis"
 CONVERSATIONS_DIR: Path = AGENT_STATE_DIR / "conversations"
 
 # ----------------------------------------------------------------------------
-# SNAPSHOT TIER (human-reviewed baseline; LLM-INVISIBLE)
+# SNAPSHOT TIER (legacy path — LLM-INVISIBLE security boundary)
 # ----------------------------------------------------------------------------
-# Snapshots are separate from raw data, agent state, and the live trio bundle.
-# They hold a cleaned-and-verified trio bundle (datasets / dictionary / pdfs)
-# saved by a human after review. When PDF extraction fails or the operator
-# clicks "Use Existing Study", this baseline is copied over the live
-# ``output/{STUDY}/trio_bundle/``.
-#
-# Read posture:
-#   - The pipeline reads this baseline when fresh PDF extraction cannot
-#     produce a complete bundle.
-#   - The wizard's "Use Existing Study" path restores this baseline over the
-#     live trio bundle before chat starts.
-#   - The LLM
-#     agent's read zone is restricted to ``trio_bundle/`` + ``agent/``;
-#     ``data/snapshots/`` is intentionally outside that zone so the LLM cannot
-#     accidentally read a stale baseline as if it were live data.
-#
-# Path: under ``data/`` because it is reviewed study data, not runtime output.
+# The snapshot/restore subsystem itself has been retired (SoT-based extraction
+# now produces a reviewable ``llm_source/`` tree directly). This constant is
+# preserved as a security-zone marker: ``data/snapshots/`` is intentionally
+# OUTSIDE the LLM agent's read zone (which is ``llm_source/`` + ``agent/``),
+# and ``cutover_gate`` plus the agent file-access tests still assert that any
+# path under this directory is hard-rejected by ``validate_agent_read``.
 STUDY_SNAPSHOTS_DIR: Path = DATA_DIR / "snapshots" / STUDY_NAME
 
 # Staging workspace — per-study tree inside TMP_DIR. Managed per-run by

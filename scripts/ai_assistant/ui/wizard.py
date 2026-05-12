@@ -216,24 +216,6 @@ def _pipeline_output_exists() -> bool:
         return False
 
 
-def _snapshot_exists() -> bool:
-    from scripts.utils.snapshots import snapshot_exists
-
-    return snapshot_exists()
-
-
-def use_existing_study() -> dict[str, Any]:
-    """Restore the reviewed snapshot baseline before enabling chat."""
-
-    from scripts.utils.snapshots import SnapshotError, restore_snapshot
-
-    try:
-        path = restore_snapshot()
-    except SnapshotError as exc:
-        return {"success": False, "output": str(exc)}
-    return {"success": True, "output": f"Restored reviewed snapshot into {path}"}
-
-
 def _render_pipeline_log() -> None:
     """Render the setup log as a user-controlled, scrollable panel."""
     if not st.session_state.pipeline_log:
@@ -456,80 +438,41 @@ def render_setup_page() -> None:
                 )
 
                 output_exists = _pipeline_output_exists()
-                snapshot_exists = _snapshot_exists()
                 pipeline_ready: bool = st.session_state.pipeline_ready
 
                 if pipeline_ready:
                     st.success("Study data loaded — ready for querying.", icon="✅")
-                elif snapshot_exists:
-                    st.info(
-                        "Reviewed snapshot data detected at `data/snapshots/`. "
-                        "Use Existing Study will restore it into `output/` before chat.",
-                        icon=":material/info:",
-                    )
                 elif output_exists:
                     st.info(
                         "Existing study data detected at `output/`. "
-                        "No reviewed snapshot was found; run a fresh load or save a reviewed snapshot.",
+                        "Run a fresh load to refresh it, or proceed if it is current.",
                         icon=":material/info:",
                     )
                 else:
                     st.info(
-                        "No reviewed snapshot or existing study data on disk yet. "
-                        "Run a fresh load to produce ``trio_bundle/`` from raw study inputs.",
+                        "No existing study data on disk yet. "
+                        "Run a fresh load to produce ``llm_source/`` from raw study inputs.",
                         icon=":material/info:",
                     )
 
-                # ── Two-button flow (PR #18) ─────────────────────────────
-                # Use Existing Study: restore the reviewed snapshot from
-                #   ``data/snapshots/{STUDY}/`` over the live
-                #   ``output/{STUDY}/trio_bundle/`` before chat starts.
-                # Load Study: run the full pipeline subprocess. The PDF
-                #   leg restores that same reviewed snapshot when fresh
-                #   PDF extraction fails or cannot run.
-                col_use, col_load = st.columns(2)
-                with col_use:
-                    if st.button(
-                        "Use Existing Study",
-                        type="primary" if snapshot_exists and not pipeline_ready else "secondary",
-                        width="stretch",
-                        disabled=not snapshot_exists,
-                        help=(
-                            "Restore data/snapshots/{STUDY}/ over "
-                            "output/{STUDY}/trio_bundle/ and use that reviewed bundle."
-                            if snapshot_exists
-                            else "No reviewed snapshot found at data/snapshots/{STUDY}/."
-                        ),
-                    ):
-                        with st.spinner("Restoring reviewed snapshot…"):
-                            result = use_existing_study()
-                        st.session_state.pipeline_log = result["output"]
-                        if result["success"]:
-                            st.session_state.pipeline_ready = True
-                            st.session_state.pipeline_log_open = False
-                            st.toast("Reviewed snapshot restored.", icon="✅")
-                            st.rerun()
-                        else:
-                            st.session_state.pipeline_log_open = True
-                            st.error("Could not restore reviewed snapshot.")
-                with col_load:
-                    load_label = "Reload Study" if pipeline_ready or output_exists else "Load Study"
-                    if st.button(
-                        load_label,
-                        type="primary" if not output_exists else "secondary",
-                        width="stretch",
-                    ):
-                        with st.spinner("Loading study data — this may take a minute…"):
-                            result = run_pipeline()
-                        st.session_state.pipeline_log = result["output"]
-                        if result["success"]:
-                            st.session_state.pipeline_ready = True
-                            st.session_state.pipeline_log_open = False
-                            st.toast("Study data loaded successfully.", icon="✅")
-                            st.rerun()
-                        else:
-                            st.session_state.pipeline_log_open = True
-                            st.error("Study load failed. Review the log below.")
+                # ── Load Study: run the full pipeline subprocess. ──
+                load_label = "Reload Study" if pipeline_ready or output_exists else "Load Study"
+                if st.button(
+                    load_label,
+                    type="primary" if not output_exists else "secondary",
+                    width="stretch",
+                ):
+                    with st.spinner("Loading study data — this may take a minute…"):
+                        result = run_pipeline()
+                    st.session_state.pipeline_log = result["output"]
+                    if result["success"]:
+                        st.session_state.pipeline_ready = True
+                        st.session_state.pipeline_log_open = False
+                        st.toast("Study data loaded successfully.", icon="✅")
+                        st.rerun()
+                    else:
+                        st.session_state.pipeline_log_open = True
+                        st.error("Study load failed. Review the log below.")
 
                 _render_pipeline_log()
 

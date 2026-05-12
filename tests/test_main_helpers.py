@@ -237,7 +237,7 @@ class TestEmitOutputSignpost:
         body = readme.read_text(encoding="utf-8")
 
         # Orientation — must name every top-level subtree.
-        assert "`trio_bundle/`" in body
+        assert "`llm_source/`" in body
         assert "`audit/`" in body
         assert "`agent/`" in body
 
@@ -262,7 +262,7 @@ class TestEmitOutputSignpost:
 
         body = readme.read_text(encoding="utf-8")
         assert "STALE CONTENT" not in body
-        assert "trio_bundle/" in body
+        assert "llm_source/" in body
 
     def test_creates_study_output_dir_when_absent(
         self, monkeypatch_config: Path, tmp_path: Path

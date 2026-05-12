@@ -73,10 +73,9 @@ N := \033[0m
 	help quickstart debug sync version \
 	pipeline dictionary extract-datasets build-llm-source verify-and-promote bundle \
 	chat-deps chat-cli-deps chat-cli chat \
-	snapshot snapshot-study restore-study list-snapshots \
 	test test-all lint typecheck security ci verify release-check \
 	docs doc-freshness docs-quality docs-linkcheck docs-ci release-notes \
-	restore-drill chat-smoke \
+	chat-smoke \
 	clean nuke
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -109,12 +108,6 @@ help:
 	@printf "  $(C)make chat-cli$(N)         Start interactive AI Assistant chat (CLI)\n"
 	@printf "  $(C)make chat$(N)             Install needed deps → launch web UI\n"
 	@printf "\n"
-	@printf "$(B)$(G)  Reviewed Snapshot$(N)  $(Y)(data/snapshots/{STUDY}/)$(N)\n"
-	@printf "  $(C)make snapshot$(N)         Copy output/{STUDY}/trio_bundle/ → data/snapshots/{STUDY}/\n"
-	@printf "  $(C)make list-snapshots$(N)   Show whether the reviewed baseline exists\n"
-	@printf "  $(C)make restore-study$(N)    Restore data/snapshots/{STUDY}/ back into trio_bundle/\n"
-	@printf "  $(Y)Note: Use Existing Study restores this reviewed baseline before chat.$(N)\n"
-	@printf "\n"
 	@printf "$(B)$(G)  Quality$(N)\n"
 
 	@printf "  $(C)make lint$(N)             Ruff check + format\n"
@@ -136,7 +129,7 @@ help:
 	@printf "\n"
 	@printf "$(B)$(G)  Maintenance$(N)\n"
 	@printf "  $(C)make clean$(N)            Remove caches, docs build output, stale logs\n"
-	@printf "  $(C)make nuke$(N)             Remove generated state; preserve data/raw + snapshots\n"
+	@printf "  $(C)make nuke$(N)             Remove generated state; preserve data/raw\n"
 	@printf "\n"
 	@printf "$(Y)  Modifiers:$(N)\n"
 	@printf "  $(Y)VERBOSE=1$(N) make <target>   Enable DEBUG logging\n"
@@ -270,31 +263,6 @@ chat: chat-deps
 	@$(UV) run $(CHAT_GROUPS) python main.py --web $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
 
 # ═══════════════════════════════════════════════════════════════════════
-# REVIEWED SNAPSHOT BASELINE — trio_bundle backup / restore
-# ═══════════════════════════════════════════════════════════════════════
-# Lands in ``data/snapshots/{STUDY}/``. This is the single human-reviewed
-# fallback copied over ``output/{STUDY}/trio_bundle/`` when the operator
-# clicks "Use Existing Study".
-# FORCE=1           allow overwriting the existing reviewed snapshot
-
-snapshot-study:
-	@$(PYTHON) -m scripts.utils.snapshots create \
-		$(if $(filter 1 true yes True Yes on,$(FORCE)),--force,)
-
-# Short alias for snapshot-study — intended for operators who invoke
-# this frequently. Same behaviour, same modifiers (SNAPSHOT=, FORCE=1).
-snapshot: snapshot-study
-
-restore-study:
-	@$(PYTHON) -m scripts.utils.snapshots restore
-
-restore-drill:
-	@$(PYTHON) -m scripts.utils.restore_drill
-
-list-snapshots:
-	@$(PYTHON) -m scripts.utils.snapshots list
-
-# ═══════════════════════════════════════════════════════════════════════
 # QUALITY
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -398,7 +366,7 @@ clean-legacy-dry-run: ## Phase 5b: print what clean-legacy would delete (no file
 
 nuke:
 	@printf "$(R)This removes generated state: .venv, output/, .logs/, logs/, tmp/, docs/sphinx/_build/, caches.$(N)\n"
-	@printf "$(Y)It preserves data/raw/ and data/snapshots/.$(N)\n"
+	@printf "$(Y)It preserves data/raw/.$(N)\n"
 	@printf "Type 'yes' to confirm: " && read r && [ "$$r" = "yes" ] || { printf "$(Y)Cancelled.$(N)\n"; exit 1; }
 	@rm -rf .venv output/ .logs/ logs/ tmp/ docs/sphinx/_build/ 2>/dev/null || true
 	@find scripts tests docs/sphinx -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
