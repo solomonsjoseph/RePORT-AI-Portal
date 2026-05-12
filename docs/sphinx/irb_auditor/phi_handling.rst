@@ -47,7 +47,7 @@ Where PHI Can Exist
      - Temporary PHI-bearing staging
      - Extraction, scrub, and cleanup run here. On successful completion
        the staging tree is securely removed.
-   * - ``output/{STUDY}/trio_bundle/``
+   * - ``output/{STUDY}/llm_source/``
      - Published scrubbed bundle
      - This is the primary assistant read surface after the PHI scrub.
    * - ``output/{STUDY}/agent/``
@@ -58,19 +58,13 @@ Where PHI Can Exist
      - Counts-only evidence
      - Audit files record counts, hashes, and lineage. The assistant is
        blocked from reading this location.
-   * - ``data/snapshots/{STUDY}/``
-     - Human-reviewed scrubbed baseline
-     - Used only to overwrite a failed or incomplete trio bundle when a
-       reviewed baseline is available. The assistant must not read this
-       location directly.
-
 How PHI Is Protected
 --------------------
 
 Source isolation
    Raw source files stay in the source folder. Extraction code reads
-   them, but the assistant read validator rejects raw, staging, audit,
-   and snapshot paths.
+   them, but the assistant read validator rejects raw, staging, and
+   audit paths.
 
 Eight-action scrub
    Staged datasets are scrubbed before publication. The scrub can keep
@@ -98,11 +92,10 @@ Small-cell protection
 
 PDF handling
    PDFs are treated as PHI-bearing by default. The preferred path
-   extracts text locally, redacts PHI before any LLM call, re-scrubs
-   the LLM response, and falls back to the reviewed snapshot baseline if
-   the LLM tier cannot be used. The legacy raw-PDF external path is
-   refused unless a PHI-free PDF attestation and explicit environment
-   flag are both present.
+   extracts text locally, redacts PHI before any LLM call, and re-scrubs
+   the LLM response. The legacy raw-PDF external path is refused unless
+   a PHI-free PDF attestation and explicit environment flag are both
+   present.
 
 Audit handling
    Audit files are counts-only. Lineage records hashes and run metadata

@@ -13,8 +13,7 @@ RePORT AI Portal is local-first and single-study-focused. The default
 supported production posture is:
 
 * one study selected by ``STUDY_NAME``;
-* one reviewed snapshot baseline under ``data/snapshots/{STUDY_NAME}/``;
-* the live assistant reading only ``output/{STUDY_NAME}/trio_bundle/`` and
+* the live assistant reading only ``output/{STUDY_NAME}/llm_source/`` and
   ``output/{STUDY_NAME}/agent/``;
 * no public unauthenticated access.
 
@@ -82,9 +81,8 @@ provisions a key.
 
 Set ``STUDY_NAME`` explicitly for deployments. Study auto-detection falls
 back to the default name when ``data/raw/`` is absent or the deployment uses
-only reviewed snapshots / scrubbed output. If an environment must fail when
-auto-detection cannot find raw study input, set
-``REPORT_AI_STRICT_STUDY_DETECTION=1``.
+only scrubbed output. If an environment must fail when auto-detection cannot
+find raw study input, set ``REPORT_AI_STRICT_STUDY_DETECTION=1``.
 
 The Nginx template applies conservative per-client request throttles. Keep
 the app-layer chat turn ceiling enabled as a second guard:
@@ -145,7 +143,6 @@ Set ``LOG_FORMAT=json`` and ``LOG_DIR`` for deployed services. Monitor:
 * service start, stop, restart, and non-zero exit events;
 * ``PHI log redactor NOT installed`` warnings;
 * pipeline failures and preserved ``tmp/{STUDY_NAME}/`` staging trees;
-* snapshot restore failures;
 * hosted LLM API errors and provider fallback events;
 * dependency-audit failures in CI;
 * unexpected reads or writes rejected by zone guards.
@@ -160,7 +157,6 @@ Backups and Restore
 Back up only intentional durable state:
 
 * ``data/raw/{STUDY_NAME}/`` if the study team permits raw-data backup;
-* ``data/snapshots/{STUDY_NAME}/`` after human review;
 * ``output/{STUDY_NAME}/audit/`` for lineage and compliance evidence;
 * ``output/{STUDY_NAME}/agent/conversations/`` if conversation retention is
   approved;
@@ -169,25 +165,17 @@ Back up only intentional durable state:
 Do not back up ``.venv/``, ``tmp/``, ``.pytest_cache/``, ``.mypy_cache/``,
 ``.ruff_cache/``, or generated docs build output.
 
-Backups that contain raw data, snapshots, audit files, conversations, or
-the PHI key must be encrypted at rest and access-controlled. The PHI key
-must be backed up separately from raw data when policy requires separation
+Backups that contain raw data, audit files, conversations, or the PHI
+key must be encrypted at rest and access-controlled. The PHI key must
+be backed up separately from raw data when policy requires separation
 of duties.
 
 Restore drills are mandatory before production use:
 
 1. restore the PHI key;
-2. restore ``data/snapshots/{STUDY_NAME}/``;
-3. run ``make restore-study``;
-4. launch ``make chat``;
-5. confirm the assistant reads the restored ``trio_bundle/`` and not
-   ``data/snapshots/`` directly.
-
-Run the non-destructive automated drill before hand-off:
-
-.. code-block:: bash
-
-   make restore-drill
+2. re-run ``make pipeline`` against the restored raw data;
+3. launch ``make chat``;
+4. confirm the assistant reads ``output/{STUDY_NAME}/llm_source/``.
 
 Secret and Key Rotation
 -----------------------
@@ -203,11 +191,10 @@ dates. Rotating it changes derived identifiers. A PHI-key rotation requires:
 2. archive the old key according to study policy;
 3. create the replacement key through the developer/operator path;
 4. run a full re-ingestion from raw data;
-5. rebuild and review the snapshot baseline;
-6. document the rotation in the study operations log.
+5. document the rotation in the study operations log.
 
-Do not mix artifacts generated with different PHI keys in one reviewed
-snapshot.
+Do not mix artifacts generated with different PHI keys in one
+published bundle.
 
 Incident Response
 -----------------
@@ -218,9 +205,8 @@ incorrect bundle publication:
 1. stop the service or block access at the proxy;
 2. preserve logs, audit files, and the current ``output/{STUDY_NAME}/`` tree;
 3. rotate hosted API keys if they may have been exposed;
-4. quarantine the affected ``trio_bundle/`` and snapshot baseline;
-5. identify whether raw, staging, audit, snapshot, or agent zones were
-   exposed;
+4. quarantine the affected ``llm_source/`` bundle;
+5. identify whether raw, staging, audit, or agent zones were exposed;
 6. notify the PI/privacy owner under the study's IRB/IEC incident process;
 7. rebuild from raw data only after the root cause is fixed and reviewed;
 8. record the corrective action before restoring service.
@@ -230,9 +216,8 @@ Operational Non-Negotiables
 
 * Never expose Streamlit directly to the internet.
 * Never disable CORS or XSRF protection in production.
-* Never let the LLM read ``data/raw/``, ``tmp/``, ``audit/``, or
-  ``data/snapshots/`` directly.
-* Never treat a snapshot as valid until the study team has reviewed it.
+* Never let the LLM read ``data/raw/``, ``tmp/``, or ``audit/``
+  directly.
 * Never rotate the PHI key without full re-ingestion.
 * Never deploy a build that fails ``make release-check``.
 

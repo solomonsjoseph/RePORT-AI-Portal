@@ -112,5 +112,5 @@ If a run fails:
 * confirm the PHI key exists if the scrubber asks for it;
 * rerun after fixing the input or configuration issue.
 
-For failure semantics, snapshot maintenance, and low-level pipeline
-behavior, see :doc:`../developer_guide/operations`.
+For failure semantics and low-level pipeline behavior, see
+:doc:`../developer_guide/operations`.

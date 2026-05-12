@@ -349,14 +349,6 @@ Errors
    :members:
    :show-inheritance:
 
-Snapshot Manager
-~~~~~~~~~~~~~~~~
-
-.. automodule:: scripts.utils.snapshots
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Step Cache
 ~~~~~~~~~~
 

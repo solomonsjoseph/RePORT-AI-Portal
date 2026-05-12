@@ -8,15 +8,12 @@ the agent-boundary three-gate stack. For the reviewer-only IRB/Auditor
 profile, see :doc:`../irb_auditor/phi_handling`; for the architectural
 decisions behind these mechanisms see :doc:`decisions`.
 
-The Four Tiers (plus audit and one out-of-zone tier)
-----------------------------------------------------
+The Four Tiers (plus audit)
+---------------------------
 
 The honest-broker model has three filesystem zones plus one agent
 boundary tier. The audit envelope is a separate counts-only filesystem
-surface that the agent cannot read. The fifth path
-(``data/snapshots/{STUDY}/``) is *not* a zone in the honest-broker
-sense — it's a human-reviewed baseline, intentionally outside every
-LLM-readable surface.
+surface that the agent cannot read.
 
 .. list-table::
    :header-rows: 1
@@ -37,7 +34,7 @@ LLM-readable surface.
        the entire tree is overwritten with random bytes + ``fsync``-ed
        + unlinked. On failure preserved for forensic inspection.
    * - **GREEN**
-     - ``output/{STUDY}/trio_bundle/`` + ``output/{STUDY}/agent/``
+     - ``output/{STUDY}/llm_source/`` + ``output/{STUDY}/agent/``
      - PHI-free published artifacts + agent's own state.
        :func:`scripts.ai_assistant.file_access.validate_agent_read`
        admits paths in this zone only.
@@ -53,17 +50,6 @@ The audit envelope:
   manifest, scrub report, cleanup report, telemetry. Same ``output/``
   root as GREEN but hard-rejected by the agent's read-zone validator.
 
-The fifth path:
-
-* **``data/snapshots/{STUDY}/``** — human-reviewed cleaned trio
-  bundle baseline used by the PDF orchestrator's fallback and restored
-  over ``trio_bundle/`` when fresh PDF extraction fails or **Use
-  Existing Study** is selected. **The LLM cannot read it.** The path is
-  outside the GREEN tree and outside the audit envelope, so a stale
-  baseline can never be served directly as live data. Maintainer-curated
-  by hand; see
-  :doc:`operations`.
-
 Zone enforcement
 ~~~~~~~~~~~~~~~~
 
@@ -71,20 +57,20 @@ Two complementary chokepoints:
 
 * :mod:`scripts.security.secure_env` — pipeline-side directory-level
   early-reject. Functions: ``assert_not_raw``, ``assert_output_zone``,
-  ``assert_write_zone``, ``assert_trio_bundle_zone``. Used at
-  pipeline boundaries (e.g. before the publish-step rename, before
+  ``assert_write_zone``, ``assert_clean_zone``. Used at pipeline
+  boundaries (e.g. before the publish-step rename, before
   ``--pdf-source`` copy).
 * :mod:`scripts.ai_assistant.file_access` — agent-runtime path
   validator. Functions: ``validate_agent_read``,
   ``validate_agent_write``, ``validate_sandbox_write``,
   ``is_agent_readable``. Resolves every path with
   ``os.path.realpath`` and verifies containment with
-  ``os.path.commonpath``. Reads accept ``trio_bundle/`` ∪ ``agent/``
+  ``os.path.commonpath``. Reads accept ``llm_source/`` ∪ ``agent/``
   (plus ``config/study_knowledge.yaml`` via an explicit allowlist for
   the StudyKnowledge helper). Agent-tool writes accept ``agent/`` only;
   ``exec_python`` sandbox writes narrow further to
-  ``agent/analysis/``. Audit, telemetry, staging, raw, and the
-  snapshot baseline are hard-rejected with ``ZoneViolationError``.
+  ``agent/analysis/``. Audit, telemetry, staging, and raw paths are
+  hard-rejected with ``ZoneViolationError``.
 
 The Eight-Action Scrub Catalog (Step 1.6)
 -----------------------------------------
@@ -216,7 +202,7 @@ published outputs:
    * Per-input hash: ``{path, sha256, size_bytes, mtime_utc}`` for
      every file under ``data/raw/{STUDY}/``.
    * Per-output hash: same shape for every file under
-     ``trio_bundle/``.
+     ``llm_source/``.
    * Per-leg audit pointer: paths to ``phi_scrub_report.json``,
      ``dataset_cleanup_report.json``, etc.
    * **PHI-key fingerprint**: SHA-256 of the HMAC key bytes (so
@@ -268,7 +254,7 @@ Subprocess Sandbox
 ADR-010. ``run_python_analysis`` runs in a fresh ``subprocess.run``
 child with ``RLIMIT_AS`` / ``RLIMIT_NPROC`` / ``RLIMIT_CPU`` clamps,
 a sanitised env (no ``*_API_KEY`` from the parent KeyStore), and
-read-only access to ``trio_bundle/`` only. AST + import + dunder +
+read-only access to ``llm_source/`` only. AST + import + dunder +
 builtin guards remain inside the child as defence-in-depth. See
 :doc:`sandbox` for the full layered story.
 
@@ -364,8 +350,8 @@ See Also
 
 * :doc:`architecture` — full system architecture.
 * :doc:`decisions` — ADRs (especially 010-015 which cover the
-  PHI, PDF, snapshot, and agent-boundary work).
+  PHI, PDF, and agent-boundary work).
 * :doc:`sandbox` — subprocess sandbox.
-* :doc:`operations` — snapshot-baseline maintenance protocol.
+* :doc:`operations` — operational playbook.
 * :doc:`../irb_auditor/index` — reviewer-only PHI handling and
   conformance profile.

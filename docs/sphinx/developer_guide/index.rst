@@ -27,8 +27,7 @@ Start by Role
      - Inspect load-bearing controls, invariants, and tests.
      - :doc:`phi_architecture`, :doc:`sandbox`, then :doc:`testing`
    * - Maintainer
-     - Run verification, restore reviewed snapshots, and prepare
-       releases.
+     - Run verification and prepare releases.
      - :doc:`operations`, then :doc:`production_readiness`
    * - Documentation contributor
      - Keep README and Sphinx organized by audience.

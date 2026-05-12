@@ -45,8 +45,8 @@ before continuing.
 make dictionary STUDY=Indo-VAP
 ```
 
-**Success:** `output/Indo-VAP/trio_bundle/dictionary/*.json` exists,
-one JSON per dictionary tab.
+**Success:** `output/Indo-VAP/llm_source/dictionary_mapping/jsonl/*.json`
+exists, one JSON per dictionary tab.
 
 ### Step 2 — Dataset extraction (pre-PHI)
 

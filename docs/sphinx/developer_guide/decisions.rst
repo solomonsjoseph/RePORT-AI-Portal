@@ -474,43 +474,31 @@ path. The attestation gate remains in the legacy
 ADR-013 — Single reviewed snapshot baseline
 -------------------------------------------
 
-**What.** One human-reviewed copy of the trio bundle lives at
-``data/snapshots/{STUDY}/``. It is a single per-study cleaned trio
-bundle and mirrors ``output/{STUDY}/trio_bundle/``.
+.. note::
 
-**Why.** The PDF orchestrator (ADR-012) needs a deterministic,
-reviewable baseline to fall back on when the LLM tier fails, and the
-wizard needs a clean way to recover from incomplete PDF extraction.
-Multi-named scratch copies created ambiguity: operators could confuse
-local rollback data with the reviewed baseline. The architecture now
-keeps only the reviewed baseline.
+   **Status: Superseded / Removed in Phase 5d.** The reviewed snapshot
+   baseline subsystem (``scripts/utils/snapshots.py``,
+   ``scripts/utils/restore_drill.py``, and the wizard's "Use Existing
+   Study" affordance) was retired in commit ``0ae138e`` after the
+   source-of-truth-based extraction in Phase 5b made the published
+   ``output/{STUDY}/llm_source/`` tree directly reviewable. The
+   ``data/snapshots/{STUDY}/`` path constant is preserved only as a
+   security-zone deny marker; no user-facing flow restores from it.
+   The ADR is kept as historical record.
 
-**How.** ``config.STUDY_SNAPSHOTS_DIR`` points at
-``data/snapshots/{STUDY}/``. :mod:`scripts.utils.snapshots` saves and
-restores that baseline. The wizard's **Use Existing Study** button and
-the full pipeline's PDF-failure path both restore the baseline over
-``output/{STUDY}/trio_bundle/``.
+**What.** One human-reviewed copy of the trio bundle lived at
+``data/snapshots/{STUDY}/``. It mirrored
+``output/{STUDY}/trio_bundle/`` and served as the deterministic
+fallback for the PDF orchestrator (ADR-012) and the wizard's
+**Use Existing Study** button.
 
-**Crucially:** the LLM agent's read zone is strictly
-``trio_bundle/`` + ``agent/``. The snapshot path is intentionally
-*outside* the LLM read zone. A stale baseline can never be served
-directly as live data because the agent cannot read it.
+**Why.** At the time, the PDF orchestrator needed a reviewable
+baseline to fall back on when the LLM tier failed, and the wizard
+needed a clean recovery path from incomplete PDF extraction.
 
-**Alternatives.**
-
-* **Restore points under ``output/{STUDY}/agent/``.** Rejected —
-  they are scratch state, sit inside the agent zone, and do not match
-  the human-reviewed fallback contract.
-* **Require operators to seed via env var or a separate repo.**
-  Rejected — ``data/snapshots/{STUDY}/`` keeps the fallback colocated
-  with study data and easy to review.
-
-**Consequences.** Maintainers who follow the snapshot-baseline
-maintenance protocol (see :doc:`operations`) must run a manual
-``make snapshot`` after a verified production run. The whole value of
-a snapshot is the human verification step; auto-generation from
-``--force`` runs without review is a foot-gun the protocol explicitly
-forbids.
+**Consequences of removal.** With the Phase 5b SoT extraction
+producing a directly-reviewable ``llm_source/`` tree, the
+baseline-mirror layer became redundant and was retired.
 
 ADR-014 — Parallel extraction phase (3-worker ThreadPoolExecutor)
 -----------------------------------------------------------------

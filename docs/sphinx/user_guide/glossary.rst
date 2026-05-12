@@ -32,7 +32,7 @@ Short definitions for terms users will see in the portal and docs.
      date shifts. It lives outside the repository.
 
    published bundle
-     The scrubbed study output under ``output/{STUDY}/trio_bundle/``.
+     The scrubbed study output under ``output/{STUDY}/llm_source/``.
      This is the main bundle the assistant uses for study questions.
 
    raw study files
@@ -44,18 +44,14 @@ Short definitions for terms users will see in the portal and docs.
      The step that removes, masks, caps, generalizes, or pseudonymizes
      sensitive dataset fields before publishing the bundle.
 
-   snapshot baseline
-     A study-team-reviewed cleaned bundle under
-     ``data/snapshots/{STUDY}/``. The portal can restore it when PDF
-     extraction fails or when the user chooses **Use Existing Study**.
-
    study name
      The folder name for the study, such as ``Indo-VAP``. It is used to
      find ``data/raw/{STUDY}/`` and write ``output/{STUDY}/``.
 
-   trio bundle
-     Another name for the published bundle. It contains datasets,
-     dictionary output, and optional PDF-derived variable information.
+   llm_source bundle
+     The published bundle directory ``output/{STUDY}/llm_source/``. It
+     contains the dataset schema, dictionary mapping, study metadata,
+     and concept index used by the assistant.
 
 Developer Terms
 ---------------

@@ -14,8 +14,7 @@ remain green in CI.
      - Automated check
      - Authority alignment
    * - Raw files are not assistant-readable.
-     - Agent path validator rejects raw, staging, audit, and snapshot
-       locations.
+     - Agent path validator rejects raw, staging, and audit locations.
      - ``tests/test_file_access.py``
      - ICMR confidentiality; HIPAA minimum necessary posture.
    * - Staging is temporary and restricted.
@@ -53,12 +52,6 @@ remain green in CI.
      - ``tests/test_log_hygiene.py`` and
        ``tests/test_phi_safe_input_gates.py``
      - HIPAA audit/security safeguards; ICMR confidentiality.
-   * - Reviewed snapshots cannot be served directly.
-     - Snapshot baseline restores over ``trio_bundle/`` but remains
-       outside the assistant read surface.
-     - ``tests/test_file_access.py`` and pipeline snapshot tests.
-     - Data minimization; stale-baseline disclosure prevention.
-
 Reviewer Evidence Package
 -------------------------
 

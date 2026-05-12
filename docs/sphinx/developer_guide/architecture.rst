@@ -18,7 +18,7 @@ separate processes and never share mutable state.
 Reads raw clinical data from ``data/raw/{STUDY}/``, runs three
 extraction legs in parallel, scrubs PHI from the dataset leg,
 mirrors dataset drops into the dictionary + PDF legs, atomically
-publishes per-leg into ``output/{STUDY}/trio_bundle/``, builds a
+publishes per-leg into ``output/{STUDY}/llm_source/``, builds a
 consolidated ``variables.json``, emits a lineage manifest.
 ``main.py --pipeline`` is the canonical entry point; ``make
 pipeline`` is the Makefile alias; the wizard's "Load Study" button
@@ -26,8 +26,8 @@ spawns this as a subprocess.
 
 **World 2 — AI Assistant** (``scripts/ai_assistant/``).
 
-A LangGraph ReAct agent with 13 tools that reads the published
-trio bundle and answers researcher queries. Provider-agnostic via
+A LangGraph ReAct agent with 12 tools that reads the published
+llm_source bundle and answers researcher queries. Provider-agnostic via
 ``init_chat_model``; runs against Anthropic / OpenAI / Google /
 NVIDIA / Ollama. Never accesses raw data. Three independent gates
 on every tool return (PHI regex catalog, k=5 anonymity, l=2
@@ -39,7 +39,7 @@ only:
 .. code-block:: text
 
    World 1 writes:                          World 2 reads:
-   - trio_bundle/  (sanitised data)    →   - trio_bundle/  (LLM data surface)
+   - llm_source/  (sanitised data)     →   - llm_source/  (LLM data surface)
    - audit/        (counts only)            (LLM hard-rejected for audit/)
    - agent/        (state subdirs)     →   - agent/  (LLM session memory)
 
@@ -47,8 +47,8 @@ The Streamlit wizard is the operator's entry point; it routes API
 keys through the in-memory KeyStore, spawns the pipeline subprocess
 on demand, and then hands off to the agent for chat.
 
-The Five-Tier Zone Model
-------------------------
+The Zone Model
+--------------
 
 See :doc:`phi_architecture` for the full discussion. Briefly:
 
@@ -66,7 +66,7 @@ See :doc:`phi_architecture` for the full discussion. Briefly:
      - ``tmp/{STUDY}/``
      - Per-run scratch. Mode 0700. Securely deleted on success.
    * - **GREEN**
-     - ``output/{STUDY}/{trio_bundle,agent}/``
+     - ``output/{STUDY}/{llm_source,agent}/``
      - LLM read zone. PHI-free.
    * - **GREEN-PROTECT**
      - Agent tool boundary
@@ -74,11 +74,6 @@ See :doc:`phi_architecture` for the full discussion. Briefly:
    * - **AUDIT**
      - ``output/{STUDY}/audit/``
      - Counts-only IRB evidence. LLM-rejected.
-   * - *out-of-zone*
-     - ``data/snapshots/{STUDY}/``
-     - Human-reviewed baseline (LLM-invisible). Restored over
-       ``trio_bundle/`` when fresh PDF extraction fails or when
-       **Use Existing Study** is selected.
 
 Core Components
 ---------------
@@ -94,9 +89,7 @@ the full env-var table; key constants:
 * ``STUDY_NAME`` — e.g. ``Indo-VAP``. Pins the single study.
 * ``BASE_DIR`` — repo root, used as the anchor for all path
   derivation.
-* ``TRIO_BUNDLE_DIR`` — the canonical published-bundle path.
-* ``STUDY_SNAPSHOTS_DIR`` — the reviewed baseline path
-  (``data/snapshots/{STUDY}/``).
+* ``STUDY_LLM_SOURCE_DIR`` — the canonical published-bundle path.
 
 Logging System
 ~~~~~~~~~~~~~~
@@ -152,10 +145,7 @@ Two co-existing paths:
 
 * **Orchestrator path** (default):
   :mod:`scripts.extraction.pdf_pipeline`. ``pdfplumber`` code path
-  + redacted-text LLM merge + per-PDF fallback to
-  ``data/snapshots/{STUDY}/pdfs/``. If the PDF leg fails, the full
-  reviewed snapshot baseline is restored over ``trio_bundle/``. **No
-  raw PDF bytes leave the host.**
+  + redacted-text LLM merge. **No raw PDF bytes leave the host.**
   See :doc:`data_extraction_pdfs` for the per-step pipeline.
 * **Legacy raw-PDF API path:**
   :mod:`scripts.extraction.extract_pdf_data`. Refused unless the
@@ -202,7 +192,7 @@ Cleanup Propagation
 * **Audit:** ``output/{STUDY}/audit/{dictionary,pdfs}_cleanup_report.json``
 * Computes the propagation drop-set from the dataset audit and
   prunes matching rows/keys from the staged dictionary + PDF
-  trees. Keeps the published trio bundle internally consistent.
+  trees. Keeps the published llm_source bundle internally consistent.
 
 Publish
 ~~~~~~~
@@ -210,10 +200,10 @@ Publish
 * **Function:** ``_publish_staging`` in ``main.py``
 * **Step:** Step 2
 * **Atomic per-leg rename** ``tmp/{STUDY}/{leg}/`` →
-  ``output/{STUDY}/trio_bundle/{leg}/``. Same-filesystem rename =
+  ``output/{STUDY}/llm_source/{leg}/``. Same-filesystem rename =
   single inode swap; cross-filesystem (e.g. tmpfs staging + disk
   output) falls back to ``shutil.copytree`` + ``shutil.rmtree``.
-* **Zone guard:** ``assert_output_zone(trio_dir)`` runs before
+* **Zone guard:** ``assert_output_zone(llm_source_dir)`` runs before
   the rename.
 * **Pre-publish:** if the destination exists,
   ``secure_remove_tree`` (zero-fill + fsync + unlink) so old
@@ -224,8 +214,8 @@ Variables Reference Builder
 
 * **Module:** :func:`scripts.extraction.build_variables_reference.build_variables_reference`
 * **Step:** Step 3 (AFTER publish; reads the populated
-  ``trio_bundle/``, not staging)
-* **Output:** ``output/{STUDY}/trio_bundle/variables.json`` —
+  ``llm_source/``, not staging)
+* **Output:** ``output/{STUDY}/llm_source/variables.json`` —
   the consolidated variable schema the agent uses to validate
   variable names in queries.
 
@@ -235,7 +225,7 @@ Lineage Manifest
 * **Module:** :func:`scripts.utils.lineage.emit_lineage_manifest`
 * **Step:** Step 4
 * **Output:** ``output/{STUDY}/audit/lineage_manifest.json`` —
-  pairs every raw input SHA-256 with every published trio
+  pairs every raw input SHA-256 with every published llm_source
   artifact SHA-256, plus PHI-key fingerprint, compliance posture,
   and pipeline version. **The single artifact an IRB reviewer
   reads to verify the entire raw → scrub → publish chain.**
@@ -302,11 +292,11 @@ File-Access Validator
 :mod:`scripts.ai_assistant.file_access` — unified chokepoint that
 every agent tool calls before any file I/O. Resolves with
 ``os.path.realpath``, verifies containment with
-``os.path.commonpath``. Reads accept ``trio_bundle/`` ∪ ``agent/``
+``os.path.commonpath``. Reads accept ``llm_source/`` ∪ ``agent/``
 (plus ``config/study_knowledge.yaml`` via an explicit allowlist).
 Writes accept ``agent/`` only. Sandbox writes narrow further to
-``agent/analysis/``. Audit, telemetry, staging, raw, and the
-snapshot baseline are hard-rejected.
+``agent/analysis/``. Audit, telemetry, staging, and raw paths are
+hard-rejected.
 
 Telemetry
 ~~~~~~~~~
@@ -323,8 +313,7 @@ Web UI
 * :mod:`scripts.ai_assistant.web_ui` — Streamlit entry.
 * :mod:`scripts.ai_assistant.ui.wizard` — three-step setup flow.
   Step 1 = LLM config (KeyStore routing). Step 2 = Data load
-  (two-button: Use Existing Study + Load Study). Step 3 = Confirm
-  + start chat.
+  (Load Study). Step 3 = Confirm + start chat.
 * :mod:`scripts.ai_assistant.ui.chat` — chat surface.
 * :mod:`scripts.ai_assistant.ui.streaming` — token stream + error
   expander (with traceback sanitiser).
@@ -350,10 +339,7 @@ End-to-End Runtime Flow
    data/raw/{STUDY_NAME}/annotated_pdfs/ ───┴──→ pdf_pipeline ────────┤ ┘ join → cleanup)
                                                 (orchestrator: pdfplumber│
                                                 code path + redacted-    │
-                                                text LLM merge +         │
-                                                snapshot fallback at     │
-                                                data/snapshots/{STUDY}/  │
-                                                pdfs/)                   │
+                                                text LLM merge)          │
                                                                          │
                                               (all legs → staging)       ▼
                                           tmp/{STUDY_NAME}/{datasets,dictionary,pdfs}/
@@ -370,16 +356,16 @@ End-to-End Runtime Flow
                                                 _publish_staging (atomic per-leg rename)
                                                                          │
                                                                          ▼
-                                          output/{STUDY_NAME}/trio_bundle/{datasets,
+                                          output/{STUDY_NAME}/llm_source/{datasets,
                                                                           dictionary,
                                                                           pdfs,
                                                                           variables.json}
                                                                          │
                                               build_variables_reference (Step 3 — reads
-                                                  the published trio bundle)
+                                                  the published llm_source bundle)
                                                                          │
                                               emit_lineage_manifest (Step 4 — raw SHA-256
-                                                  ↔ trio SHA-256 + PHI-key fingerprint)
+                                                  ↔ llm_source SHA-256 + PHI-key fingerprint)
                                                                          │
                                                                          ▼
                                           output/{STUDY_NAME}/audit/lineage_manifest.json
@@ -390,7 +376,7 @@ End-to-End Runtime Flow
                                                                          │
                                                                          ▼
                                                              World 2: AI Assistant
-                                                       reads trio_bundle/ + agent/ only
+                                                       reads llm_source/ + agent/ only
 
 Source tree
 ~~~~~~~~~~~
@@ -404,21 +390,15 @@ Expected source tree:
    ├── annotated_pdfs/
    └── data_dictionary/
 
-   data/snapshots/{STUDY_NAME}/                # reviewed baseline
-   ├── datasets/                               # cleaned + verified,
-   ├── dictionary/                             # LLM-INVISIBLE; restored over live trio
-   ├── pdfs/                                   # ``pdfs/{stem}_variables.json`` as
-   └── variables.json                          # per-PDF fallback
-
 Expected processed tree:
 
 .. code-block:: text
 
    output/{STUDY_NAME}/
-   ├── trio_bundle/                  # GREEN — LLM read zone
-   │   ├── datasets/*.jsonl          # PHI-scrubbed
-   │   ├── dictionary/*.json
-   │   ├── pdfs/*_variables.json     # tier: merged | snapshot | empty
+   ├── llm_source/                   # GREEN — LLM read zone
+   │   ├── dataset_schema/files/*.jsonl  # PHI-scrubbed
+   │   ├── dictionary_mapping/*.json
+   │   ├── pdfs/*_variables.json
    │   └── variables.json            # consolidated schema
    ├── audit/                        # AUDIT — counts only; LLM hard-rejected
    │   ├── lineage_manifest.json
@@ -451,7 +431,7 @@ Two complementary chokepoints:
 * **Pipeline-side directory guards** —
   :mod:`scripts.security.secure_env`. Functions: ``assert_not_raw``,
   ``assert_output_zone``, ``assert_write_zone``,
-  ``assert_trio_bundle_zone``. Used at pipeline boundaries.
+  ``assert_clean_zone``. Used at pipeline boundaries.
 * **Agent-runtime path validator** —
   :mod:`scripts.ai_assistant.file_access`. Functions:
   ``validate_agent_read``, ``validate_agent_write``,
@@ -460,9 +440,9 @@ Two complementary chokepoints:
 
 Both raise ``ZoneViolationError`` (a ``PermissionError`` subclass)
 on any zone violation. The agent's read zone is strictly
-``trio_bundle/`` + ``agent/`` (plus the ``config/study_knowledge.yaml``
-allowlist); audit, telemetry, staging, raw, and the snapshot
-baseline are hard-rejected.
+``llm_source/`` + ``agent/`` (plus the ``config/study_knowledge.yaml``
+allowlist); audit, telemetry, staging, and raw paths are
+hard-rejected.
 
 Three independent gates on every tool return
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -481,7 +461,7 @@ Subprocess sandbox for ``run_python_analysis``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ADR-010. ``RLIMIT_AS`` / ``RLIMIT_NPROC`` / ``RLIMIT_CPU``
-clamps + sanitised env + read-only ``trio_bundle/`` + AST guards
+clamps + sanitised env + read-only ``llm_source/`` + AST guards
 inside the child. See :doc:`sandbox`.
 
 Design Principles
@@ -514,9 +494,6 @@ Security-first boundaries
 * Three agent-output gates (PHI / k-anon / l-diversity).
 * KeyStore + subprocess sandbox + log redactor as orthogonal
   defenses.
-* Single reviewed snapshot baseline prevents an incomplete PDF run
-  from becoming live data while keeping the baseline outside the LLM
-  read zone.
 
 Out-of-scope (explicit non-goals)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -539,10 +516,9 @@ See Also
 --------
 
 * :doc:`phi_architecture` — full PHI handling story.
-* :doc:`decisions` — ADRs for the security, PDF, snapshot, and
+* :doc:`decisions` — ADRs for the security, PDF, and
   agent-boundary decisions.
 * :doc:`sandbox` — subprocess sandbox.
 * :doc:`data_extraction_pdfs` — PDF orchestrator deep dive.
-* :doc:`operations` — operational playbook + snapshot-baseline
-  maintenance.
+* :doc:`operations` — operational playbook.
 * :doc:`agents` — instructions for AI coding assistants.

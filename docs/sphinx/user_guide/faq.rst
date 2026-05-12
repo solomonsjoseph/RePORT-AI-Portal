@@ -83,14 +83,14 @@ For developer/operator pipeline runs only:
 Can I use an existing processed study?
 --------------------------------------
 
-Yes. If ``output/{STUDY}/trio_bundle/`` already exists, the web UI can
+Yes. If ``output/{STUDY}/llm_source/`` already exists, the web UI can
 use that existing published bundle instead of loading the study again.
 
 Does the assistant read raw files?
 ----------------------------------
 
 The intended user workflow is that the assistant answers from the
-published, scrubbed study bundle under ``output/{STUDY}/trio_bundle/``.
+published, scrubbed study bundle under ``output/{STUDY}/llm_source/``.
 Raw files belong under ``data/raw/{STUDY}/`` and are handled by the
 loading pipeline.
 
@@ -109,9 +109,9 @@ reduces hallucination risk and makes answers easier to verify.
 Accuracy still depends on the reviewed bundle, data dictionary quality, PDF
 extraction quality, and whether the user question maps cleanly to available
 study artifacts. The realistic target is high, measured accuracy on a
-maintained evaluation set, not a universal 100%. To move closer, add reviewed
-snapshots, improve variable descriptions, include missing protocol/CRF text,
-and regression-test representative questions after each retrieval change.
+maintained evaluation set, not a universal 100%. To move closer, improve
+variable descriptions, include missing protocol/CRF text, and
+regression-test representative questions after each retrieval change.
 
 What if my PDFs may contain PHI?
 --------------------------------

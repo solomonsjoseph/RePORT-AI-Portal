@@ -63,7 +63,7 @@ What Stays Reachable
   disk and importable. The override re-enables the runtime path; the
   module is also still callable directly from migration / replay
   scripts that explicitly opt in.
-* Storage paths under ``output/{study}/trio_bundle/`` are filesystem
+* Storage paths under ``output/{study}/llm_source/`` are filesystem
   layout, not user-facing language; they are not renamed by the
   cutover. References in tool docstrings to that directory are
   rephrased as "catalog and current dataset" so the LLM no longer

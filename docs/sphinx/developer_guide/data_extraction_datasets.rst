@@ -20,7 +20,7 @@ resulting JSONL into the study's **AMBER staging workspace**
 ``phi_scrub.run_scrub`` (**Step 1.6**, eight-action catalog defined in
 ``scripts/security/phi_scrub.yaml``) before any audit artifact is
 written. A subsequent publish step atomically promotes the now-PHI-free
-staging bundle into ``output/{STUDY_NAME}/trio_bundle/datasets/``. PHI
+staging bundle into ``output/{STUDY_NAME}/llm_source/dataset_schema/files/``. PHI
 handling is fully covered by ``scripts/security/`` (rule + allowlist;
 not Presidio, not NER-by-default — see ADR-004 in
 ``developer_guide/decisions.rst``).
@@ -36,7 +36,7 @@ Data Flow
    dataset_pipeline.py  →  tmp/{STUDY}/datasets/*.jsonl   (staging)
                  │
                  ▼  (atomic publish)
-   output/{STUDY}/trio_bundle/datasets/*.jsonl
+   output/{STUDY}/llm_source/dataset_schema/files/*.jsonl
 
 Source
 ------
@@ -48,7 +48,7 @@ Source
 Output
 ------
 
-- **Location:** ``output/{STUDY_NAME}/trio_bundle/datasets/`` (``config.TRIO_DATASETS_DIR``)
+- **Location:** ``output/{STUDY_NAME}/llm_source/dataset_schema/files/`` (``config.TRIO_DATASETS_DIR``)
 - **Format:** One JSONL file per source file/sheet
 - **Deterministic:** ``sort_keys=True, ensure_ascii=False``
 - **Provenance:** Every record includes ``__source_file__``, ``__sheet__``,
@@ -100,7 +100,7 @@ sheet_name, row_index, study_name, extraction_utc). The PHI scrubber
 (:mod:`scripts.security.phi_scrub`) then runs in place as Step 1.6
 BEFORE any audit is emitted. After cleanup (Step 1.7) and cleanup
 propagation (Step 1.8), ``_publish_staging`` atomically renames the
-staging datasets dir into ``output/{STUDY}/trio_bundle/datasets/``. A
+staging datasets dir into ``output/{STUDY}/llm_source/dataset_schema/files/``. A
 per-run ``audit/lineage_manifest.json`` then pairs every raw input
 SHA-256 with every published JSONL SHA-256.
 

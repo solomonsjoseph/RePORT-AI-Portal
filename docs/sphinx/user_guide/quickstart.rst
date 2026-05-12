@@ -77,7 +77,7 @@ Expected result:
 .. code-block:: text
 
    output/Indo-VAP/
-   ├── trio_bundle/
+   ├── llm_source/
    ├── audit/
    └── agent/
 
@@ -101,13 +101,6 @@ Then try a study-specific question:
 .. code-block:: text
 
    What variables are available for baseline demographics?
-
-Use Existing Study
-------------------
-
-If the study team has saved a reviewed snapshot, choose **Use Existing
-Study**. The portal restores ``data/snapshots/{STUDY}/`` into
-``output/{STUDY}/trio_bundle/`` before chat.
 
 Common Problems
 ---------------

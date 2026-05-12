@@ -28,7 +28,7 @@ this repo, never read by agent code).
 * **AMBER** — ``tmp/{STUDY}/``: secure staging (mode 0700, umask 0077,
   zero-fill teardown; optional tmpfs via
   ``REPORTALIN_TMPFS_STAGING=1``).
-* **GREEN** — ``output/{STUDY}/trio_bundle/`` (PHI-free artifacts) +
+* **GREEN** — ``output/{STUDY}/llm_source/`` (PHI-free artifacts) +
   ``output/{STUDY}/agent/`` (the agent's own state). These two zones
   form the LLM's read surface, enforced by
   :func:`scripts.ai_assistant.file_access.validate_agent_read`.
@@ -37,11 +37,6 @@ this repo, never read by agent code).
   answer.
 * **AUDIT envelope** — ``output/{STUDY}/audit/``: counts-only IRB
   evidence, hard-rejected for the agent.
-
-Plus a fifth, **out-of-zone** tier: ``data/snapshots/{STUDY}/`` holds the
-human-reviewed cleaned trio bundle baseline restored when PDF
-extraction fails or **Use Existing Study** is selected. **The LLM
-cannot read it.**
 
 See :doc:`architecture` for the full architecture. The IRB-grade
 benchmark lives at :doc:`../irb_auditor/conformance`.
@@ -84,51 +79,37 @@ datasets and emits ``audit/dataset_cleanup_report.json``.
 :func:`scripts.extraction.cleanup_propagation.run_propagation`
 (Step 1.8) reads the dataset audit, computes the pruning set, and
 rewrites staged dictionary + PDF artifacts. ``_publish_staging``
-atomically renames staging → ``trio_bundle/`` (per-leg, copytree
+atomically renames staging → ``llm_source/`` (per-leg, copytree
 fallback across filesystems).
 :func:`scripts.extraction.build_variables_reference.build_variables_reference`
 runs after publish. **Step 4** emits ``audit/lineage_manifest.json``
-pairing every raw input (SHA-256) with every published trio artifact
-(SHA-256). On success, staging is **securely removed** (overwrite +
+pairing every raw input (SHA-256) with every published llm_source
+artifact (SHA-256). On success, staging is **securely removed** (overwrite +
 fsync + unlink); on failure, ``tmp/{STUDY_NAME}/`` is preserved for
 operator inspection.
 
 **PDF extraction:** the wizard's "Load Study" button selects the orchestrator path
 (:mod:`scripts.extraction.pdf_pipeline`). pdfplumber extracts text
 locally; the text is PHI-redacted; only redacted text reaches the LLM;
-the response is re-scrubbed and merged with the code candidate. When
-the LLM tier is unavailable for any reason, the orchestrator falls
-back per-PDF to ``data/snapshots/{STUDY}/pdfs/`` (the reviewed
-baseline). If the PDF leg fails, the pipeline restores the full
-reviewed baseline over ``trio_bundle/``.
-The legacy raw-PDF API path (:mod:`scripts.extraction.extract_pdf_data`)
+the response is re-scrubbed and merged with the code candidate. The
+legacy raw-PDF API path (:mod:`scripts.extraction.extract_pdf_data`)
 is the CLI default and is gated by the two-part
 ``REPORTALIN_PDF_PHI_FREE`` operator attestation.
 
 **World 2 — AI Assistant** (``scripts/ai_assistant/``):
-LangGraph ReAct agent with 13 tools for querying study data. Never
+LangGraph ReAct agent with 12 tools for querying study data. Never
 accesses raw data.
 
 **Output structure:**
-``output/{STUDY_NAME}/trio_bundle/{datasets,pdfs,dictionary,variables.json}``,
+``output/{STUDY_NAME}/llm_source/{dataset_schema,pdfs,dictionary_mapping,variables.json}``,
 ``audit/{dataset,dictionary,pdfs}_cleanup_report.json`` +
 ``audit/phi_scrub_report.json`` + ``audit/lineage_manifest.json`` +
 ``audit/telemetry/events.jsonl``,
 ``agent/{analysis,conversations}/``; transient staging
 sibling: ``tmp/{STUDY_NAME}/{datasets,dictionary,pdfs}/``.
 
-**Snapshot baseline:** ``data/snapshots/{STUDY_NAME}/{datasets,dictionary,pdfs,variables.json}``
-is the human-reviewed, single per-study cleaned trio bundle. The PDF
-orchestrator reads it as the per-PDF fallback, and the wizard restores
-it over the live ``trio_bundle/`` for **Use Existing Study**. **LLM is
-forbidden from reading it.** Maintainer protocol: see
-:doc:`operations`.
-
-**Wizard step 2:** two top-level buttons — *Use
-Existing Study* (restore the reviewed snapshot baseline into the live
-``trio_bundle/``) and *Load Study* (run the pipeline subprocess;
-orchestrator falls back to the reviewed snapshot baseline when the
-PDF leg cannot produce complete output).
+**Wizard step 2:** a single *Load Study* button runs the pipeline
+subprocess.
 
 **PHI key:** sidecar at ``~/.config/report_ai_portal/phi_key``
 (resolved via ``config.PHI_KEY_PATH``, overridable with
@@ -156,10 +137,10 @@ Security zones (MUST follow)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * **Never access** ``data/raw/`` from agent code — only
-  ``output/{STUDY}/trio_bundle/``.
+  ``output/{STUDY}/llm_source/``.
 * Always call :func:`scripts.ai_assistant.file_access.validate_agent_read`
   or ``validate_agent_write`` before any file I/O in tools. This is
-  the unified chokepoint — accepts only ``trio_bundle/`` + ``agent/``
+  the unified chokepoint — accepts only ``llm_source/`` + ``agent/``
   paths and rejects audit, telemetry, staging, raw, and arbitrary
   filesystem paths with ``ZoneViolationError``.
 * Route every free-text tool return through
@@ -408,6 +389,6 @@ Documentation
 * **Architecture** — :doc:`architecture`
 * **Testing** — :doc:`testing`
 * **Contributing** — :doc:`contributing`
-* **Operations** — :doc:`operations` (snapshot maintenance lives here)
+* **Operations** — :doc:`operations`
 * **Sandbox** — :doc:`sandbox`
 * **Data pipeline (user view)** — :doc:`../user_guide/data_pipeline`

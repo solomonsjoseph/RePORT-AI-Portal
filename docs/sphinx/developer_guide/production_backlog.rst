@@ -50,8 +50,6 @@ Data Retention
 * Decide whether production output bundles, audit files, and conversation logs
   require application-layer encryption in addition to encrypted host volumes.
 * Add a conversation retention command with max-age and max-count controls.
-* Decide whether reviewed snapshots should remain single-slot or rotate by
-  timestamp before overwrite.
 
 Deployment Packaging
 --------------------
