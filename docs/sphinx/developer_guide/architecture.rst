@@ -15,11 +15,14 @@ separate processes and never share mutable state.
 **World 1 — Deterministic Pipeline** (``main.py`` + ``scripts/extraction/`` +
 ``scripts/security/`` + ``scripts/utils/``).
 
-Reads raw clinical data from ``data/raw/{STUDY}/``, runs three
-extraction legs in parallel, scrubs PHI from the dataset leg,
-mirrors dataset drops into the dictionary + PDF legs, atomically
-publishes per-leg into ``output/{STUDY}/llm_source/``, builds a
-consolidated ``variables.json``, emits a lineage manifest.
+Reads raw clinical data from ``data/raw/{STUDY}/``, stages and scrubs
+dataset records, then builds the source-truth-backed LLM source
+surface under ``output/{STUDY}/llm_source/``. The current
+LLM-visible outputs are the scrubbed dataset files under
+``llm_source/dataset_schema/files/`` and the Study Metadata Catalog
+plus Evidence Packs under ``llm_source/study_metadata/``. The legacy
+PDF extraction and consolidated ``variables.json`` outputs are no
+longer active runtime surfaces.
 ``main.py --pipeline`` is the canonical entry point; ``make
 pipeline`` is the Makefile alias; the wizard's "Load Study" button
 spawns this as a subprocess.
@@ -102,8 +105,8 @@ to the root logger so ``World 1`` and ``World 2`` emit scrubbed
 logs by default.
 
 ``VerboseLogger`` keeps indentation in thread-local state, so
-``--verbose`` tree output remains readable while the dictionary,
-dataset, and PDF extraction legs run in parallel.
+``--verbose`` tree output remains readable while the extraction and
+source-truth build steps run.
 
 Pipeline Modules
 ----------------
@@ -111,8 +114,10 @@ Pipeline Modules
 The pipeline is structured as a sequence of step functions in
 ``main.py``, each importing its operative module from
 ``scripts/extraction/``, ``scripts/security/``, or
-``scripts/utils/``. Steps 0/1/1.5 run in parallel; the cleanup
-chain (1.6/1.7/1.8) and Steps 2/3/4/5 are sequential.
+``scripts/utils/``. Dictionary and dataset extraction run in parallel;
+the cleanup chain, publish, and lineage steps are sequential. The
+Makefile-level ``build-llm-source`` target runs the SoT-backed metadata
+build and reconciliation after the dataset files are published.
 
 Dictionary Loader
 ~~~~~~~~~~~~~~~~~
@@ -138,24 +143,15 @@ Dataset Extraction
 * **Skip semantics:** Hash-based step cache at
   ``output/{STUDY}/audit/manifests/dataset_processing.json``.
 
-PDF Extraction
-~~~~~~~~~~~~~~
+PDF Extraction (Historical)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Two co-existing paths:
-
-* **Orchestrator path** (default):
-  :mod:`scripts.extraction.pdf_pipeline`. ``pdfplumber`` code path
-  + redacted-text LLM merge. **No raw PDF bytes leave the host.**
-  See :doc:`data_extraction_pdfs` for the per-step pipeline.
-* **Legacy raw-PDF API path:**
-  :mod:`scripts.extraction.extract_pdf_data`. Refused unless the
-  operator opts in twice (``REPORTALIN_PDF_PHI_FREE=1`` env flag +
-  non-empty ``authorities/phi_free_pdfs.md`` attestation note).
-
-Dispatch happens in
-:func:`scripts.extraction.extract_pdf_data.extract_pdfs_to_jsonl` based
-on ``REPORTALIN_PDF_EXTRACTION_MODE``. The wizard always sets
-``llm`` (orchestrator); the CLI default is unset (legacy gate).
+The ``scripts.extraction.pdf_pipeline`` and
+``scripts.extraction.extract_pdf_data`` paths are historical. They are
+preserved in ADRs and old test context, but they are not the active LLM
+source flow. PDF-derived evidence now enters through the reviewed SoT
+policy YAMLs and is published through the Study Metadata Catalog and
+Evidence Packs.
 
 PHI Scrub
 ~~~~~~~~~
@@ -209,15 +205,59 @@ Publish
   ``secure_remove_tree`` (zero-fill + fsync + unlink) so old
   bytes aren't recoverable.
 
-Variables Reference Builder
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Source-Truth YAML Creation (SoT intake CLI)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* **Module:** :func:`scripts.extraction.build_variables_reference.build_variables_reference`
-* **Step:** Step 3 (AFTER publish; reads the populated
-  ``llm_source/``, not staging)
-* **Output:** ``output/{STUDY}/llm_source/variables.json`` —
-  the consolidated variable schema the agent uses to validate
-  variable names in queries.
+* **Module:** :mod:`scripts.source_truth.study_intake` (``python -m
+  scripts.source_truth.study_intake <study> [--force]``)
+* **Role:** Upstream, standalone process that produces the SoT policy
+  YAMLs consumed by the LLM source builder below. Runs *before* the
+  main pipeline, not as a pipeline step.
+* **Inputs:** ``data/raw/{STUDY}/annotated_pdfs/*.pdf`` and
+  ``data/raw/{STUDY}/datasets/*.{xlsx,csv}``
+* **Outputs:** ``data/SoT/{STUDY}/{form}_policy.yaml`` (one per aligned
+  pair) and ``data/SoT/{STUDY}/human_review/SoT_intake_review.md``
+  (checklist for every file that could not be cleanly paired or passed
+  header-safety checks)
+* **Three orchestration phases:**
+
+  1. ``pair_files`` — normalises filenames, extracts the leading
+     form-code prefix (``^[0-9]+[A-Z]?``, e.g. ``1A``, ``12``,
+     ``101``), and matches PDFs to datasets by exact prefix. Duplicates
+     with mismatched SHA-256, collisions, and low-confidence fuzzy
+     matches are routed to ``SoT_intake_review.md``.
+  2. ``read_headers_only`` — opens each xlsx via
+     ``openpyxl.load_workbook(read_only=True, data_only=False)`` with
+     ``ws.iter_rows(max_row=1)`` and stops after row 1; opens CSV with
+     ``csv.reader`` + ``next()`` once. **Row 2+ bytes never enter
+     Python.** Formula headers (``=`` prefix), PHI-shaped headers
+     (matched against ``scripts/security/phi_scrub.py`` patterns), empty
+     rows, and multi-sheet workbooks raise ``ExcludeForReview`` and are
+     routed to review rather than processed.
+  3. ``build_yaml_for_pair`` — calls the LLM sub-agents
+     (``sot_extractor_agent`` then ``sot_reviewer_agent``), validates the
+     draft against ``record.py``, and writes
+     ``data/SoT/{STUDY}/{form}_policy.yaml``. Re-run policy: skip-if-exists
+     by default; ``--force`` overwrites.
+
+* **Cross-LLM portability:** The CLI is documented in ``AGENTS.md``
+  (``## SoT creation`` section) and ``docs/runbook_sot_build.md`` so it
+  is reachable from any agentic LLM tool — no Makefile target, no
+  Claude-Code-specific skill file.
+
+Source-Truth LLM Source Builder
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* **Step:** ``make build-llm-source`` after the scrubbed dataset files
+  are available
+* **Inputs:** SoT policy YAMLs under ``data/SoT/{STUDY}/`` (produced by
+  the intake CLI above) and the published scrubbed dataset JSONL files
+  under ``output/{STUDY}/llm_source/dataset_schema/files/``
+* **Outputs:** ``output/{STUDY}/llm_source/study_metadata/catalog.json``,
+  ``output/{STUDY}/llm_source/study_metadata/evidence_packs/*.json``,
+  and declared PHI / cleanup reports under ``output/{STUDY}/audit/``
+* **Staging:** promotion candidates live under
+  ``tmp/{STUDY}/staging/llm_source/``.
 
 Lineage Manifest
 ~~~~~~~~~~~~~~~~
@@ -313,7 +353,8 @@ Web UI
 * :mod:`scripts.ai_assistant.web_ui` — Streamlit entry.
 * :mod:`scripts.ai_assistant.ui.wizard` — three-step setup flow.
   Step 1 = LLM config (KeyStore routing). Step 2 = Data load
-  (Load Study). Step 3 = Confirm + start chat.
+  (use an existing valid ``llm_source/`` bundle or run Load Study).
+  Step 3 = Confirm + start chat.
 * :mod:`scripts.ai_assistant.ui.chat` — chat surface.
 * :mod:`scripts.ai_assistant.ui.streaming` — token stream + error
   expander (with traceback sanitiser).
@@ -332,17 +373,10 @@ End-to-End Runtime Flow
 
 .. code-block:: text
 
-   data/raw/{STUDY_NAME}/data_dictionary/ ──┐  ┐
-                                            ├──→ load_dictionary ────┐ │
-   data/raw/{STUDY_NAME}/datasets/ ─────────┼──→ dataset_pipeline ────┤ ├ Phase 1 PARALLEL
-                                            │                         │ │ (3-worker pool;
-   data/raw/{STUDY_NAME}/annotated_pdfs/ ───┴──→ pdf_pipeline ────────┤ ┘ join → cleanup)
-                                                (orchestrator: pdfplumber│
-                                                code path + redacted-    │
-                                                text LLM merge)          │
-                                                                         │
-                                              (all legs → staging)       ▼
-                                          tmp/{STUDY_NAME}/{datasets,dictionary,pdfs}/
+   data/raw/{STUDY_NAME}/datasets/ ───────────→ dataset_pipeline ────────┐
+                                                                          │
+                                                   (records → staging)    ▼
+                                          tmp/{STUDY_NAME}/datasets/
                                                                          │
                                                 phi_scrub.run_scrub (Step 1.6 — date jitter +
                                                    ID pseudonymization on staged datasets;
@@ -350,19 +384,15 @@ End-to-End Runtime Flow
                                                                          │
                                                   dataset_cleanup (emits dataset audit)
                                                                          │
-                                              cleanup_propagation (prunes dict+pdf in staging,
-                                                  emits dict+pdf audits)
-                                                                         │
-                                                _publish_staging (atomic per-leg rename)
+                                              publish scrubbed dataset files
                                                                          │
                                                                          ▼
-                                          output/{STUDY_NAME}/llm_source/{datasets,
-                                                                          dictionary,
-                                                                          pdfs,
-                                                                          variables.json}
+                                          output/{STUDY_NAME}/llm_source/dataset_schema/files/
                                                                          │
-                                              build_variables_reference (Step 3 — reads
-                                                  the published llm_source bundle)
+                                              SoT-backed LLM source build (SoT YAMLs →
+                                                  catalog + evidence packs;
+                                                  staging candidates under
+                                                  tmp/{STUDY_NAME}/staging/llm_source/)
                                                                          │
                                               emit_lineage_manifest (Step 4 — raw SHA-256
                                                   ↔ llm_source SHA-256 + PHI-key fingerprint)
@@ -387,8 +417,10 @@ Expected source tree:
 
    data/raw/{STUDY_NAME}/
    ├── datasets/
-   ├── annotated_pdfs/
    └── data_dictionary/
+
+Reviewed SoT policy YAMLs live under ``data/SoT/{STUDY_NAME}/`` when
+the assistant metadata must be rebuilt.
 
 Expected processed tree:
 
@@ -397,9 +429,9 @@ Expected processed tree:
    output/{STUDY_NAME}/
    ├── llm_source/                   # GREEN — LLM read zone
    │   ├── dataset_schema/files/*.jsonl  # PHI-scrubbed
-   │   ├── dictionary_mapping/*.json
-   │   ├── pdfs/*_variables.json
-   │   └── variables.json            # consolidated schema
+   │   └── study_metadata/
+   │       ├── catalog.json
+   │       └── evidence_packs/*.json
    ├── audit/                        # AUDIT — counts only; LLM hard-rejected
    │   ├── lineage_manifest.json
    │   ├── phi_scrub_report.json
@@ -416,9 +448,8 @@ Transient staging root (not a durable artifact):
 
    tmp/{STUDY_NAME}/
    ├── datasets/
-   ├── dictionary/
-   ├── pdfs/
-   └── .pdf_cache/                   # idempotent LLM-response cache
+   ├── staging/llm_source/
+   └── human_review/
 
 Security Boundaries
 -------------------
@@ -516,9 +547,8 @@ See Also
 --------
 
 * :doc:`phi_architecture` — full PHI handling story.
-* :doc:`decisions` — ADRs for the security, PDF, and
-  agent-boundary decisions.
+* :doc:`decisions` — ADRs for the security and agent-boundary
+  decisions, including historical PDF extraction records.
 * :doc:`sandbox` — subprocess sandbox.
-* :doc:`data_extraction_pdfs` — PDF orchestrator deep dive.
 * :doc:`operations` — operational playbook.
 * :doc:`agents` — instructions for AI coding assistants.

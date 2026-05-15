@@ -26,8 +26,44 @@ Prerequisites
    * - LLM provider configured
      - ``echo $LLM_PROVIDER`` (or set in ``config/config.yaml``)
    * - Study data in place
-     - ``data/raw/{STUDY}/`` with ``datasets/``, ``annotated_pdfs/``,
-       ``data_dictionary/``
+     - ``data/raw/{STUDY}/`` with ``datasets/`` and
+       ``data_dictionary/``; reviewed SoT policies under
+       ``data/SoT/{STUDY}/`` when rebuilding assistant metadata
+
+SoT YAML Build
+--------------
+
+The Source-of-Truth policy YAMLs (``data/SoT/{STUDY}/{form}_policy.yaml``)
+are produced by a standalone CLI that runs *before* the main pipeline. The
+full behavior reference is in ``docs/runbook_sot_build.md``; a brief summary
+follows.
+
+.. code-block:: bash
+
+   # Build SoT YAMLs — skips any that already exist on disk
+   python -m scripts.source_truth.study_intake Indo-VAP
+
+   # Force-overwrite existing YAMLs (loses human curation — use with care)
+   python -m scripts.source_truth.study_intake Indo-VAP --force
+
+   # Show all options
+   python -m scripts.source_truth.study_intake --help
+
+**Inputs:**
+``data/raw/{STUDY}/annotated_pdfs/*.pdf`` and
+``data/raw/{STUDY}/datasets/*.{xlsx,csv}``
+
+**Outputs:**
+``data/SoT/{STUDY}/{form}_policy.yaml`` (one per cleanly-aligned pair) and
+``data/SoT/{STUDY}/human_review/SoT_intake_review.md`` (checklist for
+unpaired / excluded files).
+
+**Re-run policy:** skip-if-exists by default. Pass ``--force`` only when
+regenerating after a known schema change or on a fresh checkout.
+
+See ``docs/runbook_sot_build.md`` for the full behavior reference including
+exclusion reason codes, threat model, duplicate-handling rules, and a
+step-by-step Indo-VAP walkthrough.
 
 Pipeline Run
 ------------
@@ -40,11 +76,12 @@ Full Pipeline (Recommended)
    make pipeline
 
 Runs all steps in order: dictionary → dataset extraction → AMBER scrub
-(eight-action catalog, rule + allowlist) → atomic publish into the
-``llm_source/`` GREEN zone → variables-reference build. PDFs are
-processed in a separate leg (``make pdf-extract``); they are gated
-behind ``REPORTALIN_PDF_PHI_FREE=1`` because annotated CRFs are
-PHI-bearing by default.
+(eight-action catalog, rule + allowlist) → publish scrubbed dataset
+files into the ``llm_source/`` GREEN zone → SoT-backed LLM source build
+and reconciliation. The current LLM-visible outputs are
+``llm_source/dataset_schema/files/`` plus
+``llm_source/study_metadata/catalog.json`` and
+``llm_source/study_metadata/evidence_packs/``.
 
 Individual Steps
 ~~~~~~~~~~~~~~~~
@@ -56,14 +93,15 @@ Individual Steps
      - What it does
    * - ``make dictionary``
      - Load data dictionary
-   * - ``make pdf-extract``
-     - PDF extraction to JSONL (gated by ``REPORTALIN_PDF_PHI_FREE``;
-       see :doc:`data_extraction_pdfs`)
    * - ``make extract-datasets``
      - Dataset extraction into AMBER staging, run through the eight-action
        PHI scrub, then atomically promoted into the GREEN ``llm_source/``
+   * - ``make build-llm-source``
+     - Build Study Metadata Catalog and Evidence Packs from SoT policy
+       YAMLs and the published dataset files. Stages promotion candidates
+       under ``tmp/{STUDY}/staging/llm_source/``.
    * - ``make bundle``
-     - Re-assemble the llm_source bundle from already-scrubbed staging artifacts
+     - Legacy compatibility alias for preparing the ``llm_source`` dictionary leg
    * - ``make chat``
      - Launch the Streamlit research-assistant UI (with setup wizard)
    * - ``make chat-cli``
@@ -93,7 +131,7 @@ Quickstart
 Artifact Rebuild
 ----------------
 
-When schemas, the data dictionary, or the eight-action PHI scrub catalog
+When schemas, SoT policies, the data dictionary, or the eight-action PHI scrub catalog
 (``scripts/security/phi_scrub.yaml``) change:
 
 .. code-block:: bash
@@ -186,13 +224,12 @@ AI Assistant
 
 The AI Assistant research assistant uses LangGraph with a ReAct agent
 pattern. It reads from the llm_source bundle and provides study-specific
-answers grounded in the data dictionary, PDF extractions, and dataset
-metadata. Retrieval is deliberately local and tool-based: variable search
-combines ``variables.json`` with published dataset schemas; CRF/PDF context
-search uses normalized keyword, abbreviation, and source-metadata scoring;
-record-level questions go through deterministic dataset or analysis tools.
+answers grounded in the Study Metadata Catalog, Evidence Packs, and
+dataset metadata. Queries are tool-based and local: variable search uses
+the catalog, evidence packs, and published dataset schemas; record-level
+questions go through deterministic dataset or analysis tools.
 Do not document or promise 100% answer accuracy. Improve accuracy by
-adding reviewed source artifacts, strengthening retrieval tests, and
+adding reviewed SoT policy YAMLs, strengthening retrieval tests, and
 measuring representative question/answer sets for correctness, grounding,
 and retrieval relevance.
 
@@ -200,4 +237,3 @@ and retrieval relevance.
 
     make chat-cli   # CLI interactive REPL (or `python main.py --chat` directly)
     make chat       # Streamlit web UI (or `python main.py --web` directly)
-

@@ -16,8 +16,8 @@ Start by Role
      - Goal
      - Start here
    * - Pipeline developer
-     - Change extraction, PHI scrub, cleanup, publish, variables, or
-       lineage behavior.
+     - Change extraction, PHI scrub, cleanup, publish, llm_source
+       metadata, or lineage behavior.
      - :doc:`architecture`, then :doc:`data_extraction_datasets`
    * - Agent/tool developer
      - Add or change assistant tools without breaking file-zone and PHI
@@ -42,7 +42,6 @@ Contents
 
    architecture
    phi_architecture
-   catalog_cutover
    decisions
    references
    tech_stack
@@ -77,7 +76,7 @@ Contents
 Working Rules
 -------------
 
-* Preserve the raw → staging → published bundle → agent-boundary PHI
+* Preserve the raw → staging → published ``llm_source/`` → agent-boundary PHI
   model described in :doc:`phi_architecture`.
 * Keep implementation changes, tests, and documentation in the same PR
   when behavior changes.

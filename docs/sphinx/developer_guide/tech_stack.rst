@@ -73,27 +73,28 @@ openpyxl
 ~~~~~~~~
 
 **What.** Excel ``.xlsx`` reader/writer. **Why.** pandas's default
-``.xlsx`` engine. **How.** Used implicitly by ``pd.read_excel`` for
-the dictionary + dataset legs.
+``.xlsx`` engine; also the only safe way to open a workbook in
+``read_only=True, data_only=False`` mode so that only row 1 is iterated
+(headers-only invariant in the SoT intake CLI). **How.** Used implicitly
+by ``pd.read_excel`` for the dictionary + dataset extraction legs, and
+directly by :func:`scripts.source_truth.study_intake.read_headers_only`
+(``ws.iter_rows(max_row=1)``).
 
 pypdf
 ~~~~~
 
-**What.** Lightweight PDF text extractor. **Why.** Powers the legacy
-raw-PDF API path. **How.** Used in
-:mod:`scripts.extraction.extract_pdf_data` when the operator opts
-into the gated raw-PDF API path with the two-part attestation.
+**What.** Lightweight PDF text extractor. **Why.** Previously powered
+the legacy raw-PDF API path. **How.** Historical only; the active LLM
+source flow does not call :mod:`scripts.extraction.extract_pdf_data`.
 
 pdfplumber
 ~~~~~~~~~~
 
-**What.** Layout-aware PDF extractor. **Why.** Per-character bounding
-boxes give better structure recovery than ``pypdf`` for complex
-multi-section CRFs. **How.** pdfplumber is
-the **always-on code path** inside the two-way PDF orchestrator
-(:mod:`scripts.extraction.pdf_pipeline`). Extracted text is
-PHI-redacted before any LLM call; the LLM response is merged with
-the code candidate via ``_merge``.
+**What.** Layout-aware PDF extractor. **Why.** Previously used by the
+two-way PDF orchestrator for complex multi-section CRFs. **How.**
+Historical only; current PDF-derived metadata is reviewed into SoT
+policy YAMLs and published through the Study Metadata Catalog and
+Evidence Packs.
 
 PyYAML
 ~~~~~~
@@ -132,13 +133,10 @@ dispatches to the right wrapper based on the provider prefix.
 anthropic, google-genai (raw SDKs)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**What.** Provider raw SDKs. **Why.** The PDF orchestrator's
-``_extract_via_llm`` calls the raw SDK directly because the
-orchestrator's contract is a single non-streaming JSON response
-with PHI-redacted text — heavier LangChain machinery is overkill
-here. **How.**
-:func:`scripts.extraction.pdf_pipeline._extract_via_llm` dispatches
-on ``provider`` ∈ ``{anthropic, google, gemini, google-genai}``.
+**What.** Provider raw SDKs. **Why.** Retained for provider-specific
+runtime integrations and historical PDF-orchestrator context. **How.**
+The active assistant path constructs LLM clients through LangChain /
+LangGraph with explicit KeyStore-backed API keys.
 
 Streamlit ≥ 1.38, < 2.0
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -236,8 +234,8 @@ Custom type stubs
 typing is incomplete:
 
 * ``typings/anthropic/`` — covers the raw SDK's
-  ``messages.create`` / ``messages.stream`` surface used by the PDF
-  orchestrator + legacy raw-PDF path.
+  ``messages.create`` / ``messages.stream`` surface used by provider
+  integration code and historical PDF-path tests.
 * ``typings/google/`` — covers the
   ``google.genai.Client.models.generate_content`` surface.
 

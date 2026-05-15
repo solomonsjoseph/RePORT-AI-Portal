@@ -3,7 +3,7 @@ Architecture Decisions (ADRs)
 
 **What.** One record per major architectural decision. ADRs 001–009
 cover the original PHI-handling architecture. ADRs 010–015 cover the
-sandbox, KeyStore, PDF orchestrator, reviewed snapshot baseline, parallel
+sandbox, KeyStore, retired PDF orchestrator, retired snapshot baseline, parallel
 extraction, and l-diversity decisions. Each record states
 what was decided, why, how it was implemented, what alternatives were
 considered, and what consequences to expect if the decision ages
@@ -202,6 +202,12 @@ operational runbook.
 ADR-006 — External-API PDF extraction refused by default
 --------------------------------------------------------
 
+.. note::
+
+   Historical. The active LLM source flow no longer runs PDF extraction
+   modules; PDF-derived metadata is reviewed into SoT policy YAMLs and
+   published through the Study Metadata Catalog and Evidence Packs.
+
 **What.** ``scripts/extraction/extract_pdf_data._resolve_pdf_provider``
 refuses to initialise an Anthropic / Google Gemini client unless the
 operator explicitly sets ``REPORTALIN_PDF_PHI_FREE=1``.
@@ -235,15 +241,16 @@ JSON, skip the PDF leg entirely).
   posture; rejected because the annotated PDFs carry variable-definition
   annotations that the data dictionary alone does not cover.
 
-**Consequences.** A new operator who needs PDF extraction must read the
-error message, verify their PDFs are PHI-free, and flip the flag.
-This is the intentional friction.
+**Historical consequences.** A new operator who needed PDF extraction
+had to read the error message, verify their PDFs were PHI-free, and
+flip the flag. The current flow routes reviewed PDF-derived metadata
+through SoT and does not require this operator path.
 
 ADR-007 — Four-tier architecture (RED / AMBER / GREEN / GREEN-PROTECT)
 ----------------------------------------------------------------------
 
 **What.** Every path in the runtime belongs to exactly one of four
-named zones: RED (raw), AMBER (staging), GREEN (trio_bundle), or
+named zones: RED (raw), AMBER (staging), GREEN (``llm_source``), or
 GREEN-PROTECT (agent boundary). The zones are enforced by assertions,
 not by convention.
 
@@ -253,8 +260,8 @@ writes to output/ before the scrub runs raises ``ZoneViolationError``
 in CI before landing.
 
 **How.** :mod:`scripts.security.secure_env` exposes the pipeline-side
-guards (``assert_not_raw``, ``assert_write_zone``, ``assert_output_zone``,
-``assert_trio_bundle_zone``) — one per tier. The agent world has its own
+guards (``assert_not_raw``, ``assert_write_zone``, ``assert_output_zone``)
+for the pipeline tiers. The agent world has its own
 chokepoint :mod:`scripts.ai_assistant.file_access` with
 ``validate_agent_read`` / ``validate_agent_write`` /
 ``validate_sandbox_write`` (layered on the same ``ZoneViolationError``),
@@ -330,8 +337,8 @@ ADR-010 — Subprocess + rlimits sandbox for ``run_python_analysis``
 
 **What.** LLM-generated Python from the ``run_python_analysis`` tool
 runs in a fresh OS subprocess with ``RLIMIT_AS`` / ``RLIMIT_NPROC``
-/ ``RLIMIT_CPU`` clamps + a sanitised env + read-only access to the
-trio bundle. The original AST guards remain as defense-in-depth
+/ ``RLIMIT_CPU`` clamps + a sanitised env + read-only access to
+``llm_source/``. The original AST guards remain as defense-in-depth
 inside the child.
 
 **Why.** AST guards alone don't stop CPython gadget escapes
@@ -339,7 +346,7 @@ inside the child.
 poisoning, etc.). An OS-level isolation boundary defangs every
 in-process escape: even a perfectly-jailbroken interpreter inside the
 subprocess cannot exceed the rlimits, cannot read the parent's
-KeyStore, cannot write outside ``trio_bundle/``, cannot fork beyond
+KeyStore, cannot write outside ``agent/analysis/``, cannot fork beyond
 ``RLIMIT_NPROC``.
 
 **How.** Implemented under
@@ -422,12 +429,12 @@ ADR-012 — Two-way PDF orchestrator (pdfplumber + redacted-text LLM merge)
    pipeline (``scripts/extraction/pdf_pipeline.py``,
    ``scripts/extraction/extract_pdf_data.py``, and
    ``scripts/utils/llm_capabilities.py``) was retired in Phase 5b after
-   the trio bundle / catalog cutover made the source-truth catalog the
+   the ``llm_source`` / catalog cutover made the source-truth catalog the
    sole metadata layer. The ADR is preserved as historical record; the
    modules, snapshot baseline, and agent ``search_pdf_context`` tool no
    longer exist.
 
-**What.** PDF extraction has two co-existing paths. The default path
+**Historical what.** PDF extraction had two co-existing paths. The default path
 (``scripts/extraction/pdf_pipeline.py``, the wizard's "Load Study"
 selection) extracts text locally with ``pdfplumber``, redacts the
 text via ``phi_patterns.BLOCKING_PATTERNS`` *before* any LLM call,
@@ -445,14 +452,14 @@ attestation" with "redact text first, then ship". The redaction
 catalog is the same one the agent-output PHI gate uses, so the
 audit story is internally consistent.
 
-**How.** Implemented under
+**Historical implementation.** Implemented under
 :mod:`scripts.extraction.pdf_pipeline`. Capability gate via
 :func:`scripts.utils.llm_capabilities.is_capable_model` (Claude Opus
 4.6+, Sonnet 4.6+, GPT-5+, Gemini 2.5 Pro, Llama 3.3 405B; Ollama
 excluded by default). Provider gate via
 :data:`scripts.extraction.pdf_pipeline.ORCHESTRATOR_SUPPORTED_PROVIDERS`
-(anthropic + google only — where ``_extract_via_llm`` has client
-wiring). Idempotent cache keyed on
+(anthropic + google only — where ``_extract_via_llm`` had client
+wiring). Its idempotent cache was keyed on
 ``SHA-256(pdf_bytes || provider || model || phi_scrub.yaml hash)``.
 
 **Alternatives.**
@@ -466,10 +473,9 @@ wiring). Idempotent cache keyed on
   skipped for most runs; the orchestrator unblocks the leg without
   weakening the egress posture.
 
-**Consequences.** ADR-006 is now a *fallback* path, not the primary
-path. The attestation gate remains in the legacy
-``extract_pdf_data._resolve_pdf_provider``. The orchestrator uses the
-``data/snapshots/{STUDY}/`` baseline tier described in ADR-013.
+**Historical consequences.** ADR-006 became a fallback path rather than
+the primary path while the orchestrator was active. Both paths are now
+retired from the active LLM source flow.
 
 ADR-013 — Single reviewed snapshot baseline
 -------------------------------------------
@@ -503,13 +509,20 @@ baseline-mirror layer became redundant and was retired.
 ADR-014 — Parallel extraction phase (3-worker ThreadPoolExecutor)
 -----------------------------------------------------------------
 
-**What.** ``main.py``'s extraction phase runs Dictionary / Datasets /
-PDFs in parallel on a 3-worker ``concurrent.futures.ThreadPoolExecutor``.
-The cleanup chain (PHI scrub / dataset cleanup / cleanup propagation),
-publish, and ``variables.json`` build run sequentially after the
-join.
+.. note::
 
-**Why.** The three legs are fully decoupled — different RED inputs,
+   Historical. The current LLM source flow publishes scrubbed dataset
+   files, then builds catalog/evidence-pack outputs with
+   ``scripts.source_truth.build``. The old PDF leg and
+   ``variables.json`` builder are not active LLM-visible outputs.
+
+**Historical what.** ``main.py``'s extraction phase ran Dictionary /
+Datasets / PDFs in parallel on a 3-worker
+``concurrent.futures.ThreadPoolExecutor``. The cleanup chain (PHI scrub
+/ dataset cleanup / cleanup propagation), publish, and
+``variables.json`` build ran sequentially after the join.
+
+**Historical why.** The three legs were fully decoupled — different RED inputs,
 different AMBER staging subdirs, no shared mutable state. The PDF
 leg's HTTP latency (orchestrator LLM calls) is amortised against
 the dataset leg's Excel-parsing CPU. Cleanup chain stays sequential
@@ -539,6 +552,86 @@ AMBER is purged, so two operator-triggered runs cannot race over the
 same ``tmp/{STUDY}/`` workspace. ``VerboseLogger`` uses thread-local
 indentation, keeping ``--verbose`` tree output readable while the
 three extraction legs overlap.
+
+ADR-016 — SoT skill refactor: collapse 32-module pipeline into a single CLI
+---------------------------------------------------------------------------
+
+*Date: 2026-05-15*
+
+**What.** The 32-module ``scripts/source_truth/`` pipeline
+(``all_form_validation``, ``analysis_binding``, ``build``, ``builder``,
+``catalog``, ``completeness``, ``concept_derivation``, ``concepts``,
+``cross_verify_emit``, ``cross_verify_fix_agent``, ``cross_verify_pipeline``,
+``cross_verify_scanner``, ``cutover_gate``, ``dataset_schema``,
+``dataset_schema_writer``, ``distribution``, ``epidemiology``,
+``evidence_pack_consolidator``, ``evidence_pack_splitter``, ``gate_checks``,
+``ledger_readers``, ``ledgers``, ``legacy_evidence_pack_reconciler``,
+``lineage``, ``llm_source_catalogs``, ``reconciliation``, ``retrieval``,
+``sot_coverage_gate``, ``sot_gap_dispatcher``, ``sot_gap_inventory``,
+``sot_gap_merge``, ``verify_and_promote``) is deleted and replaced by a
+single deterministic CLI at
+``python -m scripts.source_truth.study_intake <study> [--force]``.
+The surviving lean core is six files:
+``__init__.py``, ``pdf_evidence.py``, ``record.py``, ``policy_loader.py``,
+``sot_extractor_agent.py``, ``sot_reviewer_agent.py``.
+
+**Why.**
+
+1. *32-module sprawl:* The former pipeline had grown to 38 modules, many
+   of which implemented overlapping multi-phase verification, gap analysis,
+   ledger tracking, cross-verification, and evidence-pack assembly steps.
+   The cognitive overhead of understanding any single flow required tracing
+   imports across a dozen files.
+2. *Headers-only invariant under-enforced:* Row-2+ bytes of xlsx/csv data
+   were accessed in multiple places with no single, testable chokepoint
+   guaranteeing that the LLM sub-agents only ever saw column headers.
+   The new pipeline enforces this in one function (``read_headers_only``)
+   guarded by a static-analysis test and a row-2 poison-canary unit test.
+3. *Cross-LLM portability:* The prior skill surface lived in a
+   Claude-Code-specific ``.claude/skills/`` directory, unreachable from
+   ChatGPT, Gemini, Cursor, Aider, or a raw shell. The replacement
+   CLI + ``AGENTS.md`` + runbook is tool-agnostic.
+
+**How.** ``scripts/source_truth/study_intake.py`` implements three
+orchestration phases — ``pair_files`` (form-code prefix matching),
+``read_headers_only`` (strict row-1-only xlsx/csv reader), and
+``build_yaml_for_pair`` (extractor → reviewer → validate → write YAML).
+The existing ``sot_extractor_agent`` and ``sot_reviewer_agent`` are called
+from within ``build_yaml_for_pair`` and remain unchanged. The CLI is
+documented in ``AGENTS.md`` (``## SoT creation`` section) and
+``docs/runbook_sot_build.md``.
+
+**Alternatives.**
+
+* *Incremental cleanup of the 32 modules.* Rejected — the inter-module
+  dependencies were circular enough that safe incremental surgery would
+  have taken longer than a clean rewrite to the well-defined contract
+  (inputs: PDF + headers; output: YAML or review-file entry).
+* *LLM-driven outer loop.* Rejected — a deterministic shell around the LLM
+  sub-agents is the only way to make the headers-only invariant provable at
+  the process boundary. An LLM outer loop would re-open that boundary.
+* *Claude-Code-specific SKILL.md approach.* Rejected per the cross-LLM
+  portability requirement in the project memory.
+
+**Consequences.**
+
+1. *Regenerated YAMLs may drift from human-curated ones* unless ``--force``
+   is passed explicitly. The default skip-if-exists policy protects
+   hand-edited ``policy_status`` and ``unresolved_review_required`` fields.
+   Never run ``--force`` against a study with curated YAMLs without explicit
+   data-owner authorization.
+2. *``SourceTruthRetriever`` deny-invariant retired.* The
+   ``scripts/source_truth/retrieval.py`` module and its path-based deny
+   invariant (tested by ``tests/source_truth/test_retrieval_audit_deny.py``)
+   are removed as part of the 32-file deletion. Downstream callers in
+   ``scripts/ai_assistant/agent_tools.py`` have been audited and decoupled
+   (Task 6a). Re-introduction of a YAML-backed retriever is tracked as
+   future work if the agent needs direct SoT policy access at runtime.
+3. *No Makefile target for SoT creation.* ``make pipeline`` continues to
+   run the extraction → scrub → publish → LLM-source-build sequence.
+   The SoT intake CLI is a separate invocation; this is by design to keep
+   the two concerns (SoT authoring vs. LLM source publishing) visibly
+   distinct.
 
 ADR-015 — l-diversity (l=2) on row-returning tools
 ---------------------------------------------------

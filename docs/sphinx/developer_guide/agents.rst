@@ -53,7 +53,7 @@ Quick reference
    make ci            # lint → typecheck → test
    make chat          # Launch Streamlit web UI
    make chat-cli      # Launch CLI REPL
-   make pipeline      # Full data pipeline (dict → datasets + pdfs → variables.json)
+   make pipeline      # Full data pipeline plus SoT-backed LLM source build
 
 Architecture (two-world)
 ------------------------
@@ -61,12 +61,27 @@ Architecture (two-world)
 **World 1 — Deterministic Pipeline** (``main.py`` →
 ``scripts/extraction/``, ``scripts/security/``, ``scripts/utils/``):
 
-The three extraction legs (dictionary, datasets, PDFs) write into a
-transient staging workspace at ``tmp/{STUDY_NAME}/``. The three legs
-run **in parallel** on a 3-worker
-``concurrent.futures.ThreadPoolExecutor``; the cleanup chain (PHI
-scrub / dataset cleanup / cleanup propagation) and Publish + Variables
-are sequential after the join.
+**SoT YAML creation (upstream, run before the main pipeline):**
+:mod:`scripts.source_truth.study_intake` is the single entry point for
+building Source-of-Truth policy YAMLs. It is a standalone CLI — not a
+pipeline step — invoked as
+``python -m scripts.source_truth.study_intake <study> [--force]``.
+The CLI pairs annotated PDFs with xlsx/csv datasets by form-code prefix,
+reads only row 1 of each dataset (headers-only invariant — row 2+ bytes
+never enter Python), and calls two LLM sub-agents in sequence:
+``sot_extractor_agent`` produces a draft YAML for each aligned pair;
+``sot_reviewer_agent`` reviews the draft and sets ``policy_status``.
+Both agents are invoked from within ``build_yaml_for_pair`` and survive
+the Phase 6 refactor unchanged. Files that cannot be cleanly paired or
+pass header-safety checks are routed to
+``data/SoT/{STUDY}/human_review/SoT_intake_review.md``.
+See ``AGENTS.md`` (``## SoT creation`` section) for the one-liner command
+and ``docs/runbook_sot_build.md`` for the full behavior reference.
+
+Dataset extraction writes into a transient staging workspace at
+``tmp/{STUDY_NAME}/``. The cleanup chain (PHI scrub / dataset cleanup),
+publish, and the SoT-backed LLM source build are sequential after the
+dataset files are available.
 
 Every extracted row gets a full ``_provenance`` dict (raw_sha256,
 pipeline_version, extraction_engine, source_file, sheet_name,
@@ -75,41 +90,39 @@ row_index, study_name, extraction_utc).
 datasets in place via the eight action classes in strict priority
 order **BEFORE** any audit is written so no raw PHI lands in
 ``output/``. ``dataset_cleanup`` (Step 1.7) runs against staged
-datasets and emits ``audit/dataset_cleanup_report.json``.
-:func:`scripts.extraction.cleanup_propagation.run_propagation`
-(Step 1.8) reads the dataset audit, computes the pruning set, and
-rewrites staged dictionary + PDF artifacts. ``_publish_staging``
-atomically renames staging → ``llm_source/`` (per-leg, copytree
-fallback across filesystems).
-:func:`scripts.extraction.build_variables_reference.build_variables_reference`
-runs after publish. **Step 4** emits ``audit/lineage_manifest.json``
+datasets and emits ``audit/dataset_cleanup_report.json``. Published
+dataset JSONL files land under
+``output/{STUDY_NAME}/llm_source/dataset_schema/files/``.
+The SoT-backed LLM source builder then builds the Study Metadata Catalog,
+per-form Evidence Packs, and declared PHI / cleanup reports from the
+reviewed policy YAMLs. Promotion candidates are staged under
+``tmp/{STUDY_NAME}/staging/llm_source/``. **Step 4**
+emits ``audit/lineage_manifest.json``
 pairing every raw input (SHA-256) with every published llm_source
 artifact (SHA-256). On success, staging is **securely removed** (overwrite +
 fsync + unlink); on failure, ``tmp/{STUDY_NAME}/`` is preserved for
 operator inspection.
 
-**PDF extraction:** the wizard's "Load Study" button selects the orchestrator path
-(:mod:`scripts.extraction.pdf_pipeline`). pdfplumber extracts text
-locally; the text is PHI-redacted; only redacted text reaches the LLM;
-the response is re-scrubbed and merged with the code candidate. The
-legacy raw-PDF API path (:mod:`scripts.extraction.extract_pdf_data`)
-is the CLI default and is gated by the two-part
-``REPORTALIN_PDF_PHI_FREE`` operator attestation.
+**PDF extraction:** the PDF orchestrator and legacy raw-PDF API path are
+historical. Current LLM metadata comes from reviewed SoT policy YAMLs
+(produced by the intake CLI) and is published through the Study Metadata
+Catalog and Evidence Packs.
 
 **World 2 — AI Assistant** (``scripts/ai_assistant/``):
 LangGraph ReAct agent with 12 tools for querying study data. Never
 accesses raw data.
 
 **Output structure:**
-``output/{STUDY_NAME}/llm_source/{dataset_schema,pdfs,dictionary_mapping,variables.json}``,
-``audit/{dataset,dictionary,pdfs}_cleanup_report.json`` +
+``output/{STUDY_NAME}/llm_source/dataset_schema/files/`` +
+``output/{STUDY_NAME}/llm_source/study_metadata/{catalog.json,evidence_packs/}``,
+``audit/dataset_cleanup_report.json`` +
 ``audit/phi_scrub_report.json`` + ``audit/lineage_manifest.json`` +
 ``audit/telemetry/events.jsonl``,
 ``agent/{analysis,conversations}/``; transient staging
-sibling: ``tmp/{STUDY_NAME}/{datasets,dictionary,pdfs}/``.
+sibling: ``tmp/{STUDY_NAME}/{datasets,staging/llm_source,human_review}/``.
 
-**Wizard step 2:** a single *Load Study* button runs the pipeline
-subprocess.
+**Wizard step 2:** an existing valid ``llm_source/`` bundle can be used
+without reloading; otherwise *Load Study* runs the pipeline subprocess.
 
 **PHI key:** sidecar at ``~/.config/report_ai_portal/phi_key``
 (resolved via ``config.PHI_KEY_PATH``, overridable with
@@ -238,7 +251,8 @@ Config
 
 All paths and settings come from ``config.py`` (env vars + YAML
 overlay from ``config/config.yaml``). Never hardcode paths — use
-``config.TRIO_BUNDLE_DIR``, ``config.TMP_DIR``, etc.
+``config.STUDY_LLM_SOURCE_DIR``, ``config.TRIO_DATASETS_DIR``,
+``config.TMP_DIR``, etc.
 
 Key flags: ``STUDY_NAME``, ``LOG_LEVEL``, ``LOG_VERBOSE`` (see
 ``.env.example``).
@@ -257,6 +271,31 @@ Tools live in ``scripts/ai_assistant/agent_tools.py`` as
 ``@tool``-decorated functions. The docstring becomes the
 agent-visible description. All tools are collected in ``ALL_TOOLS``
 list. Use ``tool_cache`` for memoization.
+
+Dataset discovery and analytical posture
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* ``list_available_datasets()`` — dataset-level discovery hop. Returns
+  ``[{form, jsonl_path, n_rows, columns: [{name, dtype}]}]`` for every
+  PHI-scrubbed JSONL under ``output/{STUDY}/llm_source/``. The tool
+  obeys the existing
+  :func:`scripts.ai_assistant.file_access.validate_agent_read`
+  boundary, never returns row contents, and filters free-text PHI
+  columns (``*COMMENT``, ``*REMARK``, ``*NOTE``, ``*SPECIFY``,
+  ``WITHDRAWEXPLAIN``, narrative families from ``phi_scrub.yaml``) out
+  of its return as defence in depth. The LLM should call it when it
+  needs to know which forms and which columns are available before
+  writing a ``run_python_analysis`` script or framing a custom
+  evidence report.
+* The agent system prompts no longer treat the eleven canonical
+  question IDs as a routing gate. Verbatim canonical questions still
+  hit ``produce_evidence_report`` (the IRB-attested fast path).
+  Everything else — variants of the canonical eleven, ad-hoc analyses,
+  or general / off-topic questions — routes through
+  ``produce_custom_evidence_report`` or ``run_python_analysis``.
+* For the boundary discussion (why this is safe, which gate enforces
+  it, what is filtered where), see
+  :doc:`phi_architecture` — section *Agent Autonomy and the PHI Gate*.
 
 Web UI
 ~~~~~~
@@ -342,10 +381,11 @@ Key files
    * - Entry point
      - ``main.py``, ``config.py``
    * - Pipeline
-     - ``scripts/extraction/dataset_pipeline.py``,
-       ``scripts/extraction/build_variables_reference.py``,
-       ``scripts/extraction/extract_pdf_data.py``,
-       ``scripts/extraction/pdf_pipeline.py`` (orchestrator)
+     - ``scripts/extraction/dataset_pipeline.py``
+   * - SoT creation CLI
+     - ``scripts/source_truth/study_intake.py``,
+       ``scripts/source_truth/sot_extractor_agent.py``,
+       ``scripts/source_truth/sot_reviewer_agent.py``
    * - PHI scrub + catalog
      - ``scripts/security/phi_scrub.py``,
        ``scripts/security/phi_scrub.yaml``
