@@ -18,26 +18,26 @@ with the LangGraph ReAct agent.
 
 Tools
 -----
-1.  search_variables — fuzzy search across the unified variables reference
-2.  find_variable_candidates — always-returns-top-k ranked candidates for disambiguation
-3.  get_variable_details — full metadata for a specific variable
-4.  list_forms — list all CRF forms in the study (derived from published trio bundle)
-5.  get_form_variables — list all variables belonging to a specific form
-6.  query_dataset — structural query on a JSONL dataset
-7.  get_dataset_stats — summary statistics for a dataset (record counts, columns)
-8.  get_study_overview — high-level study summary (datasets, forms, variables)
-9.  run_python_analysis — sandboxed code execution for statistical analysis
-10. cross_reference_variables — cross-reference a variable across datasets + forms
-11. run_study_analysis — deterministic epidemiological analysis
+1.  search_variables — dataset column search (dictionary fallback when catalog has no answer)
+2.  query_dataset — structural query on a JSONL dataset
+3.  get_dataset_stats — summary statistics for a dataset (record counts, columns)
+4.  list_available_datasets — list available PHI-scrubbed datasets
+5.  run_python_analysis — sandboxed code execution for statistical analysis
+6.  run_study_analysis — deterministic epidemiological analysis
+7.  answer_catalog_question — primary variable metadata lookup via SourceTruthRetriever
+8.  produce_evidence_report — structured PHI-safe analysis report for canonical questions
+9.  produce_custom_evidence_report — parameterised analysis report for custom questions
+10. cite_source — deterministic (file, line, snippet) citation for form fields
 """
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import re
+import uuid
 from collections.abc import Mapping
-from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
@@ -107,45 +107,6 @@ def _expanded_form_text(value: str) -> str:
     return " ".join([base, *expansions]).strip()
 
 
-def _query_terms(value: str, *, stop: set[str]) -> tuple[list[str], str]:
-    words = [w for w in value.split() if w.lower() not in stop] or value.split()
-    terms: list[str] = []
-    for word in words:
-        term = _normalise_search_text(word)
-        if term.endswith("s") and len(term) > 3:
-            term = term[:-1]
-        if term:
-            terms.append(term)
-    return terms, " ".join(terms).strip()
-
-
-def _term_variants(term: str) -> set[str]:
-    variants = {term}
-    if term.startswith("eligib"):
-        variants.add("elig")
-    if term in {"tuberculosis", "tb"}:
-        variants.update({"tb", "mtb"})
-    if term == "household":
-        variants.update({"hc", "hhc", "hh"})
-    if term in {"hc", "hhc", "hh"}:
-        variants.update({"household", "contact"})
-    if term == "contact":
-        variants.update({"cont", "contact"})
-    if term in {"chest", "xray", "ray"}:
-        variants.add("cxr")
-    if term in {"cavity", "cavitation"}:
-        variants.add("cavit")
-    if term == "treatment":
-        variants.add("tx")
-    if term == "follow":
-        variants.add("fu")
-    return variants
-
-
-def _text_has_term(text: str, term: str) -> bool:
-    tokens = set(text.split())
-    return any(v in text or v in tokens for v in _term_variants(term))
-
 
 def _dataset_label(stem: str) -> str:
     return _expanded_form_text(stem).title()
@@ -156,7 +117,7 @@ def _load_dataset_column_variables() -> list[dict[str, Any]]:
 
     The per-form evidence packs may not enumerate every published column. The
     agent still needs to discover columns that are demonstrably present in the
-    published trio bundle, so we build a metadata-only reference from JSONL
+    published ``llm_source`` files, so we build a metadata-only reference from JSONL
     headers without surfacing row values.
     """
     datasets_dir = config.TRIO_DATASETS_DIR
@@ -264,12 +225,25 @@ _DEFAULT_SENSITIVE_ATTRIBUTES: tuple[str, ...] = (
     "DEATHCAUSE",
 )
 
+_ROW_IDENTIFIER_COLUMNS: tuple[str, ...] = (
+    "SUBJID",
+    "USUBJID",
+    "SUBJECT_ID",
+    "PARTICIPANT_ID",
+    "PATIENT_ID",
+    "FID",
+    "FIDNO",
+)
+
 
 def _present_columns(rows: list[dict[str, Any]], candidates: tuple[str, ...]) -> tuple[str, ...]:
     """Return the subset of *candidates* that actually appears in any row."""
     seen: set[str] = set()
-    for row in rows[:50]:  # sample is enough; column set is stable across rows
+    candidate_set = frozenset(candidates)
+    for row in rows[:200]:  # column set is stable across rows; sample is sufficient
         seen.update(row.keys())
+        if candidate_set.issubset(seen):
+            break  # all candidates found; no need to scan further
     return tuple(c for c in candidates if c in seen)
 
 
@@ -299,7 +273,7 @@ def _surface_safe_records(
 ) -> tuple[list[Mapping[str, Any]], list[str]]:
     """Return row samples safe for LLM/tool transport.
 
-    The trio bundle stores SANT-shifted clinical dates, but the generic PHI
+    Published ``llm_source`` datasets store SANT-shifted clinical dates, but the generic PHI
     return gate correctly treats exact ISO date strings as blocking patterns.
     Row samples are only structural previews, so redact date-shaped values
     instead of letting one date suppress the whole tool response.
@@ -385,9 +359,9 @@ def _query_looks_conversational(query: str) -> bool:
 
 
 _CONVERSATIONAL_REFUSAL_MESSAGE = (
-    "That looks like a greeting rather than a study question — ask about a "
-    'variable, form, dataset, cohort, or analysis (e.g. "show me TB outcome '
-    'variables" or "how many subjects completed treatment?").'
+    "No study lookup is needed for this turn. Answer directly if you can, "
+    "then invite the user back to a concrete study question about a variable, "
+    "form, dataset, cohort, or analysis."
 )
 
 
@@ -399,17 +373,14 @@ _CONVERSATIONAL_REFUSAL_MESSAGE = (
 @tool
 @phi_safe_return
 def search_variables(query: str) -> str:
-    """Search study variables by name or description.
+    """Search dataset column names as a fallback when answer_catalog_question has no result.
 
-    Use this to find variables related to a concept (e.g. "tuberculosis",
-    "age", "HIV", "chest x-ray"). Returns matching variable names with
-    descriptions.
+    Scans the published JSONL dataset column headers (the raw dataset schema) for columns
+    whose name contains any token from the query. Use this ONLY after answer_catalog_question
+    returns no result for a variable question.
 
     Args:
-        query: Search term — matches against variable_name and description.
-            Queries shorter than 3 characters or matching a greeting
-            stoplist (hi / hello / thanks / ok / …) return an explicit
-            refusal so the LLM does not surface noisy substring hits.
+        query: Search term — matched against dataset column names by plain token intersection.
     """
     if _query_looks_conversational(query):
         return _CONVERSATIONAL_REFUSAL_MESSAGE
@@ -418,213 +389,35 @@ def search_variables(query: str) -> str:
     if hit is not None:
         return hit
 
-    variables = _combined_variable_reference()
+    variables = _load_dataset_column_variables()
     if not variables:
         return "No variables reference found. Ensure llm_source/dataset_schema/files/ is populated."
 
-    # Weighted scoring: prefer exact phrase hits in variable names/descriptions
-    # and keep the payload compact for smaller local models.
-    stop = {"the", "a", "an", "of", "for", "and", "in", "is", "to", "or", "overall"}
-    query_terms, query_phrase = _query_terms(query, stop=stop)
-    scored: list[tuple[int, dict[str, str]]] = []
-    for var in variables:
-        name = var.get("variable_name", "") or ""
-        desc = var.get("description", "") or ""
-        form = var.get("form_name", "") or ""
-        dataset = var.get("dataset", "") or ""
-        section = var.get("section", "") or ""
-        name_terms = [_normalise_search_text(name.replace("_", " "))]
-        desc_terms = [_normalise_search_text(desc)]
-        form_terms = [_expanded_form_text(" ".join([form, dataset, section]))]
-        score = 0
-        if query_phrase:
-            if query_phrase == " ".join(name_terms):
-                score += 50
-            if query_phrase in " ".join(name_terms):
-                score += 18
-            if query_phrase in " ".join(desc_terms):
-                score += 22
-            if query_phrase in " ".join(form_terms):
-                score += 8
-
-        for term in query_terms:
-            if _text_has_term(_normalise_search_text(name), term):
-                score += 8
-            if _text_has_term(" ".join(desc_terms), term):
-                score += 10
-            if _text_has_term(" ".join(form_terms), term):
-                score += 3
-
-        combined_terms = " ".join(name_terms + desc_terms)
-        if query_terms and all(_text_has_term(combined_terms, term) for term in query_terms):
-            score += 16
-        if query_terms and all(_text_has_term(" ".join(desc_terms), term) for term in query_terms):
-            score += 12
-        if score > 0:
-            scored.append(
-                (
-                    score,
-                    {
-                        "variable_name": name,
-                        "form_name": var.get("form_name") or "",
-                        "dataset": var.get("dataset") or "",
-                        "source": var.get("source") or "dataset_schema",
-                        "section": var.get("section") or "",
-                        "description": desc,
-                        "data_type": var.get("data_type", "unknown"),
-                        "is_phi": str(var.get("is_phi", False)),
-                        "phi_type": var.get("phi_type") or "",
-                    },
-                )
-            )
-
-    if not scored:
+    tokens = {t.lower() for t in re.split(r"[^a-z0-9]+", query.lower()) if len(t) >= 2}
+    if not tokens:
         return f"No variables found matching '{query}'."
-    scored.sort(key=lambda x: (-x[0], len(x[1]["variable_name"]), x[1]["variable_name"]))
-    matches = [item for _, item in scored[:12]]
-    result = json.dumps(matches, indent=2, ensure_ascii=False)
+
+    matches = []
+    for var in variables:
+        name = (var.get("variable_name") or "").lower()
+        desc = (var.get("description") or "").lower()
+        if any(t in name or t in desc for t in tokens):
+            matches.append({
+                "variable_name": var.get("variable_name", ""),
+                "form_name": var.get("form_name", ""),
+                "dataset": var.get("dataset", ""),
+                "description": var.get("description", ""),
+            })
+
+    if not matches:
+        return f"No variables found matching '{query}'."
+
+    result = json.dumps(matches[:12], indent=2, ensure_ascii=False)
     tool_cache.put("search_variables", result, query=query)
     return result
 
 
-# ============================================================================
-# Tool 2: get_variable_details
-# ============================================================================
 
-
-@tool
-@phi_safe_return
-def get_variable_details(variable_name: str) -> str:
-    """Get full metadata for a specific study variable.
-
-    Returns all 23 fields: variable_name, form_id, form_name, source_pdf,
-    form_version, form_summary, section, section_context, description,
-    coded_options, depends_on, condition, data_type, core_status, is_phi,
-    phi_reason, phi_type, date_kind, anchor_rule, suggested_output_variable,
-    approved_for_transform, date_group_by, deidentified_as.
-
-    Args:
-        variable_name: Exact variable name (case-insensitive).
-    """
-    hit = tool_cache.get("get_variable_details", variable_name=variable_name)
-    if hit is not None:
-        return hit
-
-    variables = _combined_variable_reference()
-    target = variable_name.upper()
-    for var in variables:
-        if var.get("variable_name", "").upper() == target:
-            result = json.dumps(var, indent=2, ensure_ascii=False)
-            tool_cache.put("get_variable_details", result, variable_name=variable_name)
-            return result
-    return f"Variable '{variable_name}' not found in the study reference."
-
-
-# ============================================================================
-# Tool 3: list_forms
-# ============================================================================
-
-
-@tool
-@phi_safe_return
-def list_forms() -> str:
-    """List all CRF (Case Report Form) forms available in the study.
-
-    Returns form names, versions, and variable counts.
-    """
-    hit = tool_cache.get("list_forms")
-    if hit is not None:
-        return hit
-
-    variables = _combined_variable_reference()
-    if not variables:
-        return "No variables reference found. Ensure llm_source/dataset_schema/files/ is populated."
-
-    forms_dict: dict[str, dict[str, Any]] = {}
-    for var in variables:
-        form = var.get("form_name") or "Unknown"
-        if form not in forms_dict:
-            forms_dict[form] = {
-                "form_name": form,
-                "version": var.get("form_version", ""),
-                "variable_count": 0,
-            }
-        forms_dict[form]["variable_count"] += 1
-
-    if not forms_dict:
-        return "No forms found."
-    forms = sorted(forms_dict.values(), key=lambda f: f["form_name"])
-    result = json.dumps(forms, indent=2, ensure_ascii=False)
-    tool_cache.put("list_forms", result)
-    return result
-
-
-# ============================================================================
-# Tool 4: get_form_variables
-# ============================================================================
-
-
-@tool
-@phi_safe_return
-def get_form_variables(form_name: str) -> str:
-    """List all variables defined in a specific CRF form.
-
-    Args:
-        form_name: Form name (e.g. "1A Index Case Screening" or
-            "Form 1A"). Partial match supported.
-    """
-    hit = tool_cache.get("get_form_variables", form_name=form_name)
-    if hit is not None:
-        return hit
-
-    variables = _combined_variable_reference()
-    if not variables:
-        return "No variables reference found. Ensure llm_source/dataset_schema/files/ is populated."
-
-    # Word-split matching: rank forms by how many query words they contain.
-    stop = {"form", "the", "a", "an", "of", "for", "and", "in", "-", "--"}
-    query_terms, _ = _query_terms(form_name, stop=stop)
-
-    # Group variables by form_name and score each form
-    forms: dict[str, list[dict[str, Any]]] = {}
-    for var in variables:
-        fname = var.get("form_name") or "Unknown"
-        forms.setdefault(fname, []).append(var)
-
-    best_form: str | None = None
-    best_score = 0
-    for fname in forms:
-        searchable = _expanded_form_text(fname)
-        dataset_names = {str(v.get("dataset") or "") for v in forms[fname] if v.get("dataset")}
-        if dataset_names:
-            searchable = " ".join([searchable, *(_expanded_form_text(n) for n in dataset_names)])
-        score = sum(1 for term in query_terms if _text_has_term(searchable, term))
-        if score > best_score:
-            best_score = score
-            best_form = fname
-
-    if best_form and best_score > 0:
-        matched_vars = forms[best_form]
-        result = {
-            "form_name": best_form,
-            "version": matched_vars[0].get("form_version", ""),
-            "summary": matched_vars[0].get("form_summary", ""),
-            "variables": [
-                {
-                    "name": v.get("variable_name", ""),
-                    "description": v.get("description", ""),
-                    "values": v.get("coded_options"),
-                    "depends_on": v.get("depends_on"),
-                    "condition": v.get("condition"),
-                }
-                for v in matched_vars
-            ],
-        }
-        result_str = json.dumps(result, indent=2, ensure_ascii=False)
-        tool_cache.put("get_form_variables", result_str, form_name=form_name)
-        return result_str
-
-    return f"No form found matching '{form_name}'."
 
 
 # ============================================================================
@@ -645,7 +438,11 @@ def query_dataset(
 
     Returns column names and sample records from a JSONL dataset.
     All datasets are processed in accordance with the study's data
-    governance and regulatory anonymization protocol.
+    governance and regulatory anonymization protocol. Operates on the
+    PHI-scrubbed ``llm_source/`` view; row data never leaves the sandbox.
+    Compose with :func:`list_available_datasets`, :func:`get_dataset_stats`,
+    and :func:`run_python_analysis` to plan ad-hoc analyses instead of
+    forcing the question into a canonical slot.
 
     Args:
         dataset_name: Dataset filename (e.g. "1A_ICScreening" or
@@ -704,22 +501,59 @@ def query_dataset(
         else:
             results.append({k: v for k, v in rec.items() if k not in _INTERNAL_COLUMNS})
 
-    # k-anonymity + l-diversity gate (Phase 3.A + 3.B). Run on the
-    # projected ``results`` (post-column-filter, post-row-filter) using
-    # whichever default QI / sensitive columns are present. If blocked,
-    # surface aggregate-only metadata + a clear refusal so the LLM can
-    # respond with bands rather than rows.
+    # k-anonymity + l-diversity gate (Phase 3.A + 3.B). Run on the filtered
+    # full rows, not the projected result rows: otherwise a caller could
+    # filter down to a single subject/class, project away the quasi-
+    # identifiers, and receive the sensitive value anyway.
     from scripts.ai_assistant.phi_safe import guard_rows_with_kanon_and_ldiv
+    from scripts.security.kanon_gate import mask_small_cell
 
-    qi_present = _present_columns(results, _DEFAULT_QUASI_IDENTIFIERS)
-    sens_present = _present_columns(results, _DEFAULT_SENSITIVE_ATTRIBUTES)
+    gating_rows = [
+        {k: v for k, v in rec.items() if k not in _INTERNAL_COLUMNS} for rec in filtered
+    ]
+    qi_present = _present_columns(gating_rows, _DEFAULT_QUASI_IDENTIFIERS)
+    sens_present = _present_columns(gating_rows, _DEFAULT_SENSITIVE_ATTRIBUTES)
+    filter_col_upper = (filter_column or "").upper()
+    subject_identifier_filter = filter_col_upper in _ROW_IDENTIFIER_COLUMNS
 
     safe_records: list[Mapping[str, Any]] = list(results)
     kanon_violation: dict[str, Any] | None = None
 
-    if qi_present and results:
-        gated, kanon_res, ldiv_res = guard_rows_with_kanon_and_ldiv(
-            results,
+    if subject_identifier_filter:
+        safe_records = []
+        kanon_violation = {
+            "gate": "subject_identifier_filter",
+            "k": 5,
+            "l": None,
+            "smallest_class_size": None,
+            "smallest_diversity": None,
+            "quasi_identifiers": [filter_column] if filter_column else [],
+            "sensitive_attributes": list(sens_present),
+            "message": (
+                "Row-level surface suppressed: exact subject identifier filters are "
+                "not exposed through query_dataset. Use aggregate tools or broaden "
+                "the cohort definition."
+            ),
+        }
+    elif filter_column and len(filtered) < 5:
+        safe_records = []
+        kanon_violation = {
+            "gate": "small_filter_cell",
+            "k": 5,
+            "l": None,
+            "smallest_class_size": len(filtered),
+            "smallest_diversity": None,
+            "quasi_identifiers": [filter_column],
+            "sensitive_attributes": list(sens_present),
+            "message": (
+                "Row-level surface suppressed: the filter matches fewer than 5 "
+                "records. Re-query with broader bins or aggregate via "
+                "get_dataset_stats / cross_reference_variables."
+            ),
+        }
+    elif qi_present and gating_rows:
+        _gated, kanon_res, ldiv_res = guard_rows_with_kanon_and_ldiv(
+            gating_rows,
             quasi_identifiers=qi_present,
             sensitive_attributes=sens_present or None,
             tool_name="query_dataset",
@@ -742,7 +576,9 @@ def query_dataset(
                 ),
             }
         else:
-            safe_records = list(gated)
+            # ``gated`` is the full-row safety check. Surface only the caller's
+            # projected records after the gate passes.
+            safe_records = list(results)
 
     safe_records, date_values_redacted = _surface_safe_records(safe_records)
 
@@ -750,7 +586,9 @@ def query_dataset(
         {
             "dataset": matched_file.stem,
             "total_records": real_total,
-            "rows_matching_filter": len(filtered) if filter_column else real_total,
+            "rows_matching_filter": (
+                mask_small_cell(len(filtered), k=5) if filter_column else real_total
+            ),
             "returned": len(safe_records),
             "available_columns": all_columns,
             "records": safe_records,
@@ -760,6 +598,163 @@ def query_dataset(
         indent=2,
         ensure_ascii=False,
     )
+
+
+# ============================================================================
+# Tool 5b: list_available_datasets
+# ============================================================================
+
+
+# Defense-in-depth PHI filter: free-text narrative columns whose values are
+# upstream-scrubbed under ``llm_source/`` but which we re-drop here so the
+# discovery hop never advertises a column that could leak narrative PHI even
+# under a partial upstream regression.
+_PHI_COLUMN_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"(?:COMMENT|REMARK|NOTE|SPECIFY)$", re.IGNORECASE),
+    re.compile(r"^WITHDRAWEXPLAIN$", re.IGNORECASE),
+)
+
+
+def _column_is_phi(column_name: str) -> bool:
+    """Return True when *column_name* matches a defense-in-depth PHI pattern."""
+    return any(pat.search(column_name) for pat in _PHI_COLUMN_PATTERNS)
+
+
+def _list_available_datasets_impl(*, include_columns: bool = False) -> list[dict[str, Any]]:
+    """Pure implementation backing :func:`list_available_datasets`.
+
+    Walks the published ``llm_source/dataset_schema/files/`` zone through
+    :func:`validate_agent_read` and returns one record per JSONL with row
+    counts and inferred column schema. Free-text narrative columns are
+    dropped as defense in depth; the count is reported on each record.
+    """
+    datasets_dir_raw = config.LLM_SOURCE_DATASET_SCHEMA_FILES_DIR
+    # Gate: ensures the dataset zone is inside the agent read allowlist
+    # (``llm_source/`` or ``agent/``). Never bypass.
+    try:
+        datasets_dir = validate_agent_read(datasets_dir_raw)
+    except PermissionError:
+        logger.warning(
+            "list_available_datasets: dataset directory %s outside agent read zone",
+            datasets_dir_raw,
+        )
+        return []
+
+    if not datasets_dir.is_dir():
+        return []
+
+    out: list[dict[str, Any]] = []
+    for jsonl_path in sorted(datasets_dir.glob("*.jsonl")):
+        # Per-file zone validation — defense in depth against symlink escape.
+        try:
+            resolved = validate_agent_read(jsonl_path)
+        except PermissionError:
+            logger.warning(
+                "list_available_datasets: skipping out-of-zone file %s", jsonl_path
+            )
+            continue
+
+        # Stream the row count without loading the file into memory.
+        try:
+            with open(resolved, encoding="utf-8") as fh:
+                n_rows = sum(1 for line in fh if line.strip())
+        except OSError:
+            logger.warning("list_available_datasets: unreadable file %s", resolved)
+            continue
+
+        # Internal storage paths are intentionally NOT included in the
+        # returned record — the agent's chat replies must not surface
+        # filesystem locations. The form stem (e.g. "101_HHC_Recontact")
+        # is the natural identifier downstream tools accept.
+        record: dict[str, Any] = {
+            "form": resolved.stem,
+            "n_rows": n_rows,
+            "phi_filtered": 0,
+        }
+
+        if include_columns:
+            columns: list[dict[str, str]] = []
+            phi_filtered = 0
+            first_record: dict[str, Any] | None = None
+            try:
+                with open(resolved, encoding="utf-8") as fh:
+                    for line in fh:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            first_record = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        if isinstance(first_record, dict):
+                            break
+                        first_record = None
+            except OSError:
+                first_record = None
+
+            if isinstance(first_record, dict):
+                for col_name, value in first_record.items():
+                    if col_name in _INTERNAL_COLUMNS:
+                        continue
+                    if _column_is_phi(col_name):
+                        phi_filtered += 1
+                        logger.warning(
+                            "PHI defense-in-depth tripped: dataset=%s column=%s",
+                            resolved.stem,
+                            col_name,
+                        )
+                        continue
+                    columns.append({"name": col_name, "dtype": type(value).__name__})
+            record["columns"] = columns
+            record["phi_filtered"] = phi_filtered
+
+        out.append(record)
+
+    out.sort(key=lambda r: r["form"])
+    return out
+
+
+@tool
+@phi_safe_return
+def list_available_datasets(include_columns: bool = False) -> str:
+    """Discovery hop: enumerate every PHI-scrubbed dataset the agent can read.
+
+    Returns one record per JSONL under the published ``llm_source/datasets/``
+    path. Each record exposes schema + row counts only — never row contents —
+    so you can plan a custom analysis in one tool call instead of probing
+    forms one at a time. Operates strictly on the PHI-scrubbed view; free-
+    text narrative columns (``*COMMENT``, ``*REMARK``, ``*NOTE``,
+    ``*SPECIFY``, ``WITHDRAWEXPLAIN``) are already dropped upstream and
+    re-filtered here as defense in depth.
+
+    Use this together with :func:`query_dataset`, :func:`get_dataset_stats`,
+    and :func:`run_python_analysis` to compose ad-hoc analyses over the
+    scrubbed view without forcing your question into one of the canonical
+    question slots.
+
+    Args:
+        include_columns: When False (default), return only ``form``,
+            ``n_rows`` (plus ``phi_filtered``) — a compact response intended
+            as the first hop. Set True only when you need each dataset's
+            column schema; the full-column response is large and meant to be
+            requested on demand, per-form, via ``get_dataset_stats``.
+
+    Returns:
+        JSON-encoded list of ``{form, n_rows, columns, phi_filtered}``
+        records sorted by form name. ``form`` is the form stem (e.g.
+        ``"101_HHC_Recontact"``) — the natural identifier accepted by
+        downstream tools such as :func:`query_dataset` and
+        :func:`get_dataset_stats`. ``columns`` is ``[{name, dtype}]`` where
+        ``dtype`` is the Python type-name of the first non-null value seen.
+        ``phi_filtered`` is the count of columns dropped by the
+        defense-in-depth PHI filter.
+
+    Note:
+        By design this tool returns no filesystem paths — the agent's chat
+        replies must not expose internal storage locations.
+    """
+    records = _list_available_datasets_impl(include_columns=include_columns)
+    return json.dumps(records, indent=2, ensure_ascii=False)
 
 
 # ============================================================================
@@ -774,7 +769,11 @@ def get_dataset_stats(dataset_name: str | None = None) -> str:
 
     Returns record counts, column counts, and column names for each dataset.
     If dataset_name is provided, returns stats for that dataset only.
-    Otherwise returns stats for all datasets.
+    Otherwise returns stats for all datasets. Operates on the PHI-scrubbed
+    ``llm_source/`` view; the agent is expected to compose this with
+    :func:`list_available_datasets`, :func:`query_dataset`, and
+    :func:`run_python_analysis` for ad-hoc analyses rather than forcing the
+    question into a canonical slot. Row data never leaves the sandbox.
 
     Args:
         dataset_name: Optional dataset name to filter (partial match).
@@ -841,59 +840,6 @@ def get_dataset_stats(dataset_name: str | None = None) -> str:
     tool_cache.put("get_dataset_stats", result, dataset_name=dataset_name)
     return result
 
-
-# ============================================================================
-# Tool 7: get_study_overview
-# ============================================================================
-
-
-@tool
-@phi_safe_return
-def get_study_overview() -> str:
-    """Get a high-level overview of the study.
-
-    Returns counts of datasets, forms, variables, and regulated data elements.
-    Use this as a starting point to understand what data is available.
-    """
-    hit = tool_cache.get("get_study_overview")
-    if hit is not None:
-        return hit
-
-    # Variables summary — sourced from the published trio dataset schemas
-    # (per-form evidence packs carry PHI metadata; see Phase 5b notes).
-    variables = _combined_variable_reference()
-    phi_count = sum(1 for v in variables if v.get("is_phi"))
-
-    # Dataset counts
-    datasets_dir = config.TRIO_DATASETS_DIR
-    dataset_files: list[str] = []
-    total_records = 0
-    if datasets_dir.is_dir():
-        for f in sorted(datasets_dir.glob("*.jsonl")):
-            validate_agent_read(f)
-            with open(f, encoding="utf-8") as fh:
-                count = sum(1 for line in fh if line.strip())
-            dataset_files.append(f.name)
-            total_records += count
-
-    # Forms count (derived from unique form_name values in the combined
-    # variable reference; the per-form evidence packs are the canonical
-    # source for CRF metadata, but this overview only needs a count.)
-    form_count = len({v.get("form_name") for v in variables if v.get("form_name")})
-
-    overview = {
-        "study_name": config.STUDY_NAME,
-        "total_variables": len(variables),
-        "regulated_data_elements": phi_count,
-        "non_phi_variables": len(variables) - phi_count,
-        "total_datasets": len(dataset_files),
-        "total_records": total_records,
-        "total_crf_forms": form_count,
-        "datasets": [f.removesuffix(".jsonl") for f in dataset_files],
-    }
-    result = json.dumps(overview, indent=2, ensure_ascii=False)
-    tool_cache.put("get_study_overview", result)
-    return result
 
 
 # ============================================================================
@@ -983,6 +929,43 @@ def _safe_import_check(code: str) -> str | None:
     return None
 
 
+def _unsafe_sandbox_stdout_reason(stdout: str) -> str | None:
+    """Return a security reason when stdout appears to expose row-level data."""
+    text = stdout.strip()
+    if not text:
+        return None
+
+    from scripts.security.phi_patterns import SUBJECT_ID_PATTERNS
+
+    if any(pattern.search(text) for pattern in SUBJECT_ID_PATTERNS):
+        return "sandbox stdout contained a subject identifier"
+
+    row_level_markers = (
+        "SUBJID",
+        "USUBJID",
+        "SUBJECT_ID",
+        "PARTICIPANT_ID",
+        "PATIENT_ID",
+        "_provenance",
+        "_source_row",
+    )
+    if any(
+        re.search(rf"\b{re.escape(marker)}\b", text, re.IGNORECASE)
+        for marker in row_level_markers
+    ):
+        return "sandbox stdout contained row-level identifier columns"
+
+    table_like_lines = 0
+    for line in text.splitlines():
+        stripped = line.strip()
+        if re.match(r"^\d+\s+\S+(?:\s+\S+){2,}$", stripped):
+            table_like_lines += 1
+    if table_like_lines >= 3:
+        return "sandbox stdout looked like a row-level table dump"
+
+    return None
+
+
 @tool
 @phi_safe_return
 def run_python_analysis(code: str) -> str:
@@ -994,6 +977,13 @@ def run_python_analysis(code: str) -> str:
     cannot escape its narrow output directory, and is wall-clock and
     (on Linux) memory bounded. See
     ``docs/sphinx/developer_guide/sandbox.rst`` for the full threat model.
+
+    Operates over the PHI-scrubbed ``llm_source/`` view; row data never
+    leaves the sandbox — only printed summaries and rendered figures
+    return to the caller. The agent is expected to compose this tool
+    with :func:`list_available_datasets`, :func:`query_dataset`, and
+    :func:`get_dataset_stats` to plan an ad-hoc analysis rather than
+    forcing the question into a canonical slot.
 
     **Available DataFrames** (named ``df_<dataset>``, e.g. ``df_1A_ICScreening``):
     Call ``print(list(locals().keys()))`` to see all available DataFrames.
@@ -1075,6 +1065,15 @@ def _format_sandbox_result_for_agent(result: Any) -> str:
             tail = f"sandbox exited with code {result.exit_code}"
         return f"**Runtime Error:** {tail}"
 
+    unsafe_reason = _unsafe_sandbox_stdout_reason(result.stdout)
+    if unsafe_reason:
+        logger.warning("run_python_analysis stdout suppressed: %s", unsafe_reason)
+        return (
+            "**Security Error:** Row-level sandbox output was suppressed. "
+            "Use aggregate summaries, model coefficients, confidence intervals, "
+            "or figures that do not print subject-level rows."
+        )
+
     # Success path — stdout + figure + code markers.
     parts: list[str] = []
     if result.stdout.strip():
@@ -1103,125 +1102,6 @@ def _format_sandbox_result_for_agent(result: Any) -> str:
     )
     return formatted
 
-
-# ============================================================================
-# Tool 9: cross_reference_variables
-# ============================================================================
-
-
-@tool
-@phi_safe_return
-def cross_reference_variables(variable_name: str) -> str:
-    """Cross-reference a variable across all datasets and forms.
-
-    Shows which datasets contain this column, record counts, completeness
-    rates, and the corresponding CRF form definition.  Use this when you want
-    to know *where* a variable appears in the study and how populated it is.
-
-    Args:
-        variable_name: Variable name to cross-reference (case-insensitive, partial match).
-    """
-    hit = tool_cache.get("cross_reference_variables", variable_name=variable_name)
-    if hit is not None:
-        return hit
-
-    pat = re.compile(re.escape(variable_name), re.IGNORECASE)
-
-    # 1. Variable definitions from reference (dataset column schemas)
-    variables = _combined_variable_reference()
-    matching_vars = [
-        {
-            "variable_name": v.get("variable_name"),
-            "form_name": v.get("form_name"),
-            "description": v.get("description"),
-            "is_phi": v.get("is_phi"),
-            "phi_type": v.get("phi_type"),
-            "data_type": v.get("data_type"),
-            "deidentified_as": v.get("deidentified_as"),
-        }
-        for v in variables
-        if pat.search(v.get("variable_name", ""))
-    ][:20]
-
-    # 2. Dataset presence: scan first record for column discovery, then full scan
-    datasets_dir = config.TRIO_DATASETS_DIR
-    assert_output_zone(datasets_dir)
-    dataset_presence: list[dict[str, Any]] = []
-
-    if datasets_dir.is_dir():
-        for f in sorted(datasets_dir.glob("*.jsonl")):
-            try:
-                f_validated = validate_agent_read(f)
-            except PermissionError:
-                continue
-            # Quick peek at first record
-            first_rec: dict[str, Any] = {}
-            try:
-                with open(f_validated, encoding="utf-8") as fh:
-                    for line in fh:
-                        if line.strip():
-                            first_rec = json.loads(line)
-                            break
-            except (OSError, json.JSONDecodeError):
-                continue
-
-            matching_cols = [c for c in first_rec if pat.search(c)]
-            if not matching_cols:
-                continue
-
-            # Full scan for counts
-            total = 0
-            populated = 0
-            try:
-                with open(f_validated, encoding="utf-8") as fh:
-                    for line in fh:
-                        if not line.strip():
-                            continue
-                        try:
-                            rec = json.loads(line)
-                            total += 1
-                            if any(rec.get(col) not in (None, "", "nan") for col in matching_cols):
-                                populated += 1
-                        except json.JSONDecodeError:
-                            continue
-            except OSError:
-                continue
-
-            # Apply small-cell suppression (Phase 3.A) so a population /
-            # completeness pair smaller than k=5 is not surfaced as an
-            # exact count — it becomes the suppressed label "<5". The
-            # completeness percentage is recomputed against the masked
-            # numerator so it doesn't reveal the suppressed count via
-            # arithmetic.
-            from scripts.security.kanon_gate import mask_small_cell
-
-            populated_safe = mask_small_cell(populated, k=5)
-            total_safe = mask_small_cell(total, k=5)
-            completeness_pct: Any
-            if isinstance(populated_safe, int) and isinstance(total_safe, int) and total_safe:
-                completeness_pct = round(populated_safe / total_safe * 100, 1)
-            else:
-                completeness_pct = "<5"
-
-            dataset_presence.append(
-                {
-                    "dataset": f.stem,
-                    "matching_columns": matching_cols,
-                    "total_records": total_safe,
-                    "populated_records": populated_safe,
-                    "completeness_pct": completeness_pct,
-                }
-            )
-
-    result_data = {
-        "query": variable_name,
-        "variable_definitions": matching_vars,
-        "dataset_presence": dataset_presence,
-        "total_datasets_with_variable": len(dataset_presence),
-    }
-    result_str = json.dumps(result_data, indent=2, ensure_ascii=False)
-    tool_cache.put("cross_reference_variables", result_str, variable_name=variable_name)
-    return result_str
 
 
 # ============================================================================
@@ -1257,6 +1137,201 @@ def _normalise_outcome(outcome: str, cohort: str) -> str:
     return _OUTCOME_ALIASES.get(key, outcome)
 
 
+def _load_catalog_binding_artifacts() -> tuple[dict[str, Any], dict[str, Any]] | str:
+    """Load published catalog + Dataset Schema artifacts for the hard-cutover path."""
+    catalog = _load_catalog_artifact()
+    if catalog is None:
+        return "The study metadata catalog is not available. Run the pipeline to publish llm_source first."
+
+    schema_path = config.STUDY_LLM_SOURCE_DIR / "dataset_schema.json"
+    if not schema_path.is_file():
+        return (
+            "The Dataset Schema binding artifact is not available at "
+            f"{schema_path}. Run the Source Truth build/verify pipeline first."
+        )
+    try:
+        validate_agent_read(schema_path)
+        with schema_path.open("r", encoding="utf-8") as fh:
+            schema = json.load(fh)
+    except (OSError, PermissionError, json.JSONDecodeError) as exc:
+        return f"Could not load Dataset Schema binding artifact: {exc}"
+    if not isinstance(schema, dict):
+        return "The Dataset Schema binding artifact is malformed: expected a JSON object."
+
+    catalog_dict = dict(catalog)
+    if "records" not in catalog_dict and isinstance(catalog_dict.get("compact_records"), list):
+        catalog_dict["records"] = catalog_dict["compact_records"]
+    return catalog_dict, schema
+
+
+def _schema_variable_ids(schema: Mapping[str, Any]) -> set[str]:
+    entries = schema.get("entries")
+    if not isinstance(entries, list):
+        return set()
+    return {
+        str(entry.get("variable_id"))
+        for entry in entries
+        if isinstance(entry, Mapping)
+        and isinstance(entry.get("variable_id"), str)
+        and entry.get("analysis_queryable") is True
+    }
+
+
+def _catalog_records_for_resolution(catalog: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    records = catalog.get("records")
+    if not isinstance(records, list):
+        return []
+    return [record for record in records if isinstance(record, Mapping)]
+
+
+def _resolve_catalog_variable_token(
+    token: str,
+    *,
+    catalog: Mapping[str, Any],
+    schema_ids: set[str],
+) -> tuple[str | None, str | None]:
+    cleaned = token.strip()
+    if not cleaned:
+        return None, None
+    upper = cleaned.upper()
+    by_upper = {vid.upper(): vid for vid in schema_ids}
+    if upper in by_upper:
+        return by_upper[upper], None
+
+    term = _normalise_search_text(cleaned)
+    matches: list[tuple[str, str, str]] = []
+    for record in _catalog_records_for_resolution(catalog):
+        variable_id = record.get("variable_id")
+        if not isinstance(variable_id, str) or variable_id not in schema_ids:
+            continue
+        if record.get("audit_only") is True or record.get("analysis_queryable") is False:
+            continue
+        label = str(record.get("label") or record.get("display_label") or "")
+        haystack = _normalise_search_text(f"{variable_id} {label}")
+        if term and term in haystack:
+            matches.append((variable_id, str(record.get("form") or ""), label))
+
+    if len(matches) == 1:
+        return matches[0][0], None
+    if matches:
+        preview = ", ".join(
+            f"{variable_id} ({label or form})" for variable_id, form, label in matches[:8]
+        )
+        return None, f"{cleaned!r} is ambiguous. Candidate variable IDs: {preview}."
+    return None, f"{cleaned!r} did not match an analysis-queryable catalog variable ID."
+
+
+def _resolve_catalog_variable_list(
+    value: str,
+    *,
+    catalog: Mapping[str, Any],
+    schema_ids: set[str],
+) -> tuple[list[str], list[str]]:
+    resolved: list[str] = []
+    issues: list[str] = []
+    for token in [part.strip() for part in value.split(",") if part.strip()]:
+        variable_id, issue = _resolve_catalog_variable_token(
+            token,
+            catalog=catalog,
+            schema_ids=schema_ids,
+        )
+        if variable_id is not None:
+            resolved.append(variable_id)
+        elif issue:
+            issues.append(issue)
+    return resolved, issues
+
+
+def _find_dataset_with_columns(columns: list[str]) -> tuple[Path | None, list[dict[str, Any]]]:
+    datasets_dir = config.TRIO_DATASETS_DIR
+    if not datasets_dir.is_dir():
+        return None, []
+    needed = set(columns)
+    for path in sorted(datasets_dir.glob("*.jsonl")):
+        rows = _read_jsonl(path)
+        if not rows:
+            continue
+        present = {key for row in rows[:20] for key in row}
+        if needed.issubset(present):
+            return path, rows
+    return None, []
+
+
+def _count_non_missing(rows: list[Mapping[str, Any]], column: str) -> int:
+    return sum(1 for row in rows if row.get(column) not in (None, "", "nan", "NaN"))
+
+
+def _suppressed_counts(rows: list[Mapping[str, Any]], column: str) -> dict[str, Any]:
+    from scripts.security.kanon_gate import suppress_small_cells
+
+    counts: dict[str, int] = {}
+    for row in rows:
+        value = row.get(column)
+        key = "<MISSING>" if value in (None, "", "nan", "NaN") else str(value)
+        counts[key] = counts.get(key, 0) + 1
+    return suppress_small_cells(counts, k=5)
+
+
+def _persist_catalog_analysis_code(
+    *,
+    dataset_name: str,
+    outcome_id: str,
+    predictor_ids: list[str],
+) -> Path:
+    output_dir = config.AGENT_OUTPUT_DIR / "code"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = validate_agent_write(
+        output_dir / f"catalog_descriptive_{uuid.uuid4().hex[:12]}.py"
+    )
+    predictors_literal = ", ".join(repr(value) for value in predictor_ids)
+    code = f'''"""Catalog-bound descriptive analysis generated by RePORT AI Portal.
+
+Dataset: {dataset_name}
+Outcome variable: {outcome_id}
+Predictor variables: {", ".join(predictor_ids) if predictor_ids else "(none)"}
+"""
+
+import json
+from pathlib import Path
+
+import config
+
+dataset_path = config.TRIO_DATASETS_DIR / {dataset_name + ".jsonl"!r}
+rows = [json.loads(line) for line in dataset_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+outcome = {outcome_id!r}
+predictors = [{predictors_literal}]
+
+def count_non_missing(column):
+    return sum(1 for row in rows if row.get(column) not in (None, "", "nan", "NaN"))
+
+print("N", len(rows))
+print(outcome, "non-missing", count_non_missing(outcome))
+for predictor in predictors:
+    print(predictor, "non-missing", count_non_missing(predictor))
+'''
+    path.write_text(code, encoding="utf-8")
+    with contextlib.suppress(OSError):
+        path.chmod(0o600)
+    return path
+
+
+def _run_catalog_bound_study_analysis(
+    *,
+    cohort: str,
+    outcome: str,
+    predictors: str,
+) -> str:
+    # Task 6a: scripts.source_truth.analysis_binding removed (doomed module).
+    # The new pipeline produces no AnalysisBinding objects; this code path
+    # is retired — see docs/runbook_sot_build.md.
+    return (
+        "Catalog-bound analysis via AnalysisBinding is no longer available. "
+        "The Source Truth pipeline has been updated; please re-run "
+        "`python -m scripts.source_truth.study_intake` to rebuild the catalog, "
+        "then use answer_catalog_question for variable metadata."
+    )
+
+
 @tool
 @phi_safe_return
 def run_study_analysis(
@@ -1266,29 +1341,43 @@ def run_study_analysis(
     analysis_types: str = "",
     plot_types: str = "",
 ) -> str:
-    """Run a complete statistical analysis on study data.
+    """Run a catalog-bound epidemiological analysis on study data.
 
-    This tool executes pre-built, deterministic epidemiological analyses for
-    outcome relationships, predictor effects, odds ratios, and regression-style
-    questions. No arbitrary code is executed — all analyses are pre-validated
-    functions. Metadata questions about which variables, fields, forms, or
-    coded values exist are usually better served by the variable/form tools,
-    but the agent remains free to choose the tool path.
+    In the current catalog-binding runtime, ``outcome`` and ``predictors``
+    should be exact analysis-queryable variable IDs from the published
+    catalog/Dataset Schema. The tool validates those bindings and emits a
+    descriptive result plus a reproducible code file. Custom regression
+    execution should use ``run_python_analysis`` after metadata resolution.
+
+    The legacy StudyKnowledge regression runner is still reachable only when
+    ``REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE=1`` is explicitly set.
 
     Args:
         cohort: Which cohort to analyze — "cohort_a" (index cases) or "cohort_b" (household contacts).
-        outcome: Canonical outcome enum. For cohort_a use "recurrence" (aliases: "tb recurrence", "relapse", "failure"). For cohort_b use "incident_tb" (aliases: "incident tb", "progression"). Leave empty for the cohort default.
-        predictors: Comma-separated predictor names. Default set is smoking, diabetes, bmi, alcohol, age, sex. Additional available predictors (must be named explicitly, not in the default set): malnutrition (BMI<18.5 binary, depends on bmi).
+        outcome: Exact analysis-queryable outcome variable ID in the catalog
+            binding runtime. Legacy aliases such as "recurrence" are accepted
+            only behind the legacy StudyKnowledge override.
+        predictors: Comma-separated exact analysis-queryable predictor
+            variable IDs in the catalog binding runtime.
         analysis_types: Comma-separated analysis types from: univariate, multivariate, interaction, descriptive. Default: all.
         plot_types: Comma-separated plot types from: violin, scatter, interaction_violin, interaction_scatter. Default: all.
     """
     import traceback
 
-    from scripts.ai_assistant.analytical_engine import run_full_analysis
-    from scripts.ai_assistant.study_knowledge import StudyKnowledge
-
     if not cohort:
         return "Missing required parameter 'cohort'. Use 'cohort_a' (index cases) or 'cohort_b' (household contacts)."
+
+    from scripts.ai_assistant.analytical_engine import is_catalog_binding_enabled
+
+    if is_catalog_binding_enabled():
+        return _run_catalog_bound_study_analysis(
+            cohort=cohort,
+            outcome=outcome,
+            predictors=predictors,
+        )
+
+    from scripts.ai_assistant.analytical_engine import run_full_analysis
+    from scripts.ai_assistant.study_knowledge import StudyKnowledge
 
     outcome = _normalise_outcome(outcome, cohort)
 
@@ -1416,162 +1505,6 @@ def run_study_analysis(
         )
 
 
-# ============================================================================
-# Tool 11: find_variable_candidates — fuzzy top-k disambiguator
-# ============================================================================
-
-
-def _score_variable(var: dict[str, Any], query_terms: list[str], query_phrase: str) -> int:
-    """Weighted score of one variable record vs a normalised query.
-
-    Kept identical to ``search_variables`` weights so behaviour stays consistent
-    when tools are chained.
-    """
-    name = var.get("variable_name") or ""
-    desc = var.get("description") or ""
-    form = var.get("form_name") or ""
-    dataset = var.get("dataset") or ""
-    section = var.get("section") or ""
-
-    name_n = _normalise_search_text(name.replace("_", " "))
-    desc_n = _normalise_search_text(desc)
-    form_n = _expanded_form_text(" ".join([form, dataset, section]))
-
-    score = 0
-    if query_phrase:
-        if query_phrase == name_n:
-            score += 50
-        if query_phrase in name_n:
-            score += 18
-        if query_phrase in desc_n:
-            score += 22
-        if query_phrase in form_n:
-            score += 8
-
-    for term in query_terms:
-        if _text_has_term(_normalise_search_text(name), term):
-            score += 8
-        if _text_has_term(desc_n, term):
-            score += 10
-        if _text_has_term(form_n, term):
-            score += 3
-
-    combined = name_n + " " + desc_n
-    if query_terms and all(_text_has_term(combined, term) for term in query_terms):
-        score += 16
-    if query_terms and all(_text_has_term(desc_n, term) for term in query_terms):
-        score += 12
-    if query_phrase and score == 0:
-        fuzzy_text = " ".join([name_n, desc_n, form_n])
-        if (
-            SequenceMatcher(
-                None, query_phrase, fuzzy_text[: max(len(query_phrase) * 3, 40)]
-            ).ratio()
-            >= 0.55
-        ):
-            score += 6
-    return score
-
-
-@tool
-@phi_safe_return
-def find_variable_candidates(description: str, k: int = 3) -> str:
-    """Find the top-k most likely variables for a natural-language description.
-
-    Unlike ``search_variables`` (which returns up to 12 keyword-style matches),
-    this tool ALWAYS returns the ``k`` best candidates (default 3) ranked by
-    confidence — even when no single variable is an obvious match. Use this
-    whenever the user's phrasing is ambiguous ("the age thing on the SAE form",
-    "smoking status", "date of death") and you want the user to pick.
-
-    The response is designed for the agent to present to the user as a
-    numbered shortlist: "I found these three candidates — which one did you
-    mean?". When confidence is high (>= 0.8) on the top hit and the second
-    hit trails by a wide gap, you may proceed without asking.
-
-    Args:
-        description: Natural-language description of the variable the user is
-            asking about. Can be a phrase, a sentence, or a partial variable name.
-        k: Number of candidates to return. Default 3. Clamped to [1, 10].
-
-    Returns:
-        JSON string with keys ``query``, ``count``, ``candidates``. Each
-        candidate has: ``rank`` (1-indexed), ``variable_name``, ``form_id``,
-        ``form_name``, ``description``, ``data_type``, ``coded_options``
-        (when short), and ``confidence`` in [0, 1].
-
-    Conversational / too-short inputs (greetings like "hi", <3-char
-    strings) return an explicit refusal so the LLM does not surface
-    noisy substring hits for small-talk.
-    """
-    if _query_looks_conversational(description):
-        return _CONVERSATIONAL_REFUSAL_MESSAGE
-
-    k = max(1, min(int(k), 10))
-    hit = tool_cache.get("find_variable_candidates", description=description, k=k)
-    if hit is not None:
-        return hit
-
-    variables = _combined_variable_reference()
-    if not variables:
-        return "No variables reference found. Ensure llm_source/dataset_schema/files/ is populated."
-
-    stop = {"the", "a", "an", "of", "for", "and", "in", "is", "to", "or", "on", "overall"}
-    query_terms, query_phrase = _query_terms(description, stop=stop)
-
-    scored: list[tuple[int, dict[str, Any]]] = []
-    for var in variables:
-        score = _score_variable(var, query_terms, query_phrase)
-        if score > 0:
-            scored.append((score, var))
-
-    scored.sort(
-        key=lambda x: (
-            -x[0],
-            len(x[1].get("variable_name") or ""),
-            x[1].get("variable_name") or "",
-        ),
-    )
-    top = scored[:k]
-
-    # Confidence normalisation: divide by the max possible score we observed
-    # in this run so the top hit is always relative. Saturate to 1.0 above a
-    # strong-match threshold (score >= 50 = phrase + all-terms + name/desc hit).
-    max_score = max((s for s, _ in top), default=0)
-    denom = max(max_score, 50)
-
-    candidates: list[dict[str, Any]] = []
-    for rank, (score, var) in enumerate(top, start=1):
-        coded = var.get("coded_options") or ""
-        # Keep coded_options only if short — helps the user disambiguate yes/no
-        # and enum columns without blowing up the payload.
-        if isinstance(coded, str) and len(coded) > 240:
-            coded = coded[:240].rstrip() + "…"
-        candidates.append(
-            {
-                "rank": rank,
-                "variable_name": var.get("variable_name") or "",
-                "form_id": var.get("form_id") or "",
-                "form_name": var.get("form_name") or "",
-                "dataset": var.get("dataset") or "",
-                "source": var.get("source") or "dataset_schema",
-                "description": var.get("description") or "",
-                "data_type": var.get("data_type") or "unknown",
-                "coded_options": coded,
-                "confidence": round(min(score / denom, 1.0), 3),
-            }
-        )
-
-    payload = {
-        "query": description,
-        "count": len(candidates),
-        "candidates": candidates,
-        "low_confidence": bool(candidates and candidates[0]["confidence"] < 0.4),
-    }
-    result = json.dumps(payload, indent=2, ensure_ascii=False)
-    tool_cache.put("find_variable_candidates", result, description=description, k=k)
-    return result
-
 
 # ============================================================================
 # Tool 13: answer_catalog_question — boundary-aware catalog Q&A
@@ -1596,12 +1529,12 @@ def _load_catalog_artifact() -> Mapping[str, Any] | None:
     candidates: list[Path] = []
     output_root = Path(getattr(config, "OUTPUT_DIR", "output"))
     if isinstance(study, str) and study:
-        # Phase 5b: previous ``trio_bundle/study_variable_catalog.json`` fallback
-        # removed — no producer writes that path. Catalog artefacts now live
-        # under ``llm_source/`` (see ``LLM_SOURCE_*`` paths in config.py).
+        catalog_path = getattr(config, "LLM_SOURCE_STUDY_METADATA_CATALOG_PATH", None)
+        if isinstance(catalog_path, Path):
+            candidates.append(catalog_path)
         llm_source_dir = getattr(config, "STUDY_LLM_SOURCE_DIR", None)
         if isinstance(llm_source_dir, Path):
-            candidates.append(llm_source_dir / "study_variable_catalog.json")
+            candidates.append(llm_source_dir / "study_metadata" / "catalog.json")
         candidates.append(output_root / study / "study_variable_catalog.json")
     candidates.append(output_root / "study_variable_catalog.json")
     for path in candidates:
@@ -1614,6 +1547,35 @@ def _load_catalog_artifact() -> Mapping[str, Any] | None:
                     return payload
         except (OSError, ValueError, PermissionError):
             continue
+    return None
+
+
+def _load_study_metadata_evidence_pack(variable_id: str) -> Mapping[str, Any] | None:
+    """Load one variable's public evidence record from per-form evidence packs."""
+
+    packs_dir = getattr(config, "LLM_SOURCE_EVIDENCE_PACKS_DIR", None)
+    if not isinstance(packs_dir, Path) or not packs_dir.is_dir():
+        return None
+    for path in sorted(packs_dir.glob("*.json")):
+        try:
+            validate_agent_read(path)
+            with path.open("r", encoding="utf-8") as fh:
+                body = json.load(fh)
+        except (OSError, ValueError, PermissionError, json.JSONDecodeError):
+            continue
+        if not isinstance(body, Mapping):
+            continue
+        if body.get("variable_id") == variable_id:
+            return body
+        variables = body.get("variables")
+        if not isinstance(variables, list):
+            continue
+        for item in variables:
+            if isinstance(item, Mapping) and item.get("variable_id") == variable_id:
+                enriched = dict(item)
+                enriched.setdefault("form", body.get("form"))
+                enriched.setdefault("study", body.get("study"))
+                return enriched
     return None
 
 
@@ -1663,41 +1625,473 @@ def answer_catalog_question(question: str) -> str:
         (bool). The ``answer`` is already boundary-aware; the LLM should
         normally pass it through verbatim.
     """
-    # Late import to avoid pulling source_truth into module load time
-    # for environments that only use the legacy variables-reference path.
-    from scripts.source_truth.retrieval import SourceTruthRetriever
+    # Task 6a: scripts.source_truth.retrieval.SourceTruthRetriever retired pending
+    # Task 6 relocation — see docs/runbook_sot_build.md.
+    raise NotImplementedError(
+        "SourceTruthRetriever retired pending Task 6 relocation — see docs/runbook_sot_build.md"
+    )
 
-    if _query_looks_conversational(question):
-        return _CONVERSATIONAL_REFUSAL_MESSAGE
 
-    catalog = _load_catalog_artifact()
-    if catalog is None:
+# ============================================================================
+# Evidence-report + citation tools
+# ============================================================================
+
+
+_CANONICAL_QUESTION_HINTS: dict[str, tuple[str, ...]] = {
+    "q01_cohort_a_univariate": (
+        "cohort a", "univariate", "tb recurrence predictors", "single-variable",
+    ),
+    "q02_cohort_a_multivariate_interactions": (
+        "cohort a", "multivariate", "backward selection", "interactions",
+        "smoking age", "alcohol smoking",
+    ),
+    "q03_cohort_b_univariate": (
+        "cohort b", "univariate", "household contact", "predictors",
+    ),
+    "q04_cohort_b_multivariate_interactions": (
+        "cohort b", "multivariate", "interactions",
+    ),
+    "q05_hiv_test_result_distribution": (
+        "hiv", "test result", "distribution", "serostatus",
+    ),
+    "q06_cohort_a_index_case_inclusion_exclusion": (
+        "index case", "inclusion", "exclusion", "cohort a eligibility",
+    ),
+    "q07_tb_relapse_vs_treatment_failure": (
+        "relapse", "treatment failure", "definition difference",
+    ),
+    "q08_household_contact_definition": (
+        "household contact", "definition", "shared household",
+    ),
+    "q09_drug_susceptibility_tests_and_timing": (
+        "drug susceptibility", "dst", "timing", "first-line",
+    ),
+    "q10_household_contact_followup_schedule_specimens": (
+        "household contact", "follow-up schedule", "specimens",
+    ),
+    "q11_variables_available_for_relapse": (
+        "variables for relapse", "relapse variables", "what variables",
+        "fields for relapse",
+    ),
+}
+
+
+_FIGURE_EXTS = (".png", ".jpg", ".jpeg", ".svg", ".webp")
+
+
+def _persist_evidence_report_code(question_id: str) -> Path | None:
+    """Write a PHI-safe reproducer script for a canonical evidence report.
+
+    The script imports ``answer_question`` and prints the resulting markdown,
+    matching what the chat surface rendered. Path is a hex-digest filename
+    under ``AGENT_OUTPUT_DIR / "code"`` so the PHI gate never sees a
+    human-readable token that could trip a pattern. Returns ``None`` if the
+    write path cannot be validated.
+    """
+    try:
+        output_dir = config.AGENT_OUTPUT_DIR / "code"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        path = validate_agent_write(
+            output_dir / f"evidence_{uuid.uuid4().hex[:12]}.py"
+        )
+    except Exception:
+        return None
+    code = (
+        '"""Reproducer for a canonical evidence report.\n\n'
+        "Run this script to regenerate the same markdown the chat surface\n"
+        "displayed (figures land in tmp2/figures by default).\n"
+        '"""\n\n'
+        "from scripts.ai_assistant.report_engine import answer_question\n\n"
+        f"question_id = {question_id!r}\n"
+        "bundle = answer_question(question_id)\n"
+        "print(bundle.markdown)\n"
+        'print("Figures:", [str(f) for f in bundle.figures])\n'
+    )
+    path.write_text(code, encoding="utf-8")
+    with contextlib.suppress(OSError):
+        path.chmod(0o600)
+    return path
+
+
+def _persist_custom_evidence_report_code(
+    *,
+    outcome_form: str,
+    outcome_field: str,
+    cohort_id: str,
+    predictor_ids: list[str],
+    analysis_type: str,
+    outcome_positive_values: list[str] | None,
+) -> Path | None:
+    """Write a PHI-safe reproducer script for a custom evidence report.
+
+    Mirrors ``_persist_evidence_report_code`` but pins all six call-args of
+    ``answer_custom_analysis`` as literal arguments. Hex-digest filename
+    keeps the PHI gate happy.
+    """
+    try:
+        output_dir = config.AGENT_OUTPUT_DIR / "code"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        path = validate_agent_write(
+            output_dir / f"custom_evidence_{uuid.uuid4().hex[:12]}.py"
+        )
+    except Exception:
+        return None
+    code = (
+        '"""Reproducer for a custom evidence report.\n\n'
+        "Re-runs the same answer_custom_analysis call the chat surface used.\n"
+        '"""\n\n'
+        "from scripts.ai_assistant.report_engine import answer_custom_analysis\n\n"
+        f"outcome_form = {outcome_form!r}\n"
+        f"outcome_field = {outcome_field!r}\n"
+        f"cohort_id = {cohort_id!r}\n"
+        f"predictor_ids = {list(predictor_ids)!r}\n"
+        f"analysis_type = {analysis_type!r}\n"
+        f"outcome_positive_values = {outcome_positive_values!r}\n\n"
+        "bundle = answer_custom_analysis(\n"
+        "    outcome_form=outcome_form,\n"
+        "    outcome_field=outcome_field,\n"
+        "    outcome_positive_values=outcome_positive_values,\n"
+        "    cohort_id=cohort_id,\n"
+        "    predictor_ids=predictor_ids,\n"
+        "    analysis_type=analysis_type,\n"
+        ")\n"
+        "print(bundle.markdown)\n"
+        'print("Figures:", [str(f) for f in bundle.figures])\n'
+    )
+    path.write_text(code, encoding="utf-8")
+    with contextlib.suppress(OSError):
+        path.chmod(0o600)
+    return path
+
+
+def _rewrite_figure_paths_for_streaming(markdown: str, figures: list[Path]) -> str:
+    """Convert figure references to ``<RPLN_FIGURE:abspath>`` markers so the
+    chat streaming layer renders them via ``st.image`` instead of leaving
+    broken relative links in the markdown.
+
+    Three patterns are handled:
+      1. Markdown image syntax: ``![alt](relative/path.png)``
+      2. Bulleted backtick-wrapped path: ``- `relative/path.png` ``
+      3. Bare backtick-wrapped path inline: `` `relative/path.png` ``
+    """
+    if not figures:
+        return markdown
+    abs_by_name = {fig.name: str(fig.resolve()) for fig in figures if fig.exists()}
+    if not abs_by_name:
+        return markdown
+
+    image_md = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
+    bullet_path = re.compile(
+        r"^[ \t]*[-*][ \t]+`([^`]+\.(?:png|jpg|jpeg|svg|webp))`[ \t]*$",
+        re.MULTILINE | re.IGNORECASE,
+    )
+    inline_path = re.compile(
+        r"`([^`\n]+\.(?:png|jpg|jpeg|svg|webp))`",
+        re.IGNORECASE,
+    )
+
+    def _resolve(path_str: str) -> str | None:
+        return abs_by_name.get(Path(path_str.strip()).name)
+
+    def _replace_image_md(match: re.Match[str]) -> str:
+        abspath = _resolve(match.group(1))
+        return f"<RPLN_FIGURE:{abspath}>" if abspath else match.group(0)
+
+    def _replace_bullet(match: re.Match[str]) -> str:
+        abspath = _resolve(match.group(1))
+        return f"<RPLN_FIGURE:{abspath}>" if abspath else match.group(0)
+
+    def _replace_inline(match: re.Match[str]) -> str:
+        abspath = _resolve(match.group(1))
+        return f"<RPLN_FIGURE:{abspath}>" if abspath else match.group(0)
+
+    rewritten = image_md.sub(_replace_image_md, markdown)
+    rewritten = bullet_path.sub(_replace_bullet, rewritten)
+    rewritten = inline_path.sub(_replace_inline, rewritten)
+    return rewritten
+
+
+@tool
+@phi_safe_return
+def produce_evidence_report(question_id: str) -> str:
+    """Produce a structured, PHI-safe evidence report for a canonical study question.
+
+    Call this tool when the user asks one of the canonical RePORT study questions —
+    e.g. "what are the univariate predictors of TB recurrence in cohort A",
+    "household contact follow-up schedule", or "variables available for relapse".
+    The tool runs the offline-validated ``report_engine`` pipeline: it loads only
+    PHI-scrubbed source files, builds the cohort, runs the deterministic
+    statsmodels regression (where applicable), generates figures, suppresses any
+    cell below k=5, and returns chat-ready markdown.
+
+    Supported ``question_id`` values (returned by ``list_questions`` in the
+    report_engine):
+
+    * ``q01_cohort_a_univariate`` — Cohort A univariate predictors of TB recurrence
+    * ``q02_cohort_a_multivariate_interactions`` — Cohort A multivariate (backward
+      selection) + interaction tests (smoking x age, alcohol x smoking)
+    * ``q03_cohort_b_univariate`` — Cohort B univariate predictors
+    * ``q04_cohort_b_multivariate_interactions`` — Cohort B multivariate + interactions
+    * ``q05_hiv_test_result_distribution`` — HIV test result distribution
+    * ``q06_cohort_a_index_case_inclusion_exclusion`` — Cohort A index-case
+      inclusion / exclusion (protocol knowledge)
+    * ``q07_tb_relapse_vs_treatment_failure`` — TB relapse vs treatment failure
+      definitions (protocol knowledge)
+    * ``q08_household_contact_definition`` — household-contact definition
+    * ``q09_drug_susceptibility_tests_and_timing`` — DST panels and timing
+    * ``q10_household_contact_followup_schedule_specimens`` — household contact
+      follow-up schedule and specimens
+    * ``q11_variables_available_for_relapse`` — variables available for relapse
+      (schema-derived reference)
+
+    PHI guarantees:
+        * No SUBJID / FID surfaced.
+        * Dates are jittered per SANT before they reach this pipeline.
+        * Cells below k=5 are suppressed.
+        * The streaming layer runs an additional fail-closed PHI scrub on the
+          final assembled response before it reaches the UI.
+
+    Args:
+        question_id: One of the canonical IDs above. Pass the exact string.
+
+    Returns:
+        Markdown ready for chat display. Figure references are rewritten to the
+        ``<RPLN_FIGURE:abspath>`` marker the streaming layer renders via
+        ``st.image``. If the live cohort cannot be built (missing source-of-truth
+        files, dependency error), returns a short blocked-status message rather
+        than partial results.
+    """
+    from scripts.ai_assistant.report_engine import QUESTION_IDS, answer_question
+
+    qid = (question_id or "").strip()
+    if qid not in QUESTION_IDS:
         return json.dumps(
             {
-                "question": question,
-                "answer": (
-                    "The study catalog is not available yet. Please run "
-                    "the Source Truth → catalog generation step first."
-                ),
-                "variable_ids": [],
-                "audit_only": False,
-                "analysis_queryable": False,
-                "needs_clarification": False,
+                "error": "unknown question_id",
+                "received": question_id,
+                "valid_ids": list(QUESTION_IDS),
             },
             indent=2,
-            ensure_ascii=False,
         )
 
-    retriever = SourceTruthRetriever.from_catalog_artifact(catalog)
-    answer = retriever.answer_chat_question(question)
+    try:
+        bundle = answer_question(qid)
+    except Exception as exc:
+        return json.dumps(
+            {
+                "error": "report_engine failure",
+                "question_id": qid,
+                "detail": sanitise_traceback(str(exc)),
+            },
+            indent=2,
+        )
+
+    if bundle.phi_status == "blocked":
+        return (
+            f"**Report blocked for `{qid}`.** The evidence engine could not produce a "
+            "PHI-safe response. This usually means the source-of-truth files for the "
+            "study have not been built yet. Please run the data pipeline before "
+            "re-asking, or contact the maintainer.\n\n"
+            f"{bundle.markdown}"
+        )
+
+    rendered = _rewrite_figure_paths_for_streaming(bundle.markdown, bundle.figures)
+    code_path = _persist_evidence_report_code(qid)
+    if code_path is not None:
+        rendered = f"{rendered}\n\n<RPLN_CODE:{code_path}>"
+    return rendered
+
+
+@tool
+@phi_safe_return
+def produce_custom_evidence_report(
+    outcome_form: str,
+    outcome_field: str,
+    cohort_id: str,
+    predictor_ids: list[str],
+    analysis_type: str = "univariate",
+    outcome_positive_values: list[str] | None = None,
+) -> str:
+    """Produce a tmp2-style PHI-safe report for an arbitrary outcome/cohort/predictor combo.
+
+    Use when the user asks for a study analysis that doesn't match one of the 11
+    canonical ``produce_evidence_report`` IDs — for example "univariate
+    predictors of HIV positivity", "cohort A stratified by sex", or
+    "predictors of MDR-TB". This runs the same offline-validated
+    ``report_engine`` pipeline (PHI-scrubbed source files, deterministic
+    statsmodels regression, figure generation with k=5 small-cell suppression)
+    used by the 11 canonical questions.
+
+    Args:
+        outcome_form: form id where the outcome lives (e.g. ``"6_HIV"``,
+            ``"98A_FOA"``). Accepts either the form prefix or the full
+            ``<form>.jsonl`` filename.
+        outcome_field: exact field name (e.g. ``"HIV_HIV"``,
+            ``"FOA_COHAOUT"``).
+        cohort_id: ``"cohort_a"`` or ``"cohort_b"`` (same identifiers used by
+            the existing 11 canonical handlers).
+        predictor_ids: logical predictor keys
+            (``"malnutrition"``, ``"diabetes"``, ``"alcohol"``, ``"smoking"``,
+            ``"age"``, ``"sex"``, ``"bmi"``) or known field names. At least
+            one is required.
+        analysis_type: ``"univariate"`` | ``"multivariate"`` | ``"interactions"``.
+        outcome_positive_values: when the outcome is not registered in
+            ``study_knowledge.yaml`` (e.g. ``HIV_HIV``), pass the exact value
+            strings that count as the positive class — for ``HIV_HIV`` this
+            is ``["Positive"]``; for ``FOA_COHAOUT`` (TB recurrence) it is
+            ``["Bacteriologic relapse","Bacteriologic failure","Clinical Relapse","Clinical Failure"]``.
+            Omit (pass ``None``) for registered outcomes so the default
+            mapping in ``study_knowledge.yaml`` is used.
+
+    Returns:
+        Markdown ready for chat display, with figure markers (``<RPLN_FIGURE:>``)
+        and the PHI handling footer. On validation failure or insufficient data,
+        returns a short blocked-status message rather than partial results.
+    """
+    from scripts.ai_assistant.report_engine import (
+        CustomAnalysisError,
+        answer_custom_analysis,
+    )
+
+    if not isinstance(predictor_ids, list) or not predictor_ids:
+        return json.dumps(
+            {
+                "error": "predictor_ids must be a non-empty list of strings",
+                "received": predictor_ids,
+            },
+            indent=2,
+        )
+    if analysis_type not in ("univariate", "multivariate", "interactions"):
+        return json.dumps(
+            {
+                "error": "invalid analysis_type",
+                "received": analysis_type,
+                "valid": ["univariate", "multivariate", "interactions"],
+            },
+            indent=2,
+        )
+    if outcome_positive_values is not None and (
+        not isinstance(outcome_positive_values, list)
+        or not all(isinstance(v, str) for v in outcome_positive_values)
+    ):
+        return json.dumps(
+            {
+                "error": "outcome_positive_values must be a list of strings or null",
+                "received": outcome_positive_values,
+            },
+            indent=2,
+        )
+
+    try:
+        bundle = answer_custom_analysis(
+            outcome_form=outcome_form,
+            outcome_field=outcome_field,
+            outcome_positive_values=outcome_positive_values,
+            cohort_id=cohort_id,
+            predictor_ids=list(predictor_ids),
+            analysis_type=analysis_type,  # type: ignore[arg-type]
+        )
+    except CustomAnalysisError as exc:
+        return json.dumps(
+            {
+                "error": "custom analysis rejected",
+                "detail": str(exc),
+                "outcome_form": outcome_form,
+                "outcome_field": outcome_field,
+                "cohort_id": cohort_id,
+                "analysis_type": analysis_type,
+            },
+            indent=2,
+        )
+    except Exception as exc:
+        return json.dumps(
+            {
+                "error": "report_engine failure",
+                "detail": sanitise_traceback(str(exc)),
+            },
+            indent=2,
+        )
+
+    if bundle.phi_status == "blocked":
+        return (
+            f"**Report blocked.** The evidence engine could not produce a "
+            "PHI-safe response for this outcome/cohort/predictor combination.\n\n"
+            f"{bundle.markdown}"
+        )
+
+    rendered = _rewrite_figure_paths_for_streaming(bundle.markdown, bundle.figures)
+    code_path = _persist_custom_evidence_report_code(
+        outcome_form=outcome_form,
+        outcome_field=outcome_field,
+        cohort_id=cohort_id,
+        predictor_ids=list(predictor_ids),
+        analysis_type=analysis_type,
+        outcome_positive_values=outcome_positive_values,
+    )
+    if code_path is not None:
+        rendered = f"{rendered}\n\n<RPLN_CODE:{code_path}>"
+    return rendered
+
+
+@tool
+@phi_safe_return
+def cite_source(form_id: str, field_id: str) -> str:
+    """Return a deterministic (file, line, snippet) citation for a study variable.
+
+    Use this whenever you need to back a variable claim with a verifiable
+    provenance reference. The citation is looked up in the indexed corpus of
+    form-policy YAMLs, LLM source JSONL schemas, and study-config YAMLs — so
+    the result is a real file location, never a fabricated string.
+
+    Typical usage: when answering a question about a form field
+    (e.g. ``FOA_COHAOUT``, ``FA_RLPSDAT``), call ``cite_source(form_id="98A",
+    field_id="FOA_COHAOUT")`` and embed the returned ``file:line`` in your
+    answer next to the claim.
+
+    Args:
+        form_id: The form identifier (e.g. ``"98A"``, ``"99A"``, ``"10"``).
+            Short prefixes are accepted; the tool resolves to the matching
+            policy YAML.
+        field_id: The exact field name as it appears in the policy YAML
+            (e.g. ``"FOA_COHAOUT"``, ``"FA_RLPSDAT"``).
+
+    Returns:
+        A JSON string with ``file`` (repo-relative path), ``line`` (1-indexed),
+        ``snippet`` (~200 chars), ``matched_term`` (what the lookup matched),
+        and ``source_kind`` (``form_policy`` | ``llm_jsonl`` | ``study_config``
+        | ``dataset_schema``). If no citation is found, returns a JSON object
+        with ``error: "no citation"`` — never a guessed location.
+    """
+    from scripts.ai_assistant.citations import (
+        CitationNotFound,
+        cite_variable,
+    )
+
+    form = (form_id or "").strip()
+    field = (field_id or "").strip()
+    if not form or not field:
+        return json.dumps(
+            {"error": "form_id and field_id are both required"}, indent=2
+        )
+    try:
+        citation = cite_variable(form, field)
+    except CitationNotFound as exc:
+        return json.dumps(
+            {
+                "error": "no citation",
+                "form_id": form,
+                "field_id": field,
+                "detail": str(exc),
+            },
+            indent=2,
+        )
     return json.dumps(
         {
-            "question": question,
-            "answer": answer.text,
-            "variable_ids": list(answer.variable_ids),
-            "audit_only": answer.audit_only,
-            "analysis_queryable": answer.analysis_queryable,
-            "needs_clarification": answer.needs_clarification,
+            "file": citation.file,
+            "line": citation.line,
+            "snippet": citation.snippet,
+            "matched_term": citation.matched_term,
+            "source_kind": citation.source_kind,
         },
         indent=2,
         ensure_ascii=False,
@@ -1710,15 +2104,13 @@ def answer_catalog_question(question: str) -> str:
 
 ALL_TOOLS = [
     search_variables,
-    find_variable_candidates,
-    get_variable_details,
-    list_forms,
-    get_form_variables,
     query_dataset,
+    list_available_datasets,
     get_dataset_stats,
-    get_study_overview,
     run_python_analysis,
-    cross_reference_variables,
     run_study_analysis,
     answer_catalog_question,
+    produce_evidence_report,
+    produce_custom_evidence_report,
+    cite_source,
 ]

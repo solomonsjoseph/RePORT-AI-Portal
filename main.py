@@ -44,7 +44,7 @@ from scripts.utils.secure_staging import (
     resolve_staging_root,
     secure_remove_tree,
 )
-from scripts.utils.step_cache import hash_directory, is_step_fresh, save_step_manifest
+from scripts.utils.step_cache import hash_directory, hash_file, is_step_fresh, save_step_manifest
 
 __all__ = [
     "main",
@@ -207,8 +207,8 @@ off-limits to the agent.
   `scripts.ai_assistant.file_access.validate_agent_read`, which layers on
   top of the pipeline-side `assert_output_zone` directory early-reject.
 - `audit/` — Counts-only IRB / maintainer evidence. `lineage_manifest.json`
-  pairs every raw-input SHA-256 with every published trio SHA-256 and is the
-  single evidence artifact an IRB / IEC reviewer inspects. No raw values
+  pairs every raw-input SHA-256 with every published llm_source SHA-256 and
+  is the single evidence artifact an IRB / IEC reviewer inspects. No raw values
   anywhere in this subtree. Telemetry lives here too — so the LLM cannot
   read its own prior events structurally, by directory. Hard-rejected by
   `validate_agent_read`.
@@ -423,6 +423,51 @@ def _run_dict_leg(*, skip: bool) -> dict[str, Any]:
     return {"leg": "dictionary", "skipped": False}
 
 
+def _prefix_hashes(prefix: str, hashes: dict[str, str]) -> dict[str, str]:
+    """Namespace content hashes from independent input roots.
+
+    The step-cache manifest compares a single flat mapping. Prefixing avoids
+    collisions between same-named files in raw datasets, SoT policies, and
+    PHI scrub configuration.
+    """
+    return {f"{prefix}/{rel}": digest for rel, digest in hashes.items()}
+
+
+def _hash_file_input(label: str, path: Path) -> dict[str, str]:
+    if not path.is_file():
+        return {}
+    return {label: hash_file(path)}
+
+
+def _dataset_processing_input_hashes(raw_datasets_dir: Path) -> dict[str, str]:
+    """Hash every input that can change published scrubbed datasets.
+
+    Dataset extraction is not only a function of raw spreadsheets/CSVs. The
+    PHI scrub config and Source Truth policies change which columns are kept,
+    dropped, or transformed, so they must invalidate the same cache manifest.
+    """
+    hashes: dict[str, str] = {}
+    hashes.update(
+        _prefix_hashes(
+            "raw_datasets",
+            hash_directory(raw_datasets_dir, extensions=frozenset({".xlsx", ".xls", ".csv"})),
+        )
+    )
+    hashes.update(
+        _prefix_hashes(
+            "sot",
+            hash_directory(Path(config.SOT_DIR), extensions=frozenset({".yaml", ".yml"})),
+        )
+    )
+    hashes.update(_hash_file_input("phi_scrub_config", Path(config.PHI_SCRUB_CONFIG_PATH)))
+    hashes.update(
+        _hash_file_input(
+            "phi_scrub_code", Path(config.BASE_DIR) / "scripts" / "security" / "phi_scrub.py"
+        )
+    )
+    return dict(sorted(hashes.items()))
+
+
 def _run_dataset_leg(*, force: bool, run_extraction: bool) -> dict[str, Any]:
     """Extract datasets into ``STAGING_DATASETS_DIR`` with input-hash cache.
 
@@ -435,17 +480,15 @@ def _run_dataset_leg(*, force: bool, run_extraction: bool) -> dict[str, Any]:
         return {"leg": "datasets", "skipped": True, "dropped_events": []}
 
     raw_datasets_dir = Path(config.DATASETS_DIR)
-    datasets_input_hashes = hash_directory(
-        raw_datasets_dir, extensions=frozenset({".xlsx", ".xls", ".csv"})
-    )
+    datasets_input_hashes = _dataset_processing_input_hashes(raw_datasets_dir)
     audit_dir = Path(config.STUDY_AUDIT_DIR)
     trio_datasets_dir = Path(config.TRIO_DATASETS_DIR)
 
-    trio_bundle_has_jsonl = trio_datasets_dir.is_dir() and any(trio_datasets_dir.glob("*.jsonl"))
+    llm_source_has_jsonl = trio_datasets_dir.is_dir() and any(trio_datasets_dir.glob("*.jsonl"))
 
     if (
         not force
-        and trio_bundle_has_jsonl
+        and llm_source_has_jsonl
         and is_step_fresh("dataset_processing", audit_dir, datasets_input_hashes)
     ):
         log.info("Leg [datasets]: skipped (inputs unchanged)")
@@ -633,7 +676,7 @@ def main() -> None:
 Usage:
   %(prog)s                              # Run complete pipeline
   %(prog)s --skip-dictionary            # Skip dictionary, run extraction
-  %(prog)s --pipeline                   # Full pipeline: Extract → Promote → Bundle
+  %(prog)s --pipeline                   # Full pipeline: Extract → Promote → llm_source
 
 For detailed documentation, see the Sphinx docs or README.md
         """,
@@ -691,11 +734,11 @@ For detailed documentation, see the Sphinx docs or README.md
         help="LLM model name (e.g. qwen3:8b, claude-opus-4-7, gpt-5.5, gemini-3.1-pro-preview)",
     )
 
-    # Dataset processing + Bundle
+    # Dataset processing + llm_source publication
     parser.add_argument(
         "--build-bundle",
         action="store_true",
-        help="Build the trio bundle contents (dictionary leg)",
+        help="Prepare the llm_source dictionary leg (legacy compatibility alias)",
     )
     parser.add_argument(
         "--process-datasets",
@@ -705,7 +748,7 @@ For detailed documentation, see the Sphinx docs or README.md
     parser.add_argument(
         "--pipeline",
         action="store_true",
-        help="Run full pipeline: Extract → Promote → Bundle",
+        help="Run full pipeline: Extract → Promote → llm_source",
     )
 
     args = parser.parse_args()
@@ -748,12 +791,13 @@ For detailed documentation, see the Sphinx docs or README.md
         run_repl()
         return
 
-    # --build-bundle: dictionary preparation, NO dataset processing.
+    # --build-bundle: legacy compatibility flag for dictionary preparation,
+    # NO dataset processing and no legacy bundle publication.
     if args.build_bundle:
         args.skip_dictionary = False
 
     # --pipeline expands to the full chain:
-    #   Dict(0) → ProcessDatasets(1+3) → Bundle → Variables(3)
+    #   Dict(0) → ProcessDatasets(1+3) → llm_source publication
     if args.pipeline:
         args.skip_dictionary = False
         args.process_datasets = True
@@ -919,11 +963,13 @@ For detailed documentation, see the Sphinx docs or README.md
         else:
             log.info("Publish: all legs skipped (staging empty)")
 
-    run_step("Step 2: Publish Staging → Trio Bundle", run_publish)
+    run_step("Step 2: Publish Staging → llm_source", run_publish)
+
+    # Removed: scripts.source_truth.build — see docs/runbook_sot_build.md
 
     # ── Step 4: Lineage Manifest (audit-ready evidence package) ──
     # Emits output/{STUDY}/audit/lineage_manifest.json pairing every raw
-    # input file (SHA-256) with every published trio artifact (SHA-256),
+    # input file (SHA-256) with every published llm_source artifact (SHA-256),
     # plus per-leg audit references + compliance posture. This is the
     # single artifact an IRB/IEC reviewer inspects to verify the full
     # raw → scrub → publish chain without reading any row contents.

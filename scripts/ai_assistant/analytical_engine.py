@@ -27,7 +27,10 @@ from statsmodels.tools.sm_exceptions import ConvergenceWarning, PerfectSeparatio
 
 from scripts.ai_assistant.file_access import validate_agent_read, validate_agent_write
 from scripts.ai_assistant.study_knowledge import StudyKnowledge
-from scripts.source_truth.analysis_binding import AnalysisBindingError
+# AnalysisBindingError inlined here — Task 6a decoupling from scripts.source_truth.analysis_binding.
+class AnalysisBindingError(ValueError):
+    """Raised when an analysis role cannot be bound to a source-backed
+    catalog card + Dataset Schema entry."""
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -119,7 +122,7 @@ def _to_numeric(series: pd.Series) -> pd.Series:
 
 
 def _load_jsonl(path: Path) -> pd.DataFrame:
-    # Zone-guard the read; any path outside trio_bundle/ or agent/ raises.
+    # Zone-guard the read; any path outside llm_source/ or agent/ raises.
     validated = validate_agent_read(path)
     with open(validated) as f:
         return pd.DataFrame([json.loads(line) for line in f])
