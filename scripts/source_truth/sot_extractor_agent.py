@@ -15,8 +15,29 @@ from typing import Any
 from anthropic import Anthropic
 
 import config
-from scripts.source_truth.sot_gap_inventory import _atomic_write_text, _read_column_keys_only
 from scripts.utils.logging_system import get_logger
+
+# ---------------------------------------------------------------------------
+# Helpers inlined from the deleted scripts.source_truth.sot_gap_inventory
+# module (removed in the Phase-6 SoT skill refactor).
+# ---------------------------------------------------------------------------
+
+
+def _atomic_write_text(target: Path, content: str) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_suffix(target.suffix + ".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    tmp.replace(target)
+
+
+def _read_column_keys_only(jsonl_path: Path) -> list[str]:
+    import json as _json
+
+    with jsonl_path.open("r", encoding="utf-8") as fh:
+        first = fh.readline()
+    if not first.strip():
+        return []
+    return list(_json.loads(first).keys())
 
 _LOG = get_logger(__name__)
 
@@ -129,7 +150,10 @@ def invoke_subagent(prompt: str) -> dict[str, str]:
             f"(stop_reason={getattr(msg, 'stop_reason', 'unknown')!r})"
         )
     text = msg.content[0].text  # type: ignore[union-attr]
-    return json.loads(text)
+    payload = json.loads(text)
+    if not isinstance(payload, dict):
+        raise ValueError("Anthropic SDK returned non-object JSON")
+    return {str(key): str(value) for key, value in payload.items()}
 
 
 def run_extractor(

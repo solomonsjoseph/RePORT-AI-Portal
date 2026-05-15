@@ -1,3 +1,4 @@
+import json as _json
 from pathlib import Path
 
 import pytest
@@ -17,7 +18,7 @@ def test_run_reviewer_writes_review_md(tmp_path, monkeypatch):
 
     monkeypatch.setattr(
         "scripts.source_truth.sot_reviewer_agent.invoke_reviewer_subagent",
-        lambda prompt: {"verdict": "agree", "notes": "Looks good."},
+        lambda _prompt: {"verdict": "agree", "notes": "Looks good."},
     )
 
     result = run_reviewer(
@@ -47,7 +48,7 @@ def test_run_reviewer_rejects_unknown_verdict(tmp_path, monkeypatch):
 
     monkeypatch.setattr(
         "scripts.source_truth.sot_reviewer_agent.invoke_reviewer_subagent",
-        lambda prompt: {"verdict": "looks_good", "notes": ""},
+        lambda _prompt: {"verdict": "looks_good", "notes": ""},
     )
 
     with pytest.raises(ValueError, match="Unexpected verdict"):
@@ -61,9 +62,6 @@ def test_run_reviewer_rejects_unknown_verdict(tmp_path, monkeypatch):
             draft_pack_path=pack_path,
             reviews_dir=drafts_dir,
         )
-
-
-import json as _json
 
 
 def test_run_reviewer_wraps_json_decode_error_with_form_context(tmp_path, monkeypatch):

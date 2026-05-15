@@ -79,7 +79,10 @@ def invoke_reviewer_subagent(prompt: str) -> dict[str, str]:
             f"(stop_reason={getattr(msg, 'stop_reason', 'unknown')!r})"
         )
     text = msg.content[0].text  # type: ignore[union-attr]
-    return json.loads(text)
+    payload = json.loads(text)
+    if not isinstance(payload, dict):
+        raise ValueError("Anthropic SDK returned non-object JSON")
+    return {str(key): str(value) for key, value in payload.items()}
 
 
 def run_reviewer(

@@ -1,5 +1,6 @@
 """Extractor agent harness: column-keys-only contract."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -57,9 +58,6 @@ def test_run_extractor_writes_yaml_and_evidence_pack(tmp_path, monkeypatch):
     assert (pack_dir / "8_CXR.json").read_text() == fake_pack
     assert result["form"] == "8_CXR"
     assert result["yaml_path"].endswith("8_CXR_policy.yaml.draft")
-
-
-import json
 
 
 def test_run_extractor_wraps_json_decode_error_with_form_context(tmp_path, monkeypatch):

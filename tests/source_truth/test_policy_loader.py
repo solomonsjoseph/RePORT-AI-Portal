@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 
-from scripts.source_truth.catalog import build_catalog_artifact
 from scripts.source_truth.policy_loader import (
     PolicyLoaderError,
     load_policy_yaml,
@@ -57,11 +56,5 @@ def test_load_policy_yaml_subjid_translated_correctly():
     assert subjid["normalized"]["sensitivity_flags"] == ["subject_identifier"]
 
 
-def test_load_policy_yaml_then_build_catalog_artifact_smoke():
-    """End-to-end: translated records must be acceptable input to build_catalog_artifact."""
-    artifact = load_policy_yaml(FIXTURE_DIR / "19_Smear_policy.yaml")
-    catalog = build_catalog_artifact(artifact)
-    assert catalog["artifact_type"] == "study_variable_catalog"
-    # build_catalog_artifact returns compact variable records under the key "records".
-    assert isinstance(catalog["records"], list)
-    assert len(catalog["records"]) > 0
+# test_load_policy_yaml_then_build_catalog_artifact_smoke removed — build_catalog_artifact
+# lived in the deleted catalog.py module (Phase-6 SoT skill refactor).

@@ -16,12 +16,87 @@ from typing import Any
 
 import yaml
 
-from scripts.source_truth import builder as _builder
 from scripts.source_truth.record import SourceTruthValidationError, validate_record
+
+# ---------------------------------------------------------------------------
+# Helpers inlined from the deleted scripts.source_truth.builder module.
+# (builder.py was removed in the Phase-6 SoT skill refactor.)
+# ---------------------------------------------------------------------------
+
+DERIVATION_CATALOG = "catalog"
+DERIVATION_DATASET_SCHEMA = "dataset_schema"
+DERIVATION_PHI_LEDGER = "phi_handling_ledger"
+DERIVATION_CLEANUP_LEDGER = "dataset_cleanup_ledger"
+
+_PHI_DROP_REASONS: frozenset[str] = frozenset(
+    {
+        "signature_field",
+        "initials_field",
+        "participant_identifier",
+        "facility_clinic_ictc_or_site_identifier",
+        "direct_identifier",
+        "name_field",
+        "address_field",
+        "contact_field",
+    }
+)
+_RETAINED_PHI_ACTIONS: frozenset[str] = frozenset({"pseudonymize", "jitter_date", "generalize"})
+
+
+def _derivation_targets_for_action(
+    action: str, reason: str | None, *, dataset_present: bool
+) -> list[str]:
+    if action == "keep":
+        return [DERIVATION_CATALOG, *([DERIVATION_DATASET_SCHEMA] if dataset_present else [])]
+    if action in _RETAINED_PHI_ACTIONS:
+        targets = [DERIVATION_CATALOG, DERIVATION_PHI_LEDGER]
+        if dataset_present:
+            targets.insert(1, DERIVATION_DATASET_SCHEMA)
+        return targets
+    if action == "drop":
+        if reason and reason in _PHI_DROP_REASONS:
+            return [DERIVATION_PHI_LEDGER]
+        return [DERIVATION_CLEANUP_LEDGER]
+    if action == "review_required":
+        return []
+    raise ValueError(
+        f"unknown field_policy action {action!r}; cannot resolve derivation targets"
+    )
+
+
+def _review_state_for_action(action: str) -> str:
+    if action == "review_required":
+        return "review_required"
+    return "auto_normalized"
+
+
+def _source_kind(dataset_present: bool, pdf_present: bool, action: str) -> str:
+    if action == "review_required":
+        return "review_required"
+    if dataset_present and pdf_present:
+        return "matched"
+    if dataset_present and not pdf_present:
+        return "dataset_only"
+    if not dataset_present and pdf_present:
+        return "source_only"
+    return "context_only"
+
+
+def _normalize_label(variable: str, field_label: Any) -> str:
+    if isinstance(field_label, str) and field_label.strip():
+        return field_label.strip().lower()
+    return variable.strip().lower()
+
+
+def _normalization_basis(field_label: Any) -> str:
+    if isinstance(field_label, str) and field_label.strip():
+        return "field_policy_label"
+    return "dataset_column_code_lowercased"
 
 __all__ = [
     "DuplicateFormNameError",
     "PolicyLoaderError",
+    "iter_policy_paths",
     "load_policy_yaml",
     "validate_unique_form_names",
 ]
@@ -90,6 +165,17 @@ class PolicyLoaderError(ValueError):
     """Raised when a policy YAML cannot be adapted into a source-truth artifact."""
 
 
+def iter_policy_paths(sot_dir: str | Path) -> list[Path]:
+    """Return canonical policy YAML paths, including dataset-only policies."""
+
+    sot_dir = Path(sot_dir)
+    paths = sorted(sot_dir.glob("*_policy.yaml"))
+    dataset_policies_dir = sot_dir / "dataset_policies"
+    if dataset_policies_dir.is_dir():
+        paths.extend(sorted(dataset_policies_dir.glob("*_policy.yaml")))
+    return paths
+
+
 _REQUIRED_TOP_LEVEL = ("schema_version", "study", "form", "variables")
 
 # YAML review.state values that map to record-level review_state values.
@@ -134,8 +220,8 @@ def _translate_record(yaml_record: Mapping[str, Any], *, variable_id: str) -> di
         option_set_name_raw if isinstance(option_set_name_raw, str) else None
     )
 
-    source_kind = _builder._source_kind(dataset_present, pdf_present, action)
-    derivation_targets = _builder._derivation_targets_for_action(
+    source_kind = _source_kind(dataset_present, pdf_present, action)
+    derivation_targets = _derivation_targets_for_action(
         action, reason, dataset_present=dataset_present
     )
 
@@ -144,7 +230,7 @@ def _translate_record(yaml_record: Mapping[str, Any], *, variable_id: str) -> di
     yaml_review_state = (yaml_record.get("review") or {}).get("state")
     review_state = _REVIEW_STATE_MAP.get(str(yaml_review_state), "") if yaml_review_state else ""
     if not review_state:
-        review_state = _builder._review_state_for_action(action)
+        review_state = _review_state_for_action(action)
 
     est = yaml_record.get("exact_source_text") or {}
     annotation_text = est.get("pdf_annotation")
@@ -179,7 +265,7 @@ def _translate_record(yaml_record: Mapping[str, Any], *, variable_id: str) -> di
     )
     confidence = (yaml_record.get("evidence") or {}).get("level") or "low"
     analysis_queryable = (
-        dataset_present and _builder.DERIVATION_DATASET_SCHEMA in derivation_targets
+        dataset_present and DERIVATION_DATASET_SCHEMA in derivation_targets
     )
 
     relationships_raw = yaml_record.get("relationships") or {}
@@ -190,9 +276,9 @@ def _translate_record(yaml_record: Mapping[str, Any], *, variable_id: str) -> di
     )
 
     normalized: dict[str, Any] = {
-        "label": _builder._normalize_label(variable_id, field_label),
+        "label": _normalize_label(variable_id, field_label),
         "confidence": confidence,
-        "normalization_basis": _builder._normalization_basis(field_label),
+        "normalization_basis": _normalization_basis(field_label),
         "handling_action": action,
     }
     if reason:
