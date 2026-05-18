@@ -200,9 +200,9 @@ off-limits to the agent.
 
 ## Layout
 
-- `llm_source/` — GREEN zone. PHI-scrubbed datasets (JSONL), per-form
-  dictionary payloads, lean catalogs, evidence packs, and the concept
-  index. Part of the LLM agent's read surface (the other part is
+- `llm_source/` — GREEN zone. PHI-scrubbed datasets (JSONL), dictionary
+  mapping JSONL, and verified lean Source Truth YAMLs. Part of the LLM
+  agent's read surface (the other part is
   `agent/`, below). Each agent tool resolves every path through
   `scripts.ai_assistant.file_access.validate_agent_read`, which layers on
   top of the pipeline-side `assert_output_zone` directory early-reject.

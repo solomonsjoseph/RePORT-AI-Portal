@@ -148,7 +148,7 @@ def test_linter_skips_compound_identifier_human_review(tmp_path: Path) -> None:
 
 
 def test_linter_skips_trio_bundle_dir_constant(tmp_path: Path) -> None:
-    """``config.TRIO_BUNDLE_DIR`` references the live PHI-scrubbed zone."""
+    """``config.TRIO_BUNDLE_DIR`` remains allowed for rollback compatibility."""
     f = tmp_path / "ok.py"
     f.write_text(
         "live_trio = Path(config.TRIO_BUNDLE_DIR)\n",

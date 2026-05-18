@@ -44,15 +44,15 @@ def write_pre_delete_manifest(*, output_root: Path, manifest_path: Path) -> dict
         legacy_dir = output_root / dir_name
         if not legacy_dir.is_dir():
             continue
-        for fpath in sorted(legacy_dir.rglob("*")):
-            if fpath.is_file():
-                entries.append(
-                    {
-                        "path": str(fpath.relative_to(output_root)),
-                        "sha256": _sha256_file(fpath),
-                        "size_bytes": fpath.stat().st_size,
-                    }
-                )
+        entries.extend(
+            {
+                "path": str(fpath.relative_to(output_root)),
+                "sha256": _sha256_file(fpath),
+                "size_bytes": fpath.stat().st_size,
+            }
+            for fpath in sorted(legacy_dir.rglob("*"))
+            if fpath.is_file()
+        )
 
     manifest = {
         "schema_version": "1.0",

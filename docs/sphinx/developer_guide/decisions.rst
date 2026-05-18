@@ -511,10 +511,11 @@ ADR-014 — Parallel extraction phase (3-worker ThreadPoolExecutor)
 
 .. note::
 
-   Historical. The current LLM source flow publishes scrubbed dataset
-   files, then builds catalog/evidence-pack outputs with
-   ``scripts.source_truth.build``. The old PDF leg and
-   ``variables.json`` builder are not active LLM-visible outputs.
+   Historical. The current LLM source flow generates verified lean SoT
+   YAMLs with ``scripts.source_truth.generate_lean_outputs`` and publishes
+   scrubbed dataset / dictionary artifacts with ``main.py --pipeline``. The
+   old PDF leg, catalog/evidence-pack builder, and ``variables.json`` builder
+   are not active LLM-visible outputs.
 
 **Historical what.** ``main.py``'s extraction phase ran Dictionary /
 Datasets / PDFs in parallel on a 3-worker
@@ -569,11 +570,12 @@ ADR-016 — SoT skill refactor: collapse 32-module pipeline into a single CLI
 ``lineage``, ``llm_source_catalogs``, ``reconciliation``, ``retrieval``,
 ``sot_coverage_gate``, ``sot_gap_dispatcher``, ``sot_gap_inventory``,
 ``sot_gap_merge``, ``verify_and_promote``) is deleted and replaced by a
-single deterministic CLI at
-``python -m scripts.source_truth.study_intake <study> [--force]``.
-The surviving lean core is six files:
-``__init__.py``, ``pdf_evidence.py``, ``record.py``, ``policy_loader.py``,
-``sot_extractor_agent.py``, ``sot_reviewer_agent.py``.
+single source-pack CLI plus a runtime generation wrapper:
+``python -m scripts.source_truth.study_intake --study <study> --form <form>``
+and ``python -m scripts.source_truth.generate_lean_outputs --study <study>``.
+The surviving lean core is ``study_intake.py``, ``diff_against_gold.py``, and
+``generate_lean_outputs.py`` plus the shared ``skills/sot-lean-generator``
+scripts and rule files.
 
 **Why.**
 
@@ -592,13 +594,12 @@ The surviving lean core is six files:
    ChatGPT, Gemini, Cursor, Aider, or a raw shell. The replacement
    CLI + ``AGENTS.md`` + runbook is tool-agnostic.
 
-**How.** ``scripts/source_truth/study_intake.py`` implements three
-orchestration phases — ``pair_files`` (form-code prefix matching),
-``read_headers_only`` (strict row-1-only xlsx/csv reader), and
-``build_yaml_for_pair`` (extractor → reviewer → validate → write YAML).
-The existing ``sot_extractor_agent`` and ``sot_reviewer_agent`` are called
-from within ``build_yaml_for_pair`` and remain unchanged. The CLI is
-documented in ``AGENTS.md`` (``## SoT creation`` section) and
+**How.** ``scripts/source_truth/study_intake.py`` resolves one PDF/dataset
+pair and delegates Stage 0 extraction to the skill script. It reads only
+dataset row 1 for SoT binding. ``scripts/source_truth/generate_lean_outputs.py``
+runs the batch runtime loop: source pack → candidate under ``/tmp`` → verifier
+→ promote to ``output/{STUDY}/llm_source/source_truth``. The CLI is documented
+in ``AGENTS.md`` (``## SoT creation`` section) and
 ``docs/runbook_sot_build.md``.
 
 **Alternatives.**

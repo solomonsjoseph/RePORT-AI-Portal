@@ -1,0 +1,4 @@
+interface:
+  display_name: "SoT Lean Generator"
+  short_description: "Lean SoT from PDFs and headers"
+  default_prompt: "Use $sot-lean-generator to generate a lean SoT YAML from a clinical PDF and dataset row-1 headers only."

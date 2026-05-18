@@ -328,8 +328,9 @@ Extraction Modules (continued)
    in Phase 5b (Task 4c) as dead code. The unified ``variables.json``
    artefact it produced was never written to disk in the active pipeline
    and the agent loader silently returned ``[]``. The agent now derives
-   its variable reference from published dataset JSONL column schemas
-   plus the per-form evidence packs in ``llm_source/study_metadata/evidence_packs/``.
+   its generic variable reference from published dataset JSONL column schemas;
+   rich form metadata is loaded from lean YAMLs under
+   ``llm_source/source_truth/``.
 
 Cleanup Propagation
 ~~~~~~~~~~~~~~~~~~~

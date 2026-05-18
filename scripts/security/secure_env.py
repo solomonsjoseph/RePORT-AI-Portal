@@ -26,8 +26,8 @@ __all__ = [
 # ---------------------------------------------------------------------------
 # Markers — resolved at import to avoid repeated config reads
 # ---------------------------------------------------------------------------
-# The clean zone is study-scoped: output/{STUDY}/trio_bundle/.
-# CLEAN_MARKER points to the study-scoped trio_bundle dir for the active study.
+# The clean zone is study-scoped: output/{STUDY}/llm_source/.
+# CLEAN_MARKER points to the study-scoped llm_source dir for the active study.
 
 
 def _resolve_markers() -> tuple[str, str, str, str, str]:
@@ -38,7 +38,7 @@ def _resolve_markers() -> tuple[str, str, str, str, str]:
         return (
             os.path.realpath(_cfg.RAW_DATA_DIR),
             os.path.realpath(_cfg.DATA_DIR),
-            os.path.realpath(_cfg.TRIO_BUNDLE_DIR),
+            os.path.realpath(_cfg.STUDY_LLM_SOURCE_DIR),
             os.path.realpath(_cfg.OUTPUT_DIR),
             os.path.realpath(_cfg.TMP_DIR),
         )
@@ -94,7 +94,7 @@ def assert_not_raw(path: str | Path) -> None:
 
 
 def assert_clean_zone(path: str | Path) -> None:
-    """Hard-fail if *path* does NOT reside under output/{STUDY}/clean/.
+    """Hard-fail if *path* does NOT reside under output/{STUDY}/llm_source/.
 
     Raises:
         ZoneViolationError: path is outside the clean zone.
@@ -150,7 +150,7 @@ def assert_write_zone(path: str | Path) -> None:
 
     Use this in place of :func:`assert_output_zone` for call sites that write
     to the staging workspace (``tmp/{STUDY}/``) before atomic publish to
-    ``output/{STUDY}/trio_bundle/``. Audit files that must land in durable
+    ``output/{STUDY}/llm_source/``. Audit files that must land in durable
     storage should continue to use :func:`assert_output_zone`.
 
     Raises:

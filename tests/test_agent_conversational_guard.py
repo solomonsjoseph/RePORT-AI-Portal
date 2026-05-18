@@ -1,8 +1,8 @@
 """Coverage for the conversational-shortcut guard on fuzzy search tools.
 
 **What.** Tests the guard in ``scripts.ai_assistant.agent_tools`` that
-short-circuits ``search_variables``, ``find_variable_candidates``, and
-``answer_catalog_question`` when the caller passes a greeting /
+short-circuits ``search_variables`` and ``answer_catalog_question`` when
+the caller passes a greeting /
 acknowledgement / too-short query. Without this guard, the ReAct
 agent's default routing surfaces noisy substring hits for messages
 like "hi" (fuzzy-matches "HIV_STATUS", history-related variables,
@@ -20,7 +20,7 @@ refuses blocking-tier PHI.
 (``@phi_safe_return`` preserves ``.func``).
 
 PDF-context cases removed in Phase 5b when the PDF extraction pipeline
-was retired; the guard remains live on the three surviving tools.
+was retired; the guard remains live on the surviving fuzzy lookup tools.
 """
 
 from __future__ import annotations
@@ -107,24 +107,6 @@ class TestSearchVariablesShortCircuit:
         fn: Any = getattr(search_variables, "func", search_variables)
         assert fn("") == _CONVERSATIONAL_REFUSAL_MESSAGE
         assert fn("  ") == _CONVERSATIONAL_REFUSAL_MESSAGE
-
-
-class TestFindVariableCandidatesShortCircuit:
-    """find_variable_candidates refuses conversational inputs."""
-
-    def test_hi_returns_refusal_message(self) -> None:
-        from scripts.ai_assistant.agent_tools import find_variable_candidates
-
-        fn: Any = getattr(find_variable_candidates, "func", find_variable_candidates)
-        out = fn("hi", 3)
-        assert out == _CONVERSATIONAL_REFUSAL_MESSAGE
-
-    def test_thanks_returns_refusal_message(self) -> None:
-        from scripts.ai_assistant.agent_tools import find_variable_candidates
-
-        fn: Any = getattr(find_variable_candidates, "func", find_variable_candidates)
-        out = fn("thanks", 3)
-        assert out == _CONVERSATIONAL_REFUSAL_MESSAGE
 
 
 class TestAnswerCatalogQuestionShortCircuit:

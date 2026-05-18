@@ -27,6 +27,8 @@ from statsmodels.tools.sm_exceptions import ConvergenceWarning, PerfectSeparatio
 
 from scripts.ai_assistant.file_access import validate_agent_read, validate_agent_write
 from scripts.ai_assistant.study_knowledge import StudyKnowledge
+
+
 # AnalysisBindingError inlined here — Task 6a decoupling from scripts.source_truth.analysis_binding.
 class AnalysisBindingError(ValueError):
     """Raised when an analysis role cannot be bound to a source-backed

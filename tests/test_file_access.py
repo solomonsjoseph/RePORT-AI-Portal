@@ -1,7 +1,7 @@
 """Tests for the agent-world file-access validator.
 
 The validator enforces the 2026-04-24 boundary design: the production
-ReAct agent may read from ``TRIO_BUNDLE_DIR`` and ``AGENT_STATE_DIR`` and
+ReAct agent may read from ``STUDY_LLM_SOURCE_DIR`` and ``AGENT_STATE_DIR`` and
 write only to ``AGENT_STATE_DIR``. Audit, raw, staging, and logs zones are
 hard-rejected.
 """
@@ -22,7 +22,7 @@ from scripts.ai_assistant.file_access import (
 
 
 class TestValidateAgentRead:
-    def test_trio_bundle_datasets_allowed(self, monkeypatch_config: Path) -> None:
+    def test_llm_source_datasets_allowed(self, monkeypatch_config: Path) -> None:
         import config
 
         f = config.TRIO_DATASETS_DIR / "sample.jsonl"
@@ -100,8 +100,8 @@ class TestValidateAgentWrite:
         with pytest.raises(ZoneViolationError):
             validate_agent_write(f)
 
-    def test_trio_bundle_rejected(self, monkeypatch_config: Path) -> None:
-        """Agent may read trio bundle but must NOT write into it."""
+    def test_llm_source_rejected_for_write(self, monkeypatch_config: Path) -> None:
+        """Agent may read llm_source but must NOT write into it."""
         import config
 
         f = config.TRIO_DATASETS_DIR / "evil.jsonl"
@@ -124,7 +124,7 @@ class TestValidateAgentWrite:
 
 
 class TestIsAgentReadable:
-    def test_true_for_trio(self, monkeypatch_config: Path) -> None:
+    def test_true_for_llm_source(self, monkeypatch_config: Path) -> None:
         import config
 
         assert is_agent_readable(config.TRIO_DATASETS_DIR)

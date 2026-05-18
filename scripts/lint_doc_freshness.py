@@ -221,12 +221,12 @@ FORBIDDEN: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     # "Only zone" / "agent never exposed" residue
     (
         r"the\s+only\s+zone\s+the\s+(llm\s+)?agent",
-        '"only zone" residue — current LLM read zone is trio_bundle + agent',
+        '"only zone" residue — current LLM read zone is llm_source + agent',
         (),
     ),
     (
         r"only\s+zone\s+the\s+downstream",
-        '"only zone" residue — current LLM read zone is trio_bundle + agent',
+        '"only zone" residue — current LLM read zone is llm_source + agent',
         (),
     ),
     # 35-criterion / 31-criterion bare (without follow-up qualifier)
@@ -336,7 +336,7 @@ FORBIDDEN: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     # an additional pattern for the ASCII variant)
     (
         r"<--\s*the\s+only\s+zone",
-        '"the ONLY zone" residue — current LLM read zone is trio_bundle + agent',
+        '"the ONLY zone" residue — current LLM read zone is llm_source + agent',
         (),
     ),
     # ``__version__`` references must agree with the canonical literal in

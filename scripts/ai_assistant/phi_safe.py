@@ -69,6 +69,10 @@ _REDACTED_MESSAGE = (
     "require row-level raw values."
 )
 
+_RPLN_ARTIFACT_MARKER_RE = re.compile(
+    r"<RPLN_(?:ANALYSIS|CODE|FIGURE|PLOTLY):[^>]+>"
+)
+
 
 class PHISafetyError(Exception):
     """Raised when a configuration mistake would let raw PHI reach the LLM."""
@@ -83,7 +87,8 @@ def guard_text(text: str, *, tool_name: str = "<unknown>") -> str:
     """
     if not isinstance(text, str):
         text = str(text)
-    result: PHIGateResult = phi_gate_check(text)
+    scan_text = _RPLN_ARTIFACT_MARKER_RE.sub("<RPLN_ARTIFACT>", text)
+    result: PHIGateResult = phi_gate_check(scan_text)
     if result.blocked:
         logger.warning(
             "phi_safe: tool %s response blocked — findings=%s",

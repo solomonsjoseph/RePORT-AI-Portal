@@ -372,7 +372,7 @@ drop_fields:
   - "(?:TC_CENTER$|TC_CENTERSP$)"
   - "(?:CC_HIVLOC$|CC_HIVLOCSP$|HC_HIVLOC$|HC_HIVLOCSP$)"
   # ── Geography (HIPAA §164.514(b)(2)(i)(B) — sub-state identifying) ───────
-  # NOTE: district-level aggregate fields (computed) retained in trio_bundle;
+  # NOTE: district-level aggregate fields (computed) retained in llm_source;
   # raw village / hamlet / block / tehsil / pincode / GPS always dropped.
   - "^IS_MUNIC$"
   - "(?:VILLAGE|CITY|TOWN|DISTRICT|TALUK|BLOCK|WARD|LOCALITY|PANCHAYAT|MANDAL|TEHSIL|STATE|PROVINCE|REGION|AREA|ZONE)"

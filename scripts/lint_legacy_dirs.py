@@ -11,11 +11,9 @@ Hard-block patterns (full match anywhere in line, with token boundaries):
 
 Context-scoped patterns (only when quoted as a path component):
   - ``"trio_bundle"`` adjacent to path separators or quoted as a standalone
-    path component (e.g. ``output / "trio_bundle"``). The parent
-    ``trio_bundle/`` dir survives as the PHI-scrubbed clean zone; the
-    Phase 5b move was about its *contents* (datasets, dictionary) relocating
-    to ``llm_source/``. References via ``config.TRIO_BUNDLE_DIR`` are allowed
-    by the line-allow rule. User-facing UI strings (e.g.
+    path component (e.g. ``output / "trio_bundle"``). The active clean zone is
+    ``llm_source/``. References via ``config.TRIO_BUNDLE_DIR`` are allowed
+    only for rollback/back-compat code. User-facing UI strings (e.g.
     ``"Run a fresh load to produce \`\`trio_bundle/\`\`"``) do not match the
     path-component patterns and therefore do not flag.
   - ``"staging"`` adjacent to path separators or quoted as a standalone path
@@ -31,7 +29,7 @@ Per-line allow rules (do NOT flag the line):
   - The line is a pure comment (first non-whitespace char is ``#``).
   - The line is inside a triple-quoted docstring block.
   - The line references ``TMP_DIR`` (e.g. ``config.TMP_DIR / study / "staging"``).
-  - The line references ``TRIO_BUNDLE_DIR`` (live PHI-scrubbed clean zone).
+  - The line references ``TRIO_BUNDLE_DIR`` (legacy rollback/back-compat constant).
 
 Skipped files (the file itself legitimately names the legacy strings):
   - ``lint_legacy_dirs.py``       (this linter — its regex literals self-flag)
@@ -108,8 +106,8 @@ def check_file(path: Path) -> list[str]:
     the legacy-deletion tool, and its CLI wrapper) are exempt. Comment-only
     lines and lines inside triple-quoted docstrings are skipped. Lines
     containing live-reference allow tokens (``TMP_DIR``, ``TRIO_BUNDLE_DIR``)
-    are skipped to permit Phase 5a TMP-zone staging/human_review and live
-    PHI-scrubbed trio_bundle references.
+    are skipped to permit Phase 5a TMP-zone staging/human_review and legacy
+    rollback/back-compat trio_bundle references.
     """
     if path.name in _SKIP_FILES:
         return []

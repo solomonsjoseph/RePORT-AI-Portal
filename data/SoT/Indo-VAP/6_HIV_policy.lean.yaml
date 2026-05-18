@@ -29,11 +29,9 @@ instructions:
   - id: I1
     text: "If negative, skip to bottom of form, sign and enter date."
     location: standalone italic line below the Q1 box outline
-    effect: when HIV_HIV == "Negative (-)", skip Q2/Q2a/Q3/3a/3b and go to completion block
   - id: I2
     text: "If Yes, record CD4 test date and results below."
     location: inline italic beneath the Yes/No checkboxes of Q3 (HIV_CD4DONE)
-    effect: gates HIV_CD4DAT (3a) and 3b group (HIV_CD4 / HIV_CD4LY / HIV_CD4ND / HIV_CD4LYND)
 
 # Visible directional arrows.
 arrows:
@@ -89,6 +87,7 @@ variables:
     type: code
     format: "3-character code"
     phi: pseudonymize
+    notes: "ICTC site code (Integrated Counselling and Testing Centre) is a facility identifier and a quasi-identifier — small cardinality could re-identify a clinic when combined with other fields, hence phi: pseudonymize"
 
   # --- HIV TESTING ---
   HIV_HIVND:
@@ -124,6 +123,7 @@ variables:
     widget: "single-line free-text underline beside HIV_HIVND option 'No, specify reason'"
     type: free_text
     skip_logic: "only completed when HIV_HIVND == 'No, specify reason'"
+    notes: "no PHI expected — captures clinical reason for not performing HIV test (e.g., 'patient refused', 'equipment unavailable'); free-text content is operational, not a patient identifier"
 
   # --- HIV TREATMENT REGIMEN ---
   HIV_ARTTX:
@@ -145,7 +145,7 @@ variables:
     pdf_question: "Not Done"          # printed checkbox label adjacent to the 2a date boxes
     widget: "single checkbox, right of HIV_ARTDAT date boxes"
     options: ["Not Done"]
-    skip_logic: "inferred mutually exclusive with completing HIV_ARTDAT (not printed on form)"
+    skip_logic: "inferred mutually exclusive with HIV_ARTDAT (not printed on form)"
 
   # --- CD4 ENUMERATION ---
   HIV_CD4DONE:
@@ -190,14 +190,14 @@ variables:
     pdf_question: "Not Done/Unknown"  # printed checkbox label under Part I (Absolute Counts)
     widget: "single checkbox, under HIV_CD4 in the Part I cell"
     options: ["Not Done/Unknown"]
-    skip_logic: "inferred mutually exclusive with completing HIV_CD4 (not printed on form)"
+    skip_logic: "inferred mutually exclusive with HIV_CD4 (not printed on form)"
 
   HIV_CD4LYND:
     section: cd4_enumeration
     pdf_question: "Not Done/Unknown"  # printed checkbox label under Part II (CD4%)
     widget: "single checkbox, under HIV_CD4LY in the Part II cell"
     options: ["Not Done/Unknown"]
-    skip_logic: "inferred mutually exclusive with completing HIV_CD4LY (not printed on form)"
+    skip_logic: "inferred mutually exclusive with HIV_CD4LY (not printed on form)"
 
   # --- Completion ---
   HIV_SIGN:

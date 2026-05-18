@@ -212,7 +212,7 @@ def test_query_dataset_blocks_when_a_filter_returns_a_small_class(
         )
     )
     assert out["kanon_violation"] is not None
-    assert out["kanon_violation"]["gate"] in ("kanon", "l_diversity")
+    assert out["kanon_violation"]["gate"] in ("kanon", "l_diversity", "small_filter_cell")
     assert out["records"] == []
     assert "smallest_class_size" in out["kanon_violation"]
 

@@ -3,7 +3,7 @@
 The production LLM agent's permitted zones are:
 
 * **Read** — ``STUDY_LLM_SOURCE_DIR`` (canonical PHI-scrubbed llm_source/
-  tree: dataset_schema, dictionary_mapping, study_metadata, concept),
+  tree: dataset_schema, dictionary_mapping, source_truth),
   ``TRIO_BUNDLE_DIR`` (legacy alias retained for back-compat; may be
   empty post Phase 5b restructure) **or** ``AGENT_STATE_DIR`` (its own
   analysis outputs and conversations). A small allowlist admits

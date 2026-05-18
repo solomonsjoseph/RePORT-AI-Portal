@@ -5,7 +5,7 @@ active single-study, local-first pipeline:
 
 - ``load_study_dictionary``: parse dictionary/mapping files into structured JSONL
 - ``extract_datasets``: extract tabular study data directly into
-  ``output/{STUDY}/trio_bundle/datasets/``
+  ``output/{STUDY}/llm_source/dataset_schema/files/``
 - ``process_datasets``: unified entry point — wraps ``extract_datasets``
 - ``clean_trio_datasets``: post-promotion cleanup — remove junk, merge duplicates
 

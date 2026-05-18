@@ -33,18 +33,19 @@ Prerequisites
 SoT YAML Build
 --------------
 
-The Source-of-Truth policy YAMLs (``data/SoT/{STUDY}/{form}_policy.yaml``)
-are produced by a standalone CLI that runs *before* the main pipeline. The
-full behavior reference is in ``docs/runbook_sot_build.md``; a brief summary
-follows.
+Runtime Source-of-Truth lean YAMLs are produced under
+``output/{STUDY}/llm_source/source_truth/``. The generator uses the printed
+PDF as the clinical authority and reads only dataset row-1 headers for
+binding. Anchored calibration gold, when present, stays under
+``data/SoT/{STUDY}/`` and is used only for diff/regression checks.
 
 .. code-block:: bash
 
-   # Build SoT YAMLs — skips any that already exist on disk
-   python -m scripts.source_truth.study_intake Indo-VAP
+   # Generate and verify all PDF-backed runtime lean YAMLs
+   make sot-generate-all STUDY=Indo-VAP
 
-   # Force-overwrite existing YAMLs (loses human curation — use with care)
-   python -m scripts.source_truth.study_intake Indo-VAP --force
+   # Single-form source pack and render for manual Stage 1-3 authoring
+   make sot-source-pack STUDY=Indo-VAP FORM=6_HIV
 
    # Show all options
    python -m scripts.source_truth.study_intake --help
@@ -54,12 +55,11 @@ follows.
 ``data/raw/{STUDY}/datasets/*.{xlsx,csv}``
 
 **Outputs:**
-``data/SoT/{STUDY}/{form}_policy.yaml`` (one per cleanly-aligned pair) and
-``data/SoT/{STUDY}/human_review/SoT_intake_review.md`` (checklist for
-unpaired / excluded files).
+``output/{STUDY}/llm_source/source_truth/{form}_policy.lean.yaml`` for each
+PDF-backed form that passes the lean checker.
 
-**Re-run policy:** skip-if-exists by default. Pass ``--force`` only when
-regenerating after a known schema change or on a fresh checkout.
+**Re-run policy:** ``make sot-generate-all`` is idempotent and overwrites only
+after the generated candidate passes verification.
 
 See ``docs/runbook_sot_build.md`` for the full behavior reference including
 exclusion reason codes, threat model, duplicate-handling rules, and a
@@ -75,13 +75,20 @@ Full Pipeline (Recommended)
 
    make pipeline
 
-Runs all steps in order: dictionary → dataset extraction → AMBER scrub
-(eight-action catalog, rule + allowlist) → publish scrubbed dataset
-files into the ``llm_source/`` GREEN zone → SoT-backed LLM source build
-and reconciliation. The current LLM-visible outputs are
-``llm_source/dataset_schema/files/`` plus
-``llm_source/study_metadata/catalog.json`` and
-``llm_source/study_metadata/evidence_packs/``.
+Runs the raw-data steps in order: dictionary → dataset extraction → AMBER
+scrub (eight-action catalog, rule + allowlist) → publish scrubbed dataset
+files into the ``llm_source/`` GREEN zone → audit lineage.
+
+For a complete runtime bundle from scratch, prefer:
+
+.. code-block:: bash
+
+   make build-llm-source STUDY=Indo-VAP
+
+That adds the SoT generation step before the raw-data pipeline. The current
+LLM-visible outputs are ``llm_source/source_truth/``,
+``llm_source/dataset_schema/files/``, and
+``llm_source/dictionary_mapping/jsonl/``.
 
 Individual Steps
 ~~~~~~~~~~~~~~~~
@@ -97,9 +104,9 @@ Individual Steps
      - Dataset extraction into AMBER staging, run through the eight-action
        PHI scrub, then atomically promoted into the GREEN ``llm_source/``
    * - ``make build-llm-source``
-     - Build Study Metadata Catalog and Evidence Packs from SoT policy
-       YAMLs and the published dataset files. Stages promotion candidates
-       under ``tmp/{STUDY}/staging/llm_source/``.
+     - Generate verified lean SoT YAMLs, then publish dictionary mappings,
+       PHI-scrubbed dataset JSONL, audit ledgers, lineage, and the output
+       signpost.
    * - ``make bundle``
      - Legacy compatibility alias for preparing the ``llm_source`` dictionary leg
    * - ``make chat``

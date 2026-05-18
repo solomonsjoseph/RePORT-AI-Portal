@@ -343,7 +343,7 @@ def test_error_card_persists_after_rerun() -> None:
 def test_sanitize_file_refs_strips_paths_extensions_and_markers() -> None:
     text = (
         "Saved /workspace/output/chart.png and "
-        "output/Indo-VAP/trio_bundle/datasets/6_HIV.jsonl "
+        "output/Indo-VAP/llm_source/dataset_schema/files/6_HIV.jsonl "
         "with <RPLN_PLOTLY:/workspace/plot.json>"
     )
     cleaned = _sanitize_file_refs(text)
@@ -361,7 +361,7 @@ def test_sanitize_file_refs_handles_pathological_path_like_text_quickly() -> Non
 
     text = (
         f"prefix {'/-' * 24} suffix "
-        "output/Indo-VAP/trio_bundle/datasets/6_HIV.jsonl "
+        "output/Indo-VAP/llm_source/dataset_schema/files/6_HIV.jsonl "
         "<RPLN_PLOTLY:/workspace/plot.json>"
     )
     old_handler = signal.signal(signal.SIGALRM, _timeout)
@@ -413,7 +413,7 @@ def test_conversation_exports_strip_file_refs_and_artifact_markers(
     monkeypatch.setattr(config, "CONVERSATIONS_DIR", conv_dir)
     content = (
         f"Saved /workspace/output/chart.png and {'/-' * 24} "
-        "output/Indo-VAP/trio_bundle/datasets/6_HIV.jsonl "
+        "output/Indo-VAP/llm_source/dataset_schema/files/6_HIV.jsonl "
         "with <RPLN_PLOTLY:/workspace/plot.json>"
     )
     _write_conv_json(

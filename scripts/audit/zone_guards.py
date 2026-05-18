@@ -11,6 +11,7 @@ Either signal triggers ``PermissionError``. Both must pass for allow.
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from functools import lru_cache
 from pathlib import Path
@@ -25,7 +26,7 @@ _AUDIT_SEGMENT = "audit"
 _OUTPUT_SEGMENT = "output"
 
 
-class AuditZoneViolation(PermissionError):
+class AuditZoneViolation(PermissionError):  # noqa: N818
     """Raised when a path is rejected for being in the audit zone."""
 
 
@@ -43,9 +44,12 @@ def _is_inside_audit_zone_by_path(path: Path) -> bool:
 def _has_no_llm_attribute(path: Path) -> bool:
     """Return True iff `git check-attr` reports the audit attribute set."""
 
+    git_bin = shutil.which("git")
+    if git_bin is None:
+        return False
     try:
-        result = subprocess.run(
-            ["git", "check-attr", config.AUDIT_NO_LLM_ZONE_ATTRIBUTE, str(path)],
+        result = subprocess.run(  # noqa: S603
+            [git_bin, "check-attr", config.AUDIT_NO_LLM_ZONE_ATTRIBUTE, str(path)],
             capture_output=True,
             text=True,
             check=False,

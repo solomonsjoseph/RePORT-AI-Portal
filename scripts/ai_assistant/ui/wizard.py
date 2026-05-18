@@ -175,12 +175,8 @@ def run_pipeline() -> dict[str, Any]:
     KeyStore's ``env_for_subprocess`` helper. The parent's env stays
     clean before, during, and after the call.
 
-    The PDF orchestrator inside ``main.py`` always tries the LLM path
-    first (when a capable provider is configured). If fresh PDF
-    extraction cannot produce a complete result and a reviewed
-    ``data/snapshots/{STUDY}/`` baseline exists, the pipeline restores
-    that baseline over the live ``trio_bundle/``. "Use Existing Study"
-    performs the same restore before chat starts.
+    The pipeline publishes into the live ``llm_source/`` tree. "Use Existing
+    Study" treats that tree as the already-prepared runtime bundle.
     """
     import os
 
@@ -211,7 +207,7 @@ def run_pipeline() -> dict[str, Any]:
 
 def _pipeline_output_exists() -> bool:
     try:
-        return config.TRIO_BUNDLE_DIR.exists() and any(config.TRIO_DATASETS_DIR.glob("*.jsonl"))
+        return config.STUDY_LLM_SOURCE_DIR.exists() and any(config.TRIO_DATASETS_DIR.glob("*.jsonl"))
     except Exception:
         return False
 

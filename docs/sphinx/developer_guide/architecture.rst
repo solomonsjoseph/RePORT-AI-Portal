@@ -19,17 +19,18 @@ Reads raw clinical data from ``data/raw/{STUDY}/``, stages and scrubs
 dataset records, then builds the source-truth-backed LLM source
 surface under ``output/{STUDY}/llm_source/``. The current
 LLM-visible outputs are the scrubbed dataset files under
-``llm_source/dataset_schema/files/`` and the Study Metadata Catalog
-plus Evidence Packs under ``llm_source/study_metadata/``. The legacy
-PDF extraction and consolidated ``variables.json`` outputs are no
-longer active runtime surfaces.
+``llm_source/dataset_schema/files/``, dictionary mappings under
+``llm_source/dictionary_mapping/jsonl/``, and verified lean Source
+Truth YAML under ``llm_source/source_truth/``. The legacy PDF extraction,
+Study Metadata Catalog / Evidence Pack build, and consolidated
+``variables.json`` outputs are no longer active runtime surfaces.
 ``main.py --pipeline`` is the canonical entry point; ``make
 pipeline`` is the Makefile alias; the wizard's "Load Study" button
 spawns this as a subprocess.
 
 **World 2 — AI Assistant** (``scripts/ai_assistant/``).
 
-A LangGraph ReAct agent with 12 tools that reads the published
+A LangGraph ReAct agent with 10 tools that reads the published
 llm_source bundle and answers researcher queries. Provider-agnostic via
 ``init_chat_model``; runs against Anthropic / OpenAI / Google /
 NVIDIA / Ollama. Never accesses raw data. Three independent gates
@@ -116,8 +117,10 @@ The pipeline is structured as a sequence of step functions in
 ``scripts/extraction/``, ``scripts/security/``, or
 ``scripts/utils/``. Dictionary and dataset extraction run in parallel;
 the cleanup chain, publish, and lineage steps are sequential. The
-Makefile-level ``build-llm-source`` target runs the SoT-backed metadata
-build and reconciliation after the dataset files are published.
+Makefile-level ``build-llm-source`` target first generates verified
+PDF-backed lean SoT YAMLs, then runs the main pipeline so dictionary
+mappings, PHI-scrubbed datasets, source-truth YAMLs, and audit lineage
+land together under ``output/{STUDY}/``.
 
 Dictionary Loader
 ~~~~~~~~~~~~~~~~~
@@ -205,59 +208,95 @@ Publish
   ``secure_remove_tree`` (zero-fill + fsync + unlink) so old
   bytes aren't recoverable.
 
-Source-Truth YAML Creation (SoT intake CLI)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Source-Truth YAML Creation (sot-lean-generator skill)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* **Module:** :mod:`scripts.source_truth.study_intake` (``python -m
-  scripts.source_truth.study_intake <study> [--force]``)
-* **Role:** Upstream, standalone process that produces the SoT policy
-  YAMLs consumed by the LLM source builder below. Runs *before* the
-  main pipeline, not as a pipeline step.
-* **Inputs:** ``data/raw/{STUDY}/annotated_pdfs/*.pdf`` and
-  ``data/raw/{STUDY}/datasets/*.{xlsx,csv}``
-* **Outputs:** ``data/SoT/{STUDY}/{form}_policy.yaml`` (one per aligned
-  pair) and ``data/SoT/{STUDY}/human_review/SoT_intake_review.md``
-  (checklist for every file that could not be cleanly paired or passed
-  header-safety checks)
-* **Three orchestration phases:**
+SoT YAML production is a **5-stage pipeline** that mixes deterministic
+scripts with LLM reasoning. The entry points are cross-LLM by design:
+the same rules files and verifier work regardless of whether the
+operator is using Claude Code, ChatGPT, Gemini, or Cursor.
 
-  1. ``pair_files`` — normalises filenames, extracts the leading
-     form-code prefix (``^[0-9]+[A-Z]?``, e.g. ``1A``, ``12``,
-     ``101``), and matches PDFs to datasets by exact prefix. Duplicates
-     with mismatched SHA-256, collisions, and low-confidence fuzzy
-     matches are routed to ``SoT_intake_review.md``.
-  2. ``read_headers_only`` — opens each xlsx via
-     ``openpyxl.load_workbook(read_only=True, data_only=False)`` with
-     ``ws.iter_rows(max_row=1)`` and stops after row 1; opens CSV with
-     ``csv.reader`` + ``next()`` once. **Row 2+ bytes never enter
-     Python.** Formula headers (``=`` prefix), PHI-shaped headers
-     (matched against ``scripts/security/phi_scrub.py`` patterns), empty
-     rows, and multi-sheet workbooks raise ``ExcludeForReview`` and are
-     routed to review rather than processed.
-  3. ``build_yaml_for_pair`` — calls the LLM sub-agents
-     (``sot_extractor_agent`` then ``sot_reviewer_agent``), validates the
-     draft against ``record.py``, and writes
-     ``data/SoT/{STUDY}/{form}_policy.yaml``. Re-run policy: skip-if-exists
-     by default; ``--force`` overwrites.
+**Stage 0 — Source pack (deterministic)**
 
-* **Cross-LLM portability:** The CLI is documented in ``AGENTS.md``
-  (``## SoT creation`` section) and ``docs/runbook_sot_build.md`` so it
-  is reachable from any agentic LLM tool — no Makefile target, no
-  Claude-Code-specific skill file.
+* **CLI wrapper:** ``scripts/source_truth/study_intake.py``
+  (``python -m scripts.source_truth.study_intake --study <STUDY> --form <FORM>``)
+* **Delegates to:** ``skills/sot-lean-generator/scripts/extract_sources.py``
+* **Inputs:** ``data/raw/{STUDY}/annotated_pdfs/{FORM}.pdf`` and
+  ``data/raw/{STUDY}/datasets/{FORM}.xlsx``
+* **Outputs:**
 
-Source-Truth LLM Source Builder
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  * ``/tmp/sot_source_pack_{FORM}.json`` — dataset row-1 header array +
+    PDF SHA-256. **Row 2+ bytes never enter Python.**
+  * ``/tmp/sot_render_{FORM}/{FORM}.pdf.png`` — 600 DPI Ghostscript render
+    of the PDF (visual ground truth for LLM sweep)
 
-* **Step:** ``make build-llm-source`` after the scrubbed dataset files
-  are available
-* **Inputs:** SoT policy YAMLs under ``data/SoT/{STUDY}/`` (produced by
-  the intake CLI above) and the published scrubbed dataset JSONL files
-  under ``output/{STUDY}/llm_source/dataset_schema/files/``
-* **Outputs:** ``output/{STUDY}/llm_source/study_metadata/catalog.json``,
-  ``output/{STUDY}/llm_source/study_metadata/evidence_packs/*.json``,
-  and declared PHI / cleanup reports under ``output/{STUDY}/audit/``
-* **Staging:** promotion candidates live under
-  ``tmp/{STUDY}/staging/llm_source/``.
+* **Makefile alias:** ``make sot-source-pack STUDY=… FORM=…``
+
+**Stages 1–3 — LLM-driven YAML authoring**
+
+These stages require LLM reasoning and cannot be automated by a
+deterministic script.
+
+* Stage 1 — Exhaustive YAML write: LLM follows
+  ``skills/sot-lean-generator/references/exhaustive_yaml_rules.md`` to
+  produce a full draft YAML for the form.
+* Stage 2 — 5-iteration visual sweep: LLM compares the 600 DPI render
+  against the draft, correcting any widget or field mismatches.
+* Stage 3 — Lean trim: LLM trims the exhaustive draft to the canonical
+  lean schema per ``skills/sot-lean-generator/references/lean_yaml_rules.md``.
+  Output written to ``/tmp/{FORM}_lean.yaml``.
+
+**Claude Code users** invoke these stages via
+``skills/sot-lean-generator/SKILL.md``.
+
+**Other LLM tools (ChatGPT, Gemini, Cursor)** read
+``skills/sot-lean-generator/references/exhaustive_yaml_rules.md`` then
+``lean_yaml_rules.md`` directly and follow those rules. All LLM tools
+share the same rules files and the same verifier; only the orchestration
+shell differs.
+
+**Stage 4 — Verifier (deterministic)**
+
+* **Script:** ``skills/sot-lean-generator/scripts/check_lean_policy.py``
+* **Makefile alias:** ``make sot-verify STUDY=… FORM=…``
+* **Gates on:** forbidden text tokens, forbidden keys,
+  instruction-block whitelist, header-equality against the source pack.
+* **Exit codes:** 0 = ready to promote; 2 = SHA mismatch (re-run
+  Stage 0); 3 = script gap (human intervention required).
+
+**Stage 5 — Promote (deterministic)**
+
+* Copies ``/tmp/{FORM}_lean.yaml`` →
+  ``output/{STUDY}/llm_source/source_truth/{FORM}_policy.lean.yaml``.
+* This path is the **canonical SoT output** — the runtime input for
+  the LLM source builder.
+
+**Reference data**
+
+``data/SoT/{STUDY}/`` holds gold-example YAMLs that can be diffed
+against new output to catch regressions. It is **reference-only** —
+not a runtime input, not a build output.
+
+* **Cross-LLM portability:** The full end-to-end flow is documented in
+  ``AGENTS.md`` (``## SoT creation`` section) and
+  ``docs/runbook_sot_build.md`` so it is reachable from any agentic LLM
+  tool without requiring Claude Code.
+
+Source-Truth Runtime Builder
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* **Step:** ``make build-llm-source``
+* **Inputs:** annotated PDFs, row-1 dataset headers for the PDF-backed
+  forms, raw dataset files, and the data dictionary.
+* **Outputs:** verified lean YAMLs under
+  ``output/{STUDY}/llm_source/source_truth/``, scrubbed dataset JSONL
+  under ``output/{STUDY}/llm_source/dataset_schema/files/``,
+  dictionary JSONL under
+  ``output/{STUDY}/llm_source/dictionary_mapping/jsonl/``, and declared
+  PHI / cleanup reports under ``output/{STUDY}/audit/``.
+* **Staging:** SoT candidates live under ``/tmp`` until the checker
+  passes; dataset and dictionary staging live under ``tmp/{STUDY}/`` and
+  are securely removed after successful publish.
 
 Lineage Manifest
 ~~~~~~~~~~~~~~~~
@@ -419,8 +458,11 @@ Expected source tree:
    ├── datasets/
    └── data_dictionary/
 
-Reviewed SoT policy YAMLs live under ``data/SoT/{STUDY_NAME}/`` when
-the assistant metadata must be rebuilt.
+Canonical SoT lean YAMLs live under
+``output/{STUDY_NAME}/llm_source/source_truth/`` (produced by the
+sot-lean-generator pipeline). ``data/SoT/{STUDY_NAME}/`` holds
+gold-example reference YAMLs for regression diffs only and is not
+read by the pipeline at runtime.
 
 Expected processed tree:
 
@@ -429,15 +471,14 @@ Expected processed tree:
    output/{STUDY_NAME}/
    ├── llm_source/                   # GREEN — LLM read zone
    │   ├── dataset_schema/files/*.jsonl  # PHI-scrubbed
-   │   └── study_metadata/
-   │       ├── catalog.json
-   │       └── evidence_packs/*.json
+   │   ├── dictionary_mapping/jsonl/**/*.jsonl
+   │   └── source_truth/*_policy.lean.yaml
    ├── audit/                        # AUDIT — counts only; LLM hard-rejected
    │   ├── lineage_manifest.json
    │   ├── phi_scrub_report.json
    │   ├── dataset_cleanup_report.json
-   │   ├── dictionary_cleanup_report.json
-   │   ├── pdfs_cleanup_report.json
+   │   ├── dataset_cleanup_ledger.as_written.json
+   │   ├── phi_handling_ledger.as_written.json
    │   └── telemetry/
    │       └── events.jsonl
    └── agent/                        # analysis / conversations
@@ -448,8 +489,7 @@ Transient staging root (not a durable artifact):
 
    tmp/{STUDY_NAME}/
    ├── datasets/
-   ├── staging/llm_source/
-   └── human_review/
+   └── dictionary/
 
 Security Boundaries
 -------------------

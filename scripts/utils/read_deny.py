@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 
 from scripts.utils.logging_system import get_logger
@@ -44,10 +44,8 @@ def read_deny(paths: list[Path]) -> Iterator[None]:
         for node in _walk_tree(p):
             if node in original_modes:
                 continue
-            try:
+            with suppress(FileNotFoundError):
                 original_modes[node] = node.stat().st_mode
-            except FileNotFoundError:
-                pass
 
     enforced = 0
     try:

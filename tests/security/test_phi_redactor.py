@@ -39,7 +39,7 @@ def test_covered_variable_returns_clear_id_and_description(tmp_path: Path) -> No
         ],
     )
     token, desc = redact("F", "AGEYRS", evidence_packs_dir=ep_dir, key_path=keyfile)
-    assert token == "AGEYRS"
+    assert token == "AGEYRS"  # noqa: S105
     assert desc == "Age in years"
 
 
@@ -104,7 +104,7 @@ def test_missing_evidence_pack_dir_defaults_to_mask(tmp_path: Path) -> None:
     keyfile = tmp_path / "phi.key"
     _write_key(keyfile, 0)
     ep_dir = tmp_path / "evidence_packs_missing"  # never created
-    token, desc = redact("F", "X", evidence_packs_dir=ep_dir, key_path=keyfile)
+    token, _desc = redact("F", "X", evidence_packs_dir=ep_dir, key_path=keyfile)
     assert token.startswith("<phi:")
 
 
@@ -114,5 +114,5 @@ def test_malformed_evidence_pack_defaults_to_mask(tmp_path: Path) -> None:
     ep_dir = tmp_path / "evidence_packs"
     ep_dir.mkdir()
     (ep_dir / "F.json").write_text("{not json")
-    token, desc = redact("F", "X", evidence_packs_dir=ep_dir, key_path=keyfile)
+    token, _desc = redact("F", "X", evidence_packs_dir=ep_dir, key_path=keyfile)
     assert token.startswith("<phi:")

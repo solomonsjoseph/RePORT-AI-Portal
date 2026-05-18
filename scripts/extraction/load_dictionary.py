@@ -2,7 +2,7 @@
 
 Reads dictionary files from ``data/raw/{STUDY_NAME}/data_dictionary/``
 and writes structured JSONL under
-``output/{STUDY_NAME}/trio_bundle/dictionary/``.
+``output/{STUDY_NAME}/llm_source/dictionary_mapping/jsonl/``.
 
 Supports ``.xlsx`` and ``.csv`` inputs. Detects multiple
 logical tables inside Excel sheets, enriches records with provenance
@@ -412,7 +412,7 @@ def load_study_dictionary(
 
     When ``json_output_dir`` is not supplied the dictionary JSONL files are
     written to ``config.STAGING_DICTIONARY_DIR`` (``tmp/{STUDY}/dictionary/``);
-    a subsequent publish step promotes them into ``trio_bundle/dictionary/``.
+    a subsequent publish step promotes them into ``llm_source/dictionary_mapping/jsonl/``.
     """
     if json_output_dir:
         assert_not_raw(str(json_output_dir))

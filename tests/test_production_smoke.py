@@ -14,14 +14,14 @@ def test_fixture_study_bundle_is_present(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    bundle = tmp_path / "output" / "Fixture" / "trio_bundle"
-    datasets = bundle / "datasets"
+    llm_source = tmp_path / "output" / "Fixture" / "llm_source"
+    datasets = llm_source / "dataset_schema" / "files"
     datasets.mkdir(parents=True)
     (datasets / "1_fixture.jsonl").write_text('{"row": 1}\n', encoding="utf-8")
-    monkeypatch.setattr(config, "TRIO_BUNDLE_DIR", bundle)
+    monkeypatch.setattr(config, "STUDY_LLM_SOURCE_DIR", llm_source)
     monkeypatch.setattr(config, "TRIO_DATASETS_DIR", datasets)
 
-    assert Path(config.TRIO_BUNDLE_DIR).is_dir()
+    assert Path(config.STUDY_LLM_SOURCE_DIR).is_dir()
     assert any(Path(config.TRIO_DATASETS_DIR).glob("*.jsonl"))
 
 

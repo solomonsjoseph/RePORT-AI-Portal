@@ -198,8 +198,9 @@ DATASETS_DIR = STUDY_DATA_DIR / "datasets"
 ANNOTATED_PDFS_DIR = STUDY_DATA_DIR / "annotated_pdfs"
 DATA_DICTIONARY_DIR = STUDY_DATA_DIR / "data_dictionary"
 
-# Trio bundle is the single consolidated clean-output tree.
-# Everything that was formerly split across clean/jsonl/* now lives here.
+# Legacy constant retained for rollback/back-compat checks. The active
+# LLM-visible clean tree is STUDY_LLM_SOURCE_DIR; this directory is not created
+# by default.
 TRIO_BUNDLE_DIR = STUDY_OUTPUT_DIR / "trio_bundle"
 
 # LLM-visible source directory — canonical home for artefacts the agent reads.
@@ -509,7 +510,6 @@ def ensure_directories() -> None:
     sensitive_paths = [
         STUDY_OUTPUT_DIR,
         LOGS_DIR,
-        TRIO_BUNDLE_DIR,
         TRIO_DATASETS_DIR,
         DICTIONARY_JSON_OUTPUT_DIR,
         STUDY_AUDIT_DIR,

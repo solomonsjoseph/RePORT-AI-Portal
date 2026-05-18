@@ -94,12 +94,11 @@ def _line_above_has_allow(source: str, lineno: int) -> bool:
 
 
 def _is_row_value_node(node: ast.AST) -> bool:
-    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-        if node.func.attr in _ROW_LIKE_NAMES:
-            return True
-    if isinstance(node, ast.Attribute) and node.attr in _ROW_VALUES_ATTRS:
-        return True
-    return False
+    return (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr in _ROW_LIKE_NAMES
+    ) or (isinstance(node, ast.Attribute) and node.attr in _ROW_VALUES_ATTRS)
 
 
 def _subtree_has_row_value(node: ast.AST) -> bool:
@@ -110,17 +109,18 @@ def _walk_for_violations(path: Path) -> list[str]:
     src = path.read_text()
     if not any(frag in src for frag in _PROTECTED_PATH_FRAGMENTS):
         return []
-    violations: list[str] = []
     tree = ast.parse(src, filename=str(path))
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Attribute) and node.func.attr in {"dump", "dumps"}:
-                if any(_subtree_has_row_value(arg) for arg in node.args):
-                    if not _line_above_has_allow(src, node.lineno):
-                        violations.append(
-                            f"{path}:{node.lineno} json.{node.func.attr} on row-value expression"
-                        )
-    return violations
+    return [
+        f"{path}:{node.lineno} json.{node.func.attr} on row-value expression"
+        for node in ast.walk(tree)
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in {"dump", "dumps"}
+            and any(_subtree_has_row_value(arg) for arg in node.args)
+            and not _line_above_has_allow(src, node.lineno)
+        )
+    ]
 
 
 def test_no_row_values_in_metadata_paths() -> None:

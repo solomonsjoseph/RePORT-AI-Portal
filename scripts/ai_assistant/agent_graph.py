@@ -23,7 +23,6 @@ from langgraph.graph.state import CompiledStateGraph
 
 import config
 from scripts.ai_assistant.agent_prompts import (
-    CATALOG_RUNTIME_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
 )
 from scripts.ai_assistant.agent_tools import ALL_TOOLS
@@ -108,7 +107,7 @@ def runtime_system_prompt(flag_on: bool) -> str:
     legacy ``SYSTEM_PROMPT`` otherwise. The result is a format string
     expecting ``{study_name}`` to be substituted by the caller.
     """
-    return CATALOG_RUNTIME_SYSTEM_PROMPT if flag_on else SYSTEM_PROMPT
+    return SYSTEM_PROMPT
 
 
 # Module-level singletons (lazy-initialised)

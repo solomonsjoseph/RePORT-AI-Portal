@@ -209,13 +209,13 @@ def test_cli_no_dry_run_calls_all(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(
         pre_delete_cleanup,
         "write_pre_delete_manifest",
-        lambda **kw: called.append("write_manifest") or {},
+        lambda **_kw: called.append("write_manifest") or {},
     )
     monkeypatch.setattr(
-        pre_delete_cleanup, "prune_per_variable_packs", lambda **kw: called.append("prune") or 0
+        pre_delete_cleanup, "prune_per_variable_packs", lambda **_kw: called.append("prune") or 0
     )
     monkeypatch.setattr(
-        pre_delete_cleanup, "delete_legacy_dirs", lambda **kw: called.append("delete")
+        pre_delete_cleanup, "delete_legacy_dirs", lambda **_kw: called.append("delete")
     )
 
     monkeypatch.setattr(config, "STUDY_OUTPUT_DIR", tmp_path)

@@ -50,12 +50,12 @@ def synthetic_jsonl_records() -> list[dict[str, Any]]:
 
 @pytest.fixture()
 def trio_bundle_dir(tmp_path: Path) -> Path:
-    """Temporary trio bundle tree with datasets/ and dictionary/ subdirs."""
-    ds = tmp_path / "trio_bundle" / "datasets"
-    dd = tmp_path / "trio_bundle" / "dictionary"
+    """Temporary llm_source tree with dataset and dictionary subdirs."""
+    ds = tmp_path / "llm_source" / "dataset_schema" / "files"
+    dd = tmp_path / "llm_source" / "dictionary_mapping" / "jsonl"
     ds.mkdir(parents=True)
     dd.mkdir(parents=True)
-    return tmp_path / "trio_bundle"
+    return tmp_path / "llm_source"
 
 
 @pytest.fixture()
@@ -63,16 +63,20 @@ def monkeypatch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     """Patch config paths to tmp_path-based locations and return the root."""
     import config
 
-    trio = tmp_path / "trio_bundle"
-    trio.mkdir(exist_ok=True)
-    (trio / "datasets").mkdir(exist_ok=True)
-    (trio / "dictionary").mkdir(exist_ok=True)
+    llm_source = tmp_path / "llm_source"
+    llm_source.mkdir(exist_ok=True)
+    (llm_source / "dataset_schema" / "files").mkdir(parents=True, exist_ok=True)
+    (llm_source / "dictionary_mapping" / "jsonl").mkdir(parents=True, exist_ok=True)
     (tmp_path / "audit").mkdir(exist_ok=True)
     (tmp_path / "agent").mkdir(exist_ok=True)
 
-    monkeypatch.setattr(config, "TRIO_BUNDLE_DIR", trio)
-    monkeypatch.setattr(config, "TRIO_DATASETS_DIR", trio / "datasets")
-    monkeypatch.setattr(config, "DICTIONARY_JSON_OUTPUT_DIR", trio / "dictionary")
+    monkeypatch.setattr(config, "STUDY_LLM_SOURCE_DIR", llm_source)
+    monkeypatch.setattr(config, "TRIO_DATASETS_DIR", llm_source / "dataset_schema" / "files")
+    monkeypatch.setattr(
+        config,
+        "DICTIONARY_JSON_OUTPUT_DIR",
+        llm_source / "dictionary_mapping" / "jsonl",
+    )
     monkeypatch.setattr(config, "STUDY_AUDIT_DIR", tmp_path / "audit")
     monkeypatch.setattr(
         config,
@@ -123,7 +127,7 @@ def monkeypatch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     import scripts.security.secure_env as _se
 
     monkeypatch.setattr(_se, "_OUTPUT_MARKER", str(tmp_path.resolve()))
-    monkeypatch.setattr(_se, "_CLEAN_MARKER", str(trio.resolve()))
+    monkeypatch.setattr(_se, "_CLEAN_MARKER", str(llm_source.resolve()))
     monkeypatch.setattr(_se, "_RAW_MARKER", str((tmp_path / "raw").resolve()))
     monkeypatch.setattr(_se, "_DATA_MARKER", str((tmp_path / "data").resolve()))
     # _TMP_MARKER: staging paths live under tmp_dir (tmp_path/tmp), so assert_write_zone

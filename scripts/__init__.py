@@ -7,7 +7,7 @@ in focused subpackages such as ``scripts.extraction`` and ``scripts.security``.
 Top-level public API:
 - ``load_study_dictionary``: load the study dictionary into clean JSONL outputs
 - ``extract_datasets``: extract raw tabular datasets directly into
-  ``output/{STUDY}/trio_bundle/datasets/``
+  ``output/{STUDY}/llm_source/dataset_schema/files/``
 - ``__version__``: package version marker from the repository root
 
 Design rules:

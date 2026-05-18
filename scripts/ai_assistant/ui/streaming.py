@@ -717,7 +717,7 @@ def _render_message_content(
     analysis_match = analysis_pattern.search(content)
     if analysis_match:
         analysis_path = Path(analysis_match.group(1).strip())
-        # Zone guard: only read files inside the agent zone (trio_bundle + agent/).
+        # Zone guard: only read files inside the agent zone (llm_source + agent/).
         # Matches the unified chokepoint used by every agent tool.
         try:
             validate_agent_read(analysis_path)

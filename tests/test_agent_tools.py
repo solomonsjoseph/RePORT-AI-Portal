@@ -15,7 +15,7 @@ from scripts.ai_assistant.agent_tools import ALL_TOOLS  # noqa: E402
 class TestToolRegistry:
     def test_all_tools_is_list(self) -> None:
         assert isinstance(ALL_TOOLS, list)
-        assert len(ALL_TOOLS) == 12
+        assert len(ALL_TOOLS) == 10
 
     def test_tools_have_names(self) -> None:
         for tool in ALL_TOOLS:
@@ -30,29 +30,17 @@ class TestToolRegistry:
         names = {t.name for t in ALL_TOOLS}
         expected = {
             "search_variables",
-            "find_variable_candidates",
-            "get_variable_details",
-            "list_forms",
-            "get_form_variables",
             "query_dataset",
+            "list_available_datasets",
             "get_dataset_stats",
-            "get_study_overview",
             "run_python_analysis",
-            "cross_reference_variables",
             "run_study_analysis",
             "answer_catalog_question",
+            "produce_evidence_report",
+            "produce_custom_evidence_report",
+            "cite_source",
         }
         assert expected == names
-
-
-class TestGetStudyOverview:
-    def test_returns_string(self, monkeypatch_config: Path) -> None:
-        from scripts.ai_assistant.agent_tools import get_study_overview
-
-        # Phase 5b: agent reads variable metadata from published dataset
-        # JSONL column schemas, not a separate variables.json.
-        result = get_study_overview.invoke({})
-        assert isinstance(result, str)
 
 
 class TestGetDatasetStats:
@@ -94,23 +82,64 @@ class TestSearchVariables:
         assert payload[0]["source"] == "dataset_schema"
 
 
-class TestGetFormVariables:
-    def test_dataset_form_match_resolves_form(self, monkeypatch_config: Path) -> None:
-        """Phase 5b: form lookup now derives entirely from dataset columns,
-        no longer from sparse PDF-derived variables.json metadata."""
+class TestAnswerCatalogQuestion:
+    def test_exact_variable_id_beats_common_question_words(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
         import config
-        from scripts.ai_assistant.agent_tools import get_form_variables
-        from scripts.ai_assistant.tool_cache import tool_cache
+        from scripts.ai_assistant.agent_tools import answer_catalog_question
 
-        tool_cache.clear()
-        (config.TRIO_DATASETS_DIR / "1A_ICScreening.jsonl").write_text(
-            json.dumps({"IS_ELIGIBLE": "Yes", "IS_AGE": 43}) + "\n"
+        llm_source = tmp_path / "output" / "Indo-VAP" / "llm_source"
+        source_truth = llm_source / "source_truth"
+        agent_dir = tmp_path / "output" / "Indo-VAP" / "agent"
+        source_truth.mkdir(parents=True)
+        agent_dir.mkdir(parents=True)
+        monkeypatch.setattr(config, "REPO_ROOT", tmp_path, raising=False)
+        monkeypatch.setattr(config, "STUDY_LLM_SOURCE_DIR", llm_source)
+        monkeypatch.setattr(config, "TRIO_BUNDLE_DIR", llm_source)
+        monkeypatch.setattr(config, "AGENT_STATE_DIR", agent_dir)
+
+        (source_truth / "14_CaseControl_policy.lean.yaml").write_text(
+            """
+study: Indo-VAP
+form:
+  number: "14"
+  title: Case Control
+sections:
+  main: Main
+variables:
+  CC_WTRSRC:
+    section: main
+    pdf_question: What is the main source of water?
+    widget: text
+    type: text
+""".lstrip(),
+            encoding="utf-8",
+        )
+        (source_truth / "6_HIV_policy.lean.yaml").write_text(
+            """
+study: Indo-VAP
+form:
+  number: "6"
+  title: HIV
+sections:
+  main: Main
+variables:
+  HIV_HIV:
+    section: main
+    pdf_question: HIV test result
+    widget: radio
+    type: code
+    options: [Positive, Negative]
+""".lstrip(),
+            encoding="utf-8",
         )
 
-        payload = json.loads(get_form_variables.invoke({"form_name": "1A Index Case Screening"}))
+        payload = json.loads(answer_catalog_question.invoke({"question": "What is HIV_HIV?"}))
 
-        names = {item["name"] for item in payload["variables"]}
-        assert "IS_ELIGIBLE" in names
+        assert payload["variable_ids"] == ["HIV_HIV"]
 
 
 class TestQueryDataset:
@@ -133,62 +162,6 @@ class TestQueryDataset:
 
         assert payload["records"][0]["VISDAT"] == "<DATE_SHIFTED>"
         assert payload["date_values_redacted"] == ["VISDAT"]
-
-
-class TestFindVariableCandidates:
-    """Fuzzy top-k disambiguator — must always return <= k ranked candidates.
-
-    Phase 5b: The disambiguator now operates over dataset-column schemas
-    (the rich PDF-derived variables.json was dead code that never landed
-    on disk). Tests depending on form_id / coded_options / section fields
-    have been removed; that metadata now lives in the per-form evidence
-    packs which are consumed by ``answer_catalog_question``, not by the
-    generic ``find_variable_candidates`` retrieval tool.
-    """
-
-    def _write_jsonl_fixture(self, datasets_dir: Path) -> None:
-        # Three columns spread across two dataset files give the
-        # disambiguator material for fuzzy ranking.
-        (datasets_dir / "95_SAE.jsonl").write_text(
-            json.dumps({"AE_AGE": 42, "AE_DATE": "2020-01-01"}) + "\n"
-        )
-        (datasets_dir / "2A_IndexDemo.jsonl").write_text(
-            json.dumps({"AGE_ENROLL": 35, "BIDIYN": "Y"}) + "\n"
-        )
-
-    def test_returns_valid_json(self, monkeypatch_config: Path) -> None:
-        import config
-        from scripts.ai_assistant.agent_tools import find_variable_candidates
-        from scripts.ai_assistant.tool_cache import tool_cache
-
-        tool_cache.clear()
-        self._write_jsonl_fixture(config.TRIO_DATASETS_DIR)
-        raw = find_variable_candidates.invoke({"description": "AGE", "k": 3})
-        payload = json.loads(raw)
-        assert payload["count"] >= 1
-        assert payload["candidates"][0]["rank"] == 1
-        assert 0.0 <= payload["candidates"][0]["confidence"] <= 1.0
-
-    def test_clamps_k_to_bounds(self, monkeypatch_config: Path) -> None:
-        import config
-        from scripts.ai_assistant.agent_tools import find_variable_candidates
-        from scripts.ai_assistant.tool_cache import tool_cache
-
-        tool_cache.clear()
-        self._write_jsonl_fixture(config.TRIO_DATASETS_DIR)
-        # k=0 should behave like k=1
-        raw = find_variable_candidates.invoke({"description": "AGE", "k": 0})
-        assert json.loads(raw)["count"] == 1
-
-    def test_empty_reference(self, monkeypatch_config: Path) -> None:
-        from scripts.ai_assistant.agent_tools import find_variable_candidates
-        from scripts.ai_assistant.tool_cache import tool_cache
-
-        tool_cache.clear()
-        # No datasets, no variables.json — the loader must return an
-        # empty list and the tool must surface a clean diagnostic.
-        raw = find_variable_candidates.invoke({"description": "anything"})
-        assert "No variables reference" in raw
 
 
 # ---------------------------------------------------------------------------

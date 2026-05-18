@@ -7,11 +7,11 @@ local-first pipeline. It discovers tabular study files under
 the resulting JSONL into the study's **staging workspace**
 (``tmp/{STUDY_NAME}/datasets/`` by default). A subsequent publish step
 atomically promotes the staging bundle into
-``output/{STUDY}/trio_bundle/datasets/``.
+``output/{STUDY}/llm_source/dataset_schema/files/``.
 
 Datasets may contain PHI at extraction time. They remain in AMBER staging
 until ``scripts.security.phi_scrub`` runs at Step 1.6; only scrubbed staging
-artifacts are later published to the trio bundle.
+artifacts are later published to the llm_source dataset schema.
 
 What this module does:
     1. Discover supported dataset files for the active study
@@ -631,7 +631,7 @@ def extract_datasets(
 
     Output lands in *output_dir* when supplied, otherwise in
     ``config.STAGING_DATASETS_DIR`` (``tmp/{STUDY}/datasets/``). The bundle
-    is later published from staging to ``trio_bundle/`` by a separate
+    is later published from staging to ``llm_source/dataset_schema/files/`` by a separate
     publish step after the Step 1.6 PHI scrub and cleanup propagation.
 
     Returns
@@ -744,7 +744,7 @@ def process_datasets(*, debug: bool = False) -> dict[str, Any]:
 
     This is the single function main.py should call for the dataset leg of
     extraction. Output lands in ``config.STAGING_DATASETS_DIR`` and is later
-    published to ``trio_bundle/`` by a separate publish step.
+    published to ``llm_source/dataset_schema/files/`` by a separate publish step.
 
     Args:
         debug: No-op, retained for CLI compatibility with earlier versions
@@ -790,7 +790,7 @@ if __name__ == "__main__":
     # output persists in tmp/dataset_extractions/ for manual inspection.
     #
     # PRODUCTION path: main.py → process_datasets() → extract_datasets() with no
-    # output_dir → writes directly to output/{STUDY}/trio_bundle/datasets/.
+    # output_dir → writes directly to output/{STUDY}/llm_source/dataset_schema/files/.
     import argparse
 
     _parser = argparse.ArgumentParser(

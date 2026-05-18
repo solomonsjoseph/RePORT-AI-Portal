@@ -185,7 +185,7 @@ Three artifacts cryptographically link the raw inputs to the
 published outputs:
 
 1. **Per-row provenance dict** — every JSONL record in
-   ``trio_bundle/datasets/`` carries a ``_provenance`` field with
+   ``llm_source/dataset_schema/files/`` carries a ``_provenance`` field with
    ``raw_sha256``, ``pipeline_version``, ``extraction_engine``,
    ``source_file``, ``sheet_name``, ``row_index``, ``study_name``,
    ``extraction_utc``. Traceability per row.

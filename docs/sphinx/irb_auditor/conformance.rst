@@ -52,6 +52,7 @@ remain green in CI.
      - ``tests/test_log_hygiene.py`` and
        ``tests/test_phi_safe_input_gates.py``
      - HIPAA audit/security safeguards; ICMR confidentiality.
+
 Reviewer Evidence Package
 -------------------------
 

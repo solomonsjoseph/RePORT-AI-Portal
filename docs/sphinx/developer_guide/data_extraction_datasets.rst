@@ -110,3 +110,23 @@ Key Files
 - ``scripts/extraction/dataset_pipeline.py`` — main extraction logic
 - ``scripts/extraction/io/`` — atomic write helpers, file discovery
 - ``config.py`` — ``TRIO_DATASETS_DIR``, ``DATASETS_DIR``
+
+SoT Handoff
+-----------
+
+Dataset row-1 headers (column names) are the dataset-side input to the
+Source-of-Truth (SoT) pipeline. The sot-lean-generator Stage 0 script
+(``skills/sot-lean-generator/scripts/extract_sources.py``, invoked via
+``python -m scripts.source_truth.study_intake --study … --form …`` or
+``make sot-source-pack STUDY=… FORM=…``) reads **only row 1** of each
+``.xlsx`` or ``.csv`` using ``openpyxl.load_workbook(read_only=True)`` +
+``ws.iter_rows(max_row=1)`` (or ``csv.reader`` + ``next()``). Row 2 and
+later are never read. The resulting header array is written into the
+source pack JSON at ``/tmp/sot_source_pack_{FORM}.json`` alongside the
+PDF SHA-256.
+
+This is a **separate invocation** from the main extraction pipeline; it
+does not depend on the JSONL files produced by ``dataset_pipeline.py``.
+See ``docs/runbook_sot_build.md`` for the full SoT build flow and
+``docs/sphinx/developer_guide/architecture.rst`` for the layered
+stage description.

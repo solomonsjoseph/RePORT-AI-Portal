@@ -2,7 +2,7 @@
 
 The pipeline processes raw study data (PHI) in a transient staging workspace
 under ``tmp/{STUDY_NAME}/`` before atomically publishing the PHI-free
-``trio_bundle/``. Staging is the honest-broker AMBER zone — it must carry
+``llm_source/``. Staging is the honest-broker AMBER zone — it must carry
 the strongest defensive posture the local filesystem supports:
 
 * **Restrictive permissions** — directory mode ``0700`` + umask ``0077``

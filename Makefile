@@ -6,7 +6,7 @@
 #
 # One-stop command centre for the entire project lifecycle:
 #   Environment  — sync, version, clean, nuke
-#   Pipeline     — dictionary, process-datasets, bundle
+#   Pipeline     — dictionary, process-datasets, llm_source
 #   AI Assistant  — chat, web
 #   Quality      — test, lint, typecheck, ci, verify
 #   Docs         — docs, docs-quality, docs-linkcheck, docs-ci
@@ -71,7 +71,9 @@ N := \033[0m
 .DEFAULT_GOAL := help
 .PHONY: \
 	help quickstart debug sync version \
-	pipeline dictionary extract-datasets build-llm-source verify-and-promote bundle \
+	pipeline dictionary extract-datasets bundle \
+	sot-source-pack sot-generate-all sot-verify sot-validate \
+	build-llm-source rebuild-llm-source \
 	chat-deps chat-cli-deps chat-cli chat \
 	test test-all lint typecheck security ci verify release-check \
 	docs doc-freshness docs-quality docs-linkcheck docs-ci release-notes \
@@ -97,12 +99,20 @@ help:
 	@printf "  $(C)make version$(N)          Show version + environment info\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Pipeline — full$(N)\n"
-	@printf "  $(C)make pipeline$(N)         Dict → Datasets → Bundle\n"
+	@printf "  $(C)make pipeline$(N)         Dict → Datasets → PHI scrub → llm_source\n"
+	@printf "  $(C)make build-llm-source$(N) STUDY=… — SoT → Dict → Datasets → PHI scrub → llm_source\n"
+	@printf "  $(C)make rebuild-llm-source$(N) STUDY=… — Remove generated llm_source/staging, then rebuild\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Pipeline — individual steps$(N)\n"
 	@printf "  $(C)make dictionary$(N)       Step 0  — Load data dictionary → JSON\n"
 	@printf "  $(C)make extract-datasets$(N) Step 1+3 — Extract → promote datasets\n"
-	@printf "  $(C)make bundle$(N)           Step 2   — Build Trio bundle (dict + datasets)\n"
+	@printf "  $(C)make bundle$(N)           Legacy alias — prepare llm_source dictionary leg\n"
+	@printf "\n"
+	@printf "$(B)$(G)  Source-of-Truth (SoT)$(N)\n"
+	@printf "  $(C)make sot-source-pack$(N)  STUDY=… FORM=… — Stage 0: resolve PDF+dataset → source pack + render\n"
+	@printf "  $(C)make sot-generate-all$(N) STUDY=… — Generate+verify PDF-backed lean YAMLs into llm_source/source_truth\n"
+	@printf "  $(C)make sot-verify$(N)       STUDY=… FORM=… — Stage 4: verifier + property validator\n"
+	@printf "  $(C)make sot-validate$(N)     STUDY=… FORM=… — All gates: verifier + validator + diff-against-gold\n"
 	@printf "\n"
 	@printf "$(B)$(G)  AI Assistant$(N)\n"
 	@printf "  $(C)make chat-cli$(N)         Start interactive AI Assistant chat (CLI)\n"
@@ -166,10 +176,21 @@ debug:
 # PIPELINE — FULL
 # ═══════════════════════════════════════════════════════════════════════
 
-pipeline: build-llm-source
-	@printf "$(C)Running full pipeline: Dict → Datasets → Bundle$(N)\n"
+pipeline:
+	@printf "$(C)Running full pipeline: Dict → Datasets → PHI scrub → llm_source$(N)\n"
 	@$(PYTHON) main.py --pipeline $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG) $(FFLAG)
 	@printf "$(G)✓ Pipeline complete$(N)\n"
+
+build-llm-source: sot-generate-all
+	@printf "$(C)Building llm_source: Dict → Datasets → PHI scrub → Publish → Audit$(N)\n"
+	@$(PYTHON) main.py --pipeline $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG) $(FFLAG)
+	@printf "$(G)✓ llm_source built$(N)\n"
+
+rebuild-llm-source:
+	@printf "$(Y)Removing generated llm_source/staging for STUDY=$(STUDY); preserving audit manifest, agent state, and raw inputs.$(N)\n"
+	@$(UV) run --all-groups python -m scripts.utils.pre_delete_cleanup
+	@rm -rf output/$(STUDY)/llm_source tmp/$(STUDY) 2>/dev/null || true
+	@$(MAKE) build-llm-source STUDY=$(STUDY) FORCE=1
 
 # ═══════════════════════════════════════════════════════════════════════
 # PIPELINE — INDIVIDUAL STEPS
@@ -185,46 +206,42 @@ extract-datasets:
 	@$(PYTHON) main.py --skip-dictionary --process-datasets $(VFLAG) $(FFLAG)
 	@printf "$(G)✓ Dataset processing complete$(N)\n"
 
-build-llm-source: ## Run SoT-driven build coordinator (Branch Y of pipeline)
-	@if [ ! -d "data/$(STUDY)/SoT" ]; then \
-		printf "$(Y)>> SKIP build-llm-source for STUDY=$(STUDY): data/$(STUDY)/SoT/ not found.$(N)\n"; \
-		printf "$(Y)>> To enable, add per-form policy YAMLs under data/$(STUDY)/SoT/.$(N)\n"; \
-		exit 0; \
-	fi; \
-	printf "$(C)$(B)>> Running build coordinator for STUDY=$(STUDY)$(N)\n"; \
-	$(UV) run --all-groups python -m scripts.source_truth.build \
-		--study $(STUDY) \
-		--policies-dir data/$(STUDY)/SoT \
-		--output-root output/$(STUDY) \
-		$(if $(COLUMN_INVENTORY),--column-inventory $(COLUMN_INVENTORY)) && \
-	$(MAKE) verify-and-promote STUDY=$(STUDY) --no-print-directory
+sot-source-pack: ## Stage 0: resolve PDF+dataset and write source pack JSON + render PNG
+	$(UV) run --all-groups python -m scripts.source_truth.study_intake \
+		--study $(STUDY) --form $(FORM) --repo-root .
 
-verify-and-promote: ## Reconcile SoT vs scrubbed dataset; emit per-form discrepancies on mismatch
-	@if [ ! -d "data/$(STUDY)/SoT" ]; then \
-		printf "$(Y)>> SKIP verify-and-promote for STUDY=$(STUDY): data/$(STUDY)/SoT/ not found.$(N)\n"; \
-		exit 0; \
-	fi; \
-	printf "$(C)$(B)>> Running verify-and-promote gate for STUDY=$(STUDY)$(N)\n"; \
-	$(UV) run --all-groups python -m scripts.source_truth.verify_and_promote --study $(STUDY)
+sot-generate-all: ## Generate and verify all PDF-backed lean policy YAMLs into llm_source/source_truth
+	$(UV) run --all-groups python -m scripts.source_truth.generate_lean_outputs \
+		--study $(STUDY) --repo-root .
 
-phi-audit: ## Run SoT-driven PHI sweep and emit drafts under tmp/
-	$(UV) run --all-groups python -m scripts.security.phi_sot_sweep
-	$(UV) run --all-groups python -m scripts.security.phi_sot_sweep emit
+sot-verify: ## Stage 4: verify a lean policy YAML against the source pack produced by sot-source-pack
+	$(UV) run --all-groups python \
+		skills/sot-lean-generator/scripts/check_lean_policy.py \
+		--lean output/$(STUDY)/llm_source/source_truth/$(FORM)_policy.lean.yaml \
+		--source-pack /tmp/sot_source_pack_$(FORM).json
 
-phi-audit-verify: ## Fail if any SoT variable lacks coverage AND no open HITL draft
-	$(UV) run --all-groups python -m scripts.security.phi_sot_sweep verify
-
-llm-source-build: ## Build per-form evidence packs + lean catalogs for llm_source/
-	$(UV) run --all-groups python -m scripts.source_truth.evidence_pack_consolidator
-	$(UV) run --all-groups python -m scripts.source_truth.llm_source_catalogs
-
-cross-verify: ## Run mid-pipeline cross-verifier (scanner + fix agent), emit drafts and live PRs/issues
-	$(UV) run --all-groups python -m scripts.source_truth.cross_verify_pipeline
+sot-validate: ## All-gates check: verifier + property validator + diff-against-gold (hard fail on any step)
+	@if [ -z "$(FORM)" ]; then \
+		printf "$(R)ERROR: FORM is required — e.g. make sot-validate STUDY=Indo-VAP FORM=6_HIV$(N)\n"; \
+		exit 1; \
+	fi
+	@if [ ! -f /tmp/sot_source_pack_$(FORM).json ]; then \
+		printf "$(R)ERROR: source pack missing — run 'make sot-source-pack STUDY=$(STUDY) FORM=$(FORM)' first$(N)\n"; \
+		exit 1; \
+	fi
+	@$(UV) run --all-groups python \
+		skills/sot-lean-generator/scripts/check_lean_policy.py \
+		--lean data/SoT/$(STUDY)/$(FORM)_policy.lean.yaml \
+		--source-pack /tmp/sot_source_pack_$(FORM).json
+	@$(UV) run --all-groups python scripts/source_truth/diff_against_gold.py \
+		--study $(STUDY) --form $(FORM) \
+		--candidate data/SoT/$(STUDY)/$(FORM)_policy.lean.yaml
+	@printf "$(G)✓ sot-validate STUDY=$(STUDY) FORM=$(FORM) — all gates green$(N)\n"
 
 bundle:
-	@printf "$(C)Step 2: Building Trio bundle...$(N)\n"
+	@printf "$(C)Preparing llm_source dictionary leg...$(N)\n"
 	@$(PYTHON) main.py --build-bundle $(VFLAG) $(FFLAG)
-	@printf "$(G)✓ Trio bundle built$(N)\n"
+	@printf "$(G)✓ llm_source dictionary leg prepared$(N)\n"
 
 
 # ═══════════════════════════════════════════════════════════════════════

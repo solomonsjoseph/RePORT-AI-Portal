@@ -61,27 +61,20 @@ Architecture (two-world)
 **World 1 — Deterministic Pipeline** (``main.py`` →
 ``scripts/extraction/``, ``scripts/security/``, ``scripts/utils/``):
 
-**SoT YAML creation (upstream, run before the main pipeline):**
-:mod:`scripts.source_truth.study_intake` is the single entry point for
-building Source-of-Truth policy YAMLs. It is a standalone CLI — not a
-pipeline step — invoked as
-``python -m scripts.source_truth.study_intake <study> [--force]``.
-The CLI pairs annotated PDFs with xlsx/csv datasets by form-code prefix,
-reads only row 1 of each dataset (headers-only invariant — row 2+ bytes
-never enter Python), and calls two LLM sub-agents in sequence:
-``sot_extractor_agent`` produces a draft YAML for each aligned pair;
-``sot_reviewer_agent`` reviews the draft and sets ``policy_status``.
-Both agents are invoked from within ``build_yaml_for_pair`` and survive
-the Phase 6 refactor unchanged. Files that cannot be cleanly paired or
-pass header-safety checks are routed to
-``data/SoT/{STUDY}/human_review/SoT_intake_review.md``.
-See ``AGENTS.md`` (``## SoT creation`` section) for the one-liner command
-and ``docs/runbook_sot_build.md`` for the full behavior reference.
+**SoT YAML creation (upstream, run before the main raw-data pipeline):**
+``make sot-generate-all STUDY=<study>`` runs the repo-level wrapper around
+the sot-lean-generator scripts. It pairs annotated PDFs with xlsx/csv
+datasets by form-code prefix, handles known duplicate-dataset exceptions,
+reads only row 1 of each dataset for binding, writes candidates to ``/tmp``,
+verifies each candidate, and promotes only passing lean YAMLs into
+``output/{STUDY}/llm_source/source_truth/``. For a single manual source pack,
+use ``python -m scripts.source_truth.study_intake --study <study> --form <form>``.
+See ``AGENTS.md`` (``## SoT creation`` section) and
+``docs/runbook_sot_build.md`` for the full behavior reference.
 
 Dataset extraction writes into a transient staging workspace at
 ``tmp/{STUDY_NAME}/``. The cleanup chain (PHI scrub / dataset cleanup),
-publish, and the SoT-backed LLM source build are sequential after the
-dataset files are available.
+publish, and lineage are sequential after the dataset files are available.
 
 Every extracted row gets a full ``_provenance`` dict (raw_sha256,
 pipeline_version, extraction_engine, source_file, sheet_name,
@@ -93,11 +86,7 @@ order **BEFORE** any audit is written so no raw PHI lands in
 datasets and emits ``audit/dataset_cleanup_report.json``. Published
 dataset JSONL files land under
 ``output/{STUDY_NAME}/llm_source/dataset_schema/files/``.
-The SoT-backed LLM source builder then builds the Study Metadata Catalog,
-per-form Evidence Packs, and declared PHI / cleanup reports from the
-reviewed policy YAMLs. Promotion candidates are staged under
-``tmp/{STUDY_NAME}/staging/llm_source/``. **Step 4**
-emits ``audit/lineage_manifest.json``
+**Step 4** emits ``audit/lineage_manifest.json``
 pairing every raw input (SHA-256) with every published llm_source
 artifact (SHA-256). On success, staging is **securely removed** (overwrite +
 fsync + unlink); on failure, ``tmp/{STUDY_NAME}/`` is preserved for
@@ -109,17 +98,18 @@ historical. Current LLM metadata comes from reviewed SoT policy YAMLs
 Catalog and Evidence Packs.
 
 **World 2 — AI Assistant** (``scripts/ai_assistant/``):
-LangGraph ReAct agent with 12 tools for querying study data. Never
+LangGraph ReAct agent with 10 tools for querying study data. Never
 accesses raw data.
 
 **Output structure:**
+``output/{STUDY_NAME}/llm_source/source_truth/`` +
 ``output/{STUDY_NAME}/llm_source/dataset_schema/files/`` +
-``output/{STUDY_NAME}/llm_source/study_metadata/{catalog.json,evidence_packs/}``,
+``output/{STUDY_NAME}/llm_source/dictionary_mapping/jsonl/``,
 ``audit/dataset_cleanup_report.json`` +
 ``audit/phi_scrub_report.json`` + ``audit/lineage_manifest.json`` +
 ``audit/telemetry/events.jsonl``,
 ``agent/{analysis,conversations}/``; transient staging
-sibling: ``tmp/{STUDY_NAME}/{datasets,staging/llm_source,human_review}/``.
+sibling: ``tmp/{STUDY_NAME}/{datasets,dictionary}/``.
 
 **Wizard step 2:** an existing valid ``llm_source/`` bundle can be used
 without reloading; otherwise *Load Study* runs the pipeline subprocess.
@@ -384,8 +374,8 @@ Key files
      - ``scripts/extraction/dataset_pipeline.py``
    * - SoT creation CLI
      - ``scripts/source_truth/study_intake.py``,
-       ``scripts/source_truth/sot_extractor_agent.py``,
-       ``scripts/source_truth/sot_reviewer_agent.py``
+       ``scripts/source_truth/generate_lean_outputs.py``,
+       ``skills/sot-lean-generator/scripts/generate_pdf_aware_candidate.py``
    * - PHI scrub + catalog
      - ``scripts/security/phi_scrub.py``,
        ``scripts/security/phi_scrub.yaml``

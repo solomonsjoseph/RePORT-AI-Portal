@@ -10,17 +10,17 @@ from scripts.audit.ledger import LedgerWriter
 
 
 def _phi_kwargs() -> dict:
-    return dict(
-        form="1A_ICScreening",
-        variable_id="PATIENT_NAME",
-        action="drop",
-        rule_taxonomy="hipaa_safe_harbor:1_names",
-        rule_project_category="name_address",
-        rationale="Direct identifier (name); SoT-declared drop",
-        dataset_file="1A_ICScreening.xlsx",
-        pdf_source="data/raw/Indo-VAP/annotated_pdfs/1A_ICScreening.pdf",
-        count=3,
-    )
+    return {
+        "form": "1A_ICScreening",
+        "variable_id": "PATIENT_NAME",
+        "action": "drop",
+        "rule_taxonomy": "hipaa_safe_harbor:1_names",
+        "rule_project_category": "name_address",
+        "rationale": "Direct identifier (name); SoT-declared drop",
+        "dataset_file": "1A_ICScreening.xlsx",
+        "pdf_source": "data/raw/Indo-VAP/annotated_pdfs/1A_ICScreening.pdf",
+        "count": 3,
+    }
 
 
 def test_write_succeeds_when_role_unset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -77,8 +77,8 @@ class TestAssertOutputZone:
 
 
 class TestAssertCleanZone:
-    def test_trio_bundle_passes(self) -> None:
-        assert_clean_zone(config.TRIO_BUNDLE_DIR / "datasets" / "file.jsonl")
+    def test_llm_source_passes(self) -> None:
+        assert_clean_zone(config.STUDY_LLM_SOURCE_DIR / "dataset_schema" / "files" / "file.jsonl")
 
     def test_raw_dir_raises(self) -> None:
         with pytest.raises(ZoneViolationError):

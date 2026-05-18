@@ -24,7 +24,7 @@ Tools
 4.  list_available_datasets — list available PHI-scrubbed datasets
 5.  run_python_analysis — sandboxed code execution for statistical analysis
 6.  run_study_analysis — deterministic epidemiological analysis
-7.  answer_catalog_question — primary variable metadata lookup via SourceTruthRetriever
+7.  answer_catalog_question — primary variable metadata lookup via lean SoT YAMLs
 8.  produce_evidence_report — structured PHI-safe analysis report for canonical questions
 9.  produce_custom_evidence_report — parameterised analysis report for custom questions
 10. cite_source — deterministic (file, line, snippet) citation for form fields
@@ -187,9 +187,8 @@ def _load_dataset_column_variables() -> list[dict[str, Any]]:
 def _combined_variable_reference() -> list[dict[str, Any]]:
     # Phase 5b: the unified variables.json pipeline was dead code (never
     # produced on disk and the loader silently returned []). The agent now
-    # relies entirely on published dataset column schemas; the per-form
-    # evidence packs and study_metadata/catalog.json are consumed by the
-    # catalog-side tools, not this generic retrieval surface.
+    # relies on published dataset column schemas for generic retrieval; lean
+    # source_truth YAMLs are consumed by answer_catalog_question.
     return _load_dataset_column_variables()
 
 
@@ -364,6 +363,65 @@ _CONVERSATIONAL_REFUSAL_MESSAGE = (
     "form, dataset, cohort, or analysis."
 )
 
+_CATALOG_MATCH_STOPWORDS: frozenset[str] = frozenset(
+    {
+        "about",
+        "and",
+        "are",
+        "can",
+        "column",
+        "columns",
+        "field",
+        "fields",
+        "for",
+        "form",
+        "from",
+        "has",
+        "have",
+        "how",
+        "into",
+        "is",
+        "its",
+        "me",
+        "metadata",
+        "of",
+        "on",
+        "question",
+        "show",
+        "study",
+        "tell",
+        "the",
+        "this",
+        "variable",
+        "variables",
+        "was",
+        "were",
+        "what",
+        "when",
+        "where",
+        "which",
+        "with",
+    }
+)
+
+
+def _catalog_query_identifier_tokens(question: str) -> set[str]:
+    """Return possible case-insensitive variable-id tokens from a question."""
+    return {
+        token.upper()
+        for token in re.findall(r"[A-Za-z][A-Za-z0-9_]*", question)
+        if len(token) >= 3
+    }
+
+
+def _catalog_meaningful_tokens(text: str) -> set[str]:
+    """Tokenize prose for fuzzy catalog matching without common question words."""
+    return {
+        token
+        for token in re.findall(r"[a-z0-9]+", text.lower())
+        if len(token) >= 3 and token not in _CATALOG_MATCH_STOPWORDS
+    }
+
 
 # ============================================================================
 # Tool 1: search_variables
@@ -393,7 +451,32 @@ def search_variables(query: str) -> str:
     if not variables:
         return "No variables reference found. Ensure llm_source/dataset_schema/files/ is populated."
 
-    tokens = {t.lower() for t in re.split(r"[^a-z0-9]+", query.lower()) if len(t) >= 2}
+    identifier_tokens = {
+        t.lower()
+        for t in re.findall(r"[A-Za-z][A-Za-z0-9_]*", query)
+        if len(t) >= 3
+    }
+    exact_matches = [
+        var
+        for var in variables
+        if str(var.get("variable_name") or "").lower() in identifier_tokens
+    ]
+    if exact_matches:
+        matches = [
+            {
+                "variable_name": var.get("variable_name", ""),
+                "form_name": var.get("form_name", ""),
+                "dataset": var.get("dataset", ""),
+                "description": var.get("description", ""),
+                "source": var.get("source", ""),
+            }
+            for var in exact_matches
+        ]
+        result = json.dumps(matches[:12], indent=2, ensure_ascii=False)
+        tool_cache.put("search_variables", result, query=query)
+        return result
+
+    tokens = _catalog_meaningful_tokens(query)
     if not tokens:
         return f"No variables found matching '{query}'."
 
@@ -407,6 +490,7 @@ def search_variables(query: str) -> str:
                 "form_name": var.get("form_name", ""),
                 "dataset": var.get("dataset", ""),
                 "description": var.get("description", ""),
+                "source": var.get("source", ""),
             })
 
     if not matches:
@@ -1321,14 +1405,12 @@ def _run_catalog_bound_study_analysis(
     outcome: str,
     predictors: str,
 ) -> str:
-    # Task 6a: scripts.source_truth.analysis_binding removed (doomed module).
-    # The new pipeline produces no AnalysisBinding objects; this code path
-    # is retired — see docs/runbook_sot_build.md.
     return (
         "Catalog-bound analysis via AnalysisBinding is no longer available. "
-        "The Source Truth pipeline has been updated; please re-run "
-        "`python -m scripts.source_truth.study_intake` to rebuild the catalog, "
-        "then use answer_catalog_question for variable metadata."
+        "Variable metadata is now served from lean SoT YAMLs — use "
+        "answer_catalog_question for variable lookup, or generate SoT YAMLs "
+        "via `make sot-source-pack STUDY=<study> FORM=<form>` "
+        "(see skills/sot-lean-generator/SKILL.md)."
     )
 
 
@@ -1341,24 +1423,19 @@ def run_study_analysis(
     analysis_types: str = "",
     plot_types: str = "",
 ) -> str:
-    """Run a catalog-bound epidemiological analysis on study data.
+    """Run a deterministic epidemiological analysis on study data.
 
-    In the current catalog-binding runtime, ``outcome`` and ``predictors``
-    should be exact analysis-queryable variable IDs from the published
-    catalog/Dataset Schema. The tool validates those bindings and emits a
-    descriptive result plus a reproducible code file. Custom regression
-    execution should use ``run_python_analysis`` after metadata resolution.
-
-    The legacy StudyKnowledge regression runner is still reachable only when
-    ``REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE=1`` is explicitly set.
+    The legacy StudyKnowledge regression runner is reachable only when
+    ``REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE=1`` is explicitly set. In the
+    default runtime this tool returns a clear diagnostic and directs callers
+    to resolve variables through lean SoT metadata and use ``run_python_analysis``
+    for custom analysis.
 
     Args:
         cohort: Which cohort to analyze — "cohort_a" (index cases) or "cohort_b" (household contacts).
-        outcome: Exact analysis-queryable outcome variable ID in the catalog
-            binding runtime. Legacy aliases such as "recurrence" are accepted
-            only behind the legacy StudyKnowledge override.
-        predictors: Comma-separated exact analysis-queryable predictor
-            variable IDs in the catalog binding runtime.
+        outcome: Outcome variable ID. Legacy aliases such as "recurrence" are
+            accepted only behind the legacy StudyKnowledge override.
+        predictors: Comma-separated predictor variable IDs.
         analysis_types: Comma-separated analysis types from: univariate, multivariate, interaction, descriptive. Default: all.
         plot_types: Comma-separated plot types from: violin, scatter, interaction_violin, interaction_scatter. Default: all.
     """
@@ -1582,14 +1659,13 @@ def _load_study_metadata_evidence_pack(variable_id: str) -> Mapping[str, Any] | 
 @tool
 @phi_safe_return
 def answer_catalog_question(question: str) -> str:
-    """Answer a study-variable metadata question through the published catalog.
+    """Answer a study-variable metadata question through published lean SoT YAMLs.
 
     Use this for ordinary questions about retained study variables: their
-    label, dataset column, form, options, and provenance. The catalog is
-    the canonical metadata layer — prefer this tool over
-    ``search_variables`` / ``get_variable_details`` for boundary-sensitive
-    questions about whether a variable is analysable, source-only, or
-    dropped.
+    label, dataset column, form, options, and provenance. The lean SoT YAML
+    under ``llm_source/source_truth`` is the canonical metadata layer — prefer this tool over
+    ``search_variables`` for boundary-sensitive questions about whether a
+    variable is analysable, source-only, or dropped.
 
     Boundary handling (read this carefully — it shapes the LLM's reply):
 
@@ -1625,10 +1701,133 @@ def answer_catalog_question(question: str) -> str:
         (bool). The ``answer`` is already boundary-aware; the LLM should
         normally pass it through verbatim.
     """
-    # Task 6a: scripts.source_truth.retrieval.SourceTruthRetriever retired pending
-    # Task 6 relocation — see docs/runbook_sot_build.md.
-    raise NotImplementedError(
-        "SourceTruthRetriever retired pending Task 6 relocation — see docs/runbook_sot_build.md"
+    """Answer a study-variable metadata question by searching lean SoT YAMLs."""
+    from scripts.ai_assistant.sot_loader import (
+        find_lean_yaml,
+        load_lean_yaml,
+        summarize_lean,
+    )
+
+    if _query_looks_conversational(question):
+        return _CONVERSATIONAL_REFUSAL_MESSAGE
+
+    repo_root = Path(config.REPO_ROOT) if hasattr(config, "REPO_ROOT") else Path(".")
+    query_identifiers = _catalog_query_identifier_tokens(question)
+    query_tokens = _catalog_meaningful_tokens(question)
+
+    # Try to identify a study from known output dirs; fall back to searching all.
+    output_dir = repo_root / "output"
+    study_dirs = sorted(output_dir.iterdir()) if output_dir.is_dir() else []
+    study_dirs = [d for d in study_dirs if d.is_dir()]
+
+    matches: list[dict[str, Any]] = []
+    for study_dir in study_dirs:
+        all_paths = find_lean_yaml(study_dir.name, None, repo_root)
+        for path in all_paths:
+            try:
+                data = load_lean_yaml(path)
+            except ValueError:
+                continue
+            summary = summarize_lean(data)
+            # Prefer exact variable-id matches, then require meaningful token
+            # overlap. A single generic question word like "what" must never
+            # decide the catalog answer.
+            for var_name, var_meta in summary["variables"].items():
+                if var_name.upper() in query_identifiers:
+                    matches.append(
+                        {
+                            "variable_id": var_name,
+                            "summary": summary,
+                            "source": str(path),
+                            "priority": 0,
+                            "score": 100,
+                        }
+                    )
+                    continue
+                if isinstance(var_meta, dict):
+                    question_text = str(var_meta.get("pdf_question") or "")
+                    question_overlap = query_tokens & _catalog_meaningful_tokens(question_text)
+                    name_overlap = query_tokens & _catalog_meaningful_tokens(var_name.replace("_", " "))
+                    score = len(question_overlap) * 2 + len(name_overlap)
+                    if (
+                        len(question_overlap) >= 2
+                        or (question_overlap and name_overlap)
+                        or len(name_overlap) >= 2
+                    ):
+                        matches.append(
+                            {
+                                "variable_id": var_name,
+                                "summary": summary,
+                                "source": str(path),
+                                "priority": 1,
+                                "score": score,
+                            }
+                        )
+
+    if not matches:
+        # Return all available SoT metadata across studies as a catalog dump.
+        all_summaries = []
+        for study_dir in study_dirs:
+            for path in find_lean_yaml(study_dir.name, None, repo_root):
+                try:
+                    all_summaries.append(summarize_lean(load_lean_yaml(path)))
+                except ValueError:
+                    continue
+        if not all_summaries:
+            return json.dumps(
+                {
+                    "question": question,
+                    "answer": (
+                        "No lean SoT YAMLs found. Generate them by running "
+                        "`make sot-source-pack STUDY=<study> FORM=<form>` "
+                        "then completing Stages 1-4 per skills/sot-lean-generator/SKILL.md."
+                    ),
+                    "variable_ids": [],
+                    "audit_only": False,
+                    "analysis_queryable": False,
+                    "needs_clarification": True,
+                },
+                indent=2,
+            )
+        return json.dumps(
+            {
+                "question": question,
+                "answer": "No exact variable match found. Available SoT catalog below.",
+                "variable_ids": [],
+                "audit_only": False,
+                "analysis_queryable": False,
+                "needs_clarification": True,
+                "catalog": all_summaries,
+            },
+            indent=2,
+        )
+
+    best = sorted(
+        matches,
+        key=lambda item: (
+            int(item.get("priority", 99)),
+            -int(item.get("score", 0)),
+            str(item.get("source", "")),
+            str(item.get("variable_id", "")),
+        ),
+    )[0]
+    summary = best["summary"]
+    var_id = best["variable_id"]
+    var_meta = summary["variables"].get(var_id, {})
+    phi_flag = var_meta.get("phi") if isinstance(var_meta, dict) else None
+    analysis_queryable = phi_flag not in ("drop",)
+    answer_text = json.dumps({"variable_id": var_id, "metadata": var_meta, "form": summary["form"], "study": summary["study"]}, indent=2)
+    return json.dumps(
+        {
+            "question": question,
+            "answer": answer_text,
+            "variable_ids": [var_id],
+            "audit_only": False,
+            "analysis_queryable": analysis_queryable,
+            "needs_clarification": False,
+            "source": best["source"],
+        },
+        indent=2,
     )
 
 

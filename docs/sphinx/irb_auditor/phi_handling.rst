@@ -58,6 +58,7 @@ Where PHI Can Exist
      - Counts-only evidence
      - Audit files record counts, hashes, and lineage. The assistant is
        blocked from reading this location.
+
 How PHI Is Protected
 --------------------
 

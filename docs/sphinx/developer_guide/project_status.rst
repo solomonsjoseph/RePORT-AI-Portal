@@ -12,15 +12,15 @@ Pipeline
 ~~~~~~~~
 
 * Single-study pipeline entry point in ``main.py``.
-* Parallel extraction legs for dictionary, datasets, and PDFs.
+* Parallel extraction legs for dictionary and datasets.
 * Supported tabular inputs are ``.xlsx`` and ``.csv`` only.
 * AMBER staging under ``tmp/{STUDY}/`` with mode ``0700`` and secure
   deletion on successful completion.
 * Step 1.6 PHI scrub over staged datasets before publish.
-* Dataset cleanup and cleanup propagation into dictionary and PDF
-  metadata.
+* Dataset cleanup and cleanup propagation into dictionary metadata.
 * Atomic publish into ``output/{STUDY}/llm_source/``.
-* ``variables.json`` build from the published llm_source bundle.
+* Verified lean SoT YAMLs published under
+  ``output/{STUDY}/llm_source/source_truth/``.
 * Counts-only audit reports and lineage manifest under
   ``output/{STUDY}/audit/``.
 

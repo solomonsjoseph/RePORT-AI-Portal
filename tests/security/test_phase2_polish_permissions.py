@@ -141,7 +141,8 @@ def test_ensure_directories_hardens_sensitive_dirs_to_0700(
             "AGENT_OUTPUT_DIR",
             "CONVERSATIONS_DIR",
             "STUDY_AUDIT_DIR",
-            "TRIO_BUNDLE_DIR",
+            "TRIO_DATASETS_DIR",
+            "DICTIONARY_JSON_OUTPUT_DIR",
         ):
             path = getattr(config, attr)
             mode = stat.S_IMODE(path.stat().st_mode)

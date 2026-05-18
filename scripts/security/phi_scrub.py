@@ -1169,7 +1169,7 @@ def run_scrub(study_name: str | None = None) -> None:
     cfg = load_scrub_config()
     if cfg is None:
         # Missing scrub config = no rule application = raw PHI flows to
-        # ``trio_bundle/``. That is unsafe for any production run; require
+        # ``llm_source/``. That is unsafe for any production run; require
         # an explicit opt-in env var to acknowledge the risk in dev/test.
         allow_disabled = os.environ.get("REPORTALIN_ALLOW_DISABLED_SCRUB", "").strip().lower() in (
             "1",

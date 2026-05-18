@@ -69,7 +69,7 @@ def _new_id() -> str:
 
 def _pipeline_output_exists() -> bool:
     try:
-        return config.TRIO_BUNDLE_DIR.exists() and any(config.TRIO_DATASETS_DIR.glob("*.jsonl"))
+        return config.STUDY_LLM_SOURCE_DIR.exists() and any(config.TRIO_DATASETS_DIR.glob("*.jsonl"))
     except Exception:
         return False
 
