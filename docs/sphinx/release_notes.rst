@@ -49,6 +49,42 @@ Fixed
 * Updated a sandbox regression test so its expected output no longer
   resembles a PHI phone-number pattern on Python 3.13.
 
+extract_to_llm_source skill
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Added a CLI wrapper at ``scripts/skills/extract_to_llm_source.py`` that drives the
+raw .xlsx → PHI-scrubbed ``llm_source/`` pipeline end-to-end for one study with
+auditable gates and operationally-untraceable temp removal after publish.
+
+Subcommands:
+
+- ``run --study {STUDY}``: manifest pre-check → pipeline lock → scrubbed pipeline →
+  ledger + quarantine assertions → secure staging destruction + attestation.
+- ``verify --study {STUDY} [--run RUN_ID]``: 12 ordered post-publish assertions
+  (manifest, staging absent, attestation valid, ledger hashes non-null +
+  matching, ``.NO_LLM_ZONE`` sentinel, no quarantine, PHI-absence sweep,
+  determinism, required-form coverage, lock absent, status.json).
+- ``status``: prints scope banner + exit-code table.
+
+Exit codes:
+
+- ``0``: ok
+- ``2``: manifest mismatch (missing required / unknown / reject)
+- ``3``: audit ledger hash null or sentinel missing
+- ``4``: quarantine directory non-empty
+- ``5``: verifier assertion failed
+- ``6``: needs-advice (paused — operator inspection required)
+- ``7``: destruction incomplete
+
+Scope: HIPAA Safe Harbor identifiers per ``phi_scrub.yaml`` + project patterns in
+``phi_patterns.py``. Out of scope (operator responsibility): DPDPA §16 cross-border
+egress, §12 right-to-erase, §8(6) breach notification, ICMR l-diversity gate.
+Temp removal: operational untraceability (APFS COW acknowledged in destruction
+attestation; not forensic erasure).
+
+Cross-LLM canonical: ``AGENTS.md`` section ``Skill: extract_to_llm_source``.
+Claude-Code shim: ``docs/superpowers/skills/extract-to-llm-source/SKILL.md``.
+
 Release Note Rules
 ------------------
 

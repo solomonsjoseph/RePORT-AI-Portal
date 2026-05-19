@@ -261,3 +261,30 @@ For the full assertion list see `scripts/skills/extract_to_llm_source.py:_cmd_ve
   regardless of pass/fail.
 - On full pass, `output/{STUDY}/runs/{run_id}/status.json` is updated with
   `verifier_passed: true`.
+
+### Dry-run protocol (operator)
+
+Before declaring the skill ready for an audited run:
+
+1. Confirm raw study data is present:
+   `ls data/raw/Indo-VAP/datasets/`
+2. Confirm forms manifest is current:
+   `cat data/raw/Indo-VAP/_forms_manifest.yaml`
+3. Confirm PHI key is bootstrapped:
+   `ls ~/.config/report_ai_portal/phi_key`
+4. Run the skill:
+   `uv run --all-groups python scripts/skills/extract_to_llm_source.py run --study Indo-VAP`
+   - Exit code 0 expected on success.
+   - On any non-zero exit, read `output/Indo-VAP/runs/{run_id}/status.json` and
+     `runs/{run_id}/verifier_report.json` for diagnostic detail; staging is
+     preserved at `tmp/Indo-VAP/` for inspection. Do NOT manually delete staging
+     until the issue is resolved.
+5. Verify:
+   `uv run --all-groups python scripts/skills/extract_to_llm_source.py verify --study Indo-VAP`
+   - All 12 assertions must pass.
+6. Confirm operational untraceability:
+   `ls tmp/Indo-VAP/`   # must be absent or empty
+7. Inspect destruction attestation:
+   `cat output/Indo-VAP/runs/{run_id}/destruction_attestation.json`
+8. On full pass, tag the commit (operator):
+   `git tag -a skill/extract_to_llm_source/v1.0 -m "extract_to_llm_source v1.0"`
