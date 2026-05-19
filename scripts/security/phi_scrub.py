@@ -1128,14 +1128,23 @@ def _compute_input_dataset_hash(datasets_dir: Path) -> str:
         <relpath>\\t<size_bytes>\\t<sha256_of_file_bytes>
 
     Concatenate, encode as UTF-8, SHA-256 the result.
+
+    Only ``*.jsonl`` files are included; non-JSONL files (e.g. crash-recovery
+    ``.tmp*`` artefacts written by :func:`atomic_write_jsonl`) are excluded so
+    transient files do not affect reproducibility across runs.
     """
     lines: list[str] = []
-    for fpath in sorted(datasets_dir.rglob("*")):
+    for fpath in sorted(datasets_dir.rglob("*.jsonl")):
         if not fpath.is_file():
             continue
         relpath = fpath.relative_to(datasets_dir).as_posix()
         size = fpath.stat().st_size
-        file_hash = hash_file(fpath)
+        try:
+            file_hash = hash_file(fpath)
+        except OSError as exc:
+            raise PHIScrubError(
+                f"input manifest unhashable: {fpath} — {exc}"
+            ) from exc
         lines.append(f"{relpath}\t{size}\t{file_hash}")
     manifest = "\n".join(lines)
     return hashlib.sha256(manifest.encode("utf-8")).hexdigest()

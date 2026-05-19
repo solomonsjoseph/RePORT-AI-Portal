@@ -15,6 +15,7 @@ Covers:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import secrets
 from datetime import datetime
@@ -1163,8 +1164,6 @@ class TestAuditHashes:
         scrub_config_path: Path,
     ) -> None:
         """Criterion B: scrub_config_hash must equal sha256(phi_scrub.yaml bytes)."""
-        import hashlib
-
         _write_config(scrub_config_path)
         rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
         _seed_staging(monkeypatch_config, rows)
@@ -1213,17 +1212,10 @@ class TestAuditHashes:
         We bypass the sentinel by resetting it between runs and using a fresh
         staging dir seeded with the same bytes both times.
         """
-        import hashlib
-
         _write_config(scrub_config_path)
         rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
 
         # ── Run 1 ──────────────────────────────────────────────────────────
-        # Seed staging and compute hash from a *separate* copy of raw data
-        # that we keep untouched (phi_scrub rewrites in-place).
-        raw_bytes = ("\n".join(json.dumps(r) for r in rows) + "\n").encode()
-        raw_hash = hashlib.sha256(raw_bytes).hexdigest()  # noqa: F841 — sanity anchor
-
         _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
 
@@ -1245,4 +1237,109 @@ class TestAuditHashes:
         assert hash_run1 == hash_run2, (
             f"input_dataset_hash must be stable across identical runs: "
             f"run1={hash_run1!r} run2={hash_run2!r}"
+        )
+
+    # ── _compute_input_dataset_hash unit tests ───────────────────────────────
+
+    def test_non_jsonl_file_ignored_in_input_hash(self, tmp_path: Path) -> None:
+        """A non-.jsonl file (e.g. .tmp crash artefact) must NOT affect the hash."""
+        datasets_dir = tmp_path / "datasets"
+        datasets_dir.mkdir()
+
+        jsonl_file = datasets_dir / "bar.jsonl"
+        jsonl_file.write_bytes(b'{"SUBJID": "S1"}\n')
+
+        hash_without_tmp = phi_scrub._compute_input_dataset_hash(datasets_dir)
+
+        # Add a crash-recovery artefact alongside the real file.
+        (datasets_dir / "foo.tmp").write_bytes(b"garbage")
+
+        hash_with_tmp = phi_scrub._compute_input_dataset_hash(datasets_dir)
+
+        assert hash_without_tmp == hash_with_tmp, (
+            "Non-.jsonl file should not affect input_dataset_hash; "
+            f"without_tmp={hash_without_tmp!r} with_tmp={hash_with_tmp!r}"
+        )
+
+    def test_second_jsonl_file_changes_input_hash(self, tmp_path: Path) -> None:
+        """Adding a second real .jsonl file MUST change the manifest hash."""
+        datasets_dir = tmp_path / "datasets"
+        datasets_dir.mkdir()
+
+        (datasets_dir / "form_a.jsonl").write_bytes(b'{"SUBJID": "S1"}\n')
+        hash_one_file = phi_scrub._compute_input_dataset_hash(datasets_dir)
+
+        (datasets_dir / "form_b.jsonl").write_bytes(b'{"SUBJID": "S2"}\n')
+        hash_two_files = phi_scrub._compute_input_dataset_hash(datasets_dir)
+
+        assert hash_one_file != hash_two_files, (
+            "Adding a second .jsonl file must change input_dataset_hash"
+        )
+
+    def test_unhashable_jsonl_raises_phi_scrub_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """An OSError from hash_file must surface as PHIScrubError naming the path."""
+        datasets_dir = tmp_path / "datasets"
+        datasets_dir.mkdir()
+
+        good_file = datasets_dir / "good.jsonl"
+        good_file.write_bytes(b'{"SUBJID": "S1"}\n')
+
+        bad_file = datasets_dir / "bad.jsonl"
+        bad_file.write_bytes(b'{"SUBJID": "S2"}\n')
+
+        # Make hash_file raise for the bad file only.
+        original_hash_file = phi_scrub.hash_file
+
+        def _patched_hash_file(path: Path, **kwargs: object) -> str:
+            if path == bad_file:
+                raise OSError("permission denied (simulated)")
+            return original_hash_file(path, **kwargs)
+
+        monkeypatch.setattr(phi_scrub, "hash_file", _patched_hash_file)
+
+        with pytest.raises(phi_scrub.PHIScrubError, match="input manifest unhashable"):
+            phi_scrub._compute_input_dataset_hash(datasets_dir)
+
+    def test_empty_staging_dir_returns_sha256_of_empty_string(
+        self, tmp_path: Path
+    ) -> None:
+        """Empty staging dir must yield sha256(b'').hexdigest(), not None or an error.
+
+        Locks the empty-vs-missing distinction: a present-but-empty dir has a
+        defined hash; a missing dir produces no hash at all (None in the ledger).
+        """
+        datasets_dir = tmp_path / "datasets"
+        datasets_dir.mkdir()
+
+        result = phi_scrub._compute_input_dataset_hash(datasets_dir)
+        expected = hashlib.sha256(b"").hexdigest()
+
+        assert result == expected, (
+            f"Empty staging dir must yield sha256(b'') = {expected!r}; got {result!r}"
+        )
+
+    def test_compute_input_dataset_hash_manifest_format(self, tmp_path: Path) -> None:
+        """Direct unit test: hash is sha256 of '<relpath>\\t<size>\\t<content_hash>'."""
+        from scripts.utils.integrity import hash_file as _hash_file
+
+        datasets_dir = tmp_path / "datasets"
+        datasets_dir.mkdir()
+
+        content = b'{"SUBJID": "S1", "VISDAT": "2014-07-15"}\n'
+        (datasets_dir / "form_a.jsonl").write_bytes(content)
+
+        file_size = len(content)
+        file_content_hash = hashlib.sha256(content).hexdigest()
+        # The manifest line is: relpath\tsize\tcontent_hash
+        expected_manifest = f"form_a.jsonl\t{file_size}\t{file_content_hash}"
+        expected_hash = hashlib.sha256(expected_manifest.encode("utf-8")).hexdigest()
+
+        result = phi_scrub._compute_input_dataset_hash(datasets_dir)
+
+        assert result == expected_hash, (
+            f"Manifest format mismatch: expected={expected_hash!r} got={result!r}"
         )
