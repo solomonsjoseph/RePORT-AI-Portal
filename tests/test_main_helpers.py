@@ -4,7 +4,7 @@ Covers:
 
 - _prepare_staging: purges residue + creates the three leg subdirs.
 - _publish_leg: rename happy path, skip-when-empty, trio-exists overwrite,
-  cross-filesystem fallback via a patched OSError.
+  cross-filesystem fallback via a patched OSError, atomicity invariant.
 - _publish_staging: invokes _publish_leg three times with the right pairs.
 - _cleanup_staging: removes the staging tree when present + no-op otherwise.
 """
@@ -12,6 +12,7 @@ Covers:
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -130,11 +131,18 @@ class TestPublishLeg:
         assert published is False
         assert (trio / "keep.jsonl").exists()
 
-    def test_cross_filesystem_rename_falls_back_to_copytree(
+    def test_cross_filesystem_rename_falls_back_to_sibling_tmp_then_rename(
         self,
         monkeypatch_config: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        """Cross-filesystem path copies to a sibling tmp dir then renames into place.
+
+        The first rename (staging → sibling tmp) raises EXDEV.  The fallback copies
+        staging into ``trio_dir.parent / '.llm_source.publishing'`` and then
+        renames that sibling into the final trio location — which is always on the
+        same filesystem.
+        """
         import config
 
         staging = config.STAGING_DATASETS_DIR
@@ -142,19 +150,100 @@ class TestPublishLeg:
         (staging / "a.jsonl").write_text("x", encoding="utf-8")
 
         trio = config.TRIO_DATASETS_DIR
-        trio.mkdir(parents=True, exist_ok=True)
+        trio.parent.mkdir(parents=True, exist_ok=True)
 
-        # Force rename to fail like an EXDEV cross-device error.
-        def _boom(self: Path, target: Any) -> None:
-            raise OSError("cross-filesystem rename not supported")
+        # Allow the second rename (sibling_tmp → trio) to succeed; only the
+        # first rename (staging → trio) raises EXDEV.
+        _original_rename = Path.rename
+        _first_call_done: list[bool] = [False]
 
-        monkeypatch.setattr(Path, "rename", _boom)
+        def _raise_first_rename(self: Path, target: Any) -> None:
+            if not _first_call_done[0]:
+                _first_call_done[0] = True
+                raise OSError("cross-filesystem rename not supported [EXDEV]")
+            return _original_rename(self, target)
+
+        monkeypatch.setattr(Path, "rename", _raise_first_rename)
 
         published = main._publish_leg(staging, trio, "datasets")
 
         assert published is True
         assert (trio / "a.jsonl").read_text(encoding="utf-8") == "x"
-        assert not staging.exists(), "staging source should be cleaned after copytree"
+        assert not staging.exists(), "staging source should be cleaned after copy"
+        # The sibling tmp dir must not be left behind.
+        sibling_tmp = trio.parent / ".llm_source.publishing"
+        assert not sibling_tmp.exists(), "sibling tmp dir must be cleaned up on success"
+
+    def test_mid_publish_crash_leaves_llm_source_absent_or_full(
+        self,
+        monkeypatch_config: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Atomicity invariant: a crash partway through the cross-filesystem publish
+        path must leave ``trio_dir`` either absent or fully populated — never
+        half-populated.
+
+        We force the first rename to EXDEV so the sibling-tmp fallback path is
+        exercised, then inject a crash after ``shutil.copytree`` partially
+        populates the sibling tmp dir but before the final rename promotes it
+        to ``trio_dir``.
+
+        With the old non-atomic copytree-to-final-location pattern the crash
+        would leave a partial ``trio_dir``.  With the new sibling-tmp + rename
+        pattern the crash leaves ``trio_dir`` absent (it was never renamed into
+        place).
+        """
+        import config
+
+        staging = config.STAGING_DATASETS_DIR
+        staging.mkdir(parents=True, exist_ok=True)
+        file_count = 5
+        for i in range(file_count):
+            (staging / f"file_{i}.jsonl").write_text(f'{{"i":{i}}}\n', encoding="utf-8")
+
+        trio = config.TRIO_DATASETS_DIR
+        trio.parent.mkdir(parents=True, exist_ok=True)
+        # trio does not pre-exist — fresh publish scenario.
+
+        # Force the first rename (staging → sibling_tmp) to EXDEV so the
+        # cross-filesystem fallback path is exercised.
+        _original_rename = Path.rename
+        _first_call_done: list[bool] = [False]
+
+        def _raise_first_rename(self: Path, target: Any) -> None:
+            if not _first_call_done[0]:
+                _first_call_done[0] = True
+                raise OSError("cross-filesystem rename not supported [EXDEV]")
+            return _original_rename(self, target)
+
+        monkeypatch.setattr(Path, "rename", _raise_first_rename)
+
+        # Simulate a crash after copytree partially populates the sibling tmp dir
+        # but before the final rename.  We write one file then raise.
+        _real_copytree = shutil.copytree
+
+        def _partial_copytree(src: Any, dst: Any, **kwargs: Any) -> None:
+            # Create the destination dir and write exactly one file to simulate
+            # a partial write, then raise.
+            dst = Path(dst)
+            dst.mkdir(parents=True, exist_ok=True)
+            src_files = list(Path(src).glob("*.jsonl"))
+            if src_files:
+                shutil.copy2(src_files[0], dst / src_files[0].name)
+            raise RuntimeError("simulated crash mid-copytree (partial write)")
+
+        monkeypatch.setattr(shutil, "copytree", _partial_copytree)
+
+        with pytest.raises(RuntimeError, match="simulated crash"):
+            main._publish_leg(staging, trio, "datasets")
+
+        # KEY ATOMICITY INVARIANT: trio_dir (the published llm_source/ leg) must
+        # be absent.  The partial write went into the sibling tmp dir, which was
+        # never renamed into trio_dir, so the final location is clean.
+        assert not trio.exists(), (
+            "llm_source/ must not exist after a crash before the final rename — "
+            "found partial content which violates the atomicity invariant"
+        )
 
 
 # ── _publish_staging ────────────────────────────────────────────────────────

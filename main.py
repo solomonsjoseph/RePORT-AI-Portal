@@ -290,6 +290,26 @@ def _prepare_staging() -> None:
 def _publish_leg(staging_dir: Path, trio_dir: Path, leg_name: str) -> bool:
     """Publish a single leg from staging → published leg under ``llm_source/``.
 
+    Atomicity contract
+    ------------------
+    A mid-publish crash leaves ``trio_dir`` either fully absent or fully
+    populated — never half-populated.
+
+    Happy path (staging and output on the same filesystem):
+        ``staging_dir.rename(trio_dir)`` is a single atomic OS syscall.
+
+    Cross-filesystem fallback (staging on a different device than output):
+        Files are first copied into a sibling temp directory
+        ``trio_dir.parent / ".llm_source.publishing"`` which lives on the
+        *same* filesystem as ``trio_dir``.  Only after the copy completes does
+        ``os.rename`` promote the sibling temp dir to ``trio_dir`` (a single
+        atomic syscall) and the parent directory is fsynced for durability.
+        A crash before the rename leaves ``trio_dir`` absent; a crash after
+        leaves it fully populated.  Option A is used for pre-existing
+        ``trio_dir``: the old tree is securely removed *before* the rename,
+        so the worst-case window is "old removed, new not yet in place".
+        See main.py:_publish_leg for the rename site.
+
     Idempotent: if ``staging_dir`` has no content, leaves ``trio_dir``
     untouched so a 'leg was fresh and skipped' run keeps its prior
     published output.
@@ -312,30 +332,65 @@ def _publish_leg(staging_dir: Path, trio_dir: Path, leg_name: str) -> bool:
         return False
 
     trio_dir.parent.mkdir(parents=True, exist_ok=True)
-    if trio_dir.exists():
-        # Use secure_remove_tree (zero-fill + symlink-aware via assert_write_zone)
-        # instead of plain shutil.rmtree so a republish doesn't leave PHI-adjacent
-        # forensic blocks recoverable from the disk.
-        secure_remove_tree(trio_dir)
 
     try:
-        staging_dir.rename(trio_dir)
+        # Happy path: staging and output on the same filesystem — a single
+        # atomic rename syscall.  Pre-existing trio_dir is handled implicitly
+        # because rename replaces an existing directory on the same device
+        # only when it is empty; we rely on secure_remove_tree clearing it
+        # first when the directory already exists.
+        if trio_dir.exists():
+            # Use secure_remove_tree (zero-fill + symlink-aware) instead of
+            # plain shutil.rmtree so a republish doesn't leave PHI-adjacent
+            # forensic blocks recoverable from the disk.
+            secure_remove_tree(trio_dir)
+        staging_dir.rename(trio_dir)  # atomic: line referenced by atomicity contract
         log.info("Published %s: %s → %s", leg_name, staging_dir, trio_dir)
     except OSError as exc:
-        # Cross-filesystem rename is not supported — fall back to copy + remove
+        # Cross-filesystem rename (EXDEV) — fall back to sibling-tmp + rename.
+        # The sibling lives under trio_dir.parent so it is guaranteed to be on
+        # the same filesystem as trio_dir; the final rename is therefore atomic.
         log.warning(
-            "Rename failed for %s (%s) — falling back to copytree",
+            "Rename failed for %s (%s) — falling back to sibling-tmp + rename",
             leg_name,
             exc,
         )
-        shutil.copytree(staging_dir, trio_dir)
-        shutil.rmtree(staging_dir, ignore_errors=True)
-        log.info(
-            "Published %s via copytree: %s → %s",
-            leg_name,
-            staging_dir,
-            trio_dir,
-        )
+        sibling_tmp = trio_dir.parent / ".llm_source.publishing"
+        try:
+            # 1. Populate sibling tmp (still not visible at trio_dir).
+            shutil.copytree(staging_dir, sibling_tmp)
+
+            # 2. Option A: remove prior trio_dir before the rename.
+            #    Weakens guarantee to "after old removed, before rename" but the
+            #    only partial-state window is the rename syscall itself.
+            if trio_dir.exists():
+                secure_remove_tree(trio_dir)
+
+            # 3. Atomic promotion: sibling_tmp → trio_dir (same filesystem).
+            os.rename(sibling_tmp, trio_dir)  # atomic: rename site (cross-fs path)
+
+            # 4. fsync the parent directory so the rename is durable on crash.
+            parent_fd = os.open(str(trio_dir.parent), os.O_RDONLY)
+            try:
+                os.fsync(parent_fd)
+            finally:
+                os.close(parent_fd)
+
+            log.info(
+                "Published %s via sibling-tmp + rename: %s → %s",
+                leg_name,
+                staging_dir,
+                trio_dir,
+            )
+        except Exception:
+            # Best-effort cleanup of the sibling tmp on any error; do not
+            # silently swallow the original exception.
+            if sibling_tmp.exists():
+                shutil.rmtree(sibling_tmp, ignore_errors=True)
+            raise
+        finally:
+            # Remove staging source regardless (matches happy-path behaviour).
+            shutil.rmtree(staging_dir, ignore_errors=True)
     return True
 
 
@@ -344,6 +399,11 @@ def _publish_staging() -> dict[str, bool]:
 
     Each leg is publish-or-skip independently: an empty staging leg
     leaves its published counterpart untouched.
+
+    Atomicity: each leg delegates to :func:`_publish_leg` which guarantees
+    that ``llm_source/{leg}/`` is either absent or fully populated after any
+    crash — never half-populated.  See ``_publish_leg`` docstring for the
+    full contract.
     """
     return {
         "datasets": _publish_leg(

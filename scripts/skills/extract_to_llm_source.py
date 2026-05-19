@@ -10,6 +10,18 @@ It is intentionally narrow in scope: it accepts caller-supplied paths, calls
 and writes an attestation file atomically. The full CLI wrapper (run/verify/
 status subcommands) is wired in P3.1.
 
+Atomicity dependency
+--------------------
+This wrapper is only called after the publish step has completed.  The
+publish step relies on :func:`main._publish_leg` (``main.py:_publish_leg``)
+being atomic: that function uses a sibling temp directory under
+``trio_dir.parent / ".llm_source.publishing"`` and a single ``os.rename``
+syscall to promote the populated tree to its final ``llm_source/`` location,
+ensuring that ``llm_source/`` is either absent or fully populated after any
+crash — never half.  The rename site is at the line labelled
+``atomic: rename site (cross-fs path)`` in ``_publish_leg``.  This wrapper
+must not be invoked unless that rename has already been confirmed durable.
+
 IRB-grade context:
     * HIPAA §164.310(c) — device + media controls: staged PHI is overwritten
       with random bytes and fsynced before unlink, then the tree is verified

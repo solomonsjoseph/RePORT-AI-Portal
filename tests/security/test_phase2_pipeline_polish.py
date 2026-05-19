@@ -45,15 +45,17 @@ def test_publish_leg_uses_secure_remove_tree_for_old_bundle() -> None:
     zone-asserted) — not ``shutil.rmtree`` — when republishing over an
     existing trio_bundle, so a re-run doesn't leave PHI-adjacent forensic
     blocks on disk."""
-    # Line-window scan: find ``def _publish_leg`` and look at the next ~40
+    # Line-window scan: find ``def _publish_leg`` and look at the next ~100
     # lines. Avoids catastrophic regex backtracking on the 1000+ line file.
+    # Window widened from 50 to 100 to accommodate the expanded atomicity-
+    # contract docstring added in P0.7.
     lines = Path("main.py").read_text(encoding="utf-8").splitlines()
     start = next(
         (i for i, line in enumerate(lines) if line.startswith("def _publish_leg(")),
         None,
     )
     assert start is not None, "_publish_leg definition not found in main.py"
-    body = "\n".join(lines[start : start + 50])
+    body = "\n".join(lines[start : start + 100])
     assert "if trio_dir.exists():" in body, "trio_dir.exists() block not found"
     assert "secure_remove_tree(trio_dir)" in body, (
         "secure_remove_tree(trio_dir) must replace shutil.rmtree(trio_dir) "
