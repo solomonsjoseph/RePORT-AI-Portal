@@ -864,6 +864,29 @@ def suppress_small_cell(value: Any, *, threshold: int) -> tuple[Any, bool]:
 # ── Orchestration ───────────────────────────────────────────────────────────
 
 
+def _apply_field_only_rules(row: dict[str, Any], *, cfg: PHIScrubConfig) -> None:
+    """Remove fields that can be scrubbed without a subject ID.
+
+    Applies in-place to *row*:
+    * ``drop_fields``   — field removed entirely (rule 3 in the main scrub loop).
+    * ``birthdate_field`` with ``safe_harbor`` posture — field dropped (rule 2).
+
+    Deliberately omits rules that need per-subject state: date jitter,
+    ID pseudonymization, cap, generalize, and small-cell suppression.
+    This is the "partial scrub" applied to orphan rows before quarantine write.
+    """
+    for field in list(row.keys()):
+        if field.startswith("__"):
+            continue
+        if cfg.field_is_keep(field):
+            continue
+        if cfg.field_is_birthdate(field) and cfg.compliance_posture == _POSTURE_SAFE_HARBOR:
+            del row[field]
+            continue
+        if cfg.field_is_drop(field):
+            del row[field]
+
+
 def _resolve_subject_id(row: dict[str, Any], candidates: tuple[str, ...]) -> str:
     """Resolve a subject ID value from *row* by trying *candidates* in order.
 
@@ -1299,6 +1322,8 @@ def run_scrub(study_name: str | None = None) -> None:
             orphan_totals[jsonl_file.name] = len(orphans)
             quarantine_dir.mkdir(parents=True, exist_ok=True)
             assert_write_zone(quarantine_dir)
+            for _orphan in orphans:
+                _apply_field_only_rules(_orphan, cfg=cfg)
             atomic_write_jsonl(quarantine_dir / jsonl_file.name, orphans)
             if len(orphans) > cfg.orphan_quarantine_threshold:
                 raise PHIQuarantineOverflowError(

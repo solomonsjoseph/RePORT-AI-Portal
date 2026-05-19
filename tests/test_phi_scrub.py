@@ -542,6 +542,58 @@ class TestRunScrub:
         payload = json.loads(Path(config.AUDIT_SCRUB_REPORT_PATH).read_text(encoding="utf-8"))
         assert payload["orphan_rows"] == {"1A_ICScreening.jsonl": 2}
 
+    def test_orphan_partial_scrub_before_quarantine_write(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Orphan rows must have drop_fields and birthdate removed before quarantine write.
+
+        Acceptance criteria (P0.3):
+        A. drop_fields match (participant_name) → absent from quarantine JSONL.
+        B. birthdate_field match (DOB, safe_harbor) → absent from quarantine JSONL.
+        C. Unrelated field (SCORE) → present unchanged in quarantine JSONL.
+        D. Row count unchanged: 1 orphan in → 1 row on disk.
+        E. date_fields (VISDAT) → NOT jittered (no subject ID → no offset).
+        """
+        _write_config(
+            scrub_config_path,
+            orphan_quarantine_threshold=10,
+            drop_fields=["(?:patient|subject|participant)[-_]?name"],
+        )
+        # All rows are orphans (no SUBJID populated)
+        rows = [
+            {
+                "participant_name": "Alice",
+                "DOB": "1985-06-15",
+                "VISDAT": "2020-03-01",
+                "SCORE": 42,
+            }
+        ]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        quarantine = config.STUDY_STAGING_DIR / "quarantine" / "1A_ICScreening.jsonl"
+        assert quarantine.is_file(), "quarantine file must exist"
+        quarantined = [json.loads(line) for line in quarantine.read_text().splitlines() if line]
+
+        # D — row count unchanged
+        assert len(quarantined) == 1, f"expected 1 quarantine row, got {len(quarantined)}"
+        q = quarantined[0]
+
+        # A — drop_fields match removed
+        assert "participant_name" not in q, "drop_fields match must be absent from quarantine row"
+
+        # B — birthdate removed (safe_harbor posture)
+        assert "DOB" not in q, "birthdate field must be absent from quarantine row (safe_harbor)"
+
+        # C — unrelated field present unchanged
+        assert q.get("SCORE") == 42, "unrelated field must pass through unchanged"
+
+        # E — date field present unchanged (no jitter without subject ID)
+        assert q.get("VISDAT") == "2020-03-01", "date field must not be jittered in orphan row"
+
     def test_orphan_overflow_raises(
         self,
         monkeypatch_config: Path,
