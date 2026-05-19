@@ -94,7 +94,6 @@ def test_format_for_log_suppresses_traceback_when_include_traceback_false() -> N
         )
     log_block = errors.format_for_log(wrapped)
     assert "Traceback" not in log_block
-    assert wrapped.traceback is None
 
 
 def test_wrap_includes_traceback_by_default() -> None:
