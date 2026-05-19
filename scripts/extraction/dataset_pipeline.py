@@ -187,14 +187,15 @@ class ManifestMismatchError(Exception):
     """
 
 
-def check_forms_manifest(datasets_dir: Path | str) -> None:
+def check_forms_manifest(datasets_dir: Path | str) -> dict[str, str]:
     """Validate the contents of *datasets_dir* against its study's forms manifest.
 
     The manifest is expected at ``{datasets_dir.parent}/_forms_manifest.yaml``
     (one level above the datasets directory, i.e. the study root).
 
     Manifest format (YAML, all keys optional but ``required``/``optional``/
-    ``reject`` are the only recognised keys)::
+    ``reject`` are the only recognised keys; ``date_locales`` is also loaded
+    and returned for use by the date-parsing pipeline)::
 
         required:
           - form_name.xlsx
@@ -202,6 +203,8 @@ def check_forms_manifest(datasets_dir: Path | str) -> None:
           - form_name.xlsx
         reject:
           - "*_1.xlsx"   # fnmatch-style glob patterns are supported
+        date_locales:    # per-column date locale overrides (case-insensitive keys)
+          MY_DATE_COL: DMY
 
     Behaviour
     ---------
@@ -225,6 +228,13 @@ def check_forms_manifest(datasets_dir: Path | str) -> None:
     ----------
     datasets_dir:
         Path to ``data/raw/{STUDY}/datasets/``.
+
+    Returns
+    -------
+    dict[str, str]
+        The ``date_locales`` mapping from the manifest (column name →
+        ``"DMY"`` or ``"MDY"``).  Empty dict when the manifest is absent
+        or the key is missing (backward-compatible).
     """
     datasets_dir = Path(datasets_dir)
     manifest_path = datasets_dir.parent / "_forms_manifest.yaml"
@@ -236,7 +246,7 @@ def check_forms_manifest(datasets_dir: Path | str) -> None:
             "form-level gate (add _forms_manifest.yaml to enable it)",
             manifest_path,
         )
-        return
+        return {}
 
     with manifest_path.open(encoding="utf-8") as fh:
         raw = yaml.safe_load(fh) or {}
@@ -244,6 +254,7 @@ def check_forms_manifest(datasets_dir: Path | str) -> None:
     required: list[str] = raw.get("required") or []
     optional: list[str] = raw.get("optional") or []
     reject: list[str] = raw.get("reject") or []
+    date_locales: dict[str, str] = dict(raw.get("date_locales") or {})
 
     # Collect actual .xlsx/.csv filenames present in the directory
     actual_files: list[str] = sorted(
@@ -300,6 +311,8 @@ def check_forms_manifest(datasets_dir: Path | str) -> None:
                 "Optional form not present (skipped): %s",
                 opt_form,
             )
+
+    return date_locales
 
 
 # ============================================================================

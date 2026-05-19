@@ -76,3 +76,8 @@ reject:
   # Collision-pair losers (explicit, in addition to the glob above)
   - "14_CaseControl.xlsx"  # stub — 2 rows vs 14_Case_Control.xlsx 206 rows
   - "21_DSTISO.xlsx"       # has Batch*/OCR metadata cols vs clean 21_DSTIsolate.xlsx
+
+# Per-column date locale overrides. Use when the heuristic cannot disambiguate
+# (e.g., values like 07/05/2014 where both components are ≤ 12).
+# Keys: column name (case-insensitive). Values: "DMY" or "MDY".
+date_locales: {}
