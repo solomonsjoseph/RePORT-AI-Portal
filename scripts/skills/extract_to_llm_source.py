@@ -941,6 +941,11 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
         # rather than racing itself on the same fcntl flock.
         env["REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT"] = "1"
         repo_root = Path(__file__).parent.parent.parent
+        # stdout/stderr are not captured here; main.py installs its own PHI log
+        # redactor at startup. If that install fails non-fatally (non-production
+        # mode), raw log lines bypass this process's redactor and go directly to
+        # the terminal/log. In production mode, main.py exits non-zero on redactor
+        # failure, which is caught below.
         result = subprocess.run(  # noqa: S603
             [sys.executable, str(repo_root / "main.py"), "--pipeline"],
             env=env,

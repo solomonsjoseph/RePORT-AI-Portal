@@ -617,26 +617,26 @@ def load_key(path: Path | None = None) -> bytes:
     path = path or config.PHI_KEY_PATH
     if not path.is_file():
         raise PHIKeyMissingError(
-            f"PHI HMAC key not found at {path}. Use the web UI Load Study flow, "
+            f"PHI HMAC key not found at {path.name}. Use the web UI Load Study flow, "
             "or ask a developer/operator to provision the sidecar PHI key."
         )
 
     mode = path.stat().st_mode & 0o777
     if mode != _KEY_FILE_MODE:
         raise PHIKeyPermissionError(
-            f"PHI key file {path} has mode {oct(mode)}; must be {oct(_KEY_FILE_MODE)}. "
-            f"Fix with: chmod 600 {path}"
+            f"PHI key file {path.name} has mode {oct(mode)}; must be {oct(_KEY_FILE_MODE)}. "
+            f"Fix with: chmod 600 {path.name}"
         )
 
     text = path.read_text(encoding="utf-8").strip()
     if len(text) != _KEY_HEX_LEN:
         raise PHIScrubError(
-            f"PHI key at {path} must be {_KEY_HEX_LEN} hex chars (32 bytes); got {len(text)}"
+            f"PHI key at {path.name} must be {_KEY_HEX_LEN} hex chars (32 bytes); got {len(text)}"
         )
     try:
         return bytes.fromhex(text)
     except ValueError as exc:
-        raise PHIScrubError(f"PHI key at {path} is not valid hex: {exc}") from exc
+        raise PHIScrubError(f"PHI key at {path.name} is not valid hex: {exc}") from exc
 
 
 def bootstrap_key(path: Path | None = None) -> Path:

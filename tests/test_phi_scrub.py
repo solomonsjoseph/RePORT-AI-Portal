@@ -250,6 +250,35 @@ class TestLoadKey:
         with pytest.raises(phi_scrub.PHIScrubError):
             phi_scrub.load_key()
 
+    def test_missing_error_uses_basename_not_full_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """PHIKeyMissingError must not leak directory structure (m-4)."""
+        missing = tmp_path / "subdir" / "phi_key.bin"
+        monkeypatch.setattr(config, "PHI_KEY_PATH", missing)
+        with pytest.raises(phi_scrub.PHIKeyMissingError) as exc_info:
+            phi_scrub.load_key()
+        msg = str(exc_info.value)
+        assert "phi_key.bin" in msg
+        # The parent directory path must not appear in the message.
+        assert str(missing.parent) not in msg
+
+    def test_wrong_mode_error_uses_basename_not_full_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """PHIKeyPermissionError must not leak directory structure (m-4)."""
+        key_path = tmp_path / "subdir" / "phi_key.bin"
+        key_path.parent.mkdir(parents=True, exist_ok=True)
+        key_path.write_text("a" * 64, encoding="utf-8")
+        key_path.chmod(0o644)
+        monkeypatch.setattr(config, "PHI_KEY_PATH", key_path)
+        with pytest.raises(phi_scrub.PHIKeyPermissionError) as exc_info:
+            phi_scrub.load_key()
+        msg = str(exc_info.value)
+        assert "phi_key.bin" in msg
+        # The parent directory path must not appear in the message.
+        assert str(key_path.parent) not in msg
+
 
 # ── bootstrap_key ───────────────────────────────────────────────────────────
 

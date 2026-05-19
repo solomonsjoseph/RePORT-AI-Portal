@@ -945,3 +945,31 @@ class TestShutdown:
             _render_sidebar()
 
         assert params.get("shutdown") == "1"
+
+
+# ── _install_phi_redactor_once idempotency (m-3) ────────────────────────────
+
+
+def test_install_phi_redactor_once_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Calling _install_phi_redactor_once multiple times must not raise (m-3)."""
+    import scripts.ai_assistant.web_ui as web_ui
+
+    # Reset the idempotency flag so we get a clean run regardless of import order.
+    monkeypatch.setattr(web_ui, "_PHI_REDACTOR_INSTALLED", False)
+
+    call_count = 0
+
+    def _fake_install(**_kwargs: object) -> None:
+        nonlocal call_count
+        call_count += 1
+
+    monkeypatch.setattr(
+        "scripts.ai_assistant.web_ui.install_phi_redactor", _fake_install
+    )
+
+    _install_phi_redactor_once()
+    assert call_count == 1, "first call should install the redactor"
+
+    # Second call must be a no-op (flag is now True).
+    _install_phi_redactor_once()
+    assert call_count == 1, "second call must not re-install the redactor"

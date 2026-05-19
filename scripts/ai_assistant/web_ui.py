@@ -97,6 +97,13 @@ def _install_phi_redactor_once() -> None:
         )
 
 
+# Install the PHI log redactor immediately at module import time so any logging
+# triggered by subsequent top-level imports (chat, shell, wizard, auth, etc.)
+# is already filtered.  The idempotency flag inside the function makes the call
+# from main() a safe no-op.
+_install_phi_redactor_once()
+
+
 def _inject_redesign_css() -> None:
     """Hydrate the body class + per-user appearance attributes.
 
