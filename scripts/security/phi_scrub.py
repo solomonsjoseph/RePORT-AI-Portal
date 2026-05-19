@@ -1264,6 +1264,18 @@ def run_scrub(
         deleted only on successful completion.  If the process is killed
         mid-loop the token persists, allowing the wrapper CLI to detect the
         partially-scrubbed state and refuse with exit 6.
+
+        **SIGKILL race window:** there is a small window between the
+        ``atomic_write_json`` that creates ``scrub.in_progress`` and the
+        first call to ``atomic_write_jsonl`` that mutates a dataset row.  A
+        SIGKILL in that window leaves the token on disk with *zero* rows
+        mutated.  On the next operator retry the wrapper sees the token and
+        exits with code 6.
+
+        This is **not** a data-loss condition — no data was written.  If
+        ``scrub.in_progress`` is present and the output datasets are still in
+        their original pre-scrub state (zero mutations), it is safe for the
+        operator to delete the token file and restart the pipeline normally.
     runs_dir:
         Directory under which per-run sidecars are stored
         (e.g. ``output/{STUDY}/runs``).  Required when *run_id* is set.

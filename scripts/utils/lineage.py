@@ -209,7 +209,6 @@ def emit_lineage_manifest(
             "event_count": len(payload.get("scrubbed", []))
             if isinstance(payload.get("scrubbed"), list)
             else None,
-            "generated_utc": payload.get("generated_utc"),
         }
 
     # Primary manifest: content-only, no timestamps.
