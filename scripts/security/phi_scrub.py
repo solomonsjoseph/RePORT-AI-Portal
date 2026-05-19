@@ -864,27 +864,42 @@ def suppress_small_cell(value: Any, *, threshold: int) -> tuple[Any, bool]:
 # ── Orchestration ───────────────────────────────────────────────────────────
 
 
-def _apply_field_only_rules(row: dict[str, Any], *, cfg: PHIScrubConfig) -> None:
+def _apply_field_only_rules(row: dict[str, Any], *, cfg: PHIScrubConfig) -> dict[str, int]:
     """Remove fields that can be scrubbed without a subject ID.
+
+    Mutates row in place; returns drop counts (same ``phi-scrub-<scope>:<field>``
+    shape as ``_scrub_row``'s second return value).
 
     Applies in-place to *row*:
     * ``drop_fields``   — field removed entirely (rule 3 in the main scrub loop).
-    * ``birthdate_field`` with ``safe_harbor`` posture — field dropped (rule 2).
+    * ``birthdate_field`` — field dropped unconditionally regardless of posture.
+      Under ``limited_dataset``, jitter (rule 7) requires a subject_id; orphans by
+      definition lack one, so the only safe option is drop.
 
     Deliberately omits rules that need per-subject state: date jitter,
     ID pseudonymization, cap, generalize, and small-cell suppression.
     This is the "partial scrub" applied to orphan rows before quarantine write.
     """
+    counts: dict[str, int] = {}
+
+    def _bump(scope: str, field: str) -> None:
+        k = f"phi-scrub-{scope}:{field}"
+        counts[k] = counts.get(k, 0) + 1
+
     for field in list(row.keys()):
         if field.startswith("__"):
             continue
         if cfg.field_is_keep(field):
             continue
-        if cfg.field_is_birthdate(field) and cfg.compliance_posture == _POSTURE_SAFE_HARBOR:
+        if cfg.field_is_birthdate(field):
             del row[field]
+            _bump("birthdate-drop", field)
             continue
         if cfg.field_is_drop(field):
             del row[field]
+            _bump("drop", field)
+
+    return counts
 
 
 def _resolve_subject_id(row: dict[str, Any], candidates: tuple[str, ...]) -> str:
@@ -1322,8 +1337,14 @@ def run_scrub(study_name: str | None = None) -> None:
             orphan_totals[jsonl_file.name] = len(orphans)
             quarantine_dir.mkdir(parents=True, exist_ok=True)
             assert_write_zone(quarantine_dir)
+            orphan_counts: dict[str, int] = {}
+            # partial-scrub before write: drop_fields + birthdate
             for _orphan in orphans:
-                _apply_field_only_rules(_orphan, cfg=cfg)
+                for scope_k, n in _apply_field_only_rules(_orphan, cfg=cfg).items():
+                    orphan_counts[scope_k] = orphan_counts.get(scope_k, 0) + n
+            if orphan_counts:
+                q_key = f"quarantine/{jsonl_file.name}"
+                counts_by_file[q_key] = orphan_counts
             atomic_write_jsonl(quarantine_dir / jsonl_file.name, orphans)
             if len(orphans) > cfg.orphan_quarantine_threshold:
                 raise PHIQuarantineOverflowError(

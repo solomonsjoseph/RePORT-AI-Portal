@@ -594,6 +594,116 @@ class TestRunScrub:
         # E — date field present unchanged (no jitter without subject ID)
         assert q.get("VISDAT") == "2020-03-01", "date field must not be jittered in orphan row"
 
+    def test_orphan_partial_scrub_limited_dataset_drops_birthdate(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Under limited_dataset posture, orphan birthdate must still be absent.
+
+        Jitter (rule 7) cannot apply to orphans — no subject_id means no offset.
+        The fallback must be unconditional drop, not a pass-through.
+
+        Acceptance criteria:
+        A. DOB absent from quarantine JSONL even under limited_dataset posture.
+        B. SCORE (unrelated) present unchanged.
+        C. VISDAT (date field) present unchanged (no jitter without subject ID).
+        """
+        monkeypatch.setattr(config, "BASE_DIR", tmp_path)
+        authority = tmp_path / "authorities" / "phi_limited_dataset.md"
+        authority.parent.mkdir(parents=True)
+        authority.write_text("IRB + DUA", encoding="utf-8")
+        _write_config(
+            scrub_config_path,
+            compliance_posture="limited_dataset",
+            orphan_quarantine_threshold=10,
+            drop_fields=["(?:patient|subject|participant)[-_]?name"],
+        )
+        rows = [
+            {
+                "participant_name": "Alice",
+                "DOB": "1985-06-15",
+                "VISDAT": "2020-03-01",
+                "SCORE": 42,
+            }
+        ]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        quarantine = config.STUDY_STAGING_DIR / "quarantine" / "1A_ICScreening.jsonl"
+        assert quarantine.is_file(), "quarantine file must exist"
+        quarantined = [json.loads(line) for line in quarantine.read_text().splitlines() if line]
+
+        assert len(quarantined) == 1, f"expected 1 quarantine row, got {len(quarantined)}"
+        q = quarantined[0]
+
+        # A — birthdate absent regardless of limited_dataset posture
+        assert "DOB" not in q, (
+            "birthdate field must be absent from quarantine row under limited_dataset "
+            "(jitter cannot apply without subject_id; drop is the only safe fallback)"
+        )
+
+        # B — unrelated field present unchanged
+        assert q.get("SCORE") == 42, "unrelated field must pass through unchanged"
+
+        # C — date field present unchanged (no jitter without subject ID)
+        assert q.get("VISDAT") == "2020-03-01", "date field must not be jittered in orphan row"
+
+    def test_orphan_partial_scrub_drops_recorded_in_ledger(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Orphan field-drops must appear in the as-written ledger under quarantine/ prefix.
+
+        Acceptance criteria:
+        A. phi_handling_ledger.as_written.json has at least one event with
+           form starting with "quarantine/".
+        B. That event records the participant_name drop (phi-scrub-drop or
+           phi-scrub-birthdate-drop scope).
+        """
+        _write_config(
+            scrub_config_path,
+            orphan_quarantine_threshold=10,
+            drop_fields=["(?:patient|subject|participant)[-_]?name"],
+        )
+        rows = [
+            {
+                "participant_name": "Alice",
+                "DOB": "1985-06-15",
+                "VISDAT": "2020-03-01",
+                "SCORE": 42,
+            }
+        ]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        ledger_path = (
+            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        )
+        assert ledger_path.is_file(), "phi_handling_ledger.as_written.json must exist"
+        payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+
+        quarantine_events = [
+            ev
+            for ev in payload["events"]
+            if ev.get("where", {}).get("dataset_file", "").startswith("quarantine/")
+        ]
+        assert quarantine_events, (
+            "Expected at least one ledger event with dataset_file under quarantine/ prefix "
+            f"for orphan drops; got events: {payload['events']}"
+        )
+
+        # At least one of participant_name or DOB must appear as a drop event
+        dropped_fields = {ev["variable_id"] for ev in quarantine_events}
+        assert dropped_fields & {"participant_name", "DOB"}, (
+            f"Expected participant_name or DOB in quarantine drops; got {dropped_fields}"
+        )
+
     def test_orphan_overflow_raises(
         self,
         monkeypatch_config: Path,
