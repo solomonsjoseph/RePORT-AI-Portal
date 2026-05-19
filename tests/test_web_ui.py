@@ -957,6 +957,13 @@ def test_install_phi_redactor_once_is_idempotent(monkeypatch: pytest.MonkeyPatch
     # Reset the idempotency flag so we get a clean run regardless of import order.
     monkeypatch.setattr(web_ui, "_PHI_REDACTOR_INSTALLED", False)
 
+    # Mock _load_phi_key so it returns a valid-looking 32-byte key without
+    # touching disk — without this mock, PHIKeyMissingError is raised before
+    # install_phi_redactor is ever called and the assertion on call_count fails.
+    monkeypatch.setattr(
+        "scripts.ai_assistant.web_ui._load_phi_key", lambda: b"k" * 32
+    )
+
     call_count = 0
 
     def _fake_install(**_kwargs: object) -> None:

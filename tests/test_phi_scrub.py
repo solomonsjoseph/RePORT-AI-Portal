@@ -279,6 +279,28 @@ class TestLoadKey:
         # The parent directory path must not appear in the message.
         assert str(key_path.parent) not in msg
 
+    def test_wrong_length_key_error_uses_basename(self, tmp_path: Path) -> None:
+        """PHIScrubError for wrong hex length must use basename, not full path (m-4)."""
+        key_file = tmp_path / "phi_key.bin"
+        key_file.write_text("deadbeef", encoding="utf-8")  # 8 hex chars, not 64
+        key_file.chmod(0o600)
+        with pytest.raises(phi_scrub.PHIScrubError) as exc_info:
+            phi_scrub.load_key(key_file)
+        msg = str(exc_info.value)
+        assert key_file.name in msg
+        assert str(key_file.parent) not in msg
+
+    def test_non_hex_key_error_uses_basename(self, tmp_path: Path) -> None:
+        """PHIScrubError for non-hex content must use basename, not full path (m-4)."""
+        key_file = tmp_path / "phi_key.bin"
+        key_file.write_text("z" * 64, encoding="utf-8")  # 64 chars but not valid hex
+        key_file.chmod(0o600)
+        with pytest.raises(phi_scrub.PHIScrubError) as exc_info:
+            phi_scrub.load_key(key_file)
+        msg = str(exc_info.value)
+        assert key_file.name in msg
+        assert str(key_file.parent) not in msg
+
 
 # ── bootstrap_key ───────────────────────────────────────────────────────────
 
