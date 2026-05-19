@@ -60,6 +60,8 @@ from scripts.extraction.io import (
     JSONL_EXT,
     atomic_write_jsonl,
     discover_files,
+    promote_header,
+    split_sheet_into_tables,
 )
 from scripts.extraction.io.file_discovery import (
     DEFAULT_JUNK_FILENAMES,
@@ -526,6 +528,25 @@ def _read_tabular_file(path: Path) -> list[tuple[str, pd.DataFrame]]:
     NA preservation: :data:`_TABULAR_NA_OPTIONS` is applied to every read so
     that clinical coded strings (``"NA"``, ``"N/A"``, ``"None"``, ``"NULL"``)
     are kept as-is and only the empty string is treated as missing.
+
+    Header-row detection (Excel only):
+        Sheets are read with ``header=None`` so that banner rows above the
+        real column headers do not corrupt the output.
+        :func:`~scripts.extraction.io.split_sheet_into_tables` separates the
+        raw sheet into logical table segments (split on fully-empty rows and
+        columns).  :func:`~scripts.extraction.io.promote_header` then detects
+        the actual header row within each segment (first row with more than one
+        non-null value) and promotes it to ``DataFrame.columns``.
+        Footer rows composed entirely of null values are discarded during the
+        split; non-null footer rows (e.g. ``TOTAL`` summary rows) are removed
+        when they match the ``"total"`` footer marker.
+
+        If the sheet contains multiple table segments (unusual for dataset
+        files), each segment produces a separate ``(sheet_name, DataFrame)``
+        entry tagged ``sheet_name__table_N``.
+
+        If table-splitting fails (returns ``None``), the sheet falls back to
+        the legacy ``header=0`` behaviour to avoid silent data loss.
     """
     ext = path.suffix.lower()
 
@@ -534,9 +555,43 @@ def _read_tabular_file(path: Path) -> list[tuple[str, pd.DataFrame]]:
         return [("sheet1", df)]
 
     if ext == ".xlsx":
+        results: list[tuple[str, pd.DataFrame]] = []
         with pd.ExcelFile(path, engine="openpyxl") as xls:
             names: list[str] = [str(n) for n in xls.sheet_names]
-            return [(name, xls.parse(name, **_TABULAR_NA_OPTIONS)) for name in names]
+            for sheet_name in names:
+                # Read without a fixed header row so banner rows don't corrupt output.
+                raw_df = cast(
+                    pd.DataFrame,
+                    xls.parse(sheet_name, header=None, **_TABULAR_NA_OPTIONS),
+                )
+                tables = split_sheet_into_tables(raw_df)
+                if tables is None:
+                    # Structural error — fall back to legacy header=0 parse.
+                    log.warning(
+                        "Table-split failed for sheet '%s' in '%s'; "
+                        "falling back to header=0.",
+                        sheet_name,
+                        path.name,
+                    )
+                    fallback = cast(
+                        pd.DataFrame,
+                        xls.parse(sheet_name, **_TABULAR_NA_OPTIONS),
+                    )
+                    results.append((sheet_name, fallback))
+                    continue
+
+                if not tables:
+                    # Genuinely empty sheet — emit an empty DataFrame so the
+                    # caller's is_dataframe_empty check can skip it cleanly.
+                    results.append((sheet_name, pd.DataFrame()))
+                    continue
+
+                for idx, table_seg in enumerate(tables):
+                    promoted = promote_header(table_seg, footer_marker="total")
+                    tag = sheet_name if len(tables) == 1 else f"{sheet_name}__table_{idx + 1}"
+                    results.append((tag, promoted))
+
+        return results
 
     raise ValueError(f"Unsupported file extension: {ext}")
 

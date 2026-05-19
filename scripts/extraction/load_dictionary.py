@@ -34,6 +34,7 @@ import config
 from scripts.extraction.io import (
     atomic_write_dataframe_jsonl,
     discover_files,
+    split_sheet_into_tables as _split_sheet_into_tables_shared,
 )
 from scripts.extraction.io.file_discovery import SUPPORTED_TABULAR_EXTENSIONS
 from scripts.security.secure_env import assert_not_raw
@@ -92,12 +93,11 @@ def _deduplicate_columns(columns: Any) -> list[str]:
 def _split_sheet_into_tables(df: pd.DataFrame) -> list[pd.DataFrame] | None:
     """Split DataFrame into multiple tables based on empty row/column boundaries.
 
-    This implements a two-stage boundary detection algorithm:
-    1. Find horizontal strips: contiguous row groups separated by fully empty rows
-    2. Within each strip, find vertical segments separated by fully empty columns
-
-    Each segment represents a separate table that can be independently processed.
-    This handles Excel sheets with multiple tables laid out side-by-side or stacked.
+    .. deprecated::
+        The implementation now lives in
+        :func:`scripts.extraction.io.sheet_split.split_sheet_into_tables`.
+        This name is preserved for backward compatibility and delegates
+        directly to the shared helper.
 
     Args:
         df: Input DataFrame from Excel sheet (may contain multiple tables).
@@ -107,48 +107,7 @@ def _split_sheet_into_tables(df: pd.DataFrame) -> list[pd.DataFrame] | None:
         Empty list ``[]`` if the sheet is genuinely empty.
         ``None`` if a parse error occurred (distinct from an empty sheet).
     """
-    try:
-        if df.empty:
-            log.debug("Received empty DataFrame, returning empty table list")
-            return []
-
-        log.debug(f"Analyzing DataFrame with shape {df.shape} for table boundaries")
-
-        empty_rows = df.index[df.isnull().all(axis=1)].tolist()
-        row_boundaries: list[int] = [-1, *empty_rows, df.shape[0]]
-        horizontal_strips = [
-            df.iloc[row_boundaries[i] + 1 : row_boundaries[i + 1]]
-            for i in range(len(row_boundaries) - 1)
-            if row_boundaries[i] + 1 < row_boundaries[i + 1]
-        ]
-
-        log.debug(f"Found {len(horizontal_strips)} horizontal strip(s)")
-
-        all_tables: list[pd.DataFrame] = []
-        for strip in horizontal_strips:
-            empty_col_indices = [
-                i for i, col in enumerate(strip.columns) if strip[col].isnull().all()
-            ]
-            col_boundaries = [-1, *empty_col_indices, len(strip.columns)]
-            for j in range(len(col_boundaries) - 1):
-                start_col, end_col = col_boundaries[j] + 1, col_boundaries[j + 1]
-                if start_col < end_col:
-                    table_df = strip.iloc[:, start_col:end_col].copy()
-                    table_df.dropna(how="all", inplace=True)
-                    if not table_df.empty:
-                        all_tables.append(table_df)
-
-        log.debug(f"Detected {len(all_tables)} table(s) from DataFrame")
-        return all_tables
-
-    except (KeyError, IndexError) as e:
-        log.error(f"DataFrame structure error during table splitting: {e}")
-        log.debug("DataFrame info:", exc_info=True)
-        return None  # signals parse error, distinct from empty sheet
-    except Exception as e:
-        log.error(f"Unexpected error splitting DataFrame into tables: {type(e).__name__}: {e}")
-        log.debug("Full error details:", exc_info=True)
-        return None  # signals parse error
+    return _split_sheet_into_tables_shared(df)
 
 
 def _process_and_save_tables(

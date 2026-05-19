@@ -24,6 +24,11 @@ Modules in this package:
 ``jsonl_reader``
     JSONL line-parsing helper shared across the pipeline.
 
+``sheet_split``
+    Excel sheet segmentation (``split_sheet_into_tables``) and header-row
+    detection / promotion (``promote_header``) shared between the dictionary
+    leg and the dataset leg.
+
 Example usage::
 
     from scripts.extraction.io import (
@@ -59,6 +64,10 @@ from scripts.extraction.io.jsonl_reader import (
     JSONLParseError,
     load_json_object_line,
 )
+from scripts.extraction.io.sheet_split import (
+    promote_header,
+    split_sheet_into_tables,
+)
 
 __all__ = [
     "ATOMIC_WRITE_SUFFIX",
@@ -75,5 +84,7 @@ __all__ = [
     "is_dmy_variable",
     "load_json_object_line",
     "parse_date",
+    "promote_header",
+    "split_sheet_into_tables",
     "value_looks_like_date",
 ]
