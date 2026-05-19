@@ -459,7 +459,6 @@ def _build_provenance(
         "sheet_name": sheet_name,
         "row_index": row_index,
         "study_name": study_name,
-        "extraction_utc": extraction_ts,
         "pipeline_version": pipeline_version,
         "extraction_engine": extraction_engine,
     }
@@ -627,6 +626,8 @@ def extract_datasets(
     datasets_dir: str | Path | None = None,
     output_dir: str | Path | None = None,
     study_name: str | None = None,
+    runs_dir: str | Path | None = None,
+    run_id: str | None = None,
 ) -> ExtractionResult:
     """Discover and extract all dataset files into AMBER staging.
 
@@ -634,6 +635,12 @@ def extract_datasets(
     ``config.STAGING_DATASETS_DIR`` (``tmp/{STUDY}/datasets/``). The bundle
     is later published from staging to ``llm_source/dataset_schema/files/`` by a separate
     publish step after the Step 1.6 PHI scrub and cleanup propagation.
+
+    When *runs_dir* is provided (or when ``config.STUDY_OUTPUT_DIR`` / "runs"
+    resolves cleanly), an ``extraction_timing.json`` sidecar is written to
+    ``{runs_dir}/{run_id}/`` after extraction completes.  The sidecar captures
+    the ``extraction_utc`` timestamp that was previously baked into every
+    per-row ``_provenance`` dict.
 
     Returns
     -------
@@ -644,8 +651,10 @@ def extract_datasets(
         by :func:`~scripts.extraction.dedup.clean_duplicate_columns` across
         every processed sheet).
     """
+    from scripts.utils.run_context import resolve_run_id, write_extraction_timing_sidecar
+
     overall_start = time.time()
-    extraction_ts = datetime.now(UTC).isoformat()
+    extraction_ts = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     _datasets_dir = Path(datasets_dir) if datasets_dir else Path(config.DATASETS_DIR)
     _study = study_name or config.STUDY_NAME
@@ -709,6 +718,26 @@ def extract_datasets(
         f"records={total_records} dropped={len(dropped_events)} errors={len(errors)} "
         f"elapsed={elapsed:.1f}s"
     )
+
+    # --- write extraction timing sidecar ---
+    # extraction_utc was removed from per-row _provenance to keep primary
+    # JSONL content-only.  Emit it here so the timestamp is not lost.
+    _active_run_id = run_id if run_id is not None else resolve_run_id()
+    _runs_dir = (
+        Path(runs_dir)
+        if runs_dir is not None
+        else Path(config.STUDY_OUTPUT_DIR) / "runs"
+    )
+    try:
+        write_extraction_timing_sidecar(
+            output_dir=_runs_dir.parent,
+            run_id=_active_run_id,
+            study=_study,
+            extraction_utc=extraction_ts,
+            pipeline_version=_PIPELINE_VERSION,
+        )
+    except OSError as exc:
+        log.warning("Could not write extraction_timing sidecar: %s", exc)
 
     return ExtractionResult(
         files_found=len(files),

@@ -52,7 +52,9 @@ class TestBuildProvenance:
         assert prov["sheet_name"] == "Sheet1"
         assert prov["row_index"] == 7
         assert prov["study_name"] == "TEST"
-        assert prov["extraction_utc"] == "2026-04-23T00:00:00Z"
+        # extraction_utc is no longer stored per-row; it lives in the
+        # per-run extraction_timing.json sidecar (runs/{run_id}/).
+        assert "extraction_utc" not in prov
         assert prov["raw_sha256"] == "deadbeef"
         assert "pipeline_version" in prov
         assert "extraction_engine" in prov

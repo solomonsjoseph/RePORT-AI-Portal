@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from uuid import uuid4
 
 import config
 from scripts.extraction.io import atomic_write_json
+from scripts.utils.run_context import resolve_run_id
 
 __all__ = ["LedgerWriter"]
 
@@ -43,7 +43,7 @@ class LedgerWriter:
         input_dataset_hash: str | None = None,
     ) -> None:
         self._output_path = Path(output_path)
-        self._run_id: str = run_id if run_id is not None else f"run_{uuid4().hex}"
+        self._run_id: str = run_id if run_id is not None else resolve_run_id()
         self._scrub_config_hash = scrub_config_hash
         self._input_dataset_hash = input_dataset_hash
         self._iso_timestamp: str = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")

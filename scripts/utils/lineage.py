@@ -54,23 +54,50 @@ class LineageManifestError(Exception):
     """Raised when the lineage manifest cannot be assembled."""
 
 
-def _file_metadata(path: Path) -> dict[str, Any]:
-    """Return ``{sha256, size, mtime_utc}`` for a regular file."""
+def _file_metadata(path: Path) -> tuple[dict[str, Any], str]:
+    """Return ``({sha256, size}, mtime_utc_str)`` for a regular file.
+
+    The ``mtime_utc`` string is returned separately so callers can route it
+    to the per-run timing sidecar rather than baking it into the primary
+    manifest.  This keeps the primary manifest content-only and byte-identical
+    across consecutive runs on identical input.
+    """
     stat_result = path.stat()
-    return {
+    mtime_utc = datetime.fromtimestamp(stat_result.st_mtime, UTC).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    content_meta: dict[str, Any] = {
         "sha256": hash_path(path),
         "size_bytes": stat_result.st_size,
-        "mtime_utc": datetime.fromtimestamp(stat_result.st_mtime, UTC).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        ),
     }
+    return content_meta, mtime_utc
 
 
-def _collect_files(root: Path, *, recursive: bool = True) -> list[dict[str, Any]]:
-    """Return file-metadata records for every regular file below *root*.
+def _collect_files(
+    root: Path,
+    *,
+    recursive: bool = True,
+    mtime_map: dict[str, str] | None = None,
+    exclude: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Return content-only file-metadata records for every regular file below *root*.
 
     Files are sorted by POSIX path for deterministic manifest output. Dot-
     files (``.*``) and temp-write artifacts (``*.tmp``) are skipped.
+
+    Parameters
+    ----------
+    root:
+        Directory to walk.
+    recursive:
+        If True, recurse into sub-directories.
+    mtime_map:
+        When provided, per-file ``mtime_utc`` strings are inserted into this
+        dict (keyed by relative POSIX path) rather than into the returned
+        records.  This keeps the returned records content-only.
+    exclude:
+        Optional single file path to skip (used to exclude the manifest file
+        itself from the audit listing so consecutive runs are idempotent).
     """
     if not root.is_dir():
         return []
@@ -83,12 +110,17 @@ def _collect_files(root: Path, *, recursive: bool = True) -> list[dict[str, Any]
             continue
         if entry.suffix == ".tmp":
             continue
+        if exclude is not None and entry.resolve() == exclude.resolve():
+            continue
         try:
-            meta = _file_metadata(entry)
+            meta, mtime_utc = _file_metadata(entry)
         except OSError as exc:
             logger.warning("lineage: could not stat %s: %s", entry, exc)
             continue
-        meta["path"] = str(entry.relative_to(root))
+        rel_path = str(entry.relative_to(root))
+        meta["path"] = rel_path
+        if mtime_map is not None:
+            mtime_map[rel_path] = mtime_utc
         records.append(meta)
     return records
 
@@ -119,27 +151,46 @@ def emit_lineage_manifest(
     compliance_posture: str,
     manifest_path: Path,
     phi_key_fingerprint: str | None = None,
+    run_id: str | None = None,
+    runs_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Assemble + atomically write the lineage manifest for this run.
+
+    The primary manifest is content-only: it carries hashes and structural
+    references but no timestamps.  When *run_id* and *runs_dir* are supplied,
+    a ``lineage_timing.json`` sidecar is written to
+    ``{runs_dir}/{run_id}/`` capturing ``generated_utc`` and a per-file
+    ``mtime_utc`` map.  Callers that do not need the sidecar (e.g. tests that
+    only assert on manifest structure) may omit both parameters.
 
     Returns the manifest payload (dict) so callers may log a summary.
 
     Zone guard: *manifest_path* is asserted against the output zone so a
     mis-configured audit dir fails fast.
     """
+    from scripts.utils.run_context import write_lineage_timing_sidecar
+
     assert_output_zone(manifest_path.parent)
 
+    # Collect mtime_utc into a side-channel dict rather than embedding in records.
+    mtime_map: dict[str, str] = {}
+
     inputs = {
-        "datasets": _collect_files(raw_datasets_dir),
+        "datasets": _collect_files(raw_datasets_dir, mtime_map=mtime_map),
     }
     if raw_dictionary_dir is not None:
-        inputs["dictionary"] = _collect_files(raw_dictionary_dir)
+        inputs["dictionary"] = _collect_files(raw_dictionary_dir, mtime_map=mtime_map)
     if raw_pdfs_dir is not None:
-        inputs["pdfs"] = _collect_files(raw_pdfs_dir)
+        inputs["pdfs"] = _collect_files(raw_pdfs_dir, mtime_map=mtime_map)
 
     outputs = {
-        "llm_source": _collect_files(llm_source_dir),
-        "audit": _collect_files(audit_dir, recursive=False),
+        "llm_source": _collect_files(llm_source_dir, mtime_map=mtime_map),
+        # Exclude the manifest itself so the audit listing is idempotent:
+        # the manifest is written after collection, and a pre-existing one
+        # from a prior run must not change the listing for the current run.
+        "audit": _collect_files(
+            audit_dir, recursive=False, mtime_map=mtime_map, exclude=manifest_path
+        ),
     }
 
     steps: dict[str, Any] = {}
@@ -161,9 +212,9 @@ def emit_lineage_manifest(
             "generated_utc": payload.get("generated_utc"),
         }
 
+    # Primary manifest: content-only, no timestamps.
     manifest: dict[str, Any] = {
         "study": study_name,
-        "generated_utc": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "pipeline_version": pipeline_version,
         "compliance_posture": compliance_posture,
         "inputs": inputs,
@@ -184,4 +235,19 @@ def emit_lineage_manifest(
         len(outputs["llm_source"]),
         len(steps),
     )
+
+    # Write timing sidecar when run_id + runs_dir are provided.
+    if run_id is not None and runs_dir is not None:
+        generated_utc = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        try:
+            write_lineage_timing_sidecar(
+                runs_dir=runs_dir,
+                run_id=run_id,
+                study=study_name,
+                generated_utc=generated_utc,
+                mtime_utc=mtime_map,
+            )
+        except OSError as exc:
+            logger.warning("lineage: could not write timing sidecar: %s", exc)
+
     return manifest
