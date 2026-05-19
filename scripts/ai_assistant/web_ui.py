@@ -40,10 +40,61 @@ from scripts.ai_assistant.ui.providers import (
     _default_provider_label,
 )
 from scripts.ai_assistant.ui.state import init_state
+from scripts.security.phi_scrub import (
+    PHIKeyMissingError,
+    PHIKeyPermissionError,
+    PHIScrubError,
+)
+from scripts.security.phi_scrub import load_key as _load_phi_key
+from scripts.utils.log_hygiene import install_phi_redactor
 
 _CSS_PATH = Path(__file__).parent / "ui" / "assets" / "theme.css"
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# PHI log redactor — installed once at module import time and guarded so
+# Streamlit re-runs (which re-enter main()) do not install a duplicate filter.
+# ---------------------------------------------------------------------------
+
+_PHI_REDACTOR_INSTALLED: bool = False
+
+
+def _install_phi_redactor_once() -> None:
+    """Install the PHI log-redacting filter on the root logger.
+
+    Idempotent: the module-level ``_PHI_REDACTOR_INSTALLED`` flag ensures only
+    one install occurs even when Streamlit re-runs ``main()`` on every
+    interaction.  ``install_phi_redactor`` itself is also idempotent (it checks
+    for an existing ``PHIRedactingFilter`` on the root logger), so the guard is
+    belt-and-braces.
+
+    Fail-closed contract:
+    * Production mode ON  + install failure → :class:`RuntimeError` (hard stop).
+    * Production mode OFF + install failure → WARNING logged, execution continues.
+    """
+    global _PHI_REDACTOR_INSTALLED
+    if _PHI_REDACTOR_INSTALLED:
+        return
+
+    try:
+        from scripts.security.phi_patterns import SUBJECT_ID_PATTERNS
+
+        install_phi_redactor(
+            hmac_key=_load_phi_key(),
+            subject_id_patterns=list(SUBJECT_ID_PATTERNS),
+        )
+        _PHI_REDACTOR_INSTALLED = True
+    except (PHIKeyMissingError, PHIKeyPermissionError, PHIScrubError) as exc:
+        if config.production_mode_enabled():
+            raise RuntimeError(
+                "Production startup refused: PHI log redactor could not be installed."
+            ) from exc
+        logger.warning(
+            "PHI log redactor NOT installed (%s). Provision the sidecar PHI key "
+            "before deploying to production.",
+            type(exc).__name__,
+        )
 
 
 def _inject_redesign_css() -> None:
@@ -82,6 +133,10 @@ def _inject_redesign_css() -> None:
 
 def main() -> None:
     """Streamlit app entry point."""
+    # Must be first — install PHI log redactor before any code can emit a log
+    # line.  Fail-closed in production; dev-mode tolerance matches CLI.
+    _install_phi_redactor_once()
+
     st.set_page_config(
         page_title=f"RePORT AI Portal — {config.STUDY_NAME}",
         page_icon="🔬",

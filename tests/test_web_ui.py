@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import signal
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -37,6 +38,7 @@ from scripts.ai_assistant.ui.streaming import (
 )
 from scripts.ai_assistant.web_ui import (
     _CSS_PATH,
+    _install_phi_redactor_once,
     _render_conv_title_dropdown,
     _render_export_submenu,
     _render_sidebar,
@@ -528,6 +530,120 @@ def test_web_chat_refuses_phi_prompt_without_persisting_raw_text(
     assert raw_prompt not in "\n".join(
         path.read_text(encoding="utf-8") for path in conv_dir.glob("*.json")
     )
+
+
+# ---------------------------------------------------------------------------
+# PHI log redactor install — acceptance criteria A, B, C/D, E
+# ---------------------------------------------------------------------------
+
+
+class TestPhiRedactorInstall:
+    """P0.5: verify that _install_phi_redactor_once() matches the CLI pattern."""
+
+    # Patching targets used across multiple tests.
+    _PHI_SCRUB = "scripts.ai_assistant.web_ui"
+
+    def _reset_guard(self) -> None:
+        """Reset the module-level idempotency flag between tests."""
+        import scripts.ai_assistant.web_ui as web_ui_mod
+
+        web_ui_mod._PHI_REDACTOR_INSTALLED = False
+
+    # ------------------------------------------------------------------
+    # Acceptance A: production=True, install fails → RuntimeError
+    # ------------------------------------------------------------------
+
+    def test_production_mode_and_key_missing_raises(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Acceptance A: production mode + PHIKeyMissingError → RuntimeError."""
+        self._reset_guard()
+        from scripts.security.phi_scrub import PHIKeyMissingError
+
+        monkeypatch.setattr(config, "production_mode_enabled", lambda: True)
+        with (
+            patch(f"{self._PHI_SCRUB}._load_phi_key", side_effect=PHIKeyMissingError("no key")),
+            patch(f"{self._PHI_SCRUB}.install_phi_redactor"),
+        ):
+            with pytest.raises(RuntimeError, match="Production startup refused"):
+                _install_phi_redactor_once()
+
+    def test_production_mode_and_install_raises_phi_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Acceptance A: production mode + PHIScrubError from install → RuntimeError."""
+        self._reset_guard()
+        from scripts.security.phi_scrub import PHIScrubError
+
+        monkeypatch.setattr(config, "production_mode_enabled", lambda: True)
+        with (
+            patch(f"{self._PHI_SCRUB}._load_phi_key", return_value=b"key"),
+            patch(f"{self._PHI_SCRUB}.install_phi_redactor", side_effect=PHIScrubError("bad")),
+        ):
+            with pytest.raises(RuntimeError, match="Production startup refused"):
+                _install_phi_redactor_once()
+
+    # ------------------------------------------------------------------
+    # Acceptance B: production=False, install fails → WARNING, no raise
+    # ------------------------------------------------------------------
+
+    def test_dev_mode_and_key_missing_warns_not_raises(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Acceptance B: dev mode + PHIKeyMissingError → WARNING logged, continues."""
+        self._reset_guard()
+        from scripts.security.phi_scrub import PHIKeyMissingError
+
+        monkeypatch.setattr(config, "production_mode_enabled", lambda: False)
+        with (
+            patch(f"{self._PHI_SCRUB}._load_phi_key", side_effect=PHIKeyMissingError("no key")),
+            patch(f"{self._PHI_SCRUB}.install_phi_redactor"),
+            caplog.at_level(logging.WARNING, logger="scripts.ai_assistant.web_ui"),
+        ):
+            _install_phi_redactor_once()  # must not raise
+
+        assert any("PHI log redactor NOT installed" in r.message for r in caplog.records)
+
+    # ------------------------------------------------------------------
+    # Acceptance C/D: install succeeds → returns normally
+    # ------------------------------------------------------------------
+
+    def test_install_succeeds_prod_mode(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Acceptance C: production mode + successful install → no exception."""
+        self._reset_guard()
+        monkeypatch.setattr(config, "production_mode_enabled", lambda: True)
+        with (
+            patch(f"{self._PHI_SCRUB}._load_phi_key", return_value=b"k" * 32),
+            patch(f"{self._PHI_SCRUB}.install_phi_redactor"),
+        ):
+            _install_phi_redactor_once()  # must not raise
+
+    def test_install_succeeds_dev_mode(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Acceptance D: dev mode + successful install → no exception."""
+        self._reset_guard()
+        monkeypatch.setattr(config, "production_mode_enabled", lambda: False)
+        with (
+            patch(f"{self._PHI_SCRUB}._load_phi_key", return_value=b"k" * 32),
+            patch(f"{self._PHI_SCRUB}.install_phi_redactor"),
+        ):
+            _install_phi_redactor_once()  # must not raise
+
+    # ------------------------------------------------------------------
+    # Acceptance E: idempotency — second call is a no-op
+    # ------------------------------------------------------------------
+
+    def test_second_call_is_noop(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Acceptance E: calling _install_phi_redactor_once() twice installs only once."""
+        self._reset_guard()
+        monkeypatch.setattr(config, "production_mode_enabled", lambda: False)
+        with (
+            patch(f"{self._PHI_SCRUB}._load_phi_key", return_value=b"k" * 32),
+            patch(f"{self._PHI_SCRUB}.install_phi_redactor") as mock_install,
+        ):
+            _install_phi_redactor_once()
+            _install_phi_redactor_once()  # second call must be a no-op
+
+        mock_install.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
