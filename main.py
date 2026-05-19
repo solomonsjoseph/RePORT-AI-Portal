@@ -680,7 +680,7 @@ def run_step(step_name: str, func: Callable[[], Any]) -> Any:
         log.success(f"{step_name} completed successfully.")
         return cast(Any, result)
     except Exception as e:
-        log.error("Fatal: %s", format_for_log(wrap(e, stage="pipeline", operation=step_name)))
+        log.error("Fatal: %s", format_for_log(wrap(e, stage="pipeline", operation=step_name, include_traceback=False)))
         sys.exit(1)
 
 
@@ -966,7 +966,7 @@ For detailed documentation, see the Sphinx docs or README.md
                 extraction_failures.append((leg_name, exc))
                 log.error(
                     "Fatal: %s",
-                    format_for_log(wrap(exc, stage="pipeline.extract", operation=leg_name)),
+                    format_for_log(wrap(exc, stage="pipeline.extract", operation=leg_name, include_traceback=False)),
                 )
                 continue
             if leg_name == "datasets":

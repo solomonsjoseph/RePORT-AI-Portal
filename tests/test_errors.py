@@ -78,3 +78,30 @@ def test_format_for_log_includes_traceback() -> None:
     block = errors.format_for_log(err)
     assert "traceback" in block
     assert "frame" in block
+
+
+def test_format_for_log_suppresses_traceback_when_include_traceback_false() -> None:
+    """Verify that pipeline error handlers using include_traceback=False
+    do not surface traceback lines that might embed PHI from row data."""
+    try:
+        raise ValueError("synthetic-subject-9999 failed date parsing in IC_VISDAT")
+    except Exception as exc:
+        wrapped = errors.wrap(
+            exc,
+            stage="pipeline.extract",
+            operation="datasets",
+            include_traceback=False,
+        )
+    log_block = errors.format_for_log(wrapped)
+    assert "Traceback" not in log_block
+    assert wrapped.traceback is None
+
+
+def test_wrap_includes_traceback_by_default() -> None:
+    """Regression guard: wrap() should include traceback by default."""
+    try:
+        raise ValueError("boom")
+    except Exception as exc:
+        wrapped = errors.wrap(exc, stage="s", operation="o")
+    assert wrapped.traceback is not None
+    assert "ValueError" in wrapped.traceback
