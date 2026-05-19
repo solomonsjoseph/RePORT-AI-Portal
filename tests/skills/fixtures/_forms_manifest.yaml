@@ -1,0 +1,6 @@
+optional: []
+reject: []
+required:
+- 01_demographics.xlsx
+- 02_visit.xlsx
+- 03_outcome.xlsx

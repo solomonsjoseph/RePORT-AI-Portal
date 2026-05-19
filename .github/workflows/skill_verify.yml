@@ -1,0 +1,132 @@
+name: Skill verifier guard
+
+# Runs the extract_to_llm_source verifier against the synthetic 3-form
+# fixture trio on every PR that touches the skill's surfaces.
+# Prevents regressions to the 12 verifier invariants.
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/security/**'
+      - 'scripts/extraction/**'
+      - 'scripts/audit/**'
+      - 'scripts/skills/**'
+      - 'tests/skills/**'
+      - '.github/workflows/skill_verify.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/security/**'
+      - 'scripts/extraction/**'
+      - 'scripts/audit/**'
+      - 'scripts/skills/**'
+      - 'tests/skills/**'
+      - '.github/workflows/skill_verify.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: skill-verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  UV_FROZEN: '1'
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  # happy-path + fail-injection: runs all 16 fixture tests in one job
+  # ────────────────────────────────────────────────────────────────────────────
+  verify-fixture:
+    name: Verifier guard / happy-path + fail-injection
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: '3.11'
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Sync dependencies
+        run: uv sync --all-groups
+
+      - name: Run verifier fixture tests (happy-path + fail-injection)
+        # Runs TestFixtureVerifyHappyPath (4 tests) and
+        # TestFixtureVerifyFailInjection (12 tests = 6 mutations × 2 assertions).
+        # Each fail-injection case asserts a specific non-zero exit code:
+        #   null_hash        → EXIT_LEDGER_HASH_NULL (3)
+        #   missing_jsonl    → EXIT_MANIFEST_MISMATCH (2)
+        #   planted_phi      → EXIT_VERIFIER_FAIL (5)
+        #   leftover_staging → EXIT_DESTRUCTION_INCOMPLETE (7)
+        #   leftover_lock    → EXIT_NEEDS_ADVICE (6)
+        #   missing_attestation → EXIT_DESTRUCTION_INCOMPLETE (7)
+        run: >-
+          uv run --all-groups python -m pytest
+          tests/skills/test_ci_fixture_verify.py
+          -v --tb=short
+
+      - name: Collect verifier reports into staging dir
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p /tmp/verifier_reports
+          find /tmp/pytest-* -name 'verifier_report.json' 2>/dev/null \
+            | while IFS= read -r f; do
+                base=$(basename "$(dirname "$f")")
+                cp "$f" "/tmp/verifier_reports/${base}_verifier_report.json" || true
+              done
+          ls -la /tmp/verifier_reports/ || echo "(no reports collected)"
+
+      - name: Upload verifier reports
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: verifier-reports
+          path: /tmp/verifier_reports/
+          if-no-files-found: warn
+          retention-days: 14
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Explicit scrub-config hash guard: changing phi_scrub.yaml must trip
+  # assertion 5 (scrub_config_hash mismatch). Runs only the null_hash
+  # fail-injection cases as a targeted regression check.
+  # ────────────────────────────────────────────────────────────────────────────
+  verify-scrub-config-hash-guard:
+    name: Verifier guard / scrub-config hash regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: verify-fixture
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: '3.11'
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Sync dependencies
+        run: uv sync --all-groups
+
+      - name: Null-hash mutation triggers EXIT_LEDGER_HASH_NULL (3)
+        run: >-
+          uv run --all-groups python -m pytest
+          "tests/skills/test_ci_fixture_verify.py::TestFixtureVerifyFailInjection::test_mutated_fixture_trips_correct_exit[null_hash]"
+          "tests/skills/test_ci_fixture_verify.py::TestFixtureVerifyFailInjection::test_mutated_fixture_verifier_report_shows_fail[null_hash]"
+          -v --tb=short
