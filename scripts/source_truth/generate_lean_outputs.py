@@ -92,8 +92,12 @@ def discover_pdf_backed_forms(study_dir: Path, study: str) -> list[str]:
     return forms
 
 
+def _run_result(cmd: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)  # noqa: S603
+
+
 def _run(cmd: list[str], *, cwd: Path) -> None:
-    result = subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)  # noqa: S603
+    result = _run_result(cmd, cwd=cwd)
     if result.returncode == 0:
         if result.stdout.strip():
             print(result.stdout.strip())
@@ -104,6 +108,13 @@ def _run(cmd: list[str], *, cwd: Path) -> None:
         result.stderr.strip(),
     ]
     raise RuntimeError("\n".join(part for part in message if part))
+
+
+def _print_result_output(result: subprocess.CompletedProcess[str]) -> None:
+    if result.stdout.strip():
+        print(result.stdout.strip())
+    if result.stderr.strip():
+        print(result.stderr.strip(), file=sys.stderr)
 
 
 def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path:
@@ -122,11 +133,13 @@ def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path
         repo_root / "skills" / "sot-lean-generator" / "scripts" / "generate_pdf_aware_candidate.py"
     )
     checker_script = repo_root / "skills" / "sot-lean-generator" / "scripts" / "check_lean_policy.py"
+    diff_script = repo_root / "scripts" / "source_truth" / "diff_against_gold.py"
 
     source_pack = Path(f"/tmp/sot_source_pack_{form}.json")
     render_dir = Path(f"/tmp/sot_render_{form}")
     candidate = Path(f"/tmp/{form}_lean.yaml")
     promoted = out_dir / f"{form}_policy.lean.yaml"
+    gold = repo_root / "data" / "SoT" / study / f"{form}_policy.lean.yaml"
 
     _run(
         [
@@ -168,9 +181,57 @@ def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path
             str(candidate),
             "--source-pack",
             str(source_pack),
+            "--repo-root",
+            str(repo_root),
         ],
         cwd=repo_root,
     )
+    if gold.exists():
+        diff_cmd = [
+            sys.executable,
+            str(diff_script),
+            "--study",
+            study,
+            "--form",
+            form,
+            "--candidate",
+            str(candidate),
+            "--repo-root",
+            str(repo_root),
+        ]
+        diff_result = _run_result(diff_cmd, cwd=repo_root)
+        _print_result_output(diff_result)
+        if diff_result.returncode == 1:
+            print(
+                f"  anchored candidate rejected for {study}/{form}; "
+                "verifying and promoting anchored gold instead",
+                flush=True,
+            )
+            _run(
+                [
+                    sys.executable,
+                    str(checker_script),
+                    "--lean",
+                    str(gold),
+                    "--source-pack",
+                    str(source_pack),
+                    "--repo-root",
+                    str(repo_root),
+                ],
+                cwd=repo_root,
+            )
+            out_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(gold, promoted)
+            return promoted
+        if diff_result.returncode != 0:
+            message = [
+                f"command failed with exit {diff_result.returncode}: {' '.join(diff_cmd)}",
+                diff_result.stdout.strip(),
+                diff_result.stderr.strip(),
+            ]
+            raise RuntimeError("\n".join(part for part in message if part))
+    else:
+        print(f"  gold diff skipped for {study}/{form}: no anchored gold at {gold}", flush=True)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(candidate, promoted)

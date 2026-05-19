@@ -21,7 +21,8 @@ example throughout.
 ## Step 1 — Stage 0: Source Pack
 
 Run the deterministic source-pack extractor. This reads **only row 1** of the
-dataset file (row 2+ bytes never enter Python) and renders the PDF at 600 DPI.
+dataset file (row 2+ values are never read or used) and renders every PDF page
+at 600 DPI.
 
 ```bash
 make sot-source-pack STUDY=Indo-VAP FORM=6_HIV
@@ -36,9 +37,10 @@ python -m scripts.source_truth.study_intake --study Indo-VAP --form 6_HIV
 **Expected outputs:**
 
 - `/tmp/sot_source_pack_6_HIV.json` — JSON object with `headers` (dataset row-1
-  array) and `pdf_sha256`.
-- `/tmp/sot_render_6_HIV/6_HIV.pdf.png` — 600 DPI PNG render of the annotated
-  PDF (visual ground truth for Stages 1–3).
+  array), `pdf_sha256`, `renders`, and `screenshot` as the first-render
+  compatibility alias.
+- `/tmp/sot_render_6_HIV/6 HIV v1.0.pdf.page-001.png`, `.page-002.png`, ... —
+  600 DPI PNG renders of the annotated PDF (visual ground truth for Stages 1–3).
 
 **Stop here if either output is missing.** Check that `gs` is on `$PATH` and
 that the PDF is not password-protected or truncated.
@@ -72,23 +74,24 @@ make rebuild-llm-source STUDY=Indo-VAP
 
 ## Step 2 — Stages 1–3: LLM YAML Authoring
 
-These stages require LLM reasoning; they cannot be scripted deterministically.
-Use the appropriate path for your LLM tool.
+High-assurance authoring requires LLM/manual reasoning over the source pack and
+page renders. Runtime rebuilds may use the conservative script-backed candidate
+generator, but those candidates still require the same verifier and
+diff-against-gold gates before promotion.
 
-### Claude Code
+### Skill-aware or Manual Authoring
 
 Open `skills/sot-lean-generator/SKILL.md` and follow the stage instructions.
-The skill runner orchestrates Stages 1–3 and writes the result to
-`/tmp/6_HIV_lean.yaml`.
+Write the result to `/tmp/6_HIV_lean.yaml`.
 
-### Any other LLM tool (ChatGPT, Gemini, Cursor, etc.)
+### Direct Rules-File Path
 
 1. Read `skills/sot-lean-generator/references/exhaustive_yaml_rules.md`.
    Write the exhaustive YAML draft for the form using the source pack and the
-   600 DPI render as your evidence sources.
+   600 DPI page renders as your evidence sources.
 
-2. Run 5 visual sweep iterations: compare the render at
-   `/tmp/sot_render_6_HIV/6_HIV.pdf.png` against your draft. Correct any widget
+2. Run 5 visual sweep iterations: compare every render listed in the source
+   pack's `renders` array against your draft. Correct any widget
    type, field label, or value-set mismatches. Do not invent details that are not
    visible in the render; if a widget is ambiguous at 600 DPI, **pause and ask
    the human** — do not guess.
@@ -97,9 +100,7 @@ The skill runner orchestrates Stages 1–3 and writes the result to
    exhaustive draft to the lean schema. Write the final result to
    `/tmp/6_HIV_lean.yaml`.
 
-**All LLM tools share the same rules files and the same verifier.** The only
-difference is the orchestration shell (Claude Code skill runner vs. direct
-rules-file reading).
+**All LLM tools share the same rules files and the same verifier.**
 
 ---
 
@@ -110,13 +111,16 @@ keys, instruction-block whitelist, and header-equality against the source pack.
 
 ```bash
 make sot-verify STUDY=Indo-VAP FORM=6_HIV
+# validates /tmp/6_HIV_lean.yaml by default
+# use CANDIDATE=/path/to/file to override
 ```
 
 ### Exit codes
 
 | Code | Meaning | Action |
 |------|---------|--------|
-| 0 | All checks pass — ready to promote | Continue to Step 4 |
+| 0 | All checks pass — ready for the next gate | Continue to Step 4 |
+| 1 | Validation/content failure | Fix the candidate and re-run |
 | 2 | SHA mismatch — source pack does not match the PDF on disk | Re-run Step 1 (Stage 0), then redo Stages 1–3 |
 | 3 | Script gap — verifier could not evaluate a check | **Stop. Do not promote. Ask the human.** |
 | other | Unexpected error | Inspect stderr; do not promote |
@@ -181,6 +185,7 @@ one command:
 ```bash
 make sot-validate STUDY=Indo-VAP FORM=6_HIV
 # Requires /tmp/sot_source_pack_6_HIV.json — run `make sot-source-pack` first.
+# Validates /tmp/6_HIV_lean.yaml by default; pass CANDIDATE=/path/to/file to override.
 # Exits non-zero if any gate fails.
 ```
 
@@ -200,7 +205,7 @@ uv run --all-groups python scripts/source_truth/diff_against_gold.py \
 
 | File | Role |
 |------|------|
-| `skills/sot-lean-generator/SKILL.md` | Claude Code orchestration guide for Stages 1–3 |
+| `skills/sot-lean-generator/SKILL.md` | SoT authoring guide for Stages 1–3 |
 | `skills/sot-lean-generator/references/exhaustive_yaml_rules.md` | Stage 1 rules (any LLM) |
 | `skills/sot-lean-generator/references/lean_yaml_rules.md` | Stage 3 trim rules (any LLM) |
 | `skills/sot-lean-generator/scripts/extract_sources.py` | Stage 0 implementation |

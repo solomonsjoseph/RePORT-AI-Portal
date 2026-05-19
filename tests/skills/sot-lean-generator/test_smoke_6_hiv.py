@@ -62,13 +62,18 @@ def test_stage0_source_pack() -> None:
     pack = json.loads(SOURCE_PACK.read_text(encoding="utf-8"))
     assert "headers" in pack, "source pack missing 'headers' key"
     assert len(pack["headers"]) > 0, "source pack has no headers"
+    assert "pdf_sha256" in pack, "source pack missing 'pdf_sha256' key"
+    assert len(pack["pdf_sha256"]) == 64, "source pack pdf_sha256 is not a SHA-256 hex digest"
+    assert "renders" in pack, "source pack missing 'renders' key"
+    assert len(pack["renders"]) == pack["page_count"], "source pack must render every PDF page"
+    assert pack["screenshot"] == pack["renders"][0], "screenshot must remain first-render compatibility alias"
     assert "header_duplicates" in pack, "source pack missing duplicate-header summary"
     assert "annotation_duplicates" in pack, "source pack missing duplicate-annotation summary"
 
     pngs = list(RENDER_DIR.glob("*.png")) if RENDER_DIR.is_dir() else []
-    assert len(pngs) > 0, (
+    assert len(pngs) == pack["page_count"], (
         f"no render PNG found under {RENDER_DIR}; "
-        "check that ghostscript (gs) or qlmanage is installed"
+        "check that ghostscript (gs) is installed"
     )
 
 
@@ -87,6 +92,7 @@ def test_stage4_lean_verify() -> None:
             str(CHECK_SCRIPT),
             "--lean", str(LEAN_YAML),
             "--source-pack", str(SOURCE_PACK),
+            "--repo-root", str(REPO_ROOT),
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,
@@ -100,6 +106,36 @@ def test_stage4_lean_verify() -> None:
     assert "passed" in result.stdout.lower(), (
         f"expected 'passed' in output, got: {result.stdout!r}"
     )
+
+
+@pytest.mark.skipif(
+    not SOURCE_PACK.exists(),
+    reason="source pack not present at /tmp/sot_source_pack_6_HIV.json (run test_stage0_source_pack first)",
+)
+def test_stage4_pdf_sha_mismatch_exits_2(tmp_path: Path) -> None:
+    """Stage 4 reports stale source packs with the documented SHA mismatch code."""
+    assert LEAN_YAML.exists(), f"reference lean YAML not found: {LEAN_YAML}"
+    assert CHECK_SCRIPT.exists(), f"check_lean_policy.py not found: {CHECK_SCRIPT}"
+
+    stale_pack = json.loads(SOURCE_PACK.read_text(encoding="utf-8"))
+    stale_pack["pdf_sha256"] = "0" * 64
+    stale_pack_path = tmp_path / "sot_source_pack_6_HIV_stale_sha.json"
+    stale_pack_path.write_text(json.dumps(stale_pack), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            "uv", "run", "--all-groups", "python",
+            str(CHECK_SCRIPT),
+            "--lean", str(LEAN_YAML),
+            "--source-pack", str(stale_pack_path),
+            "--repo-root", str(REPO_ROOT),
+        ],
+        cwd=str(REPO_ROOT),
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 2
+    assert "SHA mismatch" in result.stderr
 
 
 @pytest.mark.skipif(

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -54,6 +55,10 @@ ALIAS_ANNOTATION_KIND = "pdf_annotation_alias_to_dataset_header"
 
 HARD_PDF_MISSING_KIND = "printed_widget_without_dataset_header"
 
+EXIT_VALIDATION_FAILURE = 1
+EXIT_SOURCE_MISMATCH = 2
+EXIT_SCRIPT_GAP = 3
+
 FORM_6_HIV_HEADERS = [
     "SUBJID",
     "HIV_VISIT",
@@ -87,6 +92,40 @@ FORM_6_HIV_MUTEX_PAIRS = [
 def _load_yaml(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as handle:
         return yaml.safe_load(handle)
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _verify_pdf_sha(source_pack: dict[str, Any], repo_root: Path) -> tuple[int, str] | None:
+    expected = source_pack.get("pdf_sha256")
+    if expected is None:
+        return None
+    if not isinstance(expected, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", expected):
+        return EXIT_SCRIPT_GAP, "source pack pdf_sha256 is malformed"
+
+    pdf_value = source_pack.get("pdf")
+    if not isinstance(pdf_value, str) or not pdf_value:
+        return EXIT_SCRIPT_GAP, "source pack includes pdf_sha256 but no pdf path"
+
+    pdf_path = Path(pdf_value)
+    if not pdf_path.is_absolute():
+        pdf_path = repo_root / pdf_path
+    if not pdf_path.exists():
+        return EXIT_SCRIPT_GAP, f"source pack PDF path does not exist: {pdf_path}"
+
+    actual = _sha256_file(pdf_path)
+    if actual.lower() != expected.lower():
+        return (
+            EXIT_SOURCE_MISMATCH,
+            f"SHA mismatch: source pack pdf_sha256 {expected} != current PDF {actual}",
+        )
+    return None
 
 
 def _walk(obj: Any, path: str = "$") -> list[tuple[str, Any]]:
@@ -309,12 +348,24 @@ def main() -> int:
     parser.add_argument("--lean", required=True, type=Path)
     parser.add_argument("--source-pack", required=True, type=Path)
     parser.add_argument("--benchmark", type=Path)
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=Path("."),
+        help="Repository root used to resolve source-pack relative PDF paths.",
+    )
     args = parser.parse_args()
 
     errors: list[str] = []
     lean_text = args.lean.read_text(encoding="utf-8")
     lean = _load_yaml(args.lean)
     source_pack = json.loads(args.source_pack.read_text(encoding="utf-8"))
+    repo_root = args.repo_root.resolve()
+    sha_status = _verify_pdf_sha(source_pack, repo_root)
+    if sha_status is not None:
+        exit_code, message = sha_status
+        print(message, file=sys.stderr)
+        return exit_code
 
     if not isinstance(lean, dict):
         errors.append("lean YAML root must be a mapping")
@@ -417,7 +468,7 @@ def main() -> int:
         print("Lean SoT checks failed:", file=sys.stderr)
         for error in errors:
             print(f"- {error}", file=sys.stderr)
-        return 1
+        return EXIT_VALIDATION_FAILURE
 
     print("Lean SoT checks passed")
 
@@ -433,14 +484,14 @@ def main() -> int:
         from scripts.ai_assistant.sot_loader import validate as _validate
     except ImportError as exc:
         print(f"Property validator import failed: {exc}", file=sys.stderr)
-        return 1
+        return EXIT_SCRIPT_GAP
 
     report = _validate(lean)
     if not report.passed:
         print("Property validator failed:", file=sys.stderr)
         for ve in report.errors:
             print(f"- [{ve.code}] {ve.path}: {ve.message}", file=sys.stderr)
-        return 1
+        return EXIT_VALIDATION_FAILURE
 
     print("Property validator passed")
     return 0

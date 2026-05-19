@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
 import shutil
@@ -211,50 +212,57 @@ def _pdf_pages_via_pdfplumber(pdf: Path) -> list[dict[str, Any]]:
     return pages
 
 
-def _render_with_ghostscript(pdf: Path, render_dir: Path, dpi: int = 600) -> str | None:
-    """Render PDF page 1 to PNG at the given DPI via ghostscript (cross-platform).
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _render_with_ghostscript(
+    pdf: Path,
+    render_dir: Path,
+    *,
+    page_count: int,
+    dpi: int = 600,
+) -> list[str]:
+    """Render every PDF page to PNG at the given DPI via ghostscript.
 
     600 DPI is the project default — required for accurate box counting, title
     spacing detection, and raised-numeral identification. Renders below ~400 DPI
     have been observed to mislead visual sweeps on tiny character-boxes
     (e.g., 3-vs-2 box widget calls on Initials, missed title double-spaces).
     """
+    if page_count < 1:
+        raise ValueError(f"cannot render PDF with page_count={page_count}: {pdf}")
     gs = shutil.which("gs") or shutil.which("gswin64c") or shutil.which("gswin32c")
     if not gs:
-        return None
+        raise RuntimeError("Ghostscript (gs) is required for exhaustive 600 DPI PDF renders")
     render_dir.mkdir(parents=True, exist_ok=True)
-    out = render_dir / f"{pdf.name}.png"
+    for stale in render_dir.glob(f"{pdf.name}.page-*.png"):
+        stale.unlink()
+    old_page_one = render_dir / f"{pdf.name}.png"
+    if old_page_one.exists():
+        old_page_one.unlink()
+    out_pattern = render_dir / f"{pdf.name}.page-%03d.png"
     cmd = [
         gs, "-dNOPAUSE", "-dBATCH", "-dQUIET",
         "-sDEVICE=png16m", f"-r{dpi}",
-        "-dFirstPage=1", "-dLastPage=1",
-        f"-sOutputFile={out}", str(pdf),
+        "-dFirstPage=1", f"-dLastPage={page_count}",
+        f"-sOutputFile={out_pattern}", str(pdf),
     ]
     subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)  # noqa: S603
-    return str(out) if out.exists() else None
+    renders = [render_dir / f"{pdf.name}.page-{page:03d}.png" for page in range(1, page_count + 1)]
+    missing = [path for path in renders if not path.exists()]
+    if missing:
+        raise RuntimeError(f"Ghostscript did not render all pages for {pdf}: missing {missing!r}")
+    return [str(path) for path in renders]
 
 
-def _render_with_qlmanage(pdf: Path, render_dir: Path, size: int = 3600) -> str | None:
-    """macOS-only fallback. Default raised to 3600px (~2x prior 1800 default).
-
-    Less crisp than 600 DPI ghostscript output; prefer ghostscript when available.
-    """
-    qlmanage = shutil.which("qlmanage")
-    if not qlmanage:
-        return None
-    render_dir.mkdir(parents=True, exist_ok=True)
-    cmd = [qlmanage, "-t", "-s", str(size), "-o", str(render_dir), str(pdf)]
-    subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)  # noqa: S603
-    expected = render_dir / f"{pdf.name}.png"
-    return str(expected) if expected.exists() else None
-
-
-def _render_pdf(pdf: Path, render_dir: Path) -> str | None:
-    """Render via ghostscript at 600 DPI (preferred) or qlmanage at 3600px (macOS fallback)."""
-    rendered = _render_with_ghostscript(pdf, render_dir, dpi=600)
-    if rendered:
-        return rendered
-    return _render_with_qlmanage(pdf, render_dir, size=3600)
+def _render_pdf(pdf: Path, render_dir: Path, *, page_count: int) -> list[str]:
+    """Render every page via ghostscript at 600 DPI."""
+    return _render_with_ghostscript(pdf, render_dir, page_count=page_count, dpi=600)
 
 
 def _compact_pages(pages: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -302,28 +310,30 @@ def main() -> int:
     for page in pages:
         annotations.extend(page.get("annotations", []) or [])
 
-    screenshot = None
+    renders: list[str] = []
     if args.render_dir:
-        screenshot = _render_pdf(pdf, args.render_dir.resolve())
+        renders = _render_pdf(pdf, args.render_dir.resolve(), page_count=len(pages))
 
     pack = {
         "source_boundary": "printed_pdf_plus_dataset_row_1_headers_only",
         "dataset_rows_read": "row_1_only",
         "pdf": os.path.relpath(pdf, repo_root),
+        "pdf_sha256": _sha256_file(pdf),
         "dataset": os.path.relpath(dataset, repo_root),
         "headers": headers,
         "header_duplicates": _duplicates(headers),
         "annotation_duplicates": _duplicates(annotations),
         "page_count": len(pages),
-        "screenshot": screenshot,
+        "renders": renders,
+        "screenshot": renders[0] if renders else None,
         "pages": _compact_pages(pages),
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(pack, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"source pack written: {args.out}")
     print(f"headers: {len(headers)}")
-    if screenshot:
-        print(f"screenshot: {screenshot}")
+    for render in renders:
+        print(f"render: {render}")
     return 0
 
 

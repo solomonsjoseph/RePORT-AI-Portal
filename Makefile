@@ -18,6 +18,7 @@
 
 UV ?= uv
 STUDY ?= Indo-VAP
+CANDIDATE ?= /tmp/$(FORM)_lean.yaml
 COLUMN_INVENTORY ?=
 
 ifeq ($(OS),Windows_NT)
@@ -72,7 +73,7 @@ N := \033[0m
 .PHONY: \
 	help quickstart debug sync version \
 	pipeline dictionary extract-datasets bundle \
-	sot-source-pack sot-generate-all sot-verify sot-validate \
+	sot-source-pack sot-generate-all sot-verify sot-verify-output sot-validate \
 	build-llm-source rebuild-llm-source \
 	chat-deps chat-cli-deps chat-cli chat \
 	test test-all lint typecheck security ci verify release-check \
@@ -101,7 +102,7 @@ help:
 	@printf "$(B)$(G)  Pipeline — full$(N)\n"
 	@printf "  $(C)make pipeline$(N)         Dict → Datasets → PHI scrub → llm_source\n"
 	@printf "  $(C)make build-llm-source$(N) STUDY=… — SoT → Dict → Datasets → PHI scrub → llm_source\n"
-	@printf "  $(C)make rebuild-llm-source$(N) STUDY=… — Remove generated llm_source/staging, then rebuild\n"
+	@printf "  $(C)make rebuild-llm-source$(N) STUDY=… — Remove generated llm_source/staging, preserve audit/agent, then rebuild\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Pipeline — individual steps$(N)\n"
 	@printf "  $(C)make dictionary$(N)       Step 0  — Load data dictionary → JSON\n"
@@ -109,9 +110,10 @@ help:
 	@printf "  $(C)make bundle$(N)           Legacy alias — prepare llm_source dictionary leg\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Source-of-Truth (SoT)$(N)\n"
-	@printf "  $(C)make sot-source-pack$(N)  STUDY=… FORM=… — Stage 0: resolve PDF+dataset → source pack + render\n"
+	@printf "  $(C)make sot-source-pack$(N)  STUDY=… FORM=… — Stage 0: resolve PDF+dataset → source pack + page renders\n"
 	@printf "  $(C)make sot-generate-all$(N) STUDY=… — Generate+verify PDF-backed lean YAMLs into llm_source/source_truth\n"
-	@printf "  $(C)make sot-verify$(N)       STUDY=… FORM=… — Stage 4: verifier + property validator\n"
+	@printf "  $(C)make sot-verify$(N)       STUDY=… FORM=… [CANDIDATE=…] — Stage 4 candidate verifier + property validator\n"
+	@printf "  $(C)make sot-verify-output$(N) STUDY=… FORM=… — Verify promoted output YAML\n"
 	@printf "  $(C)make sot-validate$(N)     STUDY=… FORM=… — All gates: verifier + validator + diff-against-gold\n"
 	@printf "\n"
 	@printf "$(B)$(G)  AI Assistant$(N)\n"
@@ -206,7 +208,7 @@ extract-datasets:
 	@$(PYTHON) main.py --skip-dictionary --process-datasets $(VFLAG) $(FFLAG)
 	@printf "$(G)✓ Dataset processing complete$(N)\n"
 
-sot-source-pack: ## Stage 0: resolve PDF+dataset and write source pack JSON + render PNG
+sot-source-pack: ## Stage 0: resolve PDF+dataset and write source pack JSON + per-page render PNGs
 	$(UV) run --all-groups python -m scripts.source_truth.study_intake \
 		--study $(STUDY) --form $(FORM) --repo-root .
 
@@ -214,11 +216,19 @@ sot-generate-all: ## Generate and verify all PDF-backed lean policy YAMLs into l
 	$(UV) run --all-groups python -m scripts.source_truth.generate_lean_outputs \
 		--study $(STUDY) --repo-root .
 
-sot-verify: ## Stage 4: verify a lean policy YAML against the source pack produced by sot-source-pack
+sot-verify: ## Stage 4: verify candidate lean YAML against the source pack produced by sot-source-pack
+	$(UV) run --all-groups python \
+		skills/sot-lean-generator/scripts/check_lean_policy.py \
+		--lean $(CANDIDATE) \
+		--source-pack /tmp/sot_source_pack_$(FORM).json \
+		--repo-root .
+
+sot-verify-output: ## Verify a promoted output lean YAML against the source pack produced by sot-source-pack
 	$(UV) run --all-groups python \
 		skills/sot-lean-generator/scripts/check_lean_policy.py \
 		--lean output/$(STUDY)/llm_source/source_truth/$(FORM)_policy.lean.yaml \
-		--source-pack /tmp/sot_source_pack_$(FORM).json
+		--source-pack /tmp/sot_source_pack_$(FORM).json \
+		--repo-root .
 
 sot-validate: ## All-gates check: verifier + property validator + diff-against-gold (hard fail on any step)
 	@if [ -z "$(FORM)" ]; then \
@@ -229,13 +239,18 @@ sot-validate: ## All-gates check: verifier + property validator + diff-against-g
 		printf "$(R)ERROR: source pack missing — run 'make sot-source-pack STUDY=$(STUDY) FORM=$(FORM)' first$(N)\n"; \
 		exit 1; \
 	fi
+	@if [ ! -f "$(CANDIDATE)" ]; then \
+		printf "$(R)ERROR: candidate missing — expected $(CANDIDATE) or pass CANDIDATE=/path/to/lean.yaml$(N)\n"; \
+		exit 1; \
+	fi
 	@$(UV) run --all-groups python \
 		skills/sot-lean-generator/scripts/check_lean_policy.py \
-		--lean data/SoT/$(STUDY)/$(FORM)_policy.lean.yaml \
-		--source-pack /tmp/sot_source_pack_$(FORM).json
+		--lean $(CANDIDATE) \
+		--source-pack /tmp/sot_source_pack_$(FORM).json \
+		--repo-root .
 	@$(UV) run --all-groups python scripts/source_truth/diff_against_gold.py \
 		--study $(STUDY) --form $(FORM) \
-		--candidate data/SoT/$(STUDY)/$(FORM)_policy.lean.yaml
+		--candidate $(CANDIDATE)
 	@printf "$(G)✓ sot-validate STUDY=$(STUDY) FORM=$(FORM) — all gates green$(N)\n"
 
 bundle:

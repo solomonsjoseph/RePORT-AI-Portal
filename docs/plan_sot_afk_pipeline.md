@@ -37,16 +37,17 @@ zero-diff regenerations from an attested gold.
    signed attestation.
 6. **Model and seed pinning.** Every machine-produced artifact records the model
    ID, model version, and seed/temperature in the audit bundle. No "latest" tags.
-7. **Per-phase model profile.** Opus 4.7 for planning/review, Sonnet 4.6 for
-   execution agents, Haiku 4.5 for test scaffolding. Enforced when dispatching
-   agents.
+7. **Per-phase model profile.** Every automated stage declares the model role it
+   needs (planning/review, execution, test scaffolding, visual grading) and records
+   the concrete provider/model in the audit bundle. The plan does not require a
+   Claude-only model family.
 8. **No Claude attribution** in commits, code, or comments.
 9. **No destructive operations without rollback.** `git reset --hard`, `rm -rf`
    on tracked paths, force pushes — all require an explicit rollback procedure
    documented in the same change.
 10. **Cross-LLM portability is mandatory.** Every new capability must be invokable
-    from a non-Claude LLM via CLI + AGENTS.md, not only via the Claude `Skill`
-    tool.
+    from any LLM tool via CLI + AGENTS.md, not only via a tool-specific skill
+    runner.
 
 ## Definitions
 
@@ -402,11 +403,11 @@ CLI:
   evidence anchors still exist), `--render <png>`, `--source-pack <json>`,
   `--audit-bundle <dir>`, `--graders <comma-list>`.
 - Available grader types:
-  - `g-pixel-claude`: Claude grader; visual fidelity; required output
-    includes `cited_crop_bbox` for every claim.
-  - `g-pixel-gemini`: Gemini grader; visual fidelity; same citation
-    requirement. Different model family for true adversarial diversity.
-  - `g-inference-claude`: clinical-logic inference; required to cite both
+  - `g-pixel-primary`: primary configured visual grader; required output includes
+    `cited_crop_bbox` for every claim.
+  - `g-pixel-secondary`: secondary configured visual grader from a different model
+    family for true adversarial diversity; same citation requirement.
+  - `g-inference-primary`: clinical-logic inference grader; required to cite both
     pixel evidence and the rule name it instantiates.
 - Each grader runs in its own subprocess with a fresh prompt and no writer
   history.
@@ -437,9 +438,9 @@ permits auto-promotion, the orchestrator must first invoke
 `run_adversarial_verify.py` and only proceed if it returns exit 0.
 
 **5.5** Cross-LLM portability requirement: the script must run via plain
-`uv run --all-groups python …`. API keys for Claude and Gemini come from
-`config.py` / environment, not from the Claude Code session. A non-Claude
-tool must be able to invoke this and get the same result.
+`uv run --all-groups python …`. Provider API keys come from `config.py` /
+environment, not from an interactive agent session. Any LLM tool must be able
+to invoke this and get the same result.
 
 **5.6** Tests: `test_adversarial_verify.py` with mocked grader subprocesses
 exercising k-of-n logic, citation enforcement, fix-round budget, and queue
@@ -599,11 +600,11 @@ Will be: `Phase 1: green | 2026-05-18 | <commit SHA> | machine | acceptance gate
 
 ### Background
 
-Phase 1 closed `green` in the Phase Status Log (commit 0a499f2). The Opus
+Phase 1 closed `green` in the Phase Status Log (commit 0a499f2). The
 integration reviewer — running the SDD workflow's closing-review step — marked
 the phase **APPROVED WITH FOLLOW-UPS** and surfaced five items. Items 1 and 2
 are applied immediately as a Phase 1.x patch before Phase 2 onboards any
-non-Claude collaborator. Items 3, 4, and 5 are deferred (see below).
+cross-LLM collaborator. Items 3, 4, and 5 are deferred (see below).
 
 Per Operating Rule 2, none of these items appeared on Phase 1's deliverables
 list. Per the Amendment Procedure, this section is the written authorization
@@ -680,7 +681,7 @@ For the remaining 27 Indo-VAP forms (and every future study), generation is the
 actual bottleneck.
 
 Additionally, the user's stated workflow (iterative LLM extraction with
-screenshot loops, LLM-flagged uncertainty surfaced to the user, separate
+page-render loops, LLM-flagged uncertainty surfaced to the user, separate
 extractor and reviewer subagents, parallel per-form dispatch) is a **legitimate
 mini-pipeline in its own right**, but it must NOT be conflated with the
 6-phase attestation pipeline. Conflation causes:

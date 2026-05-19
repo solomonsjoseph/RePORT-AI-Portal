@@ -27,7 +27,8 @@ What this wrapper does (Stage 0 only)
 4. Prints the resolved output paths to stdout in key=value lines so they are
    machine-parseable:
        source_pack=/tmp/sot_source_pack_<form>.json
-       render=/tmp/sot_render_<form>/<pdf_name>.png
+       render=/tmp/sot_render_<form>/<pdf_name>.page-001.png
+       render=/tmp/sot_render_<form>/<pdf_name>.page-002.png
 
 Stages 1-3 (LLM-driven lean-YAML authoring) are NOT performed here.  They
 require LLM reasoning and live in the skill pipeline described in
@@ -50,6 +51,7 @@ Usage
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -314,7 +316,7 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="python -m scripts.source_truth.study_intake",
         description=(
             "Stage-0 SoT intake: resolve PDF + dataset paths and produce a "
-            "source pack JSON + page-1 render PNG.  Stages 1-3 (LLM lean-YAML "
+            "source pack JSON + per-page render PNGs.  Stages 1-3 (LLM lean-YAML "
             "authoring) are NOT run here — they live in the skill pipeline."
         ),
     )
@@ -399,9 +401,9 @@ def main(argv: list[str] | None = None) -> int:
 
     # Print parseable output
     print(f"source_pack={out_pack}")
-    pngs = sorted(render_dir.glob("*.png")) if render_dir.is_dir() else []
-    for png in pngs:
-        print(f"render={png}")
+    pack = json.loads(out_pack.read_text(encoding="utf-8"))
+    for render in pack.get("renders", []):
+        print(f"render={render}")
 
     return 0
 

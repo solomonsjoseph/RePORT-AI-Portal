@@ -31,9 +31,10 @@ This repo uses a single-context domain-doc layout. See `docs/agents/domain.md`.
 ## SoT creation
 
 SoT lean YAML files are produced by the **sot-lean-generator** 5-stage pipeline.
-Stages 0, 4, and 5 are deterministic scripts; Stages 1–3 require LLM reasoning.
-All LLM tools share the same rules files and the same verifier — only the
-orchestration shell differs.
+Stages 0, 4, and 5 are deterministic scripts. Stages 1–3 have two valid paths:
+high-assurance LLM/manual authoring from the rules files, and conservative
+script-backed candidate generation for runtime rebuilds. All candidates use the
+same source pack and verifier before promotion.
 
 For a full runtime rebuild, use the repo-level wrapper:
 
@@ -45,8 +46,8 @@ That command generates and verifies all PDF-backed lean YAMLs into
 `output/<study>/llm_source/source_truth/`, then runs the main pipeline to publish
 dictionary mappings, PHI-scrubbed dataset JSONL, audit ledgers, lineage, and the
 output signpost. Use `make rebuild-llm-source STUDY=Indo-VAP` when you want to
-remove generated `llm_source/`, `audit/`, and study staging first. It preserves
-`output/<study>/agent/`.
+remove generated `llm_source/` and study staging first. It preserves audit
+manifests and `output/<study>/agent/`.
 
 ### Stage 0 — Source pack (run this first, any LLM tool)
 
@@ -59,27 +60,29 @@ python -m scripts.source_truth.study_intake --study Indo-VAP --form 6_HIV
 ```
 
 Reads **only row 1** of the dataset file (headers-only PHI guarantee — row 2+
-bytes never enter Python) and renders the annotated PDF at 600 DPI via Ghostscript.
+values are never read or used) and renders every annotated-PDF page at 600 DPI
+via Ghostscript.
 
 **Inputs:**
 - `data/raw/<study>/annotated_pdfs/<form>.pdf`
 - `data/raw/<study>/datasets/<form>.xlsx`
 
 **Outputs:**
-- `/tmp/sot_source_pack_<form>.json` — dataset header array + PDF SHA-256
-- `/tmp/sot_render_<form>/<form>.pdf.png` — 600 DPI render (visual ground truth)
+- `/tmp/sot_source_pack_<form>.json` — dataset header array, PDF SHA-256, and render list
+- `/tmp/sot_render_<form>/<pdf-name>.page-001.png`, `.page-002.png`, ... — 600 DPI renders (visual ground truth)
 
 ### Stages 1–3 — LLM YAML authoring
 
-These stages cannot be automated by a deterministic script.
+High-assurance Stages 1–3 require LLM/manual reasoning. For runtime rebuilds,
+`make sot-generate-all` uses the conservative candidate generator at
+`skills/sot-lean-generator/scripts/generate_pdf_aware_candidate.py`; those
+script-backed candidates are still only promotable after Stage 4 validation and,
+when anchored gold exists, diff-against-gold.
 
-**Claude Code users** — invoke `skills/sot-lean-generator/SKILL.md` (Stages 1–3
-are orchestrated by the Claude Code skill runner).
-
-**Other LLM tools (ChatGPT, Gemini, Cursor, etc.):**
+**Any LLM/manual tool:**
 1. Read `skills/sot-lean-generator/references/exhaustive_yaml_rules.md` — write the
    full exhaustive YAML draft for the form.
-2. Run 5 visual sweep iterations comparing the 600 DPI render against the draft and
+2. Run 5 visual sweep iterations comparing all 600 DPI page renders against the draft and
    correcting mismatches.
 3. Read `skills/sot-lean-generator/references/lean_yaml_rules.md` — trim the draft
    to the lean schema and write the result to `/tmp/<form>_lean.yaml`.
@@ -88,10 +91,11 @@ are orchestrated by the Claude Code skill runner).
 
 ```bash
 make sot-verify STUDY=Indo-VAP FORM=6_HIV
+# validates /tmp/6_HIV_lean.yaml by default; pass CANDIDATE=/path/to/file to override
 ```
 
-Exit codes: **0** = ready to promote; **2** = SHA mismatch (re-run Stage 0);
-**3** = script gap (stop and ask the human).
+Exit codes: **0** = ready for the next gate; **1** = content/validation failure;
+**2** = SHA mismatch (re-run Stage 0); **3** = script gap (stop and ask the human).
 
 ### Stage 4.5 — Property validator + diff-against-gold (Phase 1 of the AFK plan)
 
@@ -123,6 +127,7 @@ together via the Make target:
 ```bash
 make sot-validate STUDY=Indo-VAP FORM=6_HIV
 # Requires /tmp/sot_source_pack_<form>.json — run `make sot-source-pack` first.
+# Validates /tmp/<form>_lean.yaml by default; pass CANDIDATE=/path/to/file to override.
 # Hard-fails on any one of the three checks.
 ```
 
