@@ -96,7 +96,7 @@ def clean_duplicate_columns(
     2. Its pandas dtype is identical to the base column's dtype (strict
        equality — ``int64`` and ``Int64`` are treated as distinct).
     3. It is positionally adjacent to the base column (consecutive in the
-       source column order, i.e. |index(dup) - index(base)| == 1).
+       source column order, i.e. ``abs(index(dup) - index(base)) == 1``).
     4. Its values are 100% identical to the base column (element-wise, with
        NaN-equality).
 

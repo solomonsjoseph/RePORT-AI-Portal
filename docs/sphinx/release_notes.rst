@@ -11,6 +11,9 @@ Unreleased
 Added
 ~~~~~
 
+* Added Sphinx runbooks for Source Truth builds and the
+  ``extract_to_llm_source`` skill so user and collaborator docs stay in
+  the Sphinx site instead of standalone Markdown files.
 * Added production fail-closed controls for PHI log redaction, app/proxy rate
   limiting, CSP enforcement, direct virtualenv service execution, and stricter
   production study resolution.
@@ -30,6 +33,10 @@ Added
 Changed
 ~~~~~~~
 
+* Clarified that the root README is the entry point and Sphinx is the
+  durable documentation library. Root machine or GitHub metadata files
+  should point readers back to Sphinx instead of carrying parallel
+  runbooks.
 * Updated Makefile cleanup targets to avoid whole-repo traversal and to
   preserve ``data/raw/`` and ``data/snapshots/``.
 * Reworked the GitHub README as a minimal entry point that sends readers
@@ -75,6 +82,7 @@ Exit codes:
 - ``5``: verifier assertion failed
 - ``6``: needs-advice (paused — operator inspection required)
 - ``7``: destruction incomplete
+- ``8``: partial publish; held forms need human review
 
 Scope: HIPAA Safe Harbor identifiers per ``phi_scrub.yaml`` + project patterns in
 ``phi_patterns.py``. Out of scope (operator responsibility): DPDPA §16 cross-border
@@ -82,8 +90,7 @@ egress, §12 right-to-erase, §8(6) breach notification, ICMR l-diversity gate.
 Temp removal: operational untraceability (APFS COW acknowledged in destruction
 attestation; not forensic erasure).
 
-Cross-LLM canonical: ``AGENTS.md`` section ``Skill: extract_to_llm_source``.
-Claude-Code shim: ``docs/superpowers/skills/extract-to-llm-source/SKILL.md``.
+Cross-LLM canonical docs: :doc:`developer_guide/extract_to_llm_source`.
 
 Release Note Rules
 ------------------

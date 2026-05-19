@@ -31,10 +31,17 @@ Place one study under ``data/raw/{STUDY_NAME}/``:
 
    data/raw/Indo-VAP/
    ├── datasets/          # .xlsx or .csv study files
-   └── annotated_pdfs/    # optional CRF templates
+   ├── data_dictionary/   # dictionary workbooks, when available
+   ├── annotated_pdfs/    # optional CRF templates
+   ├── _forms_manifest.yaml
+   └── _study_privacy.yaml
 
 The repository does not ship raw study data. The local study team owns
 which files are placed here.
+
+``_forms_manifest.yaml`` declares which dataset files are required,
+optional, or rejected. ``_study_privacy.yaml`` declares the study
+jurisdictions and approval policy used by the audited extraction skill.
 
 Output Folder
 -------------
@@ -70,6 +77,21 @@ closed until you ask for it.
 
 The command-line ``make pipeline`` path is for developers and deployment
 operators who have already provisioned the local PHI key.
+
+For audited CLI runs, use the cross-LLM extraction skill:
+
+.. code-block:: bash
+
+   uv run --all-groups python scripts/skills/extract_to_llm_source.py run \
+     --study Indo-VAP
+
+   uv run --all-groups python scripts/skills/extract_to_llm_source.py verify \
+     --study Indo-VAP
+
+This wrapper adds PHI-key preflight, manifest checks, header-only
+approval, terminal ``status.json``, ``verifier_report.json``, and
+destruction attestation. The developer contract is in
+:doc:`../developer_guide/extract_to_llm_source`.
 
 Using an Existing Study
 -----------------------
@@ -107,6 +129,9 @@ Troubleshooting
 If a run fails:
 
 * check the terminal output first;
+* if the extraction skill was used, inspect
+  ``output/{STUDY}/runs/{run_id}/status.json`` and
+  ``verifier_report.json``;
 * confirm ``STUDY_NAME`` matches the folder under ``data/raw/``;
 * confirm expected subfolders exist;
 * confirm the PHI key exists if the scrubber asks for it;

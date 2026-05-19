@@ -9,7 +9,8 @@ study. It helps a study team load local source files, publish a
 PHI-scrubbed study bundle, and ask grounded questions from that bundle.
 
 This README is only the front door. The full user, IRB/auditor, and
-developer documentation lives in Sphinx:
+developer documentation lives in Sphinx. Local source files are under
+`docs/sphinx/`; published docs are at:
 <https://solomonsjoseph.github.io/RePORT-AI-Portal/>
 
 ## Start Here

@@ -25,7 +25,8 @@ The project uses a pragmatic blend of:
 Documentation Boundary
 ----------------------
 
-The project has two documentation surfaces:
+The project has one durable documentation library and one public entry
+point:
 
 * ``README.md`` is the GitHub front door. Keep it short: what the
   project is, where each audience should go, a minimal quick start, and
@@ -40,6 +41,13 @@ The project has two documentation surfaces:
 Do not add standalone Markdown packets or parallel documentation trees.
 If a topic needs detail, add or update a Sphinx page and link to it from
 the README only when it is a common entry point.
+
+Root files such as ``AGENTS.md``, ``SECURITY.md``, and
+``CHANGELOG.md`` are bootstrap or GitHub metadata surfaces. Keep them
+short and point readers to Sphinx for durable instructions. Historical
+plans, local skill shims, and generated outputs are not current
+documentation unless their content has been promoted into
+``docs/sphinx/``.
 
 Profile-first Rule
 ------------------
@@ -162,4 +170,9 @@ Before opening a documentation PR:
    verification artifact.
 5. Add or update :doc:`../release_notes` when the change affects users,
    operators, reviewers, or developers.
-6. Run the freshness, Sphinx, and verification gates.
+6. Check for new standalone docs:
+   ``git ls-files '*.md' '*.rst' | grep -v '^docs/sphinx/'``.
+   Any new non-Sphinx file should be a README, machine bootstrap,
+   GitHub metadata file, skill artifact, or historical plan with no
+   current-runbook claims.
+7. Run the freshness, Sphinx, and verification gates.

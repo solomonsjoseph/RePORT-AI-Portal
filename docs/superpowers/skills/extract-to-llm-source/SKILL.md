@@ -1,24 +1,16 @@
 ---
 name: extract-to-llm-source
-description: Raw .xlsx → PHI-scrubbed llm_source/ for one study. Untraceable temp removal after scrub. Cross-LLM canonical lives in AGENTS.md.
+description: Compatibility pointer for the raw workbook to PHI-clean llm_source skill.
 ---
 
-# extract-to-llm-source
+# Moved: extract_to_llm_source
 
-**This is a thin shim.** The cross-LLM canonical entry point, prerequisites,
-exit-code contract, scope banner, destruction-attestation policy, and the full
-12-assertion verifier list all live in `AGENTS.md` (section
-`## Skill: extract_to_llm_source`). Read that section before invoking.
+The current skill contract lives in Sphinx:
 
-This skill drives raw `.xlsx` datasets through HIPAA Safe Harbor PHI scrubbing
-and produces a clean `llm_source/` tree for one study.
-Implementation: `scripts/skills/extract_to_llm_source.py` with three
-subcommands — `run`, `verify`, and `status`.
+`docs/sphinx/developer_guide/extract_to_llm_source.rst`
 
-**Primary CLI invocation (`run` subcommand):**
+Implementation:
 
-```bash
-uv run --all-groups python scripts/skills/extract_to_llm_source.py run --study {STUDY}
-```
+`scripts/skills/extract_to_llm_source.py`
 
-Replace `{STUDY}` with the study folder name under `data/raw/` (e.g. `Indo-VAP`).
+This shim remains only for older links. Do not add new instructions here.

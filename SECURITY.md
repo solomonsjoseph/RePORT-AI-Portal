@@ -1,5 +1,13 @@
 # Security Policy
 
+Security architecture, PHI handling, conformance evidence, and
+production-readiness details live in Sphinx:
+
+- `docs/sphinx/irb_auditor/phi_handling.rst`
+- `docs/sphinx/irb_auditor/conformance.rst`
+- `docs/sphinx/developer_guide/phi_architecture.rst`
+- `docs/sphinx/developer_guide/production_readiness.rst`
+
 ## Reporting a Vulnerability
 
 Do not open a public issue for suspected PHI exposure, credential leakage, or

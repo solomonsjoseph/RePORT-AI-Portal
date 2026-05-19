@@ -30,16 +30,14 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import patch
 
 import pytest
 import yaml
 
-import scripts.skills.extract_to_llm_source as skill_mod
 from scripts.skills.extract_to_llm_source import (
     EXIT_DESTRUCTION_INCOMPLETE,
     EXIT_LEDGER_HASH_NULL,
@@ -57,7 +55,6 @@ from scripts.skills.extract_to_llm_source import (
 
 STUDY = "Test-Verifier"
 RUN_ID = "run_v001"
-UTC = timezone.utc
 
 
 # ---------------------------------------------------------------------------
@@ -138,6 +135,7 @@ def _make_valid_attestation(run_dir: Path, run_id: str = RUN_ID) -> None:
         "study": STUDY,
         "started_utc": _iso_now(),
         "completed_utc": _iso_now(),
+        "staging_path": "staging/Test-Verifier",
         "removed_paths": ["file.jsonl"],
         "files_destroyed": 1,
         "cryptographic_erasure": False,
@@ -154,11 +152,11 @@ def _make_llm_source_dir(
     *,
     extra_keys: dict[str, Any] | None = None,
 ) -> None:
-    """Create llm_source/datasets/ with one clean JSONL per form.
+    """Create llm_source/dataset_schema/files/ with one clean JSONL per form.
 
     extra_keys: if provided, inject those keys into every row.
     """
-    datasets_out = llm_source_dir / "datasets"
+    datasets_out = llm_source_dir / "dataset_schema" / "files"
     datasets_out.mkdir(parents=True, exist_ok=True)
     for form in forms:
         stem = form.replace(".xlsx", "")
@@ -222,7 +220,7 @@ def _build_happy_study(
     # d. destruction attestation
     _make_valid_attestation(run_dir, run_id=run_id)
 
-    # e. llm_source/datasets/ JSONL files (one per required form)
+    # e. llm_source/dataset_schema/files/ JSONL files (one per required form)
     _make_llm_source_dir(llm_source_dir, forms)
 
     # f. status.json
@@ -523,7 +521,7 @@ class TestVerifyFailures:
         paths = _build_happy_study(tmp_path)
         # Plant a fake Aadhaar number in a JSONL
         phi_row = {"subject_id": "1234 5678 9012"}  # Aadhaar pattern
-        llm_jsonl = paths["llm_source_dir"] / "datasets" / "form_a.jsonl"
+        llm_jsonl = paths["llm_source_dir"] / "dataset_schema" / "files" / "form_a.jsonl"
         llm_jsonl.write_text(json.dumps(phi_row) + "\n", encoding="utf-8")
         rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
         assert rc == EXIT_VERIFIER_FAIL
@@ -536,7 +534,7 @@ class TestVerifyFailures:
         paths = _build_happy_study(tmp_path)
         aadhaar = "1234 5678 9012"
         phi_row = {"subject_id": aadhaar}
-        llm_jsonl = paths["llm_source_dir"] / "datasets" / "form_a.jsonl"
+        llm_jsonl = paths["llm_source_dir"] / "dataset_schema" / "files" / "form_a.jsonl"
         llm_jsonl.write_text(json.dumps(phi_row) + "\n", encoding="utf-8")
         main(["verify", "--study", STUDY, "--run", RUN_ID])
         report_path = (
@@ -558,7 +556,7 @@ class TestVerifyFailures:
         _patch_config(monkeypatch, tmp_path)
         paths = _build_happy_study(tmp_path)
         bad_row = {"col_a": "val", "extraction_utc": "2026-01-01T00:00:00+00:00"}
-        llm_jsonl = paths["llm_source_dir"] / "datasets" / "form_a.jsonl"
+        llm_jsonl = paths["llm_source_dir"] / "dataset_schema" / "files" / "form_a.jsonl"
         llm_jsonl.write_text(json.dumps(bad_row) + "\n", encoding="utf-8")
         rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
         assert rc == EXIT_VERIFIER_FAIL
@@ -569,7 +567,7 @@ class TestVerifyFailures:
         _patch_config(monkeypatch, tmp_path)
         paths = _build_happy_study(tmp_path)
         bad_row = {"col_a": "val", "run_id": RUN_ID}
-        llm_jsonl = paths["llm_source_dir"] / "datasets" / "form_b.jsonl"
+        llm_jsonl = paths["llm_source_dir"] / "dataset_schema" / "files" / "form_b.jsonl"
         llm_jsonl.write_text(json.dumps(bad_row) + "\n", encoding="utf-8")
         rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
         assert rc == EXIT_VERIFIER_FAIL
@@ -580,19 +578,19 @@ class TestVerifyFailures:
         _patch_config(monkeypatch, tmp_path)
         paths = _build_happy_study(tmp_path)
         bad_row = {"col_a": "val", "generated_utc": "2026-01-01T00:00:00+00:00"}
-        llm_jsonl = paths["llm_source_dir"] / "datasets" / "form_a.jsonl"
+        llm_jsonl = paths["llm_source_dir"] / "dataset_schema" / "files" / "form_a.jsonl"
         llm_jsonl.write_text(json.dumps(bad_row) + "\n", encoding="utf-8")
         rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
         assert rc == EXIT_VERIFIER_FAIL
 
-    # --- Assertion 10: required form JSONL missing from llm_source/ ---
+    # --- Assertion 10: required form JSONL missing from canonical llm_source path ---
     def test_assertion10_missing_required_jsonl_exits_2(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_config(monkeypatch, tmp_path)
         paths = _build_happy_study(tmp_path)
         # Remove one required form's JSONL
-        (paths["llm_source_dir"] / "datasets" / "form_a.jsonl").unlink()
+        (paths["llm_source_dir"] / "dataset_schema" / "files" / "form_a.jsonl").unlink()
         rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
         assert rc == EXIT_MANIFEST_MISMATCH
 

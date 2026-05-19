@@ -152,9 +152,8 @@ PDF Extraction (Historical)
 The ``scripts.extraction.pdf_pipeline`` and
 ``scripts.extraction.extract_pdf_data`` paths are historical. They are
 preserved in ADRs and old test context, but they are not the active LLM
-source flow. PDF-derived evidence now enters through the reviewed SoT
-policy YAMLs and is published through the Study Metadata Catalog and
-Evidence Packs.
+source flow. PDF-derived evidence now enters through reviewed Source
+Truth policy YAMLs under ``llm_source/source_truth/``.
 
 PHI Scrub
 ~~~~~~~~~
@@ -278,8 +277,7 @@ against new output to catch regressions. It is **reference-only** —
 not a runtime input, not a build output.
 
 * **Cross-LLM portability:** The full end-to-end flow is documented in
-  ``AGENTS.md`` (``## SoT creation`` section) and
-  ``docs/runbook_sot_build.md`` so it is reachable from any agentic LLM
+  :doc:`source_truth_build` so it is reachable from any agentic LLM
   tool without requiring Claude Code.
 
 Source-Truth Runtime Builder

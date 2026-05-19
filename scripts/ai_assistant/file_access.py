@@ -3,10 +3,9 @@
 The production LLM agent's permitted zones are:
 
 * **Read** — ``STUDY_LLM_SOURCE_DIR`` (canonical PHI-scrubbed llm_source/
-  tree: dataset_schema, dictionary_mapping, source_truth),
-  ``TRIO_BUNDLE_DIR`` (legacy alias retained for back-compat; may be
-  empty post Phase 5b restructure) **or** ``AGENT_STATE_DIR`` (its own
-  analysis outputs and conversations). A small allowlist admits
+  tree: dataset_schema, dictionary_mapping, source_truth) or
+  ``AGENT_STATE_DIR`` (its own analysis outputs and conversations).
+  A small allowlist admits
   read-only source-tree config files (``config/study_knowledge.yaml``)
   that tool implementations need.
 * **Write** — ``AGENT_STATE_DIR`` only.
@@ -62,12 +61,10 @@ def _zones() -> tuple[list[str], list[str], frozenset[str]]:
     """Recompute permitted zones from current config.
 
     Called per-validation so that ``conftest.py`` monkeypatches of
-    ``config.STUDY_LLM_SOURCE_DIR`` / ``config.TRIO_BUNDLE_DIR`` /
-    ``config.AGENT_STATE_DIR`` take effect.
+    ``config.STUDY_LLM_SOURCE_DIR`` / ``config.AGENT_STATE_DIR`` take effect.
     """
     read_roots = [
         _resolve(config.STUDY_LLM_SOURCE_DIR),
-        _resolve(config.TRIO_BUNDLE_DIR),
         _resolve(config.AGENT_STATE_DIR),
     ]
     write_roots = [

@@ -2,8 +2,10 @@ Operations
 ==========
 
 Operational runbook for running, rebuilding, and verifying the RePORT AI Portal
-pipeline. Deployment controls and release gates live in
-:doc:`production_readiness`.
+pipeline. Source Truth authoring details live in
+:doc:`source_truth_build`; the audited cross-LLM extraction entry point
+lives in :doc:`extract_to_llm_source`; deployment controls and release
+gates live in :doc:`production_readiness`.
 
 .. contents:: On this page
    :local:
@@ -61,9 +63,9 @@ PDF-backed form that passes the lean checker.
 **Re-run policy:** ``make sot-generate-all`` is idempotent and overwrites only
 after the generated candidate passes verification.
 
-See ``docs/runbook_sot_build.md`` for the full behavior reference including
-exclusion reason codes, threat model, duplicate-handling rules, and a
-step-by-step Indo-VAP walkthrough.
+See :doc:`source_truth_build` for the full behavior reference including
+single-form source packs, deterministic verifier gates, duplicate-handling
+rules, and the step-by-step Indo-VAP walkthrough.
 
 Pipeline Run
 ------------
@@ -89,6 +91,25 @@ That adds the SoT generation step before the raw-data pipeline. The current
 LLM-visible outputs are ``llm_source/source_truth/``,
 ``llm_source/dataset_schema/files/``, and
 ``llm_source/dictionary_mapping/jsonl/``.
+
+Audited Cross-LLM Extraction
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use the skill CLI when a human or another LLM agent needs the
+fail-closed wrapper around raw workbook extraction, PHI key preflight,
+header-only approval, post-run verification, destruction attestation,
+and terminal run status:
+
+.. code-block:: bash
+
+   uv run --all-groups python scripts/skills/extract_to_llm_source.py run \
+     --study Indo-VAP
+
+   uv run --all-groups python scripts/skills/extract_to_llm_source.py verify \
+     --study Indo-VAP
+
+The complete contract, exit codes, evidence files, and open hardening
+items are in :doc:`extract_to_llm_source`.
 
 Individual Steps
 ~~~~~~~~~~~~~~~~
@@ -165,21 +186,19 @@ Security Verification
 Dataset Promotion Protocol
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After ``make pipeline`` produces clean JSONL:
+After ``make pipeline`` or the extraction skill publishes clean JSONL:
 
-1. Manually inspect ``output/{STUDY}/llm_source/`` for any unexpected
-   residual content
-2. Spot-check dataset records:
-   ``head -20 output/{STUDY}/llm_source/dataset_schema/files/*.jsonl``
-3. Step 1.6 of the pipeline scrubs staged datasets in place via the
-   8-action honest-broker catalog (:mod:`scripts.security.phi_scrub`).
-   If residual content is found in llm_source/, inspect
-   ``output/{STUDY}/audit/phi_scrub_report.json`` for the action counts,
-   add the offending field pattern to ``scripts/security/phi_scrub.yaml``
-   under the appropriate section (``drop_fields``, ``cap_fields``, etc.),
-   and re-run ``make pipeline``.
-4. Cross-check ``output/{STUDY}/audit/lineage_manifest.json`` — every
-   raw input SHA-256 should have a corresponding trio artifact entry.
+1. Run the deterministic verifier:
+   ``uv run --all-groups python scripts/skills/extract_to_llm_source.py verify --study {STUDY}``.
+2. Inspect ``output/{STUDY}/runs/{run_id}/verifier_report.json``.
+3. Inspect ``output/{STUDY}/audit/phi_scrub_report.json`` for scrub
+   action counts when a PHI finding blocks publish or verification.
+4. Cross-check ``output/{STUDY}/audit/lineage_manifest.json``. Every
+   raw input SHA-256 should have corresponding published ``llm_source``
+   artifact hashes.
+5. If residual PHI-like content is found in ``llm_source/``, update
+   ``scripts/security/phi_scrub.yaml`` or the extraction logic, rebuild,
+   and rerun verification. Do not hand-edit published JSONL.
 
 Zone Enforcement
 ~~~~~~~~~~~~~~~~
@@ -230,11 +249,11 @@ AI Assistant
 ------------
 
 The AI Assistant research assistant uses LangGraph with a ReAct agent
-pattern. It reads from the llm_source bundle and provides study-specific
-answers grounded in the Study Metadata Catalog, Evidence Packs, and
-dataset metadata. Queries are tool-based and local: variable search uses
-the catalog, evidence packs, and published dataset schemas; record-level
-questions go through deterministic dataset or analysis tools.
+pattern. It reads from the ``llm_source`` bundle and provides
+study-specific answers grounded in verified Source Truth YAML, dictionary
+mappings, and published dataset schemas. Queries are tool-based and
+local; record-level questions go through deterministic dataset or
+analysis tools.
 Do not document or promise 100% answer accuracy. Improve accuracy by
 adding reviewed SoT policy YAMLs, strengthening retrieval tests, and
 measuring representative question/answer sets for correctness, grounding,

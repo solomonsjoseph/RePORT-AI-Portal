@@ -592,15 +592,14 @@ scripts and rule files.
 3. *Cross-LLM portability:* The prior skill surface lived in a
    Claude-Code-specific ``.claude/skills/`` directory, unreachable from
    ChatGPT, Gemini, Cursor, Aider, or a raw shell. The replacement
-   CLI + ``AGENTS.md`` + runbook is tool-agnostic.
+   CLI plus Sphinx runbook is tool-agnostic.
 
 **How.** ``scripts/source_truth/study_intake.py`` resolves one PDF/dataset
 pair and delegates Stage 0 extraction to the skill script. It reads only
 dataset row 1 for SoT binding. ``scripts/source_truth/generate_lean_outputs.py``
 runs the batch runtime loop: source pack → candidate under ``/tmp`` → verifier
 → promote to ``output/{STUDY}/llm_source/source_truth``. The CLI is documented
-in ``AGENTS.md`` (``## SoT creation`` section) and
-``docs/runbook_sot_build.md``.
+in :doc:`source_truth_build`.
 
 **Alternatives.**
 

@@ -31,7 +31,7 @@ import threading
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -42,16 +42,36 @@ from scripts.skills.extract_to_llm_source import (
     EXIT_MANIFEST_MISMATCH,
     EXIT_NEEDS_ADVICE,
     EXIT_OK,
+    EXIT_PARTIAL_REVIEW,
     EXIT_QUARANTINE_NON_EMPTY,
     main,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
 
 STUDY = "Test-Study"
+
+
+@pytest.fixture(autouse=True)
+def _bypass_expensive_phi_gate(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Most CLI tests exercise wrapper exit paths with subprocess mocked.
+
+    Dedicated tests below cover the PHI review gate itself, so keep the older
+    run-path tests focused on lock/subprocess/ledger/destruction behavior.
+    """
+    monkeypatch.setattr(skill_mod, "_preflight_phi_key", lambda: None)
+    monkeypatch.setattr(
+        skill_mod,
+        "_run_form_approval_gate",
+        lambda **_kwargs: skill_mod.FormGateResult(
+            approved_forms=(),
+            held_forms=(),
+            approval_report_path=None,
+            partial=False,
+        ),
+    )
 
 
 def _make_args(subcommand: str, study: str = STUDY, run_id: str | None = None) -> Any:
@@ -125,7 +145,7 @@ class TestStatusSubcommand:
     def test_all_exit_codes_listed_in_banner(self, capsys: pytest.CaptureFixture[str]) -> None:
         main(["status"])
         out = capsys.readouterr().out
-        for code in (0, 2, 3, 4, 5, 6, 7):
+        for code in (0, 2, 3, 4, 5, 6, 7, 8):
             assert str(code) in out, f"Exit code {code} missing from status banner"
 
 
@@ -159,8 +179,9 @@ class TestVerifyStub:
         We must provide a --run so run_id resolution succeeds and the assertion
         loop reaches assertion 3.
         """
-        import config
         import yaml as _yaml
+
+        import config
 
         _patch_config(monkeypatch, tmp_path)
         # Also patch RAW_DATA_DIR so the verifier looks in tmp_path
@@ -517,12 +538,12 @@ class TestRunExitCodes:
 
 
 # ---------------------------------------------------------------------------
-# C. env-pop — REPORTALIN_ALLOW_DISABLED_SCRUB must not reach subprocess
+# C. scrub-bypass env var — must refuse before subprocess
 # ---------------------------------------------------------------------------
 
 
-class TestEnvPop:
-    def test_scrub_bypass_env_var_removed_from_subprocess_env(
+class TestDisabledScrubBypass:
+    def test_scrub_bypass_env_var_refuses_before_subprocess(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_config(monkeypatch, tmp_path)
@@ -532,40 +553,25 @@ class TestEnvPop:
         # Plant the bypass variable in the current process environment.
         monkeypatch.setenv("REPORTALIN_ALLOW_DISABLED_SCRUB", "1")
 
-        captured_env: dict[str, str] = {}
-
         def _fake_acquire(_study: str) -> None:
             pass
 
         def _fake_release() -> None:
             pass
 
-        def _capturing_subprocess_run(cmd: Any, env: dict[str, str], **kwargs: Any) -> Any:
-            captured_env.update(env)
-            return SimpleNamespace(returncode=0)
-
-        import shutil
-
-        def _fake_destroy(**kwargs: Any) -> Path:
-            shutil.rmtree(str(kwargs["staging_dir"]), ignore_errors=True)
-            attest_path = kwargs["output_dir"] / "runs" / kwargs["run_id"] / "destruction_attestation.json"
-            attest_path.parent.mkdir(parents=True, exist_ok=True)
-            attest_path.write_text(json.dumps({"stub": True}), encoding="utf-8")
-            return attest_path
-
         with (
             patch.object(skill_mod, "_acquire_pipeline_lock_for_skill", _fake_acquire),
             patch.object(skill_mod, "_release_pipeline_lock_for_skill", _fake_release),
-            patch.object(skill_mod, "destroy_staging_and_attest", _fake_destroy),
             patch.object(skill_mod, "check_forms_manifest", return_value={}),
-            patch("subprocess.run", side_effect=_capturing_subprocess_run),
+            patch("subprocess.run") as run_mock,
         ):
             rc = main(["run", "--study", STUDY])
 
-        assert rc == EXIT_OK
-        assert "REPORTALIN_ALLOW_DISABLED_SCRUB" not in captured_env, (
-            "REPORTALIN_ALLOW_DISABLED_SCRUB must NOT be passed to the subprocess"
-        )
+        assert rc == EXIT_NEEDS_ADVICE
+        run_mock.assert_not_called()
+        status_path = tmp_path / "output" / STUDY / "runs" / "run_envpop" / "status.json"
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+        assert status["failed_stage"] == "preflight.disabled_scrub"
 
     def test_run_id_is_propagated_to_subprocess_env(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -609,6 +615,70 @@ class TestEnvPop:
         assert captured_env.get("REPORTAL_RUN_ID") == run_id
 
 
+class TestPartialPublish:
+    def test_held_forms_return_partial_review_code_and_allowed_forms_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _patch_config(monkeypatch, tmp_path)
+        _write_valid_ledger(tmp_path / "output")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        run_id = "run_partial"
+        monkeypatch.setenv("REPORTAL_RUN_ID", run_id)
+
+        captured_env: dict[str, str] = {}
+
+        def _fake_acquire(_study: str) -> None:
+            pass
+
+        def _fake_release() -> None:
+            pass
+
+        def _capturing_subprocess_run(cmd: Any, env: dict[str, str], **kwargs: Any) -> Any:
+            captured_env.update(env)
+            return SimpleNamespace(returncode=0)
+
+        import shutil
+
+        def _fake_destroy(**kwargs: Any) -> Path:
+            shutil.rmtree(str(kwargs["staging_dir"]), ignore_errors=True)
+            attest_path = (
+                kwargs["output_dir"]
+                / "runs"
+                / kwargs["run_id"]
+                / "destruction_attestation.json"
+            )
+            attest_path.parent.mkdir(parents=True, exist_ok=True)
+            attest_path.write_text(json.dumps({"stub": True}), encoding="utf-8")
+            return attest_path
+
+        monkeypatch.setattr(
+            skill_mod,
+            "_run_form_approval_gate",
+            lambda **_kwargs: skill_mod.FormGateResult(
+                approved_forms=("6_HIV.xlsx",),
+                held_forms=("95_SAE.xlsx",),
+                approval_report_path=tmp_path / "approval.json",
+                partial=True,
+            ),
+        )
+
+        with (
+            patch.object(skill_mod, "_acquire_pipeline_lock_for_skill", _fake_acquire),
+            patch.object(skill_mod, "_release_pipeline_lock_for_skill", _fake_release),
+            patch.object(skill_mod, "destroy_staging_and_attest", _fake_destroy),
+            patch.object(skill_mod, "check_forms_manifest", return_value={}),
+            patch("subprocess.run", side_effect=_capturing_subprocess_run),
+        ):
+            rc = main(["run", "--study", STUDY])
+
+        assert rc == EXIT_PARTIAL_REVIEW
+        assert captured_env["REPORTAL_ALLOWED_DATASET_FORMS"] == "6_HIV.xlsx"
+        status_path = tmp_path / "output" / STUDY / "runs" / run_id / "status.json"
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+        assert status["publish_status"] == "partial"
+        assert status["held_forms_count"] == 1
+
+
 # ---------------------------------------------------------------------------
 # F. SIGINT handler — exits 7 without invoking destruction
 # ---------------------------------------------------------------------------
@@ -638,7 +708,7 @@ class TestSignalHandler:
             raise AssertionError("destroy_staging_and_attest must NOT be called on interrupt")
 
         def _subprocess_raises(*_args: Any, **_kwargs: Any) -> None:
-            raise skill_mod._SkillInterrupted("simulated SIGINT")  # noqa: SLF001
+            raise skill_mod._SkillInterrupted("simulated SIGINT")
 
         with (
             patch.object(skill_mod, "_acquire_pipeline_lock_for_skill", _fake_acquire),

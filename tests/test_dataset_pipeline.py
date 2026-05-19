@@ -211,6 +211,28 @@ class TestExtractDatasetsDefaultsToStaging:
             "staging rewrite must not write to trio_bundle anymore"
         )
 
+    def test_allowed_forms_env_limits_real_value_extraction(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        monkeypatch_config: Path,  # side-effect: patches config paths to tmp
+    ) -> None:
+        """Form-level PHI review can hold one file while safe files continue."""
+        src_dir = tmp_path / "raw_datasets"
+        src_dir.mkdir()
+        _make_multisheet_workbook_with_duplicates(src_dir / "approved.xlsx")
+        _make_multisheet_workbook_with_duplicates(src_dir / "held.xlsx")
+        monkeypatch.setenv("REPORTAL_ALLOWED_DATASET_FORMS", "approved.xlsx")
+
+        result = extract_datasets(
+            datasets_dir=str(src_dir),
+            study_name="TEST",
+        )
+
+        assert result["files_found"] == 1
+        assert list(config.STAGING_DATASETS_DIR.glob("approved*.jsonl"))
+        assert not list(config.STAGING_DATASETS_DIR.glob("held*.jsonl"))
+
 
 class TestExtractionResultDroppedEvents:
     """Step 3: ExtractionResult.dropped_events aggregates events across files."""

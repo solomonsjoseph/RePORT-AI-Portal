@@ -25,6 +25,12 @@ remain green in CI.
      - PHI scrub catalog and per-run PHI scrub report.
      - ``tests/test_phi_scrub.py``
      - HIPAA 45 CFR 164.514; DPDPA/SPDI; Aadhaar/ABDM.
+   * - Header approval does not expose row values.
+     - ``phi_handling_approval.json`` contains headers, actions, and
+       rule metadata only.
+     - ``tests/security/test_phi_review.py`` and
+       ``tests/skills/test_extract_to_llm_source_cli.py``
+     - Minimum necessary and data-minimisation posture.
    * - Dates are protected.
      - Default date drop/shift behavior; Limited Dataset attestation
        when precise-date utility is approved.
@@ -47,6 +53,11 @@ remain green in CI.
      - Counts-only audit reports and lineage manifest.
      - ``tests/test_lineage_manifest.py``
      - IRB/IEC auditability without raw-PHI disclosure.
+   * - Published assistant source is scanned before verification passes.
+     - ``verifier_report.json`` assertion for PHI-pattern absence in
+       ``llm_source/``.
+     - ``tests/skills/test_extract_to_llm_source_verify.py``
+     - Pre-disclosure validation and auditability.
    * - Logs and persisted assistant text are redacted.
      - Log hygiene filter and at-rest redaction helpers.
      - ``tests/test_log_hygiene.py`` and

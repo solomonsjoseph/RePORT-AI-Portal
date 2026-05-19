@@ -20,8 +20,9 @@ What This System Does
 ---------------------
 
 RePORT AI Portal is a local-first assistant for one clinical research
-study. It converts local study inputs into a PHI-scrubbed trio bundle
-and lets approved researchers ask questions from that scrubbed bundle.
+study. It converts local study inputs into a PHI-scrubbed
+``llm_source`` bundle and lets approved researchers ask questions from
+that scrubbed bundle.
 
 What This Profile Covers
 ------------------------

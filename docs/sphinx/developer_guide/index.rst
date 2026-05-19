@@ -28,7 +28,7 @@ Start by Role
      - :doc:`phi_architecture`, :doc:`sandbox`, then :doc:`testing`
    * - Maintainer
      - Run verification and prepare releases.
-     - :doc:`operations`, then :doc:`production_readiness`
+     - :doc:`operations`, then :doc:`extract_to_llm_source`
    * - Documentation contributor
      - Keep README and Sphinx organized by audience.
      - :doc:`documentation_style`, then :doc:`contributing`
@@ -51,6 +51,8 @@ Contents
    :caption: Pipeline Components
 
    data_extraction_datasets
+   source_truth_build
+   extract_to_llm_source
    operations
    production_readiness
    sandbox

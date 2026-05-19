@@ -37,6 +37,7 @@ patterns that match the canonical phrasing.
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -69,6 +70,23 @@ EXCLUDED_PATH_PARTS: frozenset[str] = frozenset(
         ".mypy_cache",
         ".ruff_cache",
     }
+)
+
+CANONICAL_MARKDOWN_ENTRYPOINTS: frozenset[str] = frozenset({"README.md"})
+POINTER_PHRASES: tuple[str, ...] = (
+    "current project context lives in sphinx",
+    "current release notes live in sphinx",
+    "current agent guidance lives in sphinx",
+    "current issue-tracker guidance lives in sphinx",
+    "current triage-label guidance lives in sphinx",
+    "current source truth build runbook lives in sphinx",
+    "current real-data verification path lives in sphinx",
+    "current skill contract lives in sphinx",
+    "current phi handling and conformance evidence live in sphinx",
+    "machine bootstrap for ai coding assistants",
+    "durable user, auditor, operator, and contributor documentation lives in sphinx",
+    "historical implementation plan is no longer current documentation",
+    "security architecture, phi handling",
 )
 
 
@@ -107,6 +125,51 @@ def _iter_tracked_files() -> Iterable[Path]:
                 if EXCLUDED_PATH_PARTS.intersection(path.parts):
                     continue
                 yield path
+
+
+def _iter_tracked_markdown_files() -> Iterable[Path]:
+    """Yield git-tracked Markdown files for documentation-boundary checks."""
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "*.md"],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return
+
+    for rel in result.stdout.splitlines():
+        if rel in CANONICAL_MARKDOWN_ENTRYPOINTS:
+            continue
+        yield REPO_ROOT / rel
+
+
+def _check_markdown_boundary() -> list[Finding]:
+    """Ensure non-README Markdown files cannot become parallel docs."""
+    findings: list[Finding] = []
+    for path in _iter_tracked_markdown_files():
+        try:
+            text = path.read_text(encoding="utf-8").lower()
+        except (OSError, UnicodeDecodeError):
+            continue
+        if any(phrase in text for phrase in POINTER_PHRASES):
+            continue
+        findings.append(
+            Finding(
+                path=path,
+                line_no=1,
+                line=path.read_text(encoding="utf-8", errors="replace").splitlines()[0]
+                if path.exists() and path.read_text(encoding="utf-8", errors="replace").splitlines()
+                else "",
+                reason=(
+                    "standalone Markdown docs must be README or a Sphinx pointer; "
+                    "promote durable documentation into docs/sphinx"
+                ),
+            )
+        )
+    return findings
 
 
 def _live_tool_count() -> int:
@@ -464,6 +527,7 @@ def main() -> int:
     )
 
     findings: list[Finding] = []
+    findings.extend(_check_markdown_boundary())
     for path in sorted(_iter_tracked_files()):
         findings.extend(
             _check_file(

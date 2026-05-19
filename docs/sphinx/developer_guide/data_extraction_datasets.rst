@@ -3,7 +3,7 @@ Dataset Extraction
 
 Extracts tabular clinical data from Excel and CSV files into JSONL format
 via the study's staging workspace, which is then atomically promoted into
-the trio bundle.
+the published ``llm_source`` bundle.
 
 .. contents:: On this page
    :local:
@@ -48,7 +48,8 @@ Source
 Output
 ------
 
-- **Location:** ``output/{STUDY_NAME}/llm_source/dataset_schema/files/`` (``config.TRIO_DATASETS_DIR``)
+- **Location:** ``output/{STUDY_NAME}/llm_source/dataset_schema/files/``
+  (``config.TRIO_DATASETS_DIR`` compatibility constant)
 - **Format:** One JSONL file per source file/sheet
 - **Deterministic:** ``sort_keys=True, ensure_ascii=False``
 - **Provenance:** Every record includes ``__source_file__``, ``__sheet__``,
@@ -127,6 +128,5 @@ PDF SHA-256.
 
 This is a **separate invocation** from the main extraction pipeline; it
 does not depend on the JSONL files produced by ``dataset_pipeline.py``.
-See ``docs/runbook_sot_build.md`` for the full SoT build flow and
-``docs/sphinx/developer_guide/architecture.rst`` for the layered
-stage description.
+See :doc:`source_truth_build` for the full SoT build flow and
+:doc:`architecture` for the layered stage description.

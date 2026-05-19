@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import fnmatch
 import logging
+import os
 import sys
 import time
 from collections.abc import Generator
@@ -45,11 +46,10 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, NamedTuple, TypedDict, cast
 
-import yaml
-
 import numpy as np
 import openpyxl as _openpyxl
 import pandas as pd
+import yaml
 from tqdm import tqdm
 
 import config
@@ -517,6 +517,29 @@ def discover_dataset_files(datasets_dir: str | Path) -> list[Path]:
     return files
 
 
+def _filter_allowed_forms(files: list[Path]) -> list[Path]:
+    """Apply the form-level PHI approval allowlist, when supplied.
+
+    ``extract_to_llm_source`` sets ``REPORTAL_ALLOWED_DATASET_FORMS`` after
+    header-only/synthetic PHI review. This filter is intentionally by filename
+    only, so held forms are never opened for row-value extraction.
+    """
+    raw = os.environ.get("REPORTAL_ALLOWED_DATASET_FORMS", "").strip()
+    if not raw:
+        return files
+    allowed = {item.strip() for item in raw.split(",") if item.strip()}
+    if not allowed:
+        return files
+    filtered = [f for f in files if f.name in allowed]
+    skipped = sorted(f.name for f in files if f.name not in allowed)
+    if skipped:
+        _gate_log.info(
+            "Form-level PHI review held %d dataset file(s); skipped before value extraction",
+            len(skipped),
+        )
+    return filtered
+
+
 # ============================================================================
 # DataFrame helpers
 # ============================================================================
@@ -920,7 +943,7 @@ def extract_datasets(
     # and filtered out below).  When the manifest is absent a warning is
     # logged and extraction proceeds with no rejects (backward-compatible).
     _manifest = check_forms_manifest(_datasets_dir)
-    _date_locales = _manifest.date_locales  # noqa: F841 — reserved for future per-row date parsing
+    _date_locales = _manifest.date_locales
     _rejected_files = _manifest.rejected_files
 
     try:
@@ -932,6 +955,8 @@ def extract_datasets(
     # them.  The gate has already logged each skip at INFO level.
     if _rejected_files:
         files = [f for f in files if f.name not in _rejected_files]
+
+    files = _filter_allowed_forms(files)
 
     # --- prepare output ---
     try:

@@ -29,6 +29,7 @@ from scripts.extraction.cleanup_propagation import run_propagation
 from scripts.extraction.dataset_cleanup import clean_trio_datasets
 from scripts.extraction.dataset_pipeline import process_datasets
 from scripts.extraction.load_dictionary import load_study_dictionary
+from scripts.security.llm_source_gate import scan_tree_for_phi
 from scripts.security.phi_scrub import (
     PHIKeyMissingError,
     PHIKeyPermissionError,
@@ -40,6 +41,7 @@ from scripts.utils import logging_system as log
 from scripts.utils.errors import format_for_log, wrap
 from scripts.utils.lineage import emit_lineage_manifest
 from scripts.utils.log_hygiene import install_phi_redactor
+from scripts.utils.run_context import resolve_run_id
 from scripts.utils.secure_staging import (
     prepare_staging,
     resolve_staging_root,
@@ -121,7 +123,7 @@ def _acquire_pipeline_lock(study: str | None = None) -> None:
     _PIPELINE_LOCK_FILE = fh
 
 
-def _release_pipeline_lock(study: str | None = None) -> None:  # noqa: ARG001
+def _release_pipeline_lock(study: str | None = None) -> None:
     """Release the process-local pipeline lock handle.
 
     Args:
@@ -1001,7 +1003,11 @@ For detailed documentation, see the Sphinx docs or README.md
         if staging_ds.is_dir() and any(staging_ds.glob("*.jsonl")):
             run_step(
                 "Step 1.6: PHI Scrub",
-                lambda: run_phi_scrub(config.STUDY_NAME),
+                lambda: run_phi_scrub(
+                    config.STUDY_NAME,
+                    run_id=resolve_run_id(),
+                    runs_dir=Path(config.STUDY_OUTPUT_DIR) / "runs",
+                ),
             )
 
     # ── Step 1.7: Dataset Cleanup (remove junk, merge duplicates) ──
@@ -1047,6 +1053,13 @@ For detailed documentation, see the Sphinx docs or README.md
     # Atomic-rename each staging leg into llm_source/; empty legs leave
     # their published counterpart untouched so a skipped-fresh leg keeps
     # its prior publish.
+    if args.process_datasets and not args.skip_datasets:
+        staging_ds = Path(config.STAGING_DATASETS_DIR)
+        if staging_ds.is_dir() and any(staging_ds.glob("*.jsonl")):
+            scan = scan_tree_for_phi(staging_ds)
+            if not scan.ok:
+                raise RuntimeError(f"Pre-publication PHI leak scan failed: {scan.detail}")
+
     def run_publish() -> None:
         published = _publish_staging()
         published_legs = {k: v for k, v in published.items() if v}
@@ -1057,7 +1070,7 @@ For detailed documentation, see the Sphinx docs or README.md
 
     run_step("Step 2: Publish Staging → llm_source", run_publish)
 
-    # Removed: scripts.source_truth.build — see docs/runbook_sot_build.md
+    # Removed: scripts.source_truth.build — see docs/sphinx/developer_guide/source_truth_build.rst
 
     # ── Step 4: Lineage Manifest (audit-ready evidence package) ──
     # Emits output/{STUDY}/audit/lineage_manifest.json pairing every raw

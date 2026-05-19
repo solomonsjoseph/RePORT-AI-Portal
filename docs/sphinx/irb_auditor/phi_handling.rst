@@ -67,6 +67,14 @@ Source isolation
    them, but the assistant read validator rejects raw, staging, and
    audit paths.
 
+Header-only approval before extraction
+   The audited extraction skill reads only row-1 dataset headers before
+   any real row values are opened. It classifies headers against the
+   study privacy configuration and jurisdiction rule bundle, writes an
+   approval report with headers/actions only, and passes an approved-form
+   allowlist to the real extraction subprocess. The approval report must
+   not contain raw row values or synthetic row values.
+
 Eight-action scrub
    Staged datasets are scrubbed before publication. The scrub can keep
    approved clinical fields, drop direct identifiers, convert birthdate
@@ -101,6 +109,22 @@ PDF handling
 Audit handling
    Audit files are counts-only. Lineage records hashes and run metadata
    so an auditor can verify what was processed without reading raw PHI.
+
+Post-publish verification
+   The extraction skill's ``verify`` subcommand writes
+   ``verifier_report.json`` for pass or fail. It checks manifest
+   reconciliation, staging destruction, attestation fields, ledger
+   hashes, no-LLM audit sentinel, empty quarantine, PHI-pattern absence
+   from ``llm_source/``, runtime-key absence, required dataset JSONL
+   presence, and lock cleanup.
+
+Current implementation limits
+   Header approval is a preflight and audit control. The canonical
+   real-data transformation still comes from ``scripts/security/phi_scrub.py``
+   and ``scripts/security/phi_scrub.yaml``. Until the open hardening
+   items in :doc:`../developer_guide/extract_to_llm_source` are closed,
+   reviewers should require the verifier report and should treat
+   optional-form manifests and raw-file drift as review-sensitive areas.
 
 Why These Controls Exist
 ------------------------

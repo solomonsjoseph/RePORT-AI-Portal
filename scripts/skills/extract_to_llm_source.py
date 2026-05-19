@@ -44,6 +44,7 @@ EXIT_QUARANTINE_NON_EMPTY = 4  — quarantine directory non-empty
 EXIT_VERIFIER_FAIL       = 5   — verifier assertion failed
 EXIT_NEEDS_ADVICE        = 6   — paused — operator inspection required
 EXIT_DESTRUCTION_INCOMPLETE = 7 — destruction incomplete
+EXIT_PARTIAL_REVIEW      = 8   — partial publish; held forms need review
 
 Code 1 (generic error) is reserved for unexpected exceptions.
 
@@ -56,6 +57,7 @@ Public API
 * :data:`EXIT_VERIFIER_FAIL`
 * :data:`EXIT_NEEDS_ADVICE`
 * :data:`EXIT_DESTRUCTION_INCOMPLETE`
+* :data:`EXIT_PARTIAL_REVIEW`
 * :class:`DestructionIncompleteError`
 * :func:`destroy_staging_and_attest`
 * :func:`main` (argparse entry point)
@@ -64,6 +66,7 @@ Public API
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
@@ -72,7 +75,9 @@ import signal
 import subprocess
 import sys
 import tempfile
-from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -82,7 +87,9 @@ from scripts.extraction.dataset_pipeline import (
     ManifestMismatchError,
     check_forms_manifest,
 )
+from scripts.security.llm_source_gate import scan_tree_for_phi
 from scripts.security.phi_patterns import SUBJECT_ID_PATTERNS
+from scripts.security.phi_scrub import load_key as _load_phi_key
 from scripts.utils.secure_staging import secure_remove_tree
 
 __all__ = [
@@ -91,9 +98,11 @@ __all__ = [
     "EXIT_MANIFEST_MISMATCH",
     "EXIT_NEEDS_ADVICE",
     "EXIT_OK",
+    "EXIT_PARTIAL_REVIEW",
     "EXIT_QUARANTINE_NON_EMPTY",
     "EXIT_VERIFIER_FAIL",
     "DestructionIncompleteError",
+    "FormGateResult",
     "ManifestMismatchError",
     "check_forms_manifest",
     "destroy_staging_and_attest",
@@ -111,6 +120,7 @@ EXIT_QUARANTINE_NON_EMPTY: int = 4
 EXIT_VERIFIER_FAIL: int = 5
 EXIT_NEEDS_ADVICE: int = 6
 EXIT_DESTRUCTION_INCOMPLETE: int = 7
+EXIT_PARTIAL_REVIEW: int = 8
 
 # ---------------------------------------------------------------------------
 # Destruction helper (P0.6) — kept verbatim
@@ -121,9 +131,6 @@ _APFS_COW_DISCLAIMER = (
     "APFS copy-on-write means prior blocks may persist until trimmed. "
     "Skill scope is operational untraceability, not forensic erasure."
 )
-
-UTC = timezone.utc
-
 
 class DestructionIncompleteError(Exception):
     """Raised when staging_dir still exists after secure_remove_tree.
@@ -251,10 +258,8 @@ def destroy_staging_and_attest(
         Path(tmp_name).replace(attest_path)
     except Exception:
         # Best-effort cleanup of the .tmp file on error.
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(tmp_name)
-        except OSError:
-            pass
         raise
 
     # ------------------------------------------------------------------
@@ -290,6 +295,7 @@ Exit codes:
   5 — verifier assertion failed
   6 — needs-advice (paused — operator inspection required)
   7 — destruction incomplete
+  8 — partial publish; held forms need human review
 """
 
 # ---------------------------------------------------------------------------
@@ -319,6 +325,7 @@ _ATTESTATION_REQUIRED_FIELDS: frozenset[str] = frozenset(
         "study",
         "started_utc",
         "completed_utc",
+        "staging_path",
         "removed_paths",
         "files_destroyed",
         "cryptographic_erasure",
@@ -389,7 +396,7 @@ def _verify_assertion_2_manifest_reconciles(
         check_forms_manifest(datasets_dir)
     except ManifestMismatchError as exc:
         return "fail", str(exc)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return "fail", f"check_forms_manifest raised unexpected error: {exc}"
     return "pass", ""
 
@@ -490,33 +497,9 @@ def _verify_assertion_8_phi_absence(llm_source_dir: Path) -> _AssertionResult:
     Streams files line-by-line to avoid large memory allocation.
     Detail string names file path + line number + pattern — never the matched text.
     """
-    from scripts.security.phi_patterns import BLOCKING_PATTERNS, SUBJECT_ID_PATTERNS
-
-    # Build combined list of (name, compiled_pattern)
-    all_patterns: list[tuple[str, re.Pattern[str]]] = list(BLOCKING_PATTERNS) + [
-        (f"SUBJECT_ID[{i}]", p) for i, p in enumerate(SUBJECT_ID_PATTERNS)
-    ]
-
-    if not llm_source_dir.is_dir():
-        # Nothing to scan — vacuously pass
-        return "pass", ""
-
-    for fpath in sorted(llm_source_dir.rglob("*")):
-        if not fpath.is_file():
-            continue
-        try:
-            with fpath.open(encoding="utf-8", errors="replace") as fh:
-                for lineno, line in enumerate(fh, start=1):
-                    for pat_name, pat in all_patterns:
-                        if pat.search(line):
-                            rel = fpath.relative_to(llm_source_dir)
-                            return "fail", (
-                                f"phi_patterns.{pat_name} matched in {rel} line {lineno} "
-                                "(matched content omitted)"
-                            )
-        except OSError as exc:
-            return "fail", f"could not read {fpath}: {exc}"
-
+    result = scan_tree_for_phi(llm_source_dir)
+    if not result.ok:
+        return "fail", result.detail
     return "pass", ""
 
 
@@ -560,19 +543,29 @@ def _verify_assertion_9_no_runtime_keys(llm_source_dir: Path) -> _AssertionResul
 
 
 def _verify_assertion_10_required_jsonls_present(
-    manifest_path: Path, llm_source_dir: Path
+    manifest_path: Path, llm_source_dir: Path, run_dir: Path | None = None
 ) -> _AssertionResult:
     """Assertion 10: every required form in manifest has exactly one JSONL under
-    llm_source/datasets/.
+    llm_source/dataset_schema/files/.
     """
     try:
         with manifest_path.open(encoding="utf-8") as fh:
             raw = yaml.safe_load(fh) or {}
         required_forms: list[str] = raw.get("required") or []
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return "fail", f"could not load manifest for assertion 10: {exc}"
 
-    datasets_out = llm_source_dir / "datasets"
+    if run_dir is not None:
+        approval_path = run_dir / "phi_handling_approval.json"
+        if approval_path.exists():
+            try:
+                approval = json.loads(approval_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError) as exc:
+                return "fail", f"could not load PHI approval report: {exc}"
+            if approval.get("status") == "partial":
+                required_forms = [str(item) for item in approval.get("approved_forms", [])]
+
+    datasets_out = llm_source_dir / "dataset_schema" / "files"
     missing: list[str] = []
     for form in required_forms:
         stem = Path(form).stem
@@ -581,7 +574,10 @@ def _verify_assertion_10_required_jsonls_present(
             missing.append(form)
 
     if missing:
-        return "fail", f"required form(s) missing from llm_source/datasets/: {missing}"
+        return "fail", (
+            "required form(s) missing from llm_source/dataset_schema/files/: "
+            f"{missing}"
+        )
 
     return "pass", ""
 
@@ -616,7 +612,7 @@ def _assertion_12_update_status(
 # ── dispatcher ───────────────────────────────────────────────────────────────
 
 
-def _cmd_verify(args: argparse.Namespace) -> int:  # noqa: PLR0912, PLR0914, PLR0915
+def _cmd_verify(args: argparse.Namespace) -> int:
     """Run 12 verifier assertions for the given study.
 
     Exit codes mirror the assertion failure modes:
@@ -651,7 +647,7 @@ def _cmd_verify(args: argparse.Namespace) -> int:  # noqa: PLR0912, PLR0914, PLR
     audit_dir = study_output_dir / "audit"
     manifest_path = study_raw_dir / "_forms_manifest.yaml"
 
-    checked_utc = datetime.now(timezone.utc).isoformat()
+    checked_utc = datetime.now(UTC).isoformat()
 
     # ── Assertion table ─────────────────────────────────────────────────────
     # Each entry: (n, name, callable, failure_exit_code)
@@ -716,7 +712,7 @@ def _cmd_verify(args: argparse.Namespace) -> int:  # noqa: PLR0912, PLR0914, PLR
             10,
             "required_forms_have_jsonl",
             lambda: _verify_assertion_10_required_jsonls_present(
-                manifest_path, llm_source_dir
+                manifest_path, llm_source_dir, run_dir
             ),
             EXIT_MANIFEST_MISMATCH,
         ),
@@ -744,7 +740,7 @@ def _cmd_verify(args: argparse.Namespace) -> int:  # noqa: PLR0912, PLR0914, PLR
             continue
         try:
             result, detail = fn()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             result = "fail"
             detail = f"assertion raised unexpected exception: {exc}"
 
@@ -786,6 +782,16 @@ class _SkillInterrupted(BaseException):
     """Raised by SIGINT/SIGTERM handler to unwind the run subcommand cleanly."""
 
 
+@dataclass(frozen=True)
+class FormGateResult:
+    """Result of the header-only PHI handling approval gate."""
+
+    approved_forms: tuple[str, ...]
+    held_forms: tuple[str, ...]
+    approval_report_path: Path | None
+    partial: bool
+
+
 def _install_signal_handlers() -> None:
     """Install SIGINT and SIGTERM handlers that raise _SkillInterrupted.
 
@@ -793,7 +799,7 @@ def _install_signal_handlers() -> None:
     Ctrl-C during cleanup cannot be silently swallowed by a nested handler.
     """
 
-    def _handler(signum: int, frame: object) -> None:  # noqa: ANN001
+    def _handler(signum: int, frame: object) -> None:
         # Restore default so a second interrupt during cleanup propagates.
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
@@ -825,11 +831,130 @@ def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
             os.close(tmp_fd)
         Path(tmp_name).replace(path)
     except Exception:
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(tmp_name)
-        except OSError:
-            pass
         raise
+
+
+def _write_run_status(
+    *,
+    run_dir: Path,
+    run_id: str,
+    study: str,
+    exit_code: int,
+    started_utc: str,
+    failed_stage: str | None = None,
+    reason: str | None = None,
+    staging_preserved: bool | None = None,
+    verifier_passed: bool | None = None,
+    extra: dict[str, Any] | None = None,
+) -> None:
+    payload: dict[str, Any] = {
+        "run_id": run_id,
+        "study": study,
+        "exit_code": exit_code,
+        "started_utc": started_utc,
+        "completed_utc": datetime.now(UTC).isoformat(),
+        "failed_stage": failed_stage,
+        "reason": reason,
+        "staging_preserved": staging_preserved,
+        "verifier_passed": verifier_passed,
+    }
+    if extra:
+        payload.update(extra)
+    _atomic_write_json(run_dir / "status.json", payload)
+
+
+def _preflight_phi_key() -> None:
+    """Fail before raw extraction if the PHI HMAC key is unavailable."""
+    _load_phi_key()
+
+
+def _auto_worker_count(max_workers: int | None) -> int:
+    if max_workers is not None:
+        return max(1, max_workers)
+    cpu = os.cpu_count() or 1
+    return max(1, min(cpu, 8))
+
+
+def _manifest_required_forms(manifest_path: Path) -> list[str]:
+    with manifest_path.open(encoding="utf-8") as fh:
+        raw = yaml.safe_load(fh) or {}
+    required = raw.get("required") or []
+    if not isinstance(required, list):
+        raise ValueError(f"{manifest_path} required: must be a list")
+    return [str(item) for item in required]
+
+
+def _run_form_approval_gate(
+    *,
+    study: str,
+    study_raw_dir: Path,
+    run_dir: Path,
+    max_workers: int | None,
+) -> FormGateResult:
+    """Run header-only PHI handling review before any row values are opened."""
+    from scripts.security.phi_review import (
+        load_study_privacy_config,
+        refresh_jurisdiction_rules,
+        review_form_headers,
+        verify_approval_payload,
+    )
+    from scripts.source_truth.study_intake import read_headers_only
+
+    privacy_config = load_study_privacy_config(study_raw_dir)
+    rule_bundle = refresh_jurisdiction_rules(
+        privacy_config,
+        allow_network=privacy_config.rule_refresh == "online_preferred",
+    )
+    required_forms = _manifest_required_forms(study_raw_dir / "_forms_manifest.yaml")
+    datasets_dir = study_raw_dir / "datasets"
+    worker_count = _auto_worker_count(max_workers)
+
+    approvals: list[Any] = []
+
+    def _review_one(form_name: str) -> Any:
+        headers = read_headers_only(datasets_dir / form_name)
+        return review_form_headers(
+            form_name=form_name,
+            headers=headers,
+            privacy_config=privacy_config,
+            rule_bundle=rule_bundle,
+        )
+
+    if required_forms:
+        with ThreadPoolExecutor(max_workers=worker_count) as pool:
+            futures = {pool.submit(_review_one, form): form for form in required_forms}
+            approvals.extend(future.result() for future in as_completed(futures))
+
+    approvals = sorted(approvals, key=lambda item: item.form_name)
+    approved_forms = tuple(item.form_name for item in approvals if item.status == "approved")
+    held_forms = tuple(item.form_name for item in approvals if item.status != "approved")
+
+    payload = {
+        "run_id": run_dir.name,
+        "study": study,
+        "created_utc": datetime.now(UTC).isoformat(),
+        "jurisdictions": list(privacy_config.jurisdictions),
+        "conflict_policy": privacy_config.conflict_policy,
+        "rule_bundle": rule_bundle.to_json(),
+        "worker_count": worker_count,
+        "forms": [item.to_json() for item in approvals],
+        "approved_forms": list(approved_forms),
+        "held_forms": list(held_forms),
+        "status": "partial" if held_forms else "approved",
+    }
+    verify_approval_payload(payload)
+    report_path = run_dir / "phi_handling_approval.json"
+    _atomic_write_json(report_path, payload)
+
+    return FormGateResult(
+        approved_forms=approved_forms,
+        held_forms=held_forms,
+        approval_report_path=report_path,
+        partial=bool(held_forms),
+    )
+
 
 
 def _acquire_pipeline_lock_for_skill(study: str) -> None:
@@ -846,19 +971,19 @@ def _acquire_pipeline_lock_for_skill(study: str) -> None:
     Raises RuntimeError (from main._acquire_pipeline_lock) if the lock is
     already held by another process.
     """
-    import main as _main  # noqa: PLC0415 — lazy import intentional
+    import main as _main
 
-    _main._acquire_pipeline_lock(study)  # noqa: SLF001
+    _main._acquire_pipeline_lock(study)
 
 
 def _release_pipeline_lock_for_skill() -> None:
     """Release the pipeline lock via main._release_pipeline_lock."""
-    import main as _main  # noqa: PLC0415
+    import main as _main
 
-    _main._release_pipeline_lock()  # noqa: SLF001
+    _main._release_pipeline_lock()
 
 
-def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR0915
+def _cmd_run(args: argparse.Namespace) -> int:
     """Drive the full raw-Excel → PHI-clean llm_source/ pipeline.
 
     Steps
@@ -872,7 +997,6 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
     7. Exit EXIT_OK.
     """
     import config  # lazy — avoids import at module level for testability
-
     from scripts.utils.run_context import (
         SCRUB_RECOVERY_MESSAGE,
         resolve_run_id,
@@ -891,6 +1015,52 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
 
     # ── Step 1a: resolve run_id ────────────────────────────────────────────
     run_id = resolve_run_id()
+    run_dir = study_output_dir / "runs" / run_id
+
+    def _finish(
+        code: int,
+        *,
+        stage: str | None = None,
+        reason: str | None = None,
+        staging_preserved: bool | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> int:
+        _write_run_status(
+            run_dir=run_dir,
+            run_id=run_id,
+            study=study,
+            exit_code=code,
+            started_utc=started_utc,
+            failed_stage=stage,
+            reason=reason,
+            staging_preserved=staging_preserved,
+            extra=extra,
+        )
+        return code
+
+    # ── Step 1a.1: fail closed on disabled-scrub bypass ────────────────────
+    if os.environ.get("REPORTALIN_ALLOW_DISABLED_SCRUB"):
+        msg = "REPORTALIN_ALLOW_DISABLED_SCRUB is forbidden for extract_to_llm_source"
+        print(msg, file=sys.stderr)
+        return _finish(
+            EXIT_NEEDS_ADVICE,
+            stage="preflight.disabled_scrub",
+            reason=msg,
+            staging_preserved=False,
+        )
+
+    # ── Step 1a.2: PHI key preflight before any raw value extraction ───────
+    try:
+        _preflight_phi_key()
+    except Exception as exc:
+        msg = f"PHI key preflight failed: {exc}"
+        print(msg, file=sys.stderr)
+        return _finish(
+            EXIT_NEEDS_ADVICE,
+            stage="preflight.phi_key",
+            reason=msg,
+            staging_preserved=False,
+        )
 
     # ── Step 1b: scan for in-progress scrubs ──────────────────────────────
     study_runs_dir = study_output_dir / "runs"
@@ -900,16 +1070,27 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
             SCRUB_RECOVERY_MESSAGE.format(path=in_progress[0]),
             file=sys.stderr,
         )
-        return EXIT_NEEDS_ADVICE
+        return _finish(
+            EXIT_NEEDS_ADVICE,
+            stage="preflight.scrub_recovery",
+            reason=f"in-progress token found: {in_progress[0]}",
+            staging_preserved=True,
+        )
 
     # ── Step 1c: acquire pipeline lock ────────────────────────────────────
     try:
         _acquire_pipeline_lock_for_skill(study)
     except RuntimeError as exc:
         print(f"Lock error: {exc}", file=sys.stderr)
-        return EXIT_NEEDS_ADVICE
+        return _finish(
+            EXIT_NEEDS_ADVICE,
+            stage="preflight.lock",
+            reason=str(exc),
+            staging_preserved=True,
+        )
 
     lock_held = True
+    final_code = EXIT_OK
 
     # ── Steps 1d + 2 are inside the try so the lock is always released ────
     # (Minor-1 fix: manifest check is inside the try/finally so a raise there
@@ -925,14 +1106,57 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
             check_forms_manifest(study_datasets_dir)
         except ManifestMismatchError as exc:
             print(f"Manifest mismatch: {exc}", file=sys.stderr)
-            return EXIT_MANIFEST_MISMATCH
+            return _finish(
+                EXIT_MANIFEST_MISMATCH,
+                stage="preflight.manifest",
+                reason=str(exc),
+                staging_preserved=False,
+            )
+
+        # ── Step 1e: header-only PHI handling approval gate ───────────────
+        try:
+            form_gate = _run_form_approval_gate(
+                study=study,
+                study_raw_dir=Path(config.RAW_DATA_DIR) / study,
+                run_dir=run_dir,
+                max_workers=getattr(args, "max_workers", None),
+            )
+        except Exception as exc:
+            msg = f"PHI form approval gate failed: {exc}"
+            print(msg, file=sys.stderr)
+            return _finish(
+                EXIT_NEEDS_ADVICE,
+                stage="preflight.form_approval",
+                reason=msg,
+                staging_preserved=False,
+            )
+
+        if form_gate.held_forms and not form_gate.approved_forms:
+            msg = "all forms held for human PHI handling review"
+            print(msg, file=sys.stderr)
+            return _finish(
+                EXIT_NEEDS_ADVICE,
+                stage="preflight.form_approval",
+                reason=msg,
+                staging_preserved=False,
+                extra={
+                    "publish_status": "held",
+                    "approved_forms_count": 0,
+                    "held_forms_count": len(form_gate.held_forms),
+                    "approval_report_path": str(form_gate.approval_report_path)
+                    if form_gate.approval_report_path
+                    else None,
+                },
+            )
 
         # ── Step 3: subprocess invocation of main.py --pipeline ───────────
         env = dict(os.environ)
-        # Security: never propagate scrub-bypass env var to child process.
+        # Defensive: the bypass env var was already refused above.
         env.pop("REPORTALIN_ALLOW_DISABLED_SCRUB", None)
         # Propagate run_id so all sub-processes share the same run identifier.
         env["REPORTAL_RUN_ID"] = run_id
+        if form_gate.approved_forms or form_gate.held_forms:
+            env["REPORTAL_ALLOWED_DATASET_FORMS"] = ",".join(form_gate.approved_forms)
 
         # main.py resolves study from STUDY_NAME env var (it has no --study flag).
         env["STUDY_NAME"] = study
@@ -957,7 +1181,12 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
                 "staging preserved for inspection.",
                 file=sys.stderr,
             )
-            return EXIT_NEEDS_ADVICE
+            return _finish(
+                EXIT_NEEDS_ADVICE,
+                stage="pipeline.subprocess",
+                reason=f"subprocess exited with code {result.returncode}",
+                staging_preserved=True,
+            )
 
         # ── Step 4a: assert ledger hashes are non-null ────────────────────
         ledger_path = study_output_dir / "audit" / "phi_handling_ledger.as_written.json"
@@ -965,7 +1194,12 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
             ledger_data = json.loads(ledger_path.read_text(encoding="utf-8"))
         except (FileNotFoundError, json.JSONDecodeError) as exc:
             print(f"Ledger read error: {exc}", file=sys.stderr)
-            return EXIT_LEDGER_HASH_NULL
+            return _finish(
+                EXIT_LEDGER_HASH_NULL,
+                stage="postrun.ledger",
+                reason=str(exc),
+                staging_preserved=True,
+            )
 
         if not ledger_data.get("scrub_config_hash") or not ledger_data.get(
             "input_dataset_hash"
@@ -974,7 +1208,12 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
                 "Ledger hash null: scrub_config_hash or input_dataset_hash is absent/null.",
                 file=sys.stderr,
             )
-            return EXIT_LEDGER_HASH_NULL
+            return _finish(
+                EXIT_LEDGER_HASH_NULL,
+                stage="postrun.ledger",
+                reason="scrub_config_hash or input_dataset_hash is absent/null",
+                staging_preserved=True,
+            )
 
         # ── Step 4b: assert quarantine is empty or absent ─────────────────
         quarantine_dir = study_staging_dir / "quarantine"
@@ -983,7 +1222,12 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
                 f"Quarantine non-empty: {quarantine_dir}",
                 file=sys.stderr,
             )
-            return EXIT_QUARANTINE_NON_EMPTY
+            return _finish(
+                EXIT_QUARANTINE_NON_EMPTY,
+                stage="postrun.quarantine",
+                reason=f"quarantine non-empty: {quarantine_dir}",
+                staging_preserved=True,
+            )
 
         # ── Step 5: destruction ───────────────────────────────────────────
         try:
@@ -995,24 +1239,30 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
             )
         except DestructionIncompleteError as exc:
             print(f"Destruction incomplete: {exc}", file=sys.stderr)
-            return EXIT_DESTRUCTION_INCOMPLETE
+            return _finish(
+                EXIT_DESTRUCTION_INCOMPLETE,
+                stage="postrun.destruction",
+                reason=str(exc),
+                staging_preserved=True,
+            )
 
         # ── Step 6: write status.json ─────────────────────────────────────
-        completed_utc = datetime.now(UTC).isoformat()
-        run_dir = study_output_dir / "runs" / run_id
-        status_path = run_dir / "status.json"
-        status_payload: dict[str, Any] = {
-            "run_id": run_id,
-            "study": study,
-            "exit_code": EXIT_OK,
-            "started_utc": started_utc,
-            "completed_utc": completed_utc,
-            "scope": "HIPAA Safe Harbor (per phi_scrub.yaml)",
-            "ledger_hash_present": True,
-            "destruction_attestation_path": str(attest_path),
-            "verifier_passed": None,
-        }
-        _atomic_write_json(status_path, status_payload)
+        final_code = EXIT_PARTIAL_REVIEW if form_gate.partial else EXIT_OK
+        _finish(
+            final_code,
+            staging_preserved=False,
+            extra={
+                "scope": "HIPAA Safe Harbor + configured study jurisdictions",
+                "ledger_hash_present": True,
+                "destruction_attestation_path": str(attest_path),
+                "publish_status": "partial" if form_gate.partial else "complete",
+                "approved_forms_count": len(form_gate.approved_forms),
+                "held_forms_count": len(form_gate.held_forms),
+                "approval_report_path": str(form_gate.approval_report_path)
+                if form_gate.approval_report_path
+                else None,
+            },
+        )
 
     except _SkillInterrupted:
         # SIGINT/SIGTERM — clean up lock; do NOT invoke destruction.
@@ -1024,7 +1274,12 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
         lock_held = False
         _restore_default_signal_handlers()
         _release_pipeline_lock_for_skill()
-        return EXIT_DESTRUCTION_INCOMPLETE
+        return _finish(
+            EXIT_DESTRUCTION_INCOMPLETE,
+            stage="pipeline.interrupted",
+            reason="interrupted by signal",
+            staging_preserved=True,
+        )
 
     finally:
         _restore_default_signal_handlers()
@@ -1032,7 +1287,7 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
             _release_pipeline_lock_for_skill()
             lock_held = False
 
-    return EXIT_OK
+    return final_code
 
 
 # ---------------------------------------------------------------------------
@@ -1061,6 +1316,13 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         metavar="STUDY",
         help="Study name matching data/raw/{STUDY}/ (e.g. Indo-VAP)",
+    )
+    run_p.add_argument(
+        "--max-workers",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Maximum parallel form-review workers before real-data extraction.",
     )
 
     # ── verify ─────────────────────────────────────────────────────────────
@@ -1105,7 +1367,7 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_verify(args)
         if args.subcommand == "status":
             return _cmd_status(args)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"Unexpected error: {exc}", file=sys.stderr)
         return 1
 

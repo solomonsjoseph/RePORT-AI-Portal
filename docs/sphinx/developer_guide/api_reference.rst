@@ -56,6 +56,7 @@ Dataset Extraction
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: ManifestCheckResult
 
 Security Modules
 ----------------
@@ -102,6 +103,14 @@ PHI Gate (Agent-Boundary)
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: scripts.security.phi_gate
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+PHI Review (Header-Only Approval)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: scripts.security.phi_review
    :members:
    :undoc-members:
    :show-inheritance:

@@ -68,6 +68,15 @@ class TestValidateAgentRead:
         with pytest.raises(ZoneViolationError):
             validate_agent_read(f)
 
+    def test_legacy_trio_bundle_rejected(self, monkeypatch_config: Path) -> None:
+        import config
+
+        legacy = config.TRIO_BUNDLE_DIR / "datasets" / "legacy.jsonl"
+        legacy.parent.mkdir(parents=True, exist_ok=True)
+        legacy.write_text("{}", encoding="utf-8")
+        with pytest.raises(ZoneViolationError):
+            validate_agent_read(legacy)
+
     def test_arbitrary_filesystem_rejected(self, tmp_path: Path) -> None:
         """A path outside any configured zone must be rejected."""
         f = tmp_path / "etc" / "passwd"

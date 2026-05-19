@@ -1,11 +1,11 @@
 Agent Instructions (for AI Coding Assistants)
 =============================================
 
-This page is the authoritative briefing for AI coding assistants
-(Claude Code, Copilot CLI, Codex, Gemini CLI) working on this
-repository. It supersedes the historical ``AGENTS.md`` at the repo
-root, which has been retired (per the directive to keep project
-documentation in README and Sphinx).
+This page is the authoritative human-readable briefing for AI coding
+assistants (Claude Code, Copilot CLI, Codex, Gemini CLI) working on this
+repository. The root ``AGENTS.md`` remains a short machine bootstrap for
+tools that auto-load it; durable project documentation lives in Sphinx
+and in the GitHub README entry point.
 
 The remainder of this page is organised the way an assistant's
 context-builder reads it: orientation → conventions → rules.
@@ -55,6 +55,39 @@ Quick reference
    make chat-cli      # Launch CLI REPL
    make pipeline      # Full data pipeline plus SoT-backed LLM source build
 
+Issue Tracker and Triage
+------------------------
+
+Issues and PRDs live in GitHub Issues for
+``solomonsjoseph/RePORT-AI-Portal``. Use ``gh`` from inside the repo
+clone so the remote selects the repository.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Skill role
+     - GitHub label
+     - Meaning
+   * - ``needs-triage``
+     - ``agent:needs-triage``
+     - Maintainer needs to evaluate this issue.
+   * - ``needs-info``
+     - ``agent:needs-info``
+     - Waiting on reporter for more information.
+   * - ``ready-for-agent``
+     - ``agent:ready-for-agent``
+     - Fully specified and ready for an AFK agent.
+   * - ``ready-for-human``
+     - ``agent:ready-for-human``
+     - Requires human implementation.
+   * - ``wontfix``
+     - ``agent:wontfix``
+     - Will not be actioned.
+
+When a skill says to publish to the issue tracker, create a GitHub
+issue. When a skill says to fetch a ticket, use
+``gh issue view <number> --comments``.
+
 Architecture (two-world)
 ------------------------
 
@@ -69,8 +102,7 @@ reads only row 1 of each dataset for binding, writes candidates to ``/tmp``,
 verifies each candidate, and promotes only passing lean YAMLs into
 ``output/{STUDY}/llm_source/source_truth/``. For a single manual source pack,
 use ``python -m scripts.source_truth.study_intake --study <study> --form <form>``.
-See ``AGENTS.md`` (``## SoT creation`` section) and
-``docs/runbook_sot_build.md`` for the full behavior reference.
+See :doc:`source_truth_build` for the full behavior reference.
 
 Dataset extraction writes into a transient staging workspace at
 ``tmp/{STUDY_NAME}/``. The cleanup chain (PHI scrub / dataset cleanup),
@@ -94,8 +126,8 @@ operator inspection.
 
 **PDF extraction:** the PDF orchestrator and legacy raw-PDF API path are
 historical. Current LLM metadata comes from reviewed SoT policy YAMLs
-(produced by the intake CLI) and is published through the Study Metadata
-Catalog and Evidence Packs.
+(produced by the intake CLI) and is published under
+``llm_source/source_truth/``.
 
 **World 2 — AI Assistant** (``scripts/ai_assistant/``):
 LangGraph ReAct agent with 10 tools for querying study data. Never

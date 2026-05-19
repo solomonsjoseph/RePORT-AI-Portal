@@ -23,7 +23,7 @@ prompt-injecting it), not a remote network attacker.
 - Reading API keys (``ANTHROPIC_API_KEY``, ``OPENAI_API_KEY`` etc.)
   from ``os.environ``.
 - Reading raw study data (``data/raw/``) or staged data (``tmp/``)
-  outside the PHI-scrubbed trio bundle.
+  outside the PHI-scrubbed ``llm_source`` bundle.
 - Writing files anywhere outside ``output/{STUDY}/agent/analysis/``.
 - Exhausting host resources via infinite loops, fork bombs, or huge
   memory allocations.
