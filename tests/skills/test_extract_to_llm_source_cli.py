@@ -135,21 +135,61 @@ class TestStatusSubcommand:
 
 
 class TestVerifyStub:
-    def test_staging_absent_exits_ok(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _patch_config(monkeypatch, tmp_path)
-        # staging dir does NOT exist
-        rc = main(["verify", "--study", STUDY])
-        assert rc == EXIT_OK
+    """Smoke tests for the verify subcommand.
 
-    def test_staging_present_exits_destruction_incomplete(
+    P3.1 tested a one-assertion scaffold.  P4.1 replaced the scaffold with the
+    full 12-assertion verifier.  These tests are updated to reflect that:
+      - verify without --run and without any runs/ directory exits EXIT_NEEDS_ADVICE.
+      - staging-present is caught by assertion 3, but only AFTER run_id is resolved.
+    """
+
+    def test_no_run_dir_exits_needs_advice(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_config(monkeypatch, tmp_path)
-        staging_dir = tmp_path / "tmp" / STUDY
-        staging_dir.mkdir(parents=True)
+        # Neither runs/ dir nor --run provided: verifier should exit EXIT_NEEDS_ADVICE
         rc = main(["verify", "--study", STUDY])
+        assert rc == EXIT_NEEDS_ADVICE
+
+    def test_staging_present_with_run_exits_destruction_incomplete(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Staging dir present → EXIT_DESTRUCTION_INCOMPLETE (assertion 3).
+
+        We must provide a --run so run_id resolution succeeds and the assertion
+        loop reaches assertion 3.
+        """
+        import config
+        import yaml as _yaml
+
+        _patch_config(monkeypatch, tmp_path)
+        # Also patch RAW_DATA_DIR so the verifier looks in tmp_path
+        monkeypatch.setattr(
+            config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False
+        )
+        # Also patch PHI_SCRUB_CONFIG_PATH to a dummy
+        monkeypatch.setattr(
+            config,
+            "PHI_SCRUB_CONFIG_PATH",
+            tmp_path / "scripts" / "security" / "phi_scrub.yaml",
+            raising=False,
+        )
+        run_id = "run_stub_test"
+        # Create a minimal run_dir so run_id resolves
+        run_dir = tmp_path / "output" / STUDY / "runs" / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        # Also need a valid manifest to pass assertions 1 & 2
+        study_dir = tmp_path / "data" / "raw" / STUDY
+        datasets_dir = study_dir / "datasets"
+        datasets_dir.mkdir(parents=True, exist_ok=True)
+        manifest = {"required": [], "optional": [], "reject": []}
+        (study_dir / "_forms_manifest.yaml").write_text(
+            _yaml.dump(manifest), encoding="utf-8"
+        )
+        # Create staging dir to trigger assertion 3
+        staging_dir = tmp_path / "tmp" / STUDY
+        staging_dir.mkdir(parents=True, exist_ok=True)
+        rc = main(["verify", "--study", STUDY, "--run", run_id])
         assert rc == EXIT_DESTRUCTION_INCOMPLETE
 
 
