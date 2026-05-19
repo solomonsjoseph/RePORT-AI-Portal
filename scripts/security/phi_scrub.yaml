@@ -188,15 +188,16 @@ date_fields:
 # ──────────────────────────────────────────────────────────────────────────
 # ID FIELDS (HMAC-SHA256 pseudonymized with domain-separated labels)
 # ──────────────────────────────────────────────────────────────────────────
-# Output format: ``<LABEL>_<hmac12hex>``. The label is used TWICE:
+# Output format: ``RID_<LABEL>_<alpha12>``. The label is used TWICE:
 #   1. As the HMAC domain separator: ``HMAC-SHA256(key, f"{label}:{value}")``.
 #      Same raw value under different labels → different pseudonyms
 #      (prevents cross-category correlation attacks — RFC 5869 §3.2 /
 #      HKDF info-param rationale).
-#   2. As the visible output prefix, so an IRB reviewer reading the audit
-#      can distinguish ``FAM_`` (family) from ``LAB_`` (lab accession)
-#      from ``SUBJ_`` (subject) at a glance instead of seeing every ID
-#      flattened under one prefix.
+#   2. As the visible category inside an opaque ``RID_`` token, so an IRB
+#      reviewer reading the audit can distinguish ``RID_FAM_`` (family) from
+#      ``RID_LAB_`` (lab accession) from ``RID_SUBJ_`` (subject). The tag is
+#      alphabet-only so the pre-publication leak gate does not mistake the
+#      generated pseudonym for a raw subject ID or phone-like number.
 #
 # First-match wins — list specific patterns BEFORE generic ones so
 # ``^SUBJID$`` with label SUBJ binds before a fallback

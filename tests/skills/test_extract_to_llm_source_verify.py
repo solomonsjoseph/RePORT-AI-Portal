@@ -15,8 +15,8 @@ B. Failure-injection fixtures — one test per failure mode:
    - Assertion 5 fail: scrub_config_hash mismatch → EXIT_LEDGER_HASH_NULL (3)
    - Assertion 6 fail: .NO_LLM_ZONE sentinel missing → EXIT_LEDGER_HASH_NULL (3)
    - Assertion 7 fail: quarantine dir present under tmp/ → EXIT_QUARANTINE_NON_EMPTY (4)
-   - Assertion 8 fail: llm_source/ file contains PHI-like content → EXIT_VERIFIER_FAIL (5)
-   - Assertion 9 fail: llm_source/ JSONL contains extraction_utc → EXIT_VERIFIER_FAIL (5)
+   - Assertion 8 fail: dataset JSONL contains PHI-like content → EXIT_VERIFIER_FAIL (5)
+   - Assertion 9 fail: dataset JSONL contains extraction_utc → EXIT_VERIFIER_FAIL (5)
    - Assertion 10 fail: required form JSONL missing → EXIT_MANIFEST_MISMATCH (2)
    - Assertion 11 fail: pipeline lock file present → EXIT_NEEDS_ADVICE (6)
 
@@ -176,6 +176,7 @@ def _make_valid_status_json(run_dir: Path, run_id: str = RUN_ID) -> None:
         "run_id": run_id,
         "study": STUDY,
         "exit_code": 0,
+        "publish_status": "complete",
         "started_utc": _iso_now(),
         "completed_utc": _iso_now(),
         "verifier_passed": None,

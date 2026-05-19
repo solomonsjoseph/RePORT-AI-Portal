@@ -71,6 +71,12 @@ uv run --all-groups python scripts/skills/extract_to_llm_source.py run --study I
 uv run --all-groups python scripts/skills/extract_to_llm_source.py verify --study Indo-VAP
 ```
 
+Run one manifest-declared dataset:
+
+```bash
+uv run --all-groups python scripts/skills/extract_to_llm_source.py run --study Indo-VAP --form 6_HIV
+```
+
 Run documentation gates:
 
 ```bash

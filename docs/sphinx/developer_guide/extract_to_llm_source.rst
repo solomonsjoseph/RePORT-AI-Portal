@@ -93,7 +93,17 @@ Print the scope banner and exit-code contract:
    uv run --all-groups python scripts/skills/extract_to_llm_source.py status
 
 Use ``--max-workers N`` on ``run`` to bound parallel header-review
-workers.
+workers. Use ``--form DATASET`` to run one manifest-declared dataset at
+a time; the value may be the full filename, such as ``6_HIV.xlsx``, or
+the dataset stem, such as ``6_HIV``. Repeat ``--form`` to run a small
+explicit set.
+
+One-dataset pilot:
+
+.. code-block:: bash
+
+   uv run --all-groups python scripts/skills/extract_to_llm_source.py run \
+     --study Indo-VAP --form 6_HIV
 
 Run Flow
 --------
@@ -110,7 +120,7 @@ Run Flow
 9. Read row-1 headers for each reviewed form.
 10. Classify headers with strictest-wins rule merging and write
     ``phi_handling_approval.json``.
-11. Pass approved forms to the main pipeline through
+11. Pass approved forms, including any ``--form`` subset, to the main pipeline through
     ``REPORTAL_ALLOWED_DATASET_FORMS``.
 12. Run ``main.py --pipeline`` in a subprocess.
 13. Assert required ledger hashes and empty quarantine.

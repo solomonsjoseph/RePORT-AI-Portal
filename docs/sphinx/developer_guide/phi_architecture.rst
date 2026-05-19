@@ -94,8 +94,9 @@ rules in ``scripts/security/phi_scrub.yaml``:
    Within-subject visit intervals are preserved exactly; absolute
    dates are obscured.
 8. **hmac_pseudonymize** — replace IDs with
-   ``SUBJ_<HMAC-SHA256(key, value)[:12]>``. Non-reversible without
-   the key, deterministic with it.
+   ``RID_<LABEL>_<alpha12(HMAC-SHA256(key, label + ":" + value))>``.
+   Non-reversible without the key, deterministic with it, and shaped so
+   generated pseudonyms do not match raw subject-ID or phone regexes.
 
 The HMAC key lives at ``~/.config/report_ai_portal/phi_key`` (mode
 ``0600``, outside the repo, never committed). Path resolution:

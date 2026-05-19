@@ -71,6 +71,7 @@ class TestPrepareStaging:
             fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
 
         main._cleanup_staging()
+        assert not lock_path.exists()
 
 
 # ── _publish_leg ────────────────────────────────────────────────────────────
@@ -282,6 +283,68 @@ class TestPublishStaging:
             Path(config.STAGING_DICTIONARY_DIR),
             Path(config.DICTIONARY_JSON_OUTPUT_DIR),
         )
+
+
+# ── _run_dataset_leg ───────────────────────────────────────────────────────
+
+
+class TestRunDatasetLeg:
+    def test_skips_fresh_cache_without_form_allowlist(
+        self,
+        monkeypatch_config: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        import config
+
+        config.TRIO_DATASETS_DIR.mkdir(parents=True, exist_ok=True)
+        (config.TRIO_DATASETS_DIR / "existing.jsonl").write_text(
+            '{"safe": true}\n',
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(main, "is_step_fresh", lambda *args: True)
+
+        def _unexpected_process() -> dict[str, Any]:
+            raise AssertionError("fresh full-study cache should skip extraction")
+
+        monkeypatch.setattr(main, "process_datasets", _unexpected_process)
+
+        result = main._run_dataset_leg(force=False, run_extraction=True)
+
+        assert result == {"leg": "datasets", "skipped": True, "dropped_events": []}
+
+    def test_form_allowlist_bypasses_fresh_published_output_cache(
+        self,
+        monkeypatch_config: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        import config
+
+        config.TRIO_DATASETS_DIR.mkdir(parents=True, exist_ok=True)
+        (config.TRIO_DATASETS_DIR / "existing.jsonl").write_text(
+            '{"safe": true}\n',
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("REPORTAL_ALLOWED_DATASET_FORMS", "6_HIV.xlsx")
+        monkeypatch.setattr(main, "is_step_fresh", lambda *args: True)
+        monkeypatch.setattr(main, "save_step_manifest", lambda *args: None)
+
+        calls = 0
+
+        def _fake_process() -> dict[str, Any]:
+            nonlocal calls
+            calls += 1
+            return {"extraction": {"dropped_events": [{"name": "safe_drop"}]}}
+
+        monkeypatch.setattr(main, "process_datasets", _fake_process)
+
+        result = main._run_dataset_leg(force=False, run_extraction=True)
+
+        assert calls == 1
+        assert result == {
+            "leg": "datasets",
+            "skipped": False,
+            "dropped_events": [{"name": "safe_drop"}],
+        }
 
 
 # ── _cleanup_staging ────────────────────────────────────────────────────────

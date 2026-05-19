@@ -35,8 +35,11 @@ Eight structural-field action classes, evaluated in strict priority order
    preservation for epidemiological survival / incidence / person-time
    analyses.
 8. **id** (``id_fields``) — replaced with
-   ``"SUBJ_" + hmac_sha256(key, raw_id).hexdigest()[:12]``. Deterministic
-   cross-file linkage preserved; non-reversible without key possession.
+   ``"RID_" + label + "_" + alpha12(hmac_sha256(key, label + ":" + raw_id))``.
+   Deterministic cross-file linkage preserved; non-reversible without key
+   possession. The ``RID_`` envelope plus alphabet-only tag keeps generated
+   pseudonyms from matching raw subject-ID, phone, or date regexes in the
+   pre-publication leak gate.
 
 Free-text PHI residuals are handled conservatively by dropping narrative
 fields wholesale. Current narrative fields like ``*COMMENT``, ``*REMARK``,
@@ -145,15 +148,15 @@ __all__ = [
 # Row-level ``_phi_scrubbed`` marker. Acts as an idempotency guard so a
 # second scrub pass over the same staging file is a no-op. The full
 # catalog version + rule counts live in the audit report, not the row.
-_SCRUB_VERSION = "v2"
-# v2: ID pseudonyms carry the semantic category as both a visible prefix AND
-# cryptographic domain separator. Format: ``<LABEL>_<hmac12hex>`` where the
-# HMAC input is ``f"{label}:{raw_value}"``. Same raw value under different
-# labels → different pseudonyms (prevents cross-category correlation), same
-# raw value under the same label → same pseudonym (preserves in-category
-# longitudinal linkage across files). See :func:`pseudo_id`. Bumping the
-# marker forces re-scrub of any row written under the flat v1 ``SUBJ_``
-# scheme.
+_SCRUB_VERSION = "v3"
+# v3: ID pseudonyms carry the semantic category inside an opaque RID envelope.
+# Format: ``RID_<LABEL>_<alpha12>`` where the HMAC input is
+# ``f"{label}:{raw_value}"``. Same raw value under different labels → different
+# pseudonyms (prevents cross-category correlation), same raw value under the
+# same label → same pseudonym (preserves in-category longitudinal linkage
+# across files). The ``RID_`` prefix and alphabet-only tag prevent generated
+# pseudonyms from matching raw subject-ID or phone regexes. Bumping the marker
+# forces re-scrub of any row written under the v2 ``<LABEL>_<hmac12>`` scheme.
 _SCRUB_MARKER_FIELD = "_phi_scrubbed"
 _SENTINEL_NAME = ".phi_scrub_complete"
 
@@ -162,8 +165,9 @@ _DEFAULT_ORPHAN_THRESHOLD = 10
 _DEFAULT_AGE_CAP_THRESHOLD = 89
 _DEFAULT_AGE_CAP_LABEL = "90+"
 _DEFAULT_SMALL_CELL_THRESHOLD = 5
-_PSEUDO_TAG_BYTES = 12  # hex chars taken from HMAC digest
+_PSEUDO_TAG_CHARS = 12  # 48-bit HMAC tag encoded as a-p letters
 _OFFSET_DIGEST_BYTES = 4  # first N bytes of digest for offset computation
+_HEX_TO_ALPHA = str.maketrans("0123456789abcdef", "abcdefghijklmnop")
 
 _POSTURE_SAFE_HARBOR = "safe_harbor"
 _POSTURE_LIMITED_DATASET = "limited_dataset"
@@ -233,9 +237,9 @@ class IdRule:
     Each ``id_fields`` entry yields one ``IdRule``. When a row's field name
     matches ``pattern``, the field value is pseudonymized via
     :func:`pseudo_id` with the attached ``label``. The label is propagated
-    both as the visible output prefix (``<LABEL>_<hmac12>``) AND as the
-    HMAC domain-separator, so the same raw value under two different labels
-    yields two different pseudonyms.
+    both inside the visible output token (``RID_<LABEL>_<alpha12>``) and as
+    the HMAC domain-separator, so the same raw value under two different
+    labels yields two different pseudonyms.
 
     Keep the label short (3-5 chars, uppercase). It becomes part of every
     pseudonymized output and of the IRB-facing audit log.
@@ -482,7 +486,7 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
     # ``pattern`` (regex) and ``label`` (short semantic category).
     # Plain-string entries are rejected — an unlabelled id field would
     # lose its category in the pseudonym output, which defeats the
-    # whole point of the v2 scheme.
+    # whole point of the v3 scheme.
     raw_id_rules = raw.get("id_fields") or []
     if not isinstance(raw_id_rules, list):
         raise PHIScrubError("id_fields must be a list of {pattern, label} mappings")
@@ -491,7 +495,7 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
         if not isinstance(entry, dict):
             raise PHIScrubError(
                 f"id_fields[{idx}] must be a mapping with 'pattern' + 'label'; "
-                f"plain strings are no longer accepted in v2"
+                f"plain strings are no longer accepted in v3"
             )
         pat_str = entry.get("pattern")
         label = entry.get("label")
@@ -671,7 +675,7 @@ def bootstrap_key(path: Path | None = None) -> Path:
 
 
 def pseudo_id(raw_id: str, *, key: bytes, label: str = "ID") -> str:
-    """Return ``<LABEL>_<hmac12hex>`` with cryptographic domain separation.
+    """Return ``RID_<LABEL>_<alpha12>`` with cryptographic domain separation.
 
     The HMAC input is ``f"{label}:{raw_id}"`` so the same raw value under
     different ``label`` arguments produces different pseudonyms. This
@@ -689,16 +693,17 @@ def pseudo_id(raw_id: str, *, key: bytes, label: str = "ID") -> str:
         raw_id: the raw identifier string (already stripped by the caller).
         key: 32-byte HMAC key loaded from the sidecar keyfile.
         label: short semantic category (e.g. ``"SUBJ"``, ``"FAM"``, ``"LAB"``).
-            Propagated both into the HMAC input (domain separation) and as
-            the visible output prefix (debuggability + IRB-audit clarity).
+            Propagated into the HMAC input for domain separation and retained
+            inside the opaque ``RID_`` output token for audit clarity.
 
     Returns:
-        ``f"{label}_{hex12}"`` — the visible prefix mirrors the label so
-        the output is self-describing in audit logs and downstream tools.
+        ``f"RID_{label}_{alpha12}"`` — the output stays self-describing while
+        avoiding raw-ID and phone-like shapes.
     """
     domain_input = f"{label}:{raw_id}".encode()
-    tag = hmac.new(key, domain_input, hashlib.sha256).hexdigest()[:_PSEUDO_TAG_BYTES]
-    return f"{label}_{tag}"
+    raw_tag = hmac.new(key, domain_input, hashlib.sha256).hexdigest()[:_PSEUDO_TAG_CHARS]
+    tag = raw_tag.translate(_HEX_TO_ALPHA)
+    return f"RID_{label}_{tag}"
 
 
 def date_offset_days(subject_id: str, *, key: bytes, max_days: int) -> int:

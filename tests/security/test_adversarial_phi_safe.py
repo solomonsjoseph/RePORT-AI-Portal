@@ -102,8 +102,8 @@ class TestPHISmugglingThroughFormatting:
         assert result.ok is False
 
     def test_pseudonymised_subj_id_passes(self) -> None:
-        """SUBJ_<HMAC[:12]> pattern from phi_scrub is NOT raw — must allow."""
-        result = guard_user_prompt("describe SUBJ_a1b2c3d4e5f6 in dataset 2A")
+        """RID_SUBJ_<alpha12> pattern from phi_scrub is NOT raw — must allow."""
+        result = guard_user_prompt("describe RID_SUBJ_abcdefghijkl in dataset 2A")
         assert result.ok is True
 
 

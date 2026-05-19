@@ -138,6 +138,9 @@ def _release_pipeline_lock(study: str | None = None) -> None:
         return
     if _PIPELINE_LOCK_FILE is None:
         return
+    lock_path = Path(str(_PIPELINE_LOCK_FILE.name))
+    with contextlib.suppress(OSError):
+        lock_path.unlink()
     _PIPELINE_LOCK_FILE.close()
     _PIPELINE_LOCK_FILE = None
 
@@ -577,14 +580,23 @@ def _run_dataset_leg(*, force: bool, run_extraction: bool) -> dict[str, Any]:
 
     llm_source_has_jsonl = trio_datasets_dir.is_dir() and any(trio_datasets_dir.glob("*.jsonl"))
 
+    form_allowlist_active = any(
+        item.strip()
+        for item in os.environ.get("REPORTAL_ALLOWED_DATASET_FORMS", "").split(",")
+    )
+
     if (
         not force
+        and not form_allowlist_active
         and llm_source_has_jsonl
         and is_step_fresh("dataset_processing", audit_dir, datasets_input_hashes)
     ):
         log.info("Leg [datasets]: skipped (inputs unchanged)")
         print("  ⏭  Step 1+3: Dataset Processing — skipped (inputs unchanged)")
         return {"leg": "datasets", "skipped": True, "dropped_events": []}
+
+    if form_allowlist_active and llm_source_has_jsonl:
+        log.info("Leg [datasets]: form allowlist active; bypassing published-output cache")
 
     log.info("Leg [datasets]: starting extraction → %s", config.STAGING_DATASETS_DIR)
     datasets_result = process_datasets()

@@ -54,9 +54,9 @@ new paths into the pipeline.
 ADR-002 — HMAC-SHA256 pseudonymization with sidecar key (no vault)
 ------------------------------------------------------------------
 
-**What.** Subject IDs are replaced with ``SUBJ_<hmac-sha256(key, id)[:12]>``.
-The 32-byte key lives at ``~/.config/report_ai_portal/phi_key`` (mode
-0600) outside the repo tree.
+**What.** Subject IDs are replaced with
+``RID_SUBJ_<alpha12(hmac-sha256(key, "SUBJ:" + id))>``. The 32-byte key lives
+at ``~/.config/report_ai_portal/phi_key`` (mode 0600) outside the repo tree.
 
 **Why.** HMAC-SHA256 is non-reversible without the key (so pseudonyms
 leak no information about the identifier) and deterministic with the

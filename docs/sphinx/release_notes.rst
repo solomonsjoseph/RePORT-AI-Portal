@@ -33,6 +33,8 @@ Added
 Changed
 ~~~~~~~
 
+* Added ``--form`` to ``extract_to_llm_source run`` so operators can run
+  and inspect one manifest-declared dataset at a time.
 * Clarified that the root README is the entry point and Sphinx is the
   durable documentation library. Root machine or GitHub metadata files
   should point readers back to Sphinx instead of carrying parallel

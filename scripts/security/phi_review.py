@@ -254,6 +254,7 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
             r"\b(date|datetime|timestamp|time[_ -]?stamp)\b",
             r"(^|[_ -])(dob|dod)([_ -]|$)",
             r"\b(birth|admission|discharge|death)[_ -]?date\b",
+            r"(^|[_ -])[a-z0-9]*(dat|dt)\d*$",
         ),
     },
     {
@@ -291,6 +292,7 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
         "patterns": (
             r"\b(participant|subject|patient|person|study|record|case)[_ -]?(id|code|key|number|no)\b",
             r"\b(id|identifier|uuid|guid)\b",
+            r"(^|[_ -])(?:subj(?:id)?|fid|pid|ptid|hhid|recordid)$",
         ),
     },
     {
@@ -321,6 +323,7 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
         "patterns": (
             r"\b(date|datetime|timestamp|time[_ -]?stamp)\b",
             r"(^|[_ -])(dob|dod)([_ -]|$)",
+            r"(^|[_ -])[a-z0-9]*(dat|dt)\d*$",
         ),
     },
     {
@@ -340,6 +343,7 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
         "patterns": (
             r"\b(participant|subject|patient|person|study|record|case)[_ -]?(id|code|key|number|no)\b",
             r"\b(id|identifier|uuid|guid)\b",
+            r"(^|[_ -])(?:subj(?:id)?|fid|pid|ptid|hhid|recordid)$",
         ),
     },
 )

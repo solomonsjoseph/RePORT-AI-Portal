@@ -16,7 +16,7 @@ Six mutation cases each assert a specific non-zero exit code:
 
   null_hash          — scrub_config_hash nulled in ledger        → EXIT_LEDGER_HASH_NULL (3)
   missing_jsonl      — one required JSONL removed                 → EXIT_MANIFEST_MISMATCH (2)
-  planted_phi        — Aadhaar string injected into llm_source/  → EXIT_VERIFIER_FAIL (5)
+  planted_phi        — Aadhaar string injected into dataset files → EXIT_VERIFIER_FAIL (5)
   leftover_staging   — staging dir left behind                   → EXIT_DESTRUCTION_INCOMPLETE (7)
   leftover_lock      — pipeline lock file present                → EXIT_NEEDS_ADVICE (6)
   missing_attestation — destruction_attestation.json removed     → EXIT_DESTRUCTION_INCOMPLETE (7)
@@ -150,12 +150,12 @@ _FAIL_CASES = [
     ),
     (
         "missing_jsonl",
-        "required JSONL removed from llm_source/datasets/ → EXIT_MANIFEST_MISMATCH (2)",
+        "required JSONL removed from llm_source/dataset_schema/files/ → EXIT_MANIFEST_MISMATCH (2)",
         EXIT_MANIFEST_MISMATCH,
     ),
     (
         "planted_phi",
-        "Aadhaar string in llm_source/ → EXIT_VERIFIER_FAIL (5)",
+        "Aadhaar string in dataset files → EXIT_VERIFIER_FAIL (5)",
         EXIT_VERIFIER_FAIL,
     ),
     (
@@ -188,13 +188,13 @@ def _apply_mutation(mutation_id: str, paths: dict[str, Path], tmp_root: Path) ->
     elif mutation_id == "missing_jsonl":
         # Remove the first required form's JSONL.
         stem = Path(FIXTURE_FORMS[0]).stem
-        jsonl = paths["llm_source_dir"] / "datasets" / f"{stem}.jsonl"
+        jsonl = paths["llm_source_dir"] / "dataset_schema" / "files" / f"{stem}.jsonl"
         jsonl.unlink()
 
     elif mutation_id == "planted_phi":
         # Plant a fake Aadhaar number (12-digit space-separated) into a JSONL.
         stem = Path(FIXTURE_FORMS[0]).stem
-        jsonl = paths["llm_source_dir"] / "datasets" / f"{stem}.jsonl"
+        jsonl = paths["llm_source_dir"] / "dataset_schema" / "files" / f"{stem}.jsonl"
         phi_row = {"subject_id_pseudonym": "1234 5678 9012"}  # Aadhaar pattern
         with jsonl.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(phi_row) + "\n")

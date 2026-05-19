@@ -93,6 +93,14 @@ approval, terminal ``status.json``, ``verifier_report.json``, and
 destruction attestation. The developer contract is in
 :doc:`../developer_guide/extract_to_llm_source`.
 
+To inspect one dataset at a time, add ``--form`` with a manifest-declared
+dataset filename or stem:
+
+.. code-block:: bash
+
+   uv run --all-groups python scripts/skills/extract_to_llm_source.py run \
+     --study Indo-VAP --form 6_HIV
+
 Using an Existing Study
 -----------------------
 

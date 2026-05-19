@@ -72,9 +72,9 @@ class TestGuardUserPrompt:
         assert "INDIAN_PHONE" in result.findings
 
     def test_pseudonym_in_prompt_is_allowed(self) -> None:
-        # Pseudonyms (SUBJ_<hex>) are not PHI — they are the correct way to
+        # Pseudonyms (RID_SUBJ_<hex>) are not PHI — they are the correct way to
         # reference subjects in queries.
-        result = guard_user_prompt("show data for SUBJ_a7f3d9e21c04")
+        result = guard_user_prompt("show data for RID_SUBJ_abcdefghijkl")
         assert result.ok is True
 
     def test_refusal_message_never_contains_raw_value(self) -> None:

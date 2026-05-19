@@ -86,12 +86,25 @@ def test_strictest_wins_across_usa_and_india_rules(tmp_path: Path) -> None:
     cfg = load_study_privacy_config(study_dir)
     bundle = refresh_jurisdiction_rules(cfg, allow_network=False)
 
-    classified = classify_headers(["participant_id", "visit_date", "aadhaar_no", "culture_result"], cfg, bundle)
+    classified = classify_headers(
+        [
+            "participant_id",
+            "visit_date",
+            "aadhaar_no",
+            "culture_result",
+            "HIV_HIVDAT",
+            "SUBJID",
+        ],
+        cfg,
+        bundle,
+    )
 
     assert classified["participant_id"].action == Action.PSEUDONYMIZE
     assert classified["visit_date"].action == Action.JITTER_DATE
     assert classified["aadhaar_no"].action == Action.DROP
     assert classified["culture_result"].action == Action.KEEP
+    assert classified["HIV_HIVDAT"].action == Action.JITTER_DATE
+    assert classified["SUBJID"].action == Action.PSEUDONYMIZE
 
 
 def test_pure_transform_source_rejects_io_import_logging_and_subprocess() -> None:

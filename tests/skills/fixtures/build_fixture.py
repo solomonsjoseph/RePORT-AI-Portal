@@ -163,7 +163,8 @@ def build_golden_output_tree(
       - output_root/{study}/runs/{run_id}/status.json
       - output_root/{study}/audit/phi_handling_ledger.as_written.json
       - output_root/{study}/audit/.NO_LLM_ZONE
-      - output_root/{study}/llm_source/datasets/{stem}.jsonl  (one per form)
+      - output_root/{study}/llm_source/dataset_schema/files/{stem}.jsonl
+        (one per form)
       - raw_root/{study}/datasets/{form_name}.xlsx  (stub bytes)
       - raw_root/{study}/_forms_manifest.yaml
 
@@ -231,8 +232,8 @@ def build_golden_output_tree(
     }
     _atomic_write_json(run_dir / "destruction_attestation.json", attest_payload)
 
-    # ── e. llm_source/datasets/ JSONLs ──────────────────────────────────────
-    datasets_out = llm_source_dir / "datasets"
+    # ── e. llm_source/dataset_schema/files/ JSONLs ─────────────────────────
+    datasets_out = llm_source_dir / "dataset_schema" / "files"
     datasets_out.mkdir(parents=True, exist_ok=True)
     for form in forms:
         stem = Path(form).stem
@@ -248,6 +249,7 @@ def build_golden_output_tree(
         "destruction_attestation_path": str(run_dir / "destruction_attestation.json"),
         "exit_code": 0,
         "ledger_hash_present": True,
+        "publish_status": "complete",
         "run_id": run_id,
         "scope": "HIPAA Safe Harbor (per phi_scrub.yaml)",
         "started_utc": _iso_now(),

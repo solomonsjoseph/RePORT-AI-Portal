@@ -80,23 +80,23 @@ def _write_config(path: Path, **overrides: object) -> None:
 
 
 class TestPseudoId:
-    def test_format_is_label_plus_12_hex(self, key_bytes: bytes) -> None:
+    def test_format_is_rid_label_plus_alpha12(self, key_bytes: bytes) -> None:
         out = phi_scrub.pseudo_id("SUBJ-0001", key=key_bytes, label="SUBJ")
-        assert out.startswith("SUBJ_")
-        assert len(out) == len("SUBJ_") + 12
-        # remainder is lowercase hex
-        assert all(c in "0123456789abcdef" for c in out[5:])
+        assert out.startswith("RID_SUBJ_")
+        assert len(out) == len("RID_SUBJ_") + 12
+        # remainder is lowercase alphabetic a-p encoding, not decimal-heavy hex
+        assert all(c in "abcdefghijklmnop" for c in out.removeprefix("RID_SUBJ_"))
 
-    def test_label_propagates_to_prefix(self, key_bytes: bytes) -> None:
-        assert phi_scrub.pseudo_id("x", key=key_bytes, label="FAM").startswith("FAM_")
-        assert phi_scrub.pseudo_id("x", key=key_bytes, label="LAB").startswith("LAB_")
-        assert phi_scrub.pseudo_id("x", key=key_bytes, label="SPEC").startswith("SPEC_")
+    def test_label_propagates_inside_rid_token(self, key_bytes: bytes) -> None:
+        assert phi_scrub.pseudo_id("x", key=key_bytes, label="FAM").startswith("RID_FAM_")
+        assert phi_scrub.pseudo_id("x", key=key_bytes, label="LAB").startswith("RID_LAB_")
+        assert phi_scrub.pseudo_id("x", key=key_bytes, label="SPEC").startswith("RID_SPEC_")
 
     def test_default_label_is_neutral(self, key_bytes: bytes) -> None:
-        # A caller that forgets to pass ``label`` gets a generic ``ID_``
-        # prefix rather than the misleading ``SUBJ_`` of the v1 scheme.
+        # A caller that forgets to pass ``label`` gets a generic ``RID_ID_``
+        # token rather than the misleading ``SUBJ_`` of the v1 scheme.
         out = phi_scrub.pseudo_id("42", key=key_bytes)
-        assert out.startswith("ID_")
+        assert out.startswith("RID_ID_")
 
     def test_deterministic_same_key_same_label(self, key_bytes: bytes) -> None:
         a = phi_scrub.pseudo_id("SUBJ-0001", key=key_bytes, label="SUBJ")
@@ -123,7 +123,9 @@ class TestPseudoId:
         b = phi_scrub.pseudo_id("12345", key=key_bytes, label="FAM")
         c = phi_scrub.pseudo_id("12345", key=key_bytes, label="LAB")
         assert a != b != c != a
-        assert a.startswith("SUBJ_") and b.startswith("FAM_") and c.startswith("LAB_")
+        assert a.startswith("RID_SUBJ_")
+        assert b.startswith("RID_FAM_")
+        assert c.startswith("RID_LAB_")
 
 
 # ── date_offset_days ────────────────────────────────────────────────────────
@@ -458,8 +460,8 @@ class TestRunScrub:
         key = phi_scrub.load_key()
         for original, row in zip(rows, loaded, strict=True):
             assert "DOB" not in row
-            assert row["SUBJID"].startswith("SUBJ_")
-            assert row["_phi_scrubbed"] == "v2"
+            assert row["SUBJID"].startswith("RID_SUBJ_")
+            assert row["_phi_scrubbed"] == "v3"
             # VISDAT was shifted by exactly the per-subject deterministic offset
             expected_offset = phi_scrub.date_offset_days(
                 str(original["SUBJID"]), key=key, max_days=30
@@ -554,7 +556,34 @@ class TestRunScrub:
         # without the sentinel file.
         rows = [
             {
-                "SUBJID": "SUBJ_already_pseud",
+                "SUBJID": "RID_SUBJ_already_pseud",
+                "VISDAT": "2014-07-15",
+                "_phi_scrubbed": "v3",
+            }
+        ]
+        src = _seed_staging(monkeypatch_config, rows)
+        sentinel = config.STUDY_STAGING_DIR / ".phi_scrub_complete"
+        sentinel.unlink(missing_ok=True)
+
+        phi_scrub.run_scrub(study_name="TEST")
+
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert loaded[0]["SUBJID"] == "RID_SUBJ_already_pseud"  # unchanged
+        assert loaded[0]["VISDAT"] == "2014-07-15"  # unchanged
+
+    def test_stale_v2_marker_gets_rescrubbed(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """A row from the v2 scheme (``<LABEL>_<hmac12>``) must be
+        re-scrubbed under v3 so the output never silently mixes schemes.
+        This is the whole reason ``_SCRUB_VERSION`` was bumped."""
+        _write_config(scrub_config_path)
+        rows = [
+            {
+                "SUBJID": "S1",
                 "VISDAT": "2014-07-15",
                 "_phi_scrubbed": "v2",
             }
@@ -566,36 +595,9 @@ class TestRunScrub:
         phi_scrub.run_scrub(study_name="TEST")
 
         loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
-        assert loaded[0]["SUBJID"] == "SUBJ_already_pseud"  # unchanged
-        assert loaded[0]["VISDAT"] == "2014-07-15"  # unchanged
-
-    def test_stale_v1_marker_gets_rescrubbed(
-        self,
-        monkeypatch_config: Path,
-        sidecar_key: Path,
-        scrub_config_path: Path,
-    ) -> None:
-        """A row from the v1 scheme (flat ``SUBJ_`` for every id) must be
-        re-scrubbed under v2 so the output never silently mixes schemes.
-        This is the whole reason ``_SCRUB_VERSION`` was bumped."""
-        _write_config(scrub_config_path)
-        rows = [
-            {
-                "SUBJID": "S1",
-                "VISDAT": "2014-07-15",
-                "_phi_scrubbed": "v1",
-            }
-        ]
-        src = _seed_staging(monkeypatch_config, rows)
-        sentinel = config.STUDY_STAGING_DIR / ".phi_scrub_complete"
-        sentinel.unlink(missing_ok=True)
-
-        phi_scrub.run_scrub(study_name="TEST")
-
-        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
-        assert loaded[0]["SUBJID"].startswith("SUBJ_")
+        assert loaded[0]["SUBJID"].startswith("RID_SUBJ_")
         assert loaded[0]["SUBJID"] != "S1"  # actually scrubbed, not passed through
-        assert loaded[0]["_phi_scrubbed"] == "v2"
+        assert loaded[0]["_phi_scrubbed"] == "v3"
 
     def test_orphan_row_quarantined(
         self,
@@ -614,7 +616,7 @@ class TestRunScrub:
 
         kept = [json.loads(line) for line in src.read_text().splitlines() if line]
         assert len(kept) == 1
-        assert kept[0]["SUBJID"].startswith("SUBJ_")
+        assert kept[0]["SUBJID"].startswith("RID_SUBJ_")
 
         quarantine = config.STUDY_STAGING_DIR / "quarantine" / "1A_ICScreening.jsonl"
         assert quarantine.is_file()

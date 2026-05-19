@@ -231,7 +231,7 @@ def guard_rows_with_kanon_and_ldiv(
 _PROMPT_REFUSAL_MESSAGE = (
     "I can't process that prompt because it appears to contain a personally "
     "identifiable value ({findings}). This study is de-identified by design — "
-    "please rephrase using the pseudonymised subject ID (SUBJ_…) or aggregate "
+    "please rephrase using the pseudonymised subject ID (RID_SUBJ_…) or aggregate "
     "filters (age-band, district, outcome), and try again."
 )
 
@@ -267,7 +267,7 @@ def guard_user_prompt(text: str) -> UserPromptGuardResult:
 
     Warn-tier heuristics (short numeric IDs, M/D/Y dates, generic two-
     word names) are not blocked here — they would over-fire on
-    legitimate research prompts (e.g. "show me subjects with SUBJ_12345").
+    legitimate research prompts (e.g. "show me subjects with RID_SUBJ_abcdefghijkl").
     The downstream tool-return gate still catches any residual leak.
 
     Non-string or empty input returns ``ok=True`` (nothing to scan).

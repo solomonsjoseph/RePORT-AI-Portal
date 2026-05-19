@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -51,6 +52,65 @@ def _patterns() -> list[tuple[str, re.Pattern[str]]]:
     ]
 
 
+def _is_allowed_scrubbed_date(path: str) -> bool:
+    """Return True for approved date-jitter fields and provenance timestamps."""
+    field = path.rsplit(".", 1)[-1]
+    if field == "extraction_utc" and path.startswith("_provenance."):
+        return True
+    try:
+        from scripts.security.phi_scrub import load_scrub_config
+
+        cfg = load_scrub_config()
+    except Exception:
+        return False
+    return bool(cfg and cfg.field_is_date(field))
+
+
+def _scan_json_line(
+    *,
+    root: Path,
+    fpath: Path,
+    line: str,
+    line_number: int,
+    patterns: list[tuple[str, re.Pattern[str]]],
+) -> LeakScanFinding | None:
+    try:
+        payload = json.loads(line)
+    except json.JSONDecodeError:
+        return None
+
+    def _walk(obj: object, prefix: str = "") -> LeakScanFinding | None:
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                child_prefix = f"{prefix}.{key}" if prefix else str(key)
+                hit = _walk(value, child_prefix)
+                if hit is not None:
+                    return hit
+        elif isinstance(obj, list):
+            for index, value in enumerate(obj):
+                hit = _walk(value, f"{prefix}[{index}]")
+                if hit is not None:
+                    return hit
+        elif isinstance(obj, str):
+            for pattern_name, pattern in patterns:
+                if not pattern.search(obj):
+                    continue
+                if pattern_name.startswith("DATE_") and _is_allowed_scrubbed_date(prefix):
+                    continue
+                try:
+                    relative_path = str(fpath.relative_to(root))
+                except ValueError:
+                    relative_path = fpath.name
+                return LeakScanFinding(
+                    relative_path=relative_path,
+                    line_number=line_number,
+                    pattern_name=pattern_name,
+                )
+        return None
+
+    return _walk(payload)
+
+
 def scan_tree_for_phi(root: Path) -> LeakScanResult:
     """Scan a tree for blocking PHI patterns without returning matched values."""
     root = Path(root)
@@ -65,6 +125,17 @@ def scan_tree_for_phi(root: Path) -> LeakScanResult:
         try:
             with fpath.open(encoding="utf-8", errors="replace") as fh:
                 for line_number, line in enumerate(fh, start=1):
+                    if fpath.suffix == ".jsonl":
+                        finding = _scan_json_line(
+                            root=root,
+                            fpath=fpath,
+                            line=line,
+                            line_number=line_number,
+                            patterns=patterns,
+                        )
+                        if finding is not None:
+                            return LeakScanResult(ok=False, findings=(finding,))
+                        continue
                     for pattern_name, pattern in patterns:
                         if pattern.search(line):
                             try:

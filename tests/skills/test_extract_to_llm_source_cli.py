@@ -213,6 +213,134 @@ class TestVerifyStub:
         rc = main(["verify", "--study", STUDY, "--run", run_id])
         assert rc == EXIT_DESTRUCTION_INCOMPLETE
 
+    def test_verify_scans_dataset_files_not_dictionary_mappings(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import hashlib
+        import yaml as _yaml
+
+        import config
+
+        _patch_config(monkeypatch, tmp_path)
+        monkeypatch.setattr(
+            config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False
+        )
+        scrub_config = tmp_path / "scripts" / "security" / "phi_scrub.yaml"
+        scrub_config.parent.mkdir(parents=True, exist_ok=True)
+        scrub_config.write_text("subject_id_fields: [SUBJID]\n", encoding="utf-8")
+        monkeypatch.setattr(config, "PHI_SCRUB_CONFIG_PATH", scrub_config, raising=False)
+
+        run_id = "run_dataset_scope"
+        study_output = tmp_path / "output" / STUDY
+        run_dir = study_output / "runs" / run_id
+        run_dir.mkdir(parents=True)
+        (run_dir / "status.json").write_text(
+            json.dumps(
+                {
+                    "run_id": run_id,
+                    "study": STUDY,
+                    "exit_code": EXIT_OK,
+                    "publish_status": "complete",
+                    "started_utc": "2026-05-19T00:00:00+00:00",
+                    "completed_utc": "2026-05-19T00:01:00+00:00",
+                    "verifier_passed": None,
+                }
+            ),
+            encoding="utf-8",
+        )
+        (run_dir / "destruction_attestation.json").write_text(
+            json.dumps(
+                {
+                    "run_id": run_id,
+                    "study": STUDY,
+                    "started_utc": "2026-05-19T00:00:00+00:00",
+                    "completed_utc": "2026-05-19T00:01:00+00:00",
+                    "staging_path": str(tmp_path / "tmp" / STUDY),
+                    "removed_paths": [],
+                    "files_destroyed": 0,
+                    "cryptographic_erasure": False,
+                    "apfs_cow_disclaimer": "APFS COW acknowledged",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        audit_dir = study_output / "audit"
+        audit_dir.mkdir(parents=True)
+        (audit_dir / ".NO_LLM_ZONE").write_text("", encoding="utf-8")
+        (audit_dir / "phi_handling_ledger.as_written.json").write_text(
+            json.dumps(
+                {
+                    "run_id": run_id,
+                    "scrub_config_hash": hashlib.sha256(scrub_config.read_bytes()).hexdigest(),
+                    "input_dataset_hash": "dataset-hash",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        study_raw = tmp_path / "data" / "raw" / STUDY
+        datasets_dir = study_raw / "datasets"
+        datasets_dir.mkdir(parents=True)
+        (datasets_dir / "approved.xlsx").write_bytes(b"synthetic")
+        (study_raw / "_forms_manifest.yaml").write_text(
+            _yaml.safe_dump({"required": ["approved.xlsx"], "optional": [], "reject": []}),
+            encoding="utf-8",
+        )
+
+        datasets_out = study_output / "llm_source" / "dataset_schema" / "files"
+        datasets_out.mkdir(parents=True)
+        (datasets_out / "approved.jsonl").write_text(
+            json.dumps({"SUBJID": "RID_SUBJ_abcdefghijkl"}) + "\n",
+            encoding="utf-8",
+        )
+        dictionary_out = study_output / "llm_source" / "dictionary_mapping" / "jsonl"
+        dictionary_out.mkdir(parents=True)
+        (dictionary_out / "codelist.jsonl").write_text(
+            json.dumps({"display": "2020-01-01"}) + "\n",
+            encoding="utf-8",
+        )
+
+        rc = main(["verify", "--study", STUDY, "--run", run_id])
+
+        assert rc == EXIT_OK
+        report = json.loads((run_dir / "verifier_report.json").read_text(encoding="utf-8"))
+        assert report["overall"] == "pass"
+
+    def test_resolve_run_id_defaults_to_latest_successful_or_partial_run(
+        self, tmp_path: Path
+    ) -> None:
+        runs_dir = tmp_path / "runs"
+        runs_dir.mkdir()
+
+        def _write_status(name: str, *, exit_code: int, completed_utc: str) -> None:
+            run_dir = runs_dir / name
+            run_dir.mkdir()
+            (run_dir / "status.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": name,
+                        "exit_code": exit_code,
+                        "publish_status": "complete"
+                        if exit_code == EXIT_OK
+                        else "partial"
+                        if exit_code == EXIT_PARTIAL_REVIEW
+                        else None,
+                        "completed_utc": completed_utc,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+        _write_status("run_zzz_failed", exit_code=EXIT_NEEDS_ADVICE, completed_utc="2026-05-19T00:03:00+00:00")
+        _write_status("run_aaa_ok", exit_code=EXIT_OK, completed_utc="2026-05-19T00:02:00+00:00")
+        _write_status("run_mid_partial", exit_code=EXIT_PARTIAL_REVIEW, completed_utc="2026-05-19T00:04:00+00:00")
+
+        run_id, error = skill_mod._resolve_run_id(tmp_path, None)
+
+        assert error == ""
+        assert run_id == "run_mid_partial"
+
 
 # ---------------------------------------------------------------------------
 # A. run happy path
@@ -614,6 +742,65 @@ class TestDisabledScrubBypass:
 
         assert captured_env.get("REPORTAL_RUN_ID") == run_id
 
+    def test_form_selector_limits_allowed_forms_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _patch_config(monkeypatch, tmp_path)
+        _write_valid_ledger(tmp_path / "output")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        run_id = "run_form_selector"
+        monkeypatch.setenv("REPORTAL_RUN_ID", run_id)
+
+        captured_env: dict[str, str] = {}
+        captured_selected: list[tuple[str, ...]] = []
+
+        def _fake_acquire(_study: str) -> None:
+            pass
+
+        def _fake_release() -> None:
+            pass
+
+        def _capturing_subprocess_run(cmd: Any, env: dict[str, str], **kwargs: Any) -> Any:
+            captured_env.update(env)
+            return SimpleNamespace(returncode=0)
+
+        import shutil
+
+        def _fake_destroy(**kwargs: Any) -> Path:
+            shutil.rmtree(str(kwargs["staging_dir"]), ignore_errors=True)
+            attest_path = (
+                kwargs["output_dir"]
+                / "runs"
+                / kwargs["run_id"]
+                / "destruction_attestation.json"
+            )
+            attest_path.parent.mkdir(parents=True, exist_ok=True)
+            attest_path.write_text(json.dumps({"stub": True}), encoding="utf-8")
+            return attest_path
+
+        def _fake_gate(**kwargs: Any) -> skill_mod.FormGateResult:
+            captured_selected.append(tuple(kwargs["selected_forms"]))
+            return skill_mod.FormGateResult(
+                approved_forms=("6_HIV.xlsx",),
+                held_forms=(),
+                approval_report_path=tmp_path / "approval.json",
+                partial=False,
+            )
+
+        with (
+            patch.object(skill_mod, "_acquire_pipeline_lock_for_skill", _fake_acquire),
+            patch.object(skill_mod, "_release_pipeline_lock_for_skill", _fake_release),
+            patch.object(skill_mod, "destroy_staging_and_attest", _fake_destroy),
+            patch.object(skill_mod, "check_forms_manifest", return_value={}),
+            patch.object(skill_mod, "_run_form_approval_gate", side_effect=_fake_gate),
+            patch("subprocess.run", side_effect=_capturing_subprocess_run),
+        ):
+            rc = main(["run", "--study", STUDY, "--form", "6_HIV"])
+
+        assert rc == EXIT_OK
+        assert captured_selected == [("6_HIV",)]
+        assert captured_env["REPORTAL_ALLOWED_DATASET_FORMS"] == "6_HIV.xlsx"
+
 
 class TestPartialPublish:
     def test_held_forms_return_partial_review_code_and_allowed_forms_env(
@@ -677,6 +864,44 @@ class TestPartialPublish:
         status = json.loads(status_path.read_text(encoding="utf-8"))
         assert status["publish_status"] == "partial"
         assert status["held_forms_count"] == 1
+
+
+class TestFormSelection:
+    def test_manifest_review_forms_accepts_dataset_stem(self, tmp_path: Path) -> None:
+        study_dir = tmp_path / "study"
+        datasets_dir = study_dir / "datasets"
+        datasets_dir.mkdir(parents=True)
+        (datasets_dir / "6_HIV.xlsx").write_bytes(b"placeholder")
+        manifest_path = study_dir / "_forms_manifest.yaml"
+        manifest_path.write_text(
+            "required:\n  - 6_HIV.xlsx\noptional: []\nreject: []\n",
+            encoding="utf-8",
+        )
+
+        selected = skill_mod._manifest_review_forms(
+            manifest_path,
+            datasets_dir=datasets_dir,
+            selected_forms=("6_HIV",),
+        )
+
+        assert selected == ["6_HIV.xlsx"]
+
+    def test_manifest_review_forms_rejects_unknown_selected_form(self, tmp_path: Path) -> None:
+        study_dir = tmp_path / "study"
+        datasets_dir = study_dir / "datasets"
+        datasets_dir.mkdir(parents=True)
+        manifest_path = study_dir / "_forms_manifest.yaml"
+        manifest_path.write_text(
+            "required:\n  - 6_HIV.xlsx\noptional: []\nreject: []\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(ValueError, match="selected form is not declared"):
+            skill_mod._manifest_review_forms(
+                manifest_path,
+                datasets_dir=datasets_dir,
+                selected_forms=("not_a_form",),
+            )
 
 
 # ---------------------------------------------------------------------------

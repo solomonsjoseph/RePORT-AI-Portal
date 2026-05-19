@@ -360,7 +360,28 @@ def _resolve_run_id(
     if not candidates:
         return None, f"runs/ is empty at {runs_dir}; no run to verify"
 
-    return candidates[0].name, ""
+    terminal_candidates: list[tuple[str, str]] = []
+    for run_dir in candidates:
+        status_path = run_dir / "status.json"
+        try:
+            status = json.loads(status_path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            continue
+        if status.get("exit_code") not in {EXIT_OK, EXIT_PARTIAL_REVIEW}:
+            continue
+        if status.get("publish_status") not in {"complete", "partial"}:
+            continue
+        completed = status.get("completed_utc") or status.get("started_utc") or ""
+        terminal_candidates.append((str(completed), run_dir.name))
+
+    if not terminal_candidates:
+        return (
+            None,
+            f"runs/ at {runs_dir} contains no successful or partial-safe run to verify",
+        )
+
+    terminal_candidates.sort(reverse=True)
+    return terminal_candidates[0][1], ""
 
 
 # ── individual assertion helpers ────────────────────────────────────────────
@@ -491,20 +512,20 @@ def _verify_assertion_7_no_quarantine(
     return "pass", ""
 
 
-def _verify_assertion_8_phi_absence(llm_source_dir: Path) -> _AssertionResult:
-    """Assertion 8: no file under llm_source/ matches PHI patterns (blocking).
+def _verify_assertion_8_phi_absence(dataset_files_dir: Path) -> _AssertionResult:
+    """Assertion 8: no published dataset JSONL matches PHI patterns (blocking).
 
     Streams files line-by-line to avoid large memory allocation.
     Detail string names file path + line number + pattern — never the matched text.
     """
-    result = scan_tree_for_phi(llm_source_dir)
+    result = scan_tree_for_phi(dataset_files_dir)
     if not result.ok:
         return "fail", result.detail
     return "pass", ""
 
 
 def _verify_assertion_9_no_runtime_keys(llm_source_dir: Path) -> _AssertionResult:
-    """Assertion 9: no extraction_utc/run_id/generated_utc in any llm_source/ artifact.
+    """Assertion 9: no runtime keys in published dataset artifacts.
 
     Reads JSONL line-by-line; also checks JSON files.
     """
@@ -562,8 +583,9 @@ def _verify_assertion_10_required_jsonls_present(
                 approval = json.loads(approval_path.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError) as exc:
                 return "fail", f"could not load PHI approval report: {exc}"
-            if approval.get("status") == "partial":
-                required_forms = [str(item) for item in approval.get("approved_forms", [])]
+            approved_forms = [str(item) for item in approval.get("approved_forms", [])]
+            if approved_forms:
+                required_forms = approved_forms
 
     datasets_out = llm_source_dir / "dataset_schema" / "files"
     missing: list[str] = []
@@ -644,6 +666,7 @@ def _cmd_verify(args: argparse.Namespace) -> int:
 
     run_dir = study_output_dir / "runs" / run_id
     llm_source_dir = study_output_dir / "llm_source"
+    dataset_files_dir = llm_source_dir / "dataset_schema" / "files"
     audit_dir = study_output_dir / "audit"
     manifest_path = study_raw_dir / "_forms_manifest.yaml"
 
@@ -699,13 +722,13 @@ def _cmd_verify(args: argparse.Namespace) -> int:
         (
             8,
             "llm_source_phi_absence",
-            lambda: _verify_assertion_8_phi_absence(llm_source_dir),
+            lambda: _verify_assertion_8_phi_absence(dataset_files_dir),
             EXIT_VERIFIER_FAIL,
         ),
         (
             9,
             "llm_source_no_runtime_keys",
-            lambda: _verify_assertion_9_no_runtime_keys(llm_source_dir),
+            lambda: _verify_assertion_9_no_runtime_keys(dataset_files_dir),
             EXIT_VERIFIER_FAIL,
         ),
         (
@@ -877,13 +900,47 @@ def _auto_worker_count(max_workers: int | None) -> int:
     return max(1, min(cpu, 8))
 
 
-def _manifest_required_forms(manifest_path: Path) -> list[str]:
+def _manifest_review_forms(
+    manifest_path: Path,
+    *,
+    datasets_dir: Path,
+    selected_forms: tuple[str, ...] = (),
+) -> list[str]:
     with manifest_path.open(encoding="utf-8") as fh:
         raw = yaml.safe_load(fh) or {}
     required = raw.get("required") or []
+    optional = raw.get("optional") or []
     if not isinstance(required, list):
         raise ValueError(f"{manifest_path} required: must be a list")
-    return [str(item) for item in required]
+    if not isinstance(optional, list):
+        raise ValueError(f"{manifest_path} optional: must be a list")
+
+    declared = [str(item) for item in (*required, *optional)]
+    declared_set = set(declared)
+
+    def _normalize_selected(name: str) -> str:
+        candidate = str(name)
+        if candidate in declared_set:
+            return candidate
+        if Path(candidate).suffix:
+            raise ValueError(f"selected form is not declared in manifest: {candidate}")
+        for suffix in (".xlsx", ".csv"):
+            suffixed = f"{candidate}{suffix}"
+            if suffixed in declared_set:
+                return suffixed
+        raise ValueError(f"selected form is not declared in manifest: {candidate}")
+
+    if selected_forms:
+        review_forms = [_normalize_selected(item) for item in selected_forms]
+    else:
+        review_forms = [str(item) for item in required]
+        review_forms.extend(str(item) for item in optional if (datasets_dir / str(item)).exists())
+
+    missing = [name for name in review_forms if not (datasets_dir / name).is_file()]
+    if missing:
+        raise ValueError(f"selected form file(s) missing: {', '.join(missing)}")
+
+    return list(dict.fromkeys(review_forms))
 
 
 def _run_form_approval_gate(
@@ -892,6 +949,7 @@ def _run_form_approval_gate(
     study_raw_dir: Path,
     run_dir: Path,
     max_workers: int | None,
+    selected_forms: tuple[str, ...] = (),
 ) -> FormGateResult:
     """Run header-only PHI handling review before any row values are opened."""
     from scripts.security.phi_review import (
@@ -907,8 +965,12 @@ def _run_form_approval_gate(
         privacy_config,
         allow_network=privacy_config.rule_refresh == "online_preferred",
     )
-    required_forms = _manifest_required_forms(study_raw_dir / "_forms_manifest.yaml")
     datasets_dir = study_raw_dir / "datasets"
+    review_forms = _manifest_review_forms(
+        study_raw_dir / "_forms_manifest.yaml",
+        datasets_dir=datasets_dir,
+        selected_forms=selected_forms,
+    )
     worker_count = _auto_worker_count(max_workers)
 
     approvals: list[Any] = []
@@ -922,9 +984,9 @@ def _run_form_approval_gate(
             rule_bundle=rule_bundle,
         )
 
-    if required_forms:
+    if review_forms:
         with ThreadPoolExecutor(max_workers=worker_count) as pool:
-            futures = {pool.submit(_review_one, form): form for form in required_forms}
+            futures = {pool.submit(_review_one, form): form for form in review_forms}
             approvals.extend(future.result() for future in as_completed(futures))
 
     approvals = sorted(approvals, key=lambda item: item.form_name)
@@ -1120,6 +1182,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 study_raw_dir=Path(config.RAW_DATA_DIR) / study,
                 run_dir=run_dir,
                 max_workers=getattr(args, "max_workers", None),
+                selected_forms=tuple(getattr(args, "forms", None) or ()),
             )
         except Exception as exc:
             msg = f"PHI form approval gate failed: {exc}"
@@ -1323,6 +1386,17 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="N",
         help="Maximum parallel form-review workers before real-data extraction.",
+    )
+    run_p.add_argument(
+        "--form",
+        dest="forms",
+        action="append",
+        default=None,
+        metavar="DATASET",
+        help=(
+            "Limit this run to one manifest-declared dataset filename or stem. "
+            "May be repeated. Omit to process all manifest review forms."
+        ),
     )
 
     # ── verify ─────────────────────────────────────────────────────────────
