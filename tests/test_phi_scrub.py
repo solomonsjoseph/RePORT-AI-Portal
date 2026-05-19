@@ -186,6 +186,37 @@ class TestShiftDate:
     def test_negative_offset(self) -> None:
         assert phi_scrub.shift_date("2014-07-15", -30) == "2014-06-15"
 
+    def test_ambiguous_with_date_locales_dmy_no_raise(self) -> None:
+        # Regression: ambiguous date (both components ≤ 12) with a matching
+        # date_locales entry must parse and shift without raising ValueError.
+        # Without threading date_locales through shift_date → parse_date,
+        # this would raise ValueError aborting scrub mid-record.
+        result = phi_scrub.shift_date(
+            "07/05/2014",
+            1,
+            field_name="IC_VISDAT_v2",
+            date_locales={"IC_VISDAT_v2": "DMY"},
+        )
+        # DMY: day=7, month=5 → 2014-05-07 + 1 day = 2014-05-08 → "8/5/2014"
+        assert result is not None
+        assert result == "8/5/2014"
+
+    def test_ambiguous_with_date_locales_mdy_no_raise(self) -> None:
+        result = phi_scrub.shift_date(
+            "07/05/2014",
+            1,
+            field_name="IC_VISDAT_v2",
+            date_locales={"IC_VISDAT_v2": "MDY"},
+        )
+        # MDY: month=7, day=5 → 2014-07-05 + 1 day = 2014-07-06 → "7/6/2014"
+        assert result is not None
+        assert result == "7/6/2014"
+
+    def test_ambiguous_without_date_locales_and_field_raises(self) -> None:
+        # Without manifest entry and with field_name, must still raise.
+        with pytest.raises(ValueError, match="Ambiguous date locale"):
+            phi_scrub.shift_date("07/05/2014", 1, field_name="UNKNOWN_COL")
+
 
 # ── load_key ────────────────────────────────────────────────────────────────
 
@@ -732,6 +763,53 @@ class TestRunScrub:
         _seed_staging(monkeypatch_config, [{"SUBJID": "S1", "VISDAT": "2014-07-15"}])
         with pytest.raises(phi_scrub.PHIKeyMissingError):
             phi_scrub.run_scrub(study_name="TEST")
+
+    def test_date_locales_from_manifest_threaded_into_scrub(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Ambiguous date column with a matching manifest entry must shift
+        without raising ValueError.  This exercises the full
+        run_scrub → _scrub_file → _scrub_row → shift_date → parse_date path.
+        """
+        import yaml
+
+        # Write a forms manifest with a date_locales entry for IC_VISDAT_v2 → DMY
+        datasets_dir = config.DATASETS_DIR
+        manifest_path = datasets_dir.parent / "_forms_manifest.yaml"
+        manifest_path.write_text(
+            yaml.safe_dump(
+                {
+                    "required": [],
+                    "optional": [],
+                    "reject": [],
+                    "date_locales": {"IC_VISDAT_v2": "DMY"},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        # Config: IC_VISDAT_v2 is a date field
+        _write_config(scrub_config_path, date_fields=["^IC_VISDAT_v2$"])
+
+        # Ambiguous value: 07/05/2014 — both components ≤ 12, locale from manifest
+        rows = [{"SUBJID": "S1", "IC_VISDAT_v2": "07/05/2014"}]
+        src = _seed_staging(monkeypatch_config, rows)
+
+        # Must not raise (previously would raise ValueError mid-record)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert len(loaded) == 1
+        shifted_val = loaded[0]["IC_VISDAT_v2"]
+        # Shifted value must differ from the original (offset is non-zero for S1)
+        # and must be a valid slash date string (not verbatim "07/05/2014")
+        assert shifted_val != "07/05/2014", (
+            f"Expected date to be shifted; got unchanged value {shifted_val!r}"
+        )
 
 
 # ── As-written ledger (dual-write) ──────────────────────────────────────────

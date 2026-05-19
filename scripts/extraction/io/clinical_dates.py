@@ -308,7 +308,7 @@ def parse_date(
                     raise ValueError(
                         f"Ambiguous date locale for column {field_name!r}: "
                         "declare in _forms_manifest.yaml under date_locales: "
-                        "(values like {value!r} have both components ≤ 12)"
+                        f"(values like {value!r} have both components ≤ 12)"
                     )
                 # No field_name → legacy fall-through: default MDY (no raise)
                 locale = "MDY"

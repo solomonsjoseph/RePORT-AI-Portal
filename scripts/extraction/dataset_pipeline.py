@@ -887,7 +887,7 @@ def extract_datasets(
     # required form, or unknown file.  If the manifest is absent a warning
     # is logged and extraction continues (backward-compatible for studies
     # that do not yet have a _forms_manifest.yaml).
-    check_forms_manifest(_datasets_dir)
+    _date_locales = check_forms_manifest(_datasets_dir)  # noqa: F841 — reserved for future per-row date parsing
 
     try:
         files = discover_dataset_files(_datasets_dir)

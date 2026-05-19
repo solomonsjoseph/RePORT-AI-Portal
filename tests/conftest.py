@@ -123,6 +123,12 @@ def monkeypatch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setattr(config, "STAGING_DATASETS_DIR", staging_datasets)
     monkeypatch.setattr(config, "STAGING_DICTIONARY_DIR", staging_dictionary)
 
+    # Patch DATASETS_DIR so run_scrub's check_forms_manifest call resolves to a
+    # tmp-path location (no manifest present = backward-compatible empty dict).
+    raw_datasets = tmp_path / "raw" / config.STUDY_NAME / "datasets"
+    raw_datasets.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(config, "DATASETS_DIR", raw_datasets)
+
     # Also patch secure_env markers so zone guards accept tmp_path-based paths
     import scripts.security.secure_env as _se
 

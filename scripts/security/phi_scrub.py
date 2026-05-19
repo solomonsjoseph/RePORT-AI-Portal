@@ -749,13 +749,26 @@ def shift_date(
     offset_days: int,
     *,
     field_name: str | None = None,
+    date_locales: dict[str, str] | None = None,
 ) -> str | None:
     """Parse *value*, shift by ``offset_days``, re-emit in the same format.
 
     Returns ``None`` if the string does not parse as a date. Non-string
     inputs must be handled by the caller.
+
+    Parameters
+    ----------
+    value:
+        Raw date string to shift.
+    offset_days:
+        Number of days to add (may be negative).
+    field_name:
+        Column name for locale resolution (DMY allowlist + manifest lookup).
+    date_locales:
+        Per-column locale overrides from the study's ``_forms_manifest.yaml``
+        ``date_locales:`` section.  Passed through to :func:`parse_date`.
     """
-    parsed = parse_date(value, field_name=field_name)
+    parsed = parse_date(value, field_name=field_name, date_locales=date_locales)
     if parsed is None:
         return None
     try:
@@ -945,6 +958,7 @@ def _scrub_row(
     *,
     cfg: PHIScrubConfig,
     key: bytes,
+    date_locales: dict[str, str] | None = None,
 ) -> tuple[dict[str, Any] | None, dict[str, int]]:
     """Scrub a single row. Return (scrubbed_row_or_None, per-field-counts).
 
@@ -1043,7 +1057,7 @@ def _scrub_row(
             raw_val = row[field]
             if raw_val is None or (isinstance(raw_val, str) and not raw_val.strip()):
                 continue
-            shifted = shift_date(str(raw_val), offset, field_name=field)
+            shifted = shift_date(str(raw_val), offset, field_name=field, date_locales=date_locales)
             if shifted is not None:
                 row[field] = shifted
                 _bump("date", field)
@@ -1067,6 +1081,7 @@ def _scrub_file(
     *,
     cfg: PHIScrubConfig,
     key: bytes,
+    date_locales: dict[str, str] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
     """Read *jsonl_path*, scrub each row, return (kept, orphans, counts)."""
     kept: list[dict[str, Any]] = []
@@ -1090,7 +1105,7 @@ def _scrub_file(
                 kept.append(row)
                 continue
 
-            scrubbed, row_counts = _scrub_row(row, cfg=cfg, key=key)
+            scrubbed, row_counts = _scrub_row(row, cfg=cfg, key=key, date_locales=date_locales)
             if scrubbed is None:
                 orphans.append(row)
             else:
@@ -1320,6 +1335,16 @@ def run_scrub(
 
     key = load_key()
 
+    # Load per-column date locale overrides from the study's forms manifest.
+    # Backward-compatible: returns {} when the manifest is absent or has no
+    # date_locales section.  The manifest lives next to the *raw* datasets dir,
+    # not the staging dir, so we read it from config.DATASETS_DIR.
+    # Lazy import to avoid the circular:
+    #   phi_scrub → dataset_pipeline → extraction.io → utils → security → phi_scrub
+    from scripts.extraction.dataset_pipeline import check_forms_manifest  # noqa: PLC0415
+
+    date_locales: dict[str, str] = check_forms_manifest(config.DATASETS_DIR)
+
     staging_datasets = Path(config.STAGING_DATASETS_DIR)
     if not staging_datasets.is_dir():
         logger.info(
@@ -1369,7 +1394,7 @@ def run_scrub(
     orphan_totals: dict[str, int] = {}
 
     for jsonl_file in sorted(staging_datasets.glob("*.jsonl")):
-        kept, orphans, counts = _scrub_file(jsonl_file, cfg=cfg, key=key)
+        kept, orphans, counts = _scrub_file(jsonl_file, cfg=cfg, key=key, date_locales=date_locales)
 
         if orphans:
             orphan_totals[jsonl_file.name] = len(orphans)
