@@ -10,6 +10,10 @@ is still open.
 Implementation:
 ``scripts/skills/extract_to_llm_source.py``.
 
+Agent-facing skill:
+``skills/dataset-to-llm-source/SKILL.md``. The skill is a thin
+workflow wrapper around the CLI; the CLI remains the source of behavior.
+
 Scope and Boundary
 ------------------
 
