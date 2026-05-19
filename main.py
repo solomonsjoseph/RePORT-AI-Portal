@@ -57,15 +57,25 @@ _STREAMLIT_DEFAULT_PORT = 8501
 _STREAMLIT_MAX_LOCAL_PORT = 8599
 
 
-def _acquire_pipeline_lock() -> None:
-    """Hold an exclusive per-study process lock for the lifetime of this run."""
+def _acquire_pipeline_lock(study: str | None = None) -> None:
+    """Hold an exclusive per-study process lock for the lifetime of this run.
+
+    Args:
+        study: Study name to use for the lock-file name.  When ``None`` (the
+            default, used by all existing callers inside main.py), falls back
+            to ``config.STUDY_NAME`` so behaviour is unchanged.  Pass an
+            explicit value when the caller controls the study name
+            independently of the config (e.g. the skill wrapper with
+            ``--study``).
+    """
     global _PIPELINE_LOCK_FILE
 
+    study_name = study if study is not None else config.STUDY_NAME
     lock_dir = Path(config.TMP_DIR)
     lock_dir.mkdir(parents=True, exist_ok=True)
     with contextlib.suppress(OSError):
         lock_dir.chmod(0o700)
-    lock_path = lock_dir / f".{config.STUDY_NAME}.pipeline.lock"
+    lock_path = lock_dir / f".{study_name}.pipeline.lock"
     if _PIPELINE_LOCK_FILE is not None:
         if Path(str(_PIPELINE_LOCK_FILE.name)) == lock_path:
             return
@@ -91,7 +101,7 @@ def _acquire_pipeline_lock() -> None:
             msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)  # type: ignore[attr-defined]
         fh.seek(0)
         fh.truncate()
-        fh.write(f"pid={os.getpid()}\nstudy={config.STUDY_NAME}\n")
+        fh.write(f"pid={os.getpid()}\nstudy={study_name}\n")
         fh.flush()
         os.fsync(fh.fileno())
     except OSError as exc:
@@ -103,8 +113,14 @@ def _acquire_pipeline_lock() -> None:
     _PIPELINE_LOCK_FILE = fh
 
 
-def _release_pipeline_lock() -> None:
-    """Release the process-local pipeline lock handle."""
+def _release_pipeline_lock(study: str | None = None) -> None:  # noqa: ARG001
+    """Release the process-local pipeline lock handle.
+
+    Args:
+        study: Accepted for API symmetry with ``_acquire_pipeline_lock`` but
+            not used — the lock handle is a module-level singleton regardless
+            of which study it was acquired for.
+    """
     global _PIPELINE_LOCK_FILE
     if _PIPELINE_LOCK_FILE is None:
         return

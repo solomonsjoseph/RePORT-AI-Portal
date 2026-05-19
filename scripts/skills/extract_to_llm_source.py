@@ -391,12 +391,17 @@ def _acquire_pipeline_lock_for_skill(study: str) -> None:
     Imports main lazily to avoid circular imports and to allow the test suite
     to mock ``main._acquire_pipeline_lock``.
 
+    Passes *study* explicitly so the lock-file name is keyed on the study
+    supplied via ``--study``, not on ``config.STUDY_NAME`` (which may differ
+    when the caller runs against a different study than the one auto-detected
+    at import time).
+
     Raises RuntimeError (from main._acquire_pipeline_lock) if the lock is
     already held by another process.
     """
     import main as _main  # noqa: PLC0415 — lazy import intentional
 
-    _main._acquire_pipeline_lock()  # noqa: SLF001
+    _main._acquire_pipeline_lock(study)  # noqa: SLF001
 
 
 def _release_pipeline_lock_for_skill() -> None:
@@ -430,11 +435,18 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
     study = args.study
     started_utc = datetime.now(UTC).isoformat()
 
+    # Derive all study-scoped paths from the explicit --study argument so that
+    # the correct paths are used even when config.STUDY_NAME (resolved at
+    # import time) refers to a different study.
+    study_output_dir = Path(config.OUTPUT_DIR) / study
+    study_staging_dir = Path(config.TMP_DIR) / study
+    study_datasets_dir = Path(config.RAW_DATA_DIR) / study / "datasets"
+
     # ── Step 1a: resolve run_id ────────────────────────────────────────────
     run_id = resolve_run_id()
 
     # ── Step 1b: scan for in-progress scrubs ──────────────────────────────
-    study_runs_dir = Path(config.OUTPUT_DIR) / study / "runs"
+    study_runs_dir = study_output_dir / "runs"
     in_progress = scan_for_in_progress_scrubs(study_runs_dir)
     if in_progress:
         print(
@@ -452,19 +464,22 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
 
     lock_held = True
 
-    # ── Step 1d: validate forms manifest ──────────────────────────────────
-    datasets_dir = Path(config.DATASETS_DIR)
+    # ── Steps 1d + 2 are inside the try so the lock is always released ────
+    # (Minor-1 fix: manifest check is inside the try/finally so a raise there
+    # cannot leak the lock.  Minor-2 fix: signal handlers are installed as the
+    # first step inside the try so a SIGINT in that window is caught by the
+    # _SkillInterrupted handler rather than bypassing the finally clause.)
     try:
-        check_forms_manifest(datasets_dir)
-    except ManifestMismatchError as exc:
-        print(f"Manifest mismatch: {exc}", file=sys.stderr)
-        _release_pipeline_lock_for_skill()
-        return EXIT_MANIFEST_MISMATCH
+        # ── Step 2: install signal handlers (first step inside try) ───────
+        _install_signal_handlers()
 
-    # ── Step 2: install signal handlers ───────────────────────────────────
-    _install_signal_handlers()
+        # ── Step 1d: validate forms manifest ──────────────────────────────
+        try:
+            check_forms_manifest(study_datasets_dir)
+        except ManifestMismatchError as exc:
+            print(f"Manifest mismatch: {exc}", file=sys.stderr)
+            return EXIT_MANIFEST_MISMATCH
 
-    try:
         # ── Step 3: subprocess invocation of main.py --pipeline ───────────
         env = dict(os.environ)
         # Security: never propagate scrub-bypass env var to child process.
@@ -489,8 +504,7 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
             return EXIT_NEEDS_ADVICE
 
         # ── Step 4a: assert ledger hashes are non-null ────────────────────
-        output_dir = Path(config.OUTPUT_DIR) / study
-        ledger_path = output_dir / "audit" / "phi_handling_ledger.as_written.json"
+        ledger_path = study_output_dir / "audit" / "phi_handling_ledger.as_written.json"
         try:
             ledger_data = json.loads(ledger_path.read_text(encoding="utf-8"))
         except (FileNotFoundError, json.JSONDecodeError) as exc:
@@ -507,7 +521,7 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
             return EXIT_LEDGER_HASH_NULL
 
         # ── Step 4b: assert quarantine is empty or absent ─────────────────
-        quarantine_dir = Path(config.TMP_DIR) / study / "quarantine"  # type: ignore[arg-type]
+        quarantine_dir = study_staging_dir / "quarantine"
         if quarantine_dir.is_dir() and any(quarantine_dir.iterdir()):
             print(
                 f"Quarantine non-empty: {quarantine_dir}",
@@ -516,13 +530,12 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
             return EXIT_QUARANTINE_NON_EMPTY
 
         # ── Step 5: destruction ───────────────────────────────────────────
-        staging_dir = Path(config.TMP_DIR) / study  # type: ignore[arg-type]
         try:
             attest_path = destroy_staging_and_attest(
                 study=study,
                 run_id=run_id,
-                staging_dir=staging_dir,
-                output_dir=output_dir,
+                staging_dir=study_staging_dir,
+                output_dir=study_output_dir,
             )
         except DestructionIncompleteError as exc:
             print(f"Destruction incomplete: {exc}", file=sys.stderr)
@@ -530,7 +543,7 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
 
         # ── Step 6: write status.json ─────────────────────────────────────
         completed_utc = datetime.now(UTC).isoformat()
-        run_dir = output_dir / "runs" / run_id
+        run_dir = study_output_dir / "runs" / run_id
         status_path = run_dir / "status.json"
         status_payload: dict[str, Any] = {
             "run_id": run_id,

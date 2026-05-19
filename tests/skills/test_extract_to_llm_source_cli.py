@@ -658,3 +658,98 @@ class TestSignalHandler:
             rc = main(["run", "--study", STUDY])
 
         assert rc == EXIT_DESTRUCTION_INCOMPLETE
+
+
+# ---------------------------------------------------------------------------
+# G. Study-mismatch regression — --study arg must win over config.STUDY_NAME
+# ---------------------------------------------------------------------------
+
+
+class TestStudyMismatch:
+    """Regression tests: when --study differs from config.STUDY_NAME, every
+    study-scoped path (lock file, manifest directory) must be keyed on the
+    explicit --study value, not on config.STUDY_NAME.
+    """
+
+    def test_lockfile_uses_arg_study_not_config_study(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The lock-file name must reflect --study foo, not config.STUDY_NAME bar."""
+        import config
+
+        # config.STUDY_NAME = "bar"; --study foo
+        monkeypatch.setattr(config, "STUDY_NAME", "bar", raising=False)
+        monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output", raising=False)
+        monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp", raising=False)
+        monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False)
+
+        (tmp_path / "data" / "raw" / "foo" / "datasets").mkdir(parents=True, exist_ok=True)
+        monkeypatch.setenv("REPORTAL_RUN_ID", "run_mismatch")
+
+        acquired_with: list[str] = []
+
+        def _capturing_acquire(study: str) -> None:
+            acquired_with.append(study)
+
+        def _fake_release() -> None:
+            pass
+
+        with (
+            patch.object(skill_mod, "_acquire_pipeline_lock_for_skill", _capturing_acquire),
+            patch.object(skill_mod, "_release_pipeline_lock_for_skill", _fake_release),
+            patch.object(skill_mod, "check_forms_manifest", return_value={}),
+            patch("subprocess.run", return_value=SimpleNamespace(returncode=1)),
+        ):
+            main(["run", "--study", "foo"])
+
+        assert acquired_with == ["foo"], (
+            f"lock was acquired for {acquired_with!r}, expected ['foo']; "
+            "config.STUDY_NAME='bar' must not pollute the lock key"
+        )
+
+    def test_manifest_path_uses_arg_study_not_config_study(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The datasets_dir passed to check_forms_manifest must be under
+        data/raw/foo/datasets (the --study value), not data/raw/bar/datasets
+        (config.STUDY_NAME).
+        """
+        import config
+
+        monkeypatch.setattr(config, "STUDY_NAME", "bar", raising=False)
+        monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output", raising=False)
+        monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp", raising=False)
+        monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False)
+
+        (tmp_path / "data" / "raw" / "foo" / "datasets").mkdir(parents=True, exist_ok=True)
+        monkeypatch.setenv("REPORTAL_RUN_ID", "run_mismatch2")
+
+        checked_paths: list[Path] = []
+
+        def _capturing_manifest(datasets_dir: Path) -> dict:  # type: ignore[return]
+            checked_paths.append(datasets_dir)
+
+        def _fake_acquire(_study: str) -> None:
+            pass
+
+        def _fake_release() -> None:
+            pass
+
+        with (
+            patch.object(skill_mod, "_acquire_pipeline_lock_for_skill", _fake_acquire),
+            patch.object(skill_mod, "_release_pipeline_lock_for_skill", _fake_release),
+            patch.object(skill_mod, "check_forms_manifest", side_effect=_capturing_manifest),
+            patch("subprocess.run", return_value=SimpleNamespace(returncode=1)),
+        ):
+            main(["run", "--study", "foo"])
+
+        assert len(checked_paths) == 1
+        checked = checked_paths[0]
+        assert "foo" in checked.parts, (
+            f"manifest checked at {checked} — expected a path under 'foo', "
+            "not 'bar' (config.STUDY_NAME)"
+        )
+        assert "bar" not in checked.parts, (
+            f"manifest checked at {checked} — config.STUDY_NAME='bar' "
+            "must not appear in the manifest path"
+        )
