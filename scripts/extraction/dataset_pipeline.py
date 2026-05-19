@@ -36,12 +36,16 @@ Notes:
 
 from __future__ import annotations
 
+import fnmatch
+import logging
 import sys
 import time
 from collections.abc import Generator
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, TypedDict, cast
+
+import yaml
 
 import numpy as np
 import openpyxl as _openpyxl
@@ -69,6 +73,10 @@ _PIPELINE_VERSION: str = _pipeline_version
 """Captured at import time so per-row provenance records a stable string."""
 
 vlog = log.get_verbose_logger()
+
+# Standard library logger for the gate — used by check_forms_manifest so
+# that pytest's caplog fixture can capture messages during tests.
+_gate_log = logging.getLogger(__name__)
 
 # ============================================================================
 # Module Constants
@@ -163,6 +171,136 @@ missing cell) is mapped to NaN/null.
 
 
 # ============================================================================
+# Forms-manifest gate
+# ============================================================================
+
+
+class ManifestMismatchError(Exception):
+    """Raised when the datasets directory does not match the forms manifest.
+
+    Possible causes:
+        - A file matching a ``reject:`` pattern is present.
+        - A ``required:`` form is absent from the directory.
+        - A file in the directory is not listed in required/optional/reject.
+    """
+
+
+def check_forms_manifest(datasets_dir: Path | str) -> None:
+    """Validate the contents of *datasets_dir* against its study's forms manifest.
+
+    The manifest is expected at ``{datasets_dir.parent}/_forms_manifest.yaml``
+    (one level above the datasets directory, i.e. the study root).
+
+    Manifest format (YAML, all keys optional but ``required``/``optional``/
+    ``reject`` are the only recognised keys)::
+
+        required:
+          - form_name.xlsx
+        optional:
+          - form_name.xlsx
+        reject:
+          - "*_1.xlsx"   # fnmatch-style glob patterns are supported
+
+    Behaviour
+    ---------
+    Manifest absent:
+        Logs a WARNING and returns without raising.  This keeps behaviour
+        unchanged for studies that do not yet have a manifest.
+
+    Reject pattern matched:
+        Raises :exc:`ManifestMismatchError` immediately.
+
+    Required form missing:
+        Raises :exc:`ManifestMismatchError` listing the first missing form.
+
+    Unknown file (not in required/optional/reject):
+        Raises :exc:`ManifestMismatchError` listing the unknown file.
+
+    Optional form missing:
+        Logs a single INFO-level message; does **not** raise.
+
+    Parameters
+    ----------
+    datasets_dir:
+        Path to ``data/raw/{STUDY}/datasets/``.
+    """
+    datasets_dir = Path(datasets_dir)
+    manifest_path = datasets_dir.parent / "_forms_manifest.yaml"
+
+    # --- Manifest absent: warn + continue ---
+    if not manifest_path.exists():
+        _gate_log.warning(
+            "No forms manifest found at %s; extraction proceeds without "
+            "form-level gate (add _forms_manifest.yaml to enable it)",
+            manifest_path,
+        )
+        return
+
+    with manifest_path.open(encoding="utf-8") as fh:
+        raw = yaml.safe_load(fh) or {}
+
+    required: list[str] = raw.get("required") or []
+    optional: list[str] = raw.get("optional") or []
+    reject: list[str] = raw.get("reject") or []
+
+    # Collect actual .xlsx/.csv filenames present in the directory
+    actual_files: list[str] = sorted(
+        p.name
+        for p in datasets_dir.iterdir()
+        if p.is_file()
+        and not p.name.startswith(".")
+        and not p.name.startswith("~$")
+        and p.suffix.lower() in {".xlsx", ".csv"}
+    )
+
+    # Build lookup sets for fast membership tests
+    required_set: frozenset[str] = frozenset(required)
+    optional_set: frozenset[str] = frozenset(optional)
+
+    # --- Check 1: reject patterns (hard refuse) ---
+    for fname in actual_files:
+        for pattern in reject:
+            if fname == pattern or fnmatch.fnmatch(fname, pattern):
+                raise ManifestMismatchError(
+                    f"rejected form found: {fname!r} matches reject pattern {pattern!r}"
+                )
+
+    # --- Check 2: required forms must all be present ---
+    actual_set: frozenset[str] = frozenset(actual_files)
+    for required_form in required:
+        if required_form not in actual_set:
+            raise ManifestMismatchError(
+                f"required form missing: {required_form!r} not found in {datasets_dir}"
+            )
+
+    # --- Check 3: every actual file must be in required/optional/reject ---
+    for fname in actual_files:
+        if fname in required_set or fname in optional_set:
+            continue
+        # Check reject patterns (already checked for matches above, but a
+        # file might be listed only as an explicit reject entry — still
+        # classified, not unknown)
+        matched_reject = any(
+            fname == pattern or fnmatch.fnmatch(fname, pattern)
+            for pattern in reject
+        )
+        if matched_reject:
+            continue
+        raise ManifestMismatchError(
+            f"unknown form (not in manifest): {fname!r}; "
+            "add to required/optional/reject in _forms_manifest.yaml"
+        )
+
+    # --- Check 4: optional forms missing → info log only, no raise ---
+    for opt_form in optional:
+        if opt_form not in actual_set:
+            _gate_log.info(
+                "Optional form not present (skipped): %s",
+                opt_form,
+            )
+
+
+# ============================================================================
 # Typed result for extraction
 # ============================================================================
 
@@ -185,6 +323,8 @@ class ExtractionResult(TypedDict):
 
 __all__ = [
     "ExtractionResult",
+    "ManifestMismatchError",
+    "check_forms_manifest",
     "clean_record_for_json",
     "discover_dataset_files",
     "extract_datasets",
@@ -673,6 +813,13 @@ def extract_datasets(
         msg = f"Dataset source directory missing: {_datasets_dir}"
         log.error(msg)
         return _error_result(msg, overall_start)
+
+    # --- manifest gate (must run before any extraction work) ---
+    # Refuses with ManifestMismatchError on reject-pattern match, missing
+    # required form, or unknown file.  If the manifest is absent a warning
+    # is logged and extraction continues (backward-compatible for studies
+    # that do not yet have a _forms_manifest.yaml).
+    check_forms_manifest(_datasets_dir)
 
     try:
         files = discover_dataset_files(_datasets_dir)

@@ -1,0 +1,78 @@
+# data/raw/Indo-VAP/_forms_manifest.yaml
+# Lists every form Indo-VAP extraction must / may / must-not see.
+# The manifest-check gate refuses extraction on any mismatch.
+#
+# Classification rules (v1):
+#   required  — every file that names a legitimate study form. Extraction
+#               refuses if any required file is absent.
+#   optional  — forms the study sometimes ships but may legitimately omit.
+#               Missing optional forms produce an info-level log only.
+#   reject    — known junk, duplicates, or collision-pair losers. Extraction
+#               refuses if any rejected file (or pattern) is present.
+#
+# Reject patterns use Python fnmatch-style glob matching (*_1.xlsx matches
+# e.g. 2A_ICBaseline_1.xlsx, 101_HHC_Recontact_1.xlsx, etc.).
+#
+# Collision-pair decisions (documented for operator audit):
+#   14_Case_Control.xlsx (206 rows, 128 cols) KEPT over 14_CaseControl.xlsx
+#     (2 rows — header-only stub with fewer columns).
+#   21_DSTIsolate.xlsx (224 rows, 44 clean clinical cols) KEPT over
+#     21_DSTISO.xlsx (3 rows, 74 cols including Batch* / OCR-metadata cols).
+#   18_1_TargConcom.xlsx and 18_2_TargConcom.xlsx are SEPARATE forms
+#     (visit-1 vs visit-2 targeted concomitant medications) — both required.
+#   101_HHC_Recontact_1.xlsx and 2A_ICBaseline_1.xlsx are byte-for-byte
+#     dimension-equal copies of their un-suffixed counterparts — rejected.
+
+required:
+  - 101_HHC_Recontact.xlsx
+  - 10_TST.xlsx
+  - 11_IGRA.xlsx
+  - 12A_FUA.xlsx
+  - 12B_FUB.xlsx
+  - 13_TxCompliance.xlsx
+  - 14_Case_Control.xlsx   # canonical collision winner (206 rows, 128 cols)
+  - 15_Feces.xlsx
+  - 16_Helminth.xlsx
+  - 17_EligConfirmation.xlsx
+  - 18_1_TargConcom.xlsx   # visit-1 targeted concomitant meds
+  - 18_2_TargConcom.xlsx   # visit-2 targeted concomitant meds
+  - 18_NonConsent.xlsx
+  - 19_Smear.xlsx
+  - 1A_ICScreening.xlsx
+  - 1B_HCScreening.xlsx
+  - 20_CoEnroll.xlsx
+  - 21_DSTIsolate.xlsx     # canonical collision winner (224 rows, 44 clinical cols)
+  - 2A_ICBaseline.xlsx
+  - 2B_HCBaseline.xlsx
+  - 30_Air_Quality.xlsx
+  - 3_Specimen_Collection.xlsx
+  - 4_Smear.xlsx
+  - 53_exposure.xlsx
+  - 5_CBC.xlsx
+  - 6_HIV.xlsx
+  - 7_Culture.xlsx
+  - 8_CXR.xlsx
+  - 95_SAE.xlsx
+  - 95_Specimen_Tracking.xlsx
+  - 96_Specimen_Tracking.xlsx
+  - 97_Not_Collected.xlsx
+  - 98A_FOA.xlsx
+  - 98B_FOB.xlsx
+  - 99A_FSA.xlsx
+  - 99B_FSB.xlsx
+  - 9_EEval.xlsx
+
+# No forms are known to be legitimately optional for Indo-VAP v1.
+# Move a form here when a study sub-cohort legitimately skips it.
+optional: []
+
+reject:
+  # Duplicate-collision pattern: files with a numeric suffix are re-delivered
+  # copies of the un-suffixed original. fnmatch glob applied by the gate.
+  - "*_1.xlsx"
+  # OCR / scanning artefacts — not real study forms
+  - "Paste Errors.xlsx"
+  - "TEST1EK.xlsx"
+  # Collision-pair losers (explicit, in addition to the glob above)
+  - "14_CaseControl.xlsx"  # stub — 2 rows vs 14_Case_Control.xlsx 206 rows
+  - "21_DSTISO.xlsx"       # has Batch*/OCR metadata cols vs clean 21_DSTIsolate.xlsx

@@ -254,6 +254,8 @@ cache/
 data/raw/**
 # Keep a placeholder only if the repo uses one.
 !data/raw/.gitkeep
+# Per-study forms manifest is config (not PHI) — always track it.
+!data/raw/**/_forms_manifest.yaml
 
 # Study-scoped processed artifacts (all under output/{STUDY}/)
 # Note: output/ itself is already ignored below — these entries are
