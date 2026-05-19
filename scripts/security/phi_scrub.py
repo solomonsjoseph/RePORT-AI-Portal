@@ -115,6 +115,7 @@ import config
 from scripts.audit.ledger import LedgerWriter
 from scripts.extraction.io import atomic_write_json, atomic_write_jsonl, parse_date
 from scripts.security.secure_env import assert_output_zone, assert_write_zone
+from scripts.utils.integrity import hash_file
 
 logger = logging.getLogger(__name__)
 
@@ -1114,15 +1115,47 @@ _SCOPE_TO_ACTION: dict[str, str] = {
 }
 
 
+def _compute_input_dataset_hash(datasets_dir: Path) -> str:
+    """Return a stable SHA-256 over a sorted manifest of *datasets_dir* contents.
+
+    **What.** Hex SHA-256 of a UTF-8 manifest string.
+    **Why.** Seals the exact byte-content of every raw input file into the
+    audit ledger so drift detection can prove which ``llm_source/`` artifacts
+    correspond to which raw input snapshot.
+    **How.** Build one line per ``*.jsonl`` file under *datasets_dir*, sorted
+    by relative path::
+
+        <relpath>\\t<size_bytes>\\t<sha256_of_file_bytes>
+
+    Concatenate, encode as UTF-8, SHA-256 the result.
+    """
+    lines: list[str] = []
+    for fpath in sorted(datasets_dir.rglob("*")):
+        if not fpath.is_file():
+            continue
+        relpath = fpath.relative_to(datasets_dir).as_posix()
+        size = fpath.stat().st_size
+        file_hash = hash_file(fpath)
+        lines.append(f"{relpath}\t{size}\t{file_hash}")
+    manifest = "\n".join(lines)
+    return hashlib.sha256(manifest.encode("utf-8")).hexdigest()
+
+
 def _emit_as_written_ledger(
     *,
     events: list[dict[str, Any]],
     audit_path: Path,
+    scrub_config_hash: str | None = None,
+    input_dataset_hash: str | None = None,
 ) -> None:
     """Write phi_handling_ledger.as_written.json alongside the legacy audit report."""
     assert_output_zone(audit_path.parent)
     ledger_path = audit_path.parent / "phi_handling_ledger.as_written.json"
-    writer = LedgerWriter(output_path=ledger_path)
+    writer = LedgerWriter(
+        output_path=ledger_path,
+        scrub_config_hash=scrub_config_hash,
+        input_dataset_hash=input_dataset_hash,
+    )
     for event in events:
         action = _SCOPE_TO_ACTION.get(event["scope"])
         if action is None:
@@ -1198,8 +1231,12 @@ def run_scrub(study_name: str | None = None) -> None:
             orphans={},
             audit_path=audit_path,
         )
+        # No config file → cannot produce a config hash; hashes stay None.
         _emit_as_written_ledger(events=[], audit_path=audit_path)
         return
+
+    # Config is present — seal its hash into every subsequent ledger write.
+    scrub_config_hash: str = hash_file(Path(config.PHI_SCRUB_CONFIG_PATH))
 
     # Sentinel short-circuit — prevents accidental double-scrub on restart.
     if sentinel.is_file():
@@ -1224,8 +1261,17 @@ def run_scrub(study_name: str | None = None) -> None:
             orphans={},
             audit_path=audit_path,
         )
-        _emit_as_written_ledger(events=[], audit_path=audit_path)
+        # No input directory → cannot produce an input hash.
+        _emit_as_written_ledger(
+            events=[],
+            audit_path=audit_path,
+            scrub_config_hash=scrub_config_hash,
+        )
         return
+
+    # Snapshot the raw input manifest BEFORE any in-place scrub rewrites so
+    # the hash reflects the pre-scrub state, not the post-scrub state.
+    input_dataset_hash: str = _compute_input_dataset_hash(staging_datasets)
 
     assert_write_zone(staging_datasets)
 
@@ -1267,7 +1313,12 @@ def run_scrub(study_name: str | None = None) -> None:
         orphans=orphan_totals,
         audit_path=audit_path,
     )
-    _emit_as_written_ledger(events=events, audit_path=audit_path)
+    _emit_as_written_ledger(
+        events=events,
+        audit_path=audit_path,
+        scrub_config_hash=scrub_config_hash,
+        input_dataset_hash=input_dataset_hash,
+    )
 
     with sentinel.open("w", encoding="utf-8") as _sf:
         _sf.write(_SCRUB_VERSION)

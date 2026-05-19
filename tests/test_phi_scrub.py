@@ -1122,3 +1122,127 @@ class TestCatalogCoverage:
 
     def test_household_contact_count_suppressed(self, real_cfg: phi_scrub.PHIScrubConfig) -> None:
         assert real_cfg.field_is_suppress_small_cell("IS_CONTACTS") is True
+
+
+# ── Audit hash wiring (P0.1) ─────────────────────────────────────────────────
+
+
+class TestAuditHashes:
+    """Verify scrub_config_hash and input_dataset_hash are sealed into the ledger.
+
+    Acceptance criteria (P0.1):
+    A. phi_handling_ledger.as_written.json has non-null scrub_config_hash.
+    B. scrub_config_hash matches sha256(phi_scrub.yaml bytes).
+    C. input_dataset_hash is non-null and stable across two identical runs.
+    """
+
+    def test_scrub_config_hash_is_non_null(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Criterion A: scrub_config_hash in the emitted ledger must not be None."""
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        ledger_path = (
+            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        )
+        payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+        assert payload["scrub_config_hash"] is not None, (
+            "scrub_config_hash must be sealed into the ledger; got None"
+        )
+
+    def test_scrub_config_hash_matches_yaml_sha256(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Criterion B: scrub_config_hash must equal sha256(phi_scrub.yaml bytes)."""
+        import hashlib
+
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        expected = hashlib.sha256(scrub_config_path.read_bytes()).hexdigest()
+
+        ledger_path = (
+            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        )
+        payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+        assert payload["scrub_config_hash"] == expected, (
+            f"scrub_config_hash mismatch: ledger={payload['scrub_config_hash']!r} "
+            f"expected={expected!r}"
+        )
+
+    def test_input_dataset_hash_is_non_null(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Criterion C (part 1): input_dataset_hash must not be None."""
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        ledger_path = (
+            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        )
+        payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+        assert payload["input_dataset_hash"] is not None, (
+            "input_dataset_hash must be sealed into the ledger; got None"
+        )
+
+    def test_input_dataset_hash_stable_across_consecutive_runs(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        tmp_path: Path,
+    ) -> None:
+        """Criterion C (part 2): identical raw input yields the same hash on two runs.
+
+        We bypass the sentinel by resetting it between runs and using a fresh
+        staging dir seeded with the same bytes both times.
+        """
+        import hashlib
+
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
+
+        # ── Run 1 ──────────────────────────────────────────────────────────
+        # Seed staging and compute hash from a *separate* copy of raw data
+        # that we keep untouched (phi_scrub rewrites in-place).
+        raw_bytes = ("\n".join(json.dumps(r) for r in rows) + "\n").encode()
+        raw_hash = hashlib.sha256(raw_bytes).hexdigest()  # noqa: F841 — sanity anchor
+
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        ledger_path = (
+            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
+        )
+        hash_run1 = json.loads(ledger_path.read_text(encoding="utf-8"))["input_dataset_hash"]
+
+        # ── Run 2: reset sentinel + staging, re-seed identical bytes ───────
+        sentinel = config.STUDY_STAGING_DIR / ".phi_scrub_complete"
+        sentinel.unlink(missing_ok=True)
+        _seed_staging(monkeypatch_config, rows)
+        # Remove the old ledger so we don't read a stale file
+        ledger_path.unlink(missing_ok=True)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        hash_run2 = json.loads(ledger_path.read_text(encoding="utf-8"))["input_dataset_hash"]
+
+        assert hash_run1 == hash_run2, (
+            f"input_dataset_hash must be stable across identical runs: "
+            f"run1={hash_run1!r} run2={hash_run2!r}"
+        )
