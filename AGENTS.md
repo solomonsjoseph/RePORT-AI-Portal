@@ -164,3 +164,100 @@ promotes only passing YAMLs to
 `output/<study>/llm_source/source_truth/`.
 
 See: `docs/runbook_sot_build.md`
+
+## Skill: extract_to_llm_source
+
+Cross-LLM canonical entry point for the raw `.xlsx` → PHI-clean `llm_source/`
+pipeline. Any agent (Claude Code, ChatGPT, Gemini, Cursor, …) invokes this
+skill through a plain subprocess call — no Claude-specific tooling required.
+
+Implementation: `scripts/skills/extract_to_llm_source.py`
+
+### Prerequisites
+
+| Item | Location / value |
+|------|-----------------|
+| PHI key | `~/.config/report_ai_portal/phi_key` (installed by `cli.py install`) |
+| Forms manifest | `data/raw/{STUDY}/_forms_manifest.yaml` |
+| `REPORTAL_RUN_ID` | Optional env var — caller-supplied run identifier; auto-generated when absent |
+| `REPORTALIN_ALLOW_DISABLED_SCRUB` | **Blocked in production.** Setting this env var causes the pipeline to refuse to start. |
+
+### CLI invocations
+
+```bash
+# End-to-end pipeline for one study
+uv run --all-groups python scripts/skills/extract_to_llm_source.py run --study {STUDY}
+
+# Post-run verifier (most-recent run by default; --run for a specific run)
+uv run --all-groups python scripts/skills/extract_to_llm_source.py verify --study {STUDY} [--run RUN_ID]
+
+# Print skill scope banner and exit-code contract
+uv run --all-groups python scripts/skills/extract_to_llm_source.py status
+```
+
+Replace `{STUDY}` with the study folder name under `data/raw/` (e.g. `Indo-VAP`).
+`RUN_ID` is the opaque identifier printed by `run` or found under `output/{STUDY}/runs/`.
+
+### Exit codes
+
+| Code | Constant | Meaning |
+|------|----------|---------|
+| 0 | `EXIT_OK` | ok |
+| 2 | `EXIT_MANIFEST_MISMATCH` | manifest mismatch (missing required / unknown / reject) |
+| 3 | `EXIT_LEDGER_HASH_NULL` | audit ledger hash null or sentinel missing |
+| 4 | `EXIT_QUARANTINE_NON_EMPTY` | quarantine directory non-empty |
+| 5 | `EXIT_VERIFIER_FAIL` | verifier assertion failed |
+| 6 | `EXIT_NEEDS_ADVICE` | needs-advice (paused — operator inspection required) |
+| 7 | `EXIT_DESTRUCTION_INCOMPLETE` | destruction incomplete |
+
+Code 1 is reserved for unexpected exceptions (unhandled Python error).
+
+### Scope banner (`status` subcommand output)
+
+```
+Pipeline: raw .xlsx → PHI-scrubbed llm_source/ (one study)
+
+PHI coverage: HIPAA Safe Harbor identifiers per scripts/security/phi_scrub.yaml
+              + project-specific patterns in scripts/security/phi_patterns.py
+Out of scope (operator responsibility): DPDPA §16 cross-border egress,
+                                        §12 right-to-erase, §8(6) breach
+                                        notification, ICMR l-diversity gate.
+
+Temp removal: operational untraceability after successful publish (APFS COW
+              acknowledged in destruction attestation; not forensic erasure).
+```
+
+### Destruction attestation
+
+Written to `output/{STUDY}/runs/{run_id}/destruction_attestation.json` **only
+after a successful publish**. On any pre-publish failure, staging is preserved
+for inspection and exit code 6 (`EXIT_NEEDS_ADVICE`) is surfaced.
+
+Required fields:
+
+```json
+{
+  "run_id": "<opaque id>",
+  "study": "<STUDY>",
+  "started_utc": "<ISO-8601>",
+  "completed_utc": "<ISO-8601>",
+  "staging_path": "<absolute path to destroyed staging dir>",
+  "removed_paths": ["<relative paths of destroyed files>"],
+  "files_destroyed": 42,
+  "cryptographic_erasure": false,
+  "apfs_cow_disclaimer": "Filesystem-level overwrite was performed via secrets.token_bytes + fsync; APFS copy-on-write means prior blocks may persist until trimmed. Skill scope is operational untraceability, not forensic erasure."
+}
+```
+
+`cryptographic_erasure` is always `false` — APFS COW means forensic erasure is
+out of scope (see the `apfs_cow_disclaimer` field).
+
+### Verifier assertions
+
+`verify` runs **12 ordered assertions**; the first failure stops the chain.
+For the full assertion list see `scripts/skills/extract_to_llm_source.py:_cmd_verify`.
+
+- Failure writes a report to `output/{STUDY}/runs/{run_id}/verifier_report.json`
+  regardless of pass/fail.
+- On full pass, `output/{STUDY}/runs/{run_id}/status.json` is updated with
+  `verifier_passed: true`.
