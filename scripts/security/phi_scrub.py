@@ -1213,6 +1213,10 @@ def run_scrub(study_name: str | None = None) -> None:
         # Missing scrub config = no rule application = raw PHI flows to
         # ``llm_source/``. That is unsafe for any production run; require
         # an explicit opt-in env var to acknowledge the risk in dev/test.
+        if config.production_mode_enabled():
+            raise PHIScrubError(
+                "REPORTALIN_ALLOW_DISABLED_SCRUB is forbidden in production mode."
+            )
         allow_disabled = os.environ.get("REPORTALIN_ALLOW_DISABLED_SCRUB", "").strip().lower() in (
             "1",
             "true",

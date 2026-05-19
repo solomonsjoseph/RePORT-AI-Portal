@@ -1343,3 +1343,56 @@ class TestAuditHashes:
         assert result == expected_hash, (
             f"Manifest format mismatch: expected={expected_hash!r} got={result!r}"
         )
+
+
+# ── Production-mode bypass guard ─────────────────────────────────────────────
+
+
+class TestProductionBypassGuard:
+    """Acceptance criteria A–D for the REPORTALIN_ALLOW_DISABLED_SCRUB guard."""
+
+    def test_production_mode_with_env_set_raises(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Acceptance A: prod mode ON + env var set → PHIScrubError; bypass never runs."""
+        monkeypatch.setenv("REPORTALIN_ALLOW_DISABLED_SCRUB", "1")
+        monkeypatch.setattr(config, "production_mode_enabled", lambda: True)
+
+        rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+
+        with pytest.raises(
+            phi_scrub.PHIScrubError,
+            match="REPORTALIN_ALLOW_DISABLED_SCRUB is forbidden in production mode",
+        ):
+            phi_scrub.run_scrub(study_name="TEST")
+
+    def test_non_production_mode_with_env_set_bypasses(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Acceptance B: prod mode OFF + env var set → bypass runs with WARNING."""
+        monkeypatch.setenv("REPORTALIN_ALLOW_DISABLED_SCRUB", "1")
+        monkeypatch.setattr(config, "production_mode_enabled", lambda: False)
+
+        rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+
+        import logging
+
+        with caplog.at_level(logging.WARNING, logger="scripts.security.phi_scrub"):
+            phi_scrub.run_scrub(study_name="TEST")  # must not raise
+
+        assert any(
+            "REPORTALIN_ALLOW_DISABLED_SCRUB" in record.message
+            for record in caplog.records
+            if record.levelno >= logging.WARNING
+        ), "Expected a WARNING mentioning REPORTALIN_ALLOW_DISABLED_SCRUB"
