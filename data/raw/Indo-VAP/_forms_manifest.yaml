@@ -7,8 +7,11 @@
 #               refuses if any required file is absent.
 #   optional  — forms the study sometimes ships but may legitimately omit.
 #               Missing optional forms produce an info-level log only.
-#   reject    — known junk, duplicates, or collision-pair losers. Extraction
-#               refuses if any rejected file (or pattern) is present.
+#   reject    — known junk, duplicates, or collision-pair losers. The gate
+#               auto-skips these files (info-logged) and the extraction loop
+#               never reads them. Listing a real form here would be a manifest
+#               authoring error — the gate refuses when a name appears in
+#               both required: and reject:.
 #
 # Reject patterns use Python fnmatch-style glob matching (*_1.xlsx matches
 # e.g. 2A_ICBaseline_1.xlsx, 101_HHC_Recontact_1.xlsx, etc.).

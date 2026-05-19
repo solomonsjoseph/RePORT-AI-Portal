@@ -1343,7 +1343,9 @@ def run_scrub(
     #   phi_scrub → dataset_pipeline → extraction.io → utils → security → phi_scrub
     from scripts.extraction.dataset_pipeline import check_forms_manifest  # noqa: PLC0415
 
-    date_locales: dict[str, str] = check_forms_manifest(config.DATASETS_DIR)
+    # Reject-listed files are auto-skipped by the extraction leg, so the
+    # scrub leg only needs the date_locales mapping here.
+    date_locales: dict[str, str] = check_forms_manifest(config.DATASETS_DIR).date_locales
 
     staging_datasets = Path(config.STAGING_DATASETS_DIR)
     if not staging_datasets.is_dir():

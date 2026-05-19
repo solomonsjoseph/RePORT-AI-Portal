@@ -379,7 +379,7 @@ class TestRunExitCodes:
             patch.object(
                 skill_mod,
                 "check_forms_manifest",
-                side_effect=ManifestMismatchError("rejected form found: bad.xlsx"),
+                side_effect=ManifestMismatchError("required form missing: 6_HIV.xlsx"),
             ),
         ):
             rc = main(["run", "--study", STUDY])

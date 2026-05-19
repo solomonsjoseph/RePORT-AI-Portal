@@ -203,7 +203,7 @@ Replace `{STUDY}` with the study folder name under `data/raw/` (e.g. `Indo-VAP`)
 | Code | Constant | Meaning |
 |------|----------|---------|
 | 0 | `EXIT_OK` | ok |
-| 2 | `EXIT_MANIFEST_MISMATCH` | manifest mismatch (missing required / unknown / reject) |
+| 2 | `EXIT_MANIFEST_MISMATCH` | manifest mismatch (missing required / unknown file / required∩reject conflict). Reject-listed files are auto-skipped, not an error. |
 | 3 | `EXIT_LEDGER_HASH_NULL` | audit ledger hash null or sentinel missing |
 | 4 | `EXIT_QUARANTINE_NON_EMPTY` | quarantine directory non-empty |
 | 5 | `EXIT_VERIFIER_FAIL` | verifier assertion failed |

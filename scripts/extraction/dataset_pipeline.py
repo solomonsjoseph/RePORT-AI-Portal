@@ -43,7 +43,7 @@ import time
 from collections.abc import Generator
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any, TypedDict, cast
+from typing import Any, NamedTuple, TypedDict, cast
 
 import yaml
 
@@ -181,13 +181,34 @@ class ManifestMismatchError(Exception):
     """Raised when the datasets directory does not match the forms manifest.
 
     Possible causes:
-        - A file matching a ``reject:`` pattern is present.
         - A ``required:`` form is absent from the directory.
         - A file in the directory is not listed in required/optional/reject.
+
+    Reject-matched files are *not* an error: they are auto-skipped, recorded
+    in :attr:`ManifestCheckResult.rejected_files`, and an info-level log line
+    is emitted for each so the audit trail records the skip explicitly.
     """
 
 
-def check_forms_manifest(datasets_dir: Path | str) -> dict[str, str]:
+class ManifestCheckResult(NamedTuple):
+    """Return value of :func:`check_forms_manifest`.
+
+    Attributes
+    ----------
+    date_locales:
+        Per-column date-locale overrides (column name → ``"DMY"``/``"MDY"``).
+        Empty dict when the manifest is absent or the key is missing.
+    rejected_files:
+        Filenames present in ``datasets/`` that matched a ``reject:`` entry
+        or fnmatch glob.  Callers must drop these from the extraction set;
+        the gate itself only logs and collects them, never raises.
+    """
+
+    date_locales: dict[str, str]
+    rejected_files: frozenset[str]
+
+
+def check_forms_manifest(datasets_dir: Path | str) -> ManifestCheckResult:
     """Validate the contents of *datasets_dir* against its study's forms manifest.
 
     The manifest is expected at ``{datasets_dir.parent}/_forms_manifest.yaml``
@@ -209,11 +230,14 @@ def check_forms_manifest(datasets_dir: Path | str) -> dict[str, str]:
     Behaviour
     ---------
     Manifest absent:
-        Logs a WARNING and returns without raising.  This keeps behaviour
-        unchanged for studies that do not yet have a manifest.
+        Logs a WARNING and returns an empty result without raising.  Keeps
+        behaviour unchanged for studies that do not yet have a manifest.
 
     Reject pattern matched:
-        Raises :exc:`ManifestMismatchError` immediately.
+        File is auto-skipped: included in
+        :attr:`ManifestCheckResult.rejected_files` and an INFO log line is
+        emitted.  Does **not** raise — the reject list is the operator's
+        declaration that those files are known junk/duplicates.
 
     Required form missing:
         Raises :exc:`ManifestMismatchError` listing the first missing form.
@@ -231,10 +255,10 @@ def check_forms_manifest(datasets_dir: Path | str) -> dict[str, str]:
 
     Returns
     -------
-    dict[str, str]
-        The ``date_locales`` mapping from the manifest (column name →
-        ``"DMY"`` or ``"MDY"``).  Empty dict when the manifest is absent
-        or the key is missing (backward-compatible).
+    ManifestCheckResult
+        ``(date_locales, rejected_files)``.  Callers MUST filter discovered
+        files by ``rejected_files`` before extraction — the gate only
+        records the skip; it does not remove the files from disk.
     """
     datasets_dir = Path(datasets_dir)
     manifest_path = datasets_dir.parent / "_forms_manifest.yaml"
@@ -246,7 +270,7 @@ def check_forms_manifest(datasets_dir: Path | str) -> dict[str, str]:
             "form-level gate (add _forms_manifest.yaml to enable it)",
             manifest_path,
         )
-        return {}
+        return ManifestCheckResult(date_locales={}, rejected_files=frozenset())
 
     with manifest_path.open(encoding="utf-8") as fh:
         raw = yaml.safe_load(fh) or {}
@@ -270,41 +294,45 @@ def check_forms_manifest(datasets_dir: Path | str) -> dict[str, str]:
     required_set: frozenset[str] = frozenset(required)
     optional_set: frozenset[str] = frozenset(optional)
 
-    # --- Check 1: reject patterns (hard refuse) ---
+    # --- Step 1: classify reject matches (auto-skip, never raise) ---
+    rejected: set[str] = set()
     for fname in actual_files:
         for pattern in reject:
             if fname == pattern or fnmatch.fnmatch(fname, pattern):
-                raise ManifestMismatchError(
-                    f"rejected form found: {fname!r} matches reject pattern {pattern!r}"
+                rejected.add(fname)
+                _gate_log.info(
+                    "Reject-listed form auto-skipped: %s (matched pattern %r)",
+                    fname,
+                    pattern,
                 )
+                break  # first matching pattern is sufficient
 
-    # --- Check 2: required forms must all be present ---
+    # --- Step 2: required forms must all be present ---
     actual_set: frozenset[str] = frozenset(actual_files)
     for required_form in required:
         if required_form not in actual_set:
             raise ManifestMismatchError(
                 f"required form missing: {required_form!r} not found in {datasets_dir}"
             )
+        # A required form cannot also be reject-listed; that is a manifest
+        # authoring error and we surface it loudly rather than silently
+        # dropping the file.
+        if required_form in rejected:
+            raise ManifestMismatchError(
+                f"manifest conflict: {required_form!r} appears in both "
+                "required: and reject: — fix _forms_manifest.yaml"
+            )
 
-    # --- Check 3: every actual file must be in required/optional/reject ---
+    # --- Step 3: every actual file must be in required/optional or rejected ---
     for fname in actual_files:
-        if fname in required_set or fname in optional_set:
-            continue
-        # Check reject patterns (already checked for matches above, but a
-        # file might be listed only as an explicit reject entry — still
-        # classified, not unknown)
-        matched_reject = any(
-            fname == pattern or fnmatch.fnmatch(fname, pattern)
-            for pattern in reject
-        )
-        if matched_reject:
+        if fname in required_set or fname in optional_set or fname in rejected:
             continue
         raise ManifestMismatchError(
             f"unknown form (not in manifest): {fname!r}; "
             "add to required/optional/reject in _forms_manifest.yaml"
         )
 
-    # --- Check 4: optional forms missing → info log only, no raise ---
+    # --- Step 4: optional forms missing → info log only, no raise ---
     for opt_form in optional:
         if opt_form not in actual_set:
             _gate_log.info(
@@ -312,7 +340,10 @@ def check_forms_manifest(datasets_dir: Path | str) -> dict[str, str]:
                 opt_form,
             )
 
-    return date_locales
+    return ManifestCheckResult(
+        date_locales=date_locales,
+        rejected_files=frozenset(rejected),
+    )
 
 
 # ============================================================================
@@ -338,6 +369,7 @@ class ExtractionResult(TypedDict):
 
 __all__ = [
     "ExtractionResult",
+    "ManifestCheckResult",
     "ManifestMismatchError",
     "check_forms_manifest",
     "clean_record_for_json",
@@ -883,16 +915,23 @@ def extract_datasets(
         return _error_result(msg, overall_start)
 
     # --- manifest gate (must run before any extraction work) ---
-    # Refuses with ManifestMismatchError on reject-pattern match, missing
-    # required form, or unknown file.  If the manifest is absent a warning
-    # is logged and extraction continues (backward-compatible for studies
-    # that do not yet have a _forms_manifest.yaml).
-    _date_locales = check_forms_manifest(_datasets_dir)  # noqa: F841 — reserved for future per-row date parsing
+    # Refuses with ManifestMismatchError on missing required form or unknown
+    # file.  Reject-listed files are auto-skipped (returned in rejected_files
+    # and filtered out below).  When the manifest is absent a warning is
+    # logged and extraction proceeds with no rejects (backward-compatible).
+    _manifest = check_forms_manifest(_datasets_dir)
+    _date_locales = _manifest.date_locales  # noqa: F841 — reserved for future per-row date parsing
+    _rejected_files = _manifest.rejected_files
 
     try:
         files = discover_dataset_files(_datasets_dir)
     except (FileNotFoundError, ValueError) as exc:
         return _error_result(str(exc), overall_start)
+
+    # Filter out manifest-declared rejects so the extraction loop never reads
+    # them.  The gate has already logged each skip at INFO level.
+    if _rejected_files:
+        files = [f for f in files if f.name not in _rejected_files]
 
     # --- prepare output ---
     try:

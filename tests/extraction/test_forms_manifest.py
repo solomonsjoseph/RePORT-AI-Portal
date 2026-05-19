@@ -7,9 +7,10 @@ real Indo-VAP raw data is never touched.  Covers every gate branch:
   2. All files required → no raise.
   3. Required missing   → ManifestMismatchError.
   4. Unknown file       → ManifestMismatchError.
-  5. Reject exact match → ManifestMismatchError.
-  6. Reject glob match  → ManifestMismatchError.
+  5. Reject exact match → auto-skipped, info log, no raise, in rejected_files.
+  6. Reject glob match  → auto-skipped, info log, no raise, in rejected_files.
   7. Optional missing   → info-level log only, no raise.
+  8. Required ∩ reject  → ManifestMismatchError (manifest authoring conflict).
 """
 
 from __future__ import annotations
@@ -129,12 +130,14 @@ class TestUnknownFile:
 
 
 # ---------------------------------------------------------------------------
-# Branch 5: reject exact-name match → ManifestMismatchError
+# Branch 5: reject exact-name match → auto-skip, info log, no raise
 # ---------------------------------------------------------------------------
 
 
 class TestRejectExact:
-    def test_raises_for_rejected_exact_name(self, tmp_path: Path) -> None:
+    def test_auto_skips_rejected_exact_name(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
         datasets_dir = tmp_path / "datasets"
         datasets_dir.mkdir()
         _touch(datasets_dir, "6_HIV.xlsx", "Paste Errors.xlsx")
@@ -144,20 +147,26 @@ class TestRejectExact:
             "required:\n  - 6_HIV.xlsx\noptional: []\nreject:\n  - Paste Errors.xlsx\n",
         )
 
-        with pytest.raises(ManifestMismatchError) as exc_info:
-            check_forms_manifest(datasets_dir)
+        with caplog.at_level(logging.INFO, logger="scripts.extraction.dataset_pipeline"):
+            result = check_forms_manifest(datasets_dir)
 
-        assert "Paste Errors.xlsx" in str(exc_info.value)
-        assert "rejected form" in str(exc_info.value).lower()
+        assert "Paste Errors.xlsx" in result.rejected_files
+        assert "6_HIV.xlsx" not in result.rejected_files
+        assert any(
+            "Paste Errors.xlsx" in r.message and "auto-skipped" in r.message
+            for r in caplog.records
+        ), "Expected an info-level auto-skip log for the reject-listed file"
 
 
 # ---------------------------------------------------------------------------
-# Branch 6: reject glob/fnmatch pattern → ManifestMismatchError
+# Branch 6: reject glob/fnmatch pattern → auto-skip, info log, no raise
 # ---------------------------------------------------------------------------
 
 
 class TestRejectGlob:
-    def test_raises_for_glob_matched_reject(self, tmp_path: Path) -> None:
+    def test_auto_skips_glob_matched_reject(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
         datasets_dir = tmp_path / "datasets"
         datasets_dir.mkdir()
         _touch(datasets_dir, "6_HIV.xlsx", "2A_ICBaseline_1.xlsx")
@@ -167,11 +176,14 @@ class TestRejectGlob:
             "required:\n  - 6_HIV.xlsx\noptional: []\nreject:\n  - '*_1.xlsx'\n",
         )
 
-        with pytest.raises(ManifestMismatchError) as exc_info:
-            check_forms_manifest(datasets_dir)
+        with caplog.at_level(logging.INFO, logger="scripts.extraction.dataset_pipeline"):
+            result = check_forms_manifest(datasets_dir)
 
-        assert "2A_ICBaseline_1.xlsx" in str(exc_info.value)
-        assert "rejected form" in str(exc_info.value).lower()
+        assert "2A_ICBaseline_1.xlsx" in result.rejected_files
+        assert any(
+            "2A_ICBaseline_1.xlsx" in r.message and "*_1.xlsx" in r.message
+            for r in caplog.records
+        ), "Expected an info-level auto-skip log naming the glob pattern"
 
 
 # ---------------------------------------------------------------------------
@@ -197,3 +209,31 @@ class TestOptionalMissing:
         assert any("30_Air_Quality.xlsx" in r.message for r in caplog.records), (
             "Expected an info-level log mentioning the missing optional form"
         )
+
+
+# ---------------------------------------------------------------------------
+# Branch 8: required ∩ reject → ManifestMismatchError (authoring conflict)
+# ---------------------------------------------------------------------------
+
+
+class TestRequiredRejectConflict:
+    def test_raises_when_required_form_also_listed_as_reject(self, tmp_path: Path) -> None:
+        """A form cannot be both required and reject-listed.
+
+        Surfacing this as a hard error prevents silent data loss when an
+        operator accidentally adds a real form to the reject list.
+        """
+        datasets_dir = tmp_path / "datasets"
+        datasets_dir.mkdir()
+        _touch(datasets_dir, "6_HIV.xlsx")
+
+        _write_manifest(
+            datasets_dir,
+            "required:\n  - 6_HIV.xlsx\noptional: []\nreject:\n  - 6_HIV.xlsx\n",
+        )
+
+        with pytest.raises(ManifestMismatchError) as exc_info:
+            check_forms_manifest(datasets_dir)
+
+        assert "6_HIV.xlsx" in str(exc_info.value)
+        assert "conflict" in str(exc_info.value).lower()
