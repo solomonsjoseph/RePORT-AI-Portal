@@ -920,6 +920,10 @@ def _cmd_run(args: argparse.Namespace) -> int:  # noqa: PLR0911, PLR0912, PLR091
 
         # main.py resolves study from STUDY_NAME env var (it has no --study flag).
         env["STUDY_NAME"] = study
+        # The wrapper already holds the pipeline lock (acquired above); signal
+        # the subprocess so main.py's _acquire_pipeline_lock skips re-acquisition
+        # rather than racing itself on the same fcntl flock.
+        env["REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT"] = "1"
         repo_root = Path(__file__).parent.parent.parent
         result = subprocess.run(  # noqa: S603
             [sys.executable, str(repo_root / "main.py"), "--pipeline"],

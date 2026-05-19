@@ -70,6 +70,14 @@ def _acquire_pipeline_lock(study: str | None = None) -> None:
     """
     global _PIPELINE_LOCK_FILE
 
+    # When the skill wrapper invokes main.py --pipeline as a subprocess, the
+    # wrapper already holds the fcntl flock on the study lockfile. Re-acquiring
+    # it here would deadlock against ourselves on POSIX, so we skip cleanly
+    # when the parent process signals it owns the lock. Direct `python main.py`
+    # invocations do not set this env var and acquire the lock normally.
+    if os.environ.get("REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT") == "1":
+        return
+
     study_name = study if study is not None else config.STUDY_NAME
     lock_dir = Path(config.TMP_DIR)
     lock_dir.mkdir(parents=True, exist_ok=True)
@@ -122,6 +130,10 @@ def _release_pipeline_lock(study: str | None = None) -> None:  # noqa: ARG001
             of which study it was acquired for.
     """
     global _PIPELINE_LOCK_FILE
+    # Symmetric to the acquire-side env-var guard: when the parent holds the
+    # lock, this process never opened the file handle and has nothing to close.
+    if os.environ.get("REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT") == "1":
+        return
     if _PIPELINE_LOCK_FILE is None:
         return
     _PIPELINE_LOCK_FILE.close()
