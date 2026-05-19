@@ -42,12 +42,11 @@ Do not add standalone Markdown packets or parallel documentation trees.
 If a topic needs detail, add or update a Sphinx page and link to it from
 the README only when it is a common entry point.
 
-Root files such as ``AGENTS.md``, ``SECURITY.md``, and
-``CHANGELOG.md`` are bootstrap or GitHub metadata surfaces. Keep them
-short and point readers to Sphinx for durable instructions. Historical
-plans, local skill shims, and generated outputs are not current
-documentation unless their content has been promoted into
-``docs/sphinx/``.
+Do not keep root-level documentation files other than ``README.md``.
+Do not keep Markdown runbooks, plans, agent notes, or historical specs
+under ``docs/``. Historical plans, local skill shims, and generated
+outputs are not current documentation unless their content has been
+promoted into ``docs/sphinx/``.
 
 Profile-first Rule
 ------------------

@@ -3,9 +3,8 @@ Agent Instructions (for AI Coding Assistants)
 
 This page is the authoritative human-readable briefing for AI coding
 assistants (Claude Code, Copilot CLI, Codex, Gemini CLI) working on this
-repository. The root ``AGENTS.md`` remains a short machine bootstrap for
-tools that auto-load it; durable project documentation lives in Sphinx
-and in the GitHub README entry point.
+repository. Agent-facing project guidance lives here in Sphinx; the root
+``README.md`` remains the only Markdown documentation entry point.
 
 The remainder of this page is organised the way an assistant's
 context-builder reads it: orientation → conventions → rules.
