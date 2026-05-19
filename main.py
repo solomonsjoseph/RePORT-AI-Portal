@@ -37,6 +37,7 @@ from scripts.security.phi_scrub import (
 from scripts.security.phi_scrub import load_key as _load_phi_key
 from scripts.security.phi_scrub import run_scrub as run_phi_scrub
 from scripts.utils import logging_system as log
+from scripts.utils.errors import format_for_log, wrap
 from scripts.utils.lineage import emit_lineage_manifest
 from scripts.utils.log_hygiene import install_phi_redactor
 from scripts.utils.secure_staging import (
@@ -591,7 +592,7 @@ def run_step(step_name: str, func: Callable[[], Any]) -> Any:
         log.success(f"{step_name} completed successfully.")
         return cast(Any, result)
     except Exception as e:
-        log.error(f"Error in {step_name}: {e}", exc_info=True)
+        log.error("Fatal: %s", format_for_log(wrap(e, stage="pipeline", operation=step_name)))
         sys.exit(1)
 
 
@@ -875,7 +876,10 @@ For detailed documentation, see the Sphinx docs or README.md
                 result = fut.result()
             except BaseException as exc:
                 extraction_failures.append((leg_name, exc))
-                log.error("Leg [%s] crashed: %s", leg_name, exc, exc_info=True)
+                log.error(
+                    "Fatal: %s",
+                    format_for_log(wrap(exc, stage="pipeline.extract", operation=leg_name)),
+                )
                 continue
             if leg_name == "datasets":
                 events = result.get("dropped_events", [])

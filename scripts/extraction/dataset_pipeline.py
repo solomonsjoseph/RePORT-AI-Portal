@@ -62,6 +62,7 @@ from scripts.extraction.io.file_discovery import (
     SUPPORTED_TABULAR_EXTENSIONS,
 )
 from scripts.utils import logging_system as log
+from scripts.utils.errors import format_for_log, wrap
 from scripts.utils.integrity import hash_file as _hash_file
 
 _PIPELINE_VERSION: str = _pipeline_version
@@ -866,5 +867,5 @@ if __name__ == "__main__":
         log.warning("Extraction cancelled by user")
         sys.exit(130)
     except Exception as e:
-        log.error("Fatal error: %s", e, exc_info=True)
+        log.error("Fatal: %s", format_for_log(wrap(e, stage="extract", operation="run")))
         sys.exit(1)
