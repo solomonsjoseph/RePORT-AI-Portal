@@ -1222,7 +1222,12 @@ def _emit_as_written_ledger(
     writer.flush()
 
 
-def run_scrub(study_name: str | None = None) -> None:
+def run_scrub(
+    study_name: str | None = None,
+    *,
+    run_id: str | None = None,
+    runs_dir: Path | None = None,
+) -> None:
     """Orchestrate the scrub: load key + config, walk staging, emit audit.
 
     Pre-conditions:
@@ -1231,6 +1236,22 @@ def run_scrub(study_name: str | None = None) -> None:
         * A ``phi_scrub.yaml`` config is present — else the module no-ops and
           writes an empty audit (so downstream audit tooling always finds a
           fourth file).
+
+    Parameters
+    ----------
+    study_name:
+        Override the study name used in the audit report.  Defaults to
+        ``config.STUDY_NAME``.
+    run_id:
+        Optional run identifier.  When provided (together with *runs_dir*),
+        a ``scrub.in_progress`` token is written to
+        ``runs_dir/{run_id}/scrub.in_progress`` before the scrub loop and
+        deleted only on successful completion.  If the process is killed
+        mid-loop the token persists, allowing the wrapper CLI to detect the
+        partially-scrubbed state and refuse with exit 6.
+    runs_dir:
+        Directory under which per-run sidecars are stored
+        (e.g. ``output/{STUDY}/runs``).  Required when *run_id* is set.
 
     Post-conditions:
         * Datasets JSONL rewritten in place with scrubbed values + ``_phi_scrubbed``
@@ -1326,6 +1347,23 @@ def run_scrub(study_name: str | None = None) -> None:
 
     assert_write_zone(staging_datasets)
 
+    # Write the in-progress token before any row mutation so a mid-loop crash
+    # leaves the token on disk.  The wrapper CLI (P3.1) checks for this token
+    # at startup and refuses with exit 6 if one is present.
+    in_progress_token: Path | None = None
+    if run_id is not None and runs_dir is not None:
+        in_progress_token = runs_dir / run_id / "scrub.in_progress"
+        in_progress_token.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_json(
+            in_progress_token,
+            {
+                "run_id": run_id,
+                "study": study_name if study_name is not None else config.STUDY_NAME,
+                "started_utc": datetime.now(UTC).isoformat(),
+                "scrub_yaml_sha256": scrub_config_hash,
+            },
+        )
+
     quarantine_dir = staging_root / "quarantine"
     counts_by_file: dict[str, dict[str, int]] = {}
     orphan_totals: dict[str, int] = {}
@@ -1383,6 +1421,14 @@ def run_scrub(study_name: str | None = None) -> None:
         _sf.write(_SCRUB_VERSION)
         _sf.flush()
         os.fsync(_sf.fileno())
+
+    # Sentinel is written — scrub completed successfully.  Remove the
+    # in-progress token so the wrapper does not see a false-positive on the
+    # next invocation.  This must happen AFTER the sentinel write so that a
+    # crash between the two leaves the token intact (safer direction: the
+    # wrapper will still refuse, and the sentinel guarantees re-run is a no-op).
+    if in_progress_token is not None:
+        in_progress_token.unlink(missing_ok=True)
 
 
 # ── CLI ─────────────────────────────────────────────────────────────────────

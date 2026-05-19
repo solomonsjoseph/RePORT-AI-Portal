@@ -16,6 +16,15 @@ write_extraction_timing_sidecar(...)
 
 write_lineage_timing_sidecar(...)
     Atomically write ``output/{STUDY}/runs/{run_id}/lineage_timing.json``.
+
+scan_for_in_progress_scrubs(study_runs_dir)
+    Return a list of ``scrub.in_progress`` token paths found under
+    ``study_runs_dir/*/``.  Used by the wrapper CLI (P3.1) to refuse with
+    exit 6 when a prior run left staging partially scrubbed.
+
+SCRUB_RECOVERY_MESSAGE
+    Human-readable message template (``{path}`` placeholder) for the wrapper
+    to surface when it detects an in-progress token.
 """
 
 from __future__ import annotations
@@ -28,10 +37,17 @@ from uuid import uuid4
 from scripts.extraction.io import atomic_write_json
 
 __all__ = [
+    "SCRUB_RECOVERY_MESSAGE",
     "resolve_run_id",
+    "scan_for_in_progress_scrubs",
     "write_extraction_timing_sidecar",
     "write_lineage_timing_sidecar",
 ]
+
+SCRUB_RECOVERY_MESSAGE = (
+    "Previous run left staging partially scrubbed (in-progress token found: {path}). "
+    "Run `make rebuild-llm-source` to clean the runs/ directory, then retry."
+)
 
 _ENV_VAR = "REPORTAL_RUN_ID"
 
@@ -139,3 +155,34 @@ def write_lineage_timing_sidecar(
     }
     atomic_write_json(sidecar_path, payload)
     return sidecar_path
+
+
+_IN_PROGRESS_TOKEN_NAME = "scrub.in_progress"
+
+
+def scan_for_in_progress_scrubs(study_runs_dir: Path) -> list[Path]:
+    """Return ``scrub.in_progress`` token paths found under *study_runs_dir*.
+
+    Scans one level deep (``study_runs_dir/*/scrub.in_progress``).  A
+    non-existent *study_runs_dir* returns an empty list so callers do not need
+    to guard for the directory's existence.
+
+    Parameters
+    ----------
+    study_runs_dir:
+        The ``runs/`` directory under the study output root
+        (e.g. ``output/{STUDY}/runs``).
+
+    Returns
+    -------
+    list[Path]
+        Absolute paths to every ``scrub.in_progress`` file found, one per
+        partially-scrubbed run.  Empty list when none are found.
+    """
+    if not study_runs_dir.is_dir():
+        return []
+    return sorted(
+        p
+        for p in study_runs_dir.glob(f"*/{_IN_PROGRESS_TOKEN_NAME}")
+        if p.is_file()
+    )

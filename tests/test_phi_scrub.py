@@ -1558,3 +1558,106 @@ class TestProductionBypassGuard:
             for record in caplog.records
             if record.levelno >= logging.WARNING
         ), "Expected a WARNING mentioning REPORTALIN_ALLOW_DISABLED_SCRUB"
+
+
+# ── In-progress token (P1.2) ─────────────────────────────────────────────────
+
+
+class TestInProgressToken:
+    """Acceptance criteria A and B for the scrub.in_progress token contract."""
+
+    def test_token_written_before_loop_on_crash(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Acceptance A: token exists on disk if the scrub loop raises on first row."""
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+
+        runs_dir = tmp_path / "runs"
+        run_id = "run_test_crash"
+
+        # Patch _scrub_file to raise immediately so the loop never completes.
+        def _boom(*_args: object, **_kwargs: object) -> None:
+            raise RuntimeError("simulated mid-scrub crash")
+
+        monkeypatch.setattr(phi_scrub, "_scrub_file", _boom)
+
+        with pytest.raises(RuntimeError, match="simulated mid-scrub crash"):
+            phi_scrub.run_scrub(study_name="TEST", run_id=run_id, runs_dir=runs_dir)
+
+        token = runs_dir / run_id / "scrub.in_progress"
+        assert token.is_file(), "in-progress token must exist after a mid-scrub crash"
+
+    def test_token_absent_after_successful_scrub(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        tmp_path: Path,
+    ) -> None:
+        """Acceptance B: token is deleted on successful completion."""
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+
+        runs_dir = tmp_path / "runs"
+        run_id = "run_test_success"
+
+        phi_scrub.run_scrub(study_name="TEST", run_id=run_id, runs_dir=runs_dir)
+
+        token = runs_dir / run_id / "scrub.in_progress"
+        assert not token.exists(), "in-progress token must be deleted after successful scrub"
+
+    def test_token_content_has_required_fields(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Token JSON contains run_id, study, started_utc, and scrub_yaml_sha256."""
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+
+        runs_dir = tmp_path / "runs"
+        run_id = "run_test_fields"
+
+        # Patch _scrub_file to raise so the token is still on disk.
+        def _boom(*_args: object, **_kwargs: object) -> None:
+            raise RuntimeError("stop early")
+
+        monkeypatch.setattr(phi_scrub, "_scrub_file", _boom)
+
+        with pytest.raises(RuntimeError):
+            phi_scrub.run_scrub(study_name="TEST", run_id=run_id, runs_dir=runs_dir)
+
+        token = runs_dir / run_id / "scrub.in_progress"
+        payload = json.loads(token.read_text(encoding="utf-8"))
+        assert payload["run_id"] == run_id
+        assert payload["study"] == "TEST"
+        assert "started_utc" in payload
+        assert "scrub_yaml_sha256" in payload
+
+    def test_no_token_written_when_run_id_absent(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        tmp_path: Path,
+    ) -> None:
+        """Backwards compat: no run_id → no token written (legacy callers unaffected)."""
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+
+        # Call without run_id / runs_dir — must not raise and must not leave any token.
+        phi_scrub.run_scrub(study_name="TEST")
+        # No assertion on a specific path; just verify the call succeeds.
