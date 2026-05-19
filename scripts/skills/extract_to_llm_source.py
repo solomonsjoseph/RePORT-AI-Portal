@@ -82,6 +82,7 @@ from scripts.extraction.dataset_pipeline import (
     ManifestMismatchError,
     check_forms_manifest,
 )
+from scripts.security.phi_patterns import SUBJECT_ID_PATTERNS
 from scripts.utils.secure_staging import secure_remove_tree
 
 __all__ = [
@@ -175,6 +176,21 @@ def destroy_staging_and_attest(
                 except ValueError:
                     rel = p
                 removed_paths.append(str(rel))
+
+    # ------------------------------------------------------------------
+    # a.5. Guard (I-5): assert no path segment leaks a subject ID into
+    #      the attestation. If a filename was ever named after a subject,
+    #      this would silently leak PHI into the destruction JSON.
+    # ------------------------------------------------------------------
+    for rp in removed_paths:
+        for segment in Path(rp).parts:
+            for pattern in SUBJECT_ID_PATTERNS:
+                if re.search(pattern, segment):
+                    raise ValueError(
+                        "destroy_staging_and_attest: a removed path segment matches "
+                        "SUBJECT_ID_PATTERNS — filename schema must be PHI-free. "
+                        "Inspect the staging directory structure before retrying."
+                    )
 
     files_destroyed = len(removed_paths)
 

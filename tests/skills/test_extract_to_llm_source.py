@@ -312,3 +312,39 @@ class TestRunIdOverwrite:
         # The file was overwritten with new timestamps
         assert isinstance(data_2["completed_utc"], str)
         # The overwrite did not raise — that's the main assertion
+
+
+# ---------------------------------------------------------------------------
+# F. PHI guard (I-5) — reject removed_paths with subject-ID-like segments
+# ---------------------------------------------------------------------------
+
+
+class TestPhiGuard:
+    def test_destroy_staging_and_attest_raises_if_path_segment_matches_subject_id_pattern(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """I-5: Guard must reject removed_paths that contain subject-ID-like segments.
+
+        Uses realistic subject-ID patterns from SUBJECT_ID_PATTERNS:
+        - SUBJ-\d+ (e.g., SUBJ-1234)
+        - SC\d{4,} (e.g., SC0001)
+        - FID\d* (e.g., FID1)
+        """
+        _patch_write_zone(monkeypatch, tmp_path)
+        staging_dir = tmp_path / "tmp" / "Indo-VAP"
+        staging_dir.mkdir(parents=True, exist_ok=True)
+        output_dir = tmp_path / "output" / "Indo-VAP"
+
+        # Plant a file whose name matches SUBJECT_ID_PATTERNS.
+        # Using "SUBJ-1234.jsonl" which matches \bSUBJ[-_]?\d+\b
+        phi_file = staging_dir / "SUBJ-1234.jsonl"
+        phi_file.write_text("data")
+
+        # Should raise ValueError mentioning SUBJECT_ID_PATTERNS
+        with pytest.raises(ValueError, match="SUBJECT_ID_PATTERNS"):
+            destroy_staging_and_attest(
+                study="Indo-VAP",
+                run_id="run-phi-guard",
+                staging_dir=staging_dir,
+                output_dir=output_dir,
+            )
