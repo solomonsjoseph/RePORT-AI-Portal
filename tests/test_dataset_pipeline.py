@@ -106,25 +106,29 @@ class TestIsDataframeEmpty:
 def _make_multisheet_workbook_with_duplicates(path: Path) -> None:
     """Write a two-sheet .xlsx where each sheet has an identical-column pair.
 
+    The duplicate column is placed immediately adjacent to its base column to
+    match the real Excel-autocomplete pattern (the new dedup logic requires
+    adjacency before removing a column).
+
     Sheet ``S1``:
-        SUBJID | AGE | SUBJID2   (SUBJID2 duplicates SUBJID → drop event)
+        SUBJID | SUBJID2 | AGE   (SUBJID2 adjacent to SUBJID → drop event)
     Sheet ``S2``:
-        NAME   | VAL | NAME_1    (NAME_1 duplicates NAME    → drop event)
+        NAME   | NAME_1  | VAL   (NAME_1 adjacent to NAME    → drop event)
     """
     wb = openpyxl.Workbook()
     ws1 = wb.active
     assert ws1 is not None
     ws1.title = "S1"
-    ws1.append(["SUBJID", "AGE", "SUBJID2"])
+    ws1.append(["SUBJID", "SUBJID2", "AGE"])
     for i in range(3):
         sid = f"SUBJ-{i:03d}"
-        ws1.append([sid, 20 + i, sid])  # SUBJID2 identical to SUBJID
+        ws1.append([sid, sid, 20 + i])  # SUBJID2 identical to SUBJID, adjacent
 
     ws2 = wb.create_sheet("S2")
-    ws2.append(["NAME", "VAL", "NAME_1"])
+    ws2.append(["NAME", "NAME_1", "VAL"])
     for i in range(3):
         name = f"name_{i}"
-        ws2.append([name, i * 10, name])  # NAME_1 identical to NAME
+        ws2.append([name, name, i * 10])  # NAME_1 identical to NAME, adjacent
 
     wb.save(path)
 

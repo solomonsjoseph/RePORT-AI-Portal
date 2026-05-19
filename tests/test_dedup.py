@@ -46,6 +46,8 @@ class TestCleanDuplicateColumns:
         assert events == []
 
     def test_multiple_suffix_patterns(self) -> None:
+        # NAME_2 is adjacent to NAME (positions 0,1) → removed.
+        # NAME3 is at position 2, not adjacent to NAME at 0 → kept.
         df = pd.DataFrame(
             {
                 "NAME": ["a", "b"],
@@ -55,9 +57,8 @@ class TestCleanDuplicateColumns:
         )
         result, _events = clean_duplicate_columns(df, source_file="demo.jsonl", sheet=None)
         assert "NAME" in result.columns
-        # Duplicates of NAME should be removed
-        remaining = [c for c in result.columns if c.startswith("NAME")]
-        assert len(remaining) == 1
+        assert "NAME_2" not in result.columns
+        assert "NAME3" in result.columns  # non-adjacent, not removed
 
     def test_underscore_suffix_with_base_missing(self) -> None:
         df = pd.DataFrame({"RESULT_2": [1, 2], "OTHER": [3, 4]})
@@ -163,6 +164,48 @@ class TestCleanDuplicateColumns:
         required = {"scope", "name", "file", "sheet", "reason", "kept"}
         for event in events:
             assert required <= set(event.keys())
+
+    # ── New adjacency + dtype precondition tests (P2.3) ──
+
+    def test_dtype_mismatch_prevents_dedup(self) -> None:
+        """(a) VISIT2 has different dtype from VISIT — NOT removed even if values match."""
+        df = pd.DataFrame({"VISIT": pd.array([1, 2, 3], dtype="int64"), "VISIT2": pd.array([1, 2, 3], dtype="float64")})
+        result, events = clean_duplicate_columns(df, source_file="demo.jsonl", sheet=None)
+        assert "VISIT2" in result.columns, "dtype mismatch should prevent removal"
+        assert events == []
+
+    def test_adjacent_same_dtype_same_values_removed(self) -> None:
+        """(b) VISIT2 adjacent to VISIT, same dtype, same values — IS removed."""
+        df = pd.DataFrame({"VISIT": pd.array([1, 2, 3], dtype="int64"), "VISIT2": pd.array([1, 2, 3], dtype="int64")})
+        result, events = clean_duplicate_columns(df, source_file="demo.jsonl", sheet=None)
+        assert "VISIT2" not in result.columns, "adjacent + same dtype + same values should be removed"
+        assert len(events) == 1
+
+    def test_non_adjacent_position_prevents_dedup(self) -> None:
+        """(c) VISIT2 matches VISIT in values + dtype but is NOT positionally adjacent."""
+        df = pd.DataFrame({
+            "VISIT": pd.array([1, 2, 3], dtype="int64"),
+            "INTERVENING": pd.array([10, 20, 30], dtype="int64"),
+            "VISIT2": pd.array([1, 2, 3], dtype="int64"),
+        })
+        result, events = clean_duplicate_columns(df, source_file="demo.jsonl", sheet=None)
+        assert "VISIT2" in result.columns, "non-adjacent should not be removed"
+        assert events == []
+
+    def test_one_differing_value_not_removed(self) -> None:
+        """(d) VISIT2 adjacent to VISIT, same dtype, but one value differs — NOT removed."""
+        df = pd.DataFrame({"VISIT": pd.array([1, 2, 3], dtype="int64"), "VISIT2": pd.array([1, 2, 99], dtype="int64")})
+        result, events = clean_duplicate_columns(df, source_file="demo.jsonl", sheet=None)
+        assert "VISIT2" in result.columns, "differing values should prevent removal"
+        assert events == []
+
+    def test_excel_autocomplete_dup_still_removed(self) -> None:
+        """(e) Original Excel-autocomplete fixture: SUBJID2 adjacent to SUBJID, same dtype, same values."""
+        df = pd.DataFrame({"SUBJID": [1, 2, 3], "SUBJID2": [1, 2, 3], "AGE": [20, 30, 40]})
+        result, events = clean_duplicate_columns(df, source_file="data.jsonl", sheet=None)
+        assert "SUBJID2" not in result.columns, "classic autocomplete dup must still be removed"
+        assert "SUBJID" in result.columns
+        assert len(events) == 1
 
 
 class TestVariableRichnessScore:

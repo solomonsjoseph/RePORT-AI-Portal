@@ -53,6 +53,33 @@ __all__ = [
 # ============================================================================
 
 
+def _dtypes_match(base_series: pd.Series, dup_series: pd.Series) -> bool:  # type: ignore[name-defined]
+    """Return True iff both series share the exact same pandas dtype.
+
+    Strict equality (``base.dtype == dup.dtype``) is intentional: ``int64``
+    and ``Int64`` (nullable integer) are considered different types because
+    they have different NA semantics.  This mirrors the "strict" dtype
+    comparison used elsewhere in the extraction pipeline.
+    """
+    return base_series.dtype == dup_series.dtype
+
+
+def _positionally_adjacent(columns: list[str], base_col: str, dup_col: str) -> bool:
+    """Return True iff *dup_col* is immediately next to *base_col* in *columns*.
+
+    "Adjacent" means the absolute difference of their indexes is exactly 1
+    (either base→dup or dup→base direction).  This guards against treating a
+    legitimately independent column as an Excel-autocomplete artifact just
+    because an earlier column happens to share the same prefix.
+    """
+    try:
+        base_idx = columns.index(base_col)
+        dup_idx = columns.index(dup_col)
+    except ValueError:
+        return False
+    return abs(dup_idx - base_idx) == 1
+
+
 def clean_duplicate_columns(
     df: pd.DataFrame,
     *,
@@ -61,13 +88,21 @@ def clean_duplicate_columns(
 ) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     """Remove duplicate columns ending with numeric suffixes from a DataFrame.
 
-    Implements intelligent duplicate detection:
+    Implements intelligent duplicate detection for Excel-autocomplete artifacts.
+    A column is removed only when **all four** conditions hold:
 
-    1. Identify columns matching the pattern ``base_name + optional '_' + digits``
+    1. Its name matches the pattern ``base_name + optional '_' + digits``
        (e.g. ``SUBJID2``, ``NAME_3``).
-    2. Check if the base column (without suffix) exists.
-    3. Remove if 100% identical to the base column OR if entirely null.
-    4. Keep columns with ANY differing values.
+    2. Its pandas dtype is identical to the base column's dtype (strict
+       equality — ``int64`` and ``Int64`` are treated as distinct).
+    3. It is positionally adjacent to the base column (consecutive in the
+       source column order, i.e. |index(dup) - index(base)| == 1).
+    4. Its values are 100% identical to the base column (element-wise, with
+       NaN-equality).
+
+    Entirely-null columns matching rule 1 are still removed unconditionally
+    (the null-path bypasses the dtype and adjacency checks because a null
+    column carries no clinical information regardless of position).
 
     Args:
         df: pandas DataFrame to clean.
@@ -87,6 +122,7 @@ def clean_duplicate_columns(
           and ``kept`` (the base column name, or ``None`` for pure-null drops).
     """
     pattern = config.DUPLICATE_COLUMN_PATTERN
+    col_list: list[str] = list(df.columns)
 
     columns_to_keep: list[str] = []
     columns_to_remove: list[str] = []
@@ -123,25 +159,55 @@ def clean_duplicate_columns(
                         all_match = (both_na | both_equal).all()
 
                         if all_match:
-                            columns_to_remove.append(col)
-                            reason = f"100% identical to '{base_name}'"
-                            removal_reasons[col] = reason
-                            drop_events.append(
-                                {
-                                    "scope": "dataset-column",
-                                    "name": col,
-                                    "file": source_file,
-                                    "sheet": sheet,
-                                    "reason": reason,
-                                    "kept": base_name,
-                                }
-                            )
-                            log.debug(
-                                "Marking '%s' for removal (100%% identical to '%s')", col, base_name
-                            )
-                            vlog.detail(
-                                f"Marking '{col}' for removal (100% identical to '{base_name}')"
-                            )
+                            # Extra guards: dtype must match AND columns must be adjacent.
+                            if not _dtypes_match(base_col, dup_col):
+                                columns_to_keep.append(col)
+                                log.debug(
+                                    "Keeping '%s' (candidate kept: dtype mismatch with '%s': "
+                                    "%s vs %s)",
+                                    col,
+                                    base_name,
+                                    dup_col.dtype,
+                                    base_col.dtype,
+                                )
+                                vlog.detail(
+                                    f"Keeping '{col}' (candidate kept: dtype mismatch with "
+                                    f"'{base_name}': {dup_col.dtype} vs {base_col.dtype})"
+                                )
+                            elif not _positionally_adjacent(col_list, base_name, col):
+                                columns_to_keep.append(col)
+                                log.debug(
+                                    "Keeping '%s' (candidate kept: not positionally adjacent "
+                                    "to '%s')",
+                                    col,
+                                    base_name,
+                                )
+                                vlog.detail(
+                                    f"Keeping '{col}' (candidate kept: not positionally "
+                                    f"adjacent to '{base_name}')"
+                                )
+                            else:
+                                columns_to_remove.append(col)
+                                reason = f"100% identical to '{base_name}'"
+                                removal_reasons[col] = reason
+                                drop_events.append(
+                                    {
+                                        "scope": "dataset-column",
+                                        "name": col,
+                                        "file": source_file,
+                                        "sheet": sheet,
+                                        "reason": reason,
+                                        "kept": base_name,
+                                    }
+                                )
+                                log.debug(
+                                    "Marking '%s' for removal (100%% identical to '%s')",
+                                    col,
+                                    base_name,
+                                )
+                                vlog.detail(
+                                    f"Marking '{col}' for removal (100% identical to '{base_name}')"
+                                )
                         else:
                             columns_to_keep.append(col)
                             match_count = (both_na | both_equal).sum()
