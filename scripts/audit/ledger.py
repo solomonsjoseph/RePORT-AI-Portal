@@ -1,14 +1,28 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 import config
-from scripts.extraction.io import atomic_write_json
-from scripts.utils.run_context import resolve_run_id
 
-__all__ = ["LedgerWriter"]
+__all__ = [
+    "CLEANUP_LEDGER_FILENAME",
+    "PHI_LEDGER_FILENAME",
+    "LedgerWriter",
+    "dataset_cleanup_ledger_path",
+    "dataset_phi_ledger_path",
+    "ensure_no_llm_sentinel",
+    "iter_dataset_phi_ledger_paths",
+    "remove_dataset_no_llm_sentinels",
+]
+
+DATASET_LEDGER_DIRNAME = "datasets"
+PHI_LEDGER_FILENAME = "phi_handling_ledger.as_written.json"
+CLEANUP_LEDGER_FILENAME = "dataset_cleanup_ledger.as_written.json"
 
 _PHI_ACTIONS: frozenset[str] = frozenset(
     {
@@ -31,6 +45,84 @@ _CLEANUP_ACTIONS: frozenset[str] = frozenset(
 )
 
 
+def _resolve_run_id() -> str:
+    env_val = os.environ.get("REPORTAL_RUN_ID")
+    if env_val:
+        return env_val
+    return f"run_{uuid4().hex}"
+
+
+def _atomic_write_json(output_path: Path, payload: dict) -> None:
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=out.parent,
+            prefix=f".{out.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as fh:
+            tmp_path = Path(fh.name)
+            json.dump(payload, fh, indent=2, sort_keys=False)
+            fh.write("\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        tmp_path.replace(out)
+    finally:
+        if tmp_path is not None and tmp_path.exists():
+            tmp_path.unlink(missing_ok=True)
+
+
+def _dataset_folder_name(dataset_file: str | Path) -> str:
+    """Return the stable audit folder name for one dataset file."""
+    return Path(str(dataset_file)).stem or "_unknown_dataset"
+
+
+def dataset_ledger_dir(audit_dir: Path, dataset_file: str | Path) -> Path:
+    """Return ``audit/datasets/<dataset>/`` for one dataset file."""
+    return Path(audit_dir) / DATASET_LEDGER_DIRNAME / _dataset_folder_name(dataset_file)
+
+
+def dataset_phi_ledger_path(audit_dir: Path, dataset_file: str | Path) -> Path:
+    """Return the PHI as-written ledger path for one dataset file."""
+    return dataset_ledger_dir(audit_dir, dataset_file) / PHI_LEDGER_FILENAME
+
+
+def dataset_cleanup_ledger_path(audit_dir: Path, dataset_file: str | Path) -> Path:
+    """Return the cleanup as-written ledger path for one dataset file."""
+    return dataset_ledger_dir(audit_dir, dataset_file) / CLEANUP_LEDGER_FILENAME
+
+
+def iter_dataset_phi_ledger_paths(audit_dir: Path) -> list[Path]:
+    """Return all per-dataset PHI as-written ledgers under an audit directory."""
+    return sorted((Path(audit_dir) / DATASET_LEDGER_DIRNAME).glob(f"*/{PHI_LEDGER_FILENAME}"))
+
+
+def ensure_no_llm_sentinel(directory: Path) -> None:
+    """Ensure a no-LLM sentinel exists in an audit directory."""
+    from scripts.audit import is_llm_agent
+
+    if is_llm_agent():
+        raise PermissionError("audit ledger write refused: REPORTAL_PROCESS_ROLE=llm-agent")
+    directory.mkdir(parents=True, exist_ok=True)
+    sentinel = directory / config.AUDIT_NO_LLM_SENTINEL_NAME
+    if not sentinel.is_file():
+        sentinel.write_text("")
+
+
+def remove_dataset_no_llm_sentinels(audit_dir: Path) -> None:
+    """Remove stale dataset-folder sentinels; the audit root carries this marker."""
+    for sentinel in sorted(
+        (Path(audit_dir) / DATASET_LEDGER_DIRNAME).glob(
+            f"*/{config.AUDIT_NO_LLM_SENTINEL_NAME}"
+        )
+    ):
+        sentinel.unlink(missing_ok=True)
+
+
 class LedgerWriter:
     """Collects audit events and writes them atomically to a JSON ledger file."""
 
@@ -41,11 +133,21 @@ class LedgerWriter:
         run_id: str | None = None,
         scrub_config_hash: str | None = None,
         input_dataset_hash: str | None = None,
+        study: str | None = None,
+        leg: str | None = None,
+        compliance_posture: str | None = None,
+        sentinel_dir: Path | None = None,
     ) -> None:
         self._output_path = Path(output_path)
-        self._run_id: str = run_id if run_id is not None else resolve_run_id()
+        self._sentinel_dir = (
+            Path(sentinel_dir) if sentinel_dir is not None else self._output_path.parent
+        )
+        self._run_id: str = run_id if run_id is not None else _resolve_run_id()
         self._scrub_config_hash = scrub_config_hash
         self._input_dataset_hash = input_dataset_hash
+        self._study = study
+        self._leg = leg
+        self._compliance_posture = compliance_posture
         self._iso_timestamp: str = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         self._events: list[dict] = []
         self._sentinel_seen: bool = False
@@ -72,8 +174,7 @@ class LedgerWriter:
         Subsequent calls: if the sentinel was previously confirmed and is now
         missing, treat it as tampering — alarm + refuse the write.
         """
-        audit_dir = self._output_path.parent
-        sentinel = audit_dir / config.AUDIT_NO_LLM_SENTINEL_NAME
+        sentinel = self._sentinel_dir / config.AUDIT_NO_LLM_SENTINEL_NAME
         if sentinel.is_file():
             self._sentinel_seen = True
             return
@@ -82,7 +183,7 @@ class LedgerWriter:
             self._emit_sentinel_alarm()
             raise PermissionError(f"audit sentinel missing at {sentinel}; ledger write refused")
         # First time we look and sentinel is missing — create it. Idempotent.
-        audit_dir.mkdir(parents=True, exist_ok=True)
+        self._sentinel_dir.mkdir(parents=True, exist_ok=True)
         sentinel.write_text("")  # presence is the signal
         self._sentinel_seen = True
 
@@ -183,11 +284,18 @@ class LedgerWriter:
         envelope: dict = {
             "run_id": self._run_id,
             "iso_timestamp": self._iso_timestamp,
-            "scrub_config_hash": self._scrub_config_hash,
-            "input_dataset_hash": self._input_dataset_hash,
+            "generated_utc": self._iso_timestamp,
+            "study": self._study,
+            "leg": self._leg,
             "events": self._events,
         }
-        atomic_write_json(self._output_path, envelope)
+        if self._compliance_posture is not None:
+            envelope["compliance_posture"] = self._compliance_posture
+        if self._scrub_config_hash is not None:
+            envelope["scrub_config_hash"] = self._scrub_config_hash
+        if self._input_dataset_hash is not None:
+            envelope["input_dataset_hash"] = self._input_dataset_hash
+        _atomic_write_json(self._output_path, envelope)
 
     def event_count(self) -> int:
         """Return number of events collected so far."""

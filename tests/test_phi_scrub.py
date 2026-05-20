@@ -25,6 +25,7 @@ from typing import Any, ClassVar
 import pytest
 
 import config
+from scripts.audit.ledger import dataset_phi_ledger_path
 from scripts.security import phi_scrub
 
 # ── Fixtures ────────────────────────────────────────────────────────────────
@@ -399,6 +400,10 @@ def _seed_staging(
     return target
 
 
+def _phi_ledger_path(filename: str = "1A_ICScreening.jsonl") -> Path:
+    return dataset_phi_ledger_path(Path(config.AUDIT_SCRUB_REPORT_PATH).parent, filename)
+
+
 class TestRunScrub:
     def test_no_config_is_noop_and_emits_disabled_audit(
         self,
@@ -745,8 +750,8 @@ class TestRunScrub:
         """Orphan field-drops must appear in the as-written ledger under quarantine/ prefix.
 
         Acceptance criteria:
-        A. phi_handling_ledger.as_written.json has at least one event with
-           form starting with "quarantine/".
+        A. The per-dataset phi_handling_ledger.as_written.json has at least
+           one event from a quarantine dataset file.
         B. That event records the participant_name drop (phi-scrub-drop or
            phi-scrub-birthdate-drop scope).
         """
@@ -766,9 +771,7 @@ class TestRunScrub:
         _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
 
-        ledger_path = (
-            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
-        )
+        ledger_path = _phi_ledger_path()
         assert ledger_path.is_file(), "phi_handling_ledger.as_written.json must exist"
         payload = json.loads(ledger_path.read_text(encoding="utf-8"))
 
@@ -869,7 +872,7 @@ class TestRunScrub:
 
 
 class TestAsWrittenLedger:
-    """Verify phi_handling_ledger.as_written.json is written alongside the legacy report."""
+    """Verify per-dataset phi_handling_ledger.as_written.json files."""
 
     def test_ledger_created_after_scrub(
         self,
@@ -884,13 +887,16 @@ class TestAsWrittenLedger:
         _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
 
-        ledger_path = (
-            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
-        )
+        ledger_path = _phi_ledger_path()
         assert ledger_path.is_file(), "phi_handling_ledger.as_written.json must be created"
+        assert not (ledger_path.parent / config.AUDIT_NO_LLM_SENTINEL_NAME).exists()
         payload = json.loads(ledger_path.read_text(encoding="utf-8"))
         assert "run_id" in payload
         assert "iso_timestamp" in payload
+        assert payload["generated_utc"] == payload["iso_timestamp"]
+        assert payload["study"] == "TEST"
+        assert payload["leg"] == "phi-scrub"
+        assert payload["compliance_posture"] == "safe_harbor"
         assert "events" in payload
 
     def test_ledger_event_shape(
@@ -908,9 +914,7 @@ class TestAsWrittenLedger:
         _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
 
-        ledger_path = (
-            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
-        )
+        ledger_path = _phi_ledger_path()
         payload = json.loads(ledger_path.read_text(encoding="utf-8"))
         assert len(payload["events"]) >= 1, "Expected at least one PHI handling event"
         event = payload["events"][0]
@@ -936,9 +940,7 @@ class TestAsWrittenLedger:
         _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
 
-        ledger_path = (
-            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
-        )
+        ledger_path = _phi_ledger_path()
         assert ledger_path.is_file()
         payload = json.loads(ledger_path.read_text(encoding="utf-8"))
         assert payload["events"] == []
@@ -963,14 +965,137 @@ class TestAsWrittenLedger:
         _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
 
-        ledger_path = (
-            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
-        )
+        ledger_path = _phi_ledger_path()
         assert ledger_path.is_file()
         payload = json.loads(ledger_path.read_text(encoding="utf-8"))
         assert payload["events"] == [], (
             "keep-scoped fields must not appear in the as_written ledger"
         )
+
+    def test_ledger_is_value_free_and_dataset_rows_keep_audit_separation(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Ledger adapts the audit envelope without copying row values or rows."""
+        _write_config(
+            scrub_config_path,
+            drop_fields=["^participant_name$"],
+            id_fields=[{"pattern": "^SUBJID$", "label": "SUBJ"}],
+            date_fields=["^VISDAT$"],
+        )
+        rows = [
+            {
+                "SUBJID": "SUBJECT-LEDGER-LEAK-001",
+                "participant_name": "Alice Ledger Leak",
+                "VISDAT": "2014-07-15",
+                "SCORE": 42,
+            }
+        ]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        ledger_path = _phi_ledger_path()
+        ledger_text = ledger_path.read_text(encoding="utf-8")
+        for forbidden in (
+            "SUBJECT-LEDGER-LEAK-001",
+            "Alice Ledger Leak",
+            "2014-07-15",
+            '"SCORE": 42',
+        ):
+            assert forbidden not in ledger_text
+
+        payload = json.loads(ledger_text)
+        assert payload["study"] == "TEST"
+        assert payload["leg"] == "phi-scrub"
+        assert payload["compliance_posture"] == "safe_harbor"
+        assert all("value" not in event for event in payload["events"])
+
+        cleaned_rows = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert len(cleaned_rows) == 1
+        row = cleaned_rows[0]
+        audit_envelope_keys = {
+            "run_id",
+            "iso_timestamp",
+            "generated_utc",
+            "study",
+            "leg",
+            "compliance_posture",
+            "scrub_config_hash",
+            "input_dataset_hash",
+            "events",
+        }
+        assert audit_envelope_keys.isdisjoint(row)
+
+    def test_ledger_phi_handling_events_match_scrub_report_without_extras(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """The PHI ledger is a value-free projection of scrub-report actions."""
+        _write_config(
+            scrub_config_path,
+            drop_fields=["^participant_name$"],
+            id_fields=[{"pattern": "^SUBJID$", "label": "SUBJ"}],
+            date_fields=["^VISDAT$"],
+            keep_fields=["^SCORE$"],
+        )
+        rows = [
+            {
+                "SUBJID": "S1",
+                "participant_name": "Alice",
+                "VISDAT": "2014-07-15",
+                "SCORE": 42,
+            },
+            {
+                "SUBJID": "S2",
+                "participant_name": "Bob",
+                "VISDAT": "2014-07-16",
+                "SCORE": 43,
+            },
+        ]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        audit_payload = json.loads(Path(config.AUDIT_SCRUB_REPORT_PATH).read_text())
+        ledger_path = _phi_ledger_path()
+        ledger_payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+
+        scope_to_action = {
+            "phi-scrub-drop": "drop",
+            "phi-scrub-birthdate-drop": "birthdate_drop",
+            "phi-scrub-id": "pseudonymize",
+            "phi-scrub-date": "jitter_date",
+            "phi-scrub-cap": "cap",
+            "phi-scrub-generalize": "generalize",
+            "phi-scrub-suppress-small-cell": "suppress_small_cell",
+        }
+        expected = sorted(
+            (
+                Path(item["file"]).stem,
+                item["field"],
+                scope_to_action[item["scope"]],
+                item["file"],
+                item["count"],
+            )
+            for item in audit_payload["scrubbed"]
+            if item["scope"] in scope_to_action
+        )
+        actual = sorted(
+            (
+                item["form"],
+                item["variable_id"],
+                item["action"],
+                item["where"]["dataset_file"],
+                item["count"],
+            )
+            for item in ledger_payload["events"]
+        )
+
+        assert actual == expected
+        assert all(item[1] != "SCORE" for item in actual)
 
 
 # ── Determinism across subject_id values (SANT spot-check) ──────────────────
@@ -1425,7 +1550,7 @@ class TestAuditHashes:
     """Verify scrub_config_hash and input_dataset_hash are sealed into the ledger.
 
     Acceptance criteria (P0.1):
-    A. phi_handling_ledger.as_written.json has non-null scrub_config_hash.
+    A. Per-dataset phi_handling_ledger.as_written.json has non-null scrub_config_hash.
     B. scrub_config_hash matches sha256(phi_scrub.yaml bytes).
     C. input_dataset_hash is non-null and stable across two identical runs.
     """
@@ -1442,9 +1567,7 @@ class TestAuditHashes:
         _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
 
-        ledger_path = (
-            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
-        )
+        ledger_path = _phi_ledger_path()
         payload = json.loads(ledger_path.read_text(encoding="utf-8"))
         assert payload["scrub_config_hash"] is not None, (
             "scrub_config_hash must be sealed into the ledger; got None"
@@ -1464,9 +1587,7 @@ class TestAuditHashes:
 
         expected = hashlib.sha256(scrub_config_path.read_bytes()).hexdigest()
 
-        ledger_path = (
-            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
-        )
+        ledger_path = _phi_ledger_path()
         payload = json.loads(ledger_path.read_text(encoding="utf-8"))
         assert payload["scrub_config_hash"] == expected, (
             f"scrub_config_hash mismatch: ledger={payload['scrub_config_hash']!r} "
@@ -1485,9 +1606,7 @@ class TestAuditHashes:
         _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
 
-        ledger_path = (
-            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
-        )
+        ledger_path = _phi_ledger_path()
         payload = json.loads(ledger_path.read_text(encoding="utf-8"))
         assert payload["input_dataset_hash"] is not None, (
             "input_dataset_hash must be sealed into the ledger; got None"
@@ -1512,9 +1631,7 @@ class TestAuditHashes:
         _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
 
-        ledger_path = (
-            Path(config.AUDIT_SCRUB_REPORT_PATH).parent / "phi_handling_ledger.as_written.json"
-        )
+        ledger_path = _phi_ledger_path()
         hash_run1 = json.loads(ledger_path.read_text(encoding="utf-8"))["input_dataset_hash"]
 
         # ── Run 2: reset sentinel + staging, re-seed identical bytes ───────
@@ -1617,8 +1734,6 @@ class TestAuditHashes:
 
     def test_compute_input_dataset_hash_manifest_format(self, tmp_path: Path) -> None:
         """Direct unit test: hash is sha256 of '<relpath>\\t<size>\\t<content_hash>'."""
-        from scripts.utils.integrity import hash_file as _hash_file
-
         datasets_dir = tmp_path / "datasets"
         datasets_dir.mkdir()
 
@@ -1642,7 +1757,7 @@ class TestAuditHashes:
 
 
 class TestProductionBypassGuard:
-    """Acceptance criteria A–D for the REPORTALIN_ALLOW_DISABLED_SCRUB guard."""
+    """Acceptance criteria A-D for the REPORTALIN_ALLOW_DISABLED_SCRUB guard."""
 
     def test_production_mode_with_env_set_raises(
         self,

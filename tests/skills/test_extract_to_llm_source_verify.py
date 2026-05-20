@@ -38,6 +38,7 @@ from typing import Any
 import pytest
 import yaml
 
+from scripts.audit.ledger import dataset_phi_ledger_path
 from scripts.skills.extract_to_llm_source import (
     EXIT_DESTRUCTION_INCOMPLETE,
     EXIT_LEDGER_HASH_NULL,
@@ -107,18 +108,21 @@ def _make_datasets_dir(datasets_dir: Path, forms: list[str]) -> None:
 
 
 def _make_valid_ledger(
-    audit_dir: Path, scrub_config_hash: str, run_id: str = RUN_ID
+    audit_dir: Path,
+    scrub_config_hash: str,
+    run_id: str = RUN_ID,
+    forms: list[str] | None = None,
 ) -> None:
-    """Write a valid phi_handling_ledger.as_written.json."""
+    """Write valid per-dataset phi_handling_ledger.as_written.json files."""
     audit_dir.mkdir(parents=True, exist_ok=True)
     ledger = {
         "run_id": run_id,
         "scrub_config_hash": scrub_config_hash,
         "input_dataset_hash": "abc123deadbeef",
     }
-    (audit_dir / "phi_handling_ledger.as_written.json").write_text(
-        json.dumps(ledger), encoding="utf-8"
-    )
+    for form in forms or ["form_a.xlsx"]:
+        dataset_phi_ledger_path(audit_dir, form).parent.mkdir(parents=True, exist_ok=True)
+        dataset_phi_ledger_path(audit_dir, form).write_text(json.dumps(ledger), encoding="utf-8")
 
 
 def _make_no_llm_zone(audit_dir: Path) -> None:
@@ -215,7 +219,7 @@ def _build_happy_study(
     _make_datasets_dir(datasets_dir, forms)
 
     # c. ledger + sentinel
-    _make_valid_ledger(audit_dir, scrub_hash, run_id=run_id)
+    _make_valid_ledger(audit_dir, scrub_hash, run_id=run_id, forms=forms)
     _make_no_llm_zone(audit_dir)
 
     # d. destruction attestation
@@ -451,7 +455,7 @@ class TestVerifyFailures:
             "scrub_config_hash": None,
             "input_dataset_hash": "abc123",
         }
-        (paths["audit_dir"] / "phi_handling_ledger.as_written.json").write_text(
+        dataset_phi_ledger_path(paths["audit_dir"], "form_a.xlsx").write_text(
             json.dumps(ledger), encoding="utf-8"
         )
         rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
@@ -468,7 +472,7 @@ class TestVerifyFailures:
             "scrub_config_hash": "0" * 64,  # wrong hash
             "input_dataset_hash": "abc123",
         }
-        (paths["audit_dir"] / "phi_handling_ledger.as_written.json").write_text(
+        dataset_phi_ledger_path(paths["audit_dir"], "form_a.xlsx").write_text(
             json.dumps(ledger), encoding="utf-8"
         )
         rc = main(["verify", "--study", STUDY, "--run", RUN_ID])

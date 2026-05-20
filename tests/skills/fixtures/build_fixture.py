@@ -34,6 +34,8 @@ from typing import Any
 
 import yaml
 
+from scripts.audit.ledger import dataset_phi_ledger_path
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -161,7 +163,7 @@ def build_golden_output_tree(
     Populates:
       - output_root/{study}/runs/{run_id}/destruction_attestation.json
       - output_root/{study}/runs/{run_id}/status.json
-      - output_root/{study}/audit/phi_handling_ledger.as_written.json
+      - output_root/{study}/audit/datasets/{stem}/phi_handling_ledger.as_written.json
       - output_root/{study}/audit/.NO_LLM_ZONE
       - output_root/{study}/llm_source/dataset_schema/files/{stem}.jsonl
         (one per form)
@@ -204,7 +206,8 @@ def build_golden_output_tree(
         "scrub_config_hash": scrub_config_hash,
         "input_dataset_hash": "deadbeef" * 8,  # 64-char placeholder hash
     }
-    _atomic_write_json(audit_dir / "phi_handling_ledger.as_written.json", ledger_payload)
+    for form in forms:
+        _atomic_write_json(dataset_phi_ledger_path(audit_dir, form), ledger_payload)
     (audit_dir / ".NO_LLM_ZONE").write_text(
         "This directory is outside the LLM read zone.\n", encoding="utf-8"
     )

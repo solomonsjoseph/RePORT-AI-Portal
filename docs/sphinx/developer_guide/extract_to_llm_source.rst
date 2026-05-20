@@ -50,8 +50,11 @@ Required Inputs
      - Location
      - Purpose
    * - PHI HMAC key
-     - ``~/.config/report_ai_portal/phi_key``
-     - Required before raw value extraction.
+     - Operator-managed sidecar outside the repo.
+     - Loaded only by ``scripts.security.phi_scrub`` while rewriting
+       staged values. Agent workflows and wrapper preflights must not
+       read, print, hash, stat, permission-check, or existence-check
+       key material.
    * - Forms manifest
      - ``data/raw/{STUDY}/_forms_manifest.yaml``
      - Declares required, optional, and rejected dataset files.
@@ -114,23 +117,23 @@ Run Flow
 
 1. Resolve a run id and create ``output/{STUDY}/runs/{run_id}/``.
 2. Fail closed if ``REPORTALIN_ALLOW_DISABLED_SCRUB`` is set.
-3. Fail closed if the PHI key cannot be loaded.
-4. Check for in-progress scrub recovery tokens.
-5. Acquire the study pipeline lock.
-6. Validate ``_forms_manifest.yaml`` against the dataset directory.
-7. Load ``_study_privacy.yaml``.
-8. Refresh jurisdiction source metadata from official URLs when allowed,
+3. Check for in-progress scrub recovery tokens.
+4. Acquire the study pipeline lock.
+5. Validate ``_forms_manifest.yaml`` against the dataset directory.
+6. Load ``_study_privacy.yaml``.
+7. Refresh jurisdiction source metadata from official URLs when allowed,
    otherwise use the pinned rule pack.
-9. Read row-1 headers for each reviewed form.
-10. Classify headers with strictest-wins rule merging and write
+8. Read row-1 headers for each reviewed form.
+9. Classify headers with strictest-wins rule merging and write
     ``phi_handling_approval.json``.
-11. Pass approved forms, including any ``--form`` subset, to the main pipeline through
+10. Pass approved forms, including any ``--form`` subset, to the main pipeline through
     ``REPORTAL_ALLOWED_DATASET_FORMS``.
-12. Run ``main.py --pipeline`` in a subprocess.
-13. Assert required ledger hashes and empty quarantine.
-14. Destroy ``tmp/{STUDY}/`` after successful publish and write
+11. Run ``main.py --pipeline`` in a subprocess. The PHI scrub step loads
+    the key internally; the wrapper does not inspect key material.
+12. Assert required per-dataset PHI ledger hashes and empty quarantine.
+13. Destroy ``tmp/{STUDY}/`` after successful publish and write
     ``destruction_attestation.json``.
-15. Write terminal ``status.json``.
+14. Write terminal ``status.json``.
 
 Approval Artifacts
 ------------------
@@ -203,7 +206,7 @@ It checks, in order:
 2. manifest reconciles with the dataset directory;
 3. staging is absent after successful publish;
 4. destruction attestation exists and has required fields;
-5. ledger hashes are present and match the scrub config;
+5. per-dataset PHI ledger hashes are present and match the scrub config;
 6. the audit envelope has the no-LLM sentinel;
 7. quarantine is absent or empty;
 8. ``llm_source/`` has no blocking PHI pattern findings;

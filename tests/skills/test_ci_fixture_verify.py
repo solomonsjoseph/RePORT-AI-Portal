@@ -29,6 +29,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts.audit.ledger import dataset_phi_ledger_path
 from scripts.skills.extract_to_llm_source import (
     EXIT_DESTRUCTION_INCOMPLETE,
     EXIT_LEDGER_HASH_NULL,
@@ -180,7 +181,7 @@ def _apply_mutation(mutation_id: str, paths: dict[str, Path], tmp_root: Path) ->
     """Apply the named mutation to the golden output tree."""
     if mutation_id == "null_hash":
         # Null the scrub_config_hash in the ledger.
-        ledger_path = paths["audit_dir"] / "phi_handling_ledger.as_written.json"
+        ledger_path = dataset_phi_ledger_path(paths["audit_dir"], FIXTURE_FORMS[0])
         data = json.loads(ledger_path.read_text())
         data["scrub_config_hash"] = None
         ledger_path.write_text(json.dumps(data, indent=2), encoding="utf-8")

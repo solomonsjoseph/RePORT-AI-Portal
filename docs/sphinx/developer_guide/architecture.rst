@@ -475,8 +475,9 @@ Expected processed tree:
    │   ├── lineage_manifest.json
    │   ├── phi_scrub_report.json
    │   ├── dataset_cleanup_report.json
-   │   ├── dataset_cleanup_ledger.as_written.json
-   │   ├── phi_handling_ledger.as_written.json
+   │   ├── datasets/{DATASET}/
+   │   │   ├── phi_handling_ledger.as_written.json
+   │   │   └── dataset_cleanup_ledger.as_written.json
    │   └── telemetry/
    │       └── events.jsonl
    └── agent/                        # analysis / conversations

@@ -36,6 +36,20 @@ def test_first_write_creates_sentinel(tmp_path: Path, monkeypatch: pytest.Monkey
     assert (audit_dir / config.AUDIT_NO_LLM_SENTINEL_NAME).is_file()
 
 
+def test_custom_sentinel_dir_keeps_output_dir_clean(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("REPORTAL_PROCESS_ROLE", raising=False)
+    audit_dir = tmp_path / "audit"
+    dataset_dir = audit_dir / "datasets" / "6_HIV"
+    out = dataset_dir / "phi_handling_ledger.as_written.json"
+    w = LedgerWriter(output_path=out, sentinel_dir=audit_dir)
+    w.add_phi_event(**_phi_kwargs())
+    w.flush()
+    assert (audit_dir / config.AUDIT_NO_LLM_SENTINEL_NAME).is_file()
+    assert not (dataset_dir / config.AUDIT_NO_LLM_SENTINEL_NAME).exists()
+
+
 def test_missing_sentinel_emits_alarm_and_refuses(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

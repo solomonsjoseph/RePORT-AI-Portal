@@ -39,7 +39,13 @@ from typing import Any
 import pandas as pd
 
 import config
-from scripts.audit.ledger import LedgerWriter
+from scripts.audit.ledger import (
+    CLEANUP_LEDGER_FILENAME,
+    LedgerWriter,
+    dataset_cleanup_ledger_path,
+    ensure_no_llm_sentinel,
+    remove_dataset_no_llm_sentinels,
+)
 from scripts.extraction.io import (
     atomic_write_dataframe_jsonl,
     atomic_write_json,
@@ -332,56 +338,85 @@ def _emit_as_written_ledger(
     extracted_drop_events: list[dict[str, Any]],
     report: CleanupReport,
     audit_path: Path,
+    study_name: str | None,
+    dataset_files: list[str],
 ) -> None:
-    """Write dataset_cleanup_ledger.as_written.json alongside the legacy audit.
+    """Write one cleanup as-written ledger under each dataset audit folder.
 
     Dual-write only — does not modify the legacy audit report.
     """
-    ledger_path = audit_path.parent / "dataset_cleanup_ledger.as_written.json"
-    writer = LedgerWriter(output_path=ledger_path)
+    audit_dir = audit_path.parent
+    ensure_no_llm_sentinel(audit_dir)
+    remove_dataset_no_llm_sentinels(audit_dir)
+    (audit_dir / CLEANUP_LEDGER_FILENAME).unlink(missing_ok=True)
+
+    display_names = {Path(name).stem: name for name in dataset_files}
+    grouped_events: dict[str, list[dict[str, Any]]] = {}
+
+    def _append_event(dataset_file: str, event: dict[str, Any]) -> None:
+        stem = Path(dataset_file).stem
+        display_names.setdefault(stem, dataset_file)
+        grouped_events.setdefault(stem, []).append(event)
 
     # Column-drop events (scope == "dataset-column" only)
     for event in extracted_drop_events:
         if event.get("scope") != "dataset-column":
             continue
-        writer.add_cleanup_event(
-            form=Path(event["file"]).stem,
-            variable_id=event["name"],
-            action="dataset_column_drop",
-            rule_project_category="cleanup",
-            rationale=event.get("reason", ""),
-            dataset_file=event["file"],
-            count=None,
+        _append_event(
+            event["file"],
+            {
+                "variable_id": event["name"],
+                "action": "dataset_column_drop",
+                "rationale": event.get("reason", ""),
+                "dataset_file": event["file"],
+            },
         )
 
     # Junk file removals
     for filename in report.junk_removed:
         stem = Path(filename).stem
-        writer.add_cleanup_event(
-            form=stem,
-            variable_id=stem,
-            action="dataset_junk_file",
-            rule_project_category="cleanup",
-            rationale="known junk artifact",
-            dataset_file=filename,
-            count=None,
+        _append_event(
+            filename,
+            {
+                "variable_id": stem,
+                "action": "dataset_junk_file",
+                "rationale": "known junk artifact",
+                "dataset_file": filename,
+            },
         )
 
     # Duplicate-pair merges
     for dup in report.duplicates_merged:
         removed_file = dup.get("removed", "")
         stem = Path(removed_file).stem
-        writer.add_cleanup_event(
-            form=stem,
-            variable_id=stem,
-            action="dataset_duplicate_file",
-            rule_project_category="cleanup",
-            rationale=dup.get("reason", ""),
-            dataset_file=removed_file,
-            count=None,
+        _append_event(
+            removed_file,
+            {
+                "variable_id": stem,
+                "action": "dataset_duplicate_file",
+                "rationale": dup.get("reason", ""),
+                "dataset_file": removed_file,
+            },
         )
 
-    writer.flush()
+    for stem in sorted(display_names):
+        writer = LedgerWriter(
+            output_path=dataset_cleanup_ledger_path(audit_dir, display_names[stem]),
+            study=study_name,
+            leg="dataset",
+            sentinel_dir=audit_dir,
+        )
+        for event in grouped_events.get(stem, []):
+            writer.add_cleanup_event(
+                form=stem,
+                variable_id=event["variable_id"],
+                action=event["action"],
+                rule_project_category="cleanup",
+                rationale=event["rationale"],
+                dataset_file=event["dataset_file"],
+                count=None,
+            )
+        writer.flush()
 
 
 def clean_trio_datasets(
@@ -428,6 +463,7 @@ def clean_trio_datasets(
     assert_write_zone(datasets_dir)
 
     report = CleanupReport()
+    dataset_files: list[str] = []
 
     if datasets_dir.is_dir():
         existing = sorted(f.stem for f in datasets_dir.glob("*.jsonl"))
@@ -446,6 +482,7 @@ def clean_trio_datasets(
 
         # Summary
         remaining = sorted(f.stem for f in datasets_dir.glob("*.jsonl"))
+        dataset_files = sorted(f.name for f in datasets_dir.glob("*.jsonl"))
         logger.info(
             "Dataset cleanup complete: %d files remaining (removed %d junk, merged %d duplicates, %d skipped, %d errors)",
             len(remaining),
@@ -468,6 +505,8 @@ def clean_trio_datasets(
         extracted_drop_events=extracted_drop_events,
         report=report,
         audit_path=audit_path,
+        study_name=study_name,
+        dataset_files=dataset_files,
     )
 
     return report

@@ -83,13 +83,13 @@ from typing import Any
 
 import yaml
 
+from scripts.audit.ledger import iter_dataset_phi_ledger_paths
 from scripts.extraction.dataset_pipeline import (
     ManifestMismatchError,
     check_forms_manifest,
 )
 from scripts.security.llm_source_gate import scan_tree_for_phi
 from scripts.security.phi_patterns import SUBJECT_ID_PATTERNS
-from scripts.security.phi_scrub import load_key as _load_phi_key
 from scripts.utils.secure_staging import secure_remove_tree
 
 __all__ = [
@@ -459,32 +459,33 @@ def _verify_assertion_4_attestation_valid(run_dir: Path) -> _AssertionResult:
 def _verify_assertion_5_ledger_hashes(
     audit_dir: Path, phi_scrub_config_path: Path
 ) -> _AssertionResult:
-    """Assertion 5: ledger has non-null run_id/scrub_config_hash/input_dataset_hash;
+    """Assertion 5: every per-dataset PHI ledger has required hashes;
     scrub_config_hash matches SHA-256 of the current phi_scrub.yaml.
     """
-    ledger_path = audit_dir / "phi_handling_ledger.as_written.json"
-    if not ledger_path.exists():
-        return "fail", f"phi_handling_ledger.as_written.json not found at {ledger_path}"
+    ledger_paths = iter_dataset_phi_ledger_paths(audit_dir)
+    if not ledger_paths:
+        return "fail", f"no per-dataset phi_handling_ledger.as_written.json files under {audit_dir / 'datasets'}"
 
-    try:
-        data = json.loads(ledger_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError) as exc:
-        return "fail", f"phi_handling_ledger.as_written.json failed to parse: {exc}"
-
-    for field in ("run_id", "scrub_config_hash", "input_dataset_hash"):
-        if not data.get(field):
-            return "fail", f"phi_handling_ledger.as_written.json: {field!r} is null or absent"
-
-    # Verify scrub_config_hash matches current phi_scrub.yaml
-    persisted_hash = data["scrub_config_hash"]
     if not phi_scrub_config_path.exists():
         return "fail", f"phi_scrub.yaml not found at {phi_scrub_config_path}; cannot verify hash"
     actual_hash = hashlib.sha256(phi_scrub_config_path.read_bytes()).hexdigest()
-    if persisted_hash != actual_hash:
-        return "fail", (
-            f"scrub_config_hash mismatch: ledger has {persisted_hash!r}, "
-            f"current phi_scrub.yaml hashes to {actual_hash!r}"
-        )
+
+    for ledger_path in ledger_paths:
+        try:
+            data = json.loads(ledger_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            return "fail", f"{ledger_path} failed to parse: {exc}"
+
+        for field in ("run_id", "scrub_config_hash", "input_dataset_hash"):
+            if not data.get(field):
+                return "fail", f"{ledger_path}: {field!r} is null or absent"
+
+        persisted_hash = data["scrub_config_hash"]
+        if persisted_hash != actual_hash:
+            return "fail", (
+                f"scrub_config_hash mismatch: {ledger_path} has {persisted_hash!r}, "
+                f"current phi_scrub.yaml hashes to {actual_hash!r}"
+            )
 
     return "pass", ""
 
@@ -888,11 +889,6 @@ def _write_run_status(
     _atomic_write_json(run_dir / "status.json", payload)
 
 
-def _preflight_phi_key() -> None:
-    """Fail before raw extraction if the PHI HMAC key is unavailable."""
-    _load_phi_key()
-
-
 def _auto_worker_count(max_workers: int | None) -> int:
     if max_workers is not None:
         return max(1, max_workers)
@@ -1111,19 +1107,6 @@ def _cmd_run(args: argparse.Namespace) -> int:
             staging_preserved=False,
         )
 
-    # ── Step 1a.2: PHI key preflight before any raw value extraction ───────
-    try:
-        _preflight_phi_key()
-    except Exception as exc:
-        msg = f"PHI key preflight failed: {exc}"
-        print(msg, file=sys.stderr)
-        return _finish(
-            EXIT_NEEDS_ADVICE,
-            stage="preflight.phi_key",
-            reason=msg,
-            staging_preserved=False,
-        )
-
     # ── Step 1b: scan for in-progress scrubs ──────────────────────────────
     study_runs_dir = study_output_dir / "runs"
     in_progress = scan_for_in_progress_scrubs(study_runs_dir)
@@ -1251,32 +1234,44 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 staging_preserved=True,
             )
 
-        # ── Step 4a: assert ledger hashes are non-null ────────────────────
-        ledger_path = study_output_dir / "audit" / "phi_handling_ledger.as_written.json"
-        try:
-            ledger_data = json.loads(ledger_path.read_text(encoding="utf-8"))
-        except (FileNotFoundError, json.JSONDecodeError) as exc:
-            print(f"Ledger read error: {exc}", file=sys.stderr)
+        # ── Step 4a: assert per-dataset PHI ledger hashes are non-null ───────
+        ledger_paths = iter_dataset_phi_ledger_paths(study_output_dir / "audit")
+        if not ledger_paths:
+            msg = "No per-dataset PHI as-written ledgers found."
+            print(msg, file=sys.stderr)
             return _finish(
                 EXIT_LEDGER_HASH_NULL,
                 stage="postrun.ledger",
-                reason=str(exc),
+                reason=msg,
                 staging_preserved=True,
             )
 
-        if not ledger_data.get("scrub_config_hash") or not ledger_data.get(
-            "input_dataset_hash"
-        ):
-            print(
-                "Ledger hash null: scrub_config_hash or input_dataset_hash is absent/null.",
-                file=sys.stderr,
-            )
-            return _finish(
-                EXIT_LEDGER_HASH_NULL,
-                stage="postrun.ledger",
-                reason="scrub_config_hash or input_dataset_hash is absent/null",
-                staging_preserved=True,
-            )
+        for ledger_path in ledger_paths:
+            try:
+                ledger_data = json.loads(ledger_path.read_text(encoding="utf-8"))
+            except (FileNotFoundError, json.JSONDecodeError) as exc:
+                print(f"Ledger read error: {exc}", file=sys.stderr)
+                return _finish(
+                    EXIT_LEDGER_HASH_NULL,
+                    stage="postrun.ledger",
+                    reason=str(exc),
+                    staging_preserved=True,
+                )
+
+            if not ledger_data.get("scrub_config_hash") or not ledger_data.get(
+                "input_dataset_hash"
+            ):
+                print(
+                    f"Ledger hash null in {ledger_path}: "
+                    "scrub_config_hash or input_dataset_hash is absent/null.",
+                    file=sys.stderr,
+                )
+                return _finish(
+                    EXIT_LEDGER_HASH_NULL,
+                    stage="postrun.ledger",
+                    reason=f"{ledger_path}: scrub_config_hash or input_dataset_hash is absent/null",
+                    staging_preserved=True,
+                )
 
         # ── Step 4b: assert quarantine is empty or absent ─────────────────
         quarantine_dir = study_staging_dir / "quarantine"

@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from scripts.audit.ledger import dataset_cleanup_ledger_path
 from scripts.extraction.dataset_cleanup import (
     CleanupReport,
     clean_trio_datasets,
@@ -371,18 +372,19 @@ class TestAuditSerialization:
 
 
 class TestAsWrittenLedger:
-    """Phase 1C: clean_trio_datasets dual-writes dataset_cleanup_ledger.as_written.json."""
+    """Phase 1C: clean_trio_datasets writes per-dataset cleanup ledgers."""
 
-    def _ledger_path(self) -> Path:
+    def _ledger_path(self, filename: str = "1A_ICScreening.jsonl") -> Path:
         import config
 
-        return config.AUDIT_DATASET_REPORT_PATH.parent / "dataset_cleanup_ledger.as_written.json"
+        return dataset_cleanup_ledger_path(config.AUDIT_DATASET_REPORT_PATH.parent, filename)
 
     def test_as_written_ledger_created(self, monkeypatch_config: Path) -> None:
         import config
 
         ds = config.STAGING_DATASETS_DIR
         ds.mkdir(parents=True, exist_ok=True)
+        _write_jsonl(ds / "1A_ICScreening.jsonl", [{"a": 1}])
 
         clean_trio_datasets(
             ds,
@@ -392,10 +394,14 @@ class TestAsWrittenLedger:
 
         ledger_path = self._ledger_path()
         assert ledger_path.exists(), "ledger.as_written.json was not created"
+        assert not (ledger_path.parent / config.AUDIT_NO_LLM_SENTINEL_NAME).exists()
 
         envelope = json.loads(ledger_path.read_text())
         assert "run_id" in envelope
         assert "iso_timestamp" in envelope
+        assert envelope["generated_utc"] == envelope["iso_timestamp"]
+        assert envelope["study"] == "TestStudy"
+        assert envelope["leg"] == "dataset"
         assert "events" in envelope
         assert isinstance(envelope["events"], list)
 
@@ -420,7 +426,7 @@ class TestAsWrittenLedger:
             study_name="TestStudy",
         )
 
-        envelope = json.loads(self._ledger_path().read_text())
+        envelope = json.loads(self._ledger_path("1A_ICScreening.xlsx").read_text())
         col_drops = [e for e in envelope["events"] if e["action"] == "dataset_column_drop"]
         assert len(col_drops) == 1
 
@@ -443,7 +449,7 @@ class TestAsWrittenLedger:
             study_name="TestStudy",
         )
 
-        envelope = json.loads(self._ledger_path().read_text())
+        envelope = json.loads(self._ledger_path("Paste Errors.jsonl").read_text())
         junk_events = [e for e in envelope["events"] if e["action"] == "dataset_junk_file"]
         assert len(junk_events) == 1
 
@@ -459,6 +465,7 @@ class TestAsWrittenLedger:
 
         ds = config.STAGING_DATASETS_DIR
         ds.mkdir(parents=True, exist_ok=True)
+        _write_jsonl(ds / "Paste Errors.jsonl", [{"a": 1}])
 
         # Only a non-column-scope event — should be filtered out of column-drop section
         non_column_event = {
@@ -476,6 +483,6 @@ class TestAsWrittenLedger:
             study_name="TestStudy",
         )
 
-        envelope = json.loads(self._ledger_path().read_text())
+        envelope = json.loads(self._ledger_path("Paste Errors.jsonl").read_text())
         col_drops = [e for e in envelope["events"] if e["action"] == "dataset_column_drop"]
         assert col_drops == [], "non-column scope must not produce dataset_column_drop events"

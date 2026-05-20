@@ -58,8 +58,12 @@ def test_phi_event_flush_file_and_shape(tmp_path: Path) -> None:
 
     assert "run_id" in data
     assert "iso_timestamp" in data
-    assert "scrub_config_hash" in data
-    assert "input_dataset_hash" in data
+    assert "generated_utc" in data
+    assert "study" in data
+    assert "leg" in data
+    assert "compliance_posture" not in data
+    assert "scrub_config_hash" not in data
+    assert "input_dataset_hash" not in data
     assert "events" in data
 
     event = data["events"][0]
@@ -236,6 +240,9 @@ def test_envelope_keys_and_types(tmp_path: Path) -> None:
         run_id="run_test123",
         scrub_config_hash="sha256:abc",
         input_dataset_hash="sha256:def",
+        study="TestStudy",
+        leg="phi-scrub",
+        compliance_posture="safe_harbor",
     )
     writer.add_phi_event(**_phi_event_kwargs())
     writer.flush()
@@ -246,18 +253,23 @@ def test_envelope_keys_and_types(tmp_path: Path) -> None:
     assert isinstance(data["iso_timestamp"], str)
     # Z-suffix UTC format
     assert data["iso_timestamp"].endswith("Z")
+    assert data["generated_utc"] == data["iso_timestamp"]
+    assert data["study"] == "TestStudy"
+    assert data["leg"] == "phi-scrub"
+    assert data["compliance_posture"] == "safe_harbor"
     assert data["scrub_config_hash"] == "sha256:abc"
     assert data["input_dataset_hash"] == "sha256:def"
     assert isinstance(data["events"], list)
 
 
-def test_envelope_optional_hashes_none(tmp_path: Path) -> None:
+def test_envelope_optional_metadata_omitted_when_absent(tmp_path: Path) -> None:
     writer = _make_writer(tmp_path)
     writer.flush()
 
     data = json.loads((tmp_path / "ledger.json").read_text())
-    assert data["scrub_config_hash"] is None
-    assert data["input_dataset_hash"] is None
+    assert "compliance_posture" not in data
+    assert "scrub_config_hash" not in data
+    assert "input_dataset_hash" not in data
 
 
 def test_run_id_auto_generated(tmp_path: Path) -> None:

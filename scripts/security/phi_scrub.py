@@ -115,7 +115,13 @@ from typing import Any
 import yaml
 
 import config
-from scripts.audit.ledger import LedgerWriter
+from scripts.audit.ledger import (
+    PHI_LEDGER_FILENAME,
+    LedgerWriter,
+    dataset_phi_ledger_path,
+    ensure_no_llm_sentinel,
+    remove_dataset_no_llm_sentinels,
+)
 from scripts.extraction.io import atomic_write_json, atomic_write_jsonl, parse_date
 from scripts.security.secure_env import assert_output_zone, assert_write_zone
 from scripts.utils.integrity import hash_file
@@ -1212,34 +1218,54 @@ def _emit_as_written_ledger(
     *,
     events: list[dict[str, Any]],
     audit_path: Path,
+    study_name: str | None,
+    compliance_posture: str | None,
+    dataset_files: list[str] | None = None,
     scrub_config_hash: str | None = None,
     input_dataset_hash: str | None = None,
 ) -> None:
-    """Write phi_handling_ledger.as_written.json alongside the legacy audit report."""
-    assert_output_zone(audit_path.parent)
-    ledger_path = audit_path.parent / "phi_handling_ledger.as_written.json"
-    writer = LedgerWriter(
-        output_path=ledger_path,
-        scrub_config_hash=scrub_config_hash,
-        input_dataset_hash=input_dataset_hash,
-    )
+    """Write one PHI as-written ledger under each dataset audit folder."""
+    audit_dir = audit_path.parent
+    assert_output_zone(audit_dir)
+    ensure_no_llm_sentinel(audit_dir)
+    remove_dataset_no_llm_sentinels(audit_dir)
+    (audit_dir / PHI_LEDGER_FILENAME).unlink(missing_ok=True)
+
+    display_names = {Path(name).stem: name for name in dataset_files or []}
+    grouped_events: dict[str, list[dict[str, Any]]] = {}
     for event in events:
         action = _SCOPE_TO_ACTION.get(event["scope"])
         if action is None:
             # phi-scrub-keep and any unrecognized scopes are not PHI handling actions
             continue
-        writer.add_phi_event(
-            form=Path(event["file"]).stem,
-            variable_id=event["field"],
-            action=action,
-            rule_taxonomy=None,
-            rule_project_category=None,
-            rationale="Applied by PHI scrubber per phi_scrub.yaml configuration",
-            dataset_file=event["file"],
-            pdf_source=None,
-            count=event["count"],
+        dataset_file = event["file"]
+        stem = Path(dataset_file).stem
+        display_names.setdefault(stem, dataset_file)
+        grouped_events.setdefault(stem, []).append(event)
+
+    for stem in sorted(display_names):
+        writer = LedgerWriter(
+            output_path=dataset_phi_ledger_path(audit_dir, display_names[stem]),
+            scrub_config_hash=scrub_config_hash,
+            input_dataset_hash=input_dataset_hash,
+            study=study_name,
+            leg="phi-scrub",
+            compliance_posture=compliance_posture,
+            sentinel_dir=audit_dir,
         )
-    writer.flush()
+        for event in grouped_events.get(stem, []):
+            writer.add_phi_event(
+                form=Path(event["file"]).stem,
+                variable_id=event["field"],
+                action=_SCOPE_TO_ACTION[event["scope"]],
+                rule_taxonomy=None,
+                rule_project_category=None,
+                rationale="Applied by PHI scrubber per phi_scrub.yaml configuration",
+                dataset_file=event["file"],
+                pdf_source=None,
+                count=event["count"],
+            )
+        writer.flush()
 
 
 def run_scrub(
@@ -1298,6 +1324,7 @@ def run_scrub(
     audit_path = Path(config.AUDIT_SCRUB_REPORT_PATH)
     staging_root = Path(config.STUDY_STAGING_DIR)
     sentinel = staging_root / _SENTINEL_NAME
+    staging_datasets = Path(config.STAGING_DATASETS_DIR)
 
     cfg = load_scrub_config()
     if cfg is None:
@@ -1336,7 +1363,15 @@ def run_scrub(
             audit_path=audit_path,
         )
         # No config file → cannot produce a config hash; hashes stay None.
-        _emit_as_written_ledger(events=[], audit_path=audit_path)
+        _emit_as_written_ledger(
+            events=[],
+            audit_path=audit_path,
+            study_name=study_name,
+            compliance_posture="disabled",
+            dataset_files=sorted(p.name for p in staging_datasets.glob("*.jsonl"))
+            if staging_datasets.is_dir()
+            else [],
+        )
         return
 
     # Config is present — seal its hash into every subsequent ledger write.
@@ -1358,13 +1393,12 @@ def run_scrub(
     # not the staging dir, so we read it from config.DATASETS_DIR.
     # Lazy import to avoid the circular:
     #   phi_scrub → dataset_pipeline → extraction.io → utils → security → phi_scrub
-    from scripts.extraction.dataset_pipeline import check_forms_manifest  # noqa: PLC0415
+    from scripts.extraction.dataset_pipeline import check_forms_manifest
 
     # Reject-listed files are auto-skipped by the extraction leg, so the
     # scrub leg only needs the date_locales mapping here.
     date_locales: dict[str, str] = check_forms_manifest(config.DATASETS_DIR).date_locales
 
-    staging_datasets = Path(config.STAGING_DATASETS_DIR)
     if not staging_datasets.is_dir():
         logger.info(
             "phi_scrub: staging datasets dir missing (%s) — emitting empty audit",
@@ -1381,12 +1415,16 @@ def run_scrub(
         _emit_as_written_ledger(
             events=[],
             audit_path=audit_path,
+            study_name=study_name,
+            compliance_posture=cfg.compliance_posture,
+            dataset_files=[],
             scrub_config_hash=scrub_config_hash,
         )
         return
 
     # Snapshot the raw input manifest BEFORE any in-place scrub rewrites so
     # the hash reflects the pre-scrub state, not the post-scrub state.
+    dataset_files = sorted(p.name for p in staging_datasets.glob("*.jsonl"))
     input_dataset_hash: str = _compute_input_dataset_hash(staging_datasets)
 
     assert_write_zone(staging_datasets)
@@ -1457,6 +1495,9 @@ def run_scrub(
     _emit_as_written_ledger(
         events=events,
         audit_path=audit_path,
+        study_name=study_name,
+        compliance_posture=cfg.compliance_posture,
+        dataset_files=dataset_files,
         scrub_config_hash=scrub_config_hash,
         input_dataset_hash=input_dataset_hash,
     )

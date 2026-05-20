@@ -40,11 +40,22 @@ def test_dataset_skill_preserves_phi_boundary_and_cli_contract() -> None:
         "scripts/skills/extract_to_llm_source.py verify",
         "--form 6_HIV",
         "REPORTALIN_ALLOW_DISABLED_SCRUB",
+        "Do not read, print, hash, stat, permission-check, or existence-check",
         "destruction_attestation.json",
         "verifier_report.json",
+        "output/{STUDY}/audit/datasets/{DATASET}/phi_handling_ledger.as_written.json",
+        "output/{STUDY}/audit/datasets/{DATASET}/dataset_cleanup_ledger.as_written.json",
     ]
     for phrase in required_phrases:
         assert phrase in body
+
+    forbidden_phrases = [
+        "PHI key preflight",
+        "~/.config/report_ai_portal/phi_key",
+        "check existence only",
+    ]
+    for phrase in forbidden_phrases:
+        assert phrase not in body
 
 
 def test_dataset_skill_openai_metadata_matches_skill_name() -> None:

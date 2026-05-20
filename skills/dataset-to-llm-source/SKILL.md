@@ -40,7 +40,13 @@ data/raw/{STUDY}/datasets/*.{xlsx,csv}
   -> verifier report and staging destruction attestation
 ```
 
-Prefer this CLI over lower-level `make extract-datasets` for operator runs because it includes the manifest gate, privacy approval, PHI key preflight, pipeline lock, verifier, and destruction attestation.
+Prefer this CLI over lower-level `make extract-datasets` for operator runs because it includes the manifest gate, privacy approval, pipeline lock, verifier, and destruction attestation.
+
+## Key Boundary
+
+Do not read, print, hash, stat, permission-check, or existence-check PHI HMAC keys or encryption keys from an agent workflow. The key is operator-managed secret material outside the repo. The only code path allowed to load it is the trusted PHI scrubber at the point where it rewrites staged values.
+
+If a run fails because a key is missing or invalid, report the CLI failure stage and stop. Do not inspect the key file yourself.
 
 ## Preflight
 
@@ -57,7 +63,6 @@ uv run --all-groups python scripts/skills/extract_to_llm_source.py status
    - `data/raw/{STUDY}/_study_privacy.yaml`
    - `data/raw/{STUDY}/datasets/`
    - `scripts/security/phi_scrub.yaml`
-   - `~/.config/report_ai_portal/phi_key` (check existence only; never print it)
 
 Do not set `REPORTALIN_ALLOW_DISABLED_SCRUB`. The CLI fails closed when that variable is present.
 
@@ -128,7 +133,8 @@ For a completed run, report these paths when present:
 - `output/{STUDY}/runs/{RUN_ID}/verifier_report.json`
 - `output/{STUDY}/runs/{RUN_ID}/destruction_attestation.json`
 - `output/{STUDY}/llm_source/dataset_schema/files/`
-- `output/{STUDY}/audit/phi_handling_ledger.as_written.json`
+- `output/{STUDY}/audit/datasets/{DATASET}/phi_handling_ledger.as_written.json`
+- `output/{STUDY}/audit/datasets/{DATASET}/dataset_cleanup_ledger.as_written.json`
 - `output/{STUDY}/audit/dataset_cleanup_report.json`
 
 If a file may contain dataset values, do not paste its contents into chat. Summarize pass/fail status, counts, filenames, hashes, and assertion names instead.

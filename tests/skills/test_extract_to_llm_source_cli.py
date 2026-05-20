@@ -36,6 +36,7 @@ from unittest.mock import patch
 import pytest
 
 import scripts.skills.extract_to_llm_source as skill_mod
+from scripts.audit.ledger import dataset_phi_ledger_path
 from scripts.skills.extract_to_llm_source import (
     EXIT_DESTRUCTION_INCOMPLETE,
     EXIT_LEDGER_HASH_NULL,
@@ -52,6 +53,7 @@ from scripts.skills.extract_to_llm_source import (
 # ---------------------------------------------------------------------------
 
 STUDY = "Test-Study"
+SKILL_SCRIPT = Path(skill_mod.__file__)
 
 
 @pytest.fixture(autouse=True)
@@ -61,7 +63,6 @@ def _bypass_expensive_phi_gate(monkeypatch: pytest.MonkeyPatch) -> None:
     Dedicated tests below cover the PHI review gate itself, so keep the older
     run-path tests focused on lock/subprocess/ledger/destruction behavior.
     """
-    monkeypatch.setattr(skill_mod, "_preflight_phi_key", lambda: None)
     monkeypatch.setattr(
         skill_mod,
         "_run_form_approval_gate",
@@ -72,6 +73,15 @@ def _bypass_expensive_phi_gate(monkeypatch: pytest.MonkeyPatch) -> None:
             partial=False,
         ),
     )
+
+
+def test_wrapper_does_not_load_phi_key_material() -> None:
+    """The orchestration wrapper must not read PHI HMAC/encryption keys."""
+    source = SKILL_SCRIPT.read_text(encoding="utf-8")
+
+    assert "load_key" not in source
+    assert "_preflight_phi_key" not in source
+    assert "preflight.phi_key" not in source
 
 
 def _make_args(subcommand: str, study: str = STUDY, run_id: str | None = None) -> Any:
@@ -94,14 +104,16 @@ def _patch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
 
 
 def _write_valid_ledger(output_dir: Path) -> None:
-    """Write a ledger with non-null hashes."""
+    """Write a per-dataset ledger with non-null hashes."""
     audit_dir = output_dir / STUDY / "audit"
     audit_dir.mkdir(parents=True, exist_ok=True)
     ledger = {
+        "run_id": "run_x",
         "scrub_config_hash": "abc123",
         "input_dataset_hash": "def456",
     }
-    ledger_path = audit_dir / "phi_handling_ledger.as_written.json"
+    ledger_path = dataset_phi_ledger_path(audit_dir, "approved.xlsx")
+    ledger_path.parent.mkdir(parents=True, exist_ok=True)
     ledger_path.write_text(json.dumps(ledger), encoding="utf-8")
 
 
@@ -217,6 +229,7 @@ class TestVerifyStub:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         import hashlib
+
         import yaml as _yaml
 
         import config
@@ -268,7 +281,9 @@ class TestVerifyStub:
         audit_dir = study_output / "audit"
         audit_dir.mkdir(parents=True)
         (audit_dir / ".NO_LLM_ZONE").write_text("", encoding="utf-8")
-        (audit_dir / "phi_handling_ledger.as_written.json").write_text(
+        ledger_path = dataset_phi_ledger_path(audit_dir, "approved.xlsx")
+        ledger_path.parent.mkdir(parents=True, exist_ok=True)
+        ledger_path.write_text(
             json.dumps(
                 {
                     "run_id": run_id,
@@ -560,7 +575,9 @@ class TestRunExitCodes:
         # Write a ledger with null hashes.
         audit_dir = tmp_path / "output" / STUDY / "audit"
         audit_dir.mkdir(parents=True, exist_ok=True)
-        (audit_dir / "phi_handling_ledger.as_written.json").write_text(
+        ledger_path = dataset_phi_ledger_path(audit_dir, "approved.xlsx")
+        ledger_path.parent.mkdir(parents=True, exist_ok=True)
+        ledger_path.write_text(
             json.dumps({"scrub_config_hash": None, "input_dataset_hash": None}),
             encoding="utf-8",
         )
