@@ -823,7 +823,7 @@ def _install_signal_handlers() -> None:
     Ctrl-C during cleanup cannot be silently swallowed by a nested handler.
     """
 
-    def _handler(signum: int, frame: object) -> None:
+    def _handler(signum: int, _frame: object) -> None:
         # Restore default so a second interrupt during cleanup propagates.
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         signal.signal(signal.SIGTERM, signal.SIG_DFL)

@@ -244,12 +244,6 @@ def _build_happy_study(
     }
 
 
-def _make_args(
-    study: str = STUDY, run_id: str | None = RUN_ID
-) -> SimpleNamespace:
-    return SimpleNamespace(subcommand="verify", study=study, run_id=run_id)
-
-
 # ---------------------------------------------------------------------------
 # A. Happy path
 # ---------------------------------------------------------------------------

@@ -84,16 +84,6 @@ def test_wrapper_does_not_load_phi_key_material() -> None:
     assert "preflight.phi_key" not in source
 
 
-def _make_args(subcommand: str, study: str = STUDY, run_id: str | None = None) -> Any:
-    """Build a minimal argparse.Namespace for a subcommand."""
-    ns: dict[str, Any] = {"subcommand": subcommand}
-    if subcommand in {"run", "verify"}:
-        ns["study"] = study
-    if subcommand == "verify":
-        ns["run_id"] = run_id
-    return SimpleNamespace(**ns)
-
-
 def _patch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Redirect config path constants to tmp_path so tests are hermetic."""
     import config
@@ -126,15 +116,6 @@ def _make_staging(staging_dir: Path) -> None:
 def _make_datasets_dir(datasets_dir: Path) -> None:
     """Create the datasets directory (no files — manifest absent → no raise)."""
     datasets_dir.mkdir(parents=True, exist_ok=True)
-
-
-# ---------------------------------------------------------------------------
-# Shared subprocess mock that succeeds
-# ---------------------------------------------------------------------------
-
-
-def _subprocess_ok(*_args: Any, **_kwargs: Any) -> SimpleNamespace:
-    return SimpleNamespace(returncode=0)
 
 
 # ---------------------------------------------------------------------------
@@ -735,7 +716,7 @@ class TestDisabledScrubBypass:
         def _fake_release() -> None:
             pass
 
-        def _capturing_subprocess_run(cmd: Any, env: dict[str, str], **kwargs: Any) -> Any:
+        def _capturing_subprocess_run(_cmd: Any, env: dict[str, str], **kwargs: Any) -> Any:
             captured_env.update(env)
             return SimpleNamespace(returncode=0)
 
@@ -777,7 +758,7 @@ class TestDisabledScrubBypass:
         def _fake_release() -> None:
             pass
 
-        def _capturing_subprocess_run(cmd: Any, env: dict[str, str], **kwargs: Any) -> Any:
+        def _capturing_subprocess_run(_cmd: Any, env: dict[str, str], **kwargs: Any) -> Any:
             captured_env.update(env)
             return SimpleNamespace(returncode=0)
 
@@ -837,7 +818,7 @@ class TestPartialPublish:
         def _fake_release() -> None:
             pass
 
-        def _capturing_subprocess_run(cmd: Any, env: dict[str, str], **kwargs: Any) -> Any:
+        def _capturing_subprocess_run(_cmd: Any, env: dict[str, str], **kwargs: Any) -> Any:
             captured_env.update(env)
             return SimpleNamespace(returncode=0)
 
