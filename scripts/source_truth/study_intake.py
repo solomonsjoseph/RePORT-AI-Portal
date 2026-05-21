@@ -55,6 +55,7 @@ import json
 import re
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -131,6 +132,86 @@ def _find_dataset(study_dir: Path, form: str) -> Path | None:
             f"use an exact form id. Candidates: {names}"
         )
     return None
+
+
+SOT_REVIEW_DIR = "Sot_review"
+
+
+def _safe_report_slug(value: str) -> str:
+    slug = re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("._-")
+    return slug or "unknown_form"
+
+
+def _sot_review_report_path(repo_root: Path, study: str, form: str) -> Path:
+    return (
+        repo_root
+        / "output"
+        / study
+        / "audit"
+        / SOT_REVIEW_DIR
+        / _safe_report_slug(form)
+        / "review_report.md"
+    )
+
+
+def _rel_or_str(path: Path | None, root: Path) -> str:
+    if path is None:
+        return "not_resolved"
+    return str(path.relative_to(root) if path.is_relative_to(root) else path)
+
+
+def _write_sot_review_report(
+    *,
+    repo_root: Path,
+    study: str,
+    form: str,
+    reason: str,
+    issues: list[dict[str, str]],
+    resolved_pdf: Path | None = None,
+    resolved_dataset: Path | None = None,
+) -> Path:
+    """Write a human-review audit report for a SoT pair that cannot be authored."""
+
+    report_path = _sot_review_report_path(repo_root, study, form)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [
+        "# Sot_review: Source Truth Human Review",
+        "",
+        "Boundary: this report uses file paths and source-availability metadata only. "
+        "No dataset row values were read or written.",
+        "",
+        "## Decision",
+        "",
+        "- status: `human_review_required`",
+        "- action_taken: no Source Truth policy, dataset schema, joined view, or source pack was generated",
+        f"- reason: {reason}",
+        "- required_next_step: resolve the missing or ambiguous source pair, then rerun Stage 0",
+        "",
+        "## Scope",
+        "",
+        f"- study: `{study}`",
+        f"- form: `{form}`",
+        f"- generated_utc: `{datetime.now(UTC).replace(microsecond=0).isoformat()}`",
+        "",
+        "## Source Resolution",
+        "",
+        f"- annotated_pdf: `{_rel_or_str(resolved_pdf, repo_root)}`",
+        f"- dataset: `{_rel_or_str(resolved_dataset, repo_root)}`",
+        "",
+        "## Issues",
+        "",
+    ]
+    for issue in issues:
+        lines.append(f"- classification: `{issue['classification']}`")
+        lines.append(f"  detail: {issue['detail']}")
+    report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return report_path
+
+
+def _finish_sot_review(report_path: Path) -> int:
+    print("status=human_review_required")
+    print(f"sot_review_report={report_path}")
+    return 0
 
 
 # ---------------------------------------------------------------------------
@@ -339,35 +420,70 @@ def main(argv: list[str] | None = None) -> int:
     study_dir = repo_root / "data" / "raw" / args.study
 
     if not study_dir.is_dir():
-        print(
-            f"error: study directory not found: {study_dir}",
-            file=sys.stderr,
+        report_path = _write_sot_review_report(
+            repo_root=repo_root,
+            study=args.study,
+            form=args.form,
+            reason="study_directory_missing",
+            issues=[
+                {
+                    "classification": "missing_study_directory",
+                    "detail": f"Study directory was not found: {study_dir}",
+                }
+            ],
         )
-        return 1
+        return _finish_sot_review(report_path)
+
+    issues: list[dict[str, str]] = []
 
     # Resolve PDF
     pdf = _find_pdf(study_dir, args.form)
     if pdf is None:
-        print(
-            f"error: no annotated PDF found for form '{args.form}' "
-            f"under {study_dir / 'annotated_pdfs'}",
-            file=sys.stderr,
+        issues.append(
+            {
+                "classification": "missing_pdf",
+                "detail": (
+                    f"No annotated PDF found for form '{args.form}' "
+                    f"under {study_dir / 'annotated_pdfs'}"
+                ),
+            }
         )
-        return 1
 
     # Resolve dataset
+    dataset_error: str | None = None
     try:
         dataset = _find_dataset(study_dir, args.form)
     except ValueError as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return 1
-    if dataset is None:
-        print(
-            f"error: no dataset file (.xlsx/.csv) found for form '{args.form}' "
-            f"under {study_dir / 'datasets'}",
-            file=sys.stderr,
+        dataset = None
+        dataset_error = str(exc)
+        issues.append(
+            {
+                "classification": "ambiguous_dataset",
+                "detail": dataset_error,
+            }
         )
-        return 1
+    if dataset is None and dataset_error is None:
+        issues.append(
+            {
+                "classification": "missing_dataset",
+                "detail": (
+                    f"No dataset file (.xlsx/.csv/.xlsm) found for form '{args.form}' "
+                    f"under {study_dir / 'datasets'}"
+                ),
+            }
+        )
+
+    if issues:
+        report_path = _write_sot_review_report(
+            repo_root=repo_root,
+            study=args.study,
+            form=args.form,
+            reason="; ".join(issue["classification"] for issue in issues),
+            issues=issues,
+            resolved_pdf=pdf,
+            resolved_dataset=dataset,
+        )
+        return _finish_sot_review(report_path)
 
     out_pack = Path(f"/tmp/sot_source_pack_{args.form}.json")
     render_dir = Path(f"/tmp/sot_render_{args.form}")

@@ -98,7 +98,7 @@ For manual or LLM authoring:
 2. Run five visual sweep iterations over every rendered page. Correct
    widget type, field label, value-set, section, and skip-logic
    mismatches. If the render is ambiguous, pause for human review.
-3. Read ``skills/sot-lean-generator/references/lean_yaml_rules.md``.
+3. Read ``skills/sot-lean-generator/references/policy_yaml_rules.md``.
    Trim the exhaustive draft to the lean schema and write
    ``/tmp/6_HIV_lean.yaml``.
 
@@ -210,5 +210,5 @@ Related Source Files
      - Gold regression diff gate.
    * - ``skills/sot-lean-generator/references/exhaustive_yaml_rules.md``
      - Stage 1 authoring rules.
-   * - ``skills/sot-lean-generator/references/lean_yaml_rules.md``
-     - Stage 3 lean schema rules.
+   * - ``skills/sot-lean-generator/references/policy_yaml_rules.md``
+     - Stage 3 policy schema rules.

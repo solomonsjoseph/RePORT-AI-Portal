@@ -6,8 +6,8 @@ Test 1 — Stage 0 (source-pack generation):
     written to the expected /tmp paths.
 
 Test 2 — Stage 4 (lean policy verification):
-    Runs ``check_lean_policy.py`` against the reference lean YAML and the source
-    pack produced by Test 1, and asserts exit code 0.
+    Builds the reference lean YAML from the existing source pack and generator,
+    then runs ``check_lean_policy.py`` against that generated reference.
 
 Both tests are skipped when their required input files are absent so the suite
 can run cleanly in CI environments that do not have the raw data.
@@ -28,17 +28,14 @@ REPO_ROOT = Path(__file__).parents[3]
 RAW_PDF = REPO_ROOT / "data" / "raw" / "Indo-VAP" / "annotated_pdfs" / "6 HIV v1.0.pdf"
 SOURCE_PACK = Path("/tmp/sot_source_pack_6_HIV.json")
 RENDER_DIR = Path("/tmp/sot_render_6_HIV")
-LEAN_YAML = REPO_ROOT / "data" / "SoT" / "Indo-VAP" / "6_HIV_policy.lean.yaml"
 CHECK_SCRIPT = REPO_ROOT / "skills" / "sot-lean-generator" / "scripts" / "check_lean_policy.py"
 GENERATOR_SCRIPT = REPO_ROOT / "skills" / "sot-lean-generator" / "scripts" / "generate_pdf_aware_candidate.py"
 
 
-@pytest.mark.skipif(
-    not RAW_PDF.exists(),
-    reason="raw PDF not present: data/raw/Indo-VAP/annotated_pdfs/6 HIV v1.0.pdf",
-)
-def test_stage0_source_pack() -> None:
-    """Stage 0: study_intake wrapper produces source pack JSON and render PNG."""
+def _source_pack_or_skip() -> Path:
+    if not RAW_PDF.exists():
+        pytest.skip("raw PDF not present: data/raw/Indo-VAP/annotated_pdfs/6 HIV v1.0.pdf")
+
     result = subprocess.run(
         [
             "uv", "run", "--all-groups", "python",
@@ -56,10 +53,42 @@ def test_stage0_source_pack() -> None:
         f"stdout: {result.stdout}\n"
         f"stderr: {result.stderr}"
     )
-
     assert SOURCE_PACK.exists(), f"source pack not written: {SOURCE_PACK}"
+    return SOURCE_PACK
 
-    pack = json.loads(SOURCE_PACK.read_text(encoding="utf-8"))
+
+def _reference_lean_yaml(tmp_path: Path) -> Path:
+    """Generate the 6_HIV reference from the repo's existing source inputs."""
+
+    source_pack = _source_pack_or_skip()
+    out = tmp_path / "6_HIV_policy.lean.yaml"
+    result = subprocess.run(
+        [
+            "uv", "run", "--all-groups", "python",
+            str(GENERATOR_SCRIPT),
+            "--repo-root", str(REPO_ROOT),
+            "--form", "6_HIV",
+            "--source-pack", str(source_pack),
+            "--out", str(out),
+        ],
+        cwd=str(REPO_ROOT),
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, (
+        f"generate_pdf_aware_candidate.py exited {result.returncode}\n"
+        f"stdout: {result.stdout}\n"
+        f"stderr: {result.stderr}"
+    )
+    assert out.exists(), f"generated reference lean YAML not found: {out}"
+    return out
+
+
+def test_stage0_source_pack() -> None:
+    """Stage 0: study_intake wrapper produces source pack JSON and render PNG."""
+    source_pack = _source_pack_or_skip()
+
+    pack = json.loads(source_pack.read_text(encoding="utf-8"))
     assert "headers" in pack, "source pack missing 'headers' key"
     assert len(pack["headers"]) > 0, "source pack has no headers"
     assert "pdf_sha256" in pack, "source pack missing 'pdf_sha256' key"
@@ -77,21 +106,18 @@ def test_stage0_source_pack() -> None:
     )
 
 
-@pytest.mark.skipif(
-    not SOURCE_PACK.exists(),
-    reason="source pack not present at /tmp/sot_source_pack_6_HIV.json (run test_stage0_source_pack first)",
-)
-def test_stage4_lean_verify() -> None:
+def test_stage4_lean_verify(tmp_path: Path) -> None:
     """Stage 4: check_lean_policy passes against the reference lean YAML."""
-    assert LEAN_YAML.exists(), f"reference lean YAML not found: {LEAN_YAML}"
+    source_pack = _source_pack_or_skip()
+    lean_yaml = _reference_lean_yaml(tmp_path)
     assert CHECK_SCRIPT.exists(), f"check_lean_policy.py not found: {CHECK_SCRIPT}"
 
     result = subprocess.run(
         [
             "uv", "run", "--all-groups", "python",
             str(CHECK_SCRIPT),
-            "--lean", str(LEAN_YAML),
-            "--source-pack", str(SOURCE_PACK),
+            "--lean", str(lean_yaml),
+            "--source-pack", str(source_pack),
             "--repo-root", str(REPO_ROOT),
         ],
         cwd=str(REPO_ROOT),
@@ -108,16 +134,13 @@ def test_stage4_lean_verify() -> None:
     )
 
 
-@pytest.mark.skipif(
-    not SOURCE_PACK.exists(),
-    reason="source pack not present at /tmp/sot_source_pack_6_HIV.json (run test_stage0_source_pack first)",
-)
 def test_stage4_pdf_sha_mismatch_exits_2(tmp_path: Path) -> None:
     """Stage 4 reports stale source packs with the documented SHA mismatch code."""
-    assert LEAN_YAML.exists(), f"reference lean YAML not found: {LEAN_YAML}"
+    source_pack = _source_pack_or_skip()
+    lean_yaml = _reference_lean_yaml(tmp_path)
     assert CHECK_SCRIPT.exists(), f"check_lean_policy.py not found: {CHECK_SCRIPT}"
 
-    stale_pack = json.loads(SOURCE_PACK.read_text(encoding="utf-8"))
+    stale_pack = json.loads(source_pack.read_text(encoding="utf-8"))
     stale_pack["pdf_sha256"] = "0" * 64
     stale_pack_path = tmp_path / "sot_source_pack_6_HIV_stale_sha.json"
     stale_pack_path.write_text(json.dumps(stale_pack), encoding="utf-8")
@@ -126,7 +149,7 @@ def test_stage4_pdf_sha_mismatch_exits_2(tmp_path: Path) -> None:
         [
             "uv", "run", "--all-groups", "python",
             str(CHECK_SCRIPT),
-            "--lean", str(LEAN_YAML),
+            "--lean", str(lean_yaml),
             "--source-pack", str(stale_pack_path),
             "--repo-root", str(REPO_ROOT),
         ],
@@ -138,16 +161,13 @@ def test_stage4_pdf_sha_mismatch_exits_2(tmp_path: Path) -> None:
     assert "SHA mismatch" in result.stderr
 
 
-@pytest.mark.skipif(
-    not SOURCE_PACK.exists(),
-    reason="source pack not present at /tmp/sot_source_pack_6_HIV.json (run test_stage0_source_pack first)",
-)
 def test_stage4_rejects_generic_annotation_placeholders(tmp_path: Path) -> None:
     """Stage 4 rejects locator placeholders that are not printed-form signal."""
-    assert LEAN_YAML.exists(), f"reference lean YAML not found: {LEAN_YAML}"
+    source_pack = _source_pack_or_skip()
+    lean_yaml = _reference_lean_yaml(tmp_path)
     assert CHECK_SCRIPT.exists(), f"check_lean_policy.py not found: {CHECK_SCRIPT}"
 
-    bad = yaml.safe_load(LEAN_YAML.read_text(encoding="utf-8"))
+    bad = yaml.safe_load(lean_yaml.read_text(encoding="utf-8"))
     bad["variables"]["HIV_VISIT"]["pdf_question"] = (
         "Visible printed field associated with PDF annotation HIV_VISIT"
     )
@@ -159,7 +179,7 @@ def test_stage4_rejects_generic_annotation_placeholders(tmp_path: Path) -> None:
             "uv", "run", "--all-groups", "python",
             str(CHECK_SCRIPT),
             "--lean", str(bad_path),
-            "--source-pack", str(SOURCE_PACK),
+            "--source-pack", str(source_pack),
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,
@@ -169,16 +189,13 @@ def test_stage4_rejects_generic_annotation_placeholders(tmp_path: Path) -> None:
     assert "generic annotation placeholder" in result.stderr
 
 
-@pytest.mark.skipif(
-    not SOURCE_PACK.exists(),
-    reason="source pack not present at /tmp/sot_source_pack_6_HIV.json (run test_stage0_source_pack first)",
-)
 def test_stage4_rejects_duplicate_dataset_headers(tmp_path: Path) -> None:
     """Stage 4 reports undocumented duplicate row-1 headers as unsafe."""
-    assert LEAN_YAML.exists(), f"reference lean YAML not found: {LEAN_YAML}"
+    source_pack = _source_pack_or_skip()
+    lean_yaml = _reference_lean_yaml(tmp_path)
     assert CHECK_SCRIPT.exists(), f"check_lean_policy.py not found: {CHECK_SCRIPT}"
 
-    bad_pack = json.loads(SOURCE_PACK.read_text(encoding="utf-8"))
+    bad_pack = json.loads(source_pack.read_text(encoding="utf-8"))
     bad_pack["headers"] = [*bad_pack["headers"], "SUBJID"]
     bad_pack_path = tmp_path / "sot_source_pack_6_HIV_duplicate_headers.json"
     bad_pack_path.write_text(json.dumps(bad_pack), encoding="utf-8")
@@ -187,7 +204,7 @@ def test_stage4_rejects_duplicate_dataset_headers(tmp_path: Path) -> None:
         [
             "uv", "run", "--all-groups", "python",
             str(CHECK_SCRIPT),
-            "--lean", str(LEAN_YAML),
+            "--lean", str(lean_yaml),
             "--source-pack", str(bad_pack_path),
         ],
         cwd=str(REPO_ROOT),
@@ -198,21 +215,18 @@ def test_stage4_rejects_duplicate_dataset_headers(tmp_path: Path) -> None:
     assert "duplicate binding names" in result.stderr
 
 
-@pytest.mark.skipif(
-    not SOURCE_PACK.exists(),
-    reason="source pack not present at /tmp/sot_source_pack_6_HIV.json (run test_stage0_source_pack first)",
-)
 def test_stage4_accepts_documented_duplicate_header_collapse(tmp_path: Path) -> None:
     """Stage 4 allows duplicate source headers only when final collapse is documented."""
-    assert LEAN_YAML.exists(), f"reference lean YAML not found: {LEAN_YAML}"
+    source_pack = _source_pack_or_skip()
+    lean_yaml = _reference_lean_yaml(tmp_path)
     assert CHECK_SCRIPT.exists(), f"check_lean_policy.py not found: {CHECK_SCRIPT}"
 
-    duplicate_pack = json.loads(SOURCE_PACK.read_text(encoding="utf-8"))
+    duplicate_pack = json.loads(source_pack.read_text(encoding="utf-8"))
     duplicate_pack["headers"] = [*duplicate_pack["headers"], "SUBJID"]
     duplicate_pack_path = tmp_path / "sot_source_pack_6_HIV_duplicate_headers.json"
     duplicate_pack_path.write_text(json.dumps(duplicate_pack), encoding="utf-8")
 
-    combined = yaml.safe_load(LEAN_YAML.read_text(encoding="utf-8"))
+    combined = yaml.safe_load(lean_yaml.read_text(encoding="utf-8"))
     combined.setdefault("discrepancies", []).append(
         {
             "kind": "dataset_duplicate_header_combined_binding",
@@ -244,13 +258,11 @@ def test_stage4_accepts_documented_duplicate_header_collapse(tmp_path: Path) -> 
     )
 
 
-@pytest.mark.skipif(
-    not SOURCE_PACK.exists(),
-    reason="source pack not present at /tmp/sot_source_pack_6_HIV.json (run test_stage0_source_pack first)",
-)
 def test_stage4_rejects_unreconciled_variable_like_pdf_annotation(tmp_path: Path) -> None:
     """Stage 4 requires variable-like PDF annotation labels to be reconciled."""
-    bad_pack = json.loads(SOURCE_PACK.read_text(encoding="utf-8"))
+    source_pack = _source_pack_or_skip()
+    lean_yaml = _reference_lean_yaml(tmp_path)
+    bad_pack = json.loads(source_pack.read_text(encoding="utf-8"))
     bad_pack["pages"][0]["annotations"].append("HIV_FAKEFIELD")
     bad_pack_path = tmp_path / "sot_source_pack_6_HIV_unreconciled_annotation.json"
     bad_pack_path.write_text(json.dumps(bad_pack), encoding="utf-8")
@@ -259,7 +271,7 @@ def test_stage4_rejects_unreconciled_variable_like_pdf_annotation(tmp_path: Path
         [
             "uv", "run", "--all-groups", "python",
             str(CHECK_SCRIPT),
-            "--lean", str(LEAN_YAML),
+            "--lean", str(lean_yaml),
             "--source-pack", str(bad_pack_path),
         ],
         cwd=str(REPO_ROOT),
@@ -270,18 +282,16 @@ def test_stage4_rejects_unreconciled_variable_like_pdf_annotation(tmp_path: Path
     assert "not reconciled as an alias, non-variable label, or printed-widget discrepancy" in result.stderr
 
 
-@pytest.mark.skipif(
-    not SOURCE_PACK.exists(),
-    reason="source pack not present at /tmp/sot_source_pack_6_HIV.json (run test_stage0_source_pack first)",
-)
 def test_stage4_accepts_pdf_annotation_alias_to_dataset_header(tmp_path: Path) -> None:
     """Stage 4 accepts a documented annotation alias to an existing dataset header."""
-    alias_pack = json.loads(SOURCE_PACK.read_text(encoding="utf-8"))
+    source_pack = _source_pack_or_skip()
+    lean_yaml = _reference_lean_yaml(tmp_path)
+    alias_pack = json.loads(source_pack.read_text(encoding="utf-8"))
     alias_pack["pages"][0]["annotations"].append("HIV_VISITTYPO")
     alias_pack_path = tmp_path / "sot_source_pack_6_HIV_alias_annotation.json"
     alias_pack_path.write_text(json.dumps(alias_pack), encoding="utf-8")
 
-    aliased = yaml.safe_load(LEAN_YAML.read_text(encoding="utf-8"))
+    aliased = yaml.safe_load(lean_yaml.read_text(encoding="utf-8"))
     aliased.setdefault("discrepancies", []).append(
         {
             "kind": "pdf_annotation_alias_to_dataset_header",
@@ -315,18 +325,16 @@ def test_stage4_accepts_pdf_annotation_alias_to_dataset_header(tmp_path: Path) -
     )
 
 
-@pytest.mark.skipif(
-    not SOURCE_PACK.exists(),
-    reason="source pack not present at /tmp/sot_source_pack_6_HIV.json (run test_stage0_source_pack first)",
-)
 def test_stage4_accepts_documented_printed_widget_without_dataset_header(tmp_path: Path) -> None:
     """Stage 4 accepts real PDF widgets without headers only when documented."""
-    missing_pack = json.loads(SOURCE_PACK.read_text(encoding="utf-8"))
+    source_pack = _source_pack_or_skip()
+    lean_yaml = _reference_lean_yaml(tmp_path)
+    missing_pack = json.loads(source_pack.read_text(encoding="utf-8"))
     missing_pack["pages"][0]["annotations"].append("HIV_UNBOUND_FIELD")
     missing_pack_path = tmp_path / "sot_source_pack_6_HIV_printed_widget_without_header.json"
     missing_pack_path.write_text(json.dumps(missing_pack), encoding="utf-8")
 
-    documented = yaml.safe_load(LEAN_YAML.read_text(encoding="utf-8"))
+    documented = yaml.safe_load(lean_yaml.read_text(encoding="utf-8"))
     documented.setdefault("discrepancies", []).append(
         {
             "kind": "printed_widget_without_dataset_header",
@@ -358,12 +366,9 @@ def test_stage4_accepts_documented_printed_widget_without_dataset_header(tmp_pat
     )
 
 
-@pytest.mark.skipif(
-    not SOURCE_PACK.exists(),
-    reason="source pack not present at /tmp/sot_source_pack_6_HIV.json (run test_stage0_source_pack first)",
-)
 def test_pdf_aware_generator_preserves_6_hiv_calibration(tmp_path: Path) -> None:
     """A fresh generated 6_HIV candidate preserves terminal skip and mutex rules."""
+    source_pack = _source_pack_or_skip()
     out = tmp_path / "6_HIV_policy.lean.yaml"
     result = subprocess.run(
         [
@@ -371,7 +376,7 @@ def test_pdf_aware_generator_preserves_6_hiv_calibration(tmp_path: Path) -> None
             str(GENERATOR_SCRIPT),
             "--repo-root", str(REPO_ROOT),
             "--form", "6_HIV",
-            "--source-pack", str(SOURCE_PACK),
+            "--source-pack", str(source_pack),
             "--out", str(out),
         ],
         cwd=str(REPO_ROOT),
@@ -389,7 +394,7 @@ def test_pdf_aware_generator_preserves_6_hiv_calibration(tmp_path: Path) -> None
             "uv", "run", "--all-groups", "python",
             str(CHECK_SCRIPT),
             "--lean", str(out),
-            "--source-pack", str(SOURCE_PACK),
+            "--source-pack", str(source_pack),
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,

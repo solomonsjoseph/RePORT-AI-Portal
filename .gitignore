@@ -297,6 +297,11 @@ docs/.vision/**
 !AGENTS.md
 !docs/agents/*.md
 !docs/irb_dossier/*.md
+!skills/sot-lean-generator/SKILL.md
+!skills/sot-lean-generator/references/*.md
+!skills/excel-duplicate-handler/SKILL.md
+!plugins/report-ai-study-pipeline/skills/*/SKILL.md
+!plugins/report-ai-study-pipeline/skills/sot-lean-generator/references/*.md
 
 # GitHub instructions (local copilot config — not tracked)
 .github/instructions/

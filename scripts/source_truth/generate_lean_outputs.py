@@ -22,7 +22,13 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-from scripts.source_truth.study_intake import _find_dataset, _find_pdf, _form_code
+from scripts.source_truth.study_intake import (
+    SOT_REVIEW_DIR,
+    _find_dataset,
+    _find_pdf,
+    _form_code,
+    _write_sot_review_report,
+)
 
 SUPPORTED_DATASET_SUFFIXES = (".xlsx", ".xlsm", ".csv")
 
@@ -45,15 +51,49 @@ def _natural_code_key(code: str) -> tuple[int, str]:
     return (int(digits or 0), suffix)
 
 
-def discover_pdf_backed_forms(study_dir: Path, study: str) -> list[str]:
-    """Return dataset-form ids that have an annotated PDF authority."""
+
+def discover_pdf_backed_forms_with_reviews(
+    repo_root: Path,
+    study_dir: Path,
+    study: str,
+) -> tuple[list[str], list[Path]]:
+    """Return discoverable forms and route incomplete/ambiguous pairs to review."""
 
     pdf_dir = study_dir / "annotated_pdfs"
     dataset_dir = study_dir / "datasets"
+    review_paths: list[Path] = []
     if not pdf_dir.is_dir():
-        raise FileNotFoundError(f"annotated PDF directory not found: {pdf_dir}")
+        review_paths.append(
+            _write_sot_review_report(
+                repo_root=repo_root,
+                study=study,
+                form="annotated_pdfs",
+                reason="missing_pdf_directory",
+                issues=[
+                    {
+                        "classification": "missing_pdf_directory",
+                        "detail": f"Annotated PDF directory was not found: {pdf_dir}",
+                    }
+                ],
+            )
+        )
+        return [], review_paths
     if not dataset_dir.is_dir():
-        raise FileNotFoundError(f"dataset directory not found: {dataset_dir}")
+        review_paths.append(
+            _write_sot_review_report(
+                repo_root=repo_root,
+                study=study,
+                form="datasets",
+                reason="missing_dataset_directory",
+                issues=[
+                    {
+                        "classification": "missing_dataset_directory",
+                        "detail": f"Dataset directory was not found: {dataset_dir}",
+                    }
+                ],
+            )
+        )
+        return [], review_paths
 
     pdf_codes = {_form_code(path.stem) for path in pdf_dir.glob("*.pdf")}
     datasets_by_code: dict[str, list[Path]] = defaultdict(list)
@@ -63,33 +103,69 @@ def discover_pdf_backed_forms(study_dir: Path, study: str) -> list[str]:
 
     overrides = PDF_FORM_DATASET_OVERRIDES.get(study, {})
     forms: list[str] = []
-    problems: list[str] = []
     for code in sorted(pdf_codes, key=_natural_code_key):
         override = overrides.get(code)
         if override:
-            if (dataset_dir / f"{override}.xlsx").exists() or any(
-                (dataset_dir / f"{override}{suffix}").exists()
-                for suffix in SUPPORTED_DATASET_SUFFIXES
-            ):
+            if any((dataset_dir / f"{override}{suffix}").exists() for suffix in SUPPORTED_DATASET_SUFFIXES):
                 forms.append(override)
-                continue
-            problems.append(f"override for form code {code} points to missing dataset {override}")
+            else:
+                review_paths.append(
+                    _write_sot_review_report(
+                        repo_root=repo_root,
+                        study=study,
+                        form=override,
+                        reason="missing_dataset",
+                        issues=[
+                            {
+                                "classification": "missing_dataset",
+                                "detail": (
+                                    f"Override for annotated PDF form code {code} points to "
+                                    f"missing dataset {override}"
+                                ),
+                            }
+                        ],
+                    )
+                )
             continue
 
-        candidates = sorted({path.stem for path in datasets_by_code.get(code, [])})
+        candidate_paths = sorted(datasets_by_code.get(code, []), key=lambda path: path.name)
+        candidates = sorted({path.stem for path in candidate_paths})
         if len(candidates) == 1:
             forms.append(candidates[0])
         elif not candidates:
-            problems.append(f"no dataset found for annotated PDF form code {code}")
-        else:
-            problems.append(
-                f"ambiguous datasets for annotated PDF form code {code}: {', '.join(candidates)}"
+            review_paths.append(
+                _write_sot_review_report(
+                    repo_root=repo_root,
+                    study=study,
+                    form=code,
+                    reason="missing_dataset",
+                    issues=[
+                        {
+                            "classification": "missing_dataset",
+                            "detail": f"No dataset found for annotated PDF form code {code}",
+                        }
+                    ],
+                )
             )
-
-    if problems:
-        joined = "\n  - ".join(problems)
-        raise RuntimeError(f"Could not discover PDF-backed forms:\n  - {joined}")
-    return forms
+        else:
+            review_paths.append(
+                _write_sot_review_report(
+                    repo_root=repo_root,
+                    study=study,
+                    form=code,
+                    reason="ambiguous_dataset",
+                    issues=[
+                        {
+                            "classification": "ambiguous_dataset",
+                            "detail": (
+                                f"Ambiguous datasets for annotated PDF form code {code}: "
+                                f"{', '.join(path.name for path in candidate_paths)}"
+                            ),
+                        }
+                    ],
+                )
+            )
+    return forms, review_paths
 
 
 def _run_result(cmd: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -122,11 +198,47 @@ def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path
 
     study_dir = repo_root / "data" / "raw" / study
     pdf = _find_pdf(study_dir, form)
-    dataset = _find_dataset(study_dir, form)
+    dataset_error: str | None = None
+    try:
+        dataset = _find_dataset(study_dir, form)
+    except ValueError as exc:
+        dataset = None
+        dataset_error = str(exc)
+
+    issues: list[dict[str, str]] = []
     if pdf is None:
-        raise FileNotFoundError(f"no annotated PDF found for {study}/{form}")
+        issues.append(
+            {
+                "classification": "missing_pdf",
+                "detail": f"No annotated PDF found for {study}/{form}",
+            }
+        )
     if dataset is None:
-        raise FileNotFoundError(f"no dataset found for {study}/{form}")
+        if dataset_error is None:
+            issues.append(
+                {
+                    "classification": "missing_dataset",
+                    "detail": f"No dataset found for {study}/{form}",
+                }
+            )
+        else:
+            issues.append(
+                {
+                    "classification": "ambiguous_dataset",
+                    "detail": dataset_error,
+                }
+            )
+
+    if issues:
+        return _write_sot_review_report(
+            repo_root=repo_root,
+            study=study,
+            form=form,
+            reason="; ".join(issue["classification"] for issue in issues),
+            issues=issues,
+            resolved_pdf=pdf,
+            resolved_dataset=dataset,
+        )
 
     extract_script = repo_root / "skills" / "sot-lean-generator" / "scripts" / "extract_sources.py"
     generator_script = (
@@ -261,21 +373,36 @@ def main(argv: list[str] | None = None) -> int:
     repo_root = args.repo_root.resolve()
     study_dir = repo_root / "data" / "raw" / args.study
     out_dir = args.out_dir or repo_root / "output" / args.study / "llm_source" / "source_truth"
-    forms = args.forms or discover_pdf_backed_forms(study_dir, args.study)
+    review_paths: list[Path] = []
+    if args.forms:
+        forms = args.forms
+    else:
+        forms, review_paths = discover_pdf_backed_forms_with_reviews(repo_root, study_dir, args.study)
 
     failures: list[tuple[str, str]] = []
     generated: list[Path] = []
+    reviewed: list[Path] = [*review_paths]
     for form in forms:
         print(f"FORM {form}", flush=True)
         try:
-            generated.append(generate_form(repo_root, args.study, form, out_dir))
+            result = generate_form(repo_root, args.study, form, out_dir)
         except Exception as exc:
             failures.append((form, str(exc)))
             print(f"  FAIL {exc}", flush=True)
         else:
-            print("  OK", flush=True)
+            if SOT_REVIEW_DIR in result.parts:
+                reviewed.append(result)
+                print(f"  REVIEW {result}", flush=True)
+            else:
+                generated.append(result)
+                print("  OK", flush=True)
 
-    print(f"SUMMARY generated={len(generated)} failed={len(failures)} out={out_dir}")
+    print(
+        f"SUMMARY generated={len(generated)} review={len(reviewed)} "
+        f"failed={len(failures)} out={out_dir}"
+    )
+    for path in reviewed:
+        print(f"review_report={path}")
     if failures:
         for form, message in failures:
             print(f"\n[{form}]\n{message}", file=sys.stderr)

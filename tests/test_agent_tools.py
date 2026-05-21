@@ -93,8 +93,10 @@ class TestAnswerCatalogQuestion:
 
         llm_source = tmp_path / "output" / "Indo-VAP" / "llm_source"
         source_truth = llm_source / "source_truth"
+        dataset_schema = llm_source / "dataset_schema"
         agent_dir = tmp_path / "output" / "Indo-VAP" / "agent"
         source_truth.mkdir(parents=True)
+        dataset_schema.mkdir(parents=True)
         agent_dir.mkdir(parents=True)
         monkeypatch.setattr(config, "REPO_ROOT", tmp_path, raising=False)
         monkeypatch.setattr(config, "STUDY_LLM_SOURCE_DIR", llm_source)
@@ -130,16 +132,101 @@ variables:
   HIV_HIV:
     section: main
     pdf_question: HIV test result
-    widget: radio
     type: code
+    description: HIV test result code
     options: [Positive, Negative]
 """.lstrip(),
+            encoding="utf-8",
+        )
+        (dataset_schema / "6_HIV_schema.json").write_text(
+            json.dumps(
+                {
+                    "study": "Indo-VAP",
+                    "form": "6_HIV",
+                    "source_dataset": "data/raw/Indo-VAP/datasets/6_HIV.xlsx",
+                    "jsonl_file": "tmp/6_HIV.jsonl",
+                    "record_count": 1401,
+                    "columns": [
+                        {
+                            "name": "HIV_HIV",
+                            "source_order": 6,
+                            "phi_action": "retain",
+                            "published_in_jsonl": True,
+                            "llm_status": "available",
+                        }
+                    ],
+                }
+            ),
             encoding="utf-8",
         )
 
         payload = json.loads(answer_catalog_question.invoke({"question": "What is HIV_HIV?"}))
 
         assert payload["variable_ids"] == ["HIV_HIV"]
+        answer = json.loads(payload["answer"])
+        assert answer["metadata"]["pdf"]["question"] == "HIV test result"
+        assert "source_order" not in answer["metadata"]["dataset"]
+        assert answer["metadata"]["dataset"]["phi_action"] == "retain"
+
+    def test_exact_variable_id_uses_new_sot_pair_layout(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        import config
+        from scripts.ai_assistant.agent_tools import answer_catalog_question
+
+        pair_dir = tmp_path / "output" / "Indo-VAP" / "llm_source" / "SoT" / "6_HIV"
+        policy_dir = pair_dir / "pdf"
+        dataset_dir = pair_dir / "dataset"
+        agent_dir = tmp_path / "output" / "Indo-VAP" / "agent"
+        policy_dir.mkdir(parents=True)
+        dataset_dir.mkdir(parents=True)
+        agent_dir.mkdir(parents=True)
+        monkeypatch.setattr(config, "REPO_ROOT", tmp_path, raising=False)
+        monkeypatch.setattr(config, "AGENT_STATE_DIR", agent_dir)
+
+        (policy_dir / "6_HIV_policy.yaml").write_text(
+            """
+study: Indo-VAP
+form:
+  number: "6"
+  title: HIV
+sections:
+  main: Main
+variables:
+  HIV_CD4DAT:
+    section: main
+    pdf_question: 3a. CD4 Test Date
+    type: date
+    description: CD4 test date
+""".lstrip(),
+            encoding="utf-8",
+        )
+        (dataset_dir / "6_HIV_schema.json").write_text(
+            json.dumps(
+                {
+                    "study": "Indo-VAP",
+                    "form": "6_HIV",
+                    "source_dataset": "data/raw/Indo-VAP/datasets/6_HIV.xlsx",
+                    "record_count": 1401,
+                    "columns": [
+                        {
+                            "name": "HIV_CD4DAT",
+                            "source_order": 12,
+                            "phi_action": "jitter_date",
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        payload = json.loads(answer_catalog_question.invoke({"question": "What is HIV_CD4DAT?"}))
+        answer = json.loads(payload["answer"])
+
+        assert answer["metadata"]["pdf"]["question"] == "3a. CD4 Test Date"
+        assert answer["metadata"]["dataset"] == {"phi_action": "jitter_date"}
 
 
 class TestQueryDataset:
@@ -211,6 +298,10 @@ class TestSafeImportCheck:
 
 class TestSandboxRuntimeGuards:
     """Runtime guards (getattr, vars) block escape vectors."""
+
+    @pytest.fixture(autouse=True)
+    def _isolate_agent_output(self, monkeypatch_config: Path) -> None:
+        """Keep persisted sandbox snippets out of real output during tests."""
 
     def test_getattr_blocks_globals(self) -> None:
         from scripts.ai_assistant.agent_tools import run_python_analysis

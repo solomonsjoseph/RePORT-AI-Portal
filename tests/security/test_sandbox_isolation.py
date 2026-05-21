@@ -303,6 +303,33 @@ def test_ast_guard_blocks_subclasses_lookup(output_dir: Path, trio_dataset: dict
     assert result.exit_code != 0
 
 
+def test_replicate_uses_same_safe_vars_guard(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Saved-code replay should preserve sandbox runtime guard semantics."""
+    import config
+    from scripts.ai_assistant.sandbox import replicate
+
+    monkeypatch.setattr(config, "TRIO_DATASETS_DIR", tmp_path / "missing")
+    saved = tmp_path / "run_probe.py"
+    saved.write_text(
+        '"""Generated probe."""\n'
+        "\n"
+        "# === LLM-generated analysis code below ===\n"
+        "import json\n"
+        "v = vars(json)\n"
+        "key = chr(95)*2 + 'builtins' + chr(95)*2\n"
+        "print('has_key:', key in v)\n",
+        encoding="utf-8",
+    )
+
+    assert replicate.main(str(saved)) == 0
+    captured = capsys.readouterr()
+    assert "has_key: False" in captured.out
+
+
 # ── 13. Decorator metadata preserved (regression for phi_safe wrapping) ────
 
 

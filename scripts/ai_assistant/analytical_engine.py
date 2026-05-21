@@ -71,51 +71,6 @@ def is_catalog_binding_enabled() -> bool:
     return os.environ.get(_LEGACY_STUDY_KNOWLEDGE_FLAG, "").strip().lower() not in _TRUTHY
 
 
-def validate_catalog_bindings(
-    bindings: dict[str, Any],
-    *,
-    require_source_backed: bool = True,
-) -> dict[str, Any]:
-    """Engine-side gate for the new catalog-binding path.
-
-    Accepts pre-resolved bindings from
-    :func:`scripts.source_truth.analysis_binding.resolve_analysis_bindings`
-    and refuses to proceed when any required binding is review-required
-    (rather than source-backed). Crucially, this function does NOT
-    instantiate :class:`StudyKnowledge` — that is the property tested by
-    ``test_flag_enabled_does_not_load_old_study_knowledge``.
-    """
-    outcome = bindings.get("outcome")
-    predictors = bindings.get("predictors") or []
-    derived = bindings.get("derived") or []
-
-    if not isinstance(outcome, dict) or not outcome.get("variable_id"):
-        raise AnalysisBindingError(
-            "catalog bindings missing outcome — refusing to fall back to study_knowledge"
-        )
-
-    if require_source_backed:
-        if outcome.get("review_required"):
-            raise AnalysisBindingError(
-                f"outcome binding {outcome.get('variable_id')!r} is review-required; "
-                "refusing to run analysis without an explicit human review."
-            )
-        for binding in predictors:
-            if binding.get("review_required"):
-                raise AnalysisBindingError(
-                    f"predictor binding {binding.get('variable_id')!r} is review-required; "
-                    "refusing to run analysis without an explicit human review."
-                )
-        for binding in derived:
-            if binding.get("review_required"):
-                raise AnalysisBindingError(
-                    f"derived binding {binding.get('variable_id')!r} is review-required; "
-                    "refusing to run analysis without an explicit human review."
-                )
-
-    return bindings
-
-
 # ── Helpers ──────────────────────────────────────────────────────────────
 
 
@@ -1206,21 +1161,12 @@ def run_full_analysis(
     timeout: int = 0,
 ) -> AnalysisResult:
     """Run a complete analysis pipeline for a single cohort."""
-    # Issue #75: when the catalog-binding feature flag is enabled, the
-    # legacy ``StudyKnowledge``-driven entry point is bypassed. Callers
-    # must pre-resolve bindings via
-    # ``scripts.source_truth.analysis_binding.resolve_analysis_bindings``
-    # and feed them through ``validate_catalog_bindings`` instead. This
-    # guard ensures the old metadata path stays available behind the
-    # disabled flag (the default) but is genuinely bypassed when the
-    # flag is on.
     if is_catalog_binding_enabled():
         raise AnalysisBindingError(
             "REPORTALIN_USE_CATALOG_BINDING is enabled; the legacy "
             "study_knowledge-driven run_full_analysis path is bypassed. "
             "Pre-resolve bindings via "
-            "scripts.source_truth.analysis_binding.resolve_analysis_bindings "
-            "and gate them with validate_catalog_bindings."
+            "scripts.source_truth.analysis_binding.resolve_analysis_bindings."
         )
 
     t0 = time.monotonic()

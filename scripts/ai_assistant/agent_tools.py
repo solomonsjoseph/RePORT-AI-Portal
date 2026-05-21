@@ -24,7 +24,7 @@ Tools
 4.  list_available_datasets — list available PHI-scrubbed datasets
 5.  run_python_analysis — sandboxed code execution for statistical analysis
 6.  run_study_analysis — deterministic epidemiological analysis
-7.  answer_catalog_question — primary variable metadata lookup via lean SoT YAMLs
+7.  answer_catalog_question — primary variable metadata lookup via policy SoT YAMLs
 8.  produce_evidence_report — structured PHI-safe analysis report for canonical questions
 9.  produce_custom_evidence_report — parameterised analysis report for custom questions
 10. cite_source — deterministic (file, line, snippet) citation for form fields
@@ -182,14 +182,6 @@ def _load_dataset_column_variables() -> list[dict[str, Any]]:
         datasets_dir=cache_dir,
     )
     return out
-
-
-def _combined_variable_reference() -> list[dict[str, Any]]:
-    # Phase 5b: the unified variables.json pipeline was dead code (never
-    # produced on disk and the loader silently returned []). The agent now
-    # relies on published dataset column schemas for generic retrieval; lean
-    # source_truth YAMLs are consumed by answer_catalog_question.
-    return _load_dataset_column_variables()
 
 
 # Conservative default quasi-identifier columns for Indo-VAP. The k-anon
@@ -1221,184 +1213,6 @@ def _normalise_outcome(outcome: str, cohort: str) -> str:
     return _OUTCOME_ALIASES.get(key, outcome)
 
 
-def _load_catalog_binding_artifacts() -> tuple[dict[str, Any], dict[str, Any]] | str:
-    """Load published catalog + Dataset Schema artifacts for the hard-cutover path."""
-    catalog = _load_catalog_artifact()
-    if catalog is None:
-        return "The study metadata catalog is not available. Run the pipeline to publish llm_source first."
-
-    schema_path = config.STUDY_LLM_SOURCE_DIR / "dataset_schema.json"
-    if not schema_path.is_file():
-        return (
-            "The Dataset Schema binding artifact is not available at "
-            f"{schema_path}. Run the Source Truth build/verify pipeline first."
-        )
-    try:
-        validate_agent_read(schema_path)
-        with schema_path.open("r", encoding="utf-8") as fh:
-            schema = json.load(fh)
-    except (OSError, PermissionError, json.JSONDecodeError) as exc:
-        return f"Could not load Dataset Schema binding artifact: {exc}"
-    if not isinstance(schema, dict):
-        return "The Dataset Schema binding artifact is malformed: expected a JSON object."
-
-    catalog_dict = dict(catalog)
-    if "records" not in catalog_dict and isinstance(catalog_dict.get("compact_records"), list):
-        catalog_dict["records"] = catalog_dict["compact_records"]
-    return catalog_dict, schema
-
-
-def _schema_variable_ids(schema: Mapping[str, Any]) -> set[str]:
-    entries = schema.get("entries")
-    if not isinstance(entries, list):
-        return set()
-    return {
-        str(entry.get("variable_id"))
-        for entry in entries
-        if isinstance(entry, Mapping)
-        and isinstance(entry.get("variable_id"), str)
-        and entry.get("analysis_queryable") is True
-    }
-
-
-def _catalog_records_for_resolution(catalog: Mapping[str, Any]) -> list[Mapping[str, Any]]:
-    records = catalog.get("records")
-    if not isinstance(records, list):
-        return []
-    return [record for record in records if isinstance(record, Mapping)]
-
-
-def _resolve_catalog_variable_token(
-    token: str,
-    *,
-    catalog: Mapping[str, Any],
-    schema_ids: set[str],
-) -> tuple[str | None, str | None]:
-    cleaned = token.strip()
-    if not cleaned:
-        return None, None
-    upper = cleaned.upper()
-    by_upper = {vid.upper(): vid for vid in schema_ids}
-    if upper in by_upper:
-        return by_upper[upper], None
-
-    term = _normalise_search_text(cleaned)
-    matches: list[tuple[str, str, str]] = []
-    for record in _catalog_records_for_resolution(catalog):
-        variable_id = record.get("variable_id")
-        if not isinstance(variable_id, str) or variable_id not in schema_ids:
-            continue
-        if record.get("audit_only") is True or record.get("analysis_queryable") is False:
-            continue
-        label = str(record.get("label") or record.get("display_label") or "")
-        haystack = _normalise_search_text(f"{variable_id} {label}")
-        if term and term in haystack:
-            matches.append((variable_id, str(record.get("form") or ""), label))
-
-    if len(matches) == 1:
-        return matches[0][0], None
-    if matches:
-        preview = ", ".join(
-            f"{variable_id} ({label or form})" for variable_id, form, label in matches[:8]
-        )
-        return None, f"{cleaned!r} is ambiguous. Candidate variable IDs: {preview}."
-    return None, f"{cleaned!r} did not match an analysis-queryable catalog variable ID."
-
-
-def _resolve_catalog_variable_list(
-    value: str,
-    *,
-    catalog: Mapping[str, Any],
-    schema_ids: set[str],
-) -> tuple[list[str], list[str]]:
-    resolved: list[str] = []
-    issues: list[str] = []
-    for token in [part.strip() for part in value.split(",") if part.strip()]:
-        variable_id, issue = _resolve_catalog_variable_token(
-            token,
-            catalog=catalog,
-            schema_ids=schema_ids,
-        )
-        if variable_id is not None:
-            resolved.append(variable_id)
-        elif issue:
-            issues.append(issue)
-    return resolved, issues
-
-
-def _find_dataset_with_columns(columns: list[str]) -> tuple[Path | None, list[dict[str, Any]]]:
-    datasets_dir = config.TRIO_DATASETS_DIR
-    if not datasets_dir.is_dir():
-        return None, []
-    needed = set(columns)
-    for path in sorted(datasets_dir.glob("*.jsonl")):
-        rows = _read_jsonl(path)
-        if not rows:
-            continue
-        present = {key for row in rows[:20] for key in row}
-        if needed.issubset(present):
-            return path, rows
-    return None, []
-
-
-def _count_non_missing(rows: list[Mapping[str, Any]], column: str) -> int:
-    return sum(1 for row in rows if row.get(column) not in (None, "", "nan", "NaN"))
-
-
-def _suppressed_counts(rows: list[Mapping[str, Any]], column: str) -> dict[str, Any]:
-    from scripts.security.kanon_gate import suppress_small_cells
-
-    counts: dict[str, int] = {}
-    for row in rows:
-        value = row.get(column)
-        key = "<MISSING>" if value in (None, "", "nan", "NaN") else str(value)
-        counts[key] = counts.get(key, 0) + 1
-    return suppress_small_cells(counts, k=5)
-
-
-def _persist_catalog_analysis_code(
-    *,
-    dataset_name: str,
-    outcome_id: str,
-    predictor_ids: list[str],
-) -> Path:
-    output_dir = config.AGENT_OUTPUT_DIR / "code"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    path = validate_agent_write(
-        output_dir / f"catalog_descriptive_{uuid.uuid4().hex[:12]}.py"
-    )
-    predictors_literal = ", ".join(repr(value) for value in predictor_ids)
-    code = f'''"""Catalog-bound descriptive analysis generated by RePORT AI Portal.
-
-Dataset: {dataset_name}
-Outcome variable: {outcome_id}
-Predictor variables: {", ".join(predictor_ids) if predictor_ids else "(none)"}
-"""
-
-import json
-from pathlib import Path
-
-import config
-
-dataset_path = config.TRIO_DATASETS_DIR / {dataset_name + ".jsonl"!r}
-rows = [json.loads(line) for line in dataset_path.read_text(encoding="utf-8").splitlines() if line.strip()]
-outcome = {outcome_id!r}
-predictors = [{predictors_literal}]
-
-def count_non_missing(column):
-    return sum(1 for row in rows if row.get(column) not in (None, "", "nan", "NaN"))
-
-print("N", len(rows))
-print(outcome, "non-missing", count_non_missing(outcome))
-for predictor in predictors:
-    print(predictor, "non-missing", count_non_missing(predictor))
-'''
-    path.write_text(code, encoding="utf-8")
-    with contextlib.suppress(OSError):
-        path.chmod(0o600)
-    return path
-
-
 def _run_catalog_bound_study_analysis(
     *,
     cohort: str,
@@ -1407,7 +1221,7 @@ def _run_catalog_bound_study_analysis(
 ) -> str:
     return (
         "Catalog-bound analysis via AnalysisBinding is no longer available. "
-        "Variable metadata is now served from lean SoT YAMLs — use "
+        "Variable metadata is now served from policy SoT YAMLs — use "
         "answer_catalog_question for variable lookup, or generate SoT YAMLs "
         "via `make sot-source-pack STUDY=<study> FORM=<form>` "
         "(see skills/sot-lean-generator/SKILL.md)."
@@ -1428,7 +1242,7 @@ def run_study_analysis(
     The legacy StudyKnowledge regression runner is reachable only when
     ``REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE=1`` is explicitly set. In the
     default runtime this tool returns a clear diagnostic and directs callers
-    to resolve variables through lean SoT metadata and use ``run_python_analysis``
+    to resolve variables through policy SoT metadata and use ``run_python_analysis``
     for custom analysis.
 
     Args:
@@ -1627,42 +1441,13 @@ def _load_catalog_artifact() -> Mapping[str, Any] | None:
     return None
 
 
-def _load_study_metadata_evidence_pack(variable_id: str) -> Mapping[str, Any] | None:
-    """Load one variable's public evidence record from per-form evidence packs."""
-
-    packs_dir = getattr(config, "LLM_SOURCE_EVIDENCE_PACKS_DIR", None)
-    if not isinstance(packs_dir, Path) or not packs_dir.is_dir():
-        return None
-    for path in sorted(packs_dir.glob("*.json")):
-        try:
-            validate_agent_read(path)
-            with path.open("r", encoding="utf-8") as fh:
-                body = json.load(fh)
-        except (OSError, ValueError, PermissionError, json.JSONDecodeError):
-            continue
-        if not isinstance(body, Mapping):
-            continue
-        if body.get("variable_id") == variable_id:
-            return body
-        variables = body.get("variables")
-        if not isinstance(variables, list):
-            continue
-        for item in variables:
-            if isinstance(item, Mapping) and item.get("variable_id") == variable_id:
-                enriched = dict(item)
-                enriched.setdefault("form", body.get("form"))
-                enriched.setdefault("study", body.get("study"))
-                return enriched
-    return None
-
-
 @tool
 @phi_safe_return
 def answer_catalog_question(question: str) -> str:
-    """Answer a study-variable metadata question through published lean SoT YAMLs.
+    """Answer a study-variable metadata question through published policy SoT YAMLs.
 
     Use this for ordinary questions about retained study variables: their
-    label, dataset column, form, options, and provenance. The lean SoT YAML
+    label, dataset column, form, options, and provenance. The policy SoT YAML
     under ``llm_source/source_truth`` is the canonical metadata layer — prefer this tool over
     ``search_variables`` for boundary-sensitive questions about whether a
     variable is analysable, source-only, or dropped.
@@ -1701,11 +1486,15 @@ def answer_catalog_question(question: str) -> str:
         (bool). The ``answer`` is already boundary-aware; the LLM should
         normally pass it through verbatim.
     """
-    """Answer a study-variable metadata question by searching lean SoT YAMLs."""
+    """Answer a study-variable metadata question by searching policy SoT YAMLs."""
+    from scripts.ai_assistant.sot_joined_view import (
+        build_joined_query_view,
+        find_dataset_schema_for_policy,
+    )
     from scripts.ai_assistant.sot_loader import (
-        find_lean_yaml,
-        load_lean_yaml,
-        summarize_lean,
+        find_policy_yaml,
+        load_policy_yaml,
+        summarize_policy,
     )
 
     if _query_looks_conversational(question):
@@ -1722,13 +1511,13 @@ def answer_catalog_question(question: str) -> str:
 
     matches: list[dict[str, Any]] = []
     for study_dir in study_dirs:
-        all_paths = find_lean_yaml(study_dir.name, None, repo_root)
+        all_paths = find_policy_yaml(study_dir.name, None, repo_root)
         for path in all_paths:
             try:
-                data = load_lean_yaml(path)
+                data = load_policy_yaml(path)
             except ValueError:
                 continue
-            summary = summarize_lean(data)
+            summary = summarize_policy(data)
             # Prefer exact variable-id matches, then require meaningful token
             # overlap. A single generic question word like "what" must never
             # decide the catalog answer.
@@ -1768,9 +1557,9 @@ def answer_catalog_question(question: str) -> str:
         # Return all available SoT metadata across studies as a catalog dump.
         all_summaries = []
         for study_dir in study_dirs:
-            for path in find_lean_yaml(study_dir.name, None, repo_root):
+            for path in find_policy_yaml(study_dir.name, None, repo_root):
                 try:
-                    all_summaries.append(summarize_lean(load_lean_yaml(path)))
+                    all_summaries.append(summarize_policy(load_policy_yaml(path)))
                 except ValueError:
                     continue
         if not all_summaries:
@@ -1778,7 +1567,7 @@ def answer_catalog_question(question: str) -> str:
                 {
                     "question": question,
                     "answer": (
-                        "No lean SoT YAMLs found. Generate them by running "
+                        "No policy SoT YAMLs found. Generate them by running "
                         "`make sot-source-pack STUDY=<study> FORM=<form>` "
                         "then completing Stages 1-4 per skills/sot-lean-generator/SKILL.md."
                     ),
@@ -1816,7 +1605,28 @@ def answer_catalog_question(question: str) -> str:
     var_meta = summary["variables"].get(var_id, {})
     phi_flag = var_meta.get("phi") if isinstance(var_meta, dict) else None
     analysis_queryable = phi_flag not in ("drop",)
-    answer_text = json.dumps({"variable_id": var_id, "metadata": var_meta, "form": summary["form"], "study": summary["study"]}, indent=2)
+    metadata: Any = var_meta
+    source_path = Path(str(best["source"]))
+    schema_path = find_dataset_schema_for_policy(source_path)
+    if schema_path is not None:
+        try:
+            joined_view = build_joined_query_view(source_path, schema_path)
+            joined_variables = joined_view.get("variables")
+            if isinstance(joined_variables, Mapping):
+                joined_meta = joined_variables.get(var_id)
+                if isinstance(joined_meta, Mapping):
+                    metadata = dict(joined_meta)
+        except ValueError:
+            metadata = var_meta
+    answer_text = json.dumps(
+        {
+            "variable_id": var_id,
+            "metadata": metadata,
+            "form": summary["form"],
+            "study": summary["study"],
+        },
+        indent=2,
+    )
     return json.dumps(
         {
             "question": question,

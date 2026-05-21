@@ -242,7 +242,7 @@ deterministic script.
 * Stage 2 — 5-iteration visual sweep: LLM compares the 600 DPI render
   against the draft, correcting any widget or field mismatches.
 * Stage 3 — Lean trim: LLM trims the exhaustive draft to the canonical
-  lean schema per ``skills/sot-lean-generator/references/lean_yaml_rules.md``.
+  policy schema per ``skills/sot-lean-generator/references/policy_yaml_rules.md``.
   Output written to ``/tmp/{FORM}_lean.yaml``.
 
 **Claude Code users** invoke these stages via
@@ -250,7 +250,7 @@ deterministic script.
 
 **Other LLM tools (ChatGPT, Gemini, Cursor)** read
 ``skills/sot-lean-generator/references/exhaustive_yaml_rules.md`` then
-``lean_yaml_rules.md`` directly and follow those rules. All LLM tools
+``policy_yaml_rules.md`` directly and follow those rules. All LLM tools
 share the same rules files and the same verifier; only the orchestration
 shell differs.
 

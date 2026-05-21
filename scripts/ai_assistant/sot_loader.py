@@ -1,4 +1,4 @@
-"""Lean SoT YAML loader — find, load, and summarise source-of-truth YAMLs."""
+"""Policy SoT YAML loader — find, load, and summarise source-of-truth YAMLs."""
 
 from __future__ import annotations
 
@@ -104,7 +104,7 @@ def _extract_arrow_option(endpoint: Any) -> str | None:
 
 
 def validate(data: dict[str, Any]) -> ValidationReport:
-    """Validate a loaded lean YAML dict against the 10 structural invariants.
+    """Validate a loaded policy YAML dict against the 10 structural invariants.
 
     Returns a :class:`ValidationReport`.  Never raises — all problems are
     reported as :class:`ValidationError` entries.
@@ -387,34 +387,61 @@ def validate(data: dict[str, Any]) -> ValidationReport:
     return ValidationReport(passed=len(errors) == 0, errors=errors)
 
 
-def find_lean_yaml(
+def find_policy_yaml(
     study: str,
     form: str | None,
     repo_root: Path,
 ) -> list[Path]:
-    """Return lean YAML paths under output/<study>/llm_source/source_truth/.
+    """Return policy YAML paths for one study.
 
-    If *form* is given, returns the single matching ``<form>_policy.lean.yaml``
-    (empty list when absent).  If *form* is None, returns all
-    ``*_policy.lean.yaml`` files in that directory, sorted by name.
+    New SoT outputs live under ``output/<study>/llm_source/SoT/<pair>/pdf``.
+    Older ``output/<study>/llm_source/source_truth`` and
+    ``output/<study>/SoT`` layouts, plus ``<form>_policy.lean.yaml`` names,
+    are still accepted for compatibility.
     """
-    sot_dir = repo_root / "output" / study / "llm_source" / "source_truth"
-    if not sot_dir.is_dir():
-        return []
+    study_output = repo_root / "output" / study
+    llm_source_dir = study_output / "llm_source"
+    legacy_dir = llm_source_dir / "source_truth"
+    sot_roots = [
+        llm_source_dir / "SoT",
+        study_output / "SoT",
+    ]
+
+    paths: list[Path] = []
     if form is not None:
-        candidate = sot_dir / f"{form}_policy.lean.yaml"
-        return [candidate] if candidate.exists() else []
-    return sorted(sot_dir.glob("*_policy.lean.yaml"))
+        if legacy_dir.is_dir():
+            paths.extend(
+                candidate
+                for candidate in [
+                    legacy_dir / f"{form}_policy.yaml",
+                    legacy_dir / f"{form}_policy.lean.yaml",
+                ]
+                if candidate.exists()
+            )
+        for sot_root in sot_roots:
+            if sot_root.is_dir():
+                paths.extend(sorted(sot_root.glob(f"*/pdf/{form}_policy.yaml")))
+                paths.extend(sorted(sot_root.glob(f"*/pdf/{form}_policy.lean.yaml")))
+    else:
+        if legacy_dir.is_dir():
+            paths.extend(legacy_dir.glob("*_policy.yaml"))
+            paths.extend(legacy_dir.glob("*_policy.lean.yaml"))
+        for sot_root in sot_roots:
+            if sot_root.is_dir():
+                paths.extend(sot_root.glob("*/pdf/*_policy.yaml"))
+                paths.extend(sot_root.glob("*/pdf/*_policy.lean.yaml"))
+
+    return list(dict.fromkeys(paths))
 
 
-def load_lean_yaml(path: Path) -> dict[str, Any]:
-    """Load a lean YAML file and return its contents as a dict.
+def load_policy_yaml(path: Path) -> dict[str, Any]:
+    """Load a policy YAML file and return its contents as a dict.
 
     Raises ``ValueError`` when the file is missing, unreadable, or structurally
     invalid (root not a dict, or missing the required *variables* key).
     """
     if not path.exists():
-        raise ValueError(f"Lean YAML not found: {path}")
+        raise ValueError(f"Policy YAML not found: {path}")
     try:
         data: Any = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
@@ -426,8 +453,8 @@ def load_lean_yaml(path: Path) -> dict[str, Any]:
     return data  # type: ignore[return-value]
 
 
-def summarize_lean(data: dict[str, Any]) -> dict[str, Any]:
-    """Return a compact summary view of a loaded lean YAML.
+def summarize_policy(data: dict[str, Any]) -> dict[str, Any]:
+    """Return a compact summary view of a loaded policy YAML.
 
     Includes top-level metadata, section/variable counts, per-variable metadata
     (no dataset row values), and pass-through of instructions/arrows/discrepancies.
@@ -447,9 +474,11 @@ def summarize_lean(data: dict[str, Any]) -> dict[str, Any]:
     keep_fields = {
         "section",
         "pdf_question",
+        "description",
         "widget",
         "type",
         "options",
+        "relationships",
         "skip_logic",
         "phi",
         "pdf_label",

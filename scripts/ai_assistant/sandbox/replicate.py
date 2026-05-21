@@ -24,6 +24,7 @@ import config
 from scripts.ai_assistant.sandbox.runner import (
     SandboxRejectionError,
     _ast_pre_check,
+    _build_safe_builtins,
     _load_dataframes,
 )
 
@@ -79,7 +80,14 @@ def main(path_str: str) -> int:
         )
 
     dataframes = _load_dataframes(df_paths)
-    namespace: dict[str, Any] = {"__name__": "__main__", **dataframes}
+    # Use the same safe wrappers for getattr()/vars()/dynamic imports that the
+    # agent-side sandbox uses. Replication still runs locally with normal file
+    # access by passing through builtins.open.
+    namespace: dict[str, Any] = {
+        "__name__": "__main__",
+        "__builtins__": _build_safe_builtins(builtins.open),
+        **dataframes,
+    }
 
     try:
         import numpy as np

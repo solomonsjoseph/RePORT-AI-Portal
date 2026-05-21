@@ -1,0 +1,128 @@
+name: report-ai-study-pipeline
+version: 0.1.0
+kind: llm-plugin-pack
+description: >
+  Platform-neutral RePORT-AI study preparation plugin pack. It runs duplicate
+  dataset handling first, Source Truth policy generation second, and PHI-safe
+  dataset-to-LLM-source publishing last.
+license: MIT
+platforms:
+  primary: generic-llm
+  adapters:
+    - codex
+    - claude
+    - chatgpt
+    - cursor
+    - gemini
+entrypoint:
+  skill: report-ai-study-pipeline
+  path: skills/report-ai-study-pipeline/SKILL.md
+workflow:
+  - order: 1
+    skill: excel-duplicate-handler
+    path: skills/excel-duplicate-handler/SKILL.md
+    scope: study
+    execution: once_per_study
+    parallel: false
+    purpose: Resolve duplicate workbook/file/schema issues once before Source Truth or dataset publishing.
+  - order: 2
+    skill: sot-lean-generator
+    path: skills/sot-lean-generator/SKILL.md
+    scope: raw_file_set
+    execution: single_or_parallel_per_set
+    parallel: true
+    purpose: Build or audit Source Truth policy YAML from printed PDFs and row-1 dataset headers only.
+  - order: 3
+    skill: dataset-to-llm-source
+    path: skills/dataset-to-llm-source/SKILL.md
+    scope: raw_file_set_or_lock_aware_study_run
+    execution: single_or_controlled_parallel_per_set
+    parallel: lock_aware_only
+    purpose: Publish verified PHI-safe llm_source dataset JSONL after duplicate and Source Truth work is settled.
+raw_file_set:
+  definition: >
+    One canonical form/work unit after duplicate preflight, containing the
+    associated raw dataset workbook or CSV, matching printed PDF when Source
+    Truth is required, manifest/privacy context, duplicate variants already
+    resolved or held for review, and the per-set output/audit status.
+  identity:
+    - study
+    - form_id
+  inputs:
+    - data/raw/<STUDY>/datasets/<FORM>.xlsx or .csv
+    - data/raw/<STUDY>/annotated_pdfs/<FORM>.pdf when Source Truth is required
+    - data/raw/<STUDY>/_forms_manifest.yaml
+    - data/raw/<STUDY>/_study_privacy.yaml
+  statuses:
+    - ready
+    - held_duplicate_review
+    - held_sot_review
+    - held_publish_review
+    - complete
+execution_model:
+  modes:
+    single_set:
+      description: Run one raw-file set through Source Truth and dataset publishing after the study duplicate preflight is complete.
+      phases:
+        - duplicate_preflight_once_per_study
+        - sot_for_one_set
+        - dataset_publish_for_one_set
+        - verify_for_one_set_or_study
+    batch_parallel:
+      description: Run duplicate preflight once, then fan out independent raw-file sets for safe Source Truth and controlled dataset publishing.
+      phases:
+        - duplicate_preflight_once_per_study
+        - discover_ready_raw_file_sets
+        - parallel_sot_for_ready_sets
+        - controlled_dataset_publish_for_ready_sets
+        - aggregate_verification_and_held_set_report
+  duplicate_preflight:
+    scope: study
+    run_count: once_per_study
+    parallel_allowed: false
+    must_complete_before:
+      - sot
+      - dataset_publish
+    held_behavior: Hold only affected sets when review is required; continue only with sets classified ready.
+  sot:
+    scope: raw_file_set
+    parallel_allowed: true
+    safety_rules:
+      - Use one exact form id per set when form codes are ambiguous.
+      - Do not read dataset row 2+ values.
+      - Stop only the affected set when PDF/dataset pairing requires human review.
+  dataset_publish:
+    scope: raw_file_set_or_study
+    parallel_allowed: lock_aware_only
+    safety_rules:
+      - Use the host repo's lock-aware extraction/publish CLI.
+      - Never force concurrent writes into the same study output directory.
+      - Queue or serialize publish jobs when the host repo lock is held.
+      - Verify published artifacts before marking a set complete.
+privacy_boundary:
+  dataset_values: trusted_pipeline_only
+  agent_allowed_inputs:
+    - file names
+    - directory shape
+    - manifests
+    - study privacy config
+    - row-1 headers through approved paths
+    - printed PDF/page renders
+    - audit reports and verifier outputs that contain metadata only
+host_repo_contract:
+  required_paths:
+    - data/raw/<STUDY>/
+    - scripts/skills/extract_to_llm_source.py
+    - scripts/source_truth/study_intake.py
+    - scripts/source_truth/generate_lean_outputs.py
+    - scripts/security/phi_scrub.yaml
+  optional_paths:
+    - .codex-plugin/plugin.json
+    - .agents/plugins/marketplace.json
+adapters:
+  generic_llm:
+    agent_metadata: agents/llm.yaml
+  codex:
+    manifest: .codex-plugin/plugin.json
+    skills: skills/
+    agent_metadata: agents/llm.yaml
