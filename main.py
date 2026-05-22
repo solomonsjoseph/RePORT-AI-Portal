@@ -495,6 +495,12 @@ def _cleanup_staging() -> None:
     On failure, the caller deliberately skips this to preserve residue
     for operator inspection.
     """
+    if os.environ.get("REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT") == "1":
+        log.info(
+            "Parent process holds the lock; skipping staging deletion in main.py to allow parent to run destruction attestation."
+        )
+        return
+
     staging = Path(config.STUDY_STAGING_DIR)
     if staging.exists():
         secure_remove_tree(staging)
@@ -933,265 +939,268 @@ For detailed documentation, see the Sphinx docs or README.md
 
     # Validate configuration (raises exceptions on errors)
     try:
-        config.validate_config()
-        log.info("Configuration validated successfully")
-    except FileNotFoundError as e:
-        log.error(f"Configuration validation failed: {e}")
-        print(f"\n❌ Configuration Error: {e}")
-        print("\nPlease ensure your data directory structure is correct:")
-        print(f"  data/raw/{config.STUDY_NAME}/datasets/")
-        print(f"  data/raw/{config.STUDY_NAME}/data_dictionary/")
-        sys.exit(1)
+        try:
+            config.validate_config()
+            log.info("Configuration validated successfully")
+        except FileNotFoundError as e:
+            log.error(f"Configuration validation failed: {e}")
+            print(f"\n❌ Configuration Error: {e}")
+            print("\nPlease ensure your data directory structure is correct:")
+            print(f"  data/raw/{config.STUDY_NAME}/datasets/")
+            print(f"  data/raw/{config.STUDY_NAME}/data_dictionary/")
+            sys.exit(1)
 
-    # Ensure required directories exist
-    config.ensure_directories()
+        # Ensure required directories exist
+        config.ensure_directories()
 
-    # Purge + prepare the per-run staging workspace. Extraction legs write here
-    # first; publish step atomically promotes them into llm_source/.
-    _prepare_staging()
+        # Purge + prepare the per-run staging workspace. Extraction legs write here
+        # first; publish step atomically promotes them into llm_source/.
+        _prepare_staging()
 
-    # Display startup banner
-    print("\n" + "=" * 70)
-    print("RePORT AI Portal - Report India Clinical Study Host Publish")
-    print("=" * 70 + "\n")
+        # Display startup banner
+        print("\n" + "=" * 70)
+        print("RePORT AI Portal - Report India Clinical Study Host Publish")
+        print("=" * 70 + "\n")
 
-    force = args.force
+        force = args.force
 
-    # ── Steps 0 + 1: PARALLEL EXTRACTION PHASE ──
-    # Dictionary and datasets each read different RED inputs and write to
-    # different AMBER staging subdirs — they are fully decoupled, so we run
-    # them concurrently to amortise Excel parsing CPU against dataset I/O.
-    # Cleanup chain (PHI scrub / dataset cleanup / propagation) and Publish
-    # are sequential AFTER the join because they have hard data dependencies
-    # on the extraction results.
-    print("\n--- Parallel extraction phase: Dictionary | Datasets ---")
-    log.info("Starting parallel extraction phase (max_workers=2)")
+        # ── Steps 0 + 1: PARALLEL EXTRACTION PHASE ──
+        # Dictionary and datasets each read different RED inputs and write to
+        # different AMBER staging subdirs — they are fully decoupled, so we run
+        # them concurrently to amortise Excel parsing CPU against dataset I/O.
+        # Cleanup chain (PHI scrub / dataset cleanup / propagation) and Publish
+        # are sequential AFTER the join because they have hard data dependencies
+        # on the extraction results.
+        print("\n--- Parallel extraction phase: Dictionary | Datasets ---")
+        log.info("Starting parallel extraction phase (max_workers=2)")
 
-    dropped_events: list[dict[str, Any]] = []
-    extraction_failures: list[tuple[str, BaseException]] = []
-    extraction_start = time.time()
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        futures: dict[Any, str] = {
-            executor.submit(_run_dict_leg, skip=args.skip_dictionary): "dictionary",
-            executor.submit(
-                _run_dataset_leg,
-                force=force,
-                run_extraction=args.process_datasets and not args.skip_datasets,
-            ): "datasets",
-        }
-        for fut in as_completed(futures):
-            leg_name = futures[fut]
-            try:
-                result = fut.result()
-            except BaseException as exc:
-                extraction_failures.append((leg_name, exc))
-                log.error(
-                    "Fatal: %s",
-                    format_for_log(
-                        wrap(
-                            exc,
-                            stage="pipeline.extract",
-                            operation=leg_name,
-                            include_traceback=False,
-                        )
+        dropped_events: list[dict[str, Any]] = []
+        extraction_failures: list[tuple[str, BaseException]] = []
+        extraction_start = time.time()
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures: dict[Any, str] = {
+                executor.submit(_run_dict_leg, skip=args.skip_dictionary): "dictionary",
+                executor.submit(
+                    _run_dataset_leg,
+                    force=force,
+                    run_extraction=args.process_datasets and not args.skip_datasets,
+                ): "datasets",
+            }
+            for fut in as_completed(futures):
+                leg_name = futures[fut]
+                try:
+                    result = fut.result()
+                except BaseException as exc:
+                    extraction_failures.append((leg_name, exc))
+                    log.error(
+                        "Fatal: %s",
+                        format_for_log(
+                            wrap(
+                                exc,
+                                stage="pipeline.extract",
+                                operation=leg_name,
+                                include_traceback=False,
+                            )
+                        ),
+                    )
+                    continue
+                if leg_name == "datasets":
+                    events = result.get("dropped_events", [])
+                    if isinstance(events, list):
+                        dropped_events = events
+
+        extraction_elapsed = time.time() - extraction_start
+        log.info(
+            "Parallel extraction phase complete in %.1fs (dataset drops: %d)",
+            extraction_elapsed,
+            len(dropped_events),
+        )
+
+        # Hard fail if any extraction leg crashed: the cleanup chain has no input
+        # and we'd rather surface the failure here than corrupt llm_source/.
+        if extraction_failures:
+            for leg, err in extraction_failures:
+                print(f"\n❌ Extraction leg [{leg}] failed: {err}")
+            sys.exit(1)
+
+        # ── Step 1.6: PHI Scrub (date jitter + ID pseudonymization) ──
+        # Operates on the STAGING datasets tree BEFORE Step 1.7 cleanup. Running
+        # scrub first keeps the dataset audit + propagation events free of raw
+        # subject IDs and raw dates — no PHI ever lands in output/{STUDY}/audit/.
+        #
+        # When scripts/security/phi_scrub.yaml is absent, the module no-ops and
+        # emits a single "disabled" audit file so downstream tooling always finds
+        # a fourth audit entry.
+        if args.process_datasets and not args.skip_datasets:
+            staging_ds = Path(config.STAGING_DATASETS_DIR)
+            if staging_ds.is_dir() and any(staging_ds.glob("*.jsonl")):
+                run_step(
+                    "Step 1.6: PHI Scrub",
+                    lambda: run_phi_scrub(
+                        config.STUDY_NAME,
+                        run_id=resolve_run_id(),
+                        runs_dir=Path(config.STUDY_OUTPUT_DIR) / "runs",
                     ),
                 )
-                continue
-            if leg_name == "datasets":
-                events = result.get("dropped_events", [])
-                if isinstance(events, list):
-                    dropped_events = events
 
-    extraction_elapsed = time.time() - extraction_start
-    log.info(
-        "Parallel extraction phase complete in %.1fs (dataset drops: %d)",
-        extraction_elapsed,
-        len(dropped_events),
-    )
+        # ── Step 1.7: Dataset Cleanup (remove junk, merge duplicates) ──
+        # Runs against the STAGING datasets tree before publish. The staging
+        # layout ensures the audit envelope + propagation inputs are complete
+        # before llm_source/dataset_schema/files/ is re-materialised.
+        if args.process_datasets and not args.skip_datasets:
+            cleanup_dir = Path(config.STAGING_DATASETS_DIR)
+            if cleanup_dir.is_dir() and any(cleanup_dir.glob("*.jsonl")):
+                events_for_cleanup = dropped_events
 
-    # Hard fail if any extraction leg crashed: the cleanup chain has no input
-    # and we'd rather surface the failure here than corrupt llm_source/.
-    if extraction_failures:
-        for leg, err in extraction_failures:
-            print(f"\n❌ Extraction leg [{leg}] failed: {err}")
-        sys.exit(1)
+                def run_cleanup() -> None:
+                    report = clean_trio_datasets(
+                        cleanup_dir,
+                        extracted_drop_events=events_for_cleanup,
+                        study_name=config.STUDY_NAME,
+                    )
+                    if report.total_actions or events_for_cleanup:
+                        log.info(
+                            "Dataset cleanup: removed %d junk, merged %d duplicates, "
+                            "passed-through %d extraction drops",
+                            len(report.junk_removed),
+                            len(report.duplicates_merged),
+                            len(events_for_cleanup),
+                        )
+                    else:
+                        log.info("Dataset cleanup: no actions needed")
 
-    # ── Step 1.6: PHI Scrub (date jitter + ID pseudonymization) ──
-    # Operates on the STAGING datasets tree BEFORE Step 1.7 cleanup. Running
-    # scrub first keeps the dataset audit + propagation events free of raw
-    # subject IDs and raw dates — no PHI ever lands in output/{STUDY}/audit/.
-    #
-    # When scripts/security/phi_scrub.yaml is absent, the module no-ops and
-    # emits a single "disabled" audit file so downstream tooling always finds
-    # a fourth audit entry.
-    if args.process_datasets and not args.skip_datasets:
-        staging_ds = Path(config.STAGING_DATASETS_DIR)
-        if staging_ds.is_dir() and any(staging_ds.glob("*.jsonl")):
+                run_step("Step 1.7: Dataset Cleanup", run_cleanup)
+
+        # ── Step 1.8: Cleanup Propagation (dictionary pruning) ──
+        # Mirrors dataset drops into the dictionary staging tree. Safe no-op
+        # when nothing was dropped (emits empty-but-valid leg audits). Runs
+        # AFTER Step 1.7 so dictionary staging is populated and the dataset
+        # audit is on disk.
+        if Path(config.STAGING_DICTIONARY_DIR).is_dir():
             run_step(
-                "Step 1.6: PHI Scrub",
-                lambda: run_phi_scrub(
-                    config.STUDY_NAME,
-                    run_id=resolve_run_id(),
-                    runs_dir=Path(config.STUDY_OUTPUT_DIR) / "runs",
-                ),
+                "Step 1.8: Cleanup Propagation",
+                lambda: run_propagation(),
             )
 
-    # ── Step 1.7: Dataset Cleanup (remove junk, merge duplicates) ──
-    # Runs against the STAGING datasets tree before publish. The staging
-    # layout ensures the audit envelope + propagation inputs are complete
-    # before llm_source/dataset_schema/files/ is re-materialised.
-    if args.process_datasets and not args.skip_datasets:
-        cleanup_dir = Path(config.STAGING_DATASETS_DIR)
-        if cleanup_dir.is_dir() and any(cleanup_dir.glob("*.jsonl")):
-            events_for_cleanup = dropped_events
+        # ── Step 2: Publish Staging → llm_source/ ──
+        # Atomic-rename each staging leg into llm_source/; empty legs leave
+        # their published counterpart untouched so a skipped-fresh leg keeps
+        # its prior publish.
+        if args.process_datasets and not args.skip_datasets:
+            staging_ds = Path(config.STAGING_DATASETS_DIR)
+            if staging_ds.is_dir() and any(staging_ds.glob("*.jsonl")):
+                scan = scan_tree_for_phi(staging_ds)
+                if not scan.ok:
+                    raise RuntimeError(f"Pre-publication PHI leak scan failed: {scan.detail}")
 
-            def run_cleanup() -> None:
-                report = clean_trio_datasets(
-                    cleanup_dir,
-                    extracted_drop_events=events_for_cleanup,
-                    study_name=config.STUDY_NAME,
-                )
-                if report.total_actions or events_for_cleanup:
-                    log.info(
-                        "Dataset cleanup: removed %d junk, merged %d duplicates, "
-                        "passed-through %d extraction drops",
-                        len(report.junk_removed),
-                        len(report.duplicates_merged),
-                        len(events_for_cleanup),
-                    )
-                else:
-                    log.info("Dataset cleanup: no actions needed")
+        def run_publish() -> None:
+            published = _publish_staging()
+            published_legs = {k: v for k, v in published.items() if v}
+            if published_legs:
+                log.info("Published legs: %s", sorted(published_legs))
+            else:
+                log.info("Publish: all legs skipped (staging empty)")
 
-            run_step("Step 1.7: Dataset Cleanup", run_cleanup)
+        run_step("Step 2: Publish Staging → llm_source", run_publish)
 
-    # ── Step 1.8: Cleanup Propagation (dictionary pruning) ──
-    # Mirrors dataset drops into the dictionary staging tree. Safe no-op
-    # when nothing was dropped (emits empty-but-valid leg audits). Runs
-    # AFTER Step 1.7 so dictionary staging is populated and the dataset
-    # audit is on disk.
-    if Path(config.STAGING_DICTIONARY_DIR).is_dir():
-        run_step(
-            "Step 1.8: Cleanup Propagation",
-            lambda: run_propagation(),
-        )
+        # ── Step 3: Publish the analysis variable map into llm_source ──
+        # The AI Assistant resolves clinical concepts (smoking, diabetes,
+        # recurrence, …) to dataset columns, value encodings, cohort joins, and
+        # outcome positive-label sets through this curated map. Publishing it under
+        # llm_source/study_metadata/ keeps the agent's whole knowledge surface
+        # inside the PHI-scrubbed tree it is allowed to read — it carries only
+        # mappings and encodings (no subject rows, no dates), so it is PHI-safe.
+        def run_publish_variable_map() -> None:
+            src = Path(__file__).resolve().parent / "config" / "study_knowledge.yaml"
+            if not src.is_file():
+                log.info("Variable map: %s not found — skipped", src)
+                return
+            dest_dir = Path(config.LLM_SOURCE_STUDY_METADATA_DIR)
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dest_dir / "study_variable_map.yaml")
+            log.info("Published study variable map → %s", dest_dir / "study_variable_map.yaml")
 
-    # ── Step 2: Publish Staging → llm_source/ ──
-    # Atomic-rename each staging leg into llm_source/; empty legs leave
-    # their published counterpart untouched so a skipped-fresh leg keeps
-    # its prior publish.
-    if args.process_datasets and not args.skip_datasets:
-        staging_ds = Path(config.STAGING_DATASETS_DIR)
-        if staging_ds.is_dir() and any(staging_ds.glob("*.jsonl")):
-            scan = scan_tree_for_phi(staging_ds)
-            if not scan.ok:
-                raise RuntimeError(f"Pre-publication PHI leak scan failed: {scan.detail}")
+        run_step("Step 3: Publish Study Variable Map", run_publish_variable_map)
 
-    def run_publish() -> None:
-        published = _publish_staging()
-        published_legs = {k: v for k, v in published.items() if v}
-        if published_legs:
-            log.info("Published legs: %s", sorted(published_legs))
-        else:
-            log.info("Publish: all legs skipped (staging empty)")
+        # Removed: scripts.source_truth.build — see docs/sphinx/developer_guide/source_truth_build.rst
 
-    run_step("Step 2: Publish Staging → llm_source", run_publish)
+        # ── Step 4: Lineage Manifest (audit-ready evidence package) ──
+        # Emits output/{STUDY}/audit/lineage_manifest.json pairing every raw
+        # input file (SHA-256) with every published llm_source artifact (SHA-256),
+        # plus per-leg audit references + compliance posture. This is the
+        # single artifact an IRB/IEC reviewer inspects to verify the full
+        # raw → scrub → publish chain without reading any row contents.
+        def run_lineage() -> None:
+            import hashlib as _hashlib
 
-    # ── Step 3: Publish the analysis variable map into llm_source ──
-    # The AI Assistant resolves clinical concepts (smoking, diabetes,
-    # recurrence, …) to dataset columns, value encodings, cohort joins, and
-    # outcome positive-label sets through this curated map. Publishing it under
-    # llm_source/study_metadata/ keeps the agent's whole knowledge surface
-    # inside the PHI-scrubbed tree it is allowed to read — it carries only
-    # mappings and encodings (no subject rows, no dates), so it is PHI-safe.
-    def run_publish_variable_map() -> None:
-        src = Path(__file__).resolve().parent / "config" / "study_knowledge.yaml"
-        if not src.is_file():
-            log.info("Variable map: %s not found — skipped", src)
-            return
-        dest_dir = Path(config.LLM_SOURCE_STUDY_METADATA_DIR)
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dest_dir / "study_variable_map.yaml")
-        log.info("Published study variable map → %s", dest_dir / "study_variable_map.yaml")
+            try:
+                from scripts.security.phi_scrub import load_scrub_config
 
-    run_step("Step 3: Publish Study Variable Map", run_publish_variable_map)
+                scrub_cfg = load_scrub_config()
+                posture = scrub_cfg.compliance_posture if scrub_cfg is not None else "disabled"
+            except Exception:
+                posture = "unknown"
 
-    # Removed: scripts.source_truth.build — see docs/sphinx/developer_guide/source_truth_build.rst
+            # PHI key fingerprint — gives IRB reviewers a verifiable handle
+            # without exposing the key itself. SHA-256 of the raw HMAC key.
+            phi_key_fp: str | None = None
+            try:
+                phi_key_fp = _hashlib.sha256(_load_phi_key()).hexdigest()
+            except (PHIKeyMissingError, PHIKeyPermissionError, PHIScrubError):
+                phi_key_fp = None  # leave manifest free of the field
 
-    # ── Step 4: Lineage Manifest (audit-ready evidence package) ──
-    # Emits output/{STUDY}/audit/lineage_manifest.json pairing every raw
-    # input file (SHA-256) with every published llm_source artifact (SHA-256),
-    # plus per-leg audit references + compliance posture. This is the
-    # single artifact an IRB/IEC reviewer inspects to verify the full
-    # raw → scrub → publish chain without reading any row contents.
-    def run_lineage() -> None:
-        import hashlib as _hashlib
+            audit_dir = Path(config.STUDY_AUDIT_DIR)
+            audit_dir.mkdir(parents=True, exist_ok=True)
+            emit_lineage_manifest(
+                study_name=config.STUDY_NAME,
+                raw_datasets_dir=Path(config.DATASETS_DIR),
+                raw_dictionary_dir=Path(config.DATA_DICTIONARY_DIR)
+                if Path(config.DATA_DICTIONARY_DIR).is_dir()
+                else None,
+                raw_pdfs_dir=Path(config.ANNOTATED_PDFS_DIR)
+                if Path(config.ANNOTATED_PDFS_DIR).is_dir()
+                else None,
+                llm_source_dir=Path(config.STUDY_LLM_SOURCE_DIR),
+                audit_dir=audit_dir,
+                pipeline_version=__version__,
+                compliance_posture=posture,
+                manifest_path=audit_dir / "lineage_manifest.json",
+                phi_key_fingerprint=phi_key_fp,
+            )
 
-        try:
-            from scripts.security.phi_scrub import load_scrub_config
+        run_step("Step 4: Emit Lineage Manifest", run_lineage)
 
-            scrub_cfg = load_scrub_config()
-            posture = scrub_cfg.compliance_posture if scrub_cfg is not None else "disabled"
-        except Exception:
-            posture = "unknown"
+        # ── Step 5: Output Signpost ──
+        # Plain-text README.md at output/{STUDY}/ explaining the three-tier
+        # layout for anyone who opens the directory without repo context
+        # (IRB reviewer, sysadmin, future maintainer). Re-written on every
+        # successful run so it cannot drift.
+        run_step("Step 5: Emit Output Signpost", _emit_output_signpost)
 
-        # PHI key fingerprint — gives IRB reviewers a verifiable handle
-        # without exposing the key itself. SHA-256 of the raw HMAC key.
-        phi_key_fp: str | None = None
-        try:
-            phi_key_fp = _hashlib.sha256(_load_phi_key()).hexdigest()
-        except (PHIKeyMissingError, PHIKeyPermissionError, PHIScrubError):
-            phi_key_fp = None  # leave manifest free of the field
+        log.info("RePORT AI Portal host publish path finished.")
 
-        audit_dir = Path(config.STUDY_AUDIT_DIR)
-        audit_dir.mkdir(parents=True, exist_ok=True)
-        emit_lineage_manifest(
-            study_name=config.STUDY_NAME,
-            raw_datasets_dir=Path(config.DATASETS_DIR),
-            raw_dictionary_dir=Path(config.DATA_DICTIONARY_DIR)
-            if Path(config.DATA_DICTIONARY_DIR).is_dir()
-            else None,
-            raw_pdfs_dir=Path(config.ANNOTATED_PDFS_DIR)
-            if Path(config.ANNOTATED_PDFS_DIR).is_dir()
-            else None,
-            llm_source_dir=Path(config.STUDY_LLM_SOURCE_DIR),
-            audit_dir=audit_dir,
-            pipeline_version=__version__,
-            compliance_posture=posture,
-            manifest_path=audit_dir / "lineage_manifest.json",
-            phi_key_fingerprint=phi_key_fp,
-        )
+        # Success-only: remove the staging workspace. If any earlier step called
+        # sys.exit(1), control never reaches here and the staging tree is left
+        # behind for inspection.
+        _cleanup_staging()
 
-    run_step("Step 4: Emit Lineage Manifest", run_lineage)
-
-    # ── Step 5: Output Signpost ──
-    # Plain-text README.md at output/{STUDY}/ explaining the three-tier
-    # layout for anyone who opens the directory without repo context
-    # (IRB reviewer, sysadmin, future maintainer). Re-written on every
-    # successful run so it cannot drift.
-    run_step("Step 5: Emit Output Signpost", _emit_output_signpost)
-
-    log.info("RePORT AI Portal host publish path finished.")
-
-    # Success-only: remove the staging workspace. If any earlier step called
-    # sys.exit(1), control never reaches here and the staging tree is left
-    # behind for inspection.
-    _cleanup_staging()
-
-    # ── Final summary: show all useful output locations ──
-    print("\n" + "=" * 70)
-    print("  Host Publish Complete — Output Locations")
-    print("=" * 70)
-    print(f"\n  LLM Source Root:     {config.STUDY_LLM_SOURCE_DIR}")
-    print(f"    Datasets (JSONL):  {config.TRIO_DATASETS_DIR}")
-    print(f"    Data Dictionary:   {config.DICTIONARY_JSON_OUTPUT_DIR}")
-    print(f"    Audit Reports:     {config.STUDY_AUDIT_DIR}")
-    print(f"      Dataset Audit:     {config.AUDIT_DATASET_REPORT_PATH}")
-    print(f"      PHI Scrub Audit:   {config.AUDIT_SCRUB_REPORT_PATH}")
-    print(f"  Agent State Root:    {config.AGENT_STATE_DIR}")
-    print(f"    Analysis Output:   {config.AGENT_OUTPUT_DIR}")
-    print(f"    Conversations:     {config.CONVERSATIONS_DIR}")
-    print(f"    Telemetry:         {config.TELEMETRY_DIR}")
-    print("\n" + "=" * 70 + "\n")
+        # ── Final summary: show all useful output locations ──
+        print("\n" + "=" * 70)
+        print("  Host Publish Complete — Output Locations")
+        print("=" * 70)
+        print(f"\n  LLM Source Root:     {config.STUDY_LLM_SOURCE_DIR}")
+        print(f"    Datasets (JSONL):  {config.TRIO_DATASETS_DIR}")
+        print(f"    Data Dictionary:   {config.DICTIONARY_JSON_OUTPUT_DIR}")
+        print(f"    Audit Reports:     {config.STUDY_AUDIT_DIR}")
+        print(f"      Dataset Audit:     {config.AUDIT_DATASET_REPORT_PATH}")
+        print(f"      PHI Scrub Audit:   {config.AUDIT_SCRUB_REPORT_PATH}")
+        print(f"  Agent State Root:    {config.AGENT_STATE_DIR}")
+        print(f"    Analysis Output:   {config.AGENT_OUTPUT_DIR}")
+        print(f"    Conversations:     {config.CONVERSATIONS_DIR}")
+        print(f"    Telemetry:         {config.TELEMETRY_DIR}")
+        print("\n" + "=" * 70 + "\n")
+    finally:
+        _release_pipeline_lock()
 
 
 if __name__ == "__main__":

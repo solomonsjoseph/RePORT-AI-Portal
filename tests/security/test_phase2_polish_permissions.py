@@ -92,6 +92,8 @@ def test_sandbox_runner_chmods_persisted_code() -> None:
     src = Path("scripts/ai_assistant/sandbox/runner.py").read_text(encoding="utf-8")
     assert "code_dir.chmod(0o700)" in src, "runner.py must chmod the code/ subdir to 0o700"
     assert "path.chmod(0o600)" in src, "runner.py must chmod each persisted run_*.py to 0o600"
+    assert "fig_dir.chmod(0o700)" in src, "runner.py must chmod the figures/ subdir to 0o700"
+    assert "p.chmod(0o600)" in src, "runner.py must chmod each saved figure file to 0o600"
 
 
 # ── P1e — snapshots ─────────────────────────────────────────────────────────

@@ -374,6 +374,19 @@ class TestCleanupStaging:
         main._cleanup_staging()
         assert not config.STUDY_STAGING_DIR.exists()
 
+    def test_cleanup_skips_when_parent_holds_lock(
+        self, monkeypatch_config: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import config
+
+        monkeypatch.setenv("REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT", "1")
+        config.STUDY_STAGING_DIR.mkdir(parents=True, exist_ok=True)
+        (config.STUDY_STAGING_DIR / "stray.txt").write_text("x", encoding="utf-8")
+
+        main._cleanup_staging()
+
+        assert config.STUDY_STAGING_DIR.exists()
+
 
 # ── _emit_output_signpost ───────────────────────────────────────────────────
 

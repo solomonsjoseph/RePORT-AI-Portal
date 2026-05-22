@@ -260,40 +260,43 @@ class TestSafeImportCheck:
     """AST-level blocking of dangerous imports and dunder attributes."""
 
     def test_blocks_os_import(self) -> None:
-        from scripts.ai_assistant.agent_tools import _safe_import_check
+        from scripts.ai_assistant.sandbox.runner import SandboxRejectionError, _ast_pre_check
 
-        assert _safe_import_check("import os") is not None
+        with pytest.raises(SandboxRejectionError):
+            _ast_pre_check("import os")
 
     def test_blocks_subprocess_import(self) -> None:
-        from scripts.ai_assistant.agent_tools import _safe_import_check
+        from scripts.ai_assistant.sandbox.runner import SandboxRejectionError, _ast_pre_check
 
-        assert _safe_import_check("import subprocess") is not None
+        with pytest.raises(SandboxRejectionError):
+            _ast_pre_check("import subprocess")
 
     def test_allows_pandas(self) -> None:
-        from scripts.ai_assistant.agent_tools import _safe_import_check
+        from scripts.ai_assistant.sandbox.runner import SandboxRejectionError, _ast_pre_check
 
-        assert _safe_import_check("import pandas as pd") is None
+        # Should not raise SandboxRejectionError
+        _ast_pre_check("import pandas as pd")
 
     def test_blocks_subclasses_attribute(self) -> None:
-        from scripts.ai_assistant.agent_tools import _safe_import_check
+        from scripts.ai_assistant.sandbox.runner import SandboxRejectionError, _ast_pre_check
 
-        err = _safe_import_check("x = ().__class__.__bases__[0].__subclasses__()")
-        assert err is not None
-        assert "__subclasses__" in err
+        with pytest.raises(SandboxRejectionError) as exc_info:
+            _ast_pre_check("x = ().__class__.__bases__[0].__subclasses__()")
+        assert "__subclasses__" in str(exc_info.value)
 
     def test_blocks_globals_attribute(self) -> None:
-        from scripts.ai_assistant.agent_tools import _safe_import_check
+        from scripts.ai_assistant.sandbox.runner import SandboxRejectionError, _ast_pre_check
 
-        err = _safe_import_check("g = fn.__globals__")
-        assert err is not None
-        assert "__globals__" in err
+        with pytest.raises(SandboxRejectionError) as exc_info:
+            _ast_pre_check("g = fn.__globals__")
+        assert "__globals__" in str(exc_info.value)
 
     def test_blocks_class_attribute(self) -> None:
-        from scripts.ai_assistant.agent_tools import _safe_import_check
+        from scripts.ai_assistant.sandbox.runner import SandboxRejectionError, _ast_pre_check
 
-        err = _safe_import_check("c = x.__class__")
-        assert err is not None
-        assert "__class__" in err
+        with pytest.raises(SandboxRejectionError) as exc_info:
+            _ast_pre_check("c = x.__class__")
+        assert "__class__" in str(exc_info.value)
 
 
 class TestSandboxRuntimeGuards:

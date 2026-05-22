@@ -356,6 +356,8 @@ def main(spec_path: str) -> int:
 
     fig_dir = output_dir / "figures"
     fig_dir.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(OSError):
+        fig_dir.chmod(0o700)
     figure_paths: list[str] = []
     try:
         import plotly.io as _pio
@@ -364,6 +366,8 @@ def main(spec_path: str) -> int:
             fid = uuid.uuid4().hex[:12]
             p = fig_dir / f"plotly_{fid}.json"
             p.write_text(_pio.to_json(fig_obj), encoding="utf-8")
+            with contextlib.suppress(OSError):
+                p.chmod(0o600)
             figure_paths.append(str(p))
     except ImportError:
         pass
@@ -377,6 +381,8 @@ def main(spec_path: str) -> int:
                 fid = uuid.uuid4().hex[:12]
                 p = fig_dir / f"fig_{fid}.png"
                 fig.savefig(p, format="png", bbox_inches="tight", dpi=150)
+                with contextlib.suppress(OSError):
+                    p.chmod(0o600)
                 figure_paths.append(str(p))
                 _plt.close(fig)
             _plt.close("all")

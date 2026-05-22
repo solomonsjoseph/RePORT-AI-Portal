@@ -7,10 +7,7 @@ from typing import Any
 import pandas as pd
 
 from scripts.extraction.dedup import (
-    clean_cross_form_duplicates,
     clean_duplicate_columns,
-    remove_within_file_duplicates,
-    variable_richness_score,
 )
 
 
@@ -227,76 +224,4 @@ class TestCleanDuplicateColumns:
         assert len(events) == 1
 
 
-class TestVariableRichnessScore:
-    def test_empty_dict_returns_zero(self) -> None:
-        score, _, _ = variable_richness_score({})
-        assert score == 0
 
-    def test_rich_variable_higher_score(self) -> None:
-        poor: dict[str, Any] = {"variable_name": "X"}
-        rich: dict[str, Any] = {
-            "variable_name": "X",
-            "description": "A detailed description",
-            "coded_options": {"1": "Yes", "2": "No"},
-            "data_type": "categorical",
-        }
-        score_poor = variable_richness_score(poor)[0]
-        score_rich = variable_richness_score(rich)[0]
-        assert score_rich > score_poor
-
-
-class TestRemoveWithinFileDuplicates:
-    def test_no_duplicates_unchanged(self) -> None:
-        data: dict[str, Any] = {
-            "variables": {
-                "VAR_A": {"description": "A"},
-                "VAR_B": {"description": "B"},
-            }
-        }
-        result = remove_within_file_duplicates(data)
-        assert result["duplicates_removed"] == 0
-
-    def test_removes_case_insensitive_duplicate(self) -> None:
-        data: dict[str, Any] = {
-            "variables": {
-                "SUBJID": {"description": "Subject ID", "data_type": "string"},
-                "subjid": {"description": ""},
-            }
-        }
-        result = remove_within_file_duplicates(data)
-        assert result["duplicates_removed"] == 1
-
-    def test_dry_run_preserves_all(self) -> None:
-        data: dict[str, Any] = {
-            "variables": {
-                "X": {"description": "first"},
-                "x": {"description": "second"},
-            }
-        }
-        result = remove_within_file_duplicates(data, dry_run=True)
-        assert result["duplicates_removed"] == 1
-        assert "cleaned_data" not in result
-
-
-class TestCleanCrossFormDuplicates:
-    def test_no_duplicates_returns_empty(self) -> None:
-        forms: dict[str, dict[str, Any]] = {
-            "form_a": {"variables": {"A": {"description": "a"}}},
-            "form_b": {"variables": {"B": {"description": "b"}}},
-        }
-        result = clean_cross_form_duplicates(forms)
-        assert result == {}
-
-    def test_removes_cross_form_duplicate(self) -> None:
-        forms: dict[str, dict[str, Any]] = {
-            "form_a": {"variables": {"SHARED": {"description": "rich", "data_type": "string"}}},
-            "form_b": {
-                "variables": {
-                    "SHARED": {"description": ""},
-                    "OTHER": {"description": "x"},
-                }
-            },
-        }
-        result = clean_cross_form_duplicates(forms)
-        assert "form_b" in result
-        assert "SHARED" not in result["form_b"]["variables"]

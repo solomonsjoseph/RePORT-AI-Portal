@@ -969,29 +969,6 @@ def _discover_trio_dataframe_paths() -> dict[str, str]:
             continue
     return out
 
-
-def _safe_import_check(code: str) -> str | None:
-    """Return an error message if ``code`` violates the sandbox AST guards.
-
-    Thin shim over :func:`scripts.ai_assistant.sandbox.runner._ast_pre_check`.
-    Kept for backward compatibility with ``tests/test_agent_tools.py``; the
-    canonical guard now runs inside the sandbox subprocess so that even a
-    direct call to a sandbox bypass would not skip it.
-    """
-    from scripts.ai_assistant.sandbox.runner import (
-        SandboxRejectionError,
-        _ast_pre_check,
-    )
-
-    try:
-        _ast_pre_check(code)
-    except SyntaxError as exc:
-        return f"Syntax error in code: {exc}"
-    except SandboxRejectionError as exc:
-        return str(exc)
-    return None
-
-
 def _unsafe_sandbox_stdout_reason(stdout: str) -> str | None:
     """Return a security reason when stdout appears to expose row-level data."""
     text = stdout.strip()

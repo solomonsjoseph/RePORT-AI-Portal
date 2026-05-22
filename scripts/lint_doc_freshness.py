@@ -310,8 +310,8 @@ FORBIDDEN: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     ),
     # Stale Makefile target names
     (
-        r"\bmake\s+extract-pdfs\b",
-        "stale Make target — use `make pdf-extract`",
+        r"\bmake\s+(extract-pdfs|pdf-extract)\b",
+        "stale Make target — use `make sot-source-pack` and `make sot-generate-all`",
         (),
     ),
     # Pre-scrubbed wording (operators don't pre-scrub; pipeline does at Step 1.6)
