@@ -8,12 +8,9 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytest
-
-if TYPE_CHECKING:
-    from scripts.ai_assistant.study_knowledge import StudyKnowledge
 
 skip_as_root = pytest.mark.skipif(
     hasattr(os, "geteuid") and os.geteuid() == 0,
@@ -326,14 +323,6 @@ def synthetic_cohort_data(monkeypatch_config: Path) -> Path:
     _write_jsonl(ds_dir / "12B_FUB.jsonl", fub_records)
 
     return ds_dir
-
-
-@pytest.fixture()
-def study_knowledge_fixture() -> StudyKnowledge:
-    """Load the real study_knowledge.yaml for integration tests."""
-    from scripts.ai_assistant.study_knowledge import StudyKnowledge
-
-    return StudyKnowledge()
 
 
 @pytest.fixture()

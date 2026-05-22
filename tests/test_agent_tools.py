@@ -29,15 +29,15 @@ class TestToolRegistry:
     def test_expected_tool_names(self) -> None:
         names = {t.name for t in ALL_TOOLS}
         expected = {
+            "list_llm_source",
+            "search_llm_source",
+            "read_llm_source_file",
             "search_variables",
             "query_dataset",
             "list_available_datasets",
             "get_dataset_stats",
             "run_python_analysis",
-            "run_study_analysis",
             "answer_catalog_question",
-            "produce_evidence_report",
-            "produce_custom_evidence_report",
             "cite_source",
         }
         assert expected == names

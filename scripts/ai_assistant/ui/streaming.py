@@ -471,12 +471,6 @@ def _extract_sources(tools_detail: list[dict[str, str]]) -> list[dict[str, str]]
                 seen.add(key)
                 sources.append({"type": "analysis", "name": key, "icon": "🐍"})
 
-        elif name == "run_study_analysis":
-            key = "Epidemiological Analysis"
-            if key not in seen:
-                seen.add(key)
-                sources.append({"type": "analysis", "name": key, "icon": "🔬"})
-
     return sources
 
 

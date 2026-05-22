@@ -778,9 +778,7 @@ def main() -> None:
     """
     parser = argparse.ArgumentParser(
         prog="RePORT AI Portal",
-        description=(
-            "Clinical data host publish path for structured clinical research data."
-        ),
+        description=("Clinical data host publish path for structured clinical research data."),
         epilog="""
 Usage:
   %(prog)s                              # Run host publish path
@@ -1097,6 +1095,25 @@ For detailed documentation, see the Sphinx docs or README.md
             log.info("Publish: all legs skipped (staging empty)")
 
     run_step("Step 2: Publish Staging → llm_source", run_publish)
+
+    # ── Step 3: Publish the analysis variable map into llm_source ──
+    # The AI Assistant resolves clinical concepts (smoking, diabetes,
+    # recurrence, …) to dataset columns, value encodings, cohort joins, and
+    # outcome positive-label sets through this curated map. Publishing it under
+    # llm_source/study_metadata/ keeps the agent's whole knowledge surface
+    # inside the PHI-scrubbed tree it is allowed to read — it carries only
+    # mappings and encodings (no subject rows, no dates), so it is PHI-safe.
+    def run_publish_variable_map() -> None:
+        src = Path(__file__).resolve().parent / "config" / "study_knowledge.yaml"
+        if not src.is_file():
+            log.info("Variable map: %s not found — skipped", src)
+            return
+        dest_dir = Path(config.LLM_SOURCE_STUDY_METADATA_DIR)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest_dir / "study_variable_map.yaml")
+        log.info("Published study variable map → %s", dest_dir / "study_variable_map.yaml")
+
+    run_step("Step 3: Publish Study Variable Map", run_publish_variable_map)
 
     # Removed: scripts.source_truth.build — see docs/sphinx/developer_guide/source_truth_build.rst
 

@@ -38,78 +38,13 @@ __all__ = [
     "get_agent",
     "get_checkpointer",
     "invoke_query",
-    "is_catalog_runtime_enabled",
     "reset_agent",
-    "runtime_system_prompt",
-    "runtime_tools",
     "stream_query",
 ]
 
 
-# ── Catalog runtime feature flag (issue #79 + hard cutover #81) ─────────
-#
-# After issue #81 the catalog runtime is the default. The legacy
-# ``StudyKnowledge``-driven path remains reachable for one release
-# window via the explicit ``REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE``
-# override env var. The previously opt-in
-# ``REPORTALIN_USE_CATALOG_RUNTIME`` env var is now redundant -- it is
-# accepted for backward compatibility but does not change behaviour
-# unless the legacy override is also set, in which case the legacy
-# override wins (it is the rollback kill switch).
-#
-# This flag DOES NOT route on user-input keywords. It selects which
-# tools the LLM has and which system prompt it sees. The LLM still
-# decides which tool to call based on the natural-language question.
-
-_CATALOG_RUNTIME_FLAG = "REPORTALIN_USE_CATALOG_RUNTIME"
-_LEGACY_STUDY_KNOWLEDGE_FLAG = "REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE"
+# Truthy env-var tokens (used by the test-only fake-local provider gate).
 _TRUTHY = frozenset({"1", "true", "yes", "on"})
-
-
-def _env_truthy(name: str) -> bool:
-    return os.environ.get(name, "").strip().lower() in _TRUTHY
-
-
-def is_catalog_runtime_enabled() -> bool:
-    """Return True when the catalog runtime path should be used.
-
-    After the hard cutover (#81) the catalog runtime is the default.
-    Setting ``REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE=1`` is the explicit
-    rollback override that disables the catalog path and re-enables the
-    legacy ``StudyKnowledge`` runtime for one release window.
-    """
-    return not _env_truthy(_LEGACY_STUDY_KNOWLEDGE_FLAG)
-
-
-def runtime_tools(flag_on: bool) -> list[Any]:
-    """Return the tool list the agent should be created with.
-
-    Args:
-        flag_on: Output of :func:`is_catalog_runtime_enabled`.
-
-    The flag-OFF list is the existing union (``ALL_TOOLS``); the flag-ON
-    list is the same union — the catalog tool ``answer_catalog_question``
-    is already part of ``ALL_TOOLS``. The flag does not narrow tools;
-    it surfaces a different system prompt that steers the LLM to use
-    the catalog tool first.
-
-    The signature is intentionally a single boolean: a user-input string
-    must NEVER feed into tool selection (that would be a hidden keyword
-    router, which the maintainer has forbidden).
-    """
-    # Return the constant directly. Both flag states see the union;
-    # narrowing happens via the system prompt, not the tool list.
-    return ALL_TOOLS
-
-
-def runtime_system_prompt(flag_on: bool) -> str:
-    """Return the system prompt template for the current flag state.
-
-    Returns the catalog-runtime prompt when ``flag_on`` is True; the
-    legacy ``SYSTEM_PROMPT`` otherwise. The result is a format string
-    expecting ``{study_name}`` to be substituted by the caller.
-    """
-    return SYSTEM_PROMPT
 
 
 # Module-level singletons (lazy-initialised)
@@ -211,7 +146,9 @@ class _FakeLocalChatModel(BaseChatModel):
     def _llm_type(self) -> str:
         return "report-ai-fake-local"
 
-    def bind_tools(self, tools: Any, *, tool_choice: Any = None, **kwargs: Any) -> _FakeLocalChatModel:
+    def bind_tools(
+        self, tools: Any, *, tool_choice: Any = None, **kwargs: Any
+    ) -> _FakeLocalChatModel:
         return self
 
     def _generate(
@@ -333,30 +270,27 @@ def get_checkpointer() -> MemorySaver:
 def get_agent() -> CompiledStateGraph:
     """Return the compiled ReAct agent (create on first call).
 
-    Uses single-agent mode with the full tool set.  The deterministic
-    ``run_study_analysis`` tool handles multi-step analytical pipelines
-    internally, so even small models only need to make one tool call.
+    Uses single-agent mode with the full tool set.  The agent resolves
+    variables through the ``llm_source`` retrieval tools and performs
+    statistical analysis through the sandboxed ``run_python_analysis`` tool.
     """
     global _agent
     if _agent is None:
         llm = _init_llm()
-        flag_on = is_catalog_runtime_enabled()
-        prompt = runtime_system_prompt(flag_on).format(study_name=config.STUDY_NAME)
-        tools = runtime_tools(flag_on)
+        prompt = SYSTEM_PROMPT.format(study_name=config.STUDY_NAME)
 
         _agent = create_agent(
             model=llm,
-            tools=tools,
+            tools=ALL_TOOLS,
             system_prompt=prompt,
             checkpointer=get_checkpointer(),
         )
 
         logger.info(
-            "Agent initialised (provider=%s, model=%s, tools=%d, catalog_runtime=%s)",
+            "Agent initialised (provider=%s, model=%s, tools=%d)",
             config.LLM_PROVIDER,
             config.LLM_MODEL,
-            len(tools),
-            flag_on,
+            len(ALL_TOOLS),
         )
     return _agent
 

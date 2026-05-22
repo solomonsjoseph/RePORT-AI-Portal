@@ -18,25 +18,27 @@ with the LangGraph ReAct agent.
 
 Tools
 -----
-1.  search_variables — dataset column search (dictionary fallback when catalog has no answer)
-2.  query_dataset — structural query on a JSONL dataset
-3.  get_dataset_stats — summary statistics for a dataset (record counts, columns)
-4.  list_available_datasets — list available PHI-scrubbed datasets
-5.  run_python_analysis — sandboxed code execution for statistical analysis
-6.  run_study_analysis — deterministic epidemiological analysis
-7.  answer_catalog_question — primary variable metadata lookup via policy SoT YAMLs
-8.  produce_evidence_report — structured PHI-safe analysis report for canonical questions
-9.  produce_custom_evidence_report — parameterised analysis report for custom questions
+1.  list_llm_source — browse the PHI-scrubbed ``llm_source/`` tree
+2.  search_llm_source — full-text search across ``llm_source/`` (protocol/definitions)
+3.  read_llm_source_file — read a specific ``llm_source/`` file (e.g. a policy YAML)
+4.  search_variables — dataset column search (dictionary fallback)
+5.  query_dataset — structural query on a JSONL dataset
+6.  list_available_datasets — list available PHI-scrubbed datasets
+7.  get_dataset_stats — summary statistics for a dataset (record counts, columns)
+8.  run_python_analysis — sandboxed code execution for statistical analysis (primary)
+9.  answer_catalog_question — variable metadata lookup via policy SoT YAMLs
 10. cite_source — deterministic (file, line, snippet) citation for form fields
+
+The agent resolves variables and protocol facts through the ``llm_source``
+retrieval tools and performs all statistical analysis through the sandboxed
+``run_python_analysis`` tool.
 """
 
 from __future__ import annotations
 
-import contextlib
 import json
 import logging
 import re
-import uuid
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -46,11 +48,9 @@ from langchain_core.tools import tool
 import config
 from scripts.ai_assistant.file_access import (
     validate_agent_read,
-    validate_agent_write,
 )
 from scripts.ai_assistant.phi_safe import (
     phi_safe_return,
-    sanitise_traceback,
 )
 from scripts.ai_assistant.tool_cache import tool_cache
 from scripts.security.secure_env import assert_output_zone
@@ -1166,222 +1166,6 @@ def _format_sandbox_result_for_agent(result: Any) -> str:
 
 
 # ============================================================================
-# Tool 10: run_study_analysis
-# ============================================================================
-
-
-# Map friendly outcome phrasings to the canonical enum the analytical engine
-# expects. Small LLMs routinely write "TB recurrence" instead of "recurrence";
-# normalising here avoids a tool round-trip the user pays for in latency.
-_OUTCOME_ALIASES: dict[str, str] = {
-    "recurrence": "recurrence",
-    "tb recurrence": "recurrence",
-    "recurrent tb": "recurrence",
-    "relapse": "recurrence",
-    "tb relapse": "recurrence",
-    "failure": "recurrence",
-    "tb failure": "recurrence",
-    "incident_tb": "incident_tb",
-    "incident tb": "incident_tb",
-    "tb incidence": "incident_tb",
-    "incidence of tb": "incident_tb",
-    "progression": "incident_tb",
-    "tb progression": "incident_tb",
-}
-
-
-def _normalise_outcome(outcome: str, cohort: str) -> str:
-    """Accept friendly outcome names; fall back to the cohort default if empty."""
-    key = outcome.strip().lower()
-    if not key:
-        return "recurrence" if cohort == "cohort_a" else "incident_tb"
-    return _OUTCOME_ALIASES.get(key, outcome)
-
-
-def _run_catalog_bound_study_analysis(
-    *,
-    cohort: str,
-    outcome: str,
-    predictors: str,
-) -> str:
-    return (
-        "Catalog-bound analysis via AnalysisBinding is no longer available. "
-        "Variable metadata is now served from policy SoT YAMLs — use "
-        "answer_catalog_question for variable lookup, or generate SoT YAMLs "
-        "via `make sot-source-pack STUDY=<study> FORM=<form>` "
-        "(see skills/sot-lean-generator/SKILL.md)."
-    )
-
-
-@tool
-@phi_safe_return
-def run_study_analysis(
-    cohort: str,
-    outcome: str = "",
-    predictors: str = "",
-    analysis_types: str = "",
-    plot_types: str = "",
-) -> str:
-    """Run a deterministic epidemiological analysis on study data.
-
-    The legacy StudyKnowledge regression runner is reachable only when
-    ``REPORTALIN_USE_LEGACY_STUDY_KNOWLEDGE=1`` is explicitly set. In the
-    default runtime this tool returns a clear diagnostic and directs callers
-    to resolve variables through policy SoT metadata and use ``run_python_analysis``
-    for custom analysis.
-
-    Args:
-        cohort: Which cohort to analyze — "cohort_a" (index cases) or "cohort_b" (household contacts).
-        outcome: Outcome variable ID. Legacy aliases such as "recurrence" are
-            accepted only behind the legacy StudyKnowledge override.
-        predictors: Comma-separated predictor variable IDs.
-        analysis_types: Comma-separated analysis types from: univariate, multivariate, interaction, descriptive. Default: all.
-        plot_types: Comma-separated plot types from: violin, scatter, interaction_violin, interaction_scatter. Default: all.
-    """
-    import traceback
-
-    if not cohort:
-        return "Missing required parameter 'cohort'. Use 'cohort_a' (index cases) or 'cohort_b' (household contacts)."
-
-    from scripts.ai_assistant.analytical_engine import is_catalog_binding_enabled
-
-    if is_catalog_binding_enabled():
-        return _run_catalog_bound_study_analysis(
-            cohort=cohort,
-            outcome=outcome,
-            predictors=predictors,
-        )
-
-    from scripts.ai_assistant.analytical_engine import run_full_analysis
-    from scripts.ai_assistant.study_knowledge import StudyKnowledge
-
-    outcome = _normalise_outcome(outcome, cohort)
-
-    try:
-        knowledge = StudyKnowledge()
-        data_dir = config.TRIO_DATASETS_DIR
-        output_dir = config.AGENT_OUTPUT_DIR
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        pred_list = [p.strip() for p in predictors.split(",") if p.strip()] if predictors else None
-        atype_list = (
-            [a.strip() for a in analysis_types.split(",") if a.strip()] if analysis_types else None
-        )
-        ptype_list = [p.strip() for p in plot_types.split(",") if p.strip()] if plot_types else None
-
-        result = run_full_analysis(
-            knowledge=knowledge,
-            data_dir=data_dir,
-            output_dir=output_dir,
-            cohort_id=cohort,
-            outcome=outcome or None,
-            predictors=pred_list,
-            analysis_types=atype_list,
-            plot_types=ptype_list,
-            timeout=config.ANALYSIS_TIMEOUT,
-        )
-
-        # Soft caveat when events are low enough that ORs should be
-        # reported with explicit power warnings.
-        events_per_variable = result.events / max(len(pred_list or []) or 6, 1)
-        underpowered = result.events < 10 or events_per_variable < 5
-
-        # Save full narrative to disk for direct UI rendering
-        narrative_path = validate_agent_write(output_dir / f"{cohort}_narrative.md")
-        full_parts: list[str] = [result.narrative]
-        full_parts.extend(f"<RPLN_PLOTLY:{fig_path}>" for fig_path in result.interactive_figures)
-        full_parts.extend(f"<RPLN_FIGURE:{fig_path}>" for fig_path in result.figures)
-        full_narrative = "\n\n".join(full_parts)
-        narrative_path.write_text(full_narrative, encoding="utf-8")
-
-        # Build a SHORT summary for the LLM (stays within context limits)
-        sig_uni = []
-        if result.univariate is not None:
-            for _, row in result.univariate.iterrows():
-                if row.get("significant"):
-                    sig_uni.append(
-                        f"  - {row['predictor']}: OR={row['OR']:.3f}, p={row['p_value']:.4f}"
-                    )
-
-        mv_retained = []
-        if result.multivariate and "retained_predictors" in result.multivariate:
-            mv_retained = result.multivariate["retained_predictors"]
-
-        sig_int = []
-        if result.interaction is not None:
-            for _, row in result.interaction.iterrows():
-                if row.get("significant"):
-                    sig_int.append(
-                        f"  - {row['factor']}x{row['moderator']}: p={row['interaction_p']:.4f}"
-                    )
-
-        figure_count = len(result.interactive_figures) + len(result.figures)
-        summary_lines = [
-            f"Analysis complete: {result.cohort_name} - {result.outcome}.",
-            (
-                f"Evidence: N={result.n}, events={result.events} "
-                f"({result.events / result.n * 100:.1f}% rate), figures={figure_count}."
-            ),
-        ]
-        if result.events < 5:
-            summary_lines.append(
-                "Inferential models were not run: fewer than 5 outcome events are present. "
-                "Use the descriptive tables and plots only."
-            )
-            summary_lines.append("")
-            summary_lines.append(
-                "Detailed descriptive tables, plots, and caveats are rendered below."
-            )
-            summary_lines.append(f"<RPLN_ANALYSIS:{narrative_path}>")
-            return "\n".join(summary_lines)
-        if underpowered:
-            summary_lines.append(
-                f"Caveat: underpowered analysis; events={result.events}, "
-                f"events/variable={events_per_variable:.1f} (target >=10, floor >=5). "
-                "Multivariate odds ratios may be unstable; interpret point estimates cautiously."
-            )
-        if sig_uni:
-            summary_lines.append("Significant univariate predictors:")
-            summary_lines.extend(sig_uni)
-        else:
-            summary_lines.append("No significant univariate predictors (p<0.05).")
-
-        if mv_retained:
-            summary_lines.append(f"Multivariate retained: {', '.join(mv_retained)}.")
-        elif result.multivariate and "error" in result.multivariate:
-            summary_lines.append(f"Multivariate: {result.multivariate['error']}.")
-
-        if sig_int:
-            summary_lines.append("Significant interactions:")
-            summary_lines.extend(sig_int)
-
-        summary_lines.append("")
-        summary_lines.append("Detailed model tables, plots, and narrative are rendered below.")
-        summary_lines.append(f"<RPLN_ANALYSIS:{narrative_path}>")
-
-        return "\n".join(summary_lines)
-
-    except TimeoutError as e:
-        logger.warning("run_study_analysis timed out: %s", e)
-        return f"Analysis timed out: {e}\nTry reducing the analysis scope (fewer predictors or analysis types)."
-    except Exception as e:
-        from scripts.utils import errors as _rpln_err
-
-        err = _rpln_err.wrap(
-            e,
-            stage="agent.tool",
-            operation="run_study_analysis",
-            hint="See traceback; narrow predictors or analysis types and retry.",
-        )
-        logger.error(err.as_log_block())
-        return (
-            f"Analysis failed: {type(e).__name__}: "
-            f"{sanitise_traceback(str(e))}\n"
-            f"{sanitise_traceback(traceback.format_exc())}"
-        )
-
-
-# ============================================================================
 # Tool 13: answer_catalog_question — boundary-aware catalog Q&A
 # ============================================================================
 #
@@ -1629,432 +1413,6 @@ def answer_catalog_question(question: str) -> str:
     )
 
 
-# ============================================================================
-# Evidence-report + citation tools
-# ============================================================================
-
-
-_CANONICAL_QUESTION_HINTS: dict[str, tuple[str, ...]] = {
-    "q01_cohort_a_univariate": (
-        "cohort a",
-        "univariate",
-        "tb recurrence predictors",
-        "single-variable",
-    ),
-    "q02_cohort_a_multivariate_interactions": (
-        "cohort a",
-        "multivariate",
-        "backward selection",
-        "interactions",
-        "smoking age",
-        "alcohol smoking",
-    ),
-    "q03_cohort_b_univariate": (
-        "cohort b",
-        "univariate",
-        "household contact",
-        "predictors",
-    ),
-    "q04_cohort_b_multivariate_interactions": (
-        "cohort b",
-        "multivariate",
-        "interactions",
-    ),
-    "q05_hiv_test_result_distribution": (
-        "hiv",
-        "test result",
-        "distribution",
-        "serostatus",
-    ),
-    "q06_cohort_a_index_case_inclusion_exclusion": (
-        "index case",
-        "inclusion",
-        "exclusion",
-        "cohort a eligibility",
-    ),
-    "q07_tb_relapse_vs_treatment_failure": (
-        "relapse",
-        "treatment failure",
-        "definition difference",
-    ),
-    "q08_household_contact_definition": (
-        "household contact",
-        "definition",
-        "shared household",
-    ),
-    "q09_drug_susceptibility_tests_and_timing": (
-        "drug susceptibility",
-        "dst",
-        "timing",
-        "first-line",
-    ),
-    "q10_household_contact_followup_schedule_specimens": (
-        "household contact",
-        "follow-up schedule",
-        "specimens",
-    ),
-    "q11_variables_available_for_relapse": (
-        "variables for relapse",
-        "relapse variables",
-        "what variables",
-        "fields for relapse",
-    ),
-}
-
-
-_FIGURE_EXTS = (".png", ".jpg", ".jpeg", ".svg", ".webp")
-
-
-def _persist_evidence_report_code(question_id: str) -> Path | None:
-    """Write a PHI-safe reproducer script for a canonical evidence report.
-
-    The script imports ``answer_question`` and prints the resulting markdown,
-    matching what the chat surface rendered. Path is a hex-digest filename
-    under ``AGENT_OUTPUT_DIR / "code"`` so the PHI gate never sees a
-    human-readable token that could trip a pattern. Returns ``None`` if the
-    write path cannot be validated.
-    """
-    try:
-        output_dir = config.AGENT_OUTPUT_DIR / "code"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        path = validate_agent_write(output_dir / f"evidence_{uuid.uuid4().hex[:12]}.py")
-    except Exception:
-        return None
-    code = (
-        '"""Reproducer for a canonical evidence report.\n\n'
-        "Run this script to regenerate the same markdown the chat surface\n"
-        "displayed (figures land in tmp2/figures by default).\n"
-        '"""\n\n'
-        "from scripts.ai_assistant.report_engine import answer_question\n\n"
-        f"question_id = {question_id!r}\n"
-        "bundle = answer_question(question_id)\n"
-        "print(bundle.markdown)\n"
-        'print("Figures:", [str(f) for f in bundle.figures])\n'
-    )
-    path.write_text(code, encoding="utf-8")
-    with contextlib.suppress(OSError):
-        path.chmod(0o600)
-    return path
-
-
-def _persist_custom_evidence_report_code(
-    *,
-    outcome_form: str,
-    outcome_field: str,
-    cohort_id: str,
-    predictor_ids: list[str],
-    analysis_type: str,
-    outcome_positive_values: list[str] | None,
-) -> Path | None:
-    """Write a PHI-safe reproducer script for a custom evidence report.
-
-    Mirrors ``_persist_evidence_report_code`` but pins all six call-args of
-    ``answer_custom_analysis`` as literal arguments. Hex-digest filename
-    keeps the PHI gate happy.
-    """
-    try:
-        output_dir = config.AGENT_OUTPUT_DIR / "code"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        path = validate_agent_write(output_dir / f"custom_evidence_{uuid.uuid4().hex[:12]}.py")
-    except Exception:
-        return None
-    code = (
-        '"""Reproducer for a custom evidence report.\n\n'
-        "Re-runs the same answer_custom_analysis call the chat surface used.\n"
-        '"""\n\n'
-        "from scripts.ai_assistant.report_engine import answer_custom_analysis\n\n"
-        f"outcome_form = {outcome_form!r}\n"
-        f"outcome_field = {outcome_field!r}\n"
-        f"cohort_id = {cohort_id!r}\n"
-        f"predictor_ids = {list(predictor_ids)!r}\n"
-        f"analysis_type = {analysis_type!r}\n"
-        f"outcome_positive_values = {outcome_positive_values!r}\n\n"
-        "bundle = answer_custom_analysis(\n"
-        "    outcome_form=outcome_form,\n"
-        "    outcome_field=outcome_field,\n"
-        "    outcome_positive_values=outcome_positive_values,\n"
-        "    cohort_id=cohort_id,\n"
-        "    predictor_ids=predictor_ids,\n"
-        "    analysis_type=analysis_type,\n"
-        ")\n"
-        "print(bundle.markdown)\n"
-        'print("Figures:", [str(f) for f in bundle.figures])\n'
-    )
-    path.write_text(code, encoding="utf-8")
-    with contextlib.suppress(OSError):
-        path.chmod(0o600)
-    return path
-
-
-def _rewrite_figure_paths_for_streaming(markdown: str, figures: list[Path]) -> str:
-    """Convert figure references to ``<RPLN_FIGURE:abspath>`` markers so the
-    chat streaming layer renders them via ``st.image`` instead of leaving
-    broken relative links in the markdown.
-
-    Three patterns are handled:
-      1. Markdown image syntax: ``![alt](relative/path.png)``
-      2. Bulleted backtick-wrapped path: ``- `relative/path.png` ``
-      3. Bare backtick-wrapped path inline: `` `relative/path.png` ``
-    """
-    if not figures:
-        return markdown
-    abs_by_name = {fig.name: str(fig.resolve()) for fig in figures if fig.exists()}
-    if not abs_by_name:
-        return markdown
-
-    image_md = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
-    bullet_path = re.compile(
-        r"^[ \t]*[-*][ \t]+`([^`]+\.(?:png|jpg|jpeg|svg|webp))`[ \t]*$",
-        re.MULTILINE | re.IGNORECASE,
-    )
-    inline_path = re.compile(
-        r"`([^`\n]+\.(?:png|jpg|jpeg|svg|webp))`",
-        re.IGNORECASE,
-    )
-
-    def _resolve(path_str: str) -> str | None:
-        return abs_by_name.get(Path(path_str.strip()).name)
-
-    def _replace_image_md(match: re.Match[str]) -> str:
-        abspath = _resolve(match.group(1))
-        return f"<RPLN_FIGURE:{abspath}>" if abspath else match.group(0)
-
-    def _replace_bullet(match: re.Match[str]) -> str:
-        abspath = _resolve(match.group(1))
-        return f"<RPLN_FIGURE:{abspath}>" if abspath else match.group(0)
-
-    def _replace_inline(match: re.Match[str]) -> str:
-        abspath = _resolve(match.group(1))
-        return f"<RPLN_FIGURE:{abspath}>" if abspath else match.group(0)
-
-    rewritten = image_md.sub(_replace_image_md, markdown)
-    rewritten = bullet_path.sub(_replace_bullet, rewritten)
-    rewritten = inline_path.sub(_replace_inline, rewritten)
-    return rewritten
-
-
-@tool
-@phi_safe_return
-def produce_evidence_report(question_id: str) -> str:
-    """Produce a structured, PHI-safe evidence report for a canonical study question.
-
-    Call this tool when the user asks one of the canonical RePORT study questions —
-    e.g. "what are the univariate predictors of TB recurrence in cohort A",
-    "household contact follow-up schedule", or "variables available for relapse".
-    The tool runs the offline-validated ``report_engine`` pipeline: it loads only
-    PHI-scrubbed source files, builds the cohort, runs the deterministic
-    statsmodels regression (where applicable), generates figures, suppresses any
-    cell below k=5, and returns chat-ready markdown.
-
-    Supported ``question_id`` values (returned by ``list_questions`` in the
-    report_engine):
-
-    * ``q01_cohort_a_univariate`` — Cohort A univariate predictors of TB recurrence
-    * ``q02_cohort_a_multivariate_interactions`` — Cohort A multivariate (backward
-      selection) + interaction tests (smoking x age, alcohol x smoking)
-    * ``q03_cohort_b_univariate`` — Cohort B univariate predictors
-    * ``q04_cohort_b_multivariate_interactions`` — Cohort B multivariate + interactions
-    * ``q05_hiv_test_result_distribution`` — HIV test result distribution
-    * ``q06_cohort_a_index_case_inclusion_exclusion`` — Cohort A index-case
-      inclusion / exclusion (protocol knowledge)
-    * ``q07_tb_relapse_vs_treatment_failure`` — TB relapse vs treatment failure
-      definitions (protocol knowledge)
-    * ``q08_household_contact_definition`` — household-contact definition
-    * ``q09_drug_susceptibility_tests_and_timing`` — DST panels and timing
-    * ``q10_household_contact_followup_schedule_specimens`` — household contact
-      follow-up schedule and specimens
-    * ``q11_variables_available_for_relapse`` — variables available for relapse
-      (schema-derived reference)
-
-    PHI guarantees:
-        * No SUBJID / FID surfaced.
-        * Dates are jittered per SANT before they reach this pipeline.
-        * Cells below k=5 are suppressed.
-        * The streaming layer runs an additional fail-closed PHI scrub on the
-          final assembled response before it reaches the UI.
-
-    Args:
-        question_id: One of the canonical IDs above. Pass the exact string.
-
-    Returns:
-        Markdown ready for chat display. Figure references are rewritten to the
-        ``<RPLN_FIGURE:abspath>`` marker the streaming layer renders via
-        ``st.image``. If the live cohort cannot be built (missing source-of-truth
-        files, dependency error), returns a short blocked-status message rather
-        than partial results.
-    """
-    from scripts.ai_assistant.report_engine import QUESTION_IDS, answer_question
-
-    qid = (question_id or "").strip()
-    if qid not in QUESTION_IDS:
-        return json.dumps(
-            {
-                "error": "unknown question_id",
-                "received": question_id,
-                "valid_ids": list(QUESTION_IDS),
-            },
-            indent=2,
-        )
-
-    try:
-        bundle = answer_question(qid)
-    except Exception as exc:
-        return json.dumps(
-            {
-                "error": "report_engine failure",
-                "question_id": qid,
-                "detail": sanitise_traceback(str(exc)),
-            },
-            indent=2,
-        )
-
-    if bundle.phi_status == "blocked":
-        return (
-            f"**Report blocked for `{qid}`.** The evidence engine could not produce a "
-            "PHI-safe response. This usually means the source-of-truth files for the "
-            "study have not been built yet. Please run Load Study to activate the plugin before "
-            "re-asking, or contact the maintainer.\n\n"
-            f"{bundle.markdown}"
-        )
-
-    rendered = _rewrite_figure_paths_for_streaming(bundle.markdown, bundle.figures)
-    code_path = _persist_evidence_report_code(qid)
-    if code_path is not None:
-        rendered = f"{rendered}\n\n<RPLN_CODE:{code_path}>"
-    return rendered
-
-
-@tool
-@phi_safe_return
-def produce_custom_evidence_report(
-    outcome_form: str,
-    outcome_field: str,
-    cohort_id: str,
-    predictor_ids: list[str],
-    analysis_type: str = "univariate",
-    outcome_positive_values: list[str] | None = None,
-) -> str:
-    """Produce a tmp2-style PHI-safe report for an arbitrary outcome/cohort/predictor combo.
-
-    Use when the user asks for a study analysis that doesn't match one of the 11
-    canonical ``produce_evidence_report`` IDs — for example "univariate
-    predictors of HIV positivity", "cohort A stratified by sex", or
-    "predictors of MDR-TB". This runs the same offline-validated
-    ``report_engine`` pipeline (PHI-scrubbed source files, deterministic
-    statsmodels regression, figure generation with k=5 small-cell suppression)
-    used by the 11 canonical questions.
-
-    Args:
-        outcome_form: form id where the outcome lives (e.g. ``"6_HIV"``,
-            ``"98A_FOA"``). Accepts either the form prefix or the full
-            ``<form>.jsonl`` filename.
-        outcome_field: exact field name (e.g. ``"HIV_HIV"``,
-            ``"FOA_COHAOUT"``).
-        cohort_id: ``"cohort_a"`` or ``"cohort_b"`` (same identifiers used by
-            the existing 11 canonical handlers).
-        predictor_ids: logical predictor keys
-            (``"malnutrition"``, ``"diabetes"``, ``"alcohol"``, ``"smoking"``,
-            ``"age"``, ``"sex"``, ``"bmi"``) or known field names. At least
-            one is required.
-        analysis_type: ``"univariate"`` | ``"multivariate"`` | ``"interactions"``.
-        outcome_positive_values: when the outcome is not registered in
-            ``study_knowledge.yaml`` (e.g. ``HIV_HIV``), pass the exact value
-            strings that count as the positive class — for ``HIV_HIV`` this
-            is ``["Positive"]``; for ``FOA_COHAOUT`` (TB recurrence) it is
-            ``["Bacteriologic relapse","Bacteriologic failure","Clinical Relapse","Clinical Failure"]``.
-            Omit (pass ``None``) for registered outcomes so the default
-            mapping in ``study_knowledge.yaml`` is used.
-
-    Returns:
-        Markdown ready for chat display, with figure markers (``<RPLN_FIGURE:>``)
-        and the PHI handling footer. On validation failure or insufficient data,
-        returns a short blocked-status message rather than partial results.
-    """
-    from scripts.ai_assistant.report_engine import (
-        CustomAnalysisError,
-        answer_custom_analysis,
-    )
-
-    if not isinstance(predictor_ids, list) or not predictor_ids:
-        return json.dumps(
-            {
-                "error": "predictor_ids must be a non-empty list of strings",
-                "received": predictor_ids,
-            },
-            indent=2,
-        )
-    if analysis_type not in ("univariate", "multivariate", "interactions"):
-        return json.dumps(
-            {
-                "error": "invalid analysis_type",
-                "received": analysis_type,
-                "valid": ["univariate", "multivariate", "interactions"],
-            },
-            indent=2,
-        )
-    if outcome_positive_values is not None and (
-        not isinstance(outcome_positive_values, list)
-        or not all(isinstance(v, str) for v in outcome_positive_values)
-    ):
-        return json.dumps(
-            {
-                "error": "outcome_positive_values must be a list of strings or null",
-                "received": outcome_positive_values,
-            },
-            indent=2,
-        )
-
-    try:
-        bundle = answer_custom_analysis(
-            outcome_form=outcome_form,
-            outcome_field=outcome_field,
-            outcome_positive_values=outcome_positive_values,
-            cohort_id=cohort_id,
-            predictor_ids=list(predictor_ids),
-            analysis_type=analysis_type,  # type: ignore[arg-type]
-        )
-    except CustomAnalysisError as exc:
-        return json.dumps(
-            {
-                "error": "custom analysis rejected",
-                "detail": str(exc),
-                "outcome_form": outcome_form,
-                "outcome_field": outcome_field,
-                "cohort_id": cohort_id,
-                "analysis_type": analysis_type,
-            },
-            indent=2,
-        )
-    except Exception as exc:
-        return json.dumps(
-            {
-                "error": "report_engine failure",
-                "detail": sanitise_traceback(str(exc)),
-            },
-            indent=2,
-        )
-
-    if bundle.phi_status == "blocked":
-        return (
-            f"**Report blocked.** The evidence engine could not produce a "
-            "PHI-safe response for this outcome/cohort/predictor combination.\n\n"
-            f"{bundle.markdown}"
-        )
-
-    rendered = _rewrite_figure_paths_for_streaming(bundle.markdown, bundle.figures)
-    code_path = _persist_custom_evidence_report_code(
-        outcome_form=outcome_form,
-        outcome_field=outcome_field,
-        cohort_id=cohort_id,
-        predictor_ids=list(predictor_ids),
-        analysis_type=analysis_type,
-        outcome_positive_values=outcome_positive_values,
-    )
-    if code_path is not None:
-        rendered = f"{rendered}\n\n<RPLN_CODE:{code_path}>"
-    return rendered
-
-
 @tool
 @phi_safe_return
 def cite_source(form_id: str, field_id: str) -> str:
@@ -2119,18 +1477,251 @@ def cite_source(form_id: str, field_id: str) -> str:
 
 
 # ============================================================================
+# Tool 11-13: explore the PHI-scrubbed llm_source tree (list / search / read)
+# ============================================================================
+#
+# These three tools give the LLM first-class, bounded access to the published
+# ``output/{STUDY}/llm_source/`` tree — the only place the agent may read study
+# content. Every path resolves through ``validate_agent_read``, which admits
+# llm_source/ (+ the agent's own state) and hard-denies the audit zone, raw
+# data, and staging. The tree is already PHI-scrubbed at publish time (HIPAA
+# Safe Harbor + India DPDPA/ICMR/Aadhaar), so the agent is free to search and
+# read it; ``@phi_safe_return`` is a fail-closed backstop on every return.
+
+_LLM_SOURCE_TEXT_SUFFIXES = frozenset({".yaml", ".yml", ".json", ".jsonl", ".md", ".txt", ".csv"})
+_LLM_SOURCE_MAX_READ_BYTES = 100_000
+_LLM_SOURCE_MAX_SEARCH_HITS = 60
+_LLM_SOURCE_SNIPPET_CHARS = 240
+
+
+def _redact_blocking_phi(text: str) -> str:
+    """Neutralise only *blocking-tier* PHI shapes so the fail-closed PHI gate
+    passes, without mangling warn-tier clinical text.
+
+    ``llm_source`` is already PHI-scrubbed at publish time, but its metadata
+    carries jittered ISO dates that ``phi_gate_check`` blocks on. We tag those
+    (and any residual government / subject identifiers) here so useful protocol
+    text flows through. Crucially we do NOT apply the warn-tier name heuristic —
+    that would rewrite legitimate clinical phrases like "Tuberculosis Treatment"
+    as ``<PERSON_NAME_GENERIC>``.
+    """
+    from scripts.security.phi_patterns import BLOCKING_PATTERNS, SUBJECT_ID_PATTERNS
+
+    out = text
+    for label, pattern in BLOCKING_PATTERNS:
+        out = pattern.sub(f"<{label}>", out)
+    for pattern in SUBJECT_ID_PATTERNS:
+        out = pattern.sub("<SUBJ>", out)
+    return out
+
+
+def _llm_source_rel(path: Path) -> str:
+    """Render *path* relative to llm_source/ for user-friendly output."""
+    try:
+        return str(path.resolve().relative_to(Path(config.STUDY_LLM_SOURCE_DIR).resolve()))
+    except ValueError:
+        return path.name
+
+
+def _resolve_within_llm_source(relative: str) -> Path:
+    """Resolve a user-supplied relative path inside llm_source/, rejecting escapes.
+
+    ``validate_agent_read`` enforces the zone via realpath/commonpath, so a
+    traversal like ``../audit`` or an absolute path outside the tree is denied.
+    """
+    root = Path(config.STUDY_LLM_SOURCE_DIR)
+    candidate = (root / relative.lstrip("/")).resolve() if relative else root.resolve()
+    return validate_agent_read(candidate)
+
+
+@tool
+@phi_safe_return
+def list_llm_source(subdir: str = "") -> str:
+    """List files and folders in the study's PHI-scrubbed ``llm_source/`` tree.
+
+    Use this to discover what is available before searching or reading. The
+    tree holds the canonical study content the assistant may read:
+
+    * ``SoT/<form>/`` — Source-Truth policy YAMLs: form questions, variable
+      labels, coded options, definitions, inclusion/exclusion text, schedules.
+    * ``dataset_schema/files/`` — the de-identified per-form ``.jsonl``
+      datasets (use ``run_python_analysis`` to compute over these).
+    * ``dataset_schema/`` and ``dictionary_mapping/`` — column dictionaries.
+
+    Args:
+        subdir: Optional path relative to ``llm_source/`` (e.g. ``"SoT/6_HIV"``).
+            Empty lists the top level.
+
+    Returns:
+        JSON listing of immediate child files (with byte sizes) and subfolders.
+    """
+    try:
+        target = _resolve_within_llm_source(subdir)
+    except PermissionError as exc:
+        return f"Access denied: {exc}"
+    if not target.exists():
+        return (
+            f"No such path in llm_source/: {subdir!r}. "
+            "Call list_llm_source() with no argument to see the top level."
+        )
+    if target.is_file():
+        return _redact_blocking_phi(
+            json.dumps({"file": _llm_source_rel(target), "bytes": target.stat().st_size}, indent=2)
+        )
+    folders: list[str] = []
+    files: list[dict[str, Any]] = []
+    for child in sorted(target.iterdir()):
+        if child.name.startswith("."):
+            continue
+        if child.is_dir():
+            folders.append(_llm_source_rel(child) + "/")
+        else:
+            files.append({"path": _llm_source_rel(child), "bytes": child.stat().st_size})
+    return _redact_blocking_phi(
+        json.dumps(
+            {"dir": _llm_source_rel(target) or ".", "folders": folders, "files": files},
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
+@tool
+@phi_safe_return
+def search_llm_source(query: str, subdir: str = "", max_results: int = 40) -> str:
+    """Full-text search across the PHI-scrubbed ``llm_source/`` tree.
+
+    Returns ``path:line: snippet`` hits for files whose text contains the
+    query terms (case-insensitive). This is the primary way to answer
+    protocol/definition questions — e.g. household-contact definition, TB
+    relapse vs treatment failure, index-case inclusion/exclusion, follow-up
+    schedule and specimens, drug-susceptibility tests and timing — and to
+    locate which form/field a clinical concept maps to before analysis.
+
+    Args:
+        query: One or more search terms. Multi-word queries match lines
+            containing any term; ranking favours lines matching more terms.
+        subdir: Optional path relative to ``llm_source/`` to scope the search
+            (e.g. ``"SoT"`` to search only Source-Truth policy YAMLs).
+        max_results: Cap on returned hits (default 40, max 60).
+
+    Returns:
+        JSON list of ``{path, line, snippet}`` hits, most-relevant first.
+    """
+    tokens = [t for t in re.findall(r"[A-Za-z0-9_]+", query.lower()) if len(t) >= 2]
+    if not tokens:
+        return "Provide at least one search term of two or more characters."
+    try:
+        base = _resolve_within_llm_source(subdir)
+    except PermissionError as exc:
+        return f"Access denied: {exc}"
+    if not base.exists():
+        return f"No such path in llm_source/: {subdir!r}"
+
+    cap = max(1, min(int(max_results or 40), _LLM_SOURCE_MAX_SEARCH_HITS))
+    pool_limit = cap * 8
+    candidates = [base] if base.is_file() else sorted(base.rglob("*"))
+    hits: list[dict[str, Any]] = []
+    for path in candidates:
+        if len(hits) >= pool_limit:
+            break
+        if not path.is_file() or path.name.startswith("."):
+            continue
+        if path.suffix.lower() not in _LLM_SOURCE_TEXT_SUFFIXES:
+            continue
+        try:
+            validate_agent_read(path)
+        except PermissionError:
+            continue
+        try:
+            with path.open("r", encoding="utf-8", errors="replace") as fh:
+                for lineno, line in enumerate(fh, 1):
+                    low = line.lower()
+                    score = sum(1 for t in tokens if t in low)
+                    if score:
+                        hits.append(
+                            {
+                                "path": _llm_source_rel(path),
+                                "line": lineno,
+                                "score": score,
+                                # llm_source is already PHI-scrubbed, but its
+                                # metadata carries jittered ISO dates that the
+                                # fail-closed PHI gate treats as blocking. Tag
+                                # them here so useful protocol text still flows.
+                                "snippet": _redact_blocking_phi(
+                                    line.strip()[:_LLM_SOURCE_SNIPPET_CHARS]
+                                ),
+                            }
+                        )
+                        if len(hits) >= pool_limit:
+                            break
+        except OSError:
+            continue
+
+    if not hits:
+        return json.dumps(
+            {"query": query, "hits": [], "note": "No matches in llm_source/."}, indent=2
+        )
+    hits.sort(key=lambda h: (-h["score"], h["path"], h["line"]))
+    top = [{"path": h["path"], "line": h["line"], "snippet": h["snippet"]} for h in hits[:cap]]
+    return json.dumps({"query": query, "hits": top}, indent=2, ensure_ascii=False)
+
+
+@tool
+@phi_safe_return
+def read_llm_source_file(relative_path: str, max_bytes: int = 24000) -> str:
+    """Read a single file from the PHI-scrubbed ``llm_source/`` tree.
+
+    Use after ``list_llm_source`` / ``search_llm_source`` to read a specific
+    SoT policy YAML or dictionary file in full. For large ``.jsonl`` datasets,
+    prefer ``run_python_analysis`` — this returns only the first ``max_bytes``.
+
+    Args:
+        relative_path: Path relative to ``llm_source/`` (e.g.
+            ``"SoT/6_HIV/6_HIV_policy.yaml"``).
+        max_bytes: Maximum bytes to return (default 24000; capped at 100000).
+
+    Returns:
+        The file's UTF-8 text, truncated with a marker if longer than the cap.
+    """
+    if not relative_path or not relative_path.strip():
+        return "Provide a file path relative to llm_source/ (see list_llm_source)."
+    try:
+        target = _resolve_within_llm_source(relative_path)
+    except PermissionError as exc:
+        return f"Access denied: {exc}"
+    if not target.exists() or not target.is_file():
+        return f"No such file in llm_source/: {relative_path!r}"
+
+    limit = max(1, min(int(max_bytes or 24000), _LLM_SOURCE_MAX_READ_BYTES))
+    try:
+        raw = target.read_bytes()
+    except OSError as exc:
+        return f"Could not read {relative_path!r}: {exc}"
+    # Tag jittered ISO dates / residual PHI shapes so the fail-closed PHI gate
+    # does not withhold the whole (already-scrubbed) file over a date string.
+    text = _redact_blocking_phi(raw[:limit].decode("utf-8", errors="replace"))
+    if len(raw) > limit:
+        text += (
+            f"\n\n…[truncated at {limit} bytes; file is {len(raw)} bytes — "
+            "narrow with run_python_analysis or read a more specific path]"
+        )
+    return text
+
+
+# ============================================================================
 # Tool registry
 # ============================================================================
 
 ALL_TOOLS = [
+    list_llm_source,
+    search_llm_source,
+    read_llm_source_file,
     search_variables,
     query_dataset,
     list_available_datasets,
     get_dataset_stats,
     run_python_analysis,
-    run_study_analysis,
     answer_catalog_question,
-    produce_evidence_report,
-    produce_custom_evidence_report,
     cite_source,
 ]
