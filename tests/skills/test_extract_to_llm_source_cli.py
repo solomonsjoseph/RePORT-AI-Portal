@@ -35,6 +35,7 @@ from unittest.mock import patch
 
 import pytest
 
+import config
 import scripts.skills.extract_to_llm_source as skill_mod
 from scripts.audit.ledger import dataset_phi_ledger_path
 from scripts.skills.extract_to_llm_source import (
@@ -86,8 +87,6 @@ def test_wrapper_does_not_load_phi_key_material() -> None:
 
 def _patch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Redirect config path constants to tmp_path so tests are hermetic."""
-    import config
-
     monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output", raising=False)
     monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp", raising=False)
     monkeypatch.setattr(
@@ -176,8 +175,6 @@ class TestVerifyStub:
         """
         import yaml as _yaml
 
-        import config
-
         _patch_config(monkeypatch, tmp_path)
         # Also patch RAW_DATA_DIR so the verifier looks in tmp_path
         monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False)
@@ -210,8 +207,6 @@ class TestVerifyStub:
         import hashlib
 
         import yaml as _yaml
-
-        import config
 
         _patch_config(monkeypatch, tmp_path)
         monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False)
@@ -1006,8 +1001,6 @@ class TestStudyMismatch:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The lock-file name must reflect --study foo, not config.STUDY_NAME bar."""
-        import config
-
         # config.STUDY_NAME = "bar"; --study foo
         monkeypatch.setattr(config, "STUDY_NAME", "bar", raising=False)
         monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output", raising=False)
@@ -1045,8 +1038,6 @@ class TestStudyMismatch:
         data/raw/foo/datasets (the --study value), not data/raw/bar/datasets
         (config.STUDY_NAME).
         """
-        import config
-
         monkeypatch.setattr(config, "STUDY_NAME", "bar", raising=False)
         monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output", raising=False)
         monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp", raising=False)

@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import config
 from scripts.extraction.cleanup_propagation import (
     compute_propagation_set,
     prune_dictionary,
@@ -50,8 +51,6 @@ def _write_dataset_audit(
 
 class TestComputePropagationSet:
     def test_returns_dropped_vars_not_in_surviving_schemas(self, monkeypatch_config: Path) -> None:
-        import config
-
         # Seed audit: two dataset-column drop events
         _write_dataset_audit(
             config.AUDIT_DATASET_REPORT_PATH,
@@ -85,8 +84,6 @@ class TestComputePropagationSet:
         assert result == {"subjid2"}
 
     def test_ignores_non_column_scopes(self, monkeypatch_config: Path) -> None:
-        import config
-
         _write_dataset_audit(
             config.AUDIT_DATASET_REPORT_PATH,
             [
@@ -116,8 +113,6 @@ class TestComputePropagationSet:
         assert result == set()
 
     def test_excludes_provenance_fields_from_surviving_set(self, monkeypatch_config: Path) -> None:
-        import config
-
         _write_dataset_audit(
             config.AUDIT_DATASET_REPORT_PATH,
             [
@@ -143,8 +138,6 @@ class TestComputePropagationSet:
         assert result == {"_provenance"}
 
     def test_empty_audit_returns_empty_set(self, monkeypatch_config: Path) -> None:
-        import config
-
         _write_dataset_audit(config.AUDIT_DATASET_REPORT_PATH, [])
         ds_dir = config.STAGING_DATASETS_DIR
         ds_dir.mkdir(parents=True, exist_ok=True)
@@ -153,8 +146,6 @@ class TestComputePropagationSet:
         assert result == set()
 
     def test_casefold_match(self, monkeypatch_config: Path) -> None:
-        import config
-
         _write_dataset_audit(
             config.AUDIT_DATASET_REPORT_PATH,
             [
@@ -177,8 +168,6 @@ class TestComputePropagationSet:
         assert result == set()
 
     def test_missing_audit_returns_empty_set(self, monkeypatch_config: Path) -> None:
-        import config
-
         # Audit file does not exist
         ds_dir = config.STAGING_DATASETS_DIR
         ds_dir.mkdir(parents=True, exist_ok=True)
@@ -195,8 +184,6 @@ _DICT_VAR_KEY = "Question Short Name (Databank Fieldname)"
 
 class TestPruneDictionary:
     def test_drops_matching_rows(self, monkeypatch_config: Path) -> None:
-        import config
-
         dict_dir = config.STAGING_DICTIONARY_DIR
         sub = dict_dir / "form1"
         sub.mkdir(parents=True, exist_ok=True)
@@ -218,8 +205,6 @@ class TestPruneDictionary:
         assert removed == 1
 
     def test_recursive_walk_visits_subdirectories(self, monkeypatch_config: Path) -> None:
-        import config
-
         dict_dir = config.STAGING_DICTIONARY_DIR
         (dict_dir / "tbl_a").mkdir(parents=True, exist_ok=True)
         (dict_dir / "tbl_b").mkdir(parents=True, exist_ok=True)
@@ -258,8 +243,6 @@ class TestPruneDictionary:
         assert removed == 2
 
     def test_empty_drop_set_no_op(self, monkeypatch_config: Path) -> None:
-        import config
-
         dict_dir = config.STAGING_DICTIONARY_DIR
         dict_dir.mkdir(parents=True, exist_ok=True)
         jsonl = dict_dir / "t.jsonl"
@@ -273,8 +256,6 @@ class TestPruneDictionary:
         assert removed == 0
 
     def test_missing_variable_name_column_row_is_kept(self, monkeypatch_config: Path) -> None:
-        import config
-
         dict_dir = config.STAGING_DICTIONARY_DIR
         dict_dir.mkdir(parents=True, exist_ok=True)
         jsonl = dict_dir / "t.jsonl"
@@ -293,8 +274,6 @@ class TestPruneDictionary:
         assert removed == 1
 
     def test_casefold_match_on_dict_row(self, monkeypatch_config: Path) -> None:
-        import config
-
         dict_dir = config.STAGING_DICTIONARY_DIR
         dict_dir.mkdir(parents=True, exist_ok=True)
         jsonl = dict_dir / "t.jsonl"
@@ -318,8 +297,6 @@ class TestPruneDictionary:
 
 class TestRunPropagation:
     def test_end_to_end_from_staging(self, monkeypatch_config: Path) -> None:
-        import config
-
         # 1. Dataset audit with one propagable drop (AGE_DROPPED).
         _write_dataset_audit(
             config.AUDIT_DATASET_REPORT_PATH,

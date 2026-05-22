@@ -632,7 +632,7 @@ def _read_tabular_file(path: Path) -> list[tuple[str, pd.DataFrame]]:
                     pd.DataFrame,
                     xls.parse(sheet_name, header=None, **_TABULAR_NA_OPTIONS),
                 )
-                tables = split_sheet_into_tables(raw_df)
+                tables = split_sheet_into_tables(raw_df, split_horizontal=False)
                 if tables is None:
                     # Structural error — fall back to legacy header=0 parse.
                     log.warning(

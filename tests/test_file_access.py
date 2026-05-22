@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+import config
 from scripts.ai_assistant.file_access import (
     ZoneViolationError,
     is_agent_readable,
@@ -23,15 +24,11 @@ from scripts.ai_assistant.file_access import (
 
 class TestValidateAgentRead:
     def test_llm_source_datasets_allowed(self, monkeypatch_config: Path) -> None:
-        import config
-
         f = config.TRIO_DATASETS_DIR / "sample.jsonl"
         f.write_text("{}\n", encoding="utf-8")
         assert validate_agent_read(f) == Path(f.resolve())
 
     def test_agent_state_allowed(self, monkeypatch_config: Path) -> None:
-        import config
-
         f = config.AGENT_OUTPUT_DIR / "prior_result.csv"
         f.write_text("a,b\n1,2\n", encoding="utf-8")
         assert validate_agent_read(f) == Path(f.resolve())
@@ -43,8 +40,6 @@ class TestValidateAgentRead:
         assert validate_agent_read(yaml_path) == Path(yaml_path.resolve())
 
     def test_audit_rejected(self, monkeypatch_config: Path) -> None:
-        import config
-
         f = config.STUDY_AUDIT_DIR / "phi_scrub_report.json"
         f.write_text("{}", encoding="utf-8")
         with pytest.raises(ZoneViolationError):
@@ -52,16 +47,12 @@ class TestValidateAgentRead:
 
     def test_telemetry_rejected(self, monkeypatch_config: Path) -> None:
         """Telemetry lives under audit/ — off-limits."""
-        import config
-
         f = config.TELEMETRY_SINK
         f.write_text("", encoding="utf-8")
         with pytest.raises(ZoneViolationError):
             validate_agent_read(f)
 
     def test_staging_rejected(self, monkeypatch_config: Path) -> None:
-        import config
-
         config.STAGING_DATASETS_DIR.mkdir(parents=True, exist_ok=True)
         f = config.STAGING_DATASETS_DIR / "leak.jsonl"
         f.write_text("{}", encoding="utf-8")
@@ -69,8 +60,6 @@ class TestValidateAgentRead:
             validate_agent_read(f)
 
     def test_legacy_trio_bundle_rejected(self, monkeypatch_config: Path) -> None:
-        import config
-
         legacy = config.TRIO_BUNDLE_DIR / "datasets" / "legacy.jsonl"
         legacy.parent.mkdir(parents=True, exist_ok=True)
         legacy.write_text("{}", encoding="utf-8")
@@ -88,38 +77,28 @@ class TestValidateAgentRead:
 
 class TestValidateAgentWrite:
     def test_agent_state_allowed(self, monkeypatch_config: Path) -> None:
-        import config
-
         f = config.AGENT_OUTPUT_DIR / "new_output.csv"
         assert validate_agent_write(f) == Path(f.resolve())
 
     def test_agent_conversations_allowed(self, monkeypatch_config: Path) -> None:
         """Agent-owned conversation state remains inside the writable zone."""
-        import config
-
         f = config.CONVERSATIONS_DIR / "session.json"
         assert validate_agent_write(f) == Path(f.resolve())
 
     def test_tracked_snapshots_baseline_rejected(self, monkeypatch_config: Path) -> None:
         """Reviewed baseline at ``data/snapshots/{STUDY}/`` is OUTSIDE the agent
         write zone — only a maintainer (with shell access) curates it."""
-        import config
-
         f = config.STUDY_SNAPSHOTS_DIR / "pdfs" / "evil.json"
         with pytest.raises(ZoneViolationError):
             validate_agent_write(f)
 
     def test_llm_source_rejected_for_write(self, monkeypatch_config: Path) -> None:
         """Agent may read llm_source but must NOT write into it."""
-        import config
-
         f = config.TRIO_DATASETS_DIR / "evil.jsonl"
         with pytest.raises(ZoneViolationError):
             validate_agent_write(f)
 
     def test_audit_rejected(self, monkeypatch_config: Path) -> None:
-        import config
-
         f = config.STUDY_AUDIT_DIR / "tamper.json"
         with pytest.raises(ZoneViolationError):
             validate_agent_write(f)
@@ -134,18 +113,12 @@ class TestValidateAgentWrite:
 
 class TestIsAgentReadable:
     def test_true_for_llm_source(self, monkeypatch_config: Path) -> None:
-        import config
-
         assert is_agent_readable(config.TRIO_DATASETS_DIR)
 
     def test_true_for_agent(self, monkeypatch_config: Path) -> None:
-        import config
-
         assert is_agent_readable(config.AGENT_OUTPUT_DIR)
 
     def test_false_for_audit(self, monkeypatch_config: Path) -> None:
-        import config
-
         assert not is_agent_readable(config.STUDY_AUDIT_DIR)
 
     def test_false_for_arbitrary_path(self, tmp_path: Path) -> None:
@@ -162,8 +135,6 @@ class TestTraversalAndSymlinkSafety:
     """
 
     def test_symlink_from_agent_to_audit_rejected_on_read(self, monkeypatch_config: Path) -> None:
-        import config
-
         target = config.STUDY_AUDIT_DIR / "phi_scrub_report.json"
         target.write_text("{}", encoding="utf-8")
         link = config.AGENT_OUTPUT_DIR / "leak.json"
@@ -172,8 +143,6 @@ class TestTraversalAndSymlinkSafety:
             validate_agent_read(link)
 
     def test_symlink_from_agent_to_staging_rejected_on_read(self, monkeypatch_config: Path) -> None:
-        import config
-
         config.STAGING_DATASETS_DIR.mkdir(parents=True, exist_ok=True)
         target = config.STAGING_DATASETS_DIR / "pre_scrub.jsonl"
         target.write_text("{}", encoding="utf-8")
@@ -185,8 +154,6 @@ class TestTraversalAndSymlinkSafety:
     def test_symlink_from_agent_to_audit_rejected_on_write(self, monkeypatch_config: Path) -> None:
         """A write through a symlink that resolves outside ``AGENT_STATE_DIR``
         must be blocked, even though the symlink itself lives inside."""
-        import config
-
         target_dir = config.STUDY_AUDIT_DIR / "tamper_target"
         target_dir.mkdir(parents=True, exist_ok=True)
         link_dir = config.AGENT_OUTPUT_DIR / "tamper_link"
@@ -196,8 +163,6 @@ class TestTraversalAndSymlinkSafety:
 
     def test_parent_traversal_escape_rejected_on_read(self, monkeypatch_config: Path) -> None:
         """``agent/../audit/x.json`` must resolve out of the agent zone."""
-        import config
-
         target = config.STUDY_AUDIT_DIR / "phi_scrub_report.json"
         target.write_text("{}", encoding="utf-8")
         traversal = config.AGENT_OUTPUT_DIR / ".." / ".." / "audit" / "phi_scrub_report.json"
@@ -205,8 +170,6 @@ class TestTraversalAndSymlinkSafety:
             validate_agent_read(traversal)
 
     def test_parent_traversal_escape_rejected_on_write(self, monkeypatch_config: Path) -> None:
-        import config
-
         traversal = config.AGENT_OUTPUT_DIR / ".." / ".." / "audit" / "tamper.json"
         with pytest.raises(ZoneViolationError):
             validate_agent_write(traversal)
@@ -220,8 +183,6 @@ class TestValidateSandboxWrite:
     """
 
     def test_agent_output_allowed(self, monkeypatch_config: Path) -> None:
-        import config
-
         f = config.AGENT_OUTPUT_DIR / "chart.csv"
         assert validate_sandbox_write(f) == Path(f.resolve())
 
@@ -229,8 +190,6 @@ class TestValidateSandboxWrite:
         """``agent/analysis_exfil/x.csv`` shares the string prefix
         ``agent/analysis`` but is NOT under ``agent/analysis/``.
         commonpath catches this; startswith did not."""
-        import config
-
         sibling = config.AGENT_OUTPUT_DIR.parent / (config.AGENT_OUTPUT_DIR.name + "_exfil")
         sibling.mkdir(parents=True, exist_ok=True)
         f = sibling / "x.csv"
@@ -240,15 +199,11 @@ class TestValidateSandboxWrite:
     def test_agent_state_outside_analysis_rejected(self, monkeypatch_config: Path) -> None:
         """Sandbox write zone is narrower than agent-tool zone:
         other ``agent/`` subdirs like conversations/ are rejected."""
-        import config
-
         f = config.CONVERSATIONS_DIR / "tamper.json"
         with pytest.raises(ZoneViolationError):
             validate_sandbox_write(f)
 
     def test_symlink_to_audit_rejected(self, monkeypatch_config: Path) -> None:
-        import config
-
         target_dir = config.STUDY_AUDIT_DIR / "exfil_target"
         target_dir.mkdir(parents=True, exist_ok=True)
         link_dir = config.AGENT_OUTPUT_DIR / "exfil_link"

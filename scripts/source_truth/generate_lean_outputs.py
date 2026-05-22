@@ -351,13 +351,35 @@ def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path
             resolved_pdf=pdf,
             resolved_dataset=dataset,
         )
+    if dataset is None or pdf is None:
+        raise ValueError("Dataset and PDF must both be resolved when no issues are found.")
 
-    extract_script = repo_root / "skills" / "sot-lean-generator" / "scripts" / "extract_sources.py"
+    extract_script = (
+        repo_root
+        / "plugins"
+        / "report-ai-study-pipeline"
+        / "skills"
+        / "sot-lean-generator"
+        / "scripts"
+        / "extract_sources.py"
+    )
     generator_script = (
-        repo_root / "skills" / "sot-lean-generator" / "scripts" / "generate_pdf_aware_candidate.py"
+        repo_root
+        / "plugins"
+        / "report-ai-study-pipeline"
+        / "skills"
+        / "sot-lean-generator"
+        / "scripts"
+        / "generate_pdf_aware_candidate.py"
     )
     checker_script = (
-        repo_root / "skills" / "sot-lean-generator" / "scripts" / "check_lean_policy.py"
+        repo_root
+        / "plugins"
+        / "report-ai-study-pipeline"
+        / "skills"
+        / "sot-lean-generator"
+        / "scripts"
+        / "check_lean_policy.py"
     )
     diff_script = repo_root / "scripts" / "source_truth" / "diff_against_gold.py"
 

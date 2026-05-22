@@ -293,6 +293,15 @@ class TestSplitSheetIntoTablesShared:
         assert tables is not None
         assert len(tables) == 2
 
+    def test_two_tables_separated_by_empty_row_no_split(self):
+        df = pd.DataFrame({0: [1, 2, None, 4, 5], 1: [10, 20, None, 40, 50]})
+        tables = split_sheet_into_tables(df, split_horizontal=False)
+        assert tables is not None
+        assert len(tables) == 1
+        # The empty row in the middle has been dropped from the segment by dropna(how="all")
+        assert len(tables[0]) == 4
+        assert list(tables[0][0]) == [1.0, 2.0, 4.0, 5.0]
+
     def test_returns_none_on_structural_error(self, monkeypatch):
         """Simulate a structural error — helper must return None, not raise."""
         import scripts.extraction.io.sheet_split as ss

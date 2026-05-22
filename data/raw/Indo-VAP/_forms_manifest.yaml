@@ -26,61 +26,261 @@
 #   101_HHC_Recontact_1.xlsx and 2A_ICBaseline_1.xlsx are byte-for-byte
 #     dimension-equal copies of their un-suffixed counterparts — rejected.
 
+
 required:
-  - 101_HHC_Recontact.xlsx
-  - 10_TST.xlsx
-  - 11_IGRA.xlsx
-  - 12A_FUA.xlsx
-  - 12B_FUB.xlsx
-  - 13_TxCompliance.xlsx
-  - 14_Case_Control.xlsx   # canonical collision winner (206 rows, 128 cols)
-  - 15_Feces.xlsx
-  - 16_Helminth.xlsx
-  - 17_EligConfirmation.xlsx
-  - 18_1_TargConcom.xlsx   # visit-1 targeted concomitant meds
-  - 18_2_TargConcom.xlsx   # visit-2 targeted concomitant meds
-  - 18_NonConsent.xlsx
-  - 19_Smear.xlsx
-  - 1A_ICScreening.xlsx
-  - 1B_HCScreening.xlsx
-  - 20_CoEnroll.xlsx
-  - 21_DSTIsolate.xlsx     # canonical collision winner (224 rows, 44 clinical cols)
-  - 2A_ICBaseline.xlsx
-  - 2B_HCBaseline.xlsx
-  - 30_Air_Quality.xlsx
-  - 3_Specimen_Collection.xlsx
-  - 4_Smear.xlsx
-  - 53_exposure.xlsx
-  - 5_CBC.xlsx
-  - 6_HIV.xlsx
-  - 7_Culture.xlsx
-  - 8_CXR.xlsx
-  - 95_SAE.xlsx
-  - 95_Specimen_Tracking.xlsx
-  - 96_Specimen_Tracking.xlsx
-  - 97_Not_Collected.xlsx
-  - 98A_FOA.xlsx
-  - 98B_FOB.xlsx
-  - 99A_FSA.xlsx
-  - 99B_FSB.xlsx
-  - 9_EEval.xlsx
-
-# No forms are known to be legitimately optional for Indo-VAP v1.
-# Move a form here when a study sub-cohort legitimately skips it.
+- 101_HHC_Recontact.xlsx
+- 10_TST.xlsx
+- 11_IGRA.xlsx
+- 12A_FUA.xlsx
+- 12B_FUB.xlsx
+- 13_TxCompliance.xlsx
+- 14_Case_Control.xlsx
+- 15_Feces.xlsx
+- 16_Helminth.xlsx
+- 17_EligConfirmation.xlsx
+- 18_1_TargConcom.xlsx
+- 18_2_TargConcom.xlsx
+- 18_NonConsent.xlsx
+- 19_Smear.xlsx
+- 1A_ICScreening.xlsx
+- 1B_HCScreening.xlsx
+- 20_CoEnroll.xlsx
+- 21_DSTIsolate.xlsx
+- 2A_ICBaseline.xlsx
+- 2B_HCBaseline.xlsx
+- 30_Air_Quality.xlsx
+- 3_Specimen_Collection.xlsx
+- 4_Smear.xlsx
+- 53_exposure.xlsx
+- 5_CBC.xlsx
+- 6_HIV.xlsx
+- 7_Culture.xlsx
+- 8_CXR.xlsx
+- 95_SAE.xlsx
+- 95_Specimen_Tracking.xlsx
+- 96_Specimen_Tracking.xlsx
+- 97_Not_Collected.xlsx
+- 98A_FOA.xlsx
+- 98B_FOB.xlsx
+- 99A_FSA.xlsx
+- 99B_FSB.xlsx
+- 9_EEval.xlsx
 optional: []
-
 reject:
-  # Duplicate-collision pattern: files with a numeric suffix are re-delivered
-  # copies of the un-suffixed original. fnmatch glob applied by the gate.
-  - "*_1.xlsx"
-  # OCR / scanning artefacts — not real study forms
-  - "Paste Errors.xlsx"
-  - "TEST1EK.xlsx"
-  # Collision-pair losers (explicit, in addition to the glob above)
-  - "14_CaseControl.xlsx"  # stub — 2 rows vs 14_Case_Control.xlsx 206 rows
-  - "21_DSTISO.xlsx"       # has Batch*/OCR metadata cols vs clean 21_DSTIsolate.xlsx
-
-# Per-column date locale overrides. Use when the heuristic cannot disambiguate
-# (e.g., values like 07/05/2014 where both components are ≤ 12).
-# Keys: column name (case-insensitive). Values: "DMY" or "MDY".
-date_locales: {}
+- '*_1.xlsx'
+- Paste Errors.xlsx
+- TEST1EK.xlsx
+- 14_CaseControl.xlsx
+- 21_DSTISO.xlsx
+date_locales:
+  AP_COMPDAT: DMY
+  BatchRDate: DMY
+  CBC_COMPDAT: DMY
+  CBC_HBADAT: DMY
+  CBC_HBAND: DMY
+  CBC_HEMDAT: DMY
+  CBC_VISDAT: DMY
+  CC_COMPDAT: DMY
+  CC_PREGDAT: DMY
+  CC_VISDAT: DMY
+  CM_COMPDAT: DMY
+  CM_MBDAT2: DMY
+  COE_COMPDATE: DMY
+  COE_ENROLLDAT: DMY
+  COE_VISDAT: DMY
+  CXR_COMPDTE: DMY
+  CXR_CXRDAT: DMY
+  CX_COMPDAT: DMY
+  CX_DSTDAT: DMY
+  CX_ENDAT: DMY
+  CX_ISOLATEDAT: DMY
+  CX_MBDAT: DMY
+  CX_MBRECDAT: DMY
+  CX_PROCDAT: DMY
+  CX_PROCDAT_ND: DMY
+  CX_STDAT: DMY
+  CX_VISDAT: DMY
+  DST_COMPDAT: DMY
+  DST_DSTDAT: DMY
+  DST_ISOLATEDAT: DMY
+  DST_MBDAT: DMY
+  DST_MBRECDAT: DMY
+  EC_COMPDTE: DMY
+  EE_COMPDAT: DMY
+  EE_VISDAT: DMY
+  FA_COMPDAT: DMY
+  FA_DTHDAT: DMY
+  FA_RLPSDAT: DMY
+  FA_VISDAT: DMY
+  FB_COMPDAT: DMY
+  FB_DTHDAT: DMY
+  FB_VISDAT: DMY
+  FC_COMPDTE: DMY
+  FC_GIVEDAT: DMY
+  FC_PROCDAT1: DMY
+  FC_PROCDAT2: DMY
+  FC_PROCDAT3: DMY
+  FC_RECDAT: DMY
+  FOA_COMPDAT: DMY
+  FOA_VISDAT: DMY
+  FOB_COMPDAT: DMY
+  FOB_VISDAT: DMY
+  FUA_COMPDAT: DMY
+  FUA_PREGOUTDAT: DMY
+  FUA_PREGOUTDAT_2: DMY
+  FUA_VISDAT: DMY
+  FUB_COMPDAT: DMY
+  FUB_COMPDAT_2: DMY
+  FUB_PREGOUTDAT: DMY
+  FUB_TBTRTSP: DMY
+  FUB_VISDAT: DMY
+  HC_COMPDAT: DMY
+  HC_VISDAT: DMY
+  HHC_BRTHDAT: DMY
+  HHC_COMPDAT: DMY
+  HHC_COMPDTE: DMY
+  HHC_ICFDT: DMY
+  HHC_VISDAT: DMY
+  HIV_ARTDAT: DMY
+  HIV_CD4DAT: DMY
+  HIV_COMPDAT: DMY
+  HIV_HIVDAT: DMY
+  HS_COMPDAT: DMY
+  IC_COMPDAT: DMY
+  IC_VISDAT: DMY
+  IS_BIRTHDAT: DMY
+  IS_COMPDAT: DMY
+  IS_ICFDT: DMY
+  IS_TBTXDT: DMY
+  IS_VISDAT: DMY
+  IT_COMPDAT: DMY
+  IT_IGRADAT: DMY
+  MEDF_ARTENDAT1: DMY
+  MEDF_ARTENDAT10: DMY
+  MEDF_ARTENDAT2: DMY
+  MEDF_ARTENDAT3: DMY
+  MEDF_ARTENDAT4: DMY
+  MEDF_ARTENDAT5: DMY
+  MEDF_ARTENDAT6: DMY
+  MEDF_ARTENDAT7: DMY
+  MEDF_ARTENDAT8: DMY
+  MEDF_ARTENDAT9: DMY
+  MEDF_ARTSTDAT1: DMY
+  MEDF_ARTSTDAT10: DMY
+  MEDF_ARTSTDAT2: DMY
+  MEDF_ARTSTDAT3: DMY
+  MEDF_ARTSTDAT4: DMY
+  MEDF_ARTSTDAT5: DMY
+  MEDF_ARTSTDAT6: DMY
+  MEDF_ARTSTDAT7: DMY
+  MEDF_ARTSTDAT8: DMY
+  MEDF_ARTSTDAT9: DMY
+  MEDF_COMPDAT: DMY
+  MEDF_INHENDAT: DMY
+  MEDF_INHSTDAT: DMY
+  MEDF_PROPHENDAT: DMY
+  MEDF_PROPHSTDAT: DMY
+  MEDF_RIFENDAT: DMY
+  MEDF_RIFSTDAT: DMY
+  MEDF_RPTENDAT: DMY
+  MEDF_RPTSTDAT: DMY
+  MEDF_VISDAT: DMY
+  MED_ARTENDAT1: DMY
+  MED_ARTENDAT10: DMY
+  MED_ARTENDAT2: DMY
+  MED_ARTENDAT3: DMY
+  MED_ARTENDAT4: DMY
+  MED_ARTENDAT5: DMY
+  MED_ARTENDAT6: DMY
+  MED_ARTENDAT7: DMY
+  MED_ARTENDAT8: DMY
+  MED_ARTENDAT9: DMY
+  MED_ARTSTDAT1: DMY
+  MED_ARTSTDAT10: DMY
+  MED_ARTSTDAT2: DMY
+  MED_ARTSTDAT3: DMY
+  MED_ARTSTDAT4: DMY
+  MED_ARTSTDAT5: DMY
+  MED_ARTSTDAT6: DMY
+  MED_ARTSTDAT7: DMY
+  MED_ARTSTDAT8: DMY
+  MED_ARTSTDAT9: DMY
+  MED_COMPDAT: DMY
+  MED_INHENDAT: DMY
+  MED_INHSTDAT: DMY
+  MED_PROPHENDAT: DMY
+  MED_PROPHSTDAT: DMY
+  MED_RIFENDAT: DMY
+  MED_RIFSTDAT: DMY
+  MED_RPTENDAT: DMY
+  MED_RPTSTDAT: DMY
+  MED_VISDAT: DMY
+  NC_COMPDAT: DMY
+  NC_COMPDTE: DMY
+  NC_VISDAT: DMY
+  RE_CAREDAT: DMY
+  RE_COMPDAT: DMY
+  RE_TBDIAGDAT: DMY
+  RE_VISDAT: DMY
+  SC_BLDDAT: DMY
+  SC_COMPDAT: DMY
+  SC_GENOPROC80DAT: DMY
+  SC_GENOPROCDAT: DMY
+  SC_GENORECDAT: DMY
+  SC_LNDAT: DMY
+  SC_LNDATND: DMY
+  SC_PAXPROC80DAT: DMY
+  SC_PAXPROCDAT: DMY
+  SC_PAXRECDAT: DMY
+  SC_PBMCPROC80DAT: DMY
+  SC_PBMCPROCDAT: DMY
+  SC_PBMCRECDAT: DMY
+  SC_PLASMAPROC80DAT: DMY
+  SC_PLASMAPROCDAT: DMY
+  SC_PLASMARECDAT: DMY
+  SC_PROCDAT: DMY
+  SC_PROCDAT_2: DMY
+  SC_QTFGITPROC80DAT: DMY
+  SC_QTFGITPROCDAT: DMY
+  SC_QTFGITRECDAT: DMY
+  SC_RECDAT: DMY
+  SC_SLVPROC80DAT: DMY
+  SC_SLVPROCDAT: DMY
+  SC_SLVRECDAT: DMY
+  SC_URNPROC80DAT: DMY
+  SC_URNPROCDAT: DMY
+  SC_URNRECDAT: DMY
+  ST_COLLDAT: DMY
+  ST_LINDAT: DMY
+  ST_LNDAT: DMY
+  ST_LNDATND: DMY
+  ST_LOUTDAT: DMY
+  ST_RESPOSINDAT: DMY
+  ST_VISDAT: DMY
+  TBE_COMPDAT: DMY
+  TBE_VISDAT: DMY
+  TC_COMPDAT: DMY
+  TC_xraydat: DMY
+  TST_DAT1: DMY
+  TST_DAT2: DMY
+  TST_DAT3: DMY
+  TST_DAT4: DMY
+  TST_DAT5: DMY
+  TST_DAT6: DMY
+  TST_ENDAT1: DMY
+  TST_ENDAT2: DMY
+  TST_ENDAT3: DMY
+  TST_ENDAT4: DMY
+  TST_ENDAT5: DMY
+  TST_ENDAT6: DMY
+  ZN_COMPDAT: DMY
+  ZN_LIQENDAT: DMY
+  ZN_LIQSTDAT: DMY
+  ZN_MBDAT: DMY
+  ZN_MBDAT2: DMY
+  ZN_MBDATNR: DMY
+  ZN_MBDATNR2: DMY
+  ZN_MBRECDAT: DMY
+  ZN_RECDAT2: DMY
+  ZN_SOLENDAT: DMY
+  ZN_SOLSTDAT: DMY

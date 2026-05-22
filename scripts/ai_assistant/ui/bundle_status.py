@@ -60,10 +60,7 @@ def bundle_readiness_issues() -> list[str]:
     if not _has_policy_sot():
         issues.append("missing Source Truth policy output under llm_source/SoT/<pair>/pdf/")
     if _dictionary_source_expected() and not _has_dictionary_mapping_jsonl():
-        issues.append(
-            "missing dictionary mapping JSONL under "
-            f"{config.DICTIONARY_JSON_OUTPUT_DIR}"
-        )
+        issues.append(f"missing dictionary mapping JSONL under {config.DICTIONARY_JSON_OUTPUT_DIR}")
     return issues
 
 

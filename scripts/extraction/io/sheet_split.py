@@ -60,7 +60,11 @@ __all__ = [
 ]
 
 
-def split_sheet_into_tables(df: pd.DataFrame) -> list[pd.DataFrame] | None:
+def split_sheet_into_tables(
+    df: pd.DataFrame,
+    *,
+    split_horizontal: bool = True,
+) -> list[pd.DataFrame] | None:
     """Split a raw (``header=None``) DataFrame into logical tables.
 
     This is a boundary-detection pass only — it does **not** promote any row
@@ -80,6 +84,9 @@ def split_sheet_into_tables(df: pd.DataFrame) -> list[pd.DataFrame] | None:
         df: Input DataFrame read with ``header=None`` from an Excel sheet.
             May contain multiple logical tables laid out side-by-side or
             stacked.
+        split_horizontal: If True (default), splits the DataFrame horizontally by
+            fully-empty rows. If False, treats the entire vertical span as a single
+            horizontal strip.
 
     Returns:
         List of DataFrames, each representing one detected table segment.
@@ -94,13 +101,16 @@ def split_sheet_into_tables(df: pd.DataFrame) -> list[pd.DataFrame] | None:
 
         log.debug(f"Analyzing DataFrame with shape {df.shape} for table boundaries")
 
-        empty_rows = df.index[df.isnull().all(axis=1)].tolist()
-        row_boundaries: list[int] = [-1, *empty_rows, df.shape[0]]
-        horizontal_strips = [
-            df.iloc[row_boundaries[i] + 1 : row_boundaries[i + 1]]
-            for i in range(len(row_boundaries) - 1)
-            if row_boundaries[i] + 1 < row_boundaries[i + 1]
-        ]
+        if split_horizontal:
+            empty_rows = df.index[df.isnull().all(axis=1)].tolist()
+            row_boundaries: list[int] = [-1, *empty_rows, df.shape[0]]
+            horizontal_strips = [
+                df.iloc[row_boundaries[i] + 1 : row_boundaries[i + 1]]
+                for i in range(len(row_boundaries) - 1)
+                if row_boundaries[i] + 1 < row_boundaries[i + 1]
+            ]
+        else:
+            horizontal_strips = [df]
 
         log.debug(f"Found {len(horizontal_strips)} horizontal strip(s)")
 

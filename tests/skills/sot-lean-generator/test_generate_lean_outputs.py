@@ -75,7 +75,9 @@ def test_generate_form_rejects_novel_anchored_candidate_and_promotes_gold(
 
     def fake_publish(**kwargs: object) -> Path:
         published.append(kwargs)
-        return Path(kwargs["out_root"]) / str(kwargs["form"]) / "pdf" / f"{kwargs['form']}_policy.yaml"
+        return (
+            Path(kwargs["out_root"]) / str(kwargs["form"]) / "pdf" / f"{kwargs['form']}_policy.yaml"
+        )
 
     monkeypatch.setattr(generate_lean_outputs, "_run", fake_run)
     monkeypatch.setattr(generate_lean_outputs, "_run_result", fake_run_result)
@@ -88,7 +90,10 @@ def test_generate_form_rejects_novel_anchored_candidate_and_promotes_gold(
         str(repo_root / "data" / "SoT" / study / f"{form}_policy.lean.yaml") in cmd
         for cmd in run_calls
     )
-    assert published[0]["verified_policy"] == repo_root / "data" / "SoT" / study / f"{form}_policy.lean.yaml"
+    assert (
+        published[0]["verified_policy"]
+        == repo_root / "data" / "SoT" / study / f"{form}_policy.lean.yaml"
+    )
     assert published[0]["out_root"] == out_dir
 
 
@@ -112,7 +117,9 @@ def test_generate_form_skips_gold_diff_when_no_gold_exists(monkeypatch, tmp_path
 
     def fake_publish(**kwargs: object) -> Path:
         published.append(kwargs)
-        return Path(kwargs["out_root"]) / str(kwargs["form"]) / "pdf" / f"{kwargs['form']}_policy.yaml"
+        return (
+            Path(kwargs["out_root"]) / str(kwargs["form"]) / "pdf" / f"{kwargs['form']}_policy.yaml"
+        )
 
     monkeypatch.setattr(generate_lean_outputs, "_run", fake_run)
     monkeypatch.setattr(generate_lean_outputs, "_publish_verified_sot_outputs", fake_publish)
