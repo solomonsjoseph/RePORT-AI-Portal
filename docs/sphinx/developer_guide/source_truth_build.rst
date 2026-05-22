@@ -49,7 +49,7 @@ That command:
 3. verifies each candidate,
 4. promotes passing policy/schema/joined outputs to
    ``output/Indo-VAP/llm_source/SoT/``, and
-5. runs the main pipeline to publish dictionary mappings,
+5. runs the host publish path to publish dictionary mappings,
    PHI-scrubbed dataset JSONL, audit ledgers, lineage, and the output
    signpost.
 

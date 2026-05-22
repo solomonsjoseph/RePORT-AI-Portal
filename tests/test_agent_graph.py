@@ -6,6 +6,7 @@ All tests mock the LLM and LangGraph internals. No real API calls are made.
 from __future__ import annotations
 
 from collections.abc import Generator
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -232,6 +233,61 @@ class TestInvokeQuery:
         cfg_b = calls[1][1]["config"]["configurable"]["thread_id"]
         assert cfg_a == "thread-A"
         assert cfg_b == "thread-B"
+
+
+class TestFakeLocalProvider:
+    def test_fake_local_requires_test_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from scripts.ai_assistant import agent_graph as ag
+
+        monkeypatch.delenv("REPORTAL_TEST_FAKE_LLM", raising=False)
+
+        with pytest.raises(RuntimeError, match="REPORTAL_TEST_FAKE_LLM=1"):
+            ag._build_llm("fake-local", "fake-local")
+
+    def test_fake_local_provider_calls_catalog_tool(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        monkeypatch_config: Path,
+    ) -> None:
+        from langchain_core.messages import HumanMessage, ToolMessage
+
+        import config as _config
+        from scripts.ai_assistant import agent_graph as ag
+
+        repo_root = monkeypatch_config
+        policy_dir = repo_root / "output" / "Indo-VAP" / "llm_source" / "SoT" / "6_HIV" / "pdf"
+        policy_dir.mkdir(parents=True)
+        (policy_dir / "6_HIV_policy.yaml").write_text(
+            """
+study: Indo-VAP
+form:
+  number: "6"
+  title: HIV
+sections:
+  main: Main
+variables:
+  HIV_HIV:
+    section: main
+    pdf_question: HIV test result
+    type: code
+""".lstrip(),
+            encoding="utf-8",
+        )
+
+        monkeypatch.setenv("REPORTAL_TEST_FAKE_LLM", "1")
+        monkeypatch.setattr(_config, "REPO_ROOT", repo_root, raising=False)
+        monkeypatch.setattr(_config, "LLM_PROVIDER", "fake-local")
+        monkeypatch.setattr(_config, "LLM_MODEL", "fake-local")
+
+        agent = ag.get_agent()
+        result = agent.invoke(
+            {"messages": [HumanMessage(content="What is HIV_HIV?")]},
+            config={"configurable": {"thread_id": "fake-local-tool-probe"}},
+        )
+
+        tool_messages = [msg for msg in result["messages"] if isinstance(msg, ToolMessage)]
+        assert [msg.name for msg in tool_messages] == ["answer_catalog_question"]
+        assert "HIV_HIV" in str(tool_messages[0].content)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

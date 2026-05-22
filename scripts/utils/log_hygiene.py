@@ -1,10 +1,10 @@
-"""PHI-redacting log filter for the RePORT AI Portal pipeline.
+"""PHI-redacting log filter for the RePORT AI Portal host publish path.
 
-Before the PHI scrub runs (Step 1.6), the pipeline processes raw subject
-data — raw SUBJIDs, raw dates, raw narrative strings. If any of that
-content is logged at INFO / DEBUG during extraction or orchestration, it
-lands in ``.logs/*.log`` and becomes a PHI side-channel the scrub does
-not touch.
+Before the PHI scrub runs (Step 1.6), the trusted host publish path processes
+raw subject data — raw SUBJIDs, raw dates, raw narrative strings. If any of
+that content is logged at INFO / DEBUG during extraction or orchestration, it
+lands in ``.logs/*.log`` and becomes a PHI side-channel the scrub does not
+touch.
 
 This module installs a ``logging.Filter`` that redacts likely-PHI
 substrings from every log record before the handler emits. Specifically:

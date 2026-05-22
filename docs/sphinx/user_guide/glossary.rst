@@ -7,7 +7,8 @@ Short definitions for terms users will see in the portal and docs.
 
    audit files
      Counts and lineage files under ``output/{STUDY}/audit/``. They help
-     the study team review what the pipeline processed and published.
+     the study team review what the study-preparation workflow processed and
+     published.
 
    data dictionary
      A study file that explains variables, labels, forms, and allowed

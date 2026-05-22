@@ -28,7 +28,7 @@ evidence) · **How** (the implementation mechanism) · **Alternatives**
 ADR-001 — Single-study, local-first runtime
 -------------------------------------------
 
-**What.** The pipeline processes one fixed study under
+**What.** The local runtime processes one fixed study under
 ``data/raw/{STUDY_NAME}/`` per install. Multi-study, federated, HPC,
 and cloud-deploy workflows are explicitly out of scope.
 

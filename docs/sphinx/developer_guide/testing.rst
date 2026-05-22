@@ -34,7 +34,9 @@ Direct equivalents:
 Current Test Layout
 -------------------
 
-The suite is intentionally flat except for security-focused tests:
+The suite is grouped by runtime area. Many fast regression tests remain as
+top-level ``tests/test_*.py`` modules, while larger surfaces use focused
+subpackages:
 
 .. code-block:: text
 
@@ -42,25 +44,39 @@ The suite is intentionally flat except for security-focused tests:
    ├── conftest.py
    ├── test_agent_graph.py
    ├── test_agent_tools.py
+   ├── test_bundle_status.py
    ├── test_dataset_pipeline.py
-   ├── test_extract_pdf_data.py
    ├── test_load_dictionary.py
+   ├── test_makefile_chat.py
+   ├── test_main_help.py
    ├── test_phi_scrub.py
-   ├── test_run_study_analysis.py
    ├── test_web_ui.py
+   ├── ai_assistant/
+   │   └── test_file_access_audit_deny.py
+   ├── audit/
+   │   └── test_*.py
+   ├── extraction/
+   │   └── test_*.py
+   ├── skills/
+   │   ├── test_dataset_to_llm_source_skill.py
+   │   ├── test_report_ai_study_pipeline_plugin.py
+   │   └── sot-lean-generator/
+   │       └── test_*.py
+   ├── utils/
+   │   └── test_*.py
    ├── test_*.py
    └── security/
        ├── test_adversarial_phi_safe.py
        ├── test_kanon_l_diversity.py
        ├── test_keystore.py
-       ├── test_pdf_redaction_pipeline.py
+       ├── test_llm_construction_smoke.py
        ├── test_sandbox_isolation.py
        └── test_*.py
 
-There are no active ``tests/ai_assistant/`` or ``tests/extraction/``
-subpackages. Agent, extraction, UI, and pipeline tests live as
-top-level ``tests/test_*.py`` modules; security regression tests live
-under ``tests/security/``.
+Security regression tests live under ``tests/security/`` when they need
+separate fixtures or a stricter review posture. Agent, extraction, skill,
+and utility tests may live in their matching subpackage when the behavior is
+owned by that subsystem.
 
 What Each Gate Proves
 ---------------------

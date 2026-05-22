@@ -120,8 +120,8 @@ Using an Existing Study
 -----------------------
 
 If ``output/{STUDY}/llm_source/`` already exists, the web UI can skip
-the pipeline and use the existing published bundle. This is useful when
-the study was already loaded and you only want to ask questions.
+rerunning study preparation and use the existing published bundle. This is
+useful when the study was already loaded and you only want to ask questions.
 
 PDFs
 ----

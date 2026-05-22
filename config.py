@@ -405,6 +405,8 @@ def _infer_provider(model_name: str) -> str:
         return "openai"
     if m.startswith("gemini"):
         return "google-genai"
+    if m.startswith("fake"):
+        return "fake-local"
     # NVIDIA-hosted models use "org/model" slug format
     _nvidia_orgs = ("moonshotai/", "nvidia/", "mistralai/", "deepseek-ai/", "qwen/", "meta/")
     if any(m.startswith(prefix) for prefix in _nvidia_orgs):

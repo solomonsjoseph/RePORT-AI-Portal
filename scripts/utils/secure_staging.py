@@ -1,9 +1,9 @@
-"""Hardened AMBER-zone staging helpers for the RePORT AI Portal pipeline.
+"""Hardened AMBER-zone staging helpers for the RePORT AI Portal host publish path.
 
-The pipeline processes raw study data (PHI) in a transient staging workspace
-under ``tmp/{STUDY_NAME}/`` before atomically publishing the PHI-free
-``llm_source/``. Staging is the honest-broker AMBER zone — it must carry
-the strongest defensive posture the local filesystem supports:
+The host publish path processes raw study data (PHI) in a transient staging
+workspace under ``tmp/{STUDY_NAME}/`` before atomically publishing the PHI-free
+``llm_source/``. Staging is the honest-broker AMBER zone — it must carry the
+strongest defensive posture the local filesystem supports:
 
 * **Restrictive permissions** — directory mode ``0700`` + umask ``0077``
   for every write, so no other OS user can read partial staging output.

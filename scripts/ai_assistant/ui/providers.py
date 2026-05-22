@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 import time
 import urllib.error
@@ -347,6 +348,15 @@ _PROVIDER_CONFIG: dict[str, dict] = {
         ],
     },
 }
+
+if os.environ.get("REPORTAL_TEST_FAKE_LLM", "").strip().lower() in {"1", "true", "yes", "on"}:
+    _PROVIDER_CONFIG["Fake Local (test)"] = {
+        "provider": "fake-local",
+        "env_var": None,
+        "default_model": "fake-local",
+        "needs_key": False,
+        "models": ["fake-local", _OTHER_MODEL_OPTION],
+    }
 
 
 def _default_provider_label() -> str:

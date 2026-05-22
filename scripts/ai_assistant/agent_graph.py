@@ -16,7 +16,9 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 from langchain.agents import create_agent
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
@@ -136,8 +138,6 @@ def _build_llm(provider: str, model: str) -> Any:
     KeyStore — the SDK auto-pickup from ``os.environ`` is no longer
     relied on, because PR #3 keeps keys out of the parent's env.
     """
-    from langchain.chat_models import init_chat_model  # type: ignore[import-untyped]
-
     from scripts.ai_assistant.keystore import (
         get_keystore,
         provider_slug_for,
@@ -147,6 +147,14 @@ def _build_llm(provider: str, model: str) -> Any:
 
     slug = provider_slug_for(provider)
     api_key = get_keystore().get(slug) if slug else None
+
+    if provider == "fake-local":
+        if os.environ.get("REPORTAL_TEST_FAKE_LLM", "").strip().lower() not in _TRUTHY:
+            raise RuntimeError(
+                "fake-local provider is test-only. Set REPORTAL_TEST_FAKE_LLM=1 "
+                "to enable the no-API-key local test double."
+            )
+        return _FakeLocalChatModel()
 
     # NVIDIA AI Endpoints requires langchain_nvidia_ai_endpoints.ChatNVIDIA.
     # init_chat_model does not support the NVIDIA provider directly, so we
@@ -169,6 +177,8 @@ def _build_llm(provider: str, model: str) -> Any:
             kwargs["api_key"] = api_key
         return ChatNVIDIA(**kwargs)
 
+    from langchain.chat_models import init_chat_model  # type: ignore[import-untyped]
+
     try:
         kwargs = {
             "model": model,
@@ -186,6 +196,65 @@ def _build_llm(provider: str, model: str) -> Any:
         raise RuntimeError(
             f"Failed to initialise LLM (provider={provider!r}, model={model!r}): {exc}"
         ) from exc
+
+
+class _FakeLocalChatModel(BaseChatModel):
+    """No-network chat model for integration tests.
+
+    It supports LangChain tool binding and deterministically calls the same
+    tools a small LLM would use for the common smoke queries. The provider is
+    env-gated in :func:`_build_llm` so it cannot be selected accidentally in
+    normal operator runs.
+    """
+
+    @property
+    def _llm_type(self) -> str:
+        return "report-ai-fake-local"
+
+    def bind_tools(self, tools: Any, *, tool_choice: Any = None, **kwargs: Any) -> _FakeLocalChatModel:
+        return self
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        last_tool = next((msg for msg in reversed(messages) if isinstance(msg, ToolMessage)), None)
+        if last_tool is not None:
+            content = (
+                "Fake local LLM final answer after tool use. "
+                f"Tool `{last_tool.name}` returned the study evidence needed for this query."
+            )
+            return ChatResult(generations=[ChatGeneration(message=AIMessage(content=content))])
+
+        question = _last_human_text(messages)
+        lowered = question.lower()
+        tool_call: dict[str, Any] | None = None
+        if "dataset" in lowered and any(term in lowered for term in ("list", "available", "show")):
+            tool_call = {"name": "list_available_datasets", "args": {}, "id": "fake_list_datasets"}
+        elif "stat" in lowered or "record" in lowered or "row" in lowered:
+            tool_call = {"name": "get_dataset_stats", "args": {}, "id": "fake_dataset_stats"}
+        elif question.strip():
+            tool_call = {
+                "name": "answer_catalog_question",
+                "args": {"question": question},
+                "id": "fake_answer_catalog_question",
+            }
+
+        if tool_call is None:
+            message = AIMessage(content="Fake local LLM response: no study tool was needed.")
+        else:
+            message = AIMessage(content="", tool_calls=[tool_call])
+        return ChatResult(generations=[ChatGeneration(message=message)])
+
+
+def _last_human_text(messages: list[BaseMessage]) -> str:
+    for msg in reversed(messages):
+        if isinstance(msg, HumanMessage):
+            return str(msg.content)
+    return ""
 
 
 def _init_llm() -> Any:

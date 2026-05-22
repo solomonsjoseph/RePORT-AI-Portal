@@ -149,7 +149,8 @@ Individual Steps
    * - Command
      - What it does
    * - ``make dictionary``
-     - Load data dictionary
+     - Publish the dictionary mapping leg into ``llm_source/`` without
+       running dataset extraction
    * - ``make extract-datasets``
      - Dataset extraction into AMBER staging, run through the eight-action
        PHI scrub, then atomically promoted into the GREEN ``llm_source/``

@@ -17,6 +17,7 @@
 # ============================================================================
 
 UV ?= uv
+UV_RUN_LOCKED ?= $(UV) run --locked
 STUDY ?= Indo-VAP
 CANDIDATE ?= /tmp/$(FORM)_lean.yaml
 SOT_PAIR ?= $(FORM)
@@ -93,7 +94,7 @@ help:
 	@printf "$(B)$(C) ╚══════════════════════════════════════════════════════╝ $(N)\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Quickstart$(N)\n"
-	@printf "  $(C)make quickstart$(N)       Sync → host publish path\n"
+	@printf "  $(C)make quickstart$(N)       Sync → web UI → Load Study plugin\n"
 	@printf "  $(C)make debug$(N)            Same as quickstart with DEBUG logging\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Environment$(N)\n"
@@ -105,8 +106,8 @@ help:
 	@printf "  $(C)make build-llm-source$(N) STUDY=… — SoT plugin outputs → Dict → Datasets → PHI scrub → llm_source\n"
 	@printf "  $(C)make rebuild-llm-source$(N) STUDY=… — Remove generated llm_source/staging, preserve audit/agent, then rebuild\n"
 	@printf "\n"
-	@printf "$(B)$(G)  Pipeline — individual steps$(N)\n"
-	@printf "  $(C)make dictionary$(N)       Step 0  — Load data dictionary → JSON\n"
+	@printf "$(B)$(G)  Lower-level publish helpers$(N)\n"
+	@printf "  $(C)make dictionary$(N)       Dictionary publish leg → llm_source\n"
 	@printf "  $(C)make extract-datasets$(N) Step 1+3 — Extract → promote datasets\n"
 	@printf "  $(C)make bundle$(N)           Legacy alias — prepare llm_source dictionary leg\n"
 	@printf "\n"
@@ -169,7 +170,7 @@ version:
 # QUICKSTART
 # ═══════════════════════════════════════════════════════════════════════
 
-quickstart: sync pipeline
+quickstart: sync chat
 
 debug:
 	@printf "$(Y)⚙  Debug mode — quickstart with DEBUG logging$(N)\n"
@@ -200,9 +201,9 @@ rebuild-llm-source:
 # ═══════════════════════════════════════════════════════════════════════
 
 dictionary:
-	@printf "$(C)Step 0: Loading data dictionary...$(N)\n"
-	@$(PYTHON) main.py $(VFLAG) $(FFLAG)
-	@printf "$(G)✓ Data dictionary loaded$(N)\n"
+	@printf "$(C)Publishing dictionary leg to llm_source...$(N)\n"
+	@$(PYTHON) main.py --build-bundle --skip-datasets $(VFLAG) $(FFLAG)
+	@printf "$(G)✓ Dictionary publish complete$(N)\n"
 
 extract-datasets:
 	@printf "$(C)Step 1+3: Extract → promote datasets...$(N)\n"
@@ -266,11 +267,11 @@ bundle:
 
 chat-cli-deps:
 	@echo Ensuring AI Assistant dependencies...
-	@$(UV) run $(CLI_GROUPS) python -c "import langchain, langgraph"
+	@$(UV_RUN_LOCKED) $(CLI_GROUPS) python -c "import langchain, langgraph"
 
 chat-deps:
 	@echo Ensuring web chat dependencies...
-	@$(UV) run $(CHAT_GROUPS) python -c "import streamlit, langchain, langgraph"
+	@$(UV_RUN_LOCKED) $(CHAT_GROUPS) python -c "import streamlit, langchain, langgraph"
 
 chat-cli: chat-cli-deps
 	@printf "$(C)Starting interactive AI Assistant chat (CLI)...$(N)\n"
@@ -289,11 +290,11 @@ chat-cli: chat-cli-deps
 			printf "$(G)✓ Ollama started$(N)\n"; \
 		fi; \
 	fi
-	@$(UV) run $(CLI_GROUPS) python main.py --chat $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
+	@$(UV_RUN_LOCKED) $(CLI_GROUPS) python main.py --chat $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
 
 chat: chat-deps
 	@echo Launching Streamlit web UI...
-	@$(UV) run $(CHAT_GROUPS) python main.py --web $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
+	@$(UV_RUN_LOCKED) $(CHAT_GROUPS) python main.py --web $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG)
 
 # ═══════════════════════════════════════════════════════════════════════
 # QUALITY
