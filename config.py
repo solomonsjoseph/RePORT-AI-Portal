@@ -454,6 +454,13 @@ TELEMETRY_SINK = TELEMETRY_DIR / "events.jsonl"
 # Chat / agent
 AGENT_MAX_TOKENS: int = _get_env_int("AGENT_MAX_TOKENS", 16384)
 AGENT_TIMEOUT: int = _get_env_int("AGENT_TIMEOUT", 300)
+# Bounded automatic retries for transient provider errors (HTTP 429 rate
+# limits, 5xx). The OpenAI/Anthropic SDKs back off exponentially and honour
+# the server's Retry-After header up to this many attempts, so brief
+# throttling is absorbed silently instead of surfacing as a chat error. Set
+# to 0 to disable retries (fail fast). Default 5 ≈ tens of seconds of total
+# backoff — enough for typical burst throttling without stalling the UI.
+AGENT_MAX_RETRIES: int = _get_env_int("AGENT_MAX_RETRIES", 5)
 CHAT_RATE_LIMIT_WINDOW_SECONDS: int = _get_env_int("CHAT_RATE_LIMIT_WINDOW_SECONDS", 60)
 CHAT_RATE_LIMIT_MAX_TURNS: int = _get_env_int("CHAT_RATE_LIMIT_MAX_TURNS", 12)
 # Watchdog on the agent stream: raise TimeoutError if no chunk is produced

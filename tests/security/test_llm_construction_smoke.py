@@ -97,6 +97,36 @@ def test_build_llm_constructs_chat_model_for_provider(
     )
 
 
+def test_build_llm_sets_configured_max_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``_build_llm`` must thread ``config.AGENT_MAX_RETRIES`` into the client.
+
+    This is the lever that lets the provider SDK absorb transient HTTP 429
+    rate-limit / 5xx responses via exponential backoff (honouring Retry-After)
+    instead of surfacing the throttle as a chat error on the first failure.
+    """
+    import config
+
+    for var in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY"):
+        monkeypatch.delenv(var, raising=False)
+
+    from scripts.ai_assistant.keystore import KeyStore, provider_slug_for
+
+    slug = provider_slug_for("openai")
+    assert slug is not None
+    ks = KeyStore()
+    ks.set(slug, openai_key("TKEY"))
+
+    import scripts.ai_assistant.keystore as keystore_mod
+
+    monkeypatch.setattr(keystore_mod, "get_keystore", lambda: ks)
+    monkeypatch.setattr(config, "AGENT_MAX_RETRIES", 7, raising=False)
+
+    from scripts.ai_assistant.agent_graph import _build_llm
+
+    client = _build_llm("openai", "gpt-4.1")
+    assert client.max_retries == 7
+
+
 def test_build_llm_for_ollama_works_without_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ollama is local — no API key needed; ``_build_llm`` should still
     construct successfully (and not crash on the missing keystore entry)."""

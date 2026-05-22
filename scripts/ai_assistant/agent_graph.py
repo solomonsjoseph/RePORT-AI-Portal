@@ -102,6 +102,10 @@ def _build_llm(provider: str, model: str) -> Any:
                 "langchain-nvidia-ai-endpoints is not installed. "
                 "Run: uv add langchain-nvidia-ai-endpoints"
             ) from exc
+        # NOTE: ChatNVIDIA does not expose a ``max_retries`` constructor param
+        # (it leaks into model_kwargs and is forwarded to the API), so retry
+        # tuning is intentionally omitted here. The OpenAI/Anthropic/Google
+        # path below threads config.AGENT_MAX_RETRIES through init_chat_model.
         kwargs: dict[str, Any] = {
             "model": model,
             "max_completion_tokens": config.AGENT_MAX_TOKENS,
@@ -120,6 +124,9 @@ def _build_llm(provider: str, model: str) -> Any:
             "model_provider": provider,
             "max_tokens": config.AGENT_MAX_TOKENS,
             "timeout": config.AGENT_TIMEOUT,
+            # Absorb transient 429/5xx via the SDK's exponential backoff
+            # (honours Retry-After) instead of erroring on the first throttle.
+            "max_retries": config.AGENT_MAX_RETRIES,
         }
         if provider == "ollama":
             kwargs["base_url"] = get_ollama_base_url()
