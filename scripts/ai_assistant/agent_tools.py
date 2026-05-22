@@ -1443,7 +1443,7 @@ def cite_source(form_id: str, field_id: str) -> str:
         with ``error: "no citation"`` — never a guessed location.
     """
     from scripts.ai_assistant.citations import (
-        CitationNotFound,
+        CitationNotFoundError,
         cite_variable,
     )
 
@@ -1453,7 +1453,7 @@ def cite_source(form_id: str, field_id: str) -> str:
         return json.dumps({"error": "form_id and field_id are both required"}, indent=2)
     try:
         citation = cite_variable(form, field)
-    except CitationNotFound as exc:
+    except CitationNotFoundError as exc:
         return json.dumps(
             {
                 "error": "no citation",
