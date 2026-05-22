@@ -215,7 +215,14 @@ def promote_header(
     data_df = data_df.reset_index(drop=True)
 
     # Step 3: optional footer trimming.
-    if footer_marker is not None:
+    #
+    # Guard on a non-empty frame: when ``data_df`` has zero rows (a header-only
+    # table — e.g. a clinical form with no recorded events), ``apply(axis=1)``
+    # yields an empty Series and ``data_df[~mask]`` collapses the frame to
+    # shape ``(0, 0)``, silently dropping the column index. A zero-row frame has
+    # no footer rows to trim, so skipping the step both avoids the pandas
+    # collapse and preserves the columns the column-structure JSONL path needs.
+    if footer_marker is not None and len(data_df) > 0:
         marker_lower = footer_marker.lower()
 
         def _is_footer_row(row: pd.Series) -> bool:  # type: ignore[type-arg]

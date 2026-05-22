@@ -351,3 +351,23 @@ class TestPromoteHeader:
         assert "col_a" in result.columns
         assert "Unnamed" in result.columns
         assert "col_c" in result.columns
+
+    def test_header_only_preserves_columns(self):
+        """A header-only table (zero data rows) must keep its column index.
+
+        Regression: the footer-trim step ran ``data_df[~mask]`` where ``mask``
+        was an empty Series on a zero-row frame, which pandas collapses to
+        shape ``(0, 0)`` — silently dropping the columns. The downstream
+        ``column_structure`` JSONL path keys off ``len(df.columns) > 0``, so a
+        collapsed frame made an empty-but-real clinical form (e.g. an SAE form
+        with no recorded events) vanish entirely instead of being published as
+        a header-only record. Columns must survive with and without a footer
+        marker.
+        """
+        header_only = pd.DataFrame({0: ["SUBJID"], 1: ["SAEDAT"], 2: ["SAEDESC"]})
+        no_footer = promote_header(header_only)
+        with_footer = promote_header(header_only, footer_marker="total")
+        assert list(no_footer.columns) == ["SUBJID", "SAEDAT", "SAEDESC"]
+        assert list(with_footer.columns) == ["SUBJID", "SAEDAT", "SAEDESC"]
+        assert len(no_footer) == 0
+        assert len(with_footer) == 0
