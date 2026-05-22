@@ -44,20 +44,20 @@ class TestPHISmugglingThroughFormatting:
     def test_aadhaar_with_dot_separators_now_blocked(self) -> None:
         """The AADHAAR regex separator class now includes ``\\.`` (PR fix
         for the 2026-04-27 audit). Dot-separated forms are caught."""
-        result = guard_user_prompt("subject id 1234.5678.9012 had outcome X")
+        result = guard_user_prompt("subject id 2345.6789.0124 had outcome X")
         assert result.ok is False
         assert "AADHAAR" in result.findings
 
     def test_aadhaar_in_codeblock_still_blocked(self) -> None:
         """Wrapping in a markdown codeblock must NOT bypass the gate —
         the regex runs on the raw text, not the rendered output."""
-        prompt = "Here's the data:\n```\n1234 5678 9012\n```\nWhat does this mean?"
+        prompt = "Here's the data:\n```\n2345 6789 0124\n```\nWhat does this mean?"
         result = guard_user_prompt(prompt)
         assert result.ok is False
         assert "AADHAAR" in result.findings
 
     def test_aadhaar_in_markdown_table_still_blocked(self) -> None:
-        prompt = "| ID | Value |\n| --- | --- |\n| Aadhaar | 1234 5678 9012 |"
+        prompt = "| ID | Value |\n| --- | --- |\n| Aadhaar | 2345 6789 0124 |"
         result = guard_user_prompt(prompt)
         assert result.ok is False
 
@@ -65,7 +65,7 @@ class TestPHISmugglingThroughFormatting:
         """Multi-line split is caught: ``\\d{4}[\\s\\-]?\\d{4}[\\s\\-]?\\d{4}``
         uses ``\\s`` which matches newlines too. Pleasant surprise — the
         gate is more robust than the regex looks at first glance."""
-        prompt = "id is 1234\n5678 9012"
+        prompt = "id is 2345\n6789 0124"
         result = guard_user_prompt(prompt)
         assert result.ok is False
         assert "AADHAAR" in result.findings
@@ -271,10 +271,10 @@ class TestPHIReturnGate:
 
         @phi_safe_return
         def tool_that_leaks() -> str:
-            return "result: subject 1234 5678 9012 enrolled"
+            return "result: subject 2345 6789 0124 enrolled"
 
         out = tool_that_leaks()
-        assert "1234 5678 9012" not in out
+        assert "2345 6789 0124" not in out
 
     def test_phi_safe_return_decorator_intercepts_email(self) -> None:
         from scripts.ai_assistant.phi_safe import phi_safe_return

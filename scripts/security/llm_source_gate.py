@@ -52,17 +52,25 @@ def _patterns() -> list[tuple[str, re.Pattern[str]]]:
     ]
 
 
+_cached_scrub_cfg = None
+_scrub_cfg_loaded = False
+
+
 def _is_allowed_scrubbed_date(path: str) -> bool:
     """Return True for approved date-jitter fields and provenance timestamps."""
+    global _cached_scrub_cfg, _scrub_cfg_loaded
     field = path.rsplit(".", 1)[-1]
     if field == "extraction_utc" and path.startswith("_provenance."):
         return True
-    try:
-        from scripts.security.phi_scrub import load_scrub_config
+    if not _scrub_cfg_loaded:
+        try:
+            from scripts.security.phi_scrub import load_scrub_config
 
-        cfg = load_scrub_config()
-    except Exception:
-        return False
+            _cached_scrub_cfg = load_scrub_config()
+        except Exception:
+            _cached_scrub_cfg = None
+        _scrub_cfg_loaded = True
+    cfg = _cached_scrub_cfg
     return bool(cfg and cfg.field_is_date(field))
 
 

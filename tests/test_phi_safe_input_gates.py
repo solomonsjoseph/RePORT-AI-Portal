@@ -50,7 +50,7 @@ class TestGuardUserPrompt:
         assert guard_user_prompt(123).ok is True  # type: ignore[arg-type]
 
     def test_aadhaar_in_prompt_is_refused(self) -> None:
-        result = guard_user_prompt("find records for aadhaar 1234 5678 9012")
+        result = guard_user_prompt("find records for aadhaar 2345 6789 0124")
         assert result.ok is False
         assert "AADHAAR" in result.findings
         assert result.refusal_message is not None
@@ -79,7 +79,7 @@ class TestGuardUserPrompt:
 
     def test_refusal_message_never_contains_raw_value(self) -> None:
         # The raw Aadhaar pattern must NOT appear in the user-facing message.
-        raw_aadhaar = "1234 5678 9012"
+        raw_aadhaar = "2345 6789 0124"
         result = guard_user_prompt(f"see aadhaar {raw_aadhaar} please")
         assert result.ok is False
         assert raw_aadhaar not in (result.refusal_message or "")
@@ -198,8 +198,8 @@ class TestRedactPhiInText:
         assert redact_phi_in_text(text) == text
 
     def test_aadhaar_is_tagged(self) -> None:
-        out = redact_phi_in_text("aadhaar 1234 5678 9012")
-        assert "1234 5678 9012" not in out
+        out = redact_phi_in_text("aadhaar 2345 6789 0124")
+        assert "2345 6789 0124" not in out
         assert "<AADHAAR>" in out
 
     def test_email_is_tagged(self) -> None:
@@ -239,9 +239,9 @@ class TestSanitiseTraceback:
         assert "something failed" in out
 
     def test_long_single_quoted_literal_is_collapsed(self) -> None:
-        tb = "Error processing row: 'this is a very long value that contains subject data like 1234 5678 9012 inside'"
+        tb = "Error processing row: 'this is a very long value that contains subject data like 2345 6789 0124 inside'"
         out = sanitise_traceback(tb)
-        assert "1234 5678 9012" not in out
+        assert "2345 6789 0124" not in out
         assert "'<…>'" in out
 
     def test_phi_in_traceback_is_tagged(self) -> None:

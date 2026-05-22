@@ -607,7 +607,7 @@ def test_web_chat_refuses_phi_prompt_without_persisting_raw_text(
     conv_dir = tmp_path / "conversations"
     monkeypatch.setattr(config, "CONVERSATIONS_DIR", conv_dir)
     at = _configured_chat_app()
-    raw_prompt = "Aadhaar 1234 5678 9012"
+    raw_prompt = "Aadhaar 2345 6789 0124"
 
     with patch("scripts.ai_assistant.ui.streaming.stream_query") as stream_query:
         _submit_chat_message(at, raw_prompt)

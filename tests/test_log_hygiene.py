@@ -18,8 +18,8 @@ class TestPHIRedactingFilterGeneric:
         return log_hygiene.PHIRedactingFilter(hmac_key=TEST_KEY)
 
     def test_aadhaar_redacted(self, flt: log_hygiene.PHIRedactingFilter) -> None:
-        out = log_hygiene._redact("citizen 1234 5678 9012 enrolled", flt)
-        assert "1234 5678 9012" not in out
+        out = log_hygiene._redact("citizen 2345 6789 0124 enrolled", flt)
+        assert "2345 6789 0124" not in out
         assert "<AADHAAR>" in out
 
     def test_pan_redacted(self, flt: log_hygiene.PHIRedactingFilter) -> None:

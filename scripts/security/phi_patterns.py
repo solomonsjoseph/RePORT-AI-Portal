@@ -22,6 +22,7 @@ Act §29, SPDI Rule 3, ICMR 2017 §11.4.
 from __future__ import annotations
 
 import re
+from typing import Any
 
 __all__ = [
     "BLOCKING_PATTERNS",
@@ -30,11 +31,175 @@ __all__ = [
 ]
 
 
-BLOCKING_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+# Standard Verhoeff Tables for Aadhaar validation
+_VERHOEFF_D = [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    [1, 2, 3, 4, 0, 6, 7, 8, 9, 5],
+    [2, 3, 4, 0, 1, 7, 8, 9, 5, 6],
+    [3, 4, 0, 1, 2, 8, 9, 5, 6, 7],
+    [4, 0, 1, 2, 3, 9, 5, 6, 7, 8],
+    [5, 9, 8, 7, 6, 0, 4, 3, 2, 1],
+    [6, 5, 9, 8, 7, 1, 0, 4, 3, 2],
+    [7, 6, 5, 9, 8, 2, 1, 0, 4, 3],
+    [8, 7, 6, 5, 9, 3, 2, 1, 0, 4],
+    [9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+]
+
+_VERHOEFF_P = [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    [1, 5, 7, 6, 2, 8, 3, 0, 9, 4],
+    [5, 8, 0, 3, 7, 9, 6, 1, 4, 2],
+    [8, 9, 1, 6, 0, 4, 3, 5, 2, 7],
+    [9, 4, 5, 3, 1, 2, 6, 8, 7, 0],
+    [4, 2, 8, 6, 5, 7, 3, 9, 0, 1],
+    [2, 7, 9, 3, 8, 0, 6, 4, 1, 5],
+    [7, 0, 4, 6, 9, 1, 3, 2, 5, 8],
+]
+
+
+def _verhoeff_validate(number: str) -> bool:
+    if not number.isdigit():
+        return False
+    check = 0
+    for i, digit in enumerate(reversed(number)):
+        check = _VERHOEFF_D[check][_VERHOEFF_P[i % 8][int(digit)]]
+    return check == 0
+
+
+class VerhoeffPattern:
+    """A wrapper for re.Pattern that validates matches using Verhoeff checksum.
+
+    This is used to reduce false positives for identifier patterns (like Aadhaar)
+    that have a mathematically defined checksum.
+    """
+
+    def __init__(self, name: str, base_pattern: re.Pattern[str]) -> None:
+        self.name = name
+        self._pattern = base_pattern
+
+    @property
+    def pattern(self) -> str:
+        return self._pattern.pattern
+
+    @property
+    def flags(self) -> int:
+        return self._pattern.flags
+
+    @property
+    def groups(self) -> int:
+        return self._pattern.groups
+
+    @property
+    def groupindex(self) -> dict[str, int]:
+        return self._pattern.groupindex
+
+    def search(self, string: str, pos: int = 0, endpos: int = 2**31 - 1) -> re.Match[str] | None:
+        for match in self._pattern.finditer(string, pos, endpos):
+            candidate = "".join(c for c in match.group(0) if c.isdigit())
+            if len(candidate) == 12 and _verhoeff_validate(candidate):
+                return match
+        return None
+
+    def finditer(self, string: str, pos: int = 0, endpos: int = 2**31 - 1):
+        for match in self._pattern.finditer(string, pos, endpos):
+            candidate = "".join(c for c in match.group(0) if c.isdigit())
+            if len(candidate) == 12 and _verhoeff_validate(candidate):
+                yield match
+
+    def sub(self, repl: Any, string: str, count: int = 0) -> str:
+        def replacement_fn(match: re.Match[str]) -> str:
+            candidate = "".join(c for c in match.group(0) if c.isdigit())
+            if len(candidate) == 12 and _verhoeff_validate(candidate):
+                if callable(repl):
+                    return repl(match)
+                return repl
+            return match.group(0)
+
+        return self._pattern.sub(replacement_fn, string, count)
+
+
+def _is_valid_indian_phone(number: str) -> bool:
+    if len(number) != 10:
+        return False
+    counts = {}
+    for char in number:
+        counts[char] = counts.get(char, 0) + 1
+    if any(count >= 8 for count in counts.values()):
+        return False
+    return len(counts) > 1
+
+
+class IndianPhonePattern:
+    """A wrapper for re.Pattern that validates Indian phone matches.
+
+    Filters out repeating-digit placeholders common in clinical datasets.
+    """
+
+    def __init__(self, name: str, base_pattern: re.Pattern[str]) -> None:
+        self.name = name
+        self._pattern = base_pattern
+
+    @property
+    def pattern(self) -> str:
+        return self._pattern.pattern
+
+    @property
+    def flags(self) -> int:
+        return self._pattern.flags
+
+    @property
+    def groups(self) -> int:
+        return self._pattern.groups
+
+    @property
+    def groupindex(self) -> dict[str, int]:
+        return self._pattern.groupindex
+
+    def search(self, string: str, pos: int = 0, endpos: int = 2**31 - 1) -> re.Match[str] | None:
+        for match in self._pattern.finditer(string, pos, endpos):
+            matched_text = match.group(0)
+            candidate = "".join(c for c in matched_text if c.isdigit())
+            if candidate.startswith("91") and len(candidate) == 12:
+                candidate = candidate[2:]
+            if len(candidate) == 10 and _is_valid_indian_phone(candidate):
+                return match
+        return None
+
+    def finditer(self, string: str, pos: int = 0, endpos: int = 2**31 - 1):
+        for match in self._pattern.finditer(string, pos, endpos):
+            matched_text = match.group(0)
+            candidate = "".join(c for c in matched_text if c.isdigit())
+            if candidate.startswith("91") and len(candidate) == 12:
+                candidate = candidate[2:]
+            if len(candidate) == 10 and _is_valid_indian_phone(candidate):
+                yield match
+
+    def sub(self, repl: Any, string: str, count: int = 0) -> str:
+        def replacement_fn(match: re.Match[str]) -> str:
+            matched_text = match.group(0)
+            candidate = "".join(c for c in matched_text if c.isdigit())
+            if candidate.startswith("91") and len(candidate) == 12:
+                candidate = candidate[2:]
+            if len(candidate) == 10 and _is_valid_indian_phone(candidate):
+                if callable(repl):
+                    return repl(match)
+                return repl
+            return match.group(0)
+
+        return self._pattern.sub(replacement_fn, string, count)
+
+
+BLOCKING_PATTERNS: list[tuple[str, Any]] = [
     # ── Indian government IDs ────────────────────────────────────────────
     # Allow space, dash, OR dot as separators — real Aadhaar numbers
-    # appear with all three formats in clinical PDFs and pasted prompts.
-    ("AADHAAR", re.compile(r"\b\d{4}[\s\-\.]?\d{4}[\s\-\.]?\d{4}\b")),
+    # start with a digit 2-9 and are not repeating identical digits.
+    (
+        "AADHAAR",
+        VerhoeffPattern(
+            "AADHAAR",
+            re.compile(r"\b(?!(\d)(?:[\s\-\.]?\1){11}\b)[2-9]\d{3}[\s\-\.]?\d{4}[\s\-\.]?\d{4}\b"),
+        ),
+    ),
     ("PAN", re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b")),
     ("INDIAN_VOTER_ID", re.compile(r"\b[A-Z]{3}\d{7}\b")),
     ("INDIAN_DL", re.compile(r"\b[A-Z]{2}\d{2}\s?\d{4}\d{7}\b")),
@@ -42,7 +207,10 @@ BLOCKING_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     # ── Contact ──────────────────────────────────────────────────────────
     (
         "INDIAN_PHONE",
-        re.compile(r"(?<!\d)(?:\+91[\s-]?)?[6-9]\d{9}(?!\d)"),
+        IndianPhonePattern(
+            "INDIAN_PHONE",
+            re.compile(r"(?<![a-zA-Z0-9])(?:\+91[\s-]?)?[6-9]\d{9}(?![a-zA-Z0-9])"),
+        ),
     ),
     ("EMAIL", re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")),
     ("URL", re.compile(r"\bhttps?://[^\s/$.?#].[^\s]*\b", re.I)),

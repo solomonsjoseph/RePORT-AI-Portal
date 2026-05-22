@@ -492,7 +492,7 @@ class TestVerifyFailures:
         _patch_config(monkeypatch, tmp_path)
         paths = _build_happy_study(tmp_path)
         # Plant a fake Aadhaar number in a JSONL
-        phi_row = {"subject_id": "1234 5678 9012"}  # Aadhaar pattern
+        phi_row = {"subject_id": "2345 6789 0124"}  # Aadhaar pattern
         llm_jsonl = paths["llm_source_dir"] / "dataset_schema" / "files" / "form_a.jsonl"
         llm_jsonl.write_text(json.dumps(phi_row) + "\n", encoding="utf-8")
         rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
@@ -504,7 +504,7 @@ class TestVerifyFailures:
         """The detail string must name file+line+pattern, NOT the matched value."""
         _patch_config(monkeypatch, tmp_path)
         paths = _build_happy_study(tmp_path)
-        aadhaar = "1234 5678 9012"
+        aadhaar = "2345 6789 0124"
         phi_row = {"subject_id": aadhaar}
         llm_jsonl = paths["llm_source_dir"] / "dataset_schema" / "files" / "form_a.jsonl"
         llm_jsonl.write_text(json.dumps(phi_row) + "\n", encoding="utf-8")

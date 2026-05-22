@@ -63,7 +63,7 @@ class TestLooksLikeRealName:
 
 class TestPHIGateCheck:
     def test_blocks_aadhaar(self) -> None:
-        result = phi_gate_check("enrolled subject 1234 5678 9012")
+        result = phi_gate_check("enrolled subject 2345 6789 0124")
         assert result.blocked is True
         assert "AADHAAR" in result.findings
         assert bool(result) is False  # __bool__ → falsy on block
@@ -109,7 +109,7 @@ class TestPHIGateCheck:
         assert result.blocked is False
 
     def test_list_of_texts(self) -> None:
-        result = phi_gate_check(["clean string", "AADHAAR 1234 5678 9012"])
+        result = phi_gate_check(["clean string", "AADHAAR 2345 6789 0124"])
         assert result.blocked is True
 
     def test_non_sequence_raises(self) -> None:

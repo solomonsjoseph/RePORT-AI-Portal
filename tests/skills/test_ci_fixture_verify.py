@@ -196,7 +196,7 @@ def _apply_mutation(mutation_id: str, paths: dict[str, Path], tmp_root: Path) ->
         # Plant a fake Aadhaar number (12-digit space-separated) into a JSONL.
         stem = Path(FIXTURE_FORMS[0]).stem
         jsonl = paths["llm_source_dir"] / "dataset_schema" / "files" / f"{stem}.jsonl"
-        phi_row = {"subject_id_pseudonym": "1234 5678 9012"}  # Aadhaar pattern
+        phi_row = {"subject_id_pseudonym": "2345 6789 0124"}  # Aadhaar pattern
         with jsonl.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(phi_row) + "\n")
 
