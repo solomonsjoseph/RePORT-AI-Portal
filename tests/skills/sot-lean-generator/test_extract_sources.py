@@ -8,7 +8,15 @@ from pathlib import Path
 from types import ModuleType
 
 REPO_ROOT = Path(__file__).parents[3]
-EXTRACT_SCRIPT = REPO_ROOT / "skills" / "sot-lean-generator" / "scripts" / "extract_sources.py"
+EXTRACT_SCRIPT = (
+    REPO_ROOT
+    / "plugins"
+    / "report-ai-study-pipeline"
+    / "skills"
+    / "sot-lean-generator"
+    / "scripts"
+    / "extract_sources.py"
+)
 
 
 def _load_extract_sources() -> ModuleType:

@@ -7,9 +7,11 @@ from pathlib import Path
 import yaml
 
 REPO_ROOT = Path(__file__).parents[2]
-SKILL_DIR = REPO_ROOT / "skills" / "excel-duplicate-handler"
+SKILL_DIR = (
+    REPO_ROOT / "plugins" / "report-ai-study-pipeline" / "skills" / "excel-duplicate-handler"
+)
 SKILL_MD = SKILL_DIR / "SKILL.md"
-OPENAI_YAML = SKILL_DIR / "agents" / "openai.yaml"
+LLM_YAML = SKILL_DIR / "agents" / "llm.yaml"
 
 
 def _frontmatter_and_body() -> tuple[dict[str, str], str]:
@@ -110,8 +112,8 @@ def test_excel_duplicate_skill_preserves_project_privacy_boundary() -> None:
         assert phrase not in body
 
 
-def test_excel_duplicate_skill_openai_metadata_matches_skill_name() -> None:
-    payload = yaml.safe_load(OPENAI_YAML.read_text(encoding="utf-8"))
+def test_excel_duplicate_skill_llm_metadata_matches_skill_name() -> None:
+    payload = yaml.safe_load(LLM_YAML.read_text(encoding="utf-8"))
     interface = payload["interface"]
 
     assert interface["display_name"] == "Excel Duplicate Handler"

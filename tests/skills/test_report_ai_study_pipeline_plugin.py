@@ -145,7 +145,7 @@ def test_bundled_child_skills_match_repo_level_skills() -> None:
     ]
 
     for skill_name in copied_skills:
-        repo_skill_dir = REPO_ROOT / "skills" / skill_name
+        repo_skill_dir = REPO_ROOT / "plugins" / "report-ai-study-pipeline" / "skills" / skill_name
         plugin_skill_dir = PLUGIN_ROOT / "skills" / skill_name
         repo_files = sorted(
             path.relative_to(repo_skill_dir)
@@ -157,18 +157,9 @@ def test_bundled_child_skills_match_repo_level_skills() -> None:
             for path in plugin_skill_dir.rglob("*")
             if path.is_file() and "__pycache__" not in path.parts
         )
-        expected_plugin_files = sorted(
-            Path("agents/llm.yaml") if path == Path("agents/openai.yaml") else path
-            for path in repo_files
-        )
-        assert plugin_files == expected_plugin_files
+        assert plugin_files == repo_files
         for relative_path in repo_files:
-            plugin_relative_path = (
-                Path("agents/llm.yaml")
-                if relative_path == Path("agents/openai.yaml")
-                else relative_path
-            )
-            assert (plugin_skill_dir / plugin_relative_path).read_bytes() == (
+            assert (plugin_skill_dir / relative_path).read_bytes() == (
                 repo_skill_dir / relative_path
             ).read_bytes()
 

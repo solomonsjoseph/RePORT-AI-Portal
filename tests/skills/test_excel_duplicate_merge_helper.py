@@ -9,7 +9,15 @@ from pathlib import Path
 from openpyxl import Workbook, load_workbook
 
 REPO_ROOT = Path(__file__).parents[2]
-SCRIPT = REPO_ROOT / "skills" / "excel-duplicate-handler" / "scripts" / "merge_excel_duplicates.py"
+SCRIPT = (
+    REPO_ROOT
+    / "plugins"
+    / "report-ai-study-pipeline"
+    / "skills"
+    / "excel-duplicate-handler"
+    / "scripts"
+    / "merge_excel_duplicates.py"
+)
 
 
 def _write_workbook(path: Path) -> None:

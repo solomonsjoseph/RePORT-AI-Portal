@@ -1,4 +1,0 @@
-interface:
-  display_name: "Excel Duplicate Handler"
-  short_description: "PHI-safe duplicate file triage"
-  default_prompt: "Use $excel-duplicate-handler to classify duplicate RePORT-AI dataset files by filename normalization and header-only comparison."

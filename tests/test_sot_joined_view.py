@@ -201,7 +201,7 @@ def test_skill_script_writes_llm_readable_joined_view(tmp_path: Path) -> None:
     result = subprocess.run(  # noqa: S603
         [
             sys.executable,
-            "skills/sot-lean-generator/scripts/generate_joined_query_view.py",
+            "plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/generate_joined_query_view.py",
             "--policy",
             str(policy),
             "--schema",

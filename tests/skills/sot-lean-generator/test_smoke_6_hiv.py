@@ -28,9 +28,23 @@ REPO_ROOT = Path(__file__).parents[3]
 RAW_PDF = REPO_ROOT / "data" / "raw" / "Indo-VAP" / "annotated_pdfs" / "6 HIV v1.0.pdf"
 SOURCE_PACK = Path("/tmp/sot_source_pack_6_HIV.json")
 RENDER_DIR = Path("/tmp/sot_render_6_HIV")
-CHECK_SCRIPT = REPO_ROOT / "skills" / "sot-lean-generator" / "scripts" / "check_lean_policy.py"
+CHECK_SCRIPT = (
+    REPO_ROOT
+    / "plugins"
+    / "report-ai-study-pipeline"
+    / "skills"
+    / "sot-lean-generator"
+    / "scripts"
+    / "check_lean_policy.py"
+)
 GENERATOR_SCRIPT = (
-    REPO_ROOT / "skills" / "sot-lean-generator" / "scripts" / "generate_pdf_aware_candidate.py"
+    REPO_ROOT
+    / "plugins"
+    / "report-ai-study-pipeline"
+    / "skills"
+    / "sot-lean-generator"
+    / "scripts"
+    / "generate_pdf_aware_candidate.py"
 )
 
 

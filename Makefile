@@ -220,14 +220,14 @@ sot-generate-all: ## Generate and verify all PDF/header SoT outputs into llm_sou
 
 sot-verify: ## Stage 4: verify candidate lean YAML against the source pack produced by sot-source-pack
 	$(UV) run --all-groups python \
-		skills/sot-lean-generator/scripts/check_lean_policy.py \
+		plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/check_lean_policy.py \
 		--lean $(CANDIDATE) \
 		--source-pack /tmp/sot_source_pack_$(FORM).json \
 		--repo-root .
 
 sot-verify-output: ## Verify a promoted output policy YAML against the source pack produced by sot-source-pack
 	$(UV) run --all-groups python \
-		skills/sot-lean-generator/scripts/check_lean_policy.py \
+		plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/check_lean_policy.py \
 		--policy output/$(STUDY)/llm_source/SoT/$(SOT_PAIR)/pdf/$(FORM)_policy.yaml \
 		--source-pack /tmp/sot_source_pack_$(FORM).json \
 		--repo-root .
@@ -246,7 +246,7 @@ sot-validate: ## All-gates check: verifier + property validator + diff-against-g
 		exit 1; \
 	fi
 	@$(UV) run --all-groups python \
-		skills/sot-lean-generator/scripts/check_lean_policy.py \
+		plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/check_lean_policy.py \
 		--lean $(CANDIDATE) \
 		--source-pack /tmp/sot_source_pack_$(FORM).json \
 		--repo-root .

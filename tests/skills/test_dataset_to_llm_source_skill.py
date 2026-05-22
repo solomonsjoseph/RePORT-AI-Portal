@@ -7,9 +7,9 @@ from pathlib import Path
 import yaml
 
 REPO_ROOT = Path(__file__).parents[2]
-SKILL_DIR = REPO_ROOT / "skills" / "dataset-to-llm-source"
+SKILL_DIR = REPO_ROOT / "plugins" / "report-ai-study-pipeline" / "skills" / "dataset-to-llm-source"
 SKILL_MD = SKILL_DIR / "SKILL.md"
-OPENAI_YAML = SKILL_DIR / "agents" / "openai.yaml"
+LLM_YAML = SKILL_DIR / "agents" / "llm.yaml"
 
 
 def _frontmatter_and_body() -> tuple[dict[str, str], str]:
@@ -58,8 +58,8 @@ def test_dataset_skill_preserves_phi_boundary_and_cli_contract() -> None:
         assert phrase not in body
 
 
-def test_dataset_skill_openai_metadata_matches_skill_name() -> None:
-    payload = yaml.safe_load(OPENAI_YAML.read_text(encoding="utf-8"))
+def test_dataset_skill_llm_metadata_matches_skill_name() -> None:
+    payload = yaml.safe_load(LLM_YAML.read_text(encoding="utf-8"))
     interface = payload["interface"]
 
     assert interface["display_name"] == "Dataset to LLM Source"

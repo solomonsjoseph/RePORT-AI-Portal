@@ -20,7 +20,7 @@ What this wrapper does (Stage 0 only)
 2. Resolves the dataset path: ``data/raw/<study>/datasets/<form>.xlsx`` (or
    ``<form>.csv``).
 
-3. Shells out to ``skills/sot-lean-generator/scripts/extract_sources.py`` via
+3. Shells out to ``plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/extract_sources.py`` via
    the current Python interpreter so the invocation stays inside the active
    virtual environment.
 
@@ -32,10 +32,10 @@ What this wrapper does (Stage 0 only)
 
 Stages 1-3 (LLM-driven lean-YAML authoring) are NOT performed here.  They
 require LLM reasoning and live in the skill pipeline described in
-``skills/sot-lean-generator/SKILL.md``.
+``plugins/report-ai-study-pipeline/skills/sot-lean-generator/SKILL.md``.
 
 Stage 4 (lean policy verification) is a separate CLI:
-    ``uv run --all-groups python skills/sot-lean-generator/scripts/check_lean_policy.py``
+    ``uv run --all-groups python plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/check_lean_policy.py``
     See ``make sot-verify``.
 
 Usage
@@ -215,7 +215,7 @@ def _finish_sot_review(report_path: Path) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Importable shims used by skills/sot-lean-generator/scripts/extract_sources.py
+# Importable shims used by plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/extract_sources.py
 # ---------------------------------------------------------------------------
 
 
@@ -488,7 +488,7 @@ def main(argv: list[str] | None = None) -> int:
     out_pack = Path(f"/tmp/sot_source_pack_{args.form}.json")
     render_dir = Path(f"/tmp/sot_render_{args.form}")
 
-    extract_script = repo_root / "skills" / "sot-lean-generator" / "scripts" / "extract_sources.py"
+    extract_script = repo_root / "plugins" / "report-ai-study-pipeline" / "skills" / "sot-lean-generator" / "scripts" / "extract_sources.py"
     if not extract_script.exists():
         print(
             f"error: extract_sources.py not found at {extract_script}",
