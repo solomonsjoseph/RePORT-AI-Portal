@@ -70,12 +70,13 @@ def test_plugin_defines_raw_file_set_and_parallel_execution_contract() -> None:
 
     dataset_publish = execution_model["dataset_publish"]
     assert dataset_publish["parallel_allowed"] == "lock_aware_only"
-    assert "Use the host repo's lock-aware extraction/publish CLI." in dataset_publish[
-        "safety_rules"
-    ]
-    assert "Never force concurrent writes into the same study output directory." in dataset_publish[
-        "safety_rules"
-    ]
+    assert (
+        "Use the host repo's lock-aware extraction/publish CLI." in dataset_publish["safety_rules"]
+    )
+    assert (
+        "Never force concurrent writes into the same study output directory."
+        in dataset_publish["safety_rules"]
+    )
 
 
 def test_plugin_bundles_entrypoint_and_child_skills() -> None:
@@ -89,9 +90,9 @@ def test_plugin_bundles_entrypoint_and_child_skills() -> None:
     for skill_dir in expected_skill_dirs:
         assert (PLUGIN_ROOT / "skills" / skill_dir / "SKILL.md").is_file()
 
-    orchestrator = (
-        PLUGIN_ROOT / "skills" / "report-ai-study-pipeline" / "SKILL.md"
-    ).read_text(encoding="utf-8")
+    orchestrator = (PLUGIN_ROOT / "skills" / "report-ai-study-pipeline" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
     assert "1. `$excel-duplicate-handler`" in orchestrator
     assert "2. `$sot-lean-generator`" in orchestrator
     assert "3. `$dataset-to-llm-source`" in orchestrator
@@ -99,7 +100,9 @@ def test_plugin_bundles_entrypoint_and_child_skills() -> None:
     assert "Do not read raw dataset row values into the agent context." in orchestrator
     assert "This phase runs once for the study" in orchestrator
     assert "Source Truth may run in parallel across independent ready sets." in orchestrator
-    assert "controlled parallel wrapper that respects the host repo's pipeline locks" in orchestrator
+    assert (
+        "controlled parallel wrapper that respects the host repo's pipeline locks" in orchestrator
+    )
     assert "Never\nforce concurrent writes into the same study output tree." in orchestrator
 
 
@@ -131,6 +134,7 @@ def test_plugin_readme_documents_single_and_batch_modes() -> None:
     assert "held_duplicate_review" in readme
     assert "held_sot_review" in readme
     assert "held_publish_review" in readme
+    assert "data-dictionary leg remains a host-repo responsibility" in readme
 
 
 def test_bundled_child_skills_match_repo_level_skills() -> None:

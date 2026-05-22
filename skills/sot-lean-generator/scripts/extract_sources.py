@@ -55,7 +55,9 @@ def _relationship_target(base: str, target: str) -> str:
 def _first_sheet_path(zf: zipfile.ZipFile) -> str:
     workbook = ElementTree.fromstring(zf.read("xl/workbook.xml"))
     sheet = next(elem for elem in workbook.iter() if _local_name(elem.tag) == "sheet")
-    relationship_id = sheet.attrib["{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"]
+    relationship_id = sheet.attrib[
+        "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
+    ]
 
     rels = ElementTree.fromstring(zf.read("xl/_rels/workbook.xml.rels"))
     for rel in rels:
@@ -247,10 +249,16 @@ def _render_with_ghostscript(
         old_page_one.unlink()
     out_pattern = render_dir / f"{pdf.name}.page-%03d.png"
     cmd = [
-        gs, "-dNOPAUSE", "-dBATCH", "-dQUIET",
-        "-sDEVICE=png16m", f"-r{dpi}",
-        "-dFirstPage=1", f"-dLastPage={page_count}",
-        f"-sOutputFile={out_pattern}", str(pdf),
+        gs,
+        "-dNOPAUSE",
+        "-dBATCH",
+        "-dQUIET",
+        "-sDEVICE=png16m",
+        f"-r{dpi}",
+        "-dFirstPage=1",
+        f"-dLastPage={page_count}",
+        f"-sOutputFile={out_pattern}",
+        str(pdf),
     ]
     subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)  # noqa: S603
     renders = [render_dir / f"{pdf.name}.page-{page:03d}.png" for page in range(1, page_count + 1)]
@@ -302,7 +310,11 @@ def main() -> int:
 
     repo_root = args.repo_root.resolve()
     pdf = (repo_root / args.pdf).resolve() if not args.pdf.is_absolute() else args.pdf.resolve()
-    dataset = (repo_root / args.dataset).resolve() if not args.dataset.is_absolute() else args.dataset.resolve()
+    dataset = (
+        (repo_root / args.dataset).resolve()
+        if not args.dataset.is_absolute()
+        else args.dataset.resolve()
+    )
 
     headers = _headers_via_repo(repo_root, dataset)
     pages = _pdf_pages_via_repo(repo_root, pdf)

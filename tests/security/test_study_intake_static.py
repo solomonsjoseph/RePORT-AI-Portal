@@ -12,7 +12,9 @@ class TestDataIsolationStaticGuards:
         """Read scripts/source_truth/study_intake.py as text."""
         # __file__ is tests/security/test_study_intake_static.py
         # parents[0] = tests/security, [1] = tests/, [2] = repo_root (RePORT-AI-Portal)
-        module_path = Path(__file__).resolve().parents[2] / "scripts" / "source_truth" / "study_intake.py"
+        module_path = (
+            Path(__file__).resolve().parents[2] / "scripts" / "source_truth" / "study_intake.py"
+        )
         return module_path.read_text(encoding="utf-8")
 
     def test_no_pandas_import(self):

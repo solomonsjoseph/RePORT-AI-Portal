@@ -335,11 +335,12 @@ Extraction Modules (continued)
 
    The ``scripts.extraction.build_variables_reference`` module was removed
    in Phase 5b (Task 4c) as dead code. The unified ``variables.json``
-   artefact it produced was never written to disk in the active pipeline
-   and the agent loader silently returned ``[]``. The agent now derives
+   artefact it produced was never written to disk in the active host publish
+   path and the agent loader silently returned ``[]``. The agent now derives
    its generic variable reference from published dataset JSONL column schemas;
-   rich form metadata is loaded from lean YAMLs under
-   ``llm_source/source_truth/``.
+   rich form metadata is loaded from plugin Source Truth sets under
+   ``llm_source/SoT/<pair>/``. Older ``llm_source/source_truth/`` files are
+   compatibility inputs only.
 
 Cleanup Propagation
 ~~~~~~~~~~~~~~~~~~~

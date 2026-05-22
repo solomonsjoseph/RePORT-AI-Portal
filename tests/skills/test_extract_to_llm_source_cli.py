@@ -90,7 +90,9 @@ def _patch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
 
     monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output", raising=False)
     monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp", raising=False)
-    monkeypatch.setattr(config, "DATASETS_DIR", tmp_path / f"data/raw/{STUDY}/datasets", raising=False)
+    monkeypatch.setattr(
+        config, "DATASETS_DIR", tmp_path / f"data/raw/{STUDY}/datasets", raising=False
+    )
 
 
 def _write_valid_ledger(output_dir: Path) -> None:
@@ -178,9 +180,7 @@ class TestVerifyStub:
 
         _patch_config(monkeypatch, tmp_path)
         # Also patch RAW_DATA_DIR so the verifier looks in tmp_path
-        monkeypatch.setattr(
-            config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False
-        )
+        monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False)
         # Also patch PHI_SCRUB_CONFIG_PATH to a dummy
         monkeypatch.setattr(
             config,
@@ -197,9 +197,7 @@ class TestVerifyStub:
         datasets_dir = study_dir / "datasets"
         datasets_dir.mkdir(parents=True, exist_ok=True)
         manifest = {"required": [], "optional": [], "reject": []}
-        (study_dir / "_forms_manifest.yaml").write_text(
-            _yaml.dump(manifest), encoding="utf-8"
-        )
+        (study_dir / "_forms_manifest.yaml").write_text(_yaml.dump(manifest), encoding="utf-8")
         # Create staging dir to trigger assertion 3
         staging_dir = tmp_path / "tmp" / STUDY
         staging_dir.mkdir(parents=True, exist_ok=True)
@@ -216,9 +214,7 @@ class TestVerifyStub:
         import config
 
         _patch_config(monkeypatch, tmp_path)
-        monkeypatch.setattr(
-            config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False
-        )
+        monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False)
         scrub_config = tmp_path / "scripts" / "security" / "phi_scrub.yaml"
         scrub_config.parent.mkdir(parents=True, exist_ok=True)
         scrub_config.write_text("subject_id_fields: [SUBJID]\n", encoding="utf-8")
@@ -328,9 +324,15 @@ class TestVerifyStub:
                 encoding="utf-8",
             )
 
-        _write_status("run_zzz_failed", exit_code=EXIT_NEEDS_ADVICE, completed_utc="2026-05-19T00:03:00+00:00")
+        _write_status(
+            "run_zzz_failed", exit_code=EXIT_NEEDS_ADVICE, completed_utc="2026-05-19T00:03:00+00:00"
+        )
         _write_status("run_aaa_ok", exit_code=EXIT_OK, completed_utc="2026-05-19T00:02:00+00:00")
-        _write_status("run_mid_partial", exit_code=EXIT_PARTIAL_REVIEW, completed_utc="2026-05-19T00:04:00+00:00")
+        _write_status(
+            "run_mid_partial",
+            exit_code=EXIT_PARTIAL_REVIEW,
+            completed_utc="2026-05-19T00:04:00+00:00",
+        )
 
         run_id, error = skill_mod._resolve_run_id(tmp_path, None)
 
@@ -368,8 +370,11 @@ class TestRunHappyPath:
         def _fake_destroy(**kwargs: Any) -> Path:
             # Remove staging so post-destruction checks pass.
             import shutil
+
             shutil.rmtree(str(kwargs["staging_dir"]), ignore_errors=True)
-            attest_path = kwargs["output_dir"] / "runs" / kwargs["run_id"] / "destruction_attestation.json"
+            attest_path = (
+                kwargs["output_dir"] / "runs" / kwargs["run_id"] / "destruction_attestation.json"
+            )
             attest_path.parent.mkdir(parents=True, exist_ok=True)
             attest_path.write_text(json.dumps({"stub": True}), encoding="utf-8")
             return attest_path
@@ -413,7 +418,9 @@ class TestRunHappyPath:
 
         def _fake_destroy(**kwargs: Any) -> Path:
             shutil.rmtree(str(kwargs["staging_dir"]), ignore_errors=True)
-            attest_path = kwargs["output_dir"] / "runs" / kwargs["run_id"] / "destruction_attestation.json"
+            attest_path = (
+                kwargs["output_dir"] / "runs" / kwargs["run_id"] / "destruction_attestation.json"
+            )
             attest_path.parent.mkdir(parents=True, exist_ok=True)
             attest_path.write_text(json.dumps({"stub": True}), encoding="utf-8")
             return attest_path
@@ -449,7 +456,9 @@ class TestRunHappyPath:
 
         def _fake_destroy(**kwargs: Any) -> Path:
             shutil.rmtree(str(kwargs["staging_dir"]), ignore_errors=True)
-            attest_path = kwargs["output_dir"] / "runs" / kwargs["run_id"] / "destruction_attestation.json"
+            attest_path = (
+                kwargs["output_dir"] / "runs" / kwargs["run_id"] / "destruction_attestation.json"
+            )
             attest_path.parent.mkdir(parents=True, exist_ok=True)
             attest_path.write_text(json.dumps({"stub": True}), encoding="utf-8")
             return attest_path
@@ -462,9 +471,7 @@ class TestRunHappyPath:
         ):
             main(["run", "--study", STUDY])
 
-        attest_path = (
-            tmp_path / "output" / STUDY / "runs" / run_id / "destruction_attestation.json"
-        )
+        attest_path = tmp_path / "output" / STUDY / "runs" / run_id / "destruction_attestation.json"
         assert attest_path.exists(), "destruction attestation must exist after success"
 
 
@@ -474,9 +481,7 @@ class TestRunHappyPath:
 
 
 class TestRunExitCodes:
-    def _base_patches(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> tuple[Any, Any]:
+    def _base_patches(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> tuple[Any, Any]:
         """Return context managers for lock acquire/release mocks."""
         _patch_config(monkeypatch, tmp_path)
 
@@ -574,9 +579,7 @@ class TestRunExitCodes:
 
         assert rc == EXIT_LEDGER_HASH_NULL
 
-    def test_missing_ledger_exits_3(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_missing_ledger_exits_3(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _fake_acquire, _fake_release = self._base_patches(monkeypatch, tmp_path)
         _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         # Do NOT write ledger file — it's absent.
@@ -724,7 +727,9 @@ class TestDisabledScrubBypass:
 
         def _fake_destroy(**kwargs: Any) -> Path:
             shutil.rmtree(str(kwargs["staging_dir"]), ignore_errors=True)
-            attest_path = kwargs["output_dir"] / "runs" / kwargs["run_id"] / "destruction_attestation.json"
+            attest_path = (
+                kwargs["output_dir"] / "runs" / kwargs["run_id"] / "destruction_attestation.json"
+            )
             attest_path.parent.mkdir(parents=True, exist_ok=True)
             attest_path.write_text(json.dumps({"stub": True}), encoding="utf-8")
             return attest_path
@@ -767,10 +772,7 @@ class TestDisabledScrubBypass:
         def _fake_destroy(**kwargs: Any) -> Path:
             shutil.rmtree(str(kwargs["staging_dir"]), ignore_errors=True)
             attest_path = (
-                kwargs["output_dir"]
-                / "runs"
-                / kwargs["run_id"]
-                / "destruction_attestation.json"
+                kwargs["output_dir"] / "runs" / kwargs["run_id"] / "destruction_attestation.json"
             )
             attest_path.parent.mkdir(parents=True, exist_ok=True)
             attest_path.write_text(json.dumps({"stub": True}), encoding="utf-8")
@@ -827,10 +829,7 @@ class TestPartialPublish:
         def _fake_destroy(**kwargs: Any) -> Path:
             shutil.rmtree(str(kwargs["staging_dir"]), ignore_errors=True)
             attest_path = (
-                kwargs["output_dir"]
-                / "runs"
-                / kwargs["run_id"]
-                / "destruction_attestation.json"
+                kwargs["output_dir"] / "runs" / kwargs["run_id"] / "destruction_attestation.json"
             )
             attest_path.parent.mkdir(parents=True, exist_ok=True)
             attest_path.write_text(json.dumps({"stub": True}), encoding="utf-8")
@@ -945,9 +944,7 @@ class TestSignalHandler:
         assert rc == EXIT_DESTRUCTION_INCOMPLETE
         assert not destroy_called, "destruction must not be invoked on SIGINT"
 
-    def test_real_sigint_via_os_kill(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_real_sigint_via_os_kill(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Send SIGINT to the current process while the skill is installing handlers.
 
         This test verifies that the handler is correctly registered and that the
@@ -971,6 +968,7 @@ class TestSignalHandler:
             # Signal that subprocess has been called, then wait briefly.
             event.set()
             import time
+
             time.sleep(0.5)
             return SimpleNamespace(returncode=0)
 

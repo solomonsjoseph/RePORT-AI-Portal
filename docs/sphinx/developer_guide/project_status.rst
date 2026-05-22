@@ -8,19 +8,25 @@ not in the operational docs.
 Implemented
 -----------
 
-Pipeline
-~~~~~~~~
+Study Preparation
+~~~~~~~~~~~~~~~~~
 
-* Single-study pipeline entry point in ``main.py``.
-* Parallel extraction legs for dictionary and datasets.
+* Portable study-preparation plugin under
+  ``plugins/report-ai-study-pipeline/``.
+* Plugin phase order: duplicate handling, Source Truth, then
+  dataset-to-LLM-source publishing.
+* Data dictionary extraction remains in ``main.py`` /
+  ``scripts.extraction.load_dictionary``.
+* Host publish path still provides parallel extraction legs for dictionary
+  and datasets when invoked by the dataset child skill.
 * Supported tabular inputs are ``.xlsx`` and ``.csv`` only.
 * AMBER staging under ``tmp/{STUDY}/`` with mode ``0700`` and secure
   deletion on successful completion.
 * Step 1.6 PHI scrub over staged datasets before publish.
 * Dataset cleanup and cleanup propagation into dictionary metadata.
 * Atomic publish into ``output/{STUDY}/llm_source/``.
-* Verified lean SoT YAMLs published under
-  ``output/{STUDY}/llm_source/source_truth/``.
+* Verified SoT policy/schema/joined sets published under
+  ``output/{STUDY}/llm_source/SoT/<pair>/``.
 * Counts-only audit reports and lineage manifest under
   ``output/{STUDY}/audit/``.
 
@@ -45,7 +51,7 @@ AI Assistant
 
 * LangChain/LangGraph ReAct agent constructed through
   ``scripts/ai_assistant/agent_graph.py``.
-* Twelve structured tools registered in
+* Ten structured tools registered in
   ``scripts/ai_assistant/agent_tools.ALL_TOOLS``.
 * CLI and Streamlit interfaces.
 * Grounded-answer prompt contract: resolve variables before analysis,
@@ -55,15 +61,15 @@ AI Assistant
   and NVIDIA AI Endpoints.
 * Ollama qwen3 downgrade ladder for local memory pressure.
 
-PDF Extraction
-~~~~~~~~~~~~~~
+PDF / Source Truth
+~~~~~~~~~~~~~~~~~~
 
-* Default wizard path uses the two-way PDF orchestrator:
-  ``pdfplumber`` text extraction, PHI redaction before any LLM call,
-  re-scrubbed LLM response, and merge with the code candidate.
-* Legacy raw-PDF API path remains available for CLI compatibility, but
-  is refused unless ``REPORTALIN_PDF_PHI_FREE=1`` and a non-empty
-  ``authorities/phi_free_pdfs.md`` attestation are both present.
+* PDF-derived clinical meaning is captured through the
+  ``sot-lean-generator`` plugin skill.
+* Source Truth generation may use printed PDFs/page renders and dataset
+  row-1 headers only. Dataset row 2+ values are not read into the agent
+  context.
+* Historical raw-PDF extraction modules are not the active runtime surface.
 
 Verification
 ------------

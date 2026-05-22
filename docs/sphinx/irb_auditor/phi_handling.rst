@@ -100,11 +100,10 @@ Small-cell protection
    aggregate-safe response.
 
 PDF handling
-   PDFs are treated as PHI-bearing by default. The preferred path
-   extracts text locally, redacts PHI before any LLM call, and re-scrubs
-   the LLM response. The legacy raw-PDF external path is refused unless
-   a PHI-free PDF attestation and explicit environment flag are both
-   present.
+   PDFs are treated as PHI-bearing by default. The active path uses the
+   Source Truth plugin workflow: printed PDFs/page renders provide clinical
+   meaning, dataset workbooks provide row-1 headers only, and dataset row
+   values are not exposed to the agent context.
 
 Audit handling
    Audit files are counts-only. Lineage records hashes and run metadata

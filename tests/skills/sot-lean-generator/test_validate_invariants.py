@@ -18,6 +18,7 @@ from scripts.ai_assistant.sot_loader import ValidationError, ValidationReport, v
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _minimal_valid() -> dict:
     """Synthetic dict that satisfies every invariant AND actively exercises
     invariants (b), (c), and (f) via real references — so deleting those
@@ -117,6 +118,7 @@ def _has_error(report: ValidationReport, code: str) -> bool:
 # (a) section-ref-missing
 # ---------------------------------------------------------------------------
 
+
 def test_a_section_ref_present_passes():
     """Variable referencing a section key that exists → no section-ref-missing error."""
     data = {
@@ -146,6 +148,7 @@ def test_a_section_ref_missing_fails():
 # (b) skip-logic-var-ref-missing  (underscore-bearing tokens only)
 # ---------------------------------------------------------------------------
 
+
 def test_b_skip_logic_valid_ref_passes():
     """skip_logic containing a variable name that exists → no skip-logic-var-ref-missing."""
     data = {
@@ -164,8 +167,11 @@ def test_b_skip_logic_missing_ref_fails():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "VAR_A": {"section": "main", "widget": "w",
-                       "skip_logic": "conditional on MISSING_VAR == Yes"},
+            "VAR_A": {
+                "section": "main",
+                "widget": "w",
+                "skip_logic": "conditional on MISSING_VAR == Yes",
+            },
         },
     }
     report = validate(data)
@@ -178,8 +184,11 @@ def test_b_skip_logic_acronym_no_underscore_is_ignored():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "VAR_A": {"section": "main", "widget": "w",
-                       "skip_logic": "only when HIV negative or ART started"},
+            "VAR_A": {
+                "section": "main",
+                "widget": "w",
+                "skip_logic": "only when HIV negative or ART started",
+            },
         },
     }
     report = validate(data)
@@ -191,8 +200,11 @@ def test_b_skip_logic_instruction_token_is_ignored():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "VAR_A": {"section": "main", "widget": "w",
-                       "skip_logic": "follow instruction I1 or I2 as needed"},
+            "VAR_A": {
+                "section": "main",
+                "widget": "w",
+                "skip_logic": "follow instruction I1 or I2 as needed",
+            },
         },
         "instructions": [
             {"id": "I1", "text": "skip if negative"},
@@ -207,15 +219,22 @@ def test_b_skip_logic_instruction_token_is_ignored():
 # (c) mutex-reciprocity-broken
 # ---------------------------------------------------------------------------
 
+
 def test_c_mutex_reciprocity_both_present_passes():
     """A.skip_logic says mutually exclusive with B, B.skip_logic says with A → no error."""
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "VAR_A": {"section": "main", "widget": "w",
-                       "skip_logic": "inferred mutually exclusive with VAR_B"},
-            "VAR_B": {"section": "main", "widget": "w",
-                       "skip_logic": "inferred mutually exclusive with VAR_A"},
+            "VAR_A": {
+                "section": "main",
+                "widget": "w",
+                "skip_logic": "inferred mutually exclusive with VAR_B",
+            },
+            "VAR_B": {
+                "section": "main",
+                "widget": "w",
+                "skip_logic": "inferred mutually exclusive with VAR_A",
+            },
         },
     }
     report = validate(data)
@@ -227,8 +246,11 @@ def test_c_mutex_reciprocity_missing_fails():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "VAR_A": {"section": "main", "widget": "w",
-                       "skip_logic": "inferred mutually exclusive with VAR_B"},
+            "VAR_A": {
+                "section": "main",
+                "widget": "w",
+                "skip_logic": "inferred mutually exclusive with VAR_B",
+            },
             "VAR_B": {"section": "main", "widget": "w"},
         },
     }
@@ -253,6 +275,7 @@ def test_c_mutex_no_declaration_passes():
 # ---------------------------------------------------------------------------
 # (d) arrow-var-ref-missing
 # ---------------------------------------------------------------------------
+
 
 def test_d_arrow_dict_form_valid_passes():
     """Arrow with dict form referencing existing variables → no arrow-var-ref-missing."""
@@ -322,6 +345,7 @@ def test_d_arrow_missing_var_ref_fails():
 # (e) arrow-option-ref-missing
 # ---------------------------------------------------------------------------
 
+
 def test_e_arrow_option_in_options_passes():
     """Arrow option that appears in source variable's options list → no error."""
     data = {
@@ -375,13 +399,13 @@ def test_e_arrow_no_options_on_source_var_skips():
 # (f) instruction-id-ref-missing
 # ---------------------------------------------------------------------------
 
+
 def test_f_instruction_id_present_passes():
     """skip_logic referencing I1 that exists in instructions → no error."""
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "VAR_A": {"section": "main", "widget": "w",
-                       "skip_logic": "follow instruction I1"},
+            "VAR_A": {"section": "main", "widget": "w", "skip_logic": "follow instruction I1"},
         },
         "instructions": [{"id": "I1", "text": "skip"}],
     }
@@ -394,8 +418,11 @@ def test_f_instruction_id_missing_fails():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "VAR_A": {"section": "main", "widget": "w",
-                       "skip_logic": "follow instruction I9 to skip"},
+            "VAR_A": {
+                "section": "main",
+                "widget": "w",
+                "skip_logic": "follow instruction I9 to skip",
+            },
         },
         "instructions": [{"id": "I1", "text": "skip"}],
     }
@@ -409,8 +436,7 @@ def test_f_no_instructions_key_no_error():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "VAR_A": {"section": "main", "widget": "w",
-                       "skip_logic": "always collected"},
+            "VAR_A": {"section": "main", "widget": "w", "skip_logic": "always collected"},
         },
     }
     report = validate(data)
@@ -421,13 +447,13 @@ def test_f_no_instructions_key_no_error():
 # (g) free-text-phi-undeclared
 # ---------------------------------------------------------------------------
 
+
 def test_g_free_text_with_phi_field_passes():
     """free_text variable with explicit phi: field → no free-text-phi-undeclared."""
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "FT_VAR": {"section": "main", "widget": "text", "type": "free_text",
-                        "phi": "drop"},
+            "FT_VAR": {"section": "main", "widget": "text", "type": "free_text", "phi": "drop"},
         },
     }
     report = validate(data)
@@ -439,8 +465,12 @@ def test_g_free_text_with_no_phi_expected_note_passes():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "FT_VAR": {"section": "main", "widget": "text", "type": "free_text",
-                        "notes": "no PHI expected — administrative only"},
+            "FT_VAR": {
+                "section": "main",
+                "widget": "text",
+                "type": "free_text",
+                "notes": "no PHI expected — administrative only",
+            },
         },
     }
     report = validate(data)
@@ -465,8 +495,12 @@ def test_g_free_text_notes_without_required_phrase_fails():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "FT_VAR": {"section": "main", "widget": "text", "type": "free_text",
-                        "notes": "this field collects sensitive information"},
+            "FT_VAR": {
+                "section": "main",
+                "widget": "text",
+                "type": "free_text",
+                "notes": "this field collects sensitive information",
+            },
         },
     }
     report = validate(data)
@@ -478,13 +512,18 @@ def test_g_free_text_notes_without_required_phrase_fails():
 # (h) jitter-date-allowlist-violation
 # ---------------------------------------------------------------------------
 
+
 def test_h_jitter_date_allowlist_name_passes():
     """Variable ending in _COMPDAT with phi: jitter_date → no jitter-date-allowlist error."""
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "HIV_COMPDAT": {"section": "main", "widget": "date", "type": "date",
-                             "phi": "jitter_date"},
+            "HIV_COMPDAT": {
+                "section": "main",
+                "widget": "date",
+                "type": "date",
+                "phi": "jitter_date",
+            },
         },
     }
     report = validate(data)
@@ -496,8 +535,12 @@ def test_h_jitter_date_compdte_variant_passes():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "FC_COMPDTE": {"section": "main", "widget": "date", "type": "date",
-                            "phi": "jitter_date"},
+            "FC_COMPDTE": {
+                "section": "main",
+                "widget": "date",
+                "type": "date",
+                "phi": "jitter_date",
+            },
         },
     }
     report = validate(data)
@@ -509,8 +552,7 @@ def test_h_jitter_date_visit_passes():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "SX_VISIT": {"section": "main", "widget": "date", "type": "date",
-                          "phi": "jitter_date"},
+            "SX_VISIT": {"section": "main", "widget": "date", "type": "date", "phi": "jitter_date"},
         },
     }
     report = validate(data)
@@ -522,8 +564,12 @@ def test_h_jitter_date_bad_name_fails():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "HIV_HIVDAT": {"section": "main", "widget": "date", "type": "date",
-                            "phi": "jitter_date"},
+            "HIV_HIVDAT": {
+                "section": "main",
+                "widget": "date",
+                "type": "date",
+                "phi": "jitter_date",
+            },
         },
     }
     report = validate(data)
@@ -535,13 +581,13 @@ def test_h_jitter_date_bad_name_fails():
 # (i) drop-typing-violation
 # ---------------------------------------------------------------------------
 
+
 def test_i_drop_signature_passes():
     """Variable with phi: drop and type: signature → no drop-typing-violation."""
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "SIG_FLD": {"section": "main", "widget": "sig", "type": "signature",
-                         "phi": "drop"},
+            "SIG_FLD": {"section": "main", "widget": "sig", "type": "signature", "phi": "drop"},
         },
     }
     report = validate(data)
@@ -553,8 +599,7 @@ def test_i_drop_initials_passes():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "INIT_FLD": {"section": "main", "widget": "init", "type": "initials",
-                          "phi": "drop"},
+            "INIT_FLD": {"section": "main", "widget": "init", "type": "initials", "phi": "drop"},
         },
     }
     report = validate(data)
@@ -566,8 +611,7 @@ def test_i_drop_datetime_passes():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "TS_FIELD": {"section": "main", "widget": "ts", "type": "datetime",
-                          "phi": "drop"},
+            "TS_FIELD": {"section": "main", "widget": "ts", "type": "datetime", "phi": "drop"},
         },
     }
     report = validate(data)
@@ -579,8 +623,7 @@ def test_i_drop_wrong_type_fails():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "WEIRD_FLD": {"section": "main", "widget": "box", "type": "free_text",
-                           "phi": "drop"},
+            "WEIRD_FLD": {"section": "main", "widget": "box", "type": "free_text", "phi": "drop"},
         },
     }
     report = validate(data)
@@ -592,13 +635,18 @@ def test_i_drop_wrong_type_fails():
 # (j) pseudonymize-typing-violation
 # ---------------------------------------------------------------------------
 
+
 def test_j_pseudonymize_identifier_passes():
     """Variable with phi: pseudonymize and type: identifier → no error."""
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "SUBJ_ID": {"section": "main", "widget": "boxes", "type": "identifier",
-                         "phi": "pseudonymize"},
+            "SUBJ_ID": {
+                "section": "main",
+                "widget": "boxes",
+                "type": "identifier",
+                "phi": "pseudonymize",
+            },
         },
     }
     report = validate(data)
@@ -610,9 +658,13 @@ def test_j_pseudonymize_code_with_notes_passes():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "SITE_CD": {"section": "main", "widget": "boxes", "type": "code",
-                         "phi": "pseudonymize",
-                         "notes": "quasi-identifier: maps to recruiting site"},
+            "SITE_CD": {
+                "section": "main",
+                "widget": "boxes",
+                "type": "code",
+                "phi": "pseudonymize",
+                "notes": "quasi-identifier: maps to recruiting site",
+            },
         },
     }
     report = validate(data)
@@ -624,8 +676,12 @@ def test_j_pseudonymize_code_without_notes_fails():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "SITE_CD": {"section": "main", "widget": "boxes", "type": "code",
-                         "phi": "pseudonymize"},
+            "SITE_CD": {
+                "section": "main",
+                "widget": "boxes",
+                "type": "code",
+                "phi": "pseudonymize",
+            },
         },
     }
     report = validate(data)
@@ -638,8 +694,7 @@ def test_j_pseudonymize_wrong_type_fails():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "WEIRD": {"section": "main", "widget": "date", "type": "date",
-                       "phi": "pseudonymize"},
+            "WEIRD": {"section": "main", "widget": "date", "type": "date", "phi": "pseudonymize"},
         },
     }
     report = validate(data)
@@ -650,6 +705,7 @@ def test_j_pseudonymize_wrong_type_fails():
 # ---------------------------------------------------------------------------
 # Happy-path full synthetic dict
 # ---------------------------------------------------------------------------
+
 
 def test_happy_path_full_dict_passes_all():
     """Comprehensive synthetic dict covering all invariants passes with no errors."""
@@ -662,6 +718,7 @@ def test_happy_path_full_dict_passes_all():
 # ---------------------------------------------------------------------------
 # Defensive / edge-case tests
 # ---------------------------------------------------------------------------
+
 
 def test_missing_sections_key_no_crash():
     """validate() does not raise when 'sections' key is missing entirely."""
@@ -686,8 +743,7 @@ def test_none_phi_field_on_free_text_fails():
     data = {
         "sections": {"main": {"label": "M"}},
         "variables": {
-            "FT_VAR": {"section": "main", "widget": "text", "type": "free_text",
-                        "phi": None},
+            "FT_VAR": {"section": "main", "widget": "text", "type": "free_text", "phi": None},
         },
     }
     report = validate(data)
@@ -713,6 +769,7 @@ def test_validation_report_dataclass_fields():
 # ---------------------------------------------------------------------------
 # Issue 1 — mutex-reciprocity substring false-negative (word-boundary fix)
 # ---------------------------------------------------------------------------
+
 
 def test_c_mutex_reciprocity_substring_false_negative_caught():
     """Prefix-name false-negative: VAR_A declares mutex with VAR_AB, but VAR_AB
@@ -743,9 +800,7 @@ def test_c_mutex_reciprocity_substring_false_negative_caught():
         },
     }
     report = validate(data)
-    assert not report.passed, (
-        "Expected passed=False: VAR_A's mutex with VAR_AB is unreciprocated"
-    )
+    assert not report.passed, "Expected passed=False: VAR_A's mutex with VAR_AB is unreciprocated"
     assert _has_error(report, "mutex-reciprocity-broken"), (
         "Expected mutex-reciprocity-broken error for VAR_A → VAR_AB"
     )
@@ -754,6 +809,7 @@ def test_c_mutex_reciprocity_substring_false_negative_caught():
 # ---------------------------------------------------------------------------
 # Issue 2 — root-not-a-dict uses distinct error code 'malformed-root'
 # ---------------------------------------------------------------------------
+
 
 def test_root_not_a_dict_fails_with_malformed_root():
     """validate([]) and validate(None) must return passed=False with code

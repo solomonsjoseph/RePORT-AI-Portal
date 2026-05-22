@@ -57,8 +57,8 @@ Zone boundary
   (output_zone). The audit records **counts only** — no raw values, no
   before/after pairs.
 
-Ordering in the pipeline
-------------------------
+Ordering in the host publish path
+---------------------------------
 Runs as Step 1.6 — AFTER Step 1+3 (raw extraction) and BEFORE Step 1.7
 (dataset cleanup). This keeps ``dataset_cleanup_report.json`` free of raw
 subject IDs and raw dates, so the dataset-leg audit never contains PHI.
@@ -67,8 +67,8 @@ Key management
 --------------
 The HMAC key is a sidecar file at
 ``$XDG_CONFIG_HOME/report_ai_portal/phi_key`` (default ``~/.config/report_ai_portal/phi_key``).
-Mode must be ``0600``. Missing key = hard-fail for developer/operator CLI
-pipeline runs. Normal users create it through the web UI's Load Study flow.
+Mode must be ``0600``. Missing key = hard-fail for developer/operator host
+publish runs. Normal users create it through the web UI's Load Study flow.
 Developers can bootstrap explicitly::
 
     python -m scripts.security.phi_scrub bootstrap-key
@@ -291,7 +291,7 @@ class PHIScrubConfig:
     """Parsed + compiled scrub configuration.
 
     Regex patterns from YAML are compiled once at load time; config is a
-    throwaway struct (not persisted beyond the pipeline run).
+    throwaway struct (not persisted beyond the host publish run).
 
     Rule priority (first match wins within :func:`_scrub_row`):
         1. ``keep_patterns`` — allowlist, short-circuits every other rule
@@ -1206,9 +1206,7 @@ def _compute_input_dataset_hash(datasets_dir: Path) -> str:
         try:
             file_hash = hash_file(fpath)
         except OSError as exc:
-            raise PHIScrubError(
-                f"input manifest unhashable: {fpath} — {exc}"
-            ) from exc
+            raise PHIScrubError(f"input manifest unhashable: {fpath} — {exc}") from exc
         lines.append(f"{relpath}\t{size}\t{file_hash}")
     manifest = "\n".join(lines)
     return hashlib.sha256(manifest.encode("utf-8")).hexdigest()
@@ -1332,9 +1330,7 @@ def run_scrub(
         # ``llm_source/``. That is unsafe for any production run; require
         # an explicit opt-in env var to acknowledge the risk in dev/test.
         if config.production_mode_enabled():
-            raise PHIScrubError(
-                "REPORTALIN_ALLOW_DISABLED_SCRUB is forbidden in production mode."
-            )
+            raise PHIScrubError("REPORTALIN_ALLOW_DISABLED_SCRUB is forbidden in production mode.")
         allow_disabled = os.environ.get("REPORTALIN_ALLOW_DISABLED_SCRUB", "").strip().lower() in (
             "1",
             "true",

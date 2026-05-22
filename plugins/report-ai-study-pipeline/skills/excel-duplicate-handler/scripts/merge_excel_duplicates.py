@@ -12,8 +12,8 @@ import argparse
 import csv
 import shutil
 import zipfile
-from dataclasses import dataclass, field
 from copy import copy
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -77,7 +77,7 @@ class BatchItem:
     stats: MergeStats | None = None
 
 
-class MergeNotSafe(Exception):
+class MergeNotSafeError(Exception):
     """Raised when a candidate pair must be routed to human review."""
 
     def __init__(self, reason: str, review_path: Path, stats: MergeStats) -> None:
@@ -108,7 +108,9 @@ def _load_sheet_plans(path: Path, role: str) -> tuple[list[SheetPlan], InvalidSo
             if not headers:
                 continue
             if len(set(headers)) != len(headers):
-                return [], InvalidSource(path, role, f"duplicate headers in sheet {worksheet.title}")
+                return [], InvalidSource(
+                    path, role, f"duplicate headers in sheet {worksheet.title}"
+                )
             plans.append(
                 SheetPlan(
                     source_file=path,
@@ -135,7 +137,9 @@ def _build_union_headers(plans: list[SheetPlan]) -> list[str]:
     return headers
 
 
-def _aligned_row(values: tuple[Any, ...], source_headers: list[str], union_headers: list[str]) -> list[Any]:
+def _aligned_row(
+    values: tuple[Any, ...], source_headers: list[str], union_headers: list[str]
+) -> list[Any]:
     source_by_header = dict(zip(source_headers, values, strict=False))
     return [source_by_header.get(header) for header in union_headers]
 
@@ -180,7 +184,9 @@ def _write_provenance_csv(path: Path, stats: MergeStats) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["output_row", "source_file", "source_sheet", "source_row", "role", "action"])
+        writer.writerow(
+            ["output_row", "source_file", "source_sheet", "source_row", "role", "action"]
+        )
         writer.writerows(stats.provenance_rows)
 
 
@@ -268,7 +274,9 @@ def _human_review_path(artifact_root: Path, study: str, dataset: str) -> Path:
     )
 
 
-def _header_relationship(left: SheetPlan, right: SheetPlan) -> tuple[str, int, int, int, float, float]:
+def _header_relationship(
+    left: SheetPlan, right: SheetPlan
+) -> tuple[str, int, int, int, float, float]:
     left_headers = set(left.headers)
     right_headers = set(right.headers)
     common = len(left_headers & right_headers)
@@ -335,15 +343,17 @@ def _write_human_review_report(path: Path, stats: MergeStats, reason: str) -> No
         "| file | sheet | role | data rows | headers |",
         "| --- | --- | --- | ---: | ---: |",
     ]
-    for plan in stats.source_sheets:
-        lines.append(
-            f"| `{plan.source_file.name}` | `{plan.sheet_name}` | {plan.role} | "
-            f"{plan.data_rows} | {len(plan.headers)} |"
-        )
+    lines.extend(
+        f"| `{plan.source_file.name}` | `{plan.sheet_name}` | {plan.role} | "
+        f"{plan.data_rows} | {len(plan.headers)} |"
+        for plan in stats.source_sheets
+    )
     if stats.invalid_sources:
         lines.extend(["", "## Invalid Or Skipped Sources", ""])
-        for invalid in stats.invalid_sources:
-            lines.append(f"- `{invalid.source_file.name}` ({invalid.role}): {invalid.reason}")
+        lines.extend(
+            f"- `{invalid.source_file.name}` ({invalid.role}): {invalid.reason}"
+            for invalid in stats.invalid_sources
+        )
     if main_plans and branch_plans:
         lines.extend(
             [
@@ -469,7 +479,7 @@ def merge_workbooks(
                 / "duplicate_review_report.md"
             )
         _write_human_review_report(review_path, stats, safety_reason)
-        raise MergeNotSafe(safety_reason, review_path, stats)
+        raise MergeNotSafeError(safety_reason, review_path, stats)
 
     # Preserve the main workbook exactly as the merge base, including dates,
     # number formats, formulas, widths, styles, workbook metadata, and sheets.
@@ -524,7 +534,7 @@ def merge_workbooks(
 
                 for plan in branch_plans:
                     target_sheet = (
-                        workbook_out[plan.sheet_name]
+                        workbook_out[plan.sheet_name]  # noqa: SIM401
                         if plan.sheet_name in workbook_out
                         else workbook_out.active
                     )
@@ -550,9 +560,9 @@ def merge_workbooks(
                                 )
                                 continue
                             target_row = target_sheet.max_row + 1
-                            target_sheet.row_dimensions[target_row].height = branch_sheet.row_dimensions[
-                                source_row_idx
-                            ].height
+                            target_sheet.row_dimensions[
+                                target_row
+                            ].height = branch_sheet.row_dimensions[source_row_idx].height
                             source_cells = _cells_by_header(cells, plan.headers)
                             for column_idx, header in enumerate(stats.union_headers, start=1):
                                 source_cell = source_cells.get(header)
@@ -620,20 +630,20 @@ def _write_batch_report(report_path: Path, items: list[BatchItem]) -> None:
         "| dataset | status | dataset workbook | audit report | reason |",
         "| --- | --- | --- | --- | --- |",
     ]
-    for item in items:
-        lines.append(
-            "| "
-            + " | ".join(
-                [
-                    f"`{item.dataset}`",
-                    item.status,
-                    f"`{item.merged_workbook}`" if item.merged_workbook else "",
-                    f"`{item.report}`" if item.report else "",
-                    item.reason or "",
-                ]
-            )
-            + " |"
+    lines.extend(
+        "| "
+        + " | ".join(
+            [
+                f"`{item.dataset}`",
+                item.status,
+                f"`{item.merged_workbook}`" if item.merged_workbook else "",
+                f"`{item.report}`" if item.report else "",
+                item.reason or "",
+            ]
         )
+        + " |"
+        for item in items
+    )
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -677,7 +687,7 @@ def merge_lock_temp_groups(
                 raw_snapshot_path,
                 review_path,
             )
-        except MergeNotSafe as exc:
+        except MergeNotSafeError as exc:
             items.append(
                 BatchItem(
                     dataset=dataset,
@@ -764,13 +774,9 @@ def main() -> None:
     )
     main_path = active_dataset_dir / args.main.name
     branch_paths = [active_dataset_dir / branch.name for branch in args.branch]
-    out_path = (
-        args.out
-        or _project_dataset_path(args.artifact_root, study, args.main.name)
-    )
+    out_path = args.out or _project_dataset_path(args.artifact_root, study, args.main.name)
     audit_dir = (
-        args.audit_dir
-        or args.artifact_root / "output" / study / "audit" / "datasets" / dataset
+        args.audit_dir or args.artifact_root / "output" / study / "audit" / "datasets" / dataset
     )
     report_path = args.report or audit_dir / "merge_report.md"
     provenance_path = args.provenance or audit_dir / "merge_provenance.csv"
@@ -786,7 +792,7 @@ def main() -> None:
             raw_snapshot_path,
             review_path,
         )
-    except MergeNotSafe as exc:
+    except MergeNotSafeError as exc:
         print("status=human_review_required")
         print(f"review_report={exc.review_path}")
         print(f"reason={exc.reason}")

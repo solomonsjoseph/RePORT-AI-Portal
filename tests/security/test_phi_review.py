@@ -122,7 +122,9 @@ def transform_subject_id(value, ctx):
     assert any("Import" in item or "open" in item or "print" in item for item in result.errors)
 
 
-def test_form_review_approves_headers_after_adversarial_synthetic_validation(tmp_path: Path) -> None:
+def test_form_review_approves_headers_after_adversarial_synthetic_validation(
+    tmp_path: Path,
+) -> None:
     study_dir = tmp_path / "data" / "raw" / "Study"
     _write_privacy_config(study_dir)
     cfg = load_study_privacy_config(study_dir)

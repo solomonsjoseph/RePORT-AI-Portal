@@ -107,7 +107,6 @@ def _expanded_form_text(value: str) -> str:
     return " ".join([base, *expansions]).strip()
 
 
-
 def _dataset_label(stem: str) -> str:
     return _expanded_form_text(stem).title()
 
@@ -400,9 +399,7 @@ _CATALOG_MATCH_STOPWORDS: frozenset[str] = frozenset(
 def _catalog_query_identifier_tokens(question: str) -> set[str]:
     """Return possible case-insensitive variable-id tokens from a question."""
     return {
-        token.upper()
-        for token in re.findall(r"[A-Za-z][A-Za-z0-9_]*", question)
-        if len(token) >= 3
+        token.upper() for token in re.findall(r"[A-Za-z][A-Za-z0-9_]*", question) if len(token) >= 3
     }
 
 
@@ -444,14 +441,10 @@ def search_variables(query: str) -> str:
         return "No variables reference found. Ensure llm_source/dataset_schema/files/ is populated."
 
     identifier_tokens = {
-        t.lower()
-        for t in re.findall(r"[A-Za-z][A-Za-z0-9_]*", query)
-        if len(t) >= 3
+        t.lower() for t in re.findall(r"[A-Za-z][A-Za-z0-9_]*", query) if len(t) >= 3
     }
     exact_matches = [
-        var
-        for var in variables
-        if str(var.get("variable_name") or "").lower() in identifier_tokens
+        var for var in variables if str(var.get("variable_name") or "").lower() in identifier_tokens
     ]
     if exact_matches:
         matches = [
@@ -477,13 +470,15 @@ def search_variables(query: str) -> str:
         name = (var.get("variable_name") or "").lower()
         desc = (var.get("description") or "").lower()
         if any(t in name or t in desc for t in tokens):
-            matches.append({
-                "variable_name": var.get("variable_name", ""),
-                "form_name": var.get("form_name", ""),
-                "dataset": var.get("dataset", ""),
-                "description": var.get("description", ""),
-                "source": var.get("source", ""),
-            })
+            matches.append(
+                {
+                    "variable_name": var.get("variable_name", ""),
+                    "form_name": var.get("form_name", ""),
+                    "dataset": var.get("dataset", ""),
+                    "description": var.get("description", ""),
+                    "source": var.get("source", ""),
+                }
+            )
 
     if not matches:
         return f"No variables found matching '{query}'."
@@ -491,9 +486,6 @@ def search_variables(query: str) -> str:
     result = json.dumps(matches[:12], indent=2, ensure_ascii=False)
     tool_cache.put("search_variables", result, query=query)
     return result
-
-
-
 
 
 # ============================================================================
@@ -584,9 +576,7 @@ def query_dataset(
     from scripts.ai_assistant.phi_safe import guard_rows_with_kanon_and_ldiv
     from scripts.security.kanon_gate import mask_small_cell
 
-    gating_rows = [
-        {k: v for k, v in rec.items() if k not in _INTERNAL_COLUMNS} for rec in filtered
-    ]
+    gating_rows = [{k: v for k, v in rec.items() if k not in _INTERNAL_COLUMNS} for rec in filtered]
     qi_present = _present_columns(gating_rows, _DEFAULT_QUASI_IDENTIFIERS)
     sens_present = _present_columns(gating_rows, _DEFAULT_SENSITIVE_ATTRIBUTES)
     filter_col_upper = (filter_column or "").upper()
@@ -725,9 +715,7 @@ def _list_available_datasets_impl(*, include_columns: bool = False) -> list[dict
         try:
             resolved = validate_agent_read(jsonl_path)
         except PermissionError:
-            logger.warning(
-                "list_available_datasets: skipping out-of-zone file %s", jsonl_path
-            )
+            logger.warning("list_available_datasets: skipping out-of-zone file %s", jsonl_path)
             continue
 
         # Stream the row count without loading the file into memory.
@@ -917,7 +905,6 @@ def get_dataset_stats(dataset_name: str | None = None) -> str:
     return result
 
 
-
 # ============================================================================
 # Tool 8: run_python_analysis — sandboxed execution
 # ============================================================================
@@ -1026,8 +1013,7 @@ def _unsafe_sandbox_stdout_reason(stdout: str) -> str | None:
         "_source_row",
     )
     if any(
-        re.search(rf"\b{re.escape(marker)}\b", text, re.IGNORECASE)
-        for marker in row_level_markers
+        re.search(rf"\b{re.escape(marker)}\b", text, re.IGNORECASE) for marker in row_level_markers
     ):
         return "sandbox stdout contained row-level identifier columns"
 
@@ -1177,7 +1163,6 @@ def _format_sandbox_result_for_agent(result: Any) -> str:
         len(result.code_paths),
     )
     return formatted
-
 
 
 # ============================================================================
@@ -1396,7 +1381,6 @@ def run_study_analysis(
         )
 
 
-
 # ============================================================================
 # Tool 13: answer_catalog_question — boundary-aware catalog Q&A
 # ============================================================================
@@ -1447,10 +1431,11 @@ def answer_catalog_question(question: str) -> str:
     """Answer a study-variable metadata question through published policy SoT YAMLs.
 
     Use this for ordinary questions about retained study variables: their
-    label, dataset column, form, options, and provenance. The policy SoT YAML
-    under ``llm_source/source_truth`` is the canonical metadata layer — prefer this tool over
-    ``search_variables`` for boundary-sensitive questions about whether a
-    variable is analysable, source-only, or dropped.
+    label, dataset column, form, options, and provenance. The plugin-published
+    Source Truth set under ``llm_source/SoT/<pair>/`` is the canonical metadata
+    layer; older ``llm_source/source_truth`` files are compatibility-only.
+    Prefer this tool over ``search_variables`` for boundary-sensitive questions
+    about whether a variable is analysable, source-only, or dropped.
 
     Boundary handling (read this carefully — it shapes the LLM's reply):
 
@@ -1536,7 +1521,9 @@ def answer_catalog_question(question: str) -> str:
                 if isinstance(var_meta, dict):
                     question_text = str(var_meta.get("pdf_question") or "")
                     question_overlap = query_tokens & _catalog_meaningful_tokens(question_text)
-                    name_overlap = query_tokens & _catalog_meaningful_tokens(var_name.replace("_", " "))
+                    name_overlap = query_tokens & _catalog_meaningful_tokens(
+                        var_name.replace("_", " ")
+                    )
                     score = len(question_overlap) * 2 + len(name_overlap)
                     if (
                         len(question_overlap) >= 2
@@ -1567,9 +1554,10 @@ def answer_catalog_question(question: str) -> str:
                 {
                     "question": question,
                     "answer": (
-                        "No policy SoT YAMLs found. Generate them by running "
-                        "`make sot-source-pack STUDY=<study> FORM=<form>` "
-                        "then completing Stages 1-4 per skills/sot-lean-generator/SKILL.md."
+                        "No policy SoT YAMLs found. Run Load Study to activate "
+                        "the report-ai-study-pipeline plugin, or run the "
+                        "`sot-lean-generator` phase for the affected form and publish "
+                        "the result under `llm_source/SoT/<pair>/pdf/`."
                     ),
                     "variable_ids": [],
                     "audit_only": False,
@@ -1648,38 +1636,67 @@ def answer_catalog_question(question: str) -> str:
 
 _CANONICAL_QUESTION_HINTS: dict[str, tuple[str, ...]] = {
     "q01_cohort_a_univariate": (
-        "cohort a", "univariate", "tb recurrence predictors", "single-variable",
+        "cohort a",
+        "univariate",
+        "tb recurrence predictors",
+        "single-variable",
     ),
     "q02_cohort_a_multivariate_interactions": (
-        "cohort a", "multivariate", "backward selection", "interactions",
-        "smoking age", "alcohol smoking",
+        "cohort a",
+        "multivariate",
+        "backward selection",
+        "interactions",
+        "smoking age",
+        "alcohol smoking",
     ),
     "q03_cohort_b_univariate": (
-        "cohort b", "univariate", "household contact", "predictors",
+        "cohort b",
+        "univariate",
+        "household contact",
+        "predictors",
     ),
     "q04_cohort_b_multivariate_interactions": (
-        "cohort b", "multivariate", "interactions",
+        "cohort b",
+        "multivariate",
+        "interactions",
     ),
     "q05_hiv_test_result_distribution": (
-        "hiv", "test result", "distribution", "serostatus",
+        "hiv",
+        "test result",
+        "distribution",
+        "serostatus",
     ),
     "q06_cohort_a_index_case_inclusion_exclusion": (
-        "index case", "inclusion", "exclusion", "cohort a eligibility",
+        "index case",
+        "inclusion",
+        "exclusion",
+        "cohort a eligibility",
     ),
     "q07_tb_relapse_vs_treatment_failure": (
-        "relapse", "treatment failure", "definition difference",
+        "relapse",
+        "treatment failure",
+        "definition difference",
     ),
     "q08_household_contact_definition": (
-        "household contact", "definition", "shared household",
+        "household contact",
+        "definition",
+        "shared household",
     ),
     "q09_drug_susceptibility_tests_and_timing": (
-        "drug susceptibility", "dst", "timing", "first-line",
+        "drug susceptibility",
+        "dst",
+        "timing",
+        "first-line",
     ),
     "q10_household_contact_followup_schedule_specimens": (
-        "household contact", "follow-up schedule", "specimens",
+        "household contact",
+        "follow-up schedule",
+        "specimens",
     ),
     "q11_variables_available_for_relapse": (
-        "variables for relapse", "relapse variables", "what variables",
+        "variables for relapse",
+        "relapse variables",
+        "what variables",
         "fields for relapse",
     ),
 }
@@ -1700,9 +1717,7 @@ def _persist_evidence_report_code(question_id: str) -> Path | None:
     try:
         output_dir = config.AGENT_OUTPUT_DIR / "code"
         output_dir.mkdir(parents=True, exist_ok=True)
-        path = validate_agent_write(
-            output_dir / f"evidence_{uuid.uuid4().hex[:12]}.py"
-        )
+        path = validate_agent_write(output_dir / f"evidence_{uuid.uuid4().hex[:12]}.py")
     except Exception:
         return None
     code = (
@@ -1740,9 +1755,7 @@ def _persist_custom_evidence_report_code(
     try:
         output_dir = config.AGENT_OUTPUT_DIR / "code"
         output_dir.mkdir(parents=True, exist_ok=True)
-        path = validate_agent_write(
-            output_dir / f"custom_evidence_{uuid.uuid4().hex[:12]}.py"
-        )
+        path = validate_agent_write(output_dir / f"custom_evidence_{uuid.uuid4().hex[:12]}.py")
     except Exception:
         return None
     code = (
@@ -1899,7 +1912,7 @@ def produce_evidence_report(question_id: str) -> str:
         return (
             f"**Report blocked for `{qid}`.** The evidence engine could not produce a "
             "PHI-safe response. This usually means the source-of-truth files for the "
-            "study have not been built yet. Please run the data pipeline before "
+            "study have not been built yet. Please run Load Study to activate the plugin before "
             "re-asking, or contact the maintainer.\n\n"
             f"{bundle.markdown}"
         )
@@ -2079,9 +2092,7 @@ def cite_source(form_id: str, field_id: str) -> str:
     form = (form_id or "").strip()
     field = (field_id or "").strip()
     if not form or not field:
-        return json.dumps(
-            {"error": "form_id and field_id are both required"}, indent=2
-        )
+        return json.dumps({"error": "form_id and field_id are both required"}, indent=2)
     try:
         citation = cite_variable(form, field)
     except CitationNotFound as exc:

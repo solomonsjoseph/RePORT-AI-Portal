@@ -29,7 +29,9 @@ RAW_PDF = REPO_ROOT / "data" / "raw" / "Indo-VAP" / "annotated_pdfs" / "6 HIV v1
 SOURCE_PACK = Path("/tmp/sot_source_pack_6_HIV.json")
 RENDER_DIR = Path("/tmp/sot_render_6_HIV")
 CHECK_SCRIPT = REPO_ROOT / "skills" / "sot-lean-generator" / "scripts" / "check_lean_policy.py"
-GENERATOR_SCRIPT = REPO_ROOT / "skills" / "sot-lean-generator" / "scripts" / "generate_pdf_aware_candidate.py"
+GENERATOR_SCRIPT = (
+    REPO_ROOT / "skills" / "sot-lean-generator" / "scripts" / "generate_pdf_aware_candidate.py"
+)
 
 
 def _source_pack_or_skip() -> Path:
@@ -38,20 +40,25 @@ def _source_pack_or_skip() -> Path:
 
     result = subprocess.run(
         [
-            "uv", "run", "--all-groups", "python",
-            "-m", "scripts.source_truth.study_intake",
-            "--study", "Indo-VAP",
-            "--form", "6_HIV",
-            "--repo-root", str(REPO_ROOT),
+            "uv",
+            "run",
+            "--all-groups",
+            "python",
+            "-m",
+            "scripts.source_truth.study_intake",
+            "--study",
+            "Indo-VAP",
+            "--form",
+            "6_HIV",
+            "--repo-root",
+            str(REPO_ROOT),
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,
         text=True,
     )
     assert result.returncode == 0, (
-        f"study_intake exited {result.returncode}\n"
-        f"stdout: {result.stdout}\n"
-        f"stderr: {result.stderr}"
+        f"study_intake exited {result.returncode}\nstdout: {result.stdout}\nstderr: {result.stderr}"
     )
     assert SOURCE_PACK.exists(), f"source pack not written: {SOURCE_PACK}"
     return SOURCE_PACK
@@ -64,12 +71,19 @@ def _reference_lean_yaml(tmp_path: Path) -> Path:
     out = tmp_path / "6_HIV_policy.lean.yaml"
     result = subprocess.run(
         [
-            "uv", "run", "--all-groups", "python",
+            "uv",
+            "run",
+            "--all-groups",
+            "python",
             str(GENERATOR_SCRIPT),
-            "--repo-root", str(REPO_ROOT),
-            "--form", "6_HIV",
-            "--source-pack", str(source_pack),
-            "--out", str(out),
+            "--repo-root",
+            str(REPO_ROOT),
+            "--form",
+            "6_HIV",
+            "--source-pack",
+            str(source_pack),
+            "--out",
+            str(out),
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,
@@ -95,14 +109,15 @@ def test_stage0_source_pack() -> None:
     assert len(pack["pdf_sha256"]) == 64, "source pack pdf_sha256 is not a SHA-256 hex digest"
     assert "renders" in pack, "source pack missing 'renders' key"
     assert len(pack["renders"]) == pack["page_count"], "source pack must render every PDF page"
-    assert pack["screenshot"] == pack["renders"][0], "screenshot must remain first-render compatibility alias"
+    assert pack["screenshot"] == pack["renders"][0], (
+        "screenshot must remain first-render compatibility alias"
+    )
     assert "header_duplicates" in pack, "source pack missing duplicate-header summary"
     assert "annotation_duplicates" in pack, "source pack missing duplicate-annotation summary"
 
     pngs = list(RENDER_DIR.glob("*.png")) if RENDER_DIR.is_dir() else []
     assert len(pngs) == pack["page_count"], (
-        f"no render PNG found under {RENDER_DIR}; "
-        "check that ghostscript (gs) is installed"
+        f"no render PNG found under {RENDER_DIR}; check that ghostscript (gs) is installed"
     )
 
 
@@ -114,11 +129,17 @@ def test_stage4_lean_verify(tmp_path: Path) -> None:
 
     result = subprocess.run(
         [
-            "uv", "run", "--all-groups", "python",
+            "uv",
+            "run",
+            "--all-groups",
+            "python",
             str(CHECK_SCRIPT),
-            "--lean", str(lean_yaml),
-            "--source-pack", str(source_pack),
-            "--repo-root", str(REPO_ROOT),
+            "--lean",
+            str(lean_yaml),
+            "--source-pack",
+            str(source_pack),
+            "--repo-root",
+            str(REPO_ROOT),
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,
@@ -129,9 +150,7 @@ def test_stage4_lean_verify(tmp_path: Path) -> None:
         f"stdout: {result.stdout}\n"
         f"stderr: {result.stderr}"
     )
-    assert "passed" in result.stdout.lower(), (
-        f"expected 'passed' in output, got: {result.stdout!r}"
-    )
+    assert "passed" in result.stdout.lower(), f"expected 'passed' in output, got: {result.stdout!r}"
 
 
 def test_stage4_pdf_sha_mismatch_exits_2(tmp_path: Path) -> None:
@@ -147,11 +166,17 @@ def test_stage4_pdf_sha_mismatch_exits_2(tmp_path: Path) -> None:
 
     result = subprocess.run(
         [
-            "uv", "run", "--all-groups", "python",
+            "uv",
+            "run",
+            "--all-groups",
+            "python",
             str(CHECK_SCRIPT),
-            "--lean", str(lean_yaml),
-            "--source-pack", str(stale_pack_path),
-            "--repo-root", str(REPO_ROOT),
+            "--lean",
+            str(lean_yaml),
+            "--source-pack",
+            str(stale_pack_path),
+            "--repo-root",
+            str(REPO_ROOT),
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,
@@ -176,10 +201,15 @@ def test_stage4_rejects_generic_annotation_placeholders(tmp_path: Path) -> None:
 
     result = subprocess.run(
         [
-            "uv", "run", "--all-groups", "python",
+            "uv",
+            "run",
+            "--all-groups",
+            "python",
             str(CHECK_SCRIPT),
-            "--lean", str(bad_path),
-            "--source-pack", str(source_pack),
+            "--lean",
+            str(bad_path),
+            "--source-pack",
+            str(source_pack),
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,
@@ -202,10 +232,15 @@ def test_stage4_rejects_duplicate_dataset_headers(tmp_path: Path) -> None:
 
     result = subprocess.run(
         [
-            "uv", "run", "--all-groups", "python",
+            "uv",
+            "run",
+            "--all-groups",
+            "python",
             str(CHECK_SCRIPT),
-            "--lean", str(lean_yaml),
-            "--source-pack", str(bad_pack_path),
+            "--lean",
+            str(lean_yaml),
+            "--source-pack",
+            str(bad_pack_path),
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,
@@ -242,10 +277,15 @@ def test_stage4_accepts_documented_duplicate_header_collapse(tmp_path: Path) -> 
 
     result = subprocess.run(
         [
-            "uv", "run", "--all-groups", "python",
+            "uv",
+            "run",
+            "--all-groups",
+            "python",
             str(CHECK_SCRIPT),
-            "--lean", str(combined_path),
-            "--source-pack", str(duplicate_pack_path),
+            "--lean",
+            str(combined_path),
+            "--source-pack",
+            str(duplicate_pack_path),
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,
@@ -269,17 +309,25 @@ def test_stage4_rejects_unreconciled_variable_like_pdf_annotation(tmp_path: Path
 
     result = subprocess.run(
         [
-            "uv", "run", "--all-groups", "python",
+            "uv",
+            "run",
+            "--all-groups",
+            "python",
             str(CHECK_SCRIPT),
-            "--lean", str(lean_yaml),
-            "--source-pack", str(bad_pack_path),
+            "--lean",
+            str(lean_yaml),
+            "--source-pack",
+            str(bad_pack_path),
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,
         text=True,
     )
     assert result.returncode != 0
-    assert "not reconciled as an alias, non-variable label, or printed-widget discrepancy" in result.stderr
+    assert (
+        "not reconciled as an alias, non-variable label, or printed-widget discrepancy"
+        in result.stderr
+    )
 
 
 def test_stage4_accepts_pdf_annotation_alias_to_dataset_header(tmp_path: Path) -> None:
@@ -296,9 +344,7 @@ def test_stage4_accepts_pdf_annotation_alias_to_dataset_header(tmp_path: Path) -
         {
             "kind": "pdf_annotation_alias_to_dataset_header",
             "where": "PDF annotations",
-            "pdf_annotation_says": [
-                {"label": "HIV_VISITTYPO", "dataset_column": "HIV_VISIT"}
-            ],
+            "pdf_annotation_says": [{"label": "HIV_VISITTYPO", "dataset_column": "HIV_VISIT"}],
             "printed_form_truth": "Annotation label is a locator typo for the printed visit field",
             "dataset_column_binding": ["HIV_VISIT"],
             "resolution": "Dataset row-1 header retained as the variable key",
@@ -309,10 +355,15 @@ def test_stage4_accepts_pdf_annotation_alias_to_dataset_header(tmp_path: Path) -
 
     result = subprocess.run(
         [
-            "uv", "run", "--all-groups", "python",
+            "uv",
+            "run",
+            "--all-groups",
+            "python",
             str(CHECK_SCRIPT),
-            "--lean", str(aliased_path),
-            "--source-pack", str(alias_pack_path),
+            "--lean",
+            str(aliased_path),
+            "--source-pack",
+            str(alias_pack_path),
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,
@@ -350,10 +401,15 @@ def test_stage4_accepts_documented_printed_widget_without_dataset_header(tmp_pat
 
     result = subprocess.run(
         [
-            "uv", "run", "--all-groups", "python",
+            "uv",
+            "run",
+            "--all-groups",
+            "python",
             str(CHECK_SCRIPT),
-            "--lean", str(documented_path),
-            "--source-pack", str(missing_pack_path),
+            "--lean",
+            str(documented_path),
+            "--source-pack",
+            str(missing_pack_path),
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,
@@ -372,12 +428,19 @@ def test_pdf_aware_generator_preserves_6_hiv_calibration(tmp_path: Path) -> None
     out = tmp_path / "6_HIV_policy.lean.yaml"
     result = subprocess.run(
         [
-            "uv", "run", "--all-groups", "python",
+            "uv",
+            "run",
+            "--all-groups",
+            "python",
             str(GENERATOR_SCRIPT),
-            "--repo-root", str(REPO_ROOT),
-            "--form", "6_HIV",
-            "--source-pack", str(source_pack),
-            "--out", str(out),
+            "--repo-root",
+            str(REPO_ROOT),
+            "--form",
+            "6_HIV",
+            "--source-pack",
+            str(source_pack),
+            "--out",
+            str(out),
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,
@@ -391,10 +454,15 @@ def test_pdf_aware_generator_preserves_6_hiv_calibration(tmp_path: Path) -> None
 
     verify = subprocess.run(
         [
-            "uv", "run", "--all-groups", "python",
+            "uv",
+            "run",
+            "--all-groups",
+            "python",
             str(CHECK_SCRIPT),
-            "--lean", str(out),
-            "--source-pack", str(source_pack),
+            "--lean",
+            str(out),
+            "--source-pack",
+            str(source_pack),
         ],
         cwd=str(REPO_ROOT),
         capture_output=True,

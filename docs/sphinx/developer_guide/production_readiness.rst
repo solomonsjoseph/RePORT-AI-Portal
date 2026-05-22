@@ -173,7 +173,8 @@ of duties.
 Restore drills are mandatory before production use:
 
 1. restore the PHI key;
-2. re-run ``make pipeline`` against the restored raw data;
+2. click **Load Study** to activate the study-preparation plugin against
+   the restored raw data;
 3. launch ``make chat``;
 4. confirm the assistant reads ``output/{STUDY_NAME}/llm_source/``.
 

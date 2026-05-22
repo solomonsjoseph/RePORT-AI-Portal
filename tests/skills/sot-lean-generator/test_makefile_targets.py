@@ -15,4 +15,4 @@ def test_sot_validate_targets_candidate_by_default() -> None:
     assert "--lean $(CANDIDATE)" in makefile
     assert "--candidate $(CANDIDATE)" in makefile
     assert "sot-verify-output:" in makefile
-    assert "--lean output/$(STUDY)/llm_source/source_truth/$(FORM)_policy.lean.yaml" in makefile
+    assert "--policy output/$(STUDY)/llm_source/SoT/$(SOT_PAIR)/pdf/$(FORM)_policy.yaml" in makefile

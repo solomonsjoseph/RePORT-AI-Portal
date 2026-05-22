@@ -20,7 +20,6 @@ from scripts.extraction.io.clinical_dates import (
     parse_date,
 )
 
-
 # ---------------------------------------------------------------------------
 # (a) Case-insensitive allowlist
 # ---------------------------------------------------------------------------
@@ -101,7 +100,7 @@ class TestParseAmbiguousRaisesWithoutManifest:
             parse_date("07/05/2014", field_name="SOME_UNKNOWN_COL")
 
     def test_ambiguous_raises_mentions_manifest(self) -> None:
-        with pytest.raises(ValueError, match="_forms_manifest.yaml"):
+        with pytest.raises(ValueError, match=r"_forms_manifest\.yaml"):
             parse_date("07/05/2014", field_name="MY_DATE_COL")
 
     def test_ambiguous_raises_interpolates_value(self) -> None:
@@ -111,8 +110,7 @@ class TestParseAmbiguousRaisesWithoutManifest:
         with pytest.raises(ValueError) as exc_info:
             parse_date("07/05/2014", field_name="SOME_UNKNOWN_COL")
         assert "'07/05/2014'" in str(exc_info.value), (
-            "Error message must interpolate the offending value; "
-            f"got: {exc_info.value}"
+            f"Error message must interpolate the offending value; got: {exc_info.value}"
         )
 
     def test_no_field_name_defaults_mdy_no_raise(self) -> None:

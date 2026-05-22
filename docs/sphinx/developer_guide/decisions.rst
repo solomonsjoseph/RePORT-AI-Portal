@@ -205,8 +205,9 @@ ADR-006 — External-API PDF extraction refused by default
 .. note::
 
    Historical. The active LLM source flow no longer runs PDF extraction
-   modules; PDF-derived metadata is reviewed into SoT policy YAMLs and
-   published through the Study Metadata Catalog and Evidence Packs.
+   modules. The Load Study plugin's Source Truth child skill reads PDFs plus
+   dataset headers and publishes reviewed SoT policy YAMLs under
+   ``llm_source/SoT/<pair>/``.
 
 **What.** ``scripts/extraction/extract_pdf_data._resolve_pdf_provider``
 refuses to initialise an Anthropic / Google Gemini client unless the
@@ -383,7 +384,7 @@ ADR-011 — KeyStore (in-memory API-key registry)
 routes the key into an in-memory ``KeyStore`` registry; the
 corresponding ``*_API_KEY`` env variable is scrubbed from
 ``os.environ``. Keys are re-injected only into the short-lived
-pipeline subprocess via ``KeyStore.env_for_subprocess``.
+Load Study plugin subprocesses via ``KeyStore.env_for_subprocess``.
 
 **Why.** ``os.environ`` is a process-wide global. A single
 ``logger.info(f"env={dict(os.environ)}")`` debug-print, an exception
@@ -511,11 +512,12 @@ ADR-014 — Parallel extraction phase (3-worker ThreadPoolExecutor)
 
 .. note::
 
-   Historical. The current LLM source flow generates verified lean SoT
-   YAMLs with ``scripts.source_truth.generate_lean_outputs`` and publishes
-   scrubbed dataset / dictionary artifacts with ``main.py --pipeline``. The
-   old PDF leg, catalog/evidence-pack builder, and ``variables.json`` builder
-   are not active LLM-visible outputs.
+   Historical. The current LLM source flow starts from the Load Study
+   study-preparation plugin. Its Source Truth child skill generates verified
+   lean SoT YAMLs under ``llm_source/SoT/<pair>/``, and its dataset child
+   skill delegates to the trusted host publish path for scrubbed dataset /
+   dictionary artifacts. The old PDF leg, catalog/evidence-pack builder, and
+   ``variables.json`` builder are not active LLM-visible outputs.
 
 **Historical what.** ``main.py``'s extraction phase ran Dictionary /
 Datasets / PDFs in parallel on a 3-worker
@@ -554,8 +556,8 @@ same ``tmp/{STUDY}/`` workspace. ``VerboseLogger`` uses thread-local
 indentation, keeping ``--verbose`` tree output readable while the
 three extraction legs overlap.
 
-ADR-016 — SoT skill refactor: collapse 32-module pipeline into a single CLI
----------------------------------------------------------------------------
+ADR-016 — SoT skill refactor and plugin-owned study preparation
+---------------------------------------------------------------
 
 *Date: 2026-05-15*
 
@@ -573,7 +575,9 @@ ADR-016 — SoT skill refactor: collapse 32-module pipeline into a single CLI
 single source-pack CLI plus a runtime generation wrapper:
 ``python -m scripts.source_truth.study_intake --study <study> --form <form>``
 and ``python -m scripts.source_truth.generate_lean_outputs --study <study>``.
-The surviving lean core is ``study_intake.py``, ``diff_against_gold.py``, and
+Those wrappers now run as the Source Truth phase of the portable
+``report-ai-study-pipeline`` plugin. The surviving lean core is
+``study_intake.py``, ``diff_against_gold.py``, and
 ``generate_lean_outputs.py`` plus the shared ``skills/sot-lean-generator``
 scripts and rule files.
 
@@ -592,14 +596,16 @@ scripts and rule files.
 3. *Cross-LLM portability:* The prior skill surface lived in a
    Claude-Code-specific ``.claude/skills/`` directory, unreachable from
    ChatGPT, Gemini, Cursor, Aider, or a raw shell. The replacement
-   CLI plus Sphinx runbook is tool-agnostic.
+   portable plugin plus Sphinx runbook is tool-agnostic.
 
 **How.** ``scripts/source_truth/study_intake.py`` resolves one PDF/dataset
 pair and delegates Stage 0 extraction to the skill script. It reads only
 dataset row 1 for SoT binding. ``scripts/source_truth/generate_lean_outputs.py``
-runs the batch runtime loop: source pack → candidate under ``/tmp`` → verifier
-→ promote to ``output/{STUDY}/llm_source/source_truth``. The CLI is documented
-in :doc:`source_truth_build`.
+runs the batch runtime loop: source pack -> candidate under ``/tmp`` -> verifier
+-> promote to ``output/{STUDY}/llm_source/SoT/<pair>/``. The web UI's
+**Load Study** action activates the plugin; the dataset publish phase still
+uses the trusted host ``dataset-to-llm-source`` skill. The CLI is documented in
+:doc:`source_truth_build`.
 
 **Alternatives.**
 
@@ -607,9 +613,9 @@ in :doc:`source_truth_build`.
   dependencies were circular enough that safe incremental surgery would
   have taken longer than a clean rewrite to the well-defined contract
   (inputs: PDF + headers; output: YAML or review-file entry).
-* *LLM-driven outer loop.* Rejected — a deterministic shell around the LLM
-  sub-agents is the only way to make the headers-only invariant provable at
-  the process boundary. An LLM outer loop would re-open that boundary.
+* *Unbounded LLM-driven outer loop.* Rejected — plugin delegation is allowed
+  only through the documented skills and trusted host CLIs so the headers-only
+  invariant remains provable at the process boundary.
 * *Claude-Code-specific SKILL.md approach.* Rejected per the cross-LLM
   portability requirement in the project memory.
 
@@ -627,11 +633,10 @@ in :doc:`source_truth_build`.
    ``scripts/ai_assistant/agent_tools.py`` have been audited and decoupled
    (Task 6a). Re-introduction of a YAML-backed retriever is tracked as
    future work if the agent needs direct SoT policy access at runtime.
-3. *No Makefile target for SoT creation.* ``make pipeline`` continues to
-   run the extraction → scrub → publish → LLM-source-build sequence.
-   The SoT intake CLI is a separate invocation; this is by design to keep
-   the two concerns (SoT authoring vs. LLM source publishing) visibly
-   distinct.
+3. *Makefile targets are lower-level helpers.* ``make pipeline`` remains the
+   host publish path used by the dataset child skill. Full study preparation is
+   initiated through the ``report-ai-study-pipeline`` plugin, including the
+   web UI **Load Study** flow.
 
 ADR-015 — l-diversity (l=2) on row-returning tools
 ---------------------------------------------------

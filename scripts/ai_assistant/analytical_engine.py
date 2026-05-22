@@ -34,6 +34,7 @@ class AnalysisBindingError(ValueError):
     """Raised when an analysis role cannot be bound to a source-backed
     catalog card + Dataset Schema entry."""
 
+
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 logger = logging.getLogger(__name__)

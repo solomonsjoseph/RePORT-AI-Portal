@@ -6,9 +6,9 @@ them) with a process-local registry held in Streamlit session state.
 
 The trust boundary is straightforward: keys live ONLY here in memory
 and are passed explicitly to LangChain client constructors via
-``api_key=``. The single narrow exception is when the wizard launches
-the pipeline as a subprocess that needs ``ANTHROPIC_API_KEY`` /
-``GOOGLE_API_KEY`` for vision-API calls — :meth:`KeyStore.env_for_subprocess`
+``api_key=``. The single narrow exception is when Load Study launches
+plugin or trusted host subprocesses that may need provider keys —
+:meth:`KeyStore.env_for_subprocess`
 returns a *new* dict suitable for ``subprocess.run(env=...)`` without
 ever mutating the parent's ``os.environ``.
 
@@ -26,7 +26,7 @@ if TYPE_CHECKING:  # pragma: no cover
 # Provider slug → conventional environment-variable name LangChain SDKs
 # auto-pick. The names here are the SDK contract; they are NOT the only
 # place keys live (see ``KeyStore`` itself), but when keys DO need to
-# transit env (e.g. for the pipeline subprocess), this is the mapping.
+# transit env (e.g. for Load Study plugin subprocesses), this is the mapping.
 ENV_VAR_BY_PROVIDER: dict[str, str] = {
     "anthropic": "ANTHROPIC_API_KEY",
     "openai": "OPENAI_API_KEY",

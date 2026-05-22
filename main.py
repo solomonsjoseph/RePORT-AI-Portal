@@ -235,7 +235,8 @@ off-limits to the agent.
 ## Layout
 
 - `llm_source/` — GREEN zone. PHI-scrubbed datasets (JSONL), dictionary
-  mapping JSONL, and verified lean Source Truth YAMLs. Part of the LLM
+  mapping JSONL, and plugin-published Source Truth sets under `SoT/`.
+  Part of the LLM
   agent's read surface (the other part is
   `agent/`, below). Each agent tool resolves every path through
   `scripts.ai_assistant.file_access.validate_agent_read`, which layers on
@@ -581,8 +582,7 @@ def _run_dataset_leg(*, force: bool, run_extraction: bool) -> dict[str, Any]:
     llm_source_has_jsonl = trio_datasets_dir.is_dir() and any(trio_datasets_dir.glob("*.jsonl"))
 
     form_allowlist_active = any(
-        item.strip()
-        for item in os.environ.get("REPORTAL_ALLOWED_DATASET_FORMS", "").split(",")
+        item.strip() for item in os.environ.get("REPORTAL_ALLOWED_DATASET_FORMS", "").split(",")
     )
 
     if (
@@ -694,7 +694,10 @@ def run_step(step_name: str, func: Callable[[], Any]) -> Any:
         log.success(f"{step_name} completed successfully.")
         return cast(Any, result)
     except Exception as e:
-        log.error("Fatal: %s", format_for_log(wrap(e, stage="pipeline", operation=step_name, include_traceback=False)))
+        log.error(
+            "Fatal: %s",
+            format_for_log(wrap(e, stage="pipeline", operation=step_name, include_traceback=False)),
+        )
         sys.exit(1)
 
 
@@ -980,7 +983,14 @@ For detailed documentation, see the Sphinx docs or README.md
                 extraction_failures.append((leg_name, exc))
                 log.error(
                     "Fatal: %s",
-                    format_for_log(wrap(exc, stage="pipeline.extract", operation=leg_name, include_traceback=False)),
+                    format_for_log(
+                        wrap(
+                            exc,
+                            stage="pipeline.extract",
+                            operation=leg_name,
+                            include_traceback=False,
+                        )
+                    ),
                 )
                 continue
             if leg_name == "datasets":

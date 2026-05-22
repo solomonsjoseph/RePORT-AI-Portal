@@ -221,7 +221,7 @@ class TestKeyDisclosureChain:
     def test_subprocess_env_dict_does_not_leak_to_parent_environ(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Building the pipeline subprocess env is the one path keys
+        """Building the Load Study subprocess env is the one path keys
         legitimately take env-shaped form — proves that path doesn't leak
         either."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)

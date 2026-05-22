@@ -48,10 +48,11 @@ Limitations
 
 from __future__ import annotations
 
+from typing import cast
+
 import pandas as pd
 
 from scripts.utils import logging_system as log
-
 
 __all__ = [
     "promote_header",
@@ -125,9 +126,7 @@ def split_sheet_into_tables(df: pd.DataFrame) -> list[pd.DataFrame] | None:
         log.debug("DataFrame info:", exc_info=True)
         return None  # signals parse error, distinct from empty sheet
     except Exception as e:
-        log.error(
-            f"Unexpected error splitting DataFrame into tables: {type(e).__name__}: {e}"
-        )
+        log.error(f"Unexpected error splitting DataFrame into tables: {type(e).__name__}: {e}")
         log.debug("Full error details:", exc_info=True)
         return None  # signals parse error
 
@@ -186,7 +185,7 @@ def promote_header(
     for i, row in df.iterrows():
         non_null_count = row.notna().sum()
         if non_null_count > 1:
-            header_idx = int(i)
+            header_idx = cast(int, i)
             break
 
     if header_idx is None:
@@ -210,9 +209,7 @@ def promote_header(
         marker_lower = footer_marker.lower()
 
         def _is_footer_row(row: pd.Series) -> bool:  # type: ignore[type-arg]
-            first_val = next(
-                (v for v in row if pd.notna(v) and str(v).strip()), None
-            )
+            first_val = next((v for v in row if pd.notna(v) and str(v).strip()), None)
             if first_val is None:
                 return False
             return str(first_val).strip().lower().startswith(marker_lower)

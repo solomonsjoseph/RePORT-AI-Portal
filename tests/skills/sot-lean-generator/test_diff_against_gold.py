@@ -51,11 +51,16 @@ def _run(
         [
             sys.executable,
             CLI,
-            "--study", study,
-            "--form", form,
-            "--candidate", str(candidate),
-            "--repo-root", str(repo_root),
-            "--out", str(out),
+            "--study",
+            study,
+            "--form",
+            form,
+            "--candidate",
+            str(candidate),
+            "--repo-root",
+            str(repo_root),
+            "--out",
+            str(out),
         ],
         capture_output=True,
         text=True,
@@ -108,7 +113,10 @@ def test_whitespace_only_difference_cosmetic_exit_0(tmp_path: Path) -> None:
     candidate_data = {
         "form": {"title": "My Form"},
         "variables": {
-            "VAR_A": {"section": "s1", "pdf_question": "  Question A?  "},  # leading/trailing whitespace
+            "VAR_A": {
+                "section": "s1",
+                "pdf_question": "  Question A?  ",
+            },  # leading/trailing whitespace
         },
     }
 
@@ -306,9 +314,7 @@ def test_invalid_yaml_exits_2(tmp_path: Path) -> None:
         f"Expected exit 2 (invalid YAML); got {result.returncode}\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
-    assert "error" in result.stderr.lower(), (
-        f"Expected 'error' in stderr; got: {result.stderr!r}"
-    )
+    assert "error" in result.stderr.lower(), f"Expected 'error' in stderr; got: {result.stderr!r}"
 
 
 # I3 -------------------------------------------------------------------

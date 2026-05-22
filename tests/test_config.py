@@ -149,8 +149,8 @@ class TestStagingPaths:
 class TestAuditReportPaths:
     """Only the dataset leg carries PHI → only its audit reports exist.
 
-    Dictionary and PDF legs are content-only; their cleanup is side-effect-only
-    (pruning without a report).
+    Dictionary mappings and legacy PDF JSON compatibility helpers are
+    content-only from the host side.
     """
 
     def test_dataset_report_path(self) -> None:

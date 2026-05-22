@@ -2,10 +2,10 @@ Source Truth Build
 ==================
 
 This page is for maintainers and agents that need to rebuild reviewed
-Source Truth YAML for one study. After reading it, you should know which
+Source Truth sets for one study. After reading it, you should know which
 commands produce source packs, where LLM/manual authoring is allowed, and
-which deterministic gates must pass before a YAML reaches
-``llm_source/``.
+which deterministic gates must pass before policy/schema/joined artifacts
+reach ``llm_source/``.
 
 The printed PDF is the clinical authority. Dataset workbooks are used
 for row-1 headers only during Source Truth authoring; row 2 and later
@@ -28,12 +28,15 @@ Prerequisites
    * - uv
      - ``uv --version``
    * - Runtime output directory
-     - ``output/{STUDY}/llm_source/source_truth/``
+     - ``output/{STUDY}/llm_source/SoT/``
 
 Batch Runtime Build
 -------------------
 
-Use the batch command for a normal runtime rebuild:
+The full study-preparation workflow is owned by the portable
+``report-ai-study-pipeline`` plugin. For the SoT phase only, use the batch
+command below when you need a repo-local rebuild of PDF/header Source Truth
+sets:
 
 .. code-block:: bash
 
@@ -42,10 +45,10 @@ Use the batch command for a normal runtime rebuild:
 That command:
 
 1. creates source packs for PDF-backed forms,
-2. generates conservative lean YAML candidates under ``/tmp``,
+2. generates conservative policy YAML candidates under ``/tmp``,
 3. verifies each candidate,
-4. promotes passing YAMLs to
-   ``output/Indo-VAP/llm_source/source_truth/``, and
+4. promotes passing policy/schema/joined outputs to
+   ``output/Indo-VAP/llm_source/SoT/``, and
 5. runs the main pipeline to publish dictionary mappings,
    PHI-scrubbed dataset JSONL, audit ledgers, lineage, and the output
    signpost.
@@ -99,8 +102,8 @@ For manual or LLM authoring:
    widget type, field label, value-set, section, and skip-logic
    mismatches. If the render is ambiguous, pause for human review.
 3. Read ``skills/sot-lean-generator/references/policy_yaml_rules.md``.
-   Trim the exhaustive draft to the lean schema and write
-   ``/tmp/6_HIV_lean.yaml``.
+   Trim the exhaustive draft to the policy schema and write
+   ``tmp/SoT/6_HIV/pdf/6_HIV_policy.yaml``.
 
 All LLM tools use the same rule files and the same verifier. A
 tool-specific skill can point to this flow, but the rules and command
@@ -115,7 +118,8 @@ Run the deterministic verifier:
 
    make sot-verify STUDY=Indo-VAP FORM=6_HIV
 
-By default this validates ``/tmp/6_HIV_lean.yaml``. Pass
+By default this validates ``/tmp/6_HIV_lean.yaml`` for compatibility with
+the script-backed candidate generator. Pass
 ``CANDIDATE=/path/to/file`` to override.
 
 .. list-table::
@@ -159,24 +163,34 @@ To inspect gold diffs directly:
      --candidate /tmp/6_HIV_lean.yaml
 
 Anchored calibration gold lives at ``data/SoT/{STUDY}/``. Runtime YAMLs
-under ``output/{STUDY}/llm_source/source_truth/`` are generated outputs;
+under ``output/{STUDY}/llm_source/SoT/<pair>/pdf/`` are generated outputs;
 they are never silently copied over anchored gold.
 
 Stage 5: promote
 ~~~~~~~~~~~~~~~~
 
-Promote only after all validation gates pass:
+Promote only after all validation gates pass. The plugin-owned layout keeps
+the PDF policy, per-form dataset schema, and derived joined query view
+together:
 
 .. code-block:: bash
 
-   cp /tmp/6_HIV_lean.yaml \
-     output/Indo-VAP/llm_source/source_truth/6_HIV_policy.lean.yaml
+   cp tmp/SoT/6_HIV/pdf/6_HIV_policy.yaml \
+     output/Indo-VAP/llm_source/SoT/6_HIV/pdf/6_HIV_policy.yaml
+   cp tmp/SoT/6_HIV/dataset/6_HIV_schema.json \
+     output/Indo-VAP/llm_source/SoT/6_HIV/dataset/6_HIV_schema.json
+   uv run --all-groups python skills/sot-lean-generator/scripts/generate_joined_query_view.py \
+     --policy output/Indo-VAP/llm_source/SoT/6_HIV/pdf/6_HIV_policy.yaml \
+     --schema output/Indo-VAP/llm_source/SoT/6_HIV/dataset/6_HIV_schema.json \
+     --out output/Indo-VAP/llm_source/SoT/6_HIV/joined/6_HIV_joined_query_view.yaml
 
-The canonical runtime output path is:
+The canonical runtime output paths are:
 
 .. code-block:: text
 
-   output/{STUDY}/llm_source/source_truth/{FORM}_policy.lean.yaml
+   output/{STUDY}/llm_source/SoT/{PAIR}/pdf/{FORM}_policy.yaml
+   output/{STUDY}/llm_source/SoT/{PAIR}/dataset/{FORM}_schema.json
+   output/{STUDY}/llm_source/SoT/{PAIR}/joined/{FORM}_joined_query_view.yaml
 
 Escalation Rules
 ----------------

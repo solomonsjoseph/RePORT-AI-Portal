@@ -1,4 +1,4 @@
-"""raw-Excel → PHI-clean llm_source/ skill — CLI + destruction helper.
+"""Dataset-publish child skill — CLI + destruction helper for llm_source/.
 
 This module serves two roles:
 
@@ -7,10 +7,11 @@ This module serves two roles:
    staging directory after a successful publish and emits a destruction-
    attestation JSON.
 
-2. **Cross-LLM canonical CLI** — the ``run / verify / status`` argparse
-   surface added in P3.1.  This is the single entry point that drives the
-   full raw-Excel → PHI-clean ``llm_source/`` pipeline for any LLM agent
-   (Claude Code, ChatGPT, Gemini, Cursor …) via a plain subprocess call.
+2. **Cross-LLM dataset-publish child CLI** — the ``run / verify / status``
+   argparse surface added in P3.1. This is the plugin's trusted host entry
+   point for publishing raw workbook data into PHI-clean ``llm_source/``
+   outputs via a plain subprocess call. It also preserves the host
+   data-dictionary leg when raw dictionary files are present.
 
 Atomicity dependency
 --------------------
@@ -131,6 +132,7 @@ _APFS_COW_DISCLAIMER = (
     "APFS copy-on-write means prior blocks may persist until trimmed. "
     "Skill scope is operational untraceability, not forensic erasure."
 )
+
 
 class DestructionIncompleteError(Exception):
     """Raised when staging_dir still exists after secure_remove_tree.
@@ -276,7 +278,8 @@ _STATUS_BANNER = """\
 extract_to_llm_source — skill scope and contract
 =================================================
 
-Pipeline: raw .xlsx → PHI-scrubbed llm_source/ (one study)
+Scope: trusted host dataset publish into PHI-clean llm_source/ (one study)
+Dictionary: host dictionary leg is preserved when raw dictionary files exist
 
 PHI coverage: HIPAA Safe Harbor identifiers per scripts/security/phi_scrub.yaml
               + project-specific patterns in scripts/security/phi_patterns.py
@@ -314,9 +317,7 @@ def _cmd_status(_args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 # Determinism-check: these keys must not appear in any llm_source/ artifact.
-_FORBIDDEN_RUNTIME_KEYS: frozenset[str] = frozenset(
-    {"extraction_utc", "run_id", "generated_utc"}
-)
+_FORBIDDEN_RUNTIME_KEYS: frozenset[str] = frozenset({"extraction_utc", "run_id", "generated_utc"})
 
 # Required fields for destruction_attestation.json (assertion 4).
 _ATTESTATION_REQUIRED_FIELDS: frozenset[str] = frozenset(
@@ -337,9 +338,7 @@ _ATTESTATION_REQUIRED_FIELDS: frozenset[str] = frozenset(
 _ISO8601_RE = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]")
 
 
-def _resolve_run_id(
-    study_output_dir: Path, run_id_arg: str | None
-) -> tuple[str | None, str]:
+def _resolve_run_id(study_output_dir: Path, run_id_arg: str | None) -> tuple[str | None, str]:
     """Return (run_id, error_message).
 
     error_message is empty when resolution succeeds.  When resolution fails,
@@ -464,7 +463,10 @@ def _verify_assertion_5_ledger_hashes(
     """
     ledger_paths = iter_dataset_phi_ledger_paths(audit_dir)
     if not ledger_paths:
-        return "fail", f"no per-dataset phi_handling_ledger.as_written.json files under {audit_dir / 'datasets'}"
+        return (
+            "fail",
+            f"no per-dataset phi_handling_ledger.as_written.json files under {audit_dir / 'datasets'}",
+        )
 
     if not phi_scrub_config_path.exists():
         return "fail", f"phi_scrub.yaml not found at {phi_scrub_config_path}; cannot verify hash"
@@ -598,16 +600,13 @@ def _verify_assertion_10_required_jsonls_present(
 
     if missing:
         return "fail", (
-            "required form(s) missing from llm_source/dataset_schema/files/: "
-            f"{missing}"
+            f"required form(s) missing from llm_source/dataset_schema/files/: {missing}"
         )
 
     return "pass", ""
 
 
-def _verify_assertion_11_no_pipeline_lock(
-    tmp_dir: Path, study: str
-) -> _AssertionResult:
+def _verify_assertion_11_no_pipeline_lock(tmp_dir: Path, study: str) -> _AssertionResult:
     """Assertion 11: pipeline lock file must be absent."""
     lock_path = tmp_dir / f".{study}.pipeline.lock"
     if lock_path.exists():
@@ -675,9 +674,7 @@ def _cmd_verify(args: argparse.Namespace) -> int:
 
     # ── Assertion table ─────────────────────────────────────────────────────
     # Each entry: (n, name, callable, failure_exit_code)
-    _assertion_table: list[
-        tuple[int, str, Any, int]
-    ] = [
+    _assertion_table: list[tuple[int, str, Any, int]] = [
         (
             1,
             "forms_manifest_exists_parses",
@@ -1014,7 +1011,6 @@ def _run_form_approval_gate(
     )
 
 
-
 def _acquire_pipeline_lock_for_skill(study: str) -> None:
     """Acquire the pipeline lock by delegating to main._acquire_pipeline_lock.
 
@@ -1042,13 +1038,13 @@ def _release_pipeline_lock_for_skill() -> None:
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
-    """Drive the full raw-Excel → PHI-clean llm_source/ pipeline.
+    """Drive the trusted host publish path for the dataset child skill.
 
     Steps
     -----
     1. Pre-flight checks (run_id, in-progress token, lock, manifest).
     2. Install SIGINT/SIGTERM handlers.
-    3. Invoke ``main.py --pipeline --study STUDY`` in a subprocess.
+    3. Invoke ``main.py --pipeline`` in a subprocess with ``STUDY_NAME`` set.
     4. Post-run gates (ledger hashes, quarantine).
     5. Destruction (destroy_staging_and_attest).
     6. Write status.json.
@@ -1357,7 +1353,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="extract_to_llm_source",
         description=(
-            "Cross-LLM canonical entry point: raw .xlsx → PHI-clean llm_source/ pipeline."
+            "Dataset child-skill entry point: publish raw workbooks into PHI-clean "
+            "llm_source/ via the trusted host path."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -1366,8 +1363,8 @@ def _build_parser() -> argparse.ArgumentParser:
     # ── run ────────────────────────────────────────────────────────────────
     run_p = sub.add_parser(
         "run",
-        help="Drive the end-to-end pipeline for a single study.",
-        description="Run raw-Excel → PHI-scrub → llm_source/ for one study.",
+        help="Run the trusted host publish path for a single study.",
+        description="Run raw workbook publish -> PHI scrub -> llm_source/ for one study.",
     )
     run_p.add_argument(
         "--study",

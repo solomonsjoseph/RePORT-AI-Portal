@@ -157,7 +157,7 @@ def write_lineage_timing_sidecar(
     return sidecar_path
 
 
-_IN_PROGRESS_TOKEN_NAME = "scrub.in_progress"
+_IN_PROGRESS_TOKEN_NAME = "scrub.in_progress"  # noqa: S105
 
 
 def scan_for_in_progress_scrubs(study_runs_dir: Path) -> list[Path]:
@@ -181,8 +181,4 @@ def scan_for_in_progress_scrubs(study_runs_dir: Path) -> list[Path]:
     """
     if not study_runs_dir.is_dir():
         return []
-    return sorted(
-        p
-        for p in study_runs_dir.glob(f"*/{_IN_PROGRESS_TOKEN_NAME}")
-        if p.is_file()
-    )
+    return sorted(p for p in study_runs_dir.glob(f"*/{_IN_PROGRESS_TOKEN_NAME}") if p.is_file())

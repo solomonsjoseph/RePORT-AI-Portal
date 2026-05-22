@@ -34,6 +34,8 @@ import config
 from scripts.extraction.io import (
     atomic_write_dataframe_jsonl,
     discover_files,
+)
+from scripts.extraction.io import (
     split_sheet_into_tables as _split_sheet_into_tables_shared,
 )
 from scripts.extraction.io.file_discovery import SUPPORTED_TABULAR_EXTENSIONS

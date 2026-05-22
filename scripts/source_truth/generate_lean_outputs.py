@@ -1,4 +1,4 @@
-"""Generate and verify runtime lean SoT YAMLs for PDF-backed forms.
+"""Generate and verify runtime SoT outputs for PDF-backed forms.
 
 This is the repo-level orchestration wrapper around the sot-lean-generator
 helper scripts. It keeps the Source Truth runtime build reproducible without
@@ -8,7 +8,8 @@ moving row-2+ dataset values into the SoT path:
 2. Build a source pack from the PDF plus dataset row-1 headers only.
 3. Generate a lean YAML candidate into ``/tmp``.
 4. Verify the candidate against the source pack.
-5. Promote only verified YAMLs into ``output/<study>/llm_source/source_truth``.
+5. Promote only verified policy YAML plus the per-form schema and joined view
+   into ``output/<study>/llm_source/SoT/<pair>/``.
 """
 
 # ruff: noqa: S108
@@ -16,12 +17,20 @@ moving row-2+ dataset values into the SoT path:
 from __future__ import annotations
 
 import argparse
+import json
+import re
 import shutil
 import subprocess
 import sys
 from collections import defaultdict
 from pathlib import Path
 
+import yaml
+
+from scripts.ai_assistant.sot_joined_view import (
+    build_joined_query_view,
+    write_joined_query_view_yaml,
+)
 from scripts.source_truth.study_intake import (
     SOT_REVIEW_DIR,
     _find_dataset,
@@ -45,11 +54,111 @@ PDF_FORM_DATASET_OVERRIDES: dict[str, dict[str, str]] = {
 }
 
 
+def _sot_pair_name(form: str) -> str:
+    """Return the output pair directory name for a resolved form id."""
+
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", form.strip()).strip("_")
+    return cleaned or form
+
+
+def _relative_to_repo(path: Path, repo_root: Path) -> str:
+    try:
+        return str(path.relative_to(repo_root))
+    except ValueError:
+        return str(path)
+
+
+def _source_pack_headers(source_pack: Path) -> list[str]:
+    payload = json.loads(source_pack.read_text(encoding="utf-8"))
+    headers = payload.get("headers")
+    if not isinstance(headers, list) or not all(isinstance(item, str) for item in headers):
+        raise ValueError(f"source pack is missing a string headers array: {source_pack}")
+    return headers
+
+
+def _policy_phi_actions(policy_path: Path) -> dict[str, str]:
+    payload = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        return {}
+    variables = payload.get("variables")
+    if not isinstance(variables, dict):
+        return {}
+    actions: dict[str, str] = {}
+    for variable_id, meta in variables.items():
+        if not isinstance(variable_id, str) or not isinstance(meta, dict):
+            continue
+        action = meta.get("phi")
+        if isinstance(action, str) and action:
+            actions[variable_id] = action
+    return actions
+
+
+def _write_dataset_schema(
+    schema_path: Path,
+    *,
+    repo_root: Path,
+    study: str,
+    form: str,
+    dataset: Path,
+    source_pack: Path,
+    policy_path: Path,
+) -> None:
+    headers = _source_pack_headers(source_pack)
+    phi_actions = _policy_phi_actions(policy_path)
+    columns: list[dict[str, object]] = []
+    for idx, header in enumerate(headers, start=1):
+        column: dict[str, object] = {
+            "name": header,
+            "source_order": idx,
+        }
+        if header in phi_actions:
+            column["phi_action"] = phi_actions[header]
+        columns.append(column)
+
+    payload = {
+        "study": study,
+        "form": form,
+        "source_dataset": _relative_to_repo(dataset, repo_root),
+        "columns": columns,
+    }
+    schema_path.parent.mkdir(parents=True, exist_ok=True)
+    schema_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _publish_verified_sot_outputs(
+    *,
+    repo_root: Path,
+    study: str,
+    form: str,
+    dataset: Path,
+    source_pack: Path,
+    verified_policy: Path,
+    out_root: Path,
+) -> Path:
+    pair_dir = out_root / _sot_pair_name(form)
+    policy_path = pair_dir / "pdf" / f"{form}_policy.yaml"
+    schema_path = pair_dir / "dataset" / f"{form}_schema.json"
+    joined_path = pair_dir / "joined" / f"{form}_joined_query_view.yaml"
+
+    policy_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(verified_policy, policy_path)
+    _write_dataset_schema(
+        schema_path,
+        repo_root=repo_root,
+        study=study,
+        form=form,
+        dataset=dataset,
+        source_pack=source_pack,
+        policy_path=policy_path,
+    )
+    write_joined_query_view_yaml(joined_path, build_joined_query_view(policy_path, schema_path))
+    return policy_path
+
+
 def _natural_code_key(code: str) -> tuple[int, str]:
     digits = "".join(ch for ch in code if ch.isdigit())
-    suffix = code[len(digits):]
+    suffix = code[len(digits) :]
     return (int(digits or 0), suffix)
-
 
 
 def discover_pdf_backed_forms_with_reviews(
@@ -106,7 +215,10 @@ def discover_pdf_backed_forms_with_reviews(
     for code in sorted(pdf_codes, key=_natural_code_key):
         override = overrides.get(code)
         if override:
-            if any((dataset_dir / f"{override}{suffix}").exists() for suffix in SUPPORTED_DATASET_SUFFIXES):
+            if any(
+                (dataset_dir / f"{override}{suffix}").exists()
+                for suffix in SUPPORTED_DATASET_SUFFIXES
+            ):
                 forms.append(override)
             else:
                 review_paths.append(
@@ -194,7 +306,7 @@ def _print_result_output(result: subprocess.CompletedProcess[str]) -> None:
 
 
 def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path:
-    """Generate, verify, and promote one form's lean YAML."""
+    """Generate, verify, and promote one form's SoT policy/schema/joined outputs."""
 
     study_dir = repo_root / "data" / "raw" / study
     pdf = _find_pdf(study_dir, form)
@@ -244,13 +356,14 @@ def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path
     generator_script = (
         repo_root / "skills" / "sot-lean-generator" / "scripts" / "generate_pdf_aware_candidate.py"
     )
-    checker_script = repo_root / "skills" / "sot-lean-generator" / "scripts" / "check_lean_policy.py"
+    checker_script = (
+        repo_root / "skills" / "sot-lean-generator" / "scripts" / "check_lean_policy.py"
+    )
     diff_script = repo_root / "scripts" / "source_truth" / "diff_against_gold.py"
 
     source_pack = Path(f"/tmp/sot_source_pack_{form}.json")
     render_dir = Path(f"/tmp/sot_render_{form}")
     candidate = Path(f"/tmp/{form}_lean.yaml")
-    promoted = out_dir / f"{form}_policy.lean.yaml"
     gold = repo_root / "data" / "SoT" / study / f"{form}_policy.lean.yaml"
 
     _run(
@@ -332,9 +445,15 @@ def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path
                 ],
                 cwd=repo_root,
             )
-            out_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(gold, promoted)
-            return promoted
+            return _publish_verified_sot_outputs(
+                repo_root=repo_root,
+                study=study,
+                form=form,
+                dataset=dataset,
+                source_pack=source_pack,
+                verified_policy=gold,
+                out_root=out_dir,
+            )
         if diff_result.returncode != 0:
             message = [
                 f"command failed with exit {diff_result.returncode}: {' '.join(diff_cmd)}",
@@ -345,9 +464,15 @@ def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path
     else:
         print(f"  gold diff skipped for {study}/{form}: no anchored gold at {gold}", flush=True)
 
-    out_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(candidate, promoted)
-    return promoted
+    return _publish_verified_sot_outputs(
+        repo_root=repo_root,
+        study=study,
+        form=form,
+        dataset=dataset,
+        source_pack=source_pack,
+        verified_policy=candidate,
+        out_root=out_dir,
+    )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -363,7 +488,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--out-dir",
         type=Path,
-        help="Output directory. Defaults to output/<study>/llm_source/source_truth.",
+        help="Output SoT root. Defaults to output/<study>/llm_source/SoT.",
     )
     return parser
 
@@ -372,12 +497,14 @@ def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     repo_root = args.repo_root.resolve()
     study_dir = repo_root / "data" / "raw" / args.study
-    out_dir = args.out_dir or repo_root / "output" / args.study / "llm_source" / "source_truth"
+    out_dir = args.out_dir or repo_root / "output" / args.study / "llm_source" / "SoT"
     review_paths: list[Path] = []
     if args.forms:
         forms = args.forms
     else:
-        forms, review_paths = discover_pdf_backed_forms_with_reviews(repo_root, study_dir, args.study)
+        forms, review_paths = discover_pdf_backed_forms_with_reviews(
+            repo_root, study_dir, args.study
+        )
 
     failures: list[tuple[str, str]] = []
     generated: list[Path] = []

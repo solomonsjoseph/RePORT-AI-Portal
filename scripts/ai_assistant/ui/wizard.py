@@ -1,4 +1,4 @@
-"""Setup wizard: LLM config, pipeline run, 3-step setup flow."""
+"""Setup wizard: LLM config, plugin study load, 3-step setup flow."""
 
 from __future__ import annotations
 
@@ -12,6 +12,10 @@ import streamlit as st
 
 import config
 from scripts.ai_assistant.agent_graph import reset_agent
+from scripts.ai_assistant.ui.bundle_status import (
+    bundle_readiness_issues,
+    published_bundle_exists,
+)
 from scripts.ai_assistant.ui.providers import (
     _OTHER_MODEL_OPTION,
     _PROVIDER_CONFIG,
@@ -150,7 +154,7 @@ def ensure_llm_config() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Pipeline
+# Study plugin activation
 # ---------------------------------------------------------------------------
 
 
@@ -164,19 +168,36 @@ def _ensure_phi_key() -> None:
     logger.info("Bootstrapped PHI HMAC key at %s", config.PHI_KEY_PATH)
 
 
+def _run_plugin_subprocess(
+    label: str,
+    cmd: list[str],
+    *,
+    subprocess_env: dict[str, str],
+) -> tuple[bool, list[str]]:
+    """Run one report-ai-study-pipeline plugin phase and return log lines."""
+
+    result = subprocess.run(  # noqa: S603
+        cmd,
+        capture_output=True,
+        text=True,
+        cwd=str(config.BASE_DIR),
+        env=subprocess_env,
+    )
+    lines = [f"[{label}]", result.stdout.strip(), result.stderr.strip()]
+    return result.returncode == 0, [line for line in lines if line]
+
+
 def run_pipeline() -> dict[str, Any]:
-    """Run the data-extraction pipeline as a subprocess (the "Load Study"
-    flow's worker).
+    """Activate the report-ai-study-pipeline plugin from the Load Study button.
 
-    The pipeline's PDF-extraction step needs ``ANTHROPIC_API_KEY`` /
-    ``GOOGLE_API_KEY`` in its env to call vision APIs. Rather than leak
-    those into the parent's ``os.environ`` for the lifetime of the app,
-    we inject them only into this single subprocess call via the
-    KeyStore's ``env_for_subprocess`` helper. The parent's env stays
-    clean before, during, and after the call.
+    The web UI Load Study path is the local operator entry point for the
+    portable plugin workflow. It activates the repo-bundled plugin phases in
+    order, then keeps the existing post-load behavior: a verified published
+    ``llm_source`` bundle is required before chat can start.
 
-    The pipeline publishes into the live ``llm_source/`` tree. "Use Existing
-    Study" treats that tree as the already-prepared runtime bundle.
+    Provider keys, when present, are injected only into this subprocess via
+    the KeyStore. The parent's env stays clean before, during, and after the
+    call.
     """
     import os
 
@@ -189,27 +210,114 @@ def run_pipeline() -> dict[str, Any]:
 
     subprocess_env = os.environ.copy()
     subprocess_env.update(get_keystore().env_for_subprocess(list(ENV_VAR_BY_PROVIDER)))
-    # The orchestrator's capability+provider gate decides per-PDF whether
-    # the LLM tier runs; setting the env var to "llm" only signals that
-    # this is a fresh-extraction run (vs. the legacy raw-PDF API path).
-    subprocess_env["REPORTALIN_PDF_EXTRACTION_MODE"] = "llm"
 
-    result = subprocess.run(  # noqa: S603
-        [sys.executable, str(config.BASE_DIR / "main.py"), "--pipeline"],
-        capture_output=True,
-        text=True,
-        cwd=str(config.BASE_DIR),
-        env=subprocess_env,
-    )
-    combined = (result.stdout + "\n" + result.stderr).strip()
-    return {"success": result.returncode == 0, "output": combined}
+    plugin_manifest = config.BASE_DIR / "plugins" / "report-ai-study-pipeline" / "plugin.yaml"
+    parts = [
+        "[report-ai-study-pipeline plugin]",
+        f"manifest={plugin_manifest}",
+        "phase_order=excel-duplicate-handler -> sot-lean-generator -> dataset-to-llm-source",
+    ]
+    if not plugin_manifest.is_file():
+        combined = "\n".join(
+            [
+                *parts,
+                "Plugin manifest not found; cannot activate study-preparation plugin.",
+            ]
+        )
+        return {"success": False, "output": combined}
+
+    study = config.STUDY_NAME
+    dataset_dir = config.BASE_DIR / "data" / "raw" / study / "datasets"
+    lock_temp_files = sorted(dataset_dir.glob("~$*.xls*")) if dataset_dir.is_dir() else []
+    if lock_temp_files:
+        ok, logs = _run_plugin_subprocess(
+            "excel-duplicate-handler",
+            [
+                sys.executable,
+                str(
+                    config.BASE_DIR
+                    / "skills"
+                    / "excel-duplicate-handler"
+                    / "scripts"
+                    / "merge_excel_duplicates.py"
+                ),
+                "--study",
+                study,
+                "--dataset-dir",
+                str(dataset_dir),
+                "--artifact-root",
+                str(config.BASE_DIR),
+            ],
+            subprocess_env=subprocess_env,
+        )
+        parts.extend(logs)
+        if not ok:
+            return {"success": False, "output": "\n".join(parts).strip()}
+    else:
+        parts.extend(
+            [
+                "[excel-duplicate-handler]",
+                "No Excel lock/temp dataset artifacts found; duplicate preflight did not need a merge run.",
+            ]
+        )
+
+    phase_commands = [
+        (
+            "sot-lean-generator",
+            [
+                sys.executable,
+                str(config.BASE_DIR / "scripts" / "source_truth" / "generate_lean_outputs.py"),
+                "--study",
+                study,
+                "--repo-root",
+                str(config.BASE_DIR),
+            ],
+        ),
+        (
+            "dataset-to-llm-source run",
+            [
+                sys.executable,
+                str(config.BASE_DIR / "scripts" / "skills" / "extract_to_llm_source.py"),
+                "run",
+                "--study",
+                study,
+            ],
+        ),
+        (
+            "dataset-to-llm-source verify",
+            [
+                sys.executable,
+                str(config.BASE_DIR / "scripts" / "skills" / "extract_to_llm_source.py"),
+                "verify",
+                "--study",
+                study,
+            ],
+        ),
+    ]
+
+    for label, cmd in phase_commands:
+        ok, logs = _run_plugin_subprocess(label, cmd, subprocess_env=subprocess_env)
+        parts.extend(logs)
+        if not ok:
+            return {"success": False, "output": "\n".join(parts).strip()}
+
+    success = published_bundle_exists()
+    combined = "\n".join(part for part in parts if part).strip()
+    if not success:
+        issues = bundle_readiness_issues()
+        issue_text = "\n".join(f"- {issue}" for issue in issues)
+        combined = (
+            combined
+            + "\n[study bundle check]\n"
+            + "Plugin activation finished, but a complete llm_source bundle was not found."
+        )
+        if issue_text:
+            combined = combined + "\nExpected outputs still missing:\n" + issue_text
+    return {"success": success, "output": combined}
 
 
 def _pipeline_output_exists() -> bool:
-    try:
-        return config.STUDY_LLM_SOURCE_DIR.exists() and any(config.TRIO_DATASETS_DIR.glob("*.jsonl"))
-    except Exception:
-        return False
+    return published_bundle_exists()
 
 
 def _render_pipeline_log() -> None:
@@ -417,18 +525,19 @@ def render_setup_page() -> None:
                     st.rerun()
 
             # ---------------------------------------------------------------- #
-            # Step 2 — Pipeline / study data                                    #
+            # Step 2 — Plugin / study data                                      #
             # ---------------------------------------------------------------- #
             elif step == 2:
                 st.markdown(
-                    '<p class="welcome-title">Load study data</p>'
-                    '<p class="welcome-desc">Run the data pipeline once to prepare the study '
-                    "datasets for querying.</p>",
+                    '<p class="welcome-title">Load study</p>'
+                    '<p class="welcome-desc">Activate the study-preparation plugin to prepare '
+                    "the published llm_source bundle for querying.</p>",
                     unsafe_allow_html=True,
                 )
                 st.markdown(
                     '<span class="rpln-beta-note">'
-                    "<em>PHI scrub runs inside the pipeline before publish; raw datasets stay in staging.</em>"
+                    "<em>The plugin builds Source Truth from PDFs and headers, then publishes "
+                    "PHI-safe datasets through the trusted host path.</em>"
                     "</span>",
                     unsafe_allow_html=True,
                 )
@@ -437,34 +546,34 @@ def render_setup_page() -> None:
                 pipeline_ready: bool = st.session_state.pipeline_ready
 
                 if pipeline_ready:
-                    st.success("Study data loaded — ready for querying.", icon="✅")
+                    st.success("Study bundle loaded — ready for querying.", icon="✅")
                 elif output_exists:
                     st.info(
-                        "Existing study data detected at `output/`. "
-                        "Run a fresh load to refresh it, or proceed if it is current.",
+                        "Existing complete study bundle detected at `output/`. "
+                        "Run Load Study to refresh it, or proceed if it is current.",
                         icon=":material/info:",
                     )
                 else:
                     st.info(
-                        "No existing study data on disk yet. "
-                        "Run a fresh load to produce ``llm_source/`` from raw study inputs.",
+                        "No complete study bundle is on disk yet. "
+                        "Run Load Study to activate the plugin and produce `llm_source/`.",
                         icon=":material/info:",
                     )
 
-                # ── Load Study: run the full pipeline subprocess. ──
+                # ── Load Study: activate the report-ai-study-pipeline plugin. ──
                 load_label = "Reload Study" if pipeline_ready or output_exists else "Load Study"
                 if st.button(
                     load_label,
                     type="primary" if not output_exists else "secondary",
                     width="stretch",
                 ):
-                    with st.spinner("Loading study data — this may take a minute…"):
+                    with st.spinner("Activating study plugin — this may take a minute..."):
                         result = run_pipeline()
                     st.session_state.pipeline_log = result["output"]
                     if result["success"]:
                         st.session_state.pipeline_ready = True
                         st.session_state.pipeline_log_open = False
-                        st.toast("Study data loaded successfully.", icon="✅")
+                        st.toast("Study bundle loaded successfully.", icon="✅")
                         st.rerun()
                     else:
                         st.session_state.pipeline_log_open = True
@@ -497,7 +606,7 @@ def render_setup_page() -> None:
                     '<p class="welcome-title">Ready to go!</p>'
                     f'<p class="welcome-desc">You\'re using <strong>{provider_display}</strong> '
                     f'— <span class="rpln-ready-model">{model_display}</span>. '
-                    "Study data is loaded.</p>",
+                    "Study bundle is loaded.</p>",
                     unsafe_allow_html=True,
                 )
                 if st.button(

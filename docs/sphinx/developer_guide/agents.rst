@@ -52,7 +52,7 @@ Quick reference
    make ci            # lint → typecheck → test
    make chat          # Launch Streamlit web UI
    make chat-cli      # Launch CLI REPL
-   make pipeline      # Full data pipeline plus SoT-backed LLM source build
+   make pipeline      # Lower-level host publish path used by dataset-to-llm-source
 
 Issue Tracker and Triage
 ------------------------
@@ -90,16 +90,21 @@ issue. When a skill says to fetch a ticket, use
 Architecture (two-world)
 ------------------------
 
-**World 1 — Deterministic Pipeline** (``main.py`` →
-``scripts/extraction/``, ``scripts/security/``, ``scripts/utils/``):
+**World 1 — Plugin-orchestrated study preparation**
+(``plugins/report-ai-study-pipeline/`` plus trusted host CLIs):
 
-**SoT YAML creation (upstream, run before the main raw-data pipeline):**
-``make sot-generate-all STUDY=<study>`` runs the repo-level wrapper around
-the sot-lean-generator scripts. It pairs annotated PDFs with xlsx/csv
-datasets by form-code prefix, handles known duplicate-dataset exceptions,
-reads only row 1 of each dataset for binding, writes candidates to ``/tmp``,
-verifies each candidate, and promotes only passing lean YAMLs into
-``output/{STUDY}/llm_source/source_truth/``. For a single manual source pack,
+**Full study preparation:** use the ``report-ai-study-pipeline`` plugin.
+It runs ``excel-duplicate-handler`` once per study, then
+``sot-lean-generator`` per ready raw-file set, then
+``dataset-to-llm-source`` through the host repo's lock-aware publish path.
+The plugin may delegate independent raw-file sets to subagents.
+
+**SoT creation:** ``make sot-generate-all STUDY=<study>`` is the repo-local
+wrapper around the sot-lean-generator scripts. It pairs annotated PDFs with
+xlsx/csv datasets by form-code prefix, handles known duplicate-dataset
+exceptions, reads only row 1 of each dataset for binding, verifies each
+candidate, and promotes passing policy/schema/joined outputs into
+``output/{STUDY}/llm_source/SoT/<pair>/``. For a single manual source pack,
 use ``python -m scripts.source_truth.study_intake --study <study> --form <form>``.
 See :doc:`source_truth_build` for the full behavior reference.
 
@@ -125,15 +130,15 @@ operator inspection.
 
 **PDF extraction:** the PDF orchestrator and legacy raw-PDF API path are
 historical. Current LLM metadata comes from reviewed SoT policy YAMLs
-(produced by the intake CLI) and is published under
-``llm_source/source_truth/``.
+(produced by the plugin skill) and is published under
+``llm_source/SoT/<pair>/``.
 
 **World 2 — AI Assistant** (``scripts/ai_assistant/``):
 LangGraph ReAct agent with 10 tools for querying study data. Never
 accesses raw data.
 
 **Output structure:**
-``output/{STUDY_NAME}/llm_source/source_truth/`` +
+``output/{STUDY_NAME}/llm_source/SoT/`` +
 ``output/{STUDY_NAME}/llm_source/dataset_schema/files/`` +
 ``output/{STUDY_NAME}/llm_source/dictionary_mapping/jsonl/``,
 ``audit/dataset_cleanup_report.json`` +
@@ -142,16 +147,19 @@ accesses raw data.
 ``agent/{analysis,conversations}/``; transient staging
 sibling: ``tmp/{STUDY_NAME}/{datasets,dictionary}/``.
 
-**Wizard step 2:** an existing valid ``llm_source/`` bundle can be used
-without reloading; otherwise *Load Study* runs the pipeline subprocess.
+**Wizard step 2:** **Load Study** activates the
+``report-ai-study-pipeline`` plugin. An existing complete ``llm_source/``
+bundle can still be used without reloading. The plugin owns duplicate
+handling, Source Truth generation, and dataset publishing; the final publish
+step is routed through the dataset child skill and trusted host CLI.
 
 **PHI key:** sidecar at ``~/.config/report_ai_portal/phi_key``
 (resolved via ``config.PHI_KEY_PATH``, overridable with
 ``XDG_CONFIG_HOME``). Mode must be ``0600``. Missing = hard-fail for
-developer/operator CLI pipeline runs. Normal users should create it only
+developer/operator host publish runs. Normal users should create it only
 through the web UI's **Load Study** flow. Developers can bootstrap it via
 ``python -m scripts.security.phi_scrub bootstrap-key`` when running the
-pipeline outside the web UI. Key rotation = full re-ingestion.
+host publish path outside the web UI. Key rotation = full re-ingestion.
 
 Tech stack
 ----------
@@ -250,7 +258,7 @@ KeyStore
   :mod:`scripts.ai_assistant.keystore` (an in-memory ``KeyStore``
   registry) and scrubs the corresponding ``*_API_KEY`` from
   ``os.environ``.
-* Keys are re-injected only into the short-lived pipeline subprocess
+* Keys are re-injected only into short-lived Load Study plugin subprocesses
   via :meth:`KeyStore.env_for_subprocess`.
 * Every LLM client constructor (``ChatAnthropic``, ``ChatOpenAI``,
   ``ChatGoogleGenerativeAI``, etc.) takes an explicit ``api_key=``

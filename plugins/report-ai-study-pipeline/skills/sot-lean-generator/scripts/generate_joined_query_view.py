@@ -27,7 +27,9 @@ def main() -> int:
         help="Policy Source Truth YAML.",
     )
     parser.add_argument("--schema", required=True, type=Path, help="Per-form dataset schema JSON.")
-    parser.add_argument("--out", required=True, type=Path, help="Output YAML path for the joined query view.")
+    parser.add_argument(
+        "--out", required=True, type=Path, help="Output YAML path for the joined query view."
+    )
     args = parser.parse_args()
 
     view = build_joined_query_view(args.policy, args.schema)

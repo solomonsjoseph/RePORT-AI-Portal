@@ -11,9 +11,9 @@ If REPORTAL_RUN_ID is set, ledger + lineage + extraction_timing all reference
 the same run_id.
 
 NOTE: We test only the unit-level sub-steps (provenance building + lineage
-emission) rather than the full pipeline, because the latter requires a live
-study fixture that is not committed to the repo.  This keeps CI fast while
-still exercising the exact code paths that contain the non-determinism.
+emission) rather than the full host publish path, because the latter requires
+a live study fixture that is not committed to the repo.  This keeps CI fast
+while still exercising the exact code paths that contain the non-determinism.
 """
 
 from __future__ import annotations
@@ -28,7 +28,6 @@ import pytest
 
 from scripts.extraction import dataset_pipeline
 from scripts.utils import lineage
-
 
 # ---------------------------------------------------------------------------
 # Helper
@@ -205,17 +204,17 @@ class TestLineageManifestDeterminism:
         # each run produced before the file is overwritten.
         manifest_path = audit / "lineage_manifest.json"
 
-        common_kwargs = dict(
-            study_name="DET_TEST",
-            raw_datasets_dir=raw,
-            raw_dictionary_dir=None,
-            raw_pdfs_dir=None,
-            llm_source_dir=llm_src,
-            audit_dir=audit,
-            pipeline_version="2.0.0",
-            compliance_posture="safe_harbor",
-            manifest_path=manifest_path,
-        )
+        common_kwargs = {
+            "study_name": "DET_TEST",
+            "raw_datasets_dir": raw,
+            "raw_dictionary_dir": None,
+            "raw_pdfs_dir": None,
+            "llm_source_dir": llm_src,
+            "audit_dir": audit,
+            "pipeline_version": "2.0.0",
+            "compliance_posture": "safe_harbor",
+            "manifest_path": manifest_path,
+        }
 
         lineage.emit_lineage_manifest(**common_kwargs)
         bytes_run1 = manifest_path.read_bytes()
@@ -368,7 +367,9 @@ class TestResolveRunId:
         monkeypatch.delenv("REPORTAL_RUN_ID", raising=False)
         assert resolve_run_id() != resolve_run_id()
 
-    def test_ledger_uses_resolve_run_id(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_ledger_uses_resolve_run_id(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """LedgerWriter with no explicit run_id must honour REPORTAL_RUN_ID env var."""
         from scripts.audit.ledger import LedgerWriter
 

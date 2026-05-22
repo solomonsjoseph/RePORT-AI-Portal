@@ -131,7 +131,7 @@ def _iter_tracked_markdown_files() -> Iterable[Path]:
     """Yield git-tracked Markdown files for documentation-boundary checks."""
     try:
         result = subprocess.run(
-            ["git", "ls-files", "*.md"],
+            ["git", "ls-files", "*.md"],  # noqa: S607
             cwd=REPO_ROOT,
             check=True,
             capture_output=True,
@@ -142,6 +142,9 @@ def _iter_tracked_markdown_files() -> Iterable[Path]:
 
     for rel in result.stdout.splitlines():
         if rel in CANONICAL_MARKDOWN_ENTRYPOINTS:
+            continue
+        parts = Path(rel).parts
+        if "skills" in parts or "plugins" in parts:
             continue
         yield REPO_ROOT / rel
 

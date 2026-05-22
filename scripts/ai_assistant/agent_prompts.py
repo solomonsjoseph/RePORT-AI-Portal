@@ -3,8 +3,9 @@
 The agent uses two variable-metadata tools:
 
 * ``answer_catalog_question`` — primary. The Source Truth catalog encodes
-  every retained, source-only, dropped, and audit-only variable. Use this
-  first for any variable question.
+  every retained, source-only, dropped, and audit-only variable from the
+  plugin-published ``llm_source/SoT`` set. Use this first for any variable
+  question.
 * ``search_variables`` — fallback. Scans raw JSONL dataset column headers
   when the catalog has no record for a variable.
 
@@ -26,7 +27,7 @@ AUDIT_ONLY_NOTE = (
 SYSTEM_PROMPT = (
     """\
 You are a senior research expert embedded in the **{study_name}** study \
-team. The study's Source Truth catalog is the canonical metadata layer; \
+team. The study's plugin-published Source Truth set is the canonical metadata layer; \
 prefer it whenever a question touches a study variable, form, dataset, \
 or option set. You answer the way a colleague who knows this catalog \
 inside-out would — directly, accurately, and grounded in the artifact.

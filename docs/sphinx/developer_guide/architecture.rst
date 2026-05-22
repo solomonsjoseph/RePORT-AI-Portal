@@ -12,21 +12,28 @@ System Overview
 RePORT AI Portal is a **two-world** system. The two worlds run in
 separate processes and never share mutable state.
 
-**World 1 — Deterministic Pipeline** (``main.py`` + ``scripts/extraction/`` +
-``scripts/security/`` + ``scripts/utils/``).
+**World 1 — Plugin-orchestrated study preparation**
+(``plugins/report-ai-study-pipeline/`` + trusted host CLIs).
 
-Reads raw clinical data from ``data/raw/{STUDY}/``, stages and scrubs
-dataset records, then builds the source-truth-backed LLM source
-surface under ``output/{STUDY}/llm_source/``. The current
-LLM-visible outputs are the scrubbed dataset files under
+The active LLM/operator workflow starts with the portable
+``report-ai-study-pipeline`` plugin. It runs duplicate handling once per
+study, then lets LLM-managed workers build Source Truth from printed PDFs
+plus dataset row-1 headers only, then publishes PHI-safe dataset JSONL
+through the ``dataset-to-llm-source`` child skill. The plugin may delegate
+independent raw-file sets to subagents, but raw dataset row 2+ values stay
+inside trusted repo code paths.
+
+``main.py`` remains the host execution primitive for the data dictionary
+and the lock-aware extraction/scrub/publish path that the dataset skill
+invokes. It is no longer the top-level LLM workflow description for full
+study preparation.
+
+The current LLM-visible outputs are scrubbed dataset files under
 ``llm_source/dataset_schema/files/``, dictionary mappings under
-``llm_source/dictionary_mapping/jsonl/``, and verified lean Source
-Truth YAML under ``llm_source/source_truth/``. The legacy PDF extraction,
-Study Metadata Catalog / Evidence Pack build, and consolidated
-``variables.json`` outputs are no longer active runtime surfaces.
-``main.py --pipeline`` is the canonical entry point; ``make
-pipeline`` is the Makefile alias; the wizard's "Load Study" button
-spawns this as a subprocess.
+``llm_source/dictionary_mapping/jsonl/``, and plugin-produced Source Truth
+sets under ``llm_source/SoT/<pair>/{pdf,dataset,joined}/``. Older
+``llm_source/source_truth/`` policy files are accepted by the assistant as a
+compatibility layout only.
 
 **World 2 — AI Assistant** (``scripts/ai_assistant/``).
 
@@ -43,13 +50,13 @@ only:
 .. code-block:: text
 
    World 1 writes:                          World 2 reads:
-   - llm_source/  (sanitised data)     →   - llm_source/  (LLM data surface)
-   - audit/        (counts only)            (LLM hard-rejected for audit/)
-   - agent/        (state subdirs)     →   - agent/  (LLM session memory)
+   - llm_source/  (sanitised data)     ->  - llm_source/  (LLM data surface)
+   - audit/        (counts only)           (LLM hard-rejected for audit/)
+   - agent/        (state subdirs)     ->  - agent/  (LLM session memory)
 
-The Streamlit wizard is the operator's entry point; it routes API
-keys through the in-memory KeyStore, spawns the pipeline subprocess
-on demand, and then hands off to the agent for chat.
+The Streamlit wizard is the chat entry point. Study preparation is owned by
+the plugin workflow; the wizard can use an existing valid ``llm_source/``
+bundle and still routes API keys through the in-memory KeyStore before chat.
 
 The Zone Model
 --------------
@@ -112,15 +119,17 @@ source-truth build steps run.
 Pipeline Modules
 ----------------
 
-The pipeline is structured as a sequence of step functions in
-``main.py``, each importing its operative module from
-``scripts/extraction/``, ``scripts/security/``, or
-``scripts/utils/``. Dictionary and dataset extraction run in parallel;
-the cleanup chain, publish, and lineage steps are sequential. The
-Makefile-level ``build-llm-source`` target first generates verified
-PDF-backed lean SoT YAMLs, then runs the main pipeline so dictionary
-mappings, PHI-scrubbed datasets, source-truth YAMLs, and audit lineage
-land together under ``output/{STUDY}/``.
+The plugin workflow is the active study-preparation coordinator:
+
+1. ``excel-duplicate-handler`` runs once per study.
+2. ``sot-lean-generator`` runs per raw-file set and may fan out across
+   independent sets.
+3. ``dataset-to-llm-source`` publishes PHI-safe dataset JSONL through the
+   host repo's lock-aware CLI and verifier.
+
+The data dictionary is intentionally outside the plugin. It stays in
+``main.py`` / ``scripts.extraction.load_dictionary`` and publishes dictionary
+mapping JSONL into ``llm_source/dictionary_mapping/jsonl/``.
 
 Dictionary Loader
 ~~~~~~~~~~~~~~~~~
@@ -153,7 +162,7 @@ The ``scripts.extraction.pdf_pipeline`` and
 ``scripts.extraction.extract_pdf_data`` paths are historical. They are
 preserved in ADRs and old test context, but they are not the active LLM
 source flow. PDF-derived evidence now enters through reviewed Source
-Truth policy YAMLs under ``llm_source/source_truth/``.
+Truth policy YAMLs under ``llm_source/SoT/<pair>/pdf/``.
 
 PHI Scrub
 ~~~~~~~~~
@@ -207,13 +216,16 @@ Publish
   ``secure_remove_tree`` (zero-fill + fsync + unlink) so old
   bytes aren't recoverable.
 
-Source-Truth YAML Creation (sot-lean-generator skill)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Source-Truth Set Creation (sot-lean-generator skill)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-SoT YAML production is a **5-stage pipeline** that mixes deterministic
-scripts with LLM reasoning. The entry points are cross-LLM by design:
-the same rules files and verifier work regardless of whether the
-operator is using Claude Code, ChatGPT, Gemini, or Cursor.
+SoT production is the plugin's PDF/header phase. It produces one
+Source Truth set per raw-file set:
+``llm_source/SoT/<pair>/pdf/<form>_policy.yaml``,
+``llm_source/SoT/<pair>/dataset/<form>_schema.json``, and
+``llm_source/SoT/<pair>/joined/<form>_joined_query_view.yaml``. The phase
+mixes deterministic helpers with LLM reasoning and can run in parallel
+across independent ready raw-file sets.
 
 **Stage 0 — Source pack (deterministic)**
 
@@ -241,9 +253,9 @@ deterministic script.
   produce a full draft YAML for the form.
 * Stage 2 — 5-iteration visual sweep: LLM compares the 600 DPI render
   against the draft, correcting any widget or field mismatches.
-* Stage 3 — Lean trim: LLM trims the exhaustive draft to the canonical
+* Stage 3 — Policy trim: LLM trims the exhaustive draft to the canonical
   policy schema per ``skills/sot-lean-generator/references/policy_yaml_rules.md``.
-  Output written to ``/tmp/{FORM}_lean.yaml``.
+  Output written to ``tmp/SoT/<pair>/pdf/{FORM}_policy.yaml``.
 
 **Claude Code users** invoke these stages via
 ``skills/sot-lean-generator/SKILL.md``.
@@ -265,10 +277,12 @@ shell differs.
 
 **Stage 5 — Promote (deterministic)**
 
-* Copies ``/tmp/{FORM}_lean.yaml`` →
-  ``output/{STUDY}/llm_source/source_truth/{FORM}_policy.lean.yaml``.
-* This path is the **canonical SoT output** — the runtime input for
-  the LLM source builder.
+* Copies the verified policy YAML and per-form dataset schema into
+  ``output/{STUDY}/llm_source/SoT/<pair>/{pdf,dataset}/``.
+* Builds the derived joined query view under
+  ``output/{STUDY}/llm_source/SoT/<pair>/joined/``.
+* The ``SoT/<pair>/`` set is the canonical plugin output for
+  variable metadata. Older ``source_truth/`` files are compatibility-only.
 
 **Reference data**
 
@@ -280,21 +294,20 @@ not a runtime input, not a build output.
   :doc:`source_truth_build` so it is reachable from any agentic LLM
   tool without requiring Claude Code.
 
-Source-Truth Runtime Builder
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Plugin Runtime Builder
+~~~~~~~~~~~~~~~~~~~~~~
 
-* **Step:** ``make build-llm-source``
-* **Inputs:** annotated PDFs, row-1 dataset headers for the PDF-backed
-  forms, raw dataset files, and the data dictionary.
-* **Outputs:** verified lean YAMLs under
-  ``output/{STUDY}/llm_source/source_truth/``, scrubbed dataset JSONL
-  under ``output/{STUDY}/llm_source/dataset_schema/files/``,
-  dictionary JSONL under
-  ``output/{STUDY}/llm_source/dictionary_mapping/jsonl/``, and declared
-  PHI / cleanup reports under ``output/{STUDY}/audit/``.
-* **Staging:** SoT candidates live under ``/tmp`` until the checker
-  passes; dataset and dictionary staging live under ``tmp/{STUDY}/`` and
-  are securely removed after successful publish.
+* **Entry point:** ``plugins/report-ai-study-pipeline/skills/report-ai-study-pipeline/SKILL.md``.
+* **Inputs:** duplicate preflight metadata, annotated PDFs, row-1 dataset
+  headers for SoT, raw dataset files for trusted dataset publishing, and
+  the data dictionary handled by the host repo.
+* **Outputs:** plugin-produced SoT sets under ``llm_source/SoT/``,
+  scrubbed dataset JSONL under ``llm_source/dataset_schema/files/``,
+  dictionary JSONL under ``llm_source/dictionary_mapping/jsonl/``, and
+  declared PHI / cleanup reports under ``output/{STUDY}/audit/``.
+* **Staging:** SoT candidates live under ``tmp/SoT/`` and ``/tmp`` until
+  the checker passes; dataset and dictionary staging live under
+  ``tmp/{STUDY}/`` and are securely removed after successful publish.
 
 Lineage Manifest
 ~~~~~~~~~~~~~~~~
@@ -410,40 +423,25 @@ End-to-End Runtime Flow
 
 .. code-block:: text
 
-   data/raw/{STUDY_NAME}/datasets/ ───────────→ dataset_pipeline ────────┐
-                                                                          │
-                                                   (records → staging)    ▼
-                                          tmp/{STUDY_NAME}/datasets/
-                                                                         │
-                                                phi_scrub.run_scrub (Step 1.6 — date jitter +
-                                                   ID pseudonymization on staged datasets;
-                                                   emits phi_scrub_report.json)
-                                                                         │
-                                                  dataset_cleanup (emits dataset audit)
-                                                                         │
-                                              publish scrubbed dataset files
-                                                                         │
-                                                                         ▼
-                                          output/{STUDY_NAME}/llm_source/dataset_schema/files/
-                                                                         │
-                                              SoT-backed LLM source build (SoT YAMLs →
-                                                  catalog + evidence packs;
-                                                  staging candidates under
-                                                  tmp/{STUDY_NAME}/staging/llm_source/)
-                                                                         │
-                                              emit_lineage_manifest (Step 4 — raw SHA-256
-                                                  ↔ llm_source SHA-256 + PHI-key fingerprint)
-                                                                         │
-                                                                         ▼
-                                          output/{STUDY_NAME}/audit/lineage_manifest.json
-                                                                         │
-                                              _emit_output_signpost (Step 5)
-                                                                         │
-                                              _cleanup_staging (success only — secure_remove_tree)
-                                                                         │
-                                                                         ▼
-                                                             World 2: AI Assistant
-                                                       reads llm_source/ + agent/ only
+   report-ai-study-pipeline plugin
+      |
+      +-- excel-duplicate-handler (once per study)
+      |
+      +-- sot-lean-generator (per ready raw-file set; PDF + row-1 headers only)
+      |      -> output/{STUDY_NAME}/llm_source/SoT/<pair>/{pdf,dataset,joined}/
+      |
+      +-- dataset-to-llm-source (trusted host publish path)
+             data/raw/{STUDY_NAME}/datasets/ -> tmp/{STUDY_NAME}/datasets/
+             -> phi_scrub.run_scrub -> dataset_cleanup
+             -> output/{STUDY_NAME}/llm_source/dataset_schema/files/
+             -> output/{STUDY_NAME}/audit/{lineage,ledgers,reports}
+      |
+      +-- host dictionary loader (outside the plugin)
+             data/raw/{STUDY_NAME}/data_dictionary/
+             -> output/{STUDY_NAME}/llm_source/dictionary_mapping/jsonl/
+      |
+      v
+   World 2: AI Assistant reads llm_source/ + agent/ only
 
 Source tree
 ~~~~~~~~~~~
@@ -454,13 +452,13 @@ Expected source tree:
 
    data/raw/{STUDY_NAME}/
    ├── datasets/
-   └── data_dictionary/
+   ├── data_dictionary/
+   └── annotated_pdfs/
 
-Canonical SoT lean YAMLs live under
-``output/{STUDY_NAME}/llm_source/source_truth/`` (produced by the
-sot-lean-generator pipeline). ``data/SoT/{STUDY_NAME}/`` holds
-gold-example reference YAMLs for regression diffs only and is not
-read by the pipeline at runtime.
+Canonical plugin Source Truth sets live under
+``output/{STUDY_NAME}/llm_source/SoT/<pair>/``. ``data/SoT/{STUDY_NAME}/``
+holds gold-example reference YAMLs for regression diffs only and is not
+the runtime assistant source.
 
 Expected processed tree:
 
@@ -470,7 +468,10 @@ Expected processed tree:
    ├── llm_source/                   # GREEN — LLM read zone
    │   ├── dataset_schema/files/*.jsonl  # PHI-scrubbed
    │   ├── dictionary_mapping/jsonl/**/*.jsonl
-   │   └── source_truth/*_policy.lean.yaml
+   │   └── SoT/<pair>/
+   │       ├── pdf/*_policy.yaml
+   │       ├── dataset/*_schema.json
+   │       └── joined/*_joined_query_view.yaml
    ├── audit/                        # AUDIT — counts only; LLM hard-rejected
    │   ├── lineage_manifest.json
    │   ├── phi_scrub_report.json
@@ -525,7 +526,7 @@ API keys never in os.environ
 ADR-011. The wizard routes pasted keys into the in-memory
 ``KeyStore``; ``*_API_KEY`` env vars are scrubbed from
 ``os.environ``. Keys re-injected only into the short-lived
-pipeline subprocess via ``KeyStore.env_for_subprocess``.
+Load Study plugin subprocesses via ``KeyStore.env_for_subprocess``.
 
 Subprocess sandbox for ``run_python_analysis``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

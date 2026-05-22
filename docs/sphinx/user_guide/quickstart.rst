@@ -11,8 +11,9 @@ You need:
 * the project installed; see :doc:`installation`;
 * one study folder under ``data/raw/{STUDY_NAME}/``;
 * a local Ollama model or a hosted LLM API key;
-* access to the web UI. The web UI creates the local PHI key during
-  study load when needed.
+* access to the web UI;
+* a prepared ``llm_source`` bundle, or a plugin-enabled LLM session that can
+  run the ``report-ai-study-pipeline`` workflow.
 
 1. Place Study Files
 --------------------
@@ -58,8 +59,8 @@ setting these values in the shell.
 
 See :doc:`configuration` for OpenAI, Google, and PDF-related settings.
 
-3. Load the Study
------------------
+3. Prepare the Study
+--------------------
 
 Use the web UI:
 
@@ -67,10 +68,16 @@ Use the web UI:
 
    make chat
 
-Then click **Load Study**.
+Then prepare the study bundle through the ``report-ai-study-pipeline``
+plugin, or proceed with an existing valid ``output/{STUDY}/llm_source/``
+bundle when one is already present. The plugin workflow runs duplicate
+handling, Source Truth creation from printed PDFs plus row-1 headers, and
+PHI-safe dataset publishing. The data dictionary remains handled by the host
+repo.
 
 The command-line ``make pipeline`` path is for developers and deployment
-operators who have already provisioned the local PHI key.
+operators who need the lower-level host publish path used by the dataset
+child skill. It is not the complete plugin workflow.
 
 Expected result:
 
@@ -106,8 +113,8 @@ Common Problems
 ---------------
 
 **PHI key not found**
-   Use **Load Study** in the web UI. It creates the local PHI key when
-   needed. If the command-line pipeline reports this error, ask a
+   Use the study preparation flow in the web UI or plugin workflow. If the
+   command-line dataset publish reports this error, ask a
    developer or operator to provision the key.
 
 **Study not found**

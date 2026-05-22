@@ -74,7 +74,11 @@ For the web UI:
 
    make chat
 
-For developer/operator pipeline runs only:
+Then click **Load Study**. That button activates the
+``report-ai-study-pipeline`` plugin and prepares the published
+``llm_source/`` bundle.
+
+For developer/operator host publish runs only:
 
 .. code-block:: bash
 
@@ -83,8 +87,9 @@ For developer/operator pipeline runs only:
 Can I use an existing processed study?
 --------------------------------------
 
-Yes. If ``output/{STUDY}/llm_source/`` already exists, the web UI can
-use that existing published bundle instead of loading the study again.
+Yes. If a complete ``output/{STUDY}/llm_source/`` bundle already exists,
+the web UI can use that existing published bundle instead of loading the
+study again.
 
 Does the assistant read raw files?
 ----------------------------------
@@ -92,7 +97,7 @@ Does the assistant read raw files?
 The intended user workflow is that the assistant answers from the
 published, scrubbed study bundle under ``output/{STUDY}/llm_source/``.
 Raw files belong under ``data/raw/{STUDY}/`` and are handled by the
-loading pipeline.
+Load Study plugin workflow.
 
 For the full technical boundary, see
 :doc:`../developer_guide/phi_architecture`.

@@ -32,7 +32,6 @@ import json
 import os
 from datetime import UTC, datetime
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -145,9 +144,7 @@ def _make_valid_attestation(run_dir: Path, run_id: str = RUN_ID) -> None:
         "cryptographic_erasure": False,
         "apfs_cow_disclaimer": "test",
     }
-    (run_dir / "destruction_attestation.json").write_text(
-        json.dumps(attest), encoding="utf-8"
-    )
+    (run_dir / "destruction_attestation.json").write_text(json.dumps(attest), encoding="utf-8")
 
 
 def _make_llm_source_dir(
@@ -168,9 +165,7 @@ def _make_llm_source_dir(
         row: dict[str, Any] = {"col_a": "val_a", "col_b": "val_b"}
         if extra_keys:
             row.update(extra_keys)
-        (datasets_out / jsonl_name).write_text(
-            json.dumps(row) + "\n", encoding="utf-8"
-        )
+        (datasets_out / jsonl_name).write_text(json.dumps(row) + "\n", encoding="utf-8")
 
 
 def _make_valid_status_json(run_dir: Path, run_id: str = RUN_ID) -> None:
@@ -250,23 +245,17 @@ def _build_happy_study(
 
 
 class TestVerifyHappyPath:
-    def test_exits_ok(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_exits_ok(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_config(monkeypatch, tmp_path)
         _build_happy_study(tmp_path)
         rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
         assert rc == EXIT_OK
 
-    def test_report_written(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_report_written(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_config(monkeypatch, tmp_path)
         _build_happy_study(tmp_path)
         main(["verify", "--study", STUDY, "--run", RUN_ID])
-        report_path = (
-            tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
-        )
+        report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         assert report_path.exists()
 
     def test_report_has_12_assertions(
@@ -275,34 +264,26 @@ class TestVerifyHappyPath:
         _patch_config(monkeypatch, tmp_path)
         _build_happy_study(tmp_path)
         main(["verify", "--study", STUDY, "--run", RUN_ID])
-        report_path = (
-            tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
-        )
+        report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
         assert len(report["assertions"]) == 12
 
-    def test_all_assertions_pass(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_all_assertions_pass(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_config(monkeypatch, tmp_path)
         _build_happy_study(tmp_path)
         main(["verify", "--study", STUDY, "--run", RUN_ID])
-        report_path = (
-            tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
-        )
+        report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
         for a in report["assertions"]:
-            assert a["result"] == "pass", f"Assertion {a['n']} ({a['name']}) should pass: {a['detail']}"
+            assert a["result"] == "pass", (
+                f"Assertion {a['n']} ({a['name']}) should pass: {a['detail']}"
+            )
 
-    def test_overall_pass(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_overall_pass(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_config(monkeypatch, tmp_path)
         _build_happy_study(tmp_path)
         main(["verify", "--study", STUDY, "--run", RUN_ID])
-        report_path = (
-            tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
-        )
+        report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
         assert report["overall"] == "pass"
         assert report["exit_code"] == 0
@@ -313,21 +294,15 @@ class TestVerifyHappyPath:
         _patch_config(monkeypatch, tmp_path)
         _build_happy_study(tmp_path)
         main(["verify", "--study", STUDY, "--run", RUN_ID])
-        status_path = (
-            tmp_path / "output" / STUDY / "runs" / RUN_ID / "status.json"
-        )
+        status_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "status.json"
         status = json.loads(status_path.read_text())
         assert status["verifier_passed"] is True
 
-    def test_report_shape_is_valid(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_report_shape_is_valid(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_config(monkeypatch, tmp_path)
         _build_happy_study(tmp_path)
         main(["verify", "--study", STUDY, "--run", RUN_ID])
-        report_path = (
-            tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
-        )
+        report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
         assert "run_id" in report
         assert "study" in report
@@ -395,9 +370,7 @@ class TestVerifyFailures:
         paths = _build_happy_study(tmp_path)
         (paths["datasets_dir"] / "form_a.xlsx").unlink()
         main(["verify", "--study", STUDY, "--run", RUN_ID])
-        report_path = (
-            tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
-        )
+        report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
         failed = [a for a in report["assertions"] if a["result"] == "fail"]
         assert len(failed) >= 1
@@ -536,17 +509,13 @@ class TestVerifyFailures:
         llm_jsonl = paths["llm_source_dir"] / "dataset_schema" / "files" / "form_a.jsonl"
         llm_jsonl.write_text(json.dumps(phi_row) + "\n", encoding="utf-8")
         main(["verify", "--study", STUDY, "--run", RUN_ID])
-        report_path = (
-            tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
-        )
+        report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
         failed = [a for a in report["assertions"] if a["result"] == "fail"]
         assert failed
         # The raw matched string must NOT appear in the detail
         detail = failed[0]["detail"]
-        assert aadhaar not in detail, (
-            f"Raw PHI value should not appear in detail: {detail!r}"
-        )
+        assert aadhaar not in detail, f"Raw PHI value should not appear in detail: {detail!r}"
 
     # --- Assertion 9: determinism (extraction_utc in llm_source/) ---
     def test_assertion9_extraction_utc_exits_5(
@@ -616,9 +585,7 @@ class TestVerifyFailures:
         # Trigger assertion 1 fail
         (paths["study_dir"] / "_forms_manifest.yaml").unlink()
         main(["verify", "--study", STUDY, "--run", RUN_ID])
-        report_path = (
-            tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
-        )
+        report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
         results = [a["result"] for a in report["assertions"]]
         assert "fail" in results
@@ -635,17 +602,13 @@ class TestVerifyFailures:
 
 
 class TestRunArgument:
-    def test_explicit_run_id_used(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_explicit_run_id_used(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_config(monkeypatch, tmp_path)
         _build_happy_study(tmp_path, run_id=RUN_ID)
         rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
         assert rc == EXIT_OK
 
-    def test_no_run_uses_most_recent(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_no_run_uses_most_recent(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_config(monkeypatch, tmp_path)
         # Create two runs; most recent (by name sort desc) should be used
         run_id_old = "run_2026_01_01"
@@ -656,9 +619,7 @@ class TestRunArgument:
         rc = main(["verify", "--study", STUDY])
         assert rc == EXIT_OK
         # Verify the NEW run_id's report was written
-        report_path = (
-            tmp_path / "output" / STUDY / "runs" / run_id_new / "verifier_report.json"
-        )
+        report_path = tmp_path / "output" / STUDY / "runs" / run_id_new / "verifier_report.json"
         assert report_path.exists()
 
     def test_no_run_empty_runs_dir_exits_needs_advice(

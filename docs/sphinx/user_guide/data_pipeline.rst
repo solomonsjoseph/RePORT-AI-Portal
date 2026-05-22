@@ -6,21 +6,25 @@ implementation detail; developers should use
 :doc:`../developer_guide/architecture` and
 :doc:`../developer_guide/operations`.
 
-What "Load Study" Means
------------------------
+What "Prepare Study" Means
+--------------------------
 
-Loading a study turns local raw study files into a published study bundle
-that the assistant can query.
+Preparing a study turns local raw study files into a published study bundle
+that the assistant can query. The active preparation workflow is the
+``report-ai-study-pipeline`` plugin: duplicate handling first, Source Truth
+from printed PDFs plus dataset row-1 headers second, and PHI-safe dataset
+publishing last.
 
 At a high level, the portal:
 
-1. reads the study datasets, data dictionary, and optional annotated PDFs;
-2. stages extracted files in a temporary workspace;
-3. applies the PHI-scrub rules to dataset fields;
-4. cleans and aligns the study artifacts;
-5. publishes the scrubbed bundle under ``output/{STUDY}/llm_source/``;
-6. writes audit files under ``output/{STUDY}/audit/``;
-7. opens the assistant against the published bundle.
+1. runs the duplicate preflight once for the study;
+2. builds Source Truth sets from printed PDFs and dataset row-1 headers only;
+3. stages raw dataset records inside trusted extraction code;
+4. applies PHI-scrub rules to staged dataset fields;
+5. cleans and aligns the study artifacts;
+6. publishes the scrubbed bundle under ``output/{STUDY}/llm_source/``;
+7. writes audit files under ``output/{STUDY}/audit/``;
+8. opens the assistant against the published bundle.
 
 Input Folder
 ------------
@@ -52,6 +56,9 @@ After a successful run, look under ``output/{STUDY_NAME}/``:
 
    output/Indo-VAP/
    ├── llm_source/        # scrubbed bundle used by the assistant
+   │   ├── SoT/           # plugin Source Truth policy/schema/joined sets
+   │   ├── dataset_schema/
+   │   └── dictionary_mapping/
    ├── audit/             # counts and lineage evidence
    ├── agent/             # chat state and generated analysis
    └── README.md          # local output summary
@@ -59,26 +66,34 @@ After a successful run, look under ``output/{STUDY_NAME}/``:
 Users normally interact with ``llm_source/`` through the chat UI. The
 ``audit/`` folder is for review and troubleshooting.
 
-Running the Pipeline
---------------------
+Running Study Preparation
+-------------------------
 
-Normal users run the pipeline from the web UI:
+Normal users start from the web UI:
 
 .. code-block:: bash
 
    make chat
 
-Then click **Load Study**. After a load or restore, click **Show
-processing log** to inspect the captured pipeline output. The log opens in
+Then click **Load Study**. The button activates the
+``report-ai-study-pipeline`` workflow, or uses an existing valid
+``output/{STUDY}/llm_source/`` bundle if one has already been prepared.
+When raw dictionary files exist, the loaded bundle must include
+``llm_source/dictionary_mapping/jsonl/`` outputs from the host dictionary
+loader.
+After a load or restore, click **Show processing log** to inspect the
+captured output. The log opens in
 a fixed-height scroll panel, and the same button changes to **Hide
 processing log** so the wizard can be collapsed without refreshing the
 page. Failed runs open the log automatically. Successful runs keep it
 closed until you ask for it.
 
-The command-line ``make pipeline`` path is for developers and deployment
-operators who have already provisioned the local PHI key.
+The command-line ``make pipeline`` path is a lower-level host publish path
+used by the dataset child skill. It is for developers and deployment
+operators who have already provisioned the local PHI key; it is not the
+complete plugin workflow.
 
-For audited CLI runs, use the cross-LLM extraction skill:
+For audited dataset-publish CLI runs, use the cross-LLM dataset child skill:
 
 .. code-block:: bash
 

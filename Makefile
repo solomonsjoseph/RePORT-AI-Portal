@@ -6,7 +6,7 @@
 #
 # One-stop command centre for the entire project lifecycle:
 #   Environment  — sync, version, clean, nuke
-#   Pipeline     — dictionary, process-datasets, llm_source
+#   Study prep   — plugin workflow, dictionary, dataset publish, llm_source
 #   AI Assistant  — chat, web
 #   Quality      — test, lint, typecheck, ci, verify
 #   Docs         — docs, docs-quality, docs-linkcheck, docs-ci
@@ -19,6 +19,7 @@
 UV ?= uv
 STUDY ?= Indo-VAP
 CANDIDATE ?= /tmp/$(FORM)_lean.yaml
+SOT_PAIR ?= $(FORM)
 COLUMN_INVENTORY ?=
 
 ifeq ($(OS),Windows_NT)
@@ -92,16 +93,16 @@ help:
 	@printf "$(B)$(C) ╚══════════════════════════════════════════════════════╝ $(N)\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Quickstart$(N)\n"
-	@printf "  $(C)make quickstart$(N)       Sync → full pipeline\n"
+	@printf "  $(C)make quickstart$(N)       Sync → host publish path\n"
 	@printf "  $(C)make debug$(N)            Same as quickstart with DEBUG logging\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Environment$(N)\n"
 	@printf "  $(C)make sync$(N)             Install / restore all dependencies (uv sync)\n"
 	@printf "  $(C)make version$(N)          Show version + environment info\n"
 	@printf "\n"
-	@printf "$(B)$(G)  Pipeline — full$(N)\n"
-	@printf "  $(C)make pipeline$(N)         Dict → Datasets → PHI scrub → llm_source\n"
-	@printf "  $(C)make build-llm-source$(N) STUDY=… — SoT → Dict → Datasets → PHI scrub → llm_source\n"
+	@printf "$(B)$(G)  Host publish path$(N)\n"
+	@printf "  $(C)make pipeline$(N)         Host publish path used by dataset-to-llm-source\n"
+	@printf "  $(C)make build-llm-source$(N) STUDY=… — SoT plugin outputs → Dict → Datasets → PHI scrub → llm_source\n"
 	@printf "  $(C)make rebuild-llm-source$(N) STUDY=… — Remove generated llm_source/staging, preserve audit/agent, then rebuild\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Pipeline — individual steps$(N)\n"
@@ -111,7 +112,7 @@ help:
 	@printf "\n"
 	@printf "$(B)$(G)  Source-of-Truth (SoT)$(N)\n"
 	@printf "  $(C)make sot-source-pack$(N)  STUDY=… FORM=… — Stage 0: resolve PDF+dataset → source pack + page renders\n"
-	@printf "  $(C)make sot-generate-all$(N) STUDY=… — Generate+verify PDF-backed lean YAMLs into llm_source/source_truth\n"
+	@printf "  $(C)make sot-generate-all$(N) STUDY=… — Generate+verify PDF/header SoT outputs into llm_source/SoT\n"
 	@printf "  $(C)make sot-verify$(N)       STUDY=… FORM=… [CANDIDATE=…] — Stage 4 candidate verifier + property validator\n"
 	@printf "  $(C)make sot-verify-output$(N) STUDY=… FORM=… — Verify promoted output YAML\n"
 	@printf "  $(C)make sot-validate$(N)     STUDY=… FORM=… — All gates: verifier + validator + diff-against-gold\n"
@@ -175,13 +176,13 @@ debug:
 	@$(MAKE) quickstart VERBOSE=1
 
 # ═══════════════════════════════════════════════════════════════════════
-# PIPELINE — FULL
+# HOST PUBLISH PATH
 # ═══════════════════════════════════════════════════════════════════════
 
 pipeline:
-	@printf "$(C)Running full pipeline: Dict → Datasets → PHI scrub → llm_source$(N)\n"
+	@printf "$(C)Running host publish path: Dict → Datasets → PHI scrub → llm_source$(N)\n"
 	@$(PYTHON) main.py --pipeline $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG) $(FFLAG)
-	@printf "$(G)✓ Pipeline complete$(N)\n"
+	@printf "$(G)✓ Host publish complete$(N)\n"
 
 build-llm-source: sot-generate-all
 	@printf "$(C)Building llm_source: Dict → Datasets → PHI scrub → Publish → Audit$(N)\n"
@@ -212,7 +213,7 @@ sot-source-pack: ## Stage 0: resolve PDF+dataset and write source pack JSON + pe
 	$(UV) run --all-groups python -m scripts.source_truth.study_intake \
 		--study $(STUDY) --form $(FORM) --repo-root .
 
-sot-generate-all: ## Generate and verify all PDF-backed lean policy YAMLs into llm_source/source_truth
+sot-generate-all: ## Generate and verify all PDF/header SoT outputs into llm_source/SoT
 	$(UV) run --all-groups python -m scripts.source_truth.generate_lean_outputs \
 		--study $(STUDY) --repo-root .
 
@@ -223,10 +224,10 @@ sot-verify: ## Stage 4: verify candidate lean YAML against the source pack produ
 		--source-pack /tmp/sot_source_pack_$(FORM).json \
 		--repo-root .
 
-sot-verify-output: ## Verify a promoted output lean YAML against the source pack produced by sot-source-pack
+sot-verify-output: ## Verify a promoted output policy YAML against the source pack produced by sot-source-pack
 	$(UV) run --all-groups python \
 		skills/sot-lean-generator/scripts/check_lean_policy.py \
-		--lean output/$(STUDY)/llm_source/source_truth/$(FORM)_policy.lean.yaml \
+		--policy output/$(STUDY)/llm_source/SoT/$(SOT_PAIR)/pdf/$(FORM)_policy.yaml \
 		--source-pack /tmp/sot_source_pack_$(FORM).json \
 		--repo-root .
 

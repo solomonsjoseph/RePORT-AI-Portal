@@ -1,36 +1,8 @@
 Attestations
 ============
 
-The default posture does not require either attestation below. They are
-required only when the study team enables a higher-risk mode.
-
-PHI-Free PDF Attestation
-------------------------
-
-Required before setting ``REPORTALIN_PDF_PHI_FREE=1`` for the legacy
-raw-PDF external provider path.
-
-Store the completed attestation at ``authorities/phi_free_pdfs.md``.
-
-Required content:
-
-* reviewer name, role, and institution,
-* UTC review timestamp,
-* study name and PDF list reviewed,
-* confirmation that no subject IDs, government IDs, phone numbers,
-  emails, addresses, precise participant event dates, signatures,
-  initials, scanner burn-in, or personal watermarks are present,
-* approval for the configured external provider to process those PDFs,
-* signature or commit-sign equivalent.
-
-Declaration text:
-
-.. code-block:: text
-
-   I reviewed the listed PDFs and verified that they contain no PHI,
-   personal identifiers, or participant-specific event details. I
-   authorize use of REPORTALIN_PDF_PHI_FREE=1 for the named study and
-   provider.
+The default posture does not require the attestation below. It is required
+only when the study team enables a higher-risk mode.
 
 Limited Dataset Attestation
 ---------------------------

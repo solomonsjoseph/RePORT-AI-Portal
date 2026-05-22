@@ -169,32 +169,51 @@ class TestCleanDuplicateColumns:
 
     def test_dtype_mismatch_prevents_dedup(self) -> None:
         """(a) VISIT2 has different dtype from VISIT — NOT removed even if values match."""
-        df = pd.DataFrame({"VISIT": pd.array([1, 2, 3], dtype="int64"), "VISIT2": pd.array([1, 2, 3], dtype="float64")})
+        df = pd.DataFrame(
+            {
+                "VISIT": pd.array([1, 2, 3], dtype="int64"),
+                "VISIT2": pd.array([1, 2, 3], dtype="float64"),
+            }
+        )
         result, events = clean_duplicate_columns(df, source_file="demo.jsonl", sheet=None)
         assert "VISIT2" in result.columns, "dtype mismatch should prevent removal"
         assert events == []
 
     def test_adjacent_same_dtype_same_values_removed(self) -> None:
         """(b) VISIT2 adjacent to VISIT, same dtype, same values — IS removed."""
-        df = pd.DataFrame({"VISIT": pd.array([1, 2, 3], dtype="int64"), "VISIT2": pd.array([1, 2, 3], dtype="int64")})
+        df = pd.DataFrame(
+            {
+                "VISIT": pd.array([1, 2, 3], dtype="int64"),
+                "VISIT2": pd.array([1, 2, 3], dtype="int64"),
+            }
+        )
         result, events = clean_duplicate_columns(df, source_file="demo.jsonl", sheet=None)
-        assert "VISIT2" not in result.columns, "adjacent + same dtype + same values should be removed"
+        assert "VISIT2" not in result.columns, (
+            "adjacent + same dtype + same values should be removed"
+        )
         assert len(events) == 1
 
     def test_non_adjacent_position_prevents_dedup(self) -> None:
         """(c) VISIT2 matches VISIT in values + dtype but is NOT positionally adjacent."""
-        df = pd.DataFrame({
-            "VISIT": pd.array([1, 2, 3], dtype="int64"),
-            "INTERVENING": pd.array([10, 20, 30], dtype="int64"),
-            "VISIT2": pd.array([1, 2, 3], dtype="int64"),
-        })
+        df = pd.DataFrame(
+            {
+                "VISIT": pd.array([1, 2, 3], dtype="int64"),
+                "INTERVENING": pd.array([10, 20, 30], dtype="int64"),
+                "VISIT2": pd.array([1, 2, 3], dtype="int64"),
+            }
+        )
         result, events = clean_duplicate_columns(df, source_file="demo.jsonl", sheet=None)
         assert "VISIT2" in result.columns, "non-adjacent should not be removed"
         assert events == []
 
     def test_one_differing_value_not_removed(self) -> None:
         """(d) VISIT2 adjacent to VISIT, same dtype, but one value differs — NOT removed."""
-        df = pd.DataFrame({"VISIT": pd.array([1, 2, 3], dtype="int64"), "VISIT2": pd.array([1, 2, 99], dtype="int64")})
+        df = pd.DataFrame(
+            {
+                "VISIT": pd.array([1, 2, 3], dtype="int64"),
+                "VISIT2": pd.array([1, 2, 99], dtype="int64"),
+            }
+        )
         result, events = clean_duplicate_columns(df, source_file="demo.jsonl", sheet=None)
         assert "VISIT2" in result.columns, "differing values should prevent removal"
         assert events == []

@@ -22,7 +22,6 @@ from scripts.skills.extract_to_llm_source import (
     destroy_staging_and_attest,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
@@ -54,9 +53,7 @@ def _make_staging(staging_dir: Path) -> list[Path]:
 
 
 class TestHappyPath:
-    def test_staging_dir_removed(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_staging_dir_removed(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_write_zone(monkeypatch, tmp_path)
         staging_dir = tmp_path / "tmp" / "Indo-VAP"
         output_dir = tmp_path / "output" / "Indo-VAP"
@@ -152,9 +149,7 @@ class TestHappyPath:
             # Must be relative (no leading slash)
             assert not rp.startswith("/"), f"path should be relative: {rp}"
 
-    def test_returns_path_object(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_returns_path_object(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_write_zone(monkeypatch, tmp_path)
         staging_dir = tmp_path / "tmp" / "Indo-VAP"
         output_dir = tmp_path / "output" / "Indo-VAP"
@@ -185,17 +180,19 @@ class TestFailurePath:
         _make_staging(staging_dir)
 
         # Mock secure_remove_tree to be a no-op
-        with patch(
-            "scripts.skills.extract_to_llm_source.secure_remove_tree",
-            return_value=None,
+        with (
+            patch(
+                "scripts.skills.extract_to_llm_source.secure_remove_tree",
+                return_value=None,
+            ),
+            pytest.raises(DestructionIncompleteError),
         ):
-            with pytest.raises(DestructionIncompleteError):
-                destroy_staging_and_attest(
-                    study="Indo-VAP",
-                    run_id="run-fail",
-                    staging_dir=staging_dir,
-                    output_dir=output_dir,
-                )
+            destroy_staging_and_attest(
+                study="Indo-VAP",
+                run_id="run-fail",
+                staging_dir=staging_dir,
+                output_dir=output_dir,
+            )
 
     def test_no_attestation_written_on_incomplete_destruction(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -207,17 +204,19 @@ class TestFailurePath:
 
         attest_path = output_dir / "runs" / "run-fail2" / "destruction_attestation.json"
 
-        with patch(
-            "scripts.skills.extract_to_llm_source.secure_remove_tree",
-            return_value=None,
+        with (
+            patch(
+                "scripts.skills.extract_to_llm_source.secure_remove_tree",
+                return_value=None,
+            ),
+            pytest.raises(DestructionIncompleteError),
         ):
-            with pytest.raises(DestructionIncompleteError):
-                destroy_staging_and_attest(
-                    study="Indo-VAP",
-                    run_id="run-fail2",
-                    staging_dir=staging_dir,
-                    output_dir=output_dir,
-                )
+            destroy_staging_and_attest(
+                study="Indo-VAP",
+                run_id="run-fail2",
+                staging_dir=staging_dir,
+                output_dir=output_dir,
+            )
 
         # Attestation must NOT exist — incomplete destruction
         assert not attest_path.exists()
@@ -294,8 +293,7 @@ class TestRunIdOverwrite:
             staging_dir=staging_dir_1,
             output_dir=output_dir,
         )
-        data_1 = json.loads(attest_path_1.read_text(encoding="utf-8"))
-        completed_1 = data_1["completed_utc"]
+        json.loads(attest_path_1.read_text(encoding="utf-8"))
 
         # Second call — rebuild staging, same run_id
         staging_dir_2 = tmp_path / "tmp" / "Indo-VAP"
@@ -323,7 +321,7 @@ class TestPhiGuard:
     def test_destroy_staging_and_attest_raises_if_path_segment_matches_subject_id_pattern(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """I-5: Guard must reject removed_paths that contain subject-ID-like segments.
+        r"""I-5: Guard must reject removed_paths that contain subject-ID-like segments.
 
         Uses realistic subject-ID patterns from SUBJECT_ID_PATTERNS:
         - SUBJ-\d+ (e.g., SUBJ-1234)

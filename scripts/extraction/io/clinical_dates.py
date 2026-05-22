@@ -157,9 +157,7 @@ def is_dmy_variable(field_name: str) -> bool:
     return field_name.upper() in _DMY_UPPER
 
 
-def _disambiguate_locale(
-    value: str, *, declared_locale: str | None = None
-) -> str | None:
+def _disambiguate_locale(value: str, *, declared_locale: str | None = None) -> str | None:
     """Attempt to determine whether *value* is in DMY or MDY format.
 
     Args:

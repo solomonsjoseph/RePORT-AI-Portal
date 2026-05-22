@@ -27,7 +27,9 @@ def test_ghostscript_render_writes_one_png_per_pdf_page(monkeypatch, tmp_path: P
     pdf.write_bytes(b"%PDF placeholder")
     render_dir = tmp_path / "rendered"
 
-    monkeypatch.setattr(module.shutil, "which", lambda name: "/usr/bin/gs" if name == "gs" else None)
+    monkeypatch.setattr(
+        module.shutil, "which", lambda name: "/usr/bin/gs" if name == "gs" else None
+    )
 
     calls: list[list[str]] = []
 
@@ -53,4 +55,6 @@ def test_ghostscript_render_writes_one_png_per_pdf_page(monkeypatch, tmp_path: P
     assert len(calls) == 1
     assert "-dFirstPage=1" in calls[0]
     assert "-dLastPage=3" in calls[0]
-    assert any(part == f"-sOutputFile={render_dir / 'multi page.pdf.page-%03d.png'}" for part in calls[0])
+    assert any(
+        part == f"-sOutputFile={render_dir / 'multi page.pdf.page-%03d.png'}" for part in calls[0]
+    )

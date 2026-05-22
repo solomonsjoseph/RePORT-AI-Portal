@@ -7,6 +7,7 @@ from typing import Any, cast
 import streamlit as st
 
 import config
+from scripts.ai_assistant.ui.bundle_status import published_bundle_exists
 from scripts.ai_assistant.ui.providers import _default_provider_label
 
 
@@ -56,7 +57,7 @@ def init_state() -> None:
     # Keep thread_id in sync with current_conversation_id (agent graph uses thread_id)
     ss["thread_id"] = ss["current_conversation_id"]
 
-    # Auto-detect pipeline output so returning users skip wizard step 2
+    # Auto-detect a complete study bundle so returning users skip wizard step 2
     if not ss.pipeline_ready and _pipeline_output_exists():
         ss.pipeline_ready = True
 
@@ -68,10 +69,7 @@ def _new_id() -> str:
 
 
 def _pipeline_output_exists() -> bool:
-    try:
-        return config.STUDY_LLM_SOURCE_DIR.exists() and any(config.TRIO_DATASETS_DIR.glob("*.jsonl"))
-    except Exception:
-        return False
+    return published_bundle_exists()
 
 
 def get_meta(idx: int) -> dict[str, Any]:

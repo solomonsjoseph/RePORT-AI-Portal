@@ -15,9 +15,9 @@ Start by Role
    * - Reader
      - Goal
      - Start here
-   * - Pipeline developer
-     - Change extraction, PHI scrub, cleanup, publish, llm_source
-       metadata, or lineage behavior.
+   * - Study-prep developer
+     - Change the plugin workflow, extraction, PHI scrub, cleanup,
+       publish, llm_source metadata, or lineage behavior.
      - :doc:`architecture`, then :doc:`data_extraction_datasets`
    * - Agent/tool developer
      - Add or change assistant tools without breaking file-zone and PHI
@@ -78,8 +78,9 @@ Contents
 Working Rules
 -------------
 
-* Preserve the raw → staging → published ``llm_source/`` → agent-boundary PHI
-  model described in :doc:`phi_architecture`.
+* Preserve the plugin workflow plus raw -> staging -> published
+  ``llm_source/`` -> agent-boundary PHI model described in
+  :doc:`phi_architecture`.
 * Keep implementation changes, tests, and documentation in the same PR
   when behavior changes.
 * Run the smallest focused tests first, then the repo gates required by

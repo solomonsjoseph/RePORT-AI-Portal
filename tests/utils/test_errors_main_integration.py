@@ -62,7 +62,9 @@ class TestWrapFormatForLogEnvelope:
             raise RuntimeError("disk full — record row 42 could not be written")
         except Exception as exc:
             with caplog.at_level(logging.ERROR, logger="test.fatal_path"):
-                logger.error("Fatal: %s", format_for_log(wrap(exc, stage="extract", operation="run")))
+                logger.error(
+                    "Fatal: %s", format_for_log(wrap(exc, stage="extract", operation="run"))
+                )
 
         assert len(caplog.records) == 1
         record = caplog.records[0]
@@ -92,7 +94,9 @@ class TestWrapFormatForLogEnvelope:
         except Exception as exc:
             with caplog.at_level(logging.ERROR, logger="test.fatal_no_excinfo"):
                 # The pattern used in __main__ blocks after P0.4:
-                logger.error("Fatal: %s", format_for_log(wrap(exc, stage="pipeline", operation="run")))
+                logger.error(
+                    "Fatal: %s", format_for_log(wrap(exc, stage="pipeline", operation="run"))
+                )
 
         assert len(caplog.records) == 1
         record = caplog.records[0]

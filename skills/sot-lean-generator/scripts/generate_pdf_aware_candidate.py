@@ -83,9 +83,8 @@ TRUE_PDF_VARIABLES_WITHOUT_DATASET_HEADER: dict[str, set[str]] = {
 
 def _is_system(name: str) -> bool:
     lower = name.lower()
-    return (
-        lower in {"time_stamp", "timestamp", "time stamp"}
-        or name.startswith(("Batch", "Remote_", "Orig", "Route_", "Verify_", "Image_", "FormID", "Suspense_"))
+    return lower in {"time_stamp", "timestamp", "time stamp"} or name.startswith(
+        ("Batch", "Remote_", "Orig", "Route_", "Verify_", "Image_", "FormID", "Suspense_")
     )
 
 
@@ -108,7 +107,11 @@ def _looks_initials(name: str) -> bool:
 
 def _looks_date(name: str) -> bool:
     upper = re.sub(r"\d+$", "", name.upper())
-    return upper.endswith(("DAT", "DATE", "DTE", "DT")) or upper.endswith("RDATE") or "COMPDAT" in upper
+    return (
+        upper.endswith(("DAT", "DATE", "DTE", "DT"))
+        or upper.endswith("RDATE")
+        or "COMPDAT" in upper
+    )
 
 
 def _looks_time(name: str) -> bool:
@@ -118,17 +121,49 @@ def _looks_time(name: str) -> bool:
 
 def _looks_free_text(name: str) -> bool:
     upper = re.sub(r"\d+$", "", name.upper())
-    return any(token in upper for token in ("OTH", "OTHER", "SPEC", "EXPLAIN", "COMMENT", "NOTE", "REASONSP"))
+    return any(
+        token in upper
+        for token in ("OTH", "OTHER", "SPEC", "EXPLAIN", "COMMENT", "NOTE", "REASONSP")
+    )
 
 
 def _looks_integer(name: str) -> bool:
     upper = re.sub(r"\d+$", "", name.upper())
-    return any(token in upper for token in ("AGE", "DAYS", "YRS", "YEAR", "MONTH", "DOSE", "NUM", "COUNT", "CD4", "INDUR", "EGG"))
+    return any(
+        token in upper
+        for token in (
+            "AGE",
+            "DAYS",
+            "YRS",
+            "YEAR",
+            "MONTH",
+            "DOSE",
+            "NUM",
+            "COUNT",
+            "CD4",
+            "INDUR",
+            "EGG",
+        )
+    )
 
 
 def _looks_decimal(name: str) -> bool:
     upper = re.sub(r"\d+$", "", name.upper())
-    return any(token in upper for token in ("WEIGHT", "HEIGHT", "VOL", "HGB", "WBC", "RBC", "MCV", "RDW", "PCT", "PERCENT"))
+    return any(
+        token in upper
+        for token in (
+            "WEIGHT",
+            "HEIGHT",
+            "VOL",
+            "HGB",
+            "WBC",
+            "RBC",
+            "MCV",
+            "RDW",
+            "PCT",
+            "PERCENT",
+        )
+    )
 
 
 def _is_not_done_var(name: str) -> bool:
@@ -243,7 +278,7 @@ def _known_options_override(name: str) -> list[str] | None:
         ]
     if re.fullmatch(r"FC_COMEN[123]", upper):
         return [
-            "1. Blatocystis hominis (\"cyst-like\")",
+            '1. Blatocystis hominis ("cyst-like")',
             "2. Entamoeba coli (cysts)",
             "3. Endolimax nana (cysts)",
             "4. Iodamoeba butschlii (cysts)",
@@ -254,7 +289,9 @@ def _known_options_override(name: str) -> list[str] | None:
 
 def _is_completion(name: str) -> bool:
     upper = name.upper()
-    return _looks_signature(name) or _looks_initials(name) or "COMPDAT" in upper or "COMPDTE" in upper
+    return (
+        _looks_signature(name) or _looks_initials(name) or "COMPDAT" in upper or "COMPDTE" in upper
+    )
 
 
 def _form_number(form: str) -> str:
@@ -280,7 +317,12 @@ def _first_title(lines: list[str]) -> str:
             return line
     for line in lines[:20]:
         upper = line.upper()
-        if "INDO-US" not in upper and not upper.startswith("FORM ") and len(line) > 6 and not _is_mask_or_value_line(line):
+        if (
+            "INDO-US" not in upper
+            and not upper.startswith("FORM ")
+            and len(line) > 6
+            and not _is_mask_or_value_line(line)
+        ):
             return line
     return "Untitled form"
 
@@ -375,11 +417,17 @@ def _is_mask_or_value_line(text: str) -> bool:
 
 
 def _line_center(line: dict[str, Any]) -> tuple[float, float]:
-    return ((float(line["x0"]) + float(line["x1"])) / 2, (float(line["top"]) + float(line["bottom"])) / 2)
+    return (
+        (float(line["x0"]) + float(line["x1"])) / 2,
+        (float(line["top"]) + float(line["bottom"])) / 2,
+    )
 
 
 def _ann_center(ann: dict[str, Any]) -> tuple[float, float]:
-    return ((float(ann["x0"]) + float(ann["x1"])) / 2, (float(ann["top"]) + float(ann["bottom"])) / 2)
+    return (
+        (float(ann["x0"]) + float(ann["x1"])) / 2,
+        (float(ann["top"]) + float(ann["bottom"])) / 2,
+    )
 
 
 def _best_prompt_from_geometry(
@@ -398,7 +446,11 @@ def _best_prompt_from_geometry(
         segment = _best_segment_for_x(line, ax)
         text = segment["text"] if segment else line["text"]
         text = _clean_text(text)
-        if not re.search(r"[A-Za-z]", text) or _is_mask_or_value_line(text) or _is_form_artifact_line(text):
+        if (
+            not re.search(r"[A-Za-z]", text)
+            or _is_mask_or_value_line(text)
+            or _is_form_artifact_line(text)
+        ):
             continue
         _lx, ly = _line_center(line)
         vertical_above = ay - ly
@@ -406,25 +458,46 @@ def _best_prompt_from_geometry(
         sx0 = float(segment["x0"]) if segment else float(line["x0"])
         sx1 = float(segment["x1"]) if segment else float(line["x1"])
         overlap = max(0.0, min(sx1, ax + 60) - max(sx0, ax - 60))
-        horizontal_distance = 0.0 if sx0 - 20 <= ax <= sx1 + 20 else min(abs(ax - sx0), abs(ax - sx1))
+        horizontal_distance = (
+            0.0 if sx0 - 20 <= ax <= sx1 + 20 else min(abs(ax - sx0), abs(ax - sx1))
+        )
 
-        if row_suffix and 0 < vertical_above < 430 and float(line["top"]) < 135 and (overlap > 0 or horizontal_distance < 90):
-            header_candidates.append((horizontal_distance * 0.08 + vertical_above * 0.005, text, "column-header"))
+        if (
+            row_suffix
+            and 0 < vertical_above < 430
+            and float(line["top"]) < 135
+            and (overlap > 0 or horizontal_distance < 90)
+        ):
+            header_candidates.append(
+                (horizontal_distance * 0.08 + vertical_above * 0.005, text, "column-header")
+            )
         elif 0 < vertical_above < 90 and (overlap > 0 or horizontal_distance < 80):
             local_candidates.append((vertical_above + horizontal_distance * 0.08, text, "above"))
         elif abs(ay - ly) < 18 and horizontal_distance < 120:
-            local_candidates.append((abs(ay - ly) + horizontal_distance * 0.05 + 20, text, "same-row"))
+            local_candidates.append(
+                (abs(ay - ly) + horizontal_distance * 0.05 + 20, text, "same-row")
+            )
         elif abs(ay - ly) < 28 and float(line["x1"]) <= ax + 20:
-            local_candidates.append((abs(ay - ly) + max(0, ax - float(line["x1"])) * 0.04 + 25, text, "left"))
+            local_candidates.append(
+                (abs(ay - ly) + max(0, ax - float(line["x1"])) * 0.04 + 25, text, "left")
+            )
         elif 0 < vertical_below < 55 and horizontal_distance < 120:
-            local_candidates.append((vertical_below + horizontal_distance * 0.05 + 35, text, "below"))
+            local_candidates.append(
+                (vertical_below + horizontal_distance * 0.05 + 35, text, "below")
+            )
 
     if row_suffix and header_candidates:
         _score, header_text, location = sorted(header_candidates, key=lambda item: item[0])[0]
         row_text = None
         if local_candidates:
-            _local_score, local_text, _local_loc = sorted(local_candidates, key=lambda item: item[0])[0]
-            if local_text != header_text and not _is_mask_or_value_line(local_text) and not re.fullmatch(r"Done", local_text, re.I):
+            _local_score, local_text, _local_loc = sorted(
+                local_candidates, key=lambda item: item[0]
+            )[0]
+            if (
+                local_text != header_text
+                and not _is_mask_or_value_line(local_text)
+                and not re.fullmatch(r"Done", local_text, re.I)
+            ):
                 row_text = local_text
         if (
             row_text
@@ -454,8 +527,10 @@ def _best_segment_for_x(line: dict[str, Any], x: float) -> dict[str, Any] | None
         return None
     containing = [seg for seg in segments if float(seg["x0"]) - 12 <= x <= float(seg["x1"]) + 12]
     if containing:
-        return sorted(containing, key=lambda seg: (float(seg["x1"]) - float(seg["x0"])))[0]
-    return sorted(segments, key=lambda seg: min(abs(x - float(seg["x0"])), abs(x - float(seg["x1"]))))[0]
+        return sorted(containing, key=lambda seg: float(seg["x1"]) - float(seg["x0"]))[0]
+    return sorted(
+        segments, key=lambda seg: min(abs(x - float(seg["x0"])), abs(x - float(seg["x1"])))
+    )[0]
 
 
 def _is_form_artifact_line(text: str) -> bool:
@@ -463,16 +538,14 @@ def _is_form_artifact_line(text: str) -> bool:
     return "INDO-US VAP" in upper or upper.startswith("FORM ")
 
 
-def _format_from_nearby_text(name: str, ann: dict[str, Any], page_lines: dict[int, list[dict[str, Any]]]) -> str | None:
+def _format_from_nearby_text(
+    name: str, ann: dict[str, Any], page_lines: dict[int, list[dict[str, Any]]]
+) -> str | None:
     if not _looks_date(name):
         return None
     lines = page_lines.get(int(ann.get("page") or 1), [])
     _ax, ay = _ann_center(ann)
-    nearby = " ".join(
-        line["text"]
-        for line in lines
-        if abs((_line_center(line)[1]) - ay) < 45
-    )
+    nearby = " ".join(line["text"] for line in lines if abs((_line_center(line)[1]) - ay) < 45)
     compact = re.sub(r"\s+", "", nearby).upper()
     if "DD/MM/YY" in compact and "DD/MM/YYYY" not in compact:
         return "DD/MM/YY"
@@ -513,7 +586,11 @@ def _widget_for(name: str, prompt: str | None, fmt: str | None, matched: bool) -
         return "2 checkboxes: Initial, Confirmation"
     if re.fullmatch(r"FC_NOCOLL[123]", upper):
         return "single checkbox for Not collected in the Sample column"
-    if re.fullmatch(r"FC_PROCDAT[123]", upper) or upper in {"FC_GIVEDAT", "FC_RECDAT", "FC_COMPDTE"}:
+    if re.fullmatch(r"FC_PROCDAT[123]", upper) or upper in {
+        "FC_GIVEDAT",
+        "FC_RECDAT",
+        "FC_COMPDTE",
+    }:
         return "Day(2) / Month(2) / Year(4) date boxes"
     if upper.startswith("FC_PARAS"):
         return "2 character-box parasite code field aligned to the printed Legend A code list"
@@ -556,7 +633,9 @@ def _section_for(name: str, matched: bool) -> str:
     return "form_body"
 
 
-def _annotation_maps(pack: dict[str, Any]) -> tuple[dict[str, list[dict[str, Any]]], dict[str, list[dict[str, Any]]], list[str]]:
+def _annotation_maps(
+    pack: dict[str, Any],
+) -> tuple[dict[str, list[dict[str, Any]]], dict[str, list[dict[str, Any]]], list[str]]:
     exact: dict[str, list[dict[str, Any]]] = defaultdict(list)
     folded: dict[str, list[dict[str, Any]]] = defaultdict(list)
     labels: list[str] = []
@@ -565,7 +644,12 @@ def _annotation_maps(pack: dict[str, Any]) -> tuple[dict[str, list[dict[str, Any
             text = ann.get("text")
             if not isinstance(text, str) or not text.strip():
                 continue
-            if ann.get("x0") is None or ann.get("top") is None or ann.get("x1") is None or ann.get("bottom") is None:
+            if (
+                ann.get("x0") is None
+                or ann.get("top") is None
+                or ann.get("x1") is None
+                or ann.get("bottom") is None
+            ):
                 continue
             cleaned = text.strip()
             labels.append(cleaned)
@@ -588,7 +672,11 @@ def _annotation_aliases_for(form: str, header_set: set[str]) -> dict[str, str]:
     for label in list(aliases):
         if aliases[label] not in header_set:
             aliases.pop(label)
-    return {label: target for label, target in aliases.items() if target in header_set or label.lower() in lower_to_header}
+    return {
+        label: target
+        for label, target in aliases.items()
+        if target in header_set or label.lower() in lower_to_header
+    }
 
 
 def _apply_tst_mutex(variables: dict[str, dict[str, Any]]) -> None:
@@ -597,7 +685,8 @@ def _apply_tst_mutex(variables: dict[str, dict[str, Any]]) -> None:
         if nd not in variables:
             continue
         partners = [
-            name for name in variables
+            name
+            for name in variables
             if name != nd
             and name.startswith("TST_")
             and FORM_10_TST_ROW_RE.match(name)
@@ -606,13 +695,14 @@ def _apply_tst_mutex(variables: dict[str, dict[str, Any]]) -> None:
         if not partners:
             continue
         variables[nd]["skip_logic"] = "; ".join(
-            f"mutually exclusive with {partner} (inferred from row layout)"
-            for partner in partners
+            f"mutually exclusive with {partner} (inferred from row layout)" for partner in partners
         )
         for partner in partners:
             prior = variables[partner].get("skip_logic")
             addition = f"mutually exclusive with {nd} (inferred from row layout)"
-            variables[partner]["skip_logic"] = f"{prior}; {addition}" if isinstance(prior, str) and prior else addition
+            variables[partner]["skip_logic"] = (
+                f"{prior}; {addition}" if isinstance(prior, str) and prior else addition
+            )
 
 
 def _append_skip(meta: dict[str, Any], text: str) -> None:
@@ -668,7 +758,9 @@ def build_candidate(repo_root: Path, form: str, pack_path: Path) -> dict[str, An
                 if len(folded_matches) == 1:
                     ann = folded_matches[0]
                     matched = True
-                    case_mismatch.append({"dataset_column": name, "pdf_annotation_says": str(ann.get("text"))})
+                    case_mismatch.append(
+                        {"dataset_column": name, "pdf_annotation_says": str(ann.get("text"))}
+                    )
             if matched and ann is not None:
                 if _is_not_done_var(name):
                     row = re.search(r"(\d+)$", name)
@@ -686,7 +778,9 @@ def build_candidate(repo_root: Path, form: str, pack_path: Path) -> dict[str, An
             meta["pdf_question"] = None
             missing_headers.append(name)
         meta.update(_type_and_phi(name, matched))
-        fmt = _format_from_nearby_text(name, ann, page_lines) if matched and ann is not None else None
+        fmt = (
+            _format_from_nearby_text(name, ann, page_lines) if matched and ann is not None else None
+        )
         if fmt:
             meta["format"] = fmt
         options = _known_options_override(name)
@@ -707,14 +801,20 @@ def build_candidate(repo_root: Path, form: str, pack_path: Path) -> dict[str, An
     if "form_body" in used_sections:
         sections["form_body"] = {"label": _first_title(all_lines)}
     if "completion" in used_sections:
-        sections["completion"] = {"label": None, "note": "form-completion signature, initials, and date fields"}
+        sections["completion"] = {
+            "label": None,
+            "note": "form-completion signature, initials, and date fields",
+        }
     if "unmatched_dataset" in used_sections:
         sections["unmatched_dataset"] = {
             "label": None,
             "note": "dataset row-1 headers with no visible printed PDF widget; see discrepancies",
         }
     if "system" in used_sections:
-        sections["system"] = {"label": None, "note": "dataset-only system-generated columns with no printed section"}
+        sections["system"] = {
+            "label": None,
+            "note": "dataset-only system-generated columns with no printed section",
+        }
 
     discrepancies: list[dict[str, Any]] = []
     header_duplicates = pack.get("header_duplicates") or {}
@@ -724,7 +824,7 @@ def build_candidate(repo_root: Path, form: str, pack_path: Path) -> dict[str, An
                 "kind": "dataset_duplicate_header_binding_conflict",
                 "where": "dataset row-1 headers",
                 "pdf_annotation_says": None,
-                    "printed_form_truth": "Duplicate row-1 header names require source-level review before final policy collapse",
+                "printed_form_truth": "Duplicate row-1 header names require source-level review before final policy collapse",
                 "dataset_column_binding": header_duplicates,
                 "resolution": "Not automatically collapsed",
             }
@@ -750,13 +850,15 @@ def build_candidate(repo_root: Path, form: str, pack_path: Path) -> dict[str, An
     true_missing_annotations = set(TRUE_PDF_VARIABLES_WITHOUT_DATASET_HEADER.get(form, set()))
     alias_labels = set(annotation_aliases)
     extra_for_generic_discrepancy = [
-        label for label in extra_annotations
+        label
+        for label in extra_annotations
         if label not in alias_labels
         and label not in non_variable_annotations
         and label not in true_missing_annotations
     ]
     repeated_expected = sorted(
-        label for label, count in annotation_counts.items()
+        label
+        for label, count in annotation_counts.items()
         if count > 1
         and label not in header_set
         and label not in alias_labels
@@ -765,7 +867,8 @@ def build_candidate(repo_root: Path, form: str, pack_path: Path) -> dict[str, An
         and _is_expected_repeated_annotation(label)
     )
     binding_duplicates = {
-        label: count for label, count in annotation_counts.items()
+        label: count
+        for label, count in annotation_counts.items()
         if count > 1
         and label not in alias_labels
         and label not in non_variable_annotations
@@ -889,7 +992,9 @@ def main() -> int:
     pack_path = args.source_pack or Path(f"/tmp/sot_source_pack_{args.form}.json")
     data = build_candidate(repo_root, args.form, pack_path)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=False, width=120), encoding="utf-8")
+    args.out.write_text(
+        yaml.safe_dump(data, sort_keys=False, allow_unicode=False, width=120), encoding="utf-8"
+    )
     print(f"candidate written: {args.out}")
     return 0
 

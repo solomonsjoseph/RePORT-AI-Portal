@@ -499,11 +499,16 @@ def main(argv: list[str] | None = None) -> int:
     cmd = [
         sys.executable,
         str(extract_script),
-        "--repo-root", str(repo_root),
-        "--pdf", str(pdf),
-        "--dataset", str(dataset),
-        "--out", str(out_pack),
-        "--render-dir", str(render_dir),
+        "--repo-root",
+        str(repo_root),
+        "--pdf",
+        str(pdf),
+        "--dataset",
+        str(dataset),
+        "--out",
+        str(out_pack),
+        "--render-dir",
+        str(render_dir),
     ]
 
     result = subprocess.run(cmd, cwd=str(repo_root))  # noqa: S603

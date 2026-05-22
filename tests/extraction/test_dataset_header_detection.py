@@ -22,7 +22,6 @@ import pytest
 
 from scripts.extraction.io.sheet_split import promote_header, split_sheet_into_tables
 
-
 # ---------------------------------------------------------------------------
 # Helpers — build in-memory xlsx bytes
 # ---------------------------------------------------------------------------
@@ -122,7 +121,7 @@ class TestBannerRowFixture:
 
         sheets = _read_tabular_file(banner_xlsx)
         assert len(sheets) == 1
-        name, df = sheets[0]
+        _name, df = sheets[0]
         assert list(df.columns) == ["subject_id", "age", "result"]
         assert len(df) == 2
 
@@ -298,8 +297,6 @@ class TestSplitSheetIntoTablesShared:
         """Simulate a structural error — helper must return None, not raise."""
         import scripts.extraction.io.sheet_split as ss
 
-        original = pd.DataFrame.isnull
-
         def _explode(self):
             raise KeyError("simulated error")
 
@@ -317,24 +314,14 @@ class TestSplitSheetIntoTablesShared:
 class TestPromoteHeader:
     def test_no_banner_plain_table(self):
         """When row 0 is the header (no banner), it is promoted correctly."""
-        df = pd.DataFrame(
-            {0: ["col_a", "col_b", "col_c"], 1: [1, 2, 3], 2: [4, 5, 6]}
-        ).T.reset_index(drop=True)
-        # Build as raw DataFrame matching what split_sheet_into_tables returns:
-        # columns are integer indices, header is in row 0.
-        raw = pd.DataFrame(
-            {
-                0: ["col_a", 1, 2],
-                1: ["col_b", 10, 20],
-                2: ["col_c", 100, 200],
-            }
-        ).T.reset_index(drop=True)
         # Transpose to get rows as rows
         raw2 = pd.DataFrame(
-            [[None, None, None],  # this row has 0 non-nulls
-             ["col_a", "col_b", "col_c"],
-             [1, 10, 100],
-             [2, 20, 200]],
+            [
+                [None, None, None],  # this row has 0 non-nulls
+                ["col_a", "col_b", "col_c"],
+                [1, 10, 100],
+                [2, 20, 200],
+            ],
         )
         # The first row is all-None → skip; second row is the real header
         result = promote_header(raw2)

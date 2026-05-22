@@ -116,9 +116,7 @@ def ensure_no_llm_sentinel(directory: Path) -> None:
 def remove_dataset_no_llm_sentinels(audit_dir: Path) -> None:
     """Remove stale dataset-folder sentinels; the audit root carries this marker."""
     for sentinel in sorted(
-        (Path(audit_dir) / DATASET_LEDGER_DIRNAME).glob(
-            f"*/{config.AUDIT_NO_LLM_SENTINEL_NAME}"
-        )
+        (Path(audit_dir) / DATASET_LEDGER_DIRNAME).glob(f"*/{config.AUDIT_NO_LLM_SENTINEL_NAME}")
     ):
         sentinel.unlink(missing_ok=True)
 

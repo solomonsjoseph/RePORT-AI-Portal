@@ -8,6 +8,7 @@ import signal
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from time import perf_counter
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -110,6 +111,99 @@ def test_model_pill_has_descriptions_for_curated_models() -> None:
     assert "gpt-5.5" in _MODEL_DESCRIPTIONS
     assert "gemini-3.1-pro-preview" in _MODEL_DESCRIPTIONS
     assert "qwen3:8b" in _MODEL_DESCRIPTIONS
+
+
+def test_load_study_activates_report_ai_study_plugin(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import scripts.ai_assistant.ui.wizard as wizard_mod
+
+    base = tmp_path / "repo"
+    (base / "plugins" / "report-ai-study-pipeline").mkdir(parents=True)
+    (base / "plugins" / "report-ai-study-pipeline" / "plugin.yaml").write_text(
+        "name: report-ai-study-pipeline\n",
+        encoding="utf-8",
+    )
+    datasets_dir = base / "data" / "raw" / "Study" / "datasets"
+    datasets_dir.mkdir(parents=True)
+    (datasets_dir / "~$6_HIV.xlsx").write_text("", encoding="utf-8")
+
+    calls: list[list[str]] = []
+
+    def fake_run(cmd: list[str], **_kwargs: object) -> SimpleNamespace:
+        calls.append([str(part) for part in cmd])
+        return SimpleNamespace(returncode=0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(config, "BASE_DIR", base)
+    monkeypatch.setattr(config, "STUDY_NAME", "Study")
+    monkeypatch.setattr(wizard_mod, "_ensure_phi_key", lambda: None)
+    monkeypatch.setattr(wizard_mod, "published_bundle_exists", lambda: True)
+    monkeypatch.setattr(wizard_mod.subprocess, "run", fake_run)
+
+    result = wizard_mod.run_pipeline()
+
+    assert result["success"] is True
+    assert "[report-ai-study-pipeline plugin]" in result["output"]
+    assert [Path(call[1]).name for call in calls] == [
+        "merge_excel_duplicates.py",
+        "generate_lean_outputs.py",
+        "extract_to_llm_source.py",
+        "extract_to_llm_source.py",
+    ]
+    assert calls[2][-3:] == ["run", "--study", "Study"]
+    assert calls[3][-3:] == ["verify", "--study", "Study"]
+
+
+def test_load_study_reports_missing_dictionary_mapping_when_source_exists(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import scripts.ai_assistant.ui.wizard as wizard_mod
+
+    base = tmp_path / "repo"
+    study = "Study"
+    llm_source = base / "output" / study / "llm_source"
+    (base / "plugins" / "report-ai-study-pipeline").mkdir(parents=True)
+    (base / "plugins" / "report-ai-study-pipeline" / "plugin.yaml").write_text(
+        "name: report-ai-study-pipeline\n",
+        encoding="utf-8",
+    )
+    (base / "data" / "raw" / study / "datasets").mkdir(parents=True)
+    data_dictionary = base / "data" / "raw" / study / "data_dictionary"
+    data_dictionary.mkdir(parents=True)
+    (data_dictionary / "dictionary.csv").write_text("variable,label\nAGE,Age\n", encoding="utf-8")
+    datasets_out = llm_source / "dataset_schema" / "files"
+    sot_policy = llm_source / "SoT" / "6_HIV" / "pdf"
+    datasets_out.mkdir(parents=True)
+    sot_policy.mkdir(parents=True)
+    (datasets_out / "6_HIV.jsonl").write_text('{"_metadata": true}\n', encoding="utf-8")
+    (sot_policy / "6_HIV_policy.yaml").write_text("variables: {}\n", encoding="utf-8")
+
+    def fake_run(_cmd: list[str], **_kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(returncode=0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(config, "BASE_DIR", base)
+    monkeypatch.setattr(config, "STUDY_NAME", study)
+    monkeypatch.setattr(config, "STUDY_LLM_SOURCE_DIR", llm_source)
+    monkeypatch.setattr(config, "TRIO_DATASETS_DIR", datasets_out)
+    monkeypatch.setattr(config, "LLM_SOURCE_SOT_DIR", llm_source / "SoT")
+    monkeypatch.setattr(
+        config,
+        "LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR",
+        llm_source / "source_truth",
+    )
+    monkeypatch.setattr(config, "DATA_DICTIONARY_DIR", data_dictionary)
+    monkeypatch.setattr(
+        config,
+        "DICTIONARY_JSON_OUTPUT_DIR",
+        llm_source / "dictionary_mapping" / "jsonl",
+    )
+    monkeypatch.setattr(wizard_mod, "_ensure_phi_key", lambda: None)
+    monkeypatch.setattr(wizard_mod.subprocess, "run", fake_run)
+
+    result = wizard_mod.run_pipeline()
+
+    assert result["success"] is False
+    assert "dictionary mapping JSONL" in result["output"]
 
 
 def test_pretty_model_label_shortens_known_families() -> None:
@@ -553,9 +647,7 @@ class TestPhiRedactorInstall:
     # Acceptance A: production=True, install fails → RuntimeError
     # ------------------------------------------------------------------
 
-    def test_production_mode_and_key_missing_raises(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_production_mode_and_key_missing_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Acceptance A: production mode + PHIKeyMissingError → RuntimeError."""
         self._reset_guard()
         from scripts.security.phi_scrub import PHIKeyMissingError
@@ -564,9 +656,9 @@ class TestPhiRedactorInstall:
         with (
             patch(f"{self._PHI_SCRUB}._load_phi_key", side_effect=PHIKeyMissingError("no key")),
             patch(f"{self._PHI_SCRUB}.install_phi_redactor"),
+            pytest.raises(RuntimeError, match="Production startup refused"),
         ):
-            with pytest.raises(RuntimeError, match="Production startup refused"):
-                _install_phi_redactor_once()
+            _install_phi_redactor_once()
 
     def test_production_mode_and_install_raises_phi_error(
         self, monkeypatch: pytest.MonkeyPatch
@@ -579,9 +671,9 @@ class TestPhiRedactorInstall:
         with (
             patch(f"{self._PHI_SCRUB}._load_phi_key", return_value=b"key"),
             patch(f"{self._PHI_SCRUB}.install_phi_redactor", side_effect=PHIScrubError("bad")),
+            pytest.raises(RuntimeError, match="Production startup refused"),
         ):
-            with pytest.raises(RuntimeError, match="Production startup refused"):
-                _install_phi_redactor_once()
+            _install_phi_redactor_once()
 
     # ------------------------------------------------------------------
     # Acceptance B: production=False, install fails → WARNING, no raise
@@ -960,9 +1052,7 @@ def test_install_phi_redactor_once_is_idempotent(monkeypatch: pytest.MonkeyPatch
     # Mock _load_phi_key so it returns a valid-looking 32-byte key without
     # touching disk — without this mock, PHIKeyMissingError is raised before
     # install_phi_redactor is ever called and the assertion on call_count fails.
-    monkeypatch.setattr(
-        "scripts.ai_assistant.web_ui._load_phi_key", lambda: b"k" * 32
-    )
+    monkeypatch.setattr("scripts.ai_assistant.web_ui._load_phi_key", lambda: b"k" * 32)
 
     call_count = 0
 
@@ -970,9 +1060,7 @@ def test_install_phi_redactor_once_is_idempotent(monkeypatch: pytest.MonkeyPatch
         nonlocal call_count
         call_count += 1
 
-    monkeypatch.setattr(
-        "scripts.ai_assistant.web_ui.install_phi_redactor", _fake_install
-    )
+    monkeypatch.setattr("scripts.ai_assistant.web_ui.install_phi_redactor", _fake_install)
 
     _install_phi_redactor_once()
     assert call_count == 1, "first call should install the redactor"

@@ -301,7 +301,7 @@ class TestRunDatasetLeg:
             '{"safe": true}\n',
             encoding="utf-8",
         )
-        monkeypatch.setattr(main, "is_step_fresh", lambda *args: True)
+        monkeypatch.setattr(main, "is_step_fresh", lambda *_: True)
 
         def _unexpected_process() -> dict[str, Any]:
             raise AssertionError("fresh full-study cache should skip extraction")
@@ -325,8 +325,8 @@ class TestRunDatasetLeg:
             encoding="utf-8",
         )
         monkeypatch.setenv("REPORTAL_ALLOWED_DATASET_FORMS", "6_HIV.xlsx")
-        monkeypatch.setattr(main, "is_step_fresh", lambda *args: True)
-        monkeypatch.setattr(main, "save_step_manifest", lambda *args: None)
+        monkeypatch.setattr(main, "is_step_fresh", lambda *_: True)
+        monkeypatch.setattr(main, "save_step_manifest", lambda *_: None)
 
         calls = 0
 

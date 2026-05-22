@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-
-import pytest
 
 from scripts.utils.run_context import (
     SCRUB_RECOVERY_MESSAGE,

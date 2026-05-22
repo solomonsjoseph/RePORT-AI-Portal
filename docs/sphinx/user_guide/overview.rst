@@ -38,8 +38,8 @@ Typical Workflow
 ----------------
 
 1. Put the study files under ``data/raw/{STUDY_NAME}/``.
-2. Run the pipeline or click **Load Study** in the web UI.
-3. The portal publishes a PHI-scrubbed bundle under ``output/{STUDY}/``.
+2. Click **Load Study** in the web UI to activate the study-preparation plugin.
+3. The plugin publishes a PHI-scrubbed bundle under ``output/{STUDY}/``.
 4. Open the chat UI and ask questions about the published study.
 5. Use the audit files when the team needs evidence of what changed.
 

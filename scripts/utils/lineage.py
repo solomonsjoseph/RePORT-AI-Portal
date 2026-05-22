@@ -63,9 +63,7 @@ def _file_metadata(path: Path) -> tuple[dict[str, Any], str]:
     across consecutive runs on identical input.
     """
     stat_result = path.stat()
-    mtime_utc = datetime.fromtimestamp(stat_result.st_mtime, UTC).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    mtime_utc = datetime.fromtimestamp(stat_result.st_mtime, UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     content_meta: dict[str, Any] = {
         "sha256": hash_path(path),
         "size_bytes": stat_result.st_size,

@@ -3,7 +3,7 @@
 The production LLM agent's permitted zones are:
 
 * **Read** — ``STUDY_LLM_SOURCE_DIR`` (canonical PHI-scrubbed llm_source/
-  tree: dataset_schema, dictionary_mapping, source_truth) or
+  tree: dataset_schema, dictionary_mapping, SoT) or
   ``AGENT_STATE_DIR`` (its own analysis outputs and conversations).
   A small allowlist admits
   read-only source-tree config files (``config/study_knowledge.yaml``)

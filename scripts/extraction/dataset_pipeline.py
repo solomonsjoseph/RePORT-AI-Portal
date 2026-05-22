@@ -636,8 +636,7 @@ def _read_tabular_file(path: Path) -> list[tuple[str, pd.DataFrame]]:
                 if tables is None:
                     # Structural error — fall back to legacy header=0 parse.
                     log.warning(
-                        "Table-split failed for sheet '%s' in '%s'; "
-                        "falling back to header=0.",
+                        "Table-split failed for sheet '%s' in '%s'; falling back to header=0.",
                         sheet_name,
                         path.name,
                     )
@@ -1002,11 +1001,7 @@ def extract_datasets(
     # extraction_utc was removed from per-row _provenance to keep primary
     # JSONL content-only.  Emit it here so the timestamp is not lost.
     _active_run_id = run_id if run_id is not None else resolve_run_id()
-    _runs_dir = (
-        Path(runs_dir)
-        if runs_dir is not None
-        else Path(config.STUDY_OUTPUT_DIR) / "runs"
-    )
+    _runs_dir = Path(runs_dir) if runs_dir is not None else Path(config.STUDY_OUTPUT_DIR) / "runs"
     try:
         write_extraction_timing_sidecar(
             output_dir=_runs_dir.parent,

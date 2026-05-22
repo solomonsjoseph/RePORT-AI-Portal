@@ -95,6 +95,12 @@ uv run --all-groups python scripts/skills/extract_to_llm_source.py run --study <
 uv run --all-groups python scripts/skills/extract_to_llm_source.py verify --study <STUDY>
 ```
 
+This phase delegates to the host repo's pipeline. It must preserve the
+existing data-dictionary behavior: when `data/raw/<STUDY>/data_dictionary/`
+contains source files, the host run publishes
+`output/<STUDY>/llm_source/dictionary_mapping/jsonl/` just as the prior
+pipeline did. The plugin does not author dictionary metadata itself.
+
 For one-form pilots, pass `--form <FORM>`.
 
 For batch work, dataset publishing may run one set at a time or through a

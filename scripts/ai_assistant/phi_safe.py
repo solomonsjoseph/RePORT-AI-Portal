@@ -69,9 +69,7 @@ _REDACTED_MESSAGE = (
     "require row-level raw values."
 )
 
-_RPLN_ARTIFACT_MARKER_RE = re.compile(
-    r"<RPLN_(?:ANALYSIS|CODE|FIGURE|PLOTLY):[^>]+>"
-)
+_RPLN_ARTIFACT_MARKER_RE = re.compile(r"<RPLN_(?:ANALYSIS|CODE|FIGURE|PLOTLY):[^>]+>")
 
 
 class PHISafetyError(Exception):

@@ -43,7 +43,12 @@ def test_scan_allows_configured_jittered_date_field(
     data_dir = root / "dataset_schema" / "files"
     data_dir.mkdir(parents=True)
     (data_dir / "6_HIV.jsonl").write_text(
-        json.dumps({"HIV_HIVDAT": "2020-01-01", "_provenance": {"extraction_utc": "2026-05-19T00:00:00+00:00"}})
+        json.dumps(
+            {
+                "HIV_HIVDAT": "2020-01-01",
+                "_provenance": {"extraction_utc": "2026-05-19T00:00:00+00:00"},
+            }
+        )
         + "\n",
         encoding="utf-8",
     )

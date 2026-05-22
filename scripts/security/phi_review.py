@@ -262,18 +262,14 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
         "jurisdiction": "USA",
         "action": Action.CAP,
         "reason": "HIPAA Safe Harbor age-over-89 aggregation header.",
-        "patterns": (
-            r"\b(age|years[_ -]?old)\b",
-        ),
+        "patterns": (r"\b(age|years[_ -]?old)\b",),
     },
     {
         "id": "usa_geography_generalization",
         "jurisdiction": "USA",
         "action": Action.GENERALIZE,
         "reason": "HIPAA geography header requiring sub-state generalization.",
-        "patterns": (
-            r"\b(village|district|state|country|geo|location|site[_ -]?address)\b",
-        ),
+        "patterns": (r"\b(village|district|state|country|geo|location|site[_ -]?address)\b",),
     },
     {
         "id": "usa_free_text_suppression",
@@ -620,7 +616,10 @@ def validate_pure_transform_source(source: str) -> PureTransformValidation:
             errors.append("Import statements are not allowed in pure transforms")
             for alias in node.names:
                 root = alias.name.split(".", 1)[0]
-                if alias.name.startswith(_FORBIDDEN_IMPORT_PREFIXES) or root in _FORBIDDEN_IMPORT_PREFIXES:
+                if (
+                    alias.name.startswith(_FORBIDDEN_IMPORT_PREFIXES)
+                    or root in _FORBIDDEN_IMPORT_PREFIXES
+                ):
                     errors.append(f"forbidden import: {alias.name}")
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""

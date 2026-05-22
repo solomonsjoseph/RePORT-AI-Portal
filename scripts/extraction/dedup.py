@@ -1,13 +1,15 @@
-"""Unified deduplication helpers for the RePORT AI Portal extraction pipeline.
+"""Unified deduplication helpers for RePORT AI Portal study preparation.
 
 This module provides a single place for **all** duplicate-detection and
-duplicate-removal logic across the three extraction legs:
+duplicate-removal logic used by the active dataset/dictionary publish path and
+by legacy PDF JSON compatibility helpers:
 
 - **Dataset / Dictionary (JSONL):** duplicate *columns* inside tabular data
   (e.g. ``SUBJID`` and ``SUBJID2`` that contain identical values).
-- **PDF (JSON):** duplicate *variables* within a single form (case-insensitive
-  collisions) and cross-form duplicate variables (the same abbreviation
-  appearing in multiple ``*_variables.json`` files).
+- **Legacy PDF JSON compatibility:** duplicate *variables* within a single form
+  (case-insensitive collisions) and cross-form duplicate variables in older
+  ``*_variables.json`` files. Current Source Truth form metadata is generated
+  by the study-preparation plugin under ``llm_source/SoT/<pair>/``.
 
 Most functions in this module are **stateless-filesystem helpers**: they accept
 data, return cleaned data (or a report), and never touch the filesystem.  File
@@ -283,7 +285,7 @@ def variable_richness_score(
 
 
 # ============================================================================
-# PDF — within-file duplicate variable removal (single form JSON)
+# Legacy PDF JSON — within-file duplicate variable removal (single form JSON)
 # ============================================================================
 
 
@@ -294,9 +296,9 @@ def remove_within_file_duplicates(
 ) -> dict[str, Any]:
     """Check a single parsed form JSON for duplicate variable abbreviations.
 
-    LLM extractions can sometimes produce the same abbreviation twice within
-    a single form (e.g. repeated header fields on multi-page PDFs, or the
-    model listing a variable under two sections).  When found, the richest
+    Older PDF JSON extractions could produce the same abbreviation twice
+    within a single form (e.g. repeated header fields on multi-page PDFs, or
+    the model listing a variable under two sections).  When found, the richest
     definition (most fields populated) is kept and extras are removed.
 
     This does **not** touch cross-form duplicates (SUBJID appearing in
@@ -376,7 +378,7 @@ def remove_within_file_duplicates(
 
 
 # ============================================================================
-# PDF — cross-form duplicate variable removal (across multiple form JSONs)
+# Legacy PDF JSON — cross-form duplicate variable removal
 # ============================================================================
 
 
@@ -385,8 +387,8 @@ def clean_cross_form_duplicates(
 ) -> dict[str, dict[str, Any]]:
     """Remove cross-form duplicate variables from a set of per-form JSON dicts.
 
-    Scans all extracted variable JSONs, identifies variables appearing in more
-    than one form, keeps the richest definition, and strips the duplicates
+    Scans older extracted variable JSONs, identifies variables appearing in
+    more than one form, keeps the richest definition, and strips the duplicates
     from every other form.
 
     Args:

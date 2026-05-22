@@ -3,8 +3,8 @@ PHI Architecture
 
 The canonical developer-facing description of the full PHI-handling story — the
 four zones, the eight-action scrub catalog, the integrity chain, the
-log redactor, the PDF orchestrator's redact-then-call posture, and
-the agent-boundary three-gate stack. For the reviewer-only IRB/Auditor
+log redactor, the plugin Source Truth PDF/header boundary, and the
+agent-boundary three-gate stack. For the reviewer-only IRB/Auditor
 profile, see :doc:`../irb_auditor/phi_handling`; for the architectural
 decisions behind these mechanisms see :doc:`decisions`.
 
@@ -30,7 +30,7 @@ surface that the agent cannot read.
    * - **AMBER**
      - ``tmp/{STUDY}/``
      - Per-run scratch. Mode ``0700`` under umask ``0077``. PHI is
-       present here for the duration of one pipeline run; on success
+       present here for the duration of one host publish run; on success
        the entire tree is overwritten with random bytes + ``fsync``-ed
        + unlinked. On failure preserved for forensic inspection.
    * - **GREEN**
@@ -246,7 +246,7 @@ into :mod:`scripts.ai_assistant.keystore` (an in-memory
 ``KeyStore`` registry); the corresponding ``*_API_KEY`` env variable
 is scrubbed. Every LLM client takes ``api_key=`` as an explicit
 kwarg sourced from the KeyStore. Keys are re-injected only into
-the short-lived pipeline subprocess via
+short-lived Load Study plugin subprocesses via
 ``KeyStore.env_for_subprocess``.
 
 Subprocess Sandbox
@@ -273,8 +273,8 @@ Module Map
        ``scripts/security/phi_scrub.yaml``.
    * - :mod:`scripts.security.phi_patterns`
      - Shared regex catalog (``BLOCKING_PATTERNS``, ``WARN_PATTERNS``).
-       Used by the agent-output gate, the PDF orchestrator's
-       redaction step, and the log redactor.
+       Used by the agent-output gate, Source Truth safety checks, and the
+       log redactor.
    * - :mod:`scripts.security.phi_allowlist`
      - Clinical-phrase exemption (e.g. "INH 5 mg/kg" not flagged
        as a numeric ID).
@@ -302,8 +302,10 @@ Module Map
      - AMBER staging prep + secure-zero-fill teardown.
    * - :mod:`scripts.utils.step_cache`
      - Per-step hash manifests for skip semantics.
-   * - :mod:`scripts.extraction.pdf_pipeline`
-     - PDF orchestrator with redact-then-call.
+   * - ``plugins/report-ai-study-pipeline``
+     - Plugin workflow that keeps Source Truth to printed PDFs and row-1
+       dataset headers, then delegates PHI-safe dataset publishing to the
+       trusted host CLI.
 
 IRB Benchmark Cross-Reference
 -----------------------------
@@ -318,8 +320,8 @@ Pillar mapping:
   ``secure_env.py`` + the three agent-output gates.
 * **Pillar 3 — Secure channel + integrity**: ``secure_staging.py`` +
   ``lineage.py`` + ``step_cache.py``.
-* **Pillar 4 — Extraction safety**: ``dataset_pipeline.py`` +
-  ``pdf_pipeline.py`` + ``extract_pdf_data.py``.
+* **Pillar 4 — Extraction safety**: ``report-ai-study-pipeline`` plugin
+  contract + ``dataset_pipeline.py`` + ``extract_to_llm_source.py``.
 * **Pillar 5 — Governance + retention + breach**: ``phi_scrub.bootstrap_key``
   + ``_cleanup_staging`` + audit envelope.
 
@@ -328,19 +330,20 @@ When You Touch This Code
 
 Every diff that touches anything under ``scripts/security/``,
 ``scripts/ai_assistant/{file_access,phi_safe,keystore}.py``, or
-``scripts/extraction/pdf_pipeline.py`` should:
+``plugins/report-ai-study-pipeline/``, ``scripts/source_truth/``, or
+``scripts/skills/extract_to_llm_source.py`` should:
 
 1. Run ``make test-all`` locally — the 22 PHI-critical test modules
-   covering scrub, staging, file access, PDF redaction, PHI gates,
+   covering scrub, staging, file access, Source Truth boundaries, PHI gates,
    lineage, and log hygiene must all pass.
 2. Run ``make doc-freshness`` — the lint compares live source-of-
    truth values (tool count, scrub-action count, version) against
    prose in this page and the Sphinx docs.
 3. If you change the scrub catalog (the YAML), the
-   ``phi_scrub.yaml`` SHA-256 changes — which invalidates the PDF
+   ``phi_scrub.yaml`` SHA-256 changes — which invalidates the dataset
    orchestrator's idempotent cache by design (the cache key
-   includes ``phi_scrub.yaml`` hash). Confirmed by
-   ``tests/security/test_pdf_redaction_pipeline.py::test_cache_key_invariants``.
+   includes ``phi_scrub.yaml`` hash). Confirm with the dataset-to-LLM-source
+   verifier and PHI scrub tests.
 4. If you add a new pattern to ``BLOCKING_PATTERNS``, add a positive
    test (the pattern fires) AND a negative test (the
    clinical-phrase allowlist still passes legitimate

@@ -23,7 +23,9 @@ def _write_workbook(path: Path) -> None:
     workbook.save(path)
 
 
-def _write_named_workbook(path: Path, sheet: str, headers: list[str], rows: list[list[str]]) -> None:
+def _write_named_workbook(
+    path: Path, sheet: str, headers: list[str], rows: list[list[str]]
+) -> None:
     workbook = Workbook()
     worksheet = workbook.active
     worksheet.title = sheet
@@ -44,7 +46,7 @@ def test_batch_lock_temp_merge_uses_project_shaped_outputs(tmp_path: Path) -> No
     before = main.read_bytes()
     lock.write_bytes(b"not a real workbook")
 
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [
             sys.executable,
             str(SCRIPT),
@@ -66,13 +68,7 @@ def test_batch_lock_temp_merge_uses_project_shaped_outputs(tmp_path: Path) -> No
     active_lock = artifact_root / "data" / "raw" / "Mini" / "datasets" / "~$10_TST.xlsx"
     report = artifact_root / "output" / "Mini" / "audit" / "datasets" / "10_TST" / "merge_report.md"
     provenance = (
-        artifact_root
-        / "output"
-        / "Mini"
-        / "audit"
-        / "datasets"
-        / "10_TST"
-        / "merge_provenance.csv"
+        artifact_root / "output" / "Mini" / "audit" / "datasets" / "10_TST" / "merge_provenance.csv"
     )
     batch_report = artifact_root / "output" / "Mini" / "audit" / "dataset_duplicate_merge_report.md"
 
@@ -111,7 +107,7 @@ def test_subset_branch_appends_into_superset_main_schema(tmp_path: Path) -> None
         [["B1", "branch"]],
     )
 
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [
             sys.executable,
             str(SCRIPT),
@@ -190,7 +186,7 @@ def test_partial_overlap_routes_to_human_review_without_outputs(tmp_path: Path) 
         [["B1", "branch", "branch-only"]],
     )
 
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [
             sys.executable,
             str(SCRIPT),

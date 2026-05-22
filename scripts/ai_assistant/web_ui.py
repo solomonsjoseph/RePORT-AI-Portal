@@ -45,7 +45,9 @@ from scripts.security.phi_scrub import (
     PHIKeyPermissionError,
     PHIScrubError,
 )
-from scripts.security.phi_scrub import load_key as _load_phi_key
+from scripts.security.phi_scrub import (
+    load_key as _load_phi_key,
+)
 from scripts.utils.log_hygiene import install_phi_redactor
 
 _CSS_PATH = Path(__file__).parent / "ui" / "assets" / "theme.css"
@@ -192,7 +194,7 @@ def main() -> None:
     if st.session_state.setup_complete:
         wizard.ensure_llm_config()
 
-    # Setup wizard until LLM + study data are configured
+    # Setup wizard until LLM config and study bundle are ready
     if not st.session_state.setup_complete:
         wizard.render_setup_page()
         return

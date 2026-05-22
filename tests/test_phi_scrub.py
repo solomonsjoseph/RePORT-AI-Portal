@@ -1714,9 +1714,7 @@ class TestAuditHashes:
         with pytest.raises(phi_scrub.PHIScrubError, match="input manifest unhashable"):
             phi_scrub._compute_input_dataset_hash(datasets_dir)
 
-    def test_empty_staging_dir_returns_sha256_of_empty_string(
-        self, tmp_path: Path
-    ) -> None:
+    def test_empty_staging_dir_returns_sha256_of_empty_string(self, tmp_path: Path) -> None:
         """Empty staging dir must yield sha256(b'').hexdigest(), not None or an error.
 
         Locks the empty-vs-missing distinction: a present-but-empty dir has a

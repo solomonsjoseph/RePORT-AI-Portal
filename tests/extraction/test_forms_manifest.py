@@ -25,7 +25,6 @@ from scripts.extraction.dataset_pipeline import (
     check_forms_manifest,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -49,7 +48,9 @@ def _touch(datasets_dir: Path, *names: str) -> None:
 
 
 class TestManifestAbsent:
-    def test_no_raise_when_manifest_missing(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    def test_no_raise_when_manifest_missing(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
         datasets_dir = tmp_path / "datasets"
         datasets_dir.mkdir()
         _touch(datasets_dir, "1A_ICScreening.xlsx")
@@ -153,8 +154,7 @@ class TestRejectExact:
         assert "Paste Errors.xlsx" in result.rejected_files
         assert "6_HIV.xlsx" not in result.rejected_files
         assert any(
-            "Paste Errors.xlsx" in r.message and "auto-skipped" in r.message
-            for r in caplog.records
+            "Paste Errors.xlsx" in r.message and "auto-skipped" in r.message for r in caplog.records
         ), "Expected an info-level auto-skip log for the reject-listed file"
 
 
@@ -181,8 +181,7 @@ class TestRejectGlob:
 
         assert "2A_ICBaseline_1.xlsx" in result.rejected_files
         assert any(
-            "2A_ICBaseline_1.xlsx" in r.message and "*_1.xlsx" in r.message
-            for r in caplog.records
+            "2A_ICBaseline_1.xlsx" in r.message and "*_1.xlsx" in r.message for r in caplog.records
         ), "Expected an info-level auto-skip log naming the glob pattern"
 
 

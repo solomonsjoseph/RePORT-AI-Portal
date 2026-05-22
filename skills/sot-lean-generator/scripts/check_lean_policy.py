@@ -232,12 +232,33 @@ def _is_variable_like_annotation(label: str, headers: set[str]) -> bool:
         return False
     low = value.lower()
     non_variable_words = {
-        "f", "m", "yes", "no", "unknown", "not done", "absent", "other",
-        "sample collection", "blood volumes", "lacks time", "no locate",
-        "too sick", "uncomfortable", "uninterested", "allowed",
-        "never allowed", "no rules", "exeptions", "exceptions",
-        "blistering", "ulceration", "positive", "negative",
-        "indeterminate", "qgit", "in-house assay",
+        "f",
+        "m",
+        "yes",
+        "no",
+        "unknown",
+        "not done",
+        "absent",
+        "other",
+        "sample collection",
+        "blood volumes",
+        "lacks time",
+        "no locate",
+        "too sick",
+        "uncomfortable",
+        "uninterested",
+        "allowed",
+        "never allowed",
+        "no rules",
+        "exeptions",
+        "exceptions",
+        "blistering",
+        "ulceration",
+        "positive",
+        "negative",
+        "indeterminate",
+        "qgit",
+        "in-house assay",
     }
     if low in non_variable_words:
         return False
@@ -273,7 +294,9 @@ def _annotation_reconciliation(policy: dict[str, Any], source_pack: dict[str, An
                 continue
             kind = entry.get("kind")
             if kind in NON_VARIABLE_ANNOTATION_KINDS:
-                accepted_non_variable.update(_flatten_annotation_values(entry.get("pdf_annotation_says")))
+                accepted_non_variable.update(
+                    _flatten_annotation_values(entry.get("pdf_annotation_says"))
+                )
             elif kind == HARD_PDF_MISSING_KIND:
                 hard_missing.update(_flatten_annotation_values(entry.get("pdf_annotation_says")))
             elif kind == ALIAS_ANNOTATION_KIND:
@@ -286,7 +309,9 @@ def _annotation_reconciliation(policy: dict[str, Any], source_pack: dict[str, An
                             if isinstance(label, str) and isinstance(target, str):
                                 accepted_alias[label] = target
                 bindings = entry.get("dataset_column_binding")
-                binding_values = [value for value in _flatten_annotation_values(bindings) if value in headers]
+                binding_values = [
+                    value for value in _flatten_annotation_values(bindings) if value in headers
+                ]
                 if binding_values:
                     for label in _flatten_annotation_values(entry.get("pdf_annotation_says")):
                         accepted_alias.setdefault(label, binding_values[0])
@@ -310,7 +335,9 @@ def _annotation_reconciliation(policy: dict[str, Any], source_pack: dict[str, An
     return errors
 
 
-def _validate_form_6_hiv_calibration(policy: dict[str, Any], source_pack: dict[str, Any]) -> list[str]:
+def _validate_form_6_hiv_calibration(
+    policy: dict[str, Any], source_pack: dict[str, Any]
+) -> list[str]:
     if not _is_form_6_hiv(source_pack):
         return []
 
@@ -395,7 +422,9 @@ def main() -> int:
                     f"{duplicate_headers!r}"
                 )
         elif list(variables.keys()) != headers:
-            errors.append(f"variables keys do not match row-1 headers: {list(variables.keys())!r} != {headers!r}")
+            errors.append(
+                f"variables keys do not match row-1 headers: {list(variables.keys())!r} != {headers!r}"
+            )
 
         sections = policy.get("sections")
         if isinstance(variables, dict) and isinstance(sections, dict):
@@ -405,7 +434,9 @@ def main() -> int:
                     errors.append(f"{name}: variable entry must be a mapping")
                     continue
                 if meta.get("section") not in section_keys:
-                    errors.append(f"{name}: section {meta.get('section')!r} is not in top-level sections")
+                    errors.append(
+                        f"{name}: section {meta.get('section')!r} is not in top-level sections"
+                    )
                 if "widget" not in meta:
                     errors.append(f"{name}: missing widget")
                 if "pii" in meta:
@@ -478,6 +509,7 @@ def main() -> int:
     try:
         import importlib
         import importlib.util
+
         _spec = importlib.util.find_spec("scripts.ai_assistant.sot_loader")
         if _spec is None:
             raise ImportError("scripts.ai_assistant.sot_loader not importable")

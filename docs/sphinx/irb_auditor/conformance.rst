@@ -44,10 +44,10 @@ remain green in CI.
      - k-anonymity and l-diversity gate behavior.
      - ``tests/test_phi_gate.py``
      - ICMR confidentiality; re-identification risk reduction.
-   * - PDF content is PHI-safe before LLM use.
-     - Redact-then-call orchestrator, PHI-free PDF attestation gate for
-       legacy raw-PDF path, and PDF redaction tests.
-     - ``tests/security/test_pdf_redaction_pipeline.py``
+   * - Source Truth PDF handling is bounded.
+     - Plugin workflow uses printed PDFs/page renders and dataset row-1
+       headers only; row 2+ dataset values are excluded from agent context.
+     - ``tests/security/test_study_intake_static.py``
      - HIPAA disclosure controls; ICMR confidentiality.
    * - Audit artifacts do not expose row data.
      - Counts-only audit reports and lineage manifest.

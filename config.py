@@ -65,7 +65,7 @@ def production_mode_enabled() -> bool:
 
 
 def strict_study_detection_enabled() -> bool:
-    """Return True when missing auto-detected study data should abort import."""
+    """Return True when missing auto-detected study inputs should abort import."""
 
     return _get_env_bool("REPORT_AI_STRICT_STUDY_DETECTION", False)
 
@@ -208,18 +208,15 @@ STUDY_LLM_SOURCE_DIR = STUDY_OUTPUT_DIR / "llm_source"
 
 TRIO_DATASETS_DIR = STUDY_LLM_SOURCE_DIR / "dataset_schema" / "files"
 
-# Note: the concept index path
-# (``STUDY_LLM_SOURCE_DIR / "concept" / "concept_index.json"``) is owned
-# by ``scripts.source_truth.build``, which constructs it from the
-# caller-supplied ``output_root``. We deliberately do NOT export a
-# config-level constant here so the build coordinator stays the single
-# source of truth for that artifact's path.
+# Historical concept-index output is not part of the active Load Study plugin
+# path. The current agent metadata surface is ``llm_source/SoT/<pair>/`` plus
+# dataset and dictionary outputs.
 
 STUDY_AUDIT_DIR = STUDY_OUTPUT_DIR / "audit"
 
-# Audit-report paths (written by the cleanup/dedup pipeline).
-# Only the dataset leg produces audit reports — dictionary and PDF legs carry
-# no PHI, so their cleanup is side-effect-only (pruning without a report).
+# Audit-report paths written by dataset cleanup / PHI scrub.
+# Only the dataset publish leg produces audit reports. Dictionary mappings and
+# legacy PDF JSON compatibility helpers are content-only from the host side.
 # Step-cache manifests for dataset_processing also land under STUDY_AUDIT_DIR
 # so the LLM-visible llm_source/ tree stays content-only.
 AUDIT_DATASET_REPORT_PATH: Path = STUDY_AUDIT_DIR / "dataset_cleanup_report.json"
@@ -263,10 +260,15 @@ LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH: Path = (
 LLM_SOURCE_DICTIONARY_MAPPING_DIR: Path = STUDY_LLM_SOURCE_DIR / "dictionary_mapping"
 LLM_SOURCE_DICTIONARY_MAPPING_JSONL_DIR: Path = LLM_SOURCE_DICTIONARY_MAPPING_DIR / "jsonl"
 LLM_SOURCE_DICTIONARY_CATALOG_PATH: Path = LLM_SOURCE_DICTIONARY_MAPPING_DIR / "catalog.json"
+# Compatibility-only metadata paths for legacy cleanup/redaction helpers.
+# The active Load Study flow does not produce study_metadata evidence packs or
+# a concept index; it uses plugin-published SoT sets instead.
 LLM_SOURCE_STUDY_METADATA_DIR: Path = STUDY_LLM_SOURCE_DIR / "study_metadata"
 LLM_SOURCE_STUDY_METADATA_CATALOG_PATH: Path = LLM_SOURCE_STUDY_METADATA_DIR / "catalog.json"
 LLM_SOURCE_EVIDENCE_PACKS_DIR: Path = LLM_SOURCE_STUDY_METADATA_DIR / "evidence_packs"
 LLM_SOURCE_CONCEPT_DIR: Path = STUDY_LLM_SOURCE_DIR / "concept"
+LLM_SOURCE_SOT_DIR: Path = STUDY_LLM_SOURCE_DIR / "SoT"
+LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR: Path = STUDY_LLM_SOURCE_DIR / "source_truth"
 
 # Lean-catalog size thresholds (bytes). CI fails if a catalog exceeds.
 LEAN_CATALOG_DICTIONARY_MAX_BYTES: int = 20 * 1024
@@ -512,6 +514,7 @@ def ensure_directories() -> None:
         LOGS_DIR,
         TRIO_DATASETS_DIR,
         DICTIONARY_JSON_OUTPUT_DIR,
+        LLM_SOURCE_SOT_DIR,
         STUDY_AUDIT_DIR,
         AGENT_STATE_DIR,
         AGENT_OUTPUT_DIR,

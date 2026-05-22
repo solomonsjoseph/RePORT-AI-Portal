@@ -18,8 +18,8 @@ import yaml
 class ValidationError:
     """A single invariant violation found by validate()."""
 
-    code: str     # short kebab-case id, e.g. "section-ref-missing"
-    path: str     # YAML path like "variables.HIV_HIV.section"
+    code: str  # short kebab-case id, e.g. "section-ref-missing"
+    path: str  # YAML path like "variables.HIV_HIV.section"
     message: str
 
 
@@ -49,9 +49,7 @@ _INSTR_ID_RE = re.compile(r"\bI\d+\b")
 # Matches names like HIV_ARTTX or SUBJID (≥3 uppercase letters with optional
 # underscore body) — used for both underscore-bearing and non-underscore
 # names that are clearly identifiers (≥3 chars, all uppercase/digits).
-_ARROW_VAR_RE = re.compile(
-    r"^([A-Z][A-Z0-9]*_[A-Z0-9_]+|[A-Z][A-Z0-9]{2,})"
-)
+_ARROW_VAR_RE = re.compile(r"^([A-Z][A-Z0-9]*_[A-Z0-9_]+|[A-Z][A-Z0-9]{2,})")
 
 # Allowlist for jitter_date variable names. Some CRF exports use COMPDTE for
 # completion date instead of COMPDAT.
@@ -124,11 +122,13 @@ def validate(data: dict[str, Any]) -> ValidationReport:
     errors: list[ValidationError] = []
 
     if not isinstance(data, dict):
-        errors.append(ValidationError(
-            code="malformed-root",
-            path="$",
-            message="root is not a mapping",
-        ))
+        errors.append(
+            ValidationError(
+                code="malformed-root",
+                path="$",
+                message="root is not a mapping",
+            )
+        )
         return ValidationReport(passed=False, errors=errors)
 
     sections: dict = data.get("sections") or {}
@@ -148,9 +148,7 @@ def validate(data: dict[str, Any]) -> ValidationReport:
     section_keys: set[str] = set(sections.keys())
     variable_keys: set[str] = set(variables.keys())
     instruction_ids: set[str] = {
-        entry["id"]
-        for entry in instructions_list
-        if isinstance(entry, dict) and "id" in entry
+        entry["id"] for entry in instructions_list if isinstance(entry, dict) and "id" in entry
     }
 
     # -----------------------------------------------------------------------
@@ -161,14 +159,16 @@ def validate(data: dict[str, Any]) -> ValidationReport:
             continue
         section_val = var_meta.get("section")
         if section_val not in section_keys:
-            errors.append(ValidationError(
-                code="section-ref-missing",
-                path=f"variables.{var_name}.section",
-                message=(
-                    f"section {section_val!r} is not a key in top-level sections "
-                    f"(known: {sorted(section_keys)!r})"
-                ),
-            ))
+            errors.append(
+                ValidationError(
+                    code="section-ref-missing",
+                    path=f"variables.{var_name}.section",
+                    message=(
+                        f"section {section_val!r} is not a key in top-level sections "
+                        f"(known: {sorted(section_keys)!r})"
+                    ),
+                )
+            )
 
     # -----------------------------------------------------------------------
     # (b) skip-logic-var-ref-missing
@@ -206,7 +206,9 @@ def validate(data: dict[str, Any]) -> ValidationReport:
         if "mutually exclusive with" not in skip_logic:
             continue
         # Extract the variable(s) named after "mutually exclusive with"
-        after = skip_logic[skip_logic.index("mutually exclusive with") + len("mutually exclusive with"):]
+        after = skip_logic[
+            skip_logic.index("mutually exclusive with") + len("mutually exclusive with") :
+        ]
         partners = _SKIP_LOGIC_VAR_RE.findall(after)
         for partner in partners:
             partner_meta = variables.get(partner)
@@ -217,14 +219,16 @@ def validate(data: dict[str, Any]) -> ValidationReport:
                 r"mutually exclusive with\s+" + re.escape(var_name) + r"\b",
                 partner_skip,
             ):
-                errors.append(ValidationError(
-                    code="mutex-reciprocity-broken",
-                    path=f"variables.{var_name}.skip_logic",
-                    message=(
-                        f"{var_name!r} declares mutex with {partner!r} but "
-                        f"{partner!r}.skip_logic does not reciprocate"
-                    ),
-                ))
+                errors.append(
+                    ValidationError(
+                        code="mutex-reciprocity-broken",
+                        path=f"variables.{var_name}.skip_logic",
+                        message=(
+                            f"{var_name!r} declares mutex with {partner!r} but "
+                            f"{partner!r}.skip_logic does not reciprocate"
+                        ),
+                    )
+                )
 
     # -----------------------------------------------------------------------
     # (d) arrow-var-ref-missing
@@ -238,14 +242,16 @@ def validate(data: dict[str, Any]) -> ValidationReport:
             if var_name is None:
                 continue  # descriptive phrase or missing — skip
             if var_name not in variable_keys:
-                errors.append(ValidationError(
-                    code="arrow-var-ref-missing",
-                    path=f"arrows[{idx}].{endpoint_key}",
-                    message=(
-                        f"variable {var_name!r} referenced in arrow endpoint "
-                        f"is not in variables"
-                    ),
-                ))
+                errors.append(
+                    ValidationError(
+                        code="arrow-var-ref-missing",
+                        path=f"arrows[{idx}].{endpoint_key}",
+                        message=(
+                            f"variable {var_name!r} referenced in arrow endpoint "
+                            f"is not in variables"
+                        ),
+                    )
+                )
 
     # -----------------------------------------------------------------------
     # (e) arrow-option-ref-missing
@@ -270,14 +276,16 @@ def validate(data: dict[str, Any]) -> ValidationReport:
             # No options on this variable — skip conservatively
             continue
         if option_text not in options:
-            errors.append(ValidationError(
-                code="arrow-option-ref-missing",
-                path=f"arrows[{idx}].from",
-                message=(
-                    f"option {option_text!r} from arrow endpoint is not in "
-                    f"{var_name}.options {options!r}"
-                ),
-            ))
+            errors.append(
+                ValidationError(
+                    code="arrow-option-ref-missing",
+                    path=f"arrows[{idx}].from",
+                    message=(
+                        f"option {option_text!r} from arrow endpoint is not in "
+                        f"{var_name}.options {options!r}"
+                    ),
+                )
+            )
 
     # -----------------------------------------------------------------------
     # (f) instruction-id-ref-missing
@@ -314,14 +322,16 @@ def validate(data: dict[str, Any]) -> ValidationReport:
         has_phi = phi_val is not None
         has_no_phi_note = "no PHI expected" in (notes_val if isinstance(notes_val, str) else "")
         if not has_phi and not has_no_phi_note:
-            errors.append(ValidationError(
-                code="free-text-phi-undeclared",
-                path=f"variables.{var_name}",
-                message=(
-                    f"free_text variable {var_name!r} must have either a non-null "
-                    f"phi: field or notes: containing 'no PHI expected'"
-                ),
-            ))
+            errors.append(
+                ValidationError(
+                    code="free-text-phi-undeclared",
+                    path=f"variables.{var_name}",
+                    message=(
+                        f"free_text variable {var_name!r} must have either a non-null "
+                        f"phi: field or notes: containing 'no PHI expected'"
+                    ),
+                )
+            )
 
     # -----------------------------------------------------------------------
     # (h) jitter-date-allowlist-violation
@@ -332,15 +342,17 @@ def validate(data: dict[str, Any]) -> ValidationReport:
         if var_meta.get("phi") != "jitter_date":
             continue
         if not _JITTER_DATE_ALLOWLIST_RE.search(var_name):
-            errors.append(ValidationError(
-                code="jitter-date-allowlist-violation",
-                path=f"variables.{var_name}.phi",
-                message=(
-                    f"variable {var_name!r} has phi: jitter_date but its name "
-                    f"does not match the allowlist regex "
-                    f"(_COMPDAT|_COMPDTE|_VISIT|_SIGNDAT|_ENTDAT)$"
-                ),
-            ))
+            errors.append(
+                ValidationError(
+                    code="jitter-date-allowlist-violation",
+                    path=f"variables.{var_name}.phi",
+                    message=(
+                        f"variable {var_name!r} has phi: jitter_date but its name "
+                        f"does not match the allowlist regex "
+                        f"(_COMPDAT|_COMPDTE|_VISIT|_SIGNDAT|_ENTDAT)$"
+                    ),
+                )
+            )
 
     # -----------------------------------------------------------------------
     # (i) drop-typing-violation
@@ -352,14 +364,16 @@ def validate(data: dict[str, Any]) -> ValidationReport:
             continue
         var_type = var_meta.get("type")
         if var_type not in _DROP_ALLOWED_TYPES:
-            errors.append(ValidationError(
-                code="drop-typing-violation",
-                path=f"variables.{var_name}.type",
-                message=(
-                    f"variable {var_name!r} has phi: drop but type {var_type!r} "
-                    f"is not in the allowed set {sorted(_DROP_ALLOWED_TYPES)!r}"
-                ),
-            ))
+            errors.append(
+                ValidationError(
+                    code="drop-typing-violation",
+                    path=f"variables.{var_name}.type",
+                    message=(
+                        f"variable {var_name!r} has phi: drop but type {var_type!r} "
+                        f"is not in the allowed set {sorted(_DROP_ALLOWED_TYPES)!r}"
+                    ),
+                )
+            )
 
     # -----------------------------------------------------------------------
     # (j) pseudonymize-typing-violation
@@ -371,18 +385,22 @@ def validate(data: dict[str, Any]) -> ValidationReport:
             continue
         var_type = var_meta.get("type")
         notes_val = var_meta.get("notes")
-        if var_type == "identifier" or (var_type == "code" and notes_val and isinstance(notes_val, str) and notes_val.strip()):
+        if var_type == "identifier" or (
+            var_type == "code" and notes_val and isinstance(notes_val, str) and notes_val.strip()
+        ):
             pass  # OK
         else:
-            errors.append(ValidationError(
-                code="pseudonymize-typing-violation",
-                path=f"variables.{var_name}.type",
-                message=(
-                    f"variable {var_name!r} has phi: pseudonymize but must be "
-                    f"type: identifier OR type: code with a non-empty notes: field "
-                    f"(got type={var_type!r}, notes={notes_val!r})"
-                ),
-            ))
+            errors.append(
+                ValidationError(
+                    code="pseudonymize-typing-violation",
+                    path=f"variables.{var_name}.type",
+                    message=(
+                        f"variable {var_name!r} has phi: pseudonymize but must be "
+                        f"type: identifier OR type: code with a non-empty notes: field "
+                        f"(got type={var_type!r}, notes={notes_val!r})"
+                    ),
+                )
+            )
 
     return ValidationReport(passed=len(errors) == 0, errors=errors)
 

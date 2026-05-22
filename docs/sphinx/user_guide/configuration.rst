@@ -88,9 +88,6 @@ specific decision.
    * - ``REPORTALIN_TMPFS_STAGING=1``
      - Linux-only option to place temporary staging files in memory when
        available.
-   * - ``REPORTALIN_PDF_EXTRACTION_MODE=llm``
-     - Use the assisted PDF extraction path. The web UI sets this when
-       loading a study.
 
 PHI Key
 -------

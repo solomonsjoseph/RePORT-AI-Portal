@@ -72,6 +72,9 @@ The host repo must preserve these execution semantics:
 - duplicate handling runs once per study before set-level fan-out;
 - Source Truth may run one set at a time or in parallel across independent sets;
 - dataset publishing must use a lock-aware or serialized write path;
+- the data-dictionary leg remains a host-repo responsibility and must still
+  publish ``llm_source/dictionary_mapping/jsonl/`` when raw dictionary files
+  exist;
 - held sets are reported without blocking unrelated ready sets;
 - final completion requires verifier pass for the affected published outputs.
 

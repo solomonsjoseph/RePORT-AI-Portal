@@ -382,9 +382,7 @@ def main(argv: list[str] | None = None) -> int:
     n_cosmetic = len(diff["cosmetic"])
     n_within = len(diff["within_rule"])
     n_novel = len(diff["novel"])
-    print(
-        f"cosmetic={n_cosmetic} within_rule={n_within} novel={n_novel} wrote={out_path}"
-    )
+    print(f"cosmetic={n_cosmetic} within_rule={n_within} novel={n_novel} wrote={out_path}")
 
     return 0 if n_novel == 0 else 1
 

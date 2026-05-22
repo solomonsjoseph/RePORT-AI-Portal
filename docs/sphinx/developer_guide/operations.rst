@@ -2,10 +2,10 @@ Operations
 ==========
 
 Operational runbook for running, rebuilding, and verifying the RePORT AI Portal
-pipeline. Source Truth authoring details live in
-:doc:`source_truth_build`; the audited cross-LLM extraction entry point
-lives in :doc:`extract_to_llm_source`; deployment controls and release
-gates live in :doc:`production_readiness`.
+study-preparation workflow. Source Truth authoring details live in
+:doc:`source_truth_build`; the audited dataset-publish child skill lives in
+:doc:`extract_to_llm_source`; deployment controls and release gates live in
+:doc:`production_readiness`.
 
 .. contents:: On this page
    :local:
@@ -29,14 +29,27 @@ Prerequisites
      - ``echo $LLM_PROVIDER`` (or set in ``config/config.yaml``)
    * - Study data in place
      - ``data/raw/{STUDY}/`` with ``datasets/`` and
-       ``data_dictionary/``; reviewed SoT policies under
-       ``data/SoT/{STUDY}/`` when rebuilding assistant metadata
+       ``data_dictionary/`` and ``annotated_pdfs/`` when Source Truth is
+       required
 
-SoT YAML Build
---------------
+Plugin Study Preparation
+------------------------
 
-Runtime Source-of-Truth lean YAMLs are produced under
-``output/{STUDY}/llm_source/source_truth/``. The generator uses the printed
+The active full workflow is the portable plugin bundle at
+``plugins/report-ai-study-pipeline/``. Its phase order is fixed:
+
+1. ``excel-duplicate-handler`` once per study.
+2. ``sot-lean-generator`` per ready raw-file set.
+3. ``dataset-to-llm-source`` through the host repo's lock-aware publish path.
+
+The plugin does not own the data dictionary. Dictionary extraction stays in
+``main.py`` and ``scripts.extraction.load_dictionary``.
+
+SoT Set Build
+-------------
+
+Runtime Source Truth sets are produced under
+``output/{STUDY}/llm_source/SoT/<pair>/``. The generator uses the printed
 PDF as the clinical authority and reads only dataset row-1 headers for
 binding. Anchored calibration gold, when present, stays under
 ``data/SoT/{STUDY}/`` and is used only for diff/regression checks.
@@ -57,8 +70,10 @@ binding. Anchored calibration gold, when present, stays under
 ``data/raw/{STUDY}/datasets/*.{xlsx,csv}``
 
 **Outputs:**
-``output/{STUDY}/llm_source/source_truth/{form}_policy.lean.yaml`` for each
-PDF-backed form that passes the lean checker.
+``output/{STUDY}/llm_source/SoT/{pair}/pdf/{form}_policy.yaml``,
+``output/{STUDY}/llm_source/SoT/{pair}/dataset/{form}_schema.json``, and
+``output/{STUDY}/llm_source/SoT/{pair}/joined/{form}_joined_query_view.yaml``
+for each PDF-backed form that passes the checker.
 
 **Re-run policy:** ``make sot-generate-all`` is idempotent and overwrites only
 after the generated candidate passes verification.
@@ -67,28 +82,42 @@ See :doc:`source_truth_build` for the full behavior reference including
 single-form source packs, deterministic verifier gates, duplicate-handling
 rules, and the step-by-step Indo-VAP walkthrough.
 
-Pipeline Run
-------------
+Study Preparation Run
+---------------------
 
-Full Pipeline (Recommended)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Web UI Entry Point
+~~~~~~~~~~~~~~~~~~
+
+Click **Load Study** in the setup wizard to activate the
+``report-ai-study-pipeline`` plugin. The plugin runs duplicate handling,
+Source Truth generation, and dataset publishing in order, then the wizard
+requires a complete ``llm_source/`` bundle before chat can start. If raw
+dictionary files are present, the bundle check also requires published
+``llm_source/dictionary_mapping/jsonl/`` output from the host dictionary
+loader.
+
+Lower-Level Host Publish Path
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
    make pipeline
 
-Runs the raw-data steps in order: dictionary → dataset extraction → AMBER
-scrub (eight-action catalog, rule + allowlist) → publish scrubbed dataset
-files into the ``llm_source/`` GREEN zone → audit lineage.
+Runs the host raw-data steps in order: dictionary -> dataset extraction ->
+AMBER scrub (eight-action catalog, rule + allowlist) -> publish scrubbed
+dataset files into the ``llm_source/`` GREEN zone -> audit lineage. This is
+the lower-level path used by the dataset child skill; it is not the complete
+plugin workflow because duplicate preflight and Source Truth worker
+delegation happen at the plugin layer.
 
-For a complete runtime bundle from scratch, prefer:
+For a repo-local rebuild of generated outputs, use:
 
 .. code-block:: bash
 
    make build-llm-source STUDY=Indo-VAP
 
-That adds the SoT generation step before the raw-data pipeline. The current
-LLM-visible outputs are ``llm_source/source_truth/``,
+That adds the SoT generation step before the raw-data host publish path. The
+current LLM-visible outputs are ``llm_source/SoT/``,
 ``llm_source/dataset_schema/files/``, and
 ``llm_source/dictionary_mapping/jsonl/``.
 
@@ -125,9 +154,9 @@ Individual Steps
      - Dataset extraction into AMBER staging, run through the eight-action
        PHI scrub, then atomically promoted into the GREEN ``llm_source/``
    * - ``make build-llm-source``
-     - Generate verified lean SoT YAMLs, then publish dictionary mappings,
-       PHI-scrubbed dataset JSONL, audit ledgers, lineage, and the output
-       signpost.
+     - Generate verified SoT policy/schema/joined sets, then publish
+       dictionary mappings, PHI-scrubbed dataset JSONL, audit ledgers,
+       lineage, and the output signpost.
    * - ``make bundle``
      - Legacy compatibility alias for preparing the ``llm_source`` dictionary leg
    * - ``make chat``
@@ -154,7 +183,7 @@ Quickstart
 
 .. code-block:: bash
 
-   make quickstart  # sync → pipeline
+   make quickstart  # sync -> host publish path
 
 Artifact Rebuild
 ----------------
@@ -164,8 +193,8 @@ When schemas, SoT policies, the data dictionary, or the eight-action PHI scrub c
 
 .. code-block:: bash
 
-   # Full rebuild
-   make nuke && make quickstart
+   # Full generated-output rebuild
+   make nuke && make build-llm-source STUDY=Indo-VAP
 
 Cleanup
 -------
@@ -186,7 +215,8 @@ Security Verification
 Dataset Promotion Protocol
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After ``make pipeline`` or the extraction skill publishes clean JSONL:
+After **Load Study**, ``make build-llm-source``, or the extraction skill
+publishes clean JSONL:
 
 1. Run the deterministic verifier:
    ``uv run --all-groups python scripts/skills/extract_to_llm_source.py verify --study {STUDY}``.
@@ -228,7 +258,7 @@ Debug and Troubleshooting
 
 .. code-block:: bash
 
-   make debug       # Pipeline + serve with DEBUG logging
+   make debug       # Host publish path with DEBUG logging
 
 Common issues:
 
@@ -236,7 +266,7 @@ Common issues:
 - **Missing study data:** Ensure ``data/raw/{STUDY}/`` has the required
   subdirectories
 - **Dependency issues:** ``uv lock --upgrade && uv sync --all-groups``
-- **Stale artifacts:** ``make nuke && make quickstart``
+- **Stale artifacts:** ``make nuke && make build-llm-source STUDY={STUDY}``
 
 Known Limitations
 -----------------
