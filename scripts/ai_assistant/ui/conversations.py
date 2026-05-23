@@ -585,9 +585,33 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
         for fig_str in figures:
             clean_str = fig_str.replace("\\", "/")
             p = Path(clean_str)
+            
+            agent_out = Path(getattr(config, "AGENT_OUTPUT_DIR", "."))
+            repo_root = Path(getattr(config, "REPO_ROOT", "."))
+            filename = p.name.lstrip(".")
+            
+            candidates = []
+            if filename:
+                candidates.append(agent_out / "figures" / filename)
+                candidates.append(agent_out / "code" / filename)
+                
             if not p.is_absolute():
-                repo_root = Path(getattr(config, "REPO_ROOT", "."))
-                p = (repo_root / p).resolve()
+                candidates.extend([
+                    agent_out / clean_str,
+                    agent_out / "figures" / clean_str,
+                    repo_root / clean_str
+                ])
+            else:
+                candidates.append(p)
+                
+            for cand in candidates:
+                try:
+                    resolved = cand.resolve()
+                    if resolved.exists():
+                        p = resolved
+                        break
+                except OSError:
+                    continue
             if not p.exists():
                 continue
             try:
@@ -626,9 +650,33 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
                 for plt_str in plotly_paths:
                     clean_str = plt_str.replace("\\", "/")
                     p = Path(clean_str)
+                    
+                    agent_out = Path(getattr(config, "AGENT_OUTPUT_DIR", "."))
+                    repo_root = Path(getattr(config, "REPO_ROOT", "."))
+                    filename = p.name.lstrip(".")
+                    
+                    candidates = []
+                    if filename:
+                        candidates.append(agent_out / "figures" / filename)
+                        candidates.append(agent_out / "code" / filename)
+                        
                     if not p.is_absolute():
-                        repo_root = Path(getattr(config, "REPO_ROOT", "."))
-                        p = (repo_root / p).resolve()
+                        candidates.extend([
+                            agent_out / clean_str,
+                            agent_out / "figures" / clean_str,
+                            repo_root / clean_str
+                        ])
+                    else:
+                        candidates.append(p)
+                        
+                    for cand in candidates:
+                        try:
+                            resolved = cand.resolve()
+                            if resolved.exists():
+                                p = resolved
+                                break
+                        except OSError:
+                            continue
                     if not p.exists():
                         continue
                     try:

@@ -826,10 +826,44 @@ def _render_message_content(
                         st.code(part.strip(), language="python")
         else:
             clean_seg = seg.strip().replace("\\", "/")
-            artifact_path = Path(clean_seg)
-            if not artifact_path.is_absolute():
-                repo_root = Path(getattr(config, "REPO_ROOT", "."))
-                artifact_path = (repo_root / artifact_path).resolve()
+            p = Path(clean_seg)
+            agent_out = Path(getattr(config, "AGENT_OUTPUT_DIR", "."))
+            repo_root = Path(getattr(config, "REPO_ROOT", "."))
+            filename = p.name.lstrip(".")
+
+            candidates = []
+            if filename:
+                if filename.endswith(".py"):
+                    candidates.append(agent_out / "code" / filename)
+                else:
+                    candidates.append(agent_out / "figures" / filename)
+                    candidates.append(agent_out / "code" / filename)
+
+            if not p.is_absolute():
+                candidates.extend([
+                    agent_out / clean_seg,
+                    agent_out / "code" / clean_seg,
+                    agent_out / "figures" / clean_seg,
+                    repo_root / clean_seg
+                ])
+            else:
+                candidates.append(p)
+
+            artifact_path = None
+            for cand in candidates:
+                try:
+                    resolved = cand.resolve()
+                    if resolved.exists():
+                        artifact_path = resolved
+                        break
+                except OSError:
+                    continue
+
+            if artifact_path is None:
+                if filename.endswith(".py"):
+                    artifact_path = (agent_out / "code" / filename).resolve()
+                else:
+                    artifact_path = (agent_out / "figures" / filename).resolve()
 
             # Apply security boundary read validation
             access_allowed = False
