@@ -144,13 +144,14 @@ def _load_dataset_column_variables() -> list[dict[str, Any]]:
                 for line in fh:
                     if not line.strip():
                         continue
-                    try:
-                        rec = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-                    if isinstance(rec, dict):
-                        record_count += 1
-                        columns.update(str(k) for k in rec if k not in _INTERNAL_COLUMNS)
+                    record_count += 1
+                    if not columns:
+                        try:
+                            rec = json.loads(line)
+                            if isinstance(rec, dict):
+                                columns.update(str(k) for k in rec if k not in _INTERNAL_COLUMNS)
+                        except json.JSONDecodeError:
+                            pass
         except OSError:
             logger.warning("Failed to inspect dataset schema: %s", path.name)
             continue
@@ -526,8 +527,6 @@ def query_dataset(
     if not datasets_dir.is_dir():
         return "No datasets directory found."
 
-    limit = min(max(limit, 1), 100)
-
     # Find matching dataset file
     target = dataset_name.removesuffix(".jsonl")
     pat = re.compile(re.escape(target), re.IGNORECASE)
@@ -540,10 +539,40 @@ def query_dataset(
     if matched_file is None:
         return f"No dataset found matching '{dataset_name}'."
 
+    # Run permission check first to ensure security boundary is not bypassed by cache
+    try:
+        validate_agent_read(matched_file)
+    except PermissionError as exc:
+        return f"Access denied: {exc}"
+
+    dataset_key = matched_file.name
+    hit = tool_cache.get(
+        "query_dataset",
+        dataset_name=dataset_key,
+        columns=columns,
+        filter_column=filter_column,
+        filter_value=filter_value,
+        limit=limit,
+    )
+    if hit is not None:
+        return hit
+
+    limit = min(max(limit, 1), 100)
+
     # Read all records for accurate totals and cross-record filtering
     all_records = _read_jsonl(matched_file)
     if not all_records:
-        return f"Dataset '{matched_file.name}' is empty."
+        res = f"Dataset '{matched_file.name}' is empty."
+        tool_cache.put(
+            "query_dataset",
+            res,
+            dataset_name=dataset_key,
+            columns=columns,
+            filter_column=filter_column,
+            filter_value=filter_value,
+            limit=limit,
+        )
+        return res
 
     real_total = len(all_records)
     all_columns = sorted({k for r in all_records for k in r} - _INTERNAL_COLUMNS)
@@ -648,7 +677,7 @@ def query_dataset(
 
     safe_records, date_values_redacted = _surface_safe_records(safe_records)
 
-    return json.dumps(
+    res = json.dumps(
         {
             "dataset": matched_file.stem,
             "total_records": real_total,
@@ -664,6 +693,16 @@ def query_dataset(
         indent=2,
         ensure_ascii=False,
     )
+    tool_cache.put(
+        "query_dataset",
+        res,
+        dataset_name=dataset_key,
+        columns=columns,
+        filter_column=filter_column,
+        filter_value=filter_value,
+        limit=limit,
+    )
+    return res
 
 
 # ============================================================================
@@ -1186,6 +1225,9 @@ def _load_catalog_artifact() -> Mapping[str, Any] | None:
     return None
 
 
+# Thread-safe in-memory cache for policy summaries to avoid repeated disk reads and safe_load parsing
+_POLICY_SUMMARIES_CACHE: dict[Path, dict[str, Any]] = {}
+
 @tool
 @phi_safe_return
 def answer_catalog_question(question: str) -> str:
@@ -1246,6 +1288,10 @@ def answer_catalog_question(question: str) -> str:
     if _query_looks_conversational(question):
         return _CONVERSATIONAL_REFUSAL_MESSAGE
 
+    hit = tool_cache.get("answer_catalog_question", question=question)
+    if hit is not None:
+        return hit
+
     repo_root = Path(config.REPO_ROOT) if hasattr(config, "REPO_ROOT") else Path(".")
     query_identifiers = _catalog_query_identifier_tokens(question)
     query_tokens = _catalog_meaningful_tokens(question)
@@ -1259,11 +1305,15 @@ def answer_catalog_question(question: str) -> str:
     for study_dir in study_dirs:
         all_paths = find_policy_yaml(study_dir.name, None, repo_root)
         for path in all_paths:
-            try:
-                data = load_policy_yaml(path)
-            except ValueError:
-                continue
-            summary = summarize_policy(data)
+            # Check the in-memory cache for policy summaries first
+            summary = _POLICY_SUMMARIES_CACHE.get(path)
+            if summary is None:
+                try:
+                    data = load_policy_yaml(path)
+                    summary = summarize_policy(data)
+                    _POLICY_SUMMARIES_CACHE[path] = summary
+                except ValueError:
+                    continue
             # Prefer exact variable-id matches, then require meaningful token
             # overlap. A single generic question word like "what" must never
             # decide the catalog answer.
@@ -1306,12 +1356,17 @@ def answer_catalog_question(question: str) -> str:
         all_summaries = []
         for study_dir in study_dirs:
             for path in find_policy_yaml(study_dir.name, None, repo_root):
-                try:
-                    all_summaries.append(summarize_policy(load_policy_yaml(path)))
-                except ValueError:
-                    continue
+                summary = _POLICY_SUMMARIES_CACHE.get(path)
+                if summary is None:
+                    try:
+                        data = load_policy_yaml(path)
+                        summary = summarize_policy(data)
+                        _POLICY_SUMMARIES_CACHE[path] = summary
+                    except ValueError:
+                        continue
+                all_summaries.append(summary)
         if not all_summaries:
-            return json.dumps(
+            res = json.dumps(
                 {
                     "question": question,
                     "answer": (
@@ -1327,7 +1382,9 @@ def answer_catalog_question(question: str) -> str:
                 },
                 indent=2,
             )
-        return json.dumps(
+            tool_cache.put("answer_catalog_question", res, question=question)
+            return res
+        res = json.dumps(
             {
                 "question": question,
                 "answer": "No exact variable match found. Available SoT catalog below.",
@@ -1339,6 +1396,8 @@ def answer_catalog_question(question: str) -> str:
             },
             indent=2,
         )
+        tool_cache.put("answer_catalog_question", res, question=question)
+        return res
 
     best = sorted(
         matches,
@@ -1376,7 +1435,7 @@ def answer_catalog_question(question: str) -> str:
         },
         indent=2,
     )
-    return json.dumps(
+    res = json.dumps(
         {
             "question": question,
             "answer": answer_text,
@@ -1388,6 +1447,8 @@ def answer_catalog_question(question: str) -> str:
         },
         indent=2,
     )
+    tool_cache.put("answer_catalog_question", res, question=question)
+    return res
 
 
 @tool
@@ -1428,10 +1489,15 @@ def cite_source(form_id: str, field_id: str) -> str:
     field = (field_id or "").strip()
     if not form or not field:
         return json.dumps({"error": "form_id and field_id are both required"}, indent=2)
+
+    hit = tool_cache.get("cite_source", form_id=form, field_id=field)
+    if hit is not None:
+        return hit
+
     try:
         citation = cite_variable(form, field)
     except CitationNotFoundError as exc:
-        return json.dumps(
+        res = json.dumps(
             {
                 "error": "no citation",
                 "form_id": form,
@@ -1440,7 +1506,9 @@ def cite_source(form_id: str, field_id: str) -> str:
             },
             indent=2,
         )
-    return json.dumps(
+        tool_cache.put("cite_source", res, form_id=form, field_id=field)
+        return res
+    res = json.dumps(
         {
             "file": citation.file,
             "line": citation.line,
@@ -1451,6 +1519,8 @@ def cite_source(form_id: str, field_id: str) -> str:
         indent=2,
         ensure_ascii=False,
     )
+    tool_cache.put("cite_source", res, form_id=form, field_id=field)
+    return res
 
 
 # ============================================================================
@@ -1536,15 +1606,25 @@ def list_llm_source(subdir: str = "") -> str:
         target = _resolve_within_llm_source(subdir)
     except PermissionError as exc:
         return f"Access denied: {exc}"
+
+    rel_path = _llm_source_rel(target)
+    hit = tool_cache.get("list_llm_source", subdir=rel_path)
+    if hit is not None:
+        return hit
+
     if not target.exists():
-        return (
+        res = (
             f"No such path in llm_source/: {subdir!r}. "
             "Call list_llm_source() with no argument to see the top level."
         )
+        tool_cache.put("list_llm_source", res, subdir=rel_path)
+        return res
     if target.is_file():
-        return _redact_blocking_phi(
+        res = _redact_blocking_phi(
             json.dumps({"file": _llm_source_rel(target), "bytes": target.stat().st_size}, indent=2)
         )
+        tool_cache.put("list_llm_source", res, subdir=rel_path)
+        return res
     folders: list[str] = []
     files: list[dict[str, Any]] = []
     for child in sorted(target.iterdir()):
@@ -1554,13 +1634,15 @@ def list_llm_source(subdir: str = "") -> str:
             folders.append(_llm_source_rel(child) + "/")
         else:
             files.append({"path": _llm_source_rel(child), "bytes": child.stat().st_size})
-    return _redact_blocking_phi(
+    res = _redact_blocking_phi(
         json.dumps(
             {"dir": _llm_source_rel(target) or ".", "folders": folders, "files": files},
             indent=2,
             ensure_ascii=False,
         )
     )
+    tool_cache.put("list_llm_source", res, subdir=rel_path)
+    return res
 
 
 @tool
@@ -1595,6 +1677,16 @@ def search_llm_source(query: str, subdir: str = "", max_results: int = 40) -> st
     if not base.exists():
         return f"No such path in llm_source/: {subdir!r}"
 
+    rel_subdir = _llm_source_rel(base)
+    hit = tool_cache.get(
+        "search_llm_source",
+        query=query,
+        subdir=rel_subdir,
+        max_results=max_results,
+    )
+    if hit is not None:
+        return hit
+
     cap = max(1, min(int(max_results or 40), _LLM_SOURCE_MAX_SEARCH_HITS))
     pool_limit = cap * 8
     candidates = [base] if base.is_file() else sorted(base.rglob("*"))
@@ -1610,38 +1702,60 @@ def search_llm_source(query: str, subdir: str = "", max_results: int = 40) -> st
             validate_agent_read(path)
         except PermissionError:
             continue
+
+        # Performance optimization: read content in bulk first to check for tokens
         try:
-            with path.open("r", encoding="utf-8", errors="replace") as fh:
-                for lineno, line in enumerate(fh, 1):
-                    low = line.lower()
-                    score = sum(1 for t in tokens if t in low)
-                    if score:
-                        hits.append(
-                            {
-                                "path": _llm_source_rel(path),
-                                "line": lineno,
-                                "score": score,
-                                # llm_source is already PHI-scrubbed, but its
-                                # metadata carries jittered ISO dates that the
-                                # fail-closed PHI gate treats as blocking. Tag
-                                # them here so useful protocol text still flows.
-                                "snippet": _redact_blocking_phi(
-                                    line.strip()[:_LLM_SOURCE_SNIPPET_CHARS]
-                                ),
-                            }
-                        )
-                        if len(hits) >= pool_limit:
-                            break
+            content = path.read_text(encoding="utf-8", errors="replace")
+            content_lower = content.lower()
+            if not any(t in content_lower for t in tokens):
+                continue
         except OSError:
             continue
 
+        for lineno, line in enumerate(content.splitlines(), 1):
+            low = line.lower()
+            score = sum(1 for t in tokens if t in low)
+            if score:
+                hits.append(
+                    {
+                        "path": _llm_source_rel(path),
+                        "line": lineno,
+                        "score": score,
+                        # llm_source is already PHI-scrubbed, but its
+                        # metadata carries jittered ISO dates that the
+                        # fail-closed PHI gate treats as blocking. Tag
+                        # them here so useful protocol text still flows.
+                        "snippet": _redact_blocking_phi(
+                            line.strip()[:_LLM_SOURCE_SNIPPET_CHARS]
+                        ),
+                    }
+                )
+                if len(hits) >= pool_limit:
+                    break
+
     if not hits:
-        return json.dumps(
+        res = json.dumps(
             {"query": query, "hits": [], "note": "No matches in llm_source/."}, indent=2
         )
+        tool_cache.put(
+            "search_llm_source",
+            res,
+            query=query,
+            subdir=rel_subdir,
+            max_results=max_results,
+        )
+        return res
     hits.sort(key=lambda h: (-h["score"], h["path"], h["line"]))
     top = [{"path": h["path"], "line": h["line"], "snippet": h["snippet"]} for h in hits[:cap]]
-    return json.dumps({"query": query, "hits": top}, indent=2, ensure_ascii=False)
+    res = json.dumps({"query": query, "hits": top}, indent=2, ensure_ascii=False)
+    tool_cache.put(
+        "search_llm_source",
+        res,
+        query=query,
+        subdir=rel_subdir,
+        max_results=max_results,
+    )
+    return res
 
 
 @tool
@@ -1670,11 +1784,27 @@ def read_llm_source_file(relative_path: str, max_bytes: int = 24000) -> str:
     if not target.exists() or not target.is_file():
         return f"No such file in llm_source/: {relative_path!r}"
 
+    rel_path = _llm_source_rel(target)
+    hit = tool_cache.get(
+        "read_llm_source_file",
+        relative_path=rel_path,
+        max_bytes=max_bytes,
+    )
+    if hit is not None:
+        return hit
+
     limit = max(1, min(int(max_bytes or 24000), _LLM_SOURCE_MAX_READ_BYTES))
     try:
         raw = target.read_bytes()
     except OSError as exc:
-        return f"Could not read {relative_path!r}: {exc}"
+        res = f"Could not read {relative_path!r}: {exc}"
+        tool_cache.put(
+            "read_llm_source_file",
+            res,
+            relative_path=rel_path,
+            max_bytes=max_bytes,
+        )
+        return res
     # Tag jittered ISO dates / residual PHI shapes so the fail-closed PHI gate
     # does not withhold the whole (already-scrubbed) file over a date string.
     text = _redact_blocking_phi(raw[:limit].decode("utf-8", errors="replace"))
@@ -1683,6 +1813,12 @@ def read_llm_source_file(relative_path: str, max_bytes: int = 24000) -> str:
             f"\n\n…[truncated at {limit} bytes; file is {len(raw)} bytes — "
             "narrow with run_python_analysis or read a more specific path]"
         )
+    tool_cache.put(
+        "read_llm_source_file",
+        text,
+        relative_path=rel_path,
+        max_bytes=max_bytes,
+    )
     return text
 
 

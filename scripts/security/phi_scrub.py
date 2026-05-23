@@ -926,7 +926,11 @@ def _apply_field_only_rules(row: dict[str, Any], *, cfg: PHIScrubConfig) -> dict
     return counts
 
 
-def _resolve_subject_id(row: dict[str, Any], candidates: tuple[str, ...]) -> str:
+def _resolve_subject_id(
+    row: dict[str, Any],
+    candidates: tuple[str, ...],
+    dataset_has_subject_col: bool = True,
+) -> str:
     """Resolve a subject ID value from *row* by trying *candidates* in order.
 
     Matching strategy:
@@ -957,6 +961,9 @@ def _resolve_subject_id(row: dict[str, Any], candidates: tuple[str, ...]) -> str
             s = str(val).strip()
             if s:
                 return s
+
+    if not dataset_has_subject_col:
+        return row.get("source_file", "SYSTEM")
     return ""
 
 
@@ -970,6 +977,7 @@ def _scrub_row(
     cfg: PHIScrubConfig,
     key: bytes,
     date_locales: dict[str, str] | None = None,
+    dataset_has_subject_col: bool = True,
 ) -> tuple[dict[str, Any] | None, dict[str, int]]:
     """Scrub a single row. Return (scrubbed_row_or_None, per-field-counts).
 
@@ -987,7 +995,11 @@ def _scrub_row(
     quarantines. Per-field counts are keyed by scope label
     (``phi-scrub-drop:FIELD``, ``phi-scrub-cap:FIELD`` etc.).
     """
-    subj_id = _resolve_subject_id(row, cfg.subject_id_fields)
+    if "_metadata" in row and isinstance(row["_metadata"], dict) and row["_metadata"].get("type") == "column_structure":
+        row[_SCRUB_MARKER_FIELD] = _SCRUB_VERSION
+        return row, {}
+
+    subj_id = _resolve_subject_id(row, cfg.subject_id_fields, dataset_has_subject_col=dataset_has_subject_col)
     if not subj_id:
         return None, {}
 
@@ -1099,6 +1111,9 @@ def _scrub_file(
     orphans: list[dict[str, Any]] = []
     counts: dict[str, int] = {}
 
+    # A dataset is subject-specific unless it is explicitly the non-subject Air Quality dataset.
+    dataset_has_subject_col = "Air_Quality" not in jsonl_path.name
+
     with jsonl_path.open("r", encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
@@ -1116,7 +1131,13 @@ def _scrub_file(
                 kept.append(row)
                 continue
 
-            scrubbed, row_counts = _scrub_row(row, cfg=cfg, key=key, date_locales=date_locales)
+            scrubbed, row_counts = _scrub_row(
+                row,
+                cfg=cfg,
+                key=key,
+                date_locales=date_locales,
+                dataset_has_subject_col=dataset_has_subject_col,
+            )
             if scrubbed is None:
                 orphans.append(row)
             else:

@@ -182,19 +182,56 @@ def _build_safe_builtins(zone_guarded_open: Any) -> dict[str, Any]:
     return safe
 
 
-def _load_dataframes(df_paths: dict[str, str]) -> dict[str, Any]:
-    """Load each ``{var_name: jsonl_path}`` into a pandas DataFrame."""
-    import pandas as pd
+class LazyNamespace(dict):
+    """A dictionary subclass that lazily loads pandas DataFrames from JSONL files."""
 
-    out: dict[str, Any] = {}
-    for var_name, path_str in df_paths.items():
+    def __init__(self, df_paths: dict[str, str], initial_vars: dict[str, Any]) -> None:
+        super().__init__(initial_vars)
+        self.df_paths = df_paths
+        self.loaded_dfs: dict[str, Any] = {}
+
+    def __contains__(self, key: Any) -> bool:
+        if super().__contains__(key):
+            return True
+        return isinstance(key, str) and key in self.df_paths
+
+    def __getitem__(self, key: Any) -> Any:
+        if super().__contains__(key):
+            return super().__getitem__(key)
+        if isinstance(key, str) and key in self.df_paths:
+            if key not in self.loaded_dfs:
+                import pandas as pd
+                path_str = self.df_paths[key]
+                try:
+                    self.loaded_dfs[key] = pd.read_json(path_str, lines=True)
+                except Exception as exc:
+                    raise NameError(
+                        f"Could not load DataFrame {key} from {path_str}: {exc}"
+                    ) from exc
+            return self.loaded_dfs[key]
+        raise KeyError(key)
+
+    def get(self, key: Any, default: Any = None) -> Any:
         try:
-            out[var_name] = pd.read_json(path_str, lines=True)
+            return self[key]
+        except KeyError:
+            return default
+
+    def keys(self) -> Any:
+        return set(super().keys()) | set(self.df_paths.keys())
+
+
+def _load_dataframes(df_paths: dict[str, str]) -> dict[str, Any]:
+    """Eagerly load pandas DataFrames from JSONL files (compatibility for replicate.py)."""
+    import pandas as pd
+    dataframes: dict[str, Any] = {}
+    for name, path_str in df_paths.items():
+        try:
+            dataframes[name] = pd.read_json(path_str, lines=True)
         except Exception as exc:
-            raise SandboxRejectionError(
-                f"Could not load DataFrame {var_name} from {path_str}: {exc}"
-            ) from exc
-    return out
+            print(f"Failed to load dataframe {name} from {path_str}: {exc}", file=sys.stderr)
+    return dataframes
+
 
 
 def _persist_code(
@@ -293,15 +330,13 @@ def main(spec_path: str) -> int:
         output_dir=output_dir,
     )
     safe_builtins = _build_safe_builtins(zone_guarded_open)
-    namespace: dict[str, Any] = {"__builtins__": safe_builtins, "output_dir": output_dir}
-
-    try:
-        dataframes = _load_dataframes(df_paths)
-    except SandboxRejectionError as e:
-        print(str(e), file=sys.stderr)
-        _emit_manifest(output_dir, exit_code=2)
-        return 2
-    namespace.update(dataframes)
+    namespace = LazyNamespace(
+        df_paths=df_paths,
+        initial_vars={
+            "__builtins__": safe_builtins,
+            "output_dir": output_dir,
+        }
+    )
 
     try:
         import numpy as _np
@@ -394,7 +429,7 @@ def main(spec_path: str) -> int:
 
     code_paths: list[str] = []
     if persist_code:
-        df_names = sorted(dataframes.keys())
+        df_names = sorted(df_paths.keys())
         saved = _persist_code(
             code,
             output_dir=output_dir,

@@ -683,6 +683,29 @@ def _render_user_message_actions(idx: int, timestamp_display: str = "") -> None:
 # ---------------------------------------------------------------------------
 
 
+def split_conversational_and_evidence(content: str) -> tuple[str, str]:
+    """Split the message content into conversational text and evidence text."""
+    pattern = re.compile(
+        r"(?i)(?:^|\n)(###?\s*(?:evidence|sources?|citations?|references?)\b.*?\n|\*\*?(?:evidence|sources?|citations?|references?)(?:\*\*?)?\s*:?\s*\n)(.*)",
+        re.DOTALL
+    )
+    m = pattern.search(content)
+    if m:
+        evidence = m.group(2).strip()
+        conversational = content[:m.start()].strip()
+        
+        # Re-attach any trailing figure/plot/code/analysis tags that should remain at the end of conversational
+        tags = []
+        for tag_match in re.finditer(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>", evidence):
+            tags.append(tag_match.group(0))
+            
+        evidence_clean = re.sub(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>", "", evidence).strip()
+        if tags:
+            conversational += "\n\n" + "\n".join(tags)
+        return conversational, evidence_clean
+    return content, ""
+
+
 def _render_message_content(
     content: str,
     *,
@@ -941,8 +964,13 @@ def _render_chat_history() -> None:
             _replay_tools_used = (
                 meta_map.get(i, {}).get("tools_used") if msg["role"] == "assistant" else None
             )
+            content_to_render = msg["content"]
+            evidence = ""
+            if msg["role"] == "assistant":
+                content_to_render, evidence = split_conversational_and_evidence(msg["content"])
+
             _render_message_content(
-                msg["content"],
+                content_to_render,
                 msg_idx=i,
                 tools_used=_replay_tools_used,
                 _role=msg["role"],
@@ -964,24 +992,35 @@ def _render_chat_history() -> None:
                 )
             # Tool disclosure for AI messages
             tools_used = m.get("tools_used", [])
-            if msg["role"] == "assistant" and tools_used:
+            if msg["role"] == "assistant" and (tools_used or evidence):
                 # Render sources section
                 sources = _extract_sources(tools_used)
-                _render_sources(sources, msg_idx=i)
+                expander_label = (
+                    f"🛠 {len(tools_used)} tool call{'s' if len(tools_used) != 1 else ''}"
+                    if tools_used
+                    else "📋 Sources & Evidence"
+                )
                 # Collapsible tool call details
                 badge_html = "".join(
                     f'<span class="tool-badge">🛠 {t["name"]}</span>' for t in tools_used
                 )
                 with st.expander(
-                    f"🛠 {len(tools_used)} tool call{'s' if len(tools_used) != 1 else ''}",
+                    expander_label,
                     expanded=False,
                 ):
-                    st.markdown(badge_html, unsafe_allow_html=True)
-                    for t in tools_used:
-                        preview = t.get("content_preview", "")
-                        if preview:
-                            clean = _sanitize_file_refs(preview[:200])
-                            st.caption(f"`{t['name']}` → {clean}")
+                    if evidence:
+                        st.markdown("**Sources & Evidence**")
+                        st.markdown(evidence)
+                        if tools_used:
+                            st.markdown("---")
+                    _render_sources(sources, msg_idx=i)
+                    if tools_used:
+                        st.markdown(badge_html, unsafe_allow_html=True)
+                        for t in tools_used:
+                            preview = t.get("content_preview", "")
+                            if preview:
+                                clean = _sanitize_file_refs(preview[:200])
+                                st.caption(f"`{t['name']}` → {clean}")
             if msg["role"] == "assistant":
                 _render_message_actions(i)
             elif msg["role"] == "user":
@@ -1088,6 +1127,7 @@ def _stream_response(question: str) -> tuple[str, list[dict[str, str]]]:
                                 preview,
                             ).strip()
                             preview = _sanitize_file_refs(preview)
+                            preview, _ = split_conversational_and_evidence(preview)
                             final_content = content
                             status.markdown(thinking_markup, unsafe_allow_html=True)
                             if preview.count("```") % 2 == 0:
@@ -1102,30 +1142,42 @@ def _stream_response(question: str) -> tuple[str, list[dict[str, str]]]:
         if final_content:
             # Clear placeholder and render with full figure support
             placeholder.empty()
+            conversational_content, evidence = split_conversational_and_evidence(final_content)
             _render_message_content(
-                final_content,
+                conversational_content,
                 msg_idx=len(st.session_state.messages),
                 tools_used=tools_detail,
             )
             _render_analysis_code_cards(tools_detail, msg_idx=len(st.session_state.messages))
             # Render sources and tool call disclosure inline (so they appear
             # immediately after streaming without requiring a page rerun).
-            if tools_detail:
+            if tools_detail or evidence:
                 sources = _extract_sources(tools_detail)
-                _render_sources(sources, msg_idx=len(st.session_state.messages))
+                expander_label = (
+                    f"🛠 {len(tools_detail)} tool call{'s' if len(tools_detail) != 1 else ''}"
+                    if tools_detail
+                    else "📋 Sources & Evidence"
+                )
                 badge_html = "".join(
                     f'<span class="tool-badge">🛠 {t["name"]}</span>' for t in tools_detail
                 )
                 with st.expander(
-                    f"🛠 {len(tools_detail)} tool call{'s' if len(tools_detail) != 1 else ''}",
+                    expander_label,
                     expanded=False,
                 ):
-                    st.markdown(badge_html, unsafe_allow_html=True)
-                    for t in tools_detail:
-                        preview = t.get("content_preview", "")
-                        if preview:
-                            clean = _sanitize_file_refs(preview[:200])
-                            st.caption(f"`{t['name']}` → {clean}")
+                    if evidence:
+                        st.markdown("**Sources & Evidence**")
+                        st.markdown(evidence)
+                        if tools_detail:
+                            st.markdown("---")
+                    _render_sources(sources, msg_idx=len(st.session_state.messages))
+                    if tools_detail:
+                        st.markdown(badge_html, unsafe_allow_html=True)
+                        for t in tools_detail:
+                            preview = t.get("content_preview", "")
+                            if preview:
+                                clean = _sanitize_file_refs(preview[:200])
+                                st.caption(f"`{t['name']}` → {clean}")
         else:
             final_content = (
                 "No results found. Try rephrasing, or ask about a specific form or variable name."

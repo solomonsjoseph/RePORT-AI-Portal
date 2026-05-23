@@ -1853,7 +1853,7 @@ div[role="dialog"]:not(:has(.rpln-topbar-menu-sentinel)):not(:has(.rpln-topbar-s
 }
 
 /* ── Source chips (streaming.py renders these) ── */
-.sources-section { margin-top: 20px !important; padding-top: 0 !important; border-top: none !important; }
+.sources-section { margin-top: 4px !important; margin-bottom: 12px !important; padding-top: 0 !important; border-top: none !important; }
 .sources-header {
     font-size: 11px !important; font-weight: 600 !important;
     text-transform: uppercase !important; letter-spacing: 0.08em !important;
