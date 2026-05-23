@@ -394,6 +394,16 @@ def main(spec_path: str) -> int:
     with contextlib.suppress(OSError):
         fig_dir.chmod(0o700)
     figure_paths: list[str] = []
+    # Auto-capture any instantiated Plotly figures from the namespace that were not shown
+    try:
+        import plotly.graph_objects as _go
+        for val in list(namespace.values()):
+            if isinstance(val, _go.Figure):
+                if val not in plotly_figs:
+                    plotly_figs.append(val)
+    except Exception:
+        pass
+
     try:
         import plotly.io as _pio
 

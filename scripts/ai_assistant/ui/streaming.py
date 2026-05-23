@@ -825,11 +825,27 @@ def _render_message_content(
                     with st.expander("⟨/⟩ View code", expanded=False, key=f"code_{msg_idx}_{j}"):
                         st.code(part.strip(), language="python")
         else:
-            artifact_path = Path(seg.strip())
+            clean_seg = seg.strip().replace("\\", "/")
+            artifact_path = Path(clean_seg)
+            if not artifact_path.is_absolute():
+                repo_root = Path(getattr(config, "REPO_ROOT", "."))
+                artifact_path = (repo_root / artifact_path).resolve()
+
+            # Apply security boundary read validation
+            access_allowed = False
+            try:
+                validate_agent_read(artifact_path)
+                access_allowed = True
+            except Exception as exc:
+                st.warning(f"**Security Guard:** Access to figure denied ({exc})", icon="🛡️")
+                logger.warning("Access to figure denied: path=%s, exc=%s", artifact_path, exc)
+
             kind = markers[marker_idx][0] if marker_idx < len(markers) else "FIGURE"
             marker_idx += 1
 
-            if kind == "CODE":
+            if not access_allowed:
+                pass
+            elif kind == "CODE":
                 _render_saved_code(artifact_path, msg_idx=msg_idx, code_idx=marker_idx)
             elif kind == "PLOTLY" and artifact_path.exists():
                 _render_plotly_figure(artifact_path, msg_idx=msg_idx, fig_idx=marker_idx)
@@ -845,7 +861,8 @@ def _render_message_content(
                     file_name=file_name,
                     mime=mime,
                 )
-                st.image(str(artifact_path), width="stretch")
+                # Render using image bytes directly to avoid local file path browser blockages
+                st.image(data, width="stretch")
             else:
                 st.warning(
                     "**Figure file not found.**  \n"

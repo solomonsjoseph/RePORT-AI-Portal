@@ -583,7 +583,11 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         # Figures (matplotlib PNGs on disk).
         for fig_str in figures:
-            p = Path(fig_str)
+            clean_str = fig_str.replace("\\", "/")
+            p = Path(clean_str)
+            if not p.is_absolute():
+                repo_root = Path(getattr(config, "REPO_ROOT", "."))
+                p = (repo_root / p).resolve()
             if not p.exists():
                 continue
             try:
@@ -620,7 +624,11 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
         if plotly_paths:
             if _HAS_PLOTLY and _HAS_KALEIDO and pio is not None:
                 for plt_str in plotly_paths:
-                    p = Path(plt_str)
+                    clean_str = plt_str.replace("\\", "/")
+                    p = Path(clean_str)
+                    if not p.is_absolute():
+                        repo_root = Path(getattr(config, "REPO_ROOT", "."))
+                        p = (repo_root / p).resolve()
                     if not p.exists():
                         continue
                     try:
