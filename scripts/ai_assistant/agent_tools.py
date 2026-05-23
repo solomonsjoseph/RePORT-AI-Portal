@@ -559,8 +559,18 @@ def query_dataset(
 
     limit = min(max(limit, 1), 100)
 
-    # Read all records for accurate totals and cross-record filtering
-    all_records = _read_jsonl(matched_file)
+    # Read records with optimization when no filter is applied
+    if not filter_column:
+        all_records = _read_jsonl(matched_file, max_records=limit)
+        try:
+            with open(validate_agent_read(matched_file), encoding="utf-8") as fh:
+                real_total = sum(1 for line in fh if line.strip())
+        except OSError:
+            real_total = len(all_records)
+    else:
+        all_records = _read_jsonl(matched_file)
+        real_total = len(all_records)
+
     if not all_records:
         res = f"Dataset '{matched_file.name}' is empty."
         tool_cache.put(
@@ -574,7 +584,6 @@ def query_dataset(
         )
         return res
 
-    real_total = len(all_records)
     all_columns = sorted({k for r in all_records for k in r} - _INTERNAL_COLUMNS)
 
     # Apply column filter
@@ -914,12 +923,13 @@ def get_dataset_stats(dataset_name: str | None = None) -> str:
                 line = line.rstrip("\n")
                 if not line:
                     continue
-                try:
-                    rec = json.loads(line)
-                    all_columns.update(rec.keys())
-                    record_count += 1
-                except json.JSONDecodeError:
-                    continue
+                record_count += 1
+                if not all_columns:
+                    try:
+                        rec = json.loads(line)
+                        all_columns.update(rec.keys())
+                    except json.JSONDecodeError:
+                        pass
         visible_columns = all_columns - _INTERNAL_COLUMNS
         stats.append(
             {
@@ -1415,17 +1425,43 @@ def answer_catalog_question(question: str) -> str:
     analysis_queryable = phi_flag not in ("drop",)
     metadata: Any = var_meta
     source_path = Path(str(best["source"]))
-    schema_path = find_dataset_schema_for_policy(source_path)
-    if schema_path is not None:
+    
+    # Try loading pre-compiled joined query view from file first to save dynamic parsing and join CPU/IO
+    form_id = source_path.name
+    for suffix in ("_policy.yaml", "_policy.lean.yaml", ".lean.yaml", ".yaml"):
+        if form_id.endswith(suffix):
+            form_id = form_id[:-len(suffix)]
+            break
+    joined_view_path = source_path.parent.parent / "joined" / f"{form_id}_joined_query_view.yaml"
+    
+    loaded_from_file = False
+    if joined_view_path.is_file():
         try:
-            joined_view = build_joined_query_view(source_path, schema_path)
+            validate_agent_read(joined_view_path)
+            import yaml
+            with open(joined_view_path, encoding="utf-8") as fh:
+                joined_view = yaml.safe_load(fh)
             joined_variables = joined_view.get("variables")
             if isinstance(joined_variables, Mapping):
                 joined_meta = joined_variables.get(var_id)
                 if isinstance(joined_meta, Mapping):
                     metadata = dict(joined_meta)
-        except ValueError:
-            metadata = var_meta
+                    loaded_from_file = True
+        except Exception:
+            pass
+
+    if not loaded_from_file:
+        schema_path = find_dataset_schema_for_policy(source_path)
+        if schema_path is not None:
+            try:
+                joined_view = build_joined_query_view(source_path, schema_path)
+                joined_variables = joined_view.get("variables")
+                if isinstance(joined_variables, Mapping):
+                    joined_meta = joined_variables.get(var_id)
+                    if isinstance(joined_meta, Mapping):
+                        metadata = dict(joined_meta)
+            except ValueError:
+                metadata = var_meta
     answer_text = json.dumps(
         {
             "variable_id": var_id,
