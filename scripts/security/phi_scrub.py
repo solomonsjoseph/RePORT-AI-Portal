@@ -103,6 +103,7 @@ import hashlib
 import hmac
 import json
 import logging
+import math
 import os
 import re
 import secrets
@@ -129,14 +130,18 @@ from scripts.utils.integrity import hash_file
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "BandRule",
     "CapRule",
     "GeneralizeRule",
     "IdRule",
+    "PHIBandUnmappedError",
     "PHIKeyMissingError",
     "PHIKeyPermissionError",
     "PHIQuarantineOverflowError",
     "PHIScrubConfig",
     "PHIScrubError",
+    "band_categorical",
+    "band_numeric",
     "bootstrap_key",
     "cap_numeric",
     "date_offset_days",
@@ -215,6 +220,13 @@ class PHIQuarantineOverflowError(PHIScrubError):
     """Raised when orphan-row count exceeds the configured threshold."""
 
 
+class PHIBandUnmappedError(PHIScrubError):
+    """Raised when a band field holds a value the configured band map/ranges
+    cannot cover. The band scaffold is fail-closed: an uncoverable socioeconomic
+    value is quarantined and the run hard-fails — never leaked, never silently
+    dropped."""
+
+
 # ── Config ───────────────────────────────────────────────────────────────────
 
 
@@ -287,6 +299,31 @@ class GeneralizeRule:
         return bool(self.pattern.search(name))
 
 
+class BandRule:
+    """Compiled fail-closed band rule — pattern + named categorical map OR numeric ranges.
+
+    ``kind="categorical"`` resolves ``band_maps`` (lower-cased value→label, exact);
+    ``kind="numeric"`` resolves ``band_ranges`` (ascending ``(upper_inclusive, label)``
+    tuples; an entry with ``upper is None`` is the open-ended catch-all top band).
+    Unlike the fail-open :class:`GeneralizeRule`, a value the band cannot cover is
+    fail-closed: the row is quarantined and the run hard-fails. Maps/ranges are
+    operator-curated TEMPLATES (values deferred) — an empty template quarantines
+    every value until filled, by design.
+    """
+
+    __slots__ = ("band_name", "kind", "mapping", "pattern", "ranges")
+
+    def __init__(self, pattern, band_name, kind, *, mapping=None, ranges=None):
+        self.pattern = pattern
+        self.band_name = band_name
+        self.kind = kind
+        self.mapping = mapping
+        self.ranges = ranges
+
+    def matches(self, name: str) -> bool:
+        return bool(self.pattern.search(name))
+
+
 class PHIScrubConfig:
     """Parsed + compiled scrub configuration.
 
@@ -299,6 +336,7 @@ class PHIScrubConfig:
         3. ``drop_patterns`` — field removed from row
         4. ``cap_rules`` — numeric capped to label
         5. ``generalize_rules`` — value mapped to broad category
+        5b. ``band_rules`` — fail-closed categorical/numeric generalization
         6. ``suppress_small_cell_patterns`` — numeric clamped to threshold
         7. ``date_patterns`` — jitter via SANT
         8. ``id_patterns`` — HMAC-SHA256 pseudonymize
@@ -307,6 +345,7 @@ class PHIScrubConfig:
     __slots__ = (
         "age_cap_label",
         "age_cap_threshold",
+        "band_rules",
         "birthdate_pattern",
         "cap_rules",
         "compliance_posture",
@@ -336,6 +375,7 @@ class PHIScrubConfig:
         drop_patterns: list[re.Pattern[str]] | None = None,
         cap_rules: list[CapRule] | None = None,
         generalize_rules: list[GeneralizeRule] | None = None,
+        band_rules: list[BandRule] | None = None,
         suppress_small_cell_patterns: list[re.Pattern[str]] | None = None,
         age_cap_threshold: int = _DEFAULT_AGE_CAP_THRESHOLD,
         age_cap_label: str = _DEFAULT_AGE_CAP_LABEL,
@@ -365,6 +405,7 @@ class PHIScrubConfig:
         self.drop_patterns = drop_patterns or []
         self.cap_rules = cap_rules or []
         self.generalize_rules = generalize_rules or []
+        self.band_rules = band_rules or []
         self.suppress_small_cell_patterns = suppress_small_cell_patterns or []
         self.age_cap_threshold = age_cap_threshold
         self.age_cap_label = age_cap_label
@@ -391,6 +432,13 @@ class PHIScrubConfig:
     def generalize_rule_for(self, name: str) -> GeneralizeRule | None:
         """Return the first matching :class:`GeneralizeRule` for *name*, or None."""
         for rule in self.generalize_rules:
+            if rule.matches(name):
+                return rule
+        return None
+
+    def band_rule_for(self, name: str) -> BandRule | None:
+        """Return the first matching :class:`BandRule` for *name*, or None."""
+        for rule in self.band_rules:
             if rule.matches(name):
                 return rule
         return None
@@ -596,6 +644,112 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
             )
         )
 
+    # Band maps — normalized to lower-case keys like generalization_maps.
+    raw_band_maps = raw.get("band_maps") or {}
+    if not isinstance(raw_band_maps, dict):
+        raise PHIScrubError("band_maps must be a mapping of name → {value: label}")
+    band_maps: dict[str, dict[str, str]] = {}
+    for bm_name, bm_mapping in raw_band_maps.items():
+        if not isinstance(bm_mapping, dict):
+            raise PHIScrubError(
+                f"band_maps[{bm_name}] must be a mapping of string → string"
+            )
+        band_maps[str(bm_name)] = {
+            str(src).strip().lower(): str(dst) for src, dst in bm_mapping.items()
+        }
+
+    # Band ranges (numeric) — ascending (upper_inclusive, label); a final entry
+    # with no 'max' is the open-ended catch-all top band. No inversion.
+    raw_band_ranges = raw.get("band_ranges") or {}
+    if not isinstance(raw_band_ranges, dict):
+        raise PHIScrubError("band_ranges must be a mapping of name → list of {max?, label}")
+    band_ranges: dict[str, list[tuple[float | None, str]]] = {}
+    for br_name, br_entries in raw_band_ranges.items():
+        if not isinstance(br_entries, list):
+            raise PHIScrubError(f"band_ranges[{br_name}] must be a list of {{max?, label}} entries")
+        compiled: list[tuple[float | None, str]] = []
+        for i, entry in enumerate(br_entries):
+            if not isinstance(entry, dict):
+                raise PHIScrubError(f"band_ranges[{br_name}][{i}] must be a mapping")
+            if "label" not in entry:
+                raise PHIScrubError(f"band_ranges[{br_name}][{i}] missing 'label'")
+            raw_max = entry.get("max")
+            if raw_max is None:
+                upper: float | None = None
+            else:
+                try:
+                    upper = float(raw_max)
+                except (TypeError, ValueError):
+                    raise PHIScrubError(
+                        f"band_ranges[{br_name}][{i}] 'max' must be a finite number"
+                    ) from None
+                if not math.isfinite(upper):
+                    raise PHIScrubError(f"band_ranges[{br_name}][{i}] 'max' must be a finite number")
+            compiled.append((upper, str(entry["label"])))
+        # A no-'max' catch-all (None upper) may only be the LAST entry.
+        for u, _lbl in compiled[:-1]:
+            if u is None:
+                raise PHIScrubError(f"band_ranges[{br_name}] no-'max' catch-all entry must be last")
+        # Finite 'max' bounds must be strictly ascending.
+        finite_uppers = [u for u, _lbl in compiled if u is not None]
+        if finite_uppers != sorted(finite_uppers) or len(set(finite_uppers)) != len(finite_uppers):
+            raise PHIScrubError(
+                f"band_ranges[{br_name}] 'max' values must be strictly ascending: {finite_uppers!r}"
+            )
+        band_ranges[str(br_name)] = compiled
+
+    # Band fields — list of {pattern, band, kind}.
+    raw_band_fields = raw.get("band_fields") or []
+    if not isinstance(raw_band_fields, list):
+        raise PHIScrubError("band_fields must be a list of {pattern, band, kind} mappings")
+    band_rules: list[BandRule] = []
+    for idx, entry in enumerate(raw_band_fields):
+        if not isinstance(entry, dict):
+            raise PHIScrubError(
+                f"band_fields[{idx}] must be a mapping with 'pattern', 'band', and 'kind'"
+            )
+        bf_pat = entry.get("pattern")
+        bf_band = entry.get("band")
+        bf_kind = entry.get("kind")
+        if not bf_pat or not bf_band or not bf_kind:
+            raise PHIScrubError(
+                f"band_fields[{idx}] requires 'pattern', 'band', and 'kind'"
+            )
+        bf_kind = str(bf_kind)
+        if bf_kind not in ("categorical", "numeric"):
+            raise PHIScrubError(
+                f"band_fields[{idx}] kind must be 'categorical' or 'numeric', got {bf_kind!r}"
+            )
+        bf_band = str(bf_band)
+        if bf_kind == "categorical":
+            if bf_band not in band_maps:
+                raise PHIScrubError(
+                    f"band_fields[{idx}] references band {bf_band!r} with kind='categorical' "
+                    f"but {bf_band!r} is not defined in band_maps"
+                )
+            band_rules.append(
+                BandRule(
+                    pattern=re.compile(str(bf_pat), re.IGNORECASE),
+                    band_name=bf_band,
+                    kind="categorical",
+                    mapping=band_maps[bf_band],
+                )
+            )
+        else:  # numeric
+            if bf_band not in band_ranges:
+                raise PHIScrubError(
+                    f"band_fields[{idx}] references band {bf_band!r} with kind='numeric' "
+                    f"but {bf_band!r} is not defined in band_ranges"
+                )
+            band_rules.append(
+                BandRule(
+                    pattern=re.compile(str(bf_pat), re.IGNORECASE),
+                    band_name=bf_band,
+                    kind="numeric",
+                    ranges=band_ranges[bf_band],
+                )
+            )
+
     return PHIScrubConfig(
         compliance_posture=posture,
         subject_id_fields=subject_id_fields,
@@ -608,6 +762,7 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
         drop_patterns=drop_patterns,
         cap_rules=cap_rules,
         generalize_rules=generalize_rules,
+        band_rules=band_rules,
         suppress_small_cell_patterns=suppress_patterns,
         age_cap_threshold=default_cap_threshold,
         age_cap_label=default_cap_label,
@@ -860,6 +1015,45 @@ def generalize_value(value: Any, *, mapping: dict[str, str]) -> tuple[Any, bool]
     return replaced, True
 
 
+def band_categorical(value: Any, *, mapping: dict[str, str]) -> tuple[Any, bool]:
+    """Fail-closed categorical band. ``(label, True)`` when *value* (stripped,
+    lower-cased) is in *mapping*; otherwise ``(value, False)`` — caller treats a
+    False on a non-empty value as fail-closed (quarantine), unlike
+    :func:`generalize_value` which passes misses through."""
+    if value is None or not isinstance(value, str):
+        return value, False
+    key = value.strip().lower()
+    if not key:
+        return value, False
+    label = mapping.get(key)
+    if label is None:
+        return value, False
+    return label, True
+
+
+def band_numeric(value: Any, *, ranges: list[tuple[float | None, str]]) -> tuple[Any, bool]:
+    """Fail-closed numeric range-band.
+
+    *ranges* is an ascending list of ``(upper_inclusive, label)`` pairs. An entry
+    whose upper bound is ``None`` is the open-ended catch-all top band and must be
+    last. Returns ``(label, True)`` for the FIRST entry where
+    ``upper is None or num <= upper``; ``(value, False)`` for non-numeric input or
+    a value above every finite band with no catch-all — the caller quarantines on
+    ``False``.
+
+    ``load_scrub_config`` builds *ranges* directly from YAML ``{max: N, label}``
+    (``max`` → ``upper_inclusive``) plus an optional final no-``max`` entry (the
+    catch-all). No bound inversion is performed.
+    """
+    num = _coerce_numeric(value)
+    if num is None:
+        return value, False
+    for upper, label in ranges:
+        if upper is None or num <= upper:
+            return label, True
+    return value, False
+
+
 def suppress_small_cell(value: Any, *, threshold: int) -> tuple[Any, bool]:
     """Clamp numeric *value* to at most *threshold*.
 
@@ -1059,6 +1253,24 @@ def _scrub_row(
                 _bump("generalize", field)
             continue
 
+        # 5b. BAND — fail-closed categorical/numeric generalization. A value the
+        # band cannot cover quarantines the whole row (return None) rather than
+        # leaking it or silently dropping it.
+        band_rule = cfg.band_rule_for(field)
+        if band_rule is not None:
+            raw_val = row[field]
+            if raw_val is None or (isinstance(raw_val, str) and not raw_val.strip()):
+                continue
+            if band_rule.kind == "categorical":
+                new_val, ok = band_categorical(raw_val, mapping=band_rule.mapping)
+            else:
+                new_val, ok = band_numeric(raw_val, ranges=band_rule.ranges)
+            if ok:
+                row[field] = new_val
+                _bump("band", field)
+                continue
+            return None, {f"phi-scrub-band-quarantine:{field}": 1}
+
         # 6. SUPPRESS_SMALL_CELL — numeric > threshold clamped to threshold
         if cfg.field_is_suppress_small_cell(field):
             raw_val = row[field]
@@ -1105,10 +1317,19 @@ def _scrub_file(
     cfg: PHIScrubConfig,
     key: bytes,
     date_locales: dict[str, str] | None = None,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
-    """Read *jsonl_path*, scrub each row, return (kept, orphans, counts)."""
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
+    """Read *jsonl_path*, scrub each row, return (kept, orphans, band_failed, counts).
+
+    * kept        — rows that scrubbed successfully
+    * orphans     — rows with no resolvable subject_id (no row_counts)
+    * band_failed — rows where a band rung returned (None, non-empty counts),
+                    i.e. a value the band could not cover; caller quarantines
+                    and hard-fails (fail-closed)
+    * counts      — merged per-field scope counts for kept rows
+    """
     kept: list[dict[str, Any]] = []
     orphans: list[dict[str, Any]] = []
+    band_failed: list[dict[str, Any]] = []
     counts: dict[str, int] = {}
 
     # A dataset is subject-specific unless it is explicitly the non-subject Air Quality dataset.
@@ -1139,13 +1360,19 @@ def _scrub_file(
                 dataset_has_subject_col=dataset_has_subject_col,
             )
             if scrubbed is None:
-                orphans.append(row)
+                if row_counts:
+                    # Non-empty row_counts on a None result → band-fail (fail-closed)
+                    band_failed.append(row)
+                    for scope, n in row_counts.items():
+                        counts[scope] = counts.get(scope, 0) + n
+                else:
+                    orphans.append(row)
             else:
                 kept.append(scrubbed)
                 for scope, n in row_counts.items():
                     counts[scope] = counts.get(scope, 0) + n
 
-    return kept, orphans, counts
+    return kept, orphans, band_failed, counts
 
 
 def _events_from_counts(
@@ -1197,6 +1424,8 @@ _SCOPE_TO_ACTION: dict[str, str] = {
     "phi-scrub-cap": "cap",
     "phi-scrub-generalize": "generalize",
     "phi-scrub-suppress-small-cell": "suppress_small_cell",
+    "phi-scrub-band": "band",
+    "phi-scrub-band-quarantine": "band_quarantine",
 }
 
 
@@ -1468,7 +1697,7 @@ def run_scrub(
     orphan_totals: dict[str, int] = {}
 
     for jsonl_file in sorted(staging_datasets.glob("*.jsonl")):
-        kept, orphans, counts = _scrub_file(jsonl_file, cfg=cfg, key=key, date_locales=date_locales)
+        kept, orphans, band_failed, counts = _scrub_file(jsonl_file, cfg=cfg, key=key, date_locales=date_locales)
 
         if orphans:
             orphan_totals[jsonl_file.name] = len(orphans)
@@ -1489,6 +1718,20 @@ def run_scrub(
                     f"threshold {cfg.orphan_quarantine_threshold}. "
                     f"Check subject_id_fields config."
                 )
+
+        if band_failed:
+            quarantine_dir.mkdir(parents=True, exist_ok=True)
+            assert_write_zone(quarantine_dir)
+            for _bf in band_failed:
+                _apply_field_only_rules(_bf, cfg=cfg)  # strip names/birthdate before quarantine write
+            atomic_write_jsonl(quarantine_dir / f"band_unmapped_{jsonl_file.name}", band_failed)
+            raise PHIBandUnmappedError(
+                f"{jsonl_file.name}: {len(band_failed)} row(s) hold socioeconomic "
+                f"values not coverable by the configured band_maps/band_ranges. The "
+                f"band scaffold is fail-closed — fill the deferred TEMPLATE values in "
+                f"phi_scrub.yaml before these fields can be emitted. Quarantined rows: "
+                f"quarantine/band_unmapped_{jsonl_file.name}."
+            )
 
         atomic_write_jsonl(jsonl_file, kept)
         if counts:

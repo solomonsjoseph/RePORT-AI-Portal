@@ -172,6 +172,8 @@ keep_fields:
   - "^TST_SPLACE\\d+$"
   - "^TST_(?:BLIST|COUGH|INDUR|STREN|STRENOTH|SUBST|ND|PPDOTHER|TU)\\d*$"
   - "^TST_TUOTHER$"
+  # ── Home/residence duration — TB-exposure relevant (T2.1 Q2 KEEP) ──────
+  - "(?:IC_HOMEHOUR|IC_HOMETIME|IC_HOMETIME_MONTHS)"
 
 # ──────────────────────────────────────────────────────────────────────────
 # DATE FIELDS (jittered with per-subject constant offset)
@@ -353,20 +355,15 @@ drop_fields:
   - "(?:CASTE|TRIBE|COMMUNITY)"
   - "(?:^IC_LANGUAGE$|LANGUAGESP$|MOTHER_?TONGUE)"
   - "(?:^[A-Z]{1,4}[-_]LANGUAGE$)"
-  # ── Education level (HIPAA+DPDPA identifier when combined) ──────────────
-  - "(?:SCHOOLINF)$"
-  - "(?:SCHOOL|EDUC|LITERACY)"
-  - "^EE_SCLDK$"
-  # ── Job / occupation ─────────────────────────────────────────────────────
-  - "(?:IC_JOB$|IC_JOBSP$)"
-  - "(?:OCCUP|EMPLOY|PROFESSION|DESIGNATION)"
-  # ── Income / wages ───────────────────────────────────────────────────────
-  - "(?:IC_HHINCOME)"
-  - "(?:INCOME|SALARY|EARNING)"
-  - "^EE_WAGE$"
-  # ── Labour hours ─────────────────────────────────────────────────────────
-  - "(?:IC_HOMEHOUR|IC_HOMETIME|IC_HOMETIME_MONTHS)"
-  - "(?:LABOUR_?HOUR|LABOR_?HOUR|HRS_?WORK)"
+  # ── Education / occupation / income → PRESERVE-generalized via fail-closed
+  #    band_fields (T2.1). Only the non-bandable members stay DROP: ────────────
+  - "(?:SCHOOLDK$|SCLDK$)"   # schooling Don't-Know flags (IC_SCHOOLDK / IC_MASCHOOLDK)
+  # NOTE: EE_SCLDK also ends in SCLDK but is KEPT, not dropped — the EE_ asset-
+  #       inventory keep allowlist (^EE_(?:...|SCL|...), no $ anchor) matches it at
+  #       rung 1 and short-circuits this drop. This PRE-DATES T2.1; confirm the
+  #       intended fate of EE_SCLDK (schooling DK flag vs asset companion) at
+  #       Checkpoint B.
+  - "^IC_JOBSP$"                         # free-text occupation "specify" write-in
   # ── Facility / clinic NAMES (location-identifying) ───────────────────────
   - "(?:IC_CLINIC$|IC_CLINICSP$|IC_HIVLOC$|IC_HIVLOCSP$)"
   - "(?:RE_CLINIC$|RE_CLINICNAME$|RE_CLINICOTH$|RE_DOTSCLINIC$)"
@@ -493,6 +490,37 @@ generalization_maps:
     "block phc": "Government"
     "ngo": "Other"
     "other": "Other"
+
+# ──────────────────────────────────────────────────────────────────────────
+# BAND FIELDS (T2.1 — fail-closed preserve-generalization of socioeconomic vars)
+# ──────────────────────────────────────────────────────────────────────────
+# Education / occupation / income / wages / work-hours are epidemiologically
+# needed for TB analysis but identifying at raw resolution, so they are PRESERVED
+# as broad bands instead of dropped. FAIL-CLOSED: a value the band cannot cover is
+# quarantined and the run hard-fails — never leaked, never silently dropped. The
+# band_maps / band_ranges are operator-curated TEMPLATES whose VALUES are DEFERRED
+# (the option/code sets live in the AMBER data dictionary, not authorable here).
+# Empty template ⇒ fail-closed until a human fills it. See tasks/todo.md T2.1.
+band_fields:
+  - {pattern: "(?:SCHOOL|EDUC|LITERACY)", band: education_band, kind: categorical}
+  - {pattern: "^IC_JOB$", band: occupation_band, kind: categorical}
+  - {pattern: "(?:OCCUP|EMPLOY|PROFESSION|DESIGNATION)", band: occupation_band, kind: categorical}
+  - {pattern: "(?:IC_HHINCOME|INCOME|SALARY|EARNING)", band: income_band, kind: categorical}
+  - {pattern: "^EE_WAGE$", band: wage_amount_band, kind: numeric}
+  - {pattern: "(?:LABOUR_?HOUR|LABOR_?HOUR|HRS_?WORK)", band: work_hours_band, kind: numeric}
+
+# Categorical band maps — exact (lower-cased) raw value → broad label.
+# DEFERRED TEMPLATES: empty ⇒ fail-closed (every value quarantines until filled).
+band_maps:
+  education_band: {}
+  occupation_band: {}
+  income_band: {}
+
+# Numeric band ranges — ascending {max: <upper-inclusive>, label}; final entry may
+# omit 'max' as an open-ended catch-all. DEFERRED TEMPLATES: empty ⇒ fail-closed.
+band_ranges:
+  wage_amount_band: []
+  work_hours_band: []
 
 # ──────────────────────────────────────────────────────────────────────────
 # SUPPRESS_SMALL_CELL FIELDS (numeric clamped to threshold)

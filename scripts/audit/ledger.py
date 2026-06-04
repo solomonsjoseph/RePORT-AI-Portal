@@ -33,6 +33,7 @@ _PHI_ACTIONS: frozenset[str] = frozenset(
         "suppress_small_cell",
         "cap",
         "birthdate_drop",
+        "band",
     }
 )
 
