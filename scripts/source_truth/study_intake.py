@@ -169,6 +169,10 @@ def _write_sot_review_report(
     issues: list[dict[str, str]],
     resolved_pdf: Path | None = None,
     resolved_dataset: Path | None = None,
+    action_taken: str = (
+        "no Source Truth policy, dataset schema, joined view, or source pack was generated"
+    ),
+    required_next_step: str = "resolve the missing or ambiguous source pair, then rerun Stage 0",
 ) -> Path:
     """Write a human-review audit report for a SoT pair that cannot be authored."""
 
@@ -183,9 +187,9 @@ def _write_sot_review_report(
         "## Decision",
         "",
         "- status: `human_review_required`",
-        "- action_taken: no Source Truth policy, dataset schema, joined view, or source pack was generated",
+        f"- action_taken: {action_taken}",
         f"- reason: {reason}",
-        "- required_next_step: resolve the missing or ambiguous source pair, then rerun Stage 0",
+        f"- required_next_step: {required_next_step}",
         "",
         "## Scope",
         "",

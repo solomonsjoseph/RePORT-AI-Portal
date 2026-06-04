@@ -93,6 +93,34 @@ def _policy_phi_actions(policy_path: Path) -> dict[str, str]:
     return actions
 
 
+_DUPLICATE_BINDING_CONFLICT_KIND = "dataset_duplicate_header_binding_conflict"
+
+
+def _duplicate_binding_review_reason(policy_path: Path) -> str | None:
+    """Return a held-for-review reason when a verified candidate documents an un-reviewed
+    duplicate header binding conflict.
+
+    Reads SoT policy metadata only (discrepancy kinds) — never dataset row values. A
+    binding_conflict means the generator detected duplicate row-1 header names and did NOT
+    auto-collapse them, so the form must be held for a human to confirm which physical
+    dataset column binds to the variable (fail-closed: unsure -> human review). A
+    combined_binding (human-approved) or absent discrepancy returns None (publish).
+    """
+    try:
+        policy = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        return None
+    if not isinstance(policy, dict):
+        return None
+    discrepancies = policy.get("discrepancies")
+    if not isinstance(discrepancies, list):
+        return None
+    for entry in discrepancies:
+        if isinstance(entry, dict) and entry.get("kind") == _DUPLICATE_BINDING_CONFLICT_KIND:
+            return _DUPLICATE_BINDING_CONFLICT_KIND
+    return None
+
+
 def _write_dataset_schema(
     schema_path: Path,
     *,
@@ -486,6 +514,34 @@ def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path
     else:
         print(f"  gold diff skipped for {study}/{form}: no anchored gold at {gold}", flush=True)
 
+    held_reason = _duplicate_binding_review_reason(candidate)
+    if held_reason:
+        return _write_sot_review_report(
+            repo_root=repo_root,
+            study=study,
+            form=form,
+            reason=held_reason,
+            issues=[
+                {
+                    "classification": held_reason,
+                    "detail": (
+                        "Dataset row-1 headers contain duplicate binding names. The candidate "
+                        "policy passed structural verification but was not auto-promoted; a human "
+                        "must confirm which dataset column binds to each duplicated variable."
+                    ),
+                }
+            ],
+            resolved_pdf=pdf,
+            resolved_dataset=dataset,
+            action_taken=(
+                "candidate policy passed structural verification but was held; not promoted to the "
+                "published SoT bundle pending human confirmation of the duplicate header binding"
+            ),
+            required_next_step=(
+                "confirm the duplicate row-1 header binding, record a "
+                "dataset_duplicate_header_combined_binding discrepancy, then rerun Stage 0"
+            ),
+        )
     return _publish_verified_sot_outputs(
         repo_root=repo_root,
         study=study,

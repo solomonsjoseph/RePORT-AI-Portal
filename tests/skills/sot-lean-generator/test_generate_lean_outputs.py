@@ -212,3 +212,140 @@ def test_batch_main_routes_ambiguous_discovery_to_sot_review(tmp_path: Path) -> 
     assert "ambiguous_dataset" in text
     assert "1_A.xlsx" in text
     assert "1_B.xlsx" in text
+
+
+def test_duplicate_binding_review_reason_detects_conflict(tmp_path: Path) -> None:
+    """Test that _duplicate_binding_review_reason detects binding_conflict discrepancy."""
+    # Test case 1: policy has binding_conflict discrepancy
+    policy_path = tmp_path / "policy_conflict.yaml"
+    policy_path.write_text(
+        """
+study: Test-Study
+form:
+  number: "9"
+  title: DupHeaders
+discrepancies:
+  - kind: dataset_duplicate_header_binding_conflict
+    note: human reviewed this one
+variables:
+  A: {}
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    result = generate_lean_outputs._duplicate_binding_review_reason(policy_path)
+    assert result == "dataset_duplicate_header_binding_conflict"
+
+    # Test case 2: policy has combined_binding discrepancy (should return None)
+    policy_path_combined = tmp_path / "policy_combined.yaml"
+    policy_path_combined.write_text(
+        """
+study: Test-Study
+form:
+  number: "9"
+  title: DupHeaders
+discrepancies:
+  - kind: dataset_duplicate_header_combined_binding
+    note: human combined them
+variables:
+  A: {}
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    result = generate_lean_outputs._duplicate_binding_review_reason(policy_path_combined)
+    assert result is None, "Should return None for combined_binding discrepancy"
+
+    # Test case 3: policy has no discrepancies (should return None)
+    policy_path_none = tmp_path / "policy_none.yaml"
+    policy_path_none.write_text(
+        """
+study: Test-Study
+form:
+  number: "9"
+  title: DupHeaders
+variables:
+  A: {}
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    result = generate_lean_outputs._duplicate_binding_review_reason(policy_path_none)
+    assert result is None, "Should return None when no discrepancies exist"
+
+    # Test case 4: policy is malformed YAML (should return None)
+    policy_path_malformed = tmp_path / "policy_malformed.yaml"
+    policy_path_malformed.write_text("{ invalid: yaml content [", encoding="utf-8")
+
+    result = generate_lean_outputs._duplicate_binding_review_reason(policy_path_malformed)
+    assert result is None, "Should return None for malformed YAML"
+
+    # Test case 5: policy file doesn't exist (should return None)
+    nonexistent = tmp_path / "nonexistent.yaml"
+    result = generate_lean_outputs._duplicate_binding_review_reason(nonexistent)
+    assert result is None, "Should return None for nonexistent file"
+
+
+def test_generate_form_holds_duplicate_binding_conflict_for_review(monkeypatch, tmp_path: Path) -> None:
+    """Test that generate_form routes binding_conflict candidates to SoT review.
+
+    When the verified candidate carries a binding_conflict discrepancy,
+    the form should be HELD for review (returned path is review_report.md)
+    and publishing should NOT be called.
+    """
+    repo_root = tmp_path
+    study = "Test-Study"
+    form = "9_DupHeaders"
+    out_dir = repo_root / "output" / study / "llm_source" / "SoT"
+    _touch(repo_root / "data" / "raw" / study / "annotated_pdfs" / "9 DupHeaders v1.0.pdf")
+    _touch(repo_root / "data" / "raw" / study / "datasets" / f"{form}.xlsx")
+
+    run_calls: list[list[str]] = []
+
+    def fake_run(cmd: list[str], *, cwd: Path) -> None:
+        run_calls.append(cmd)
+        if "generate_pdf_aware_candidate.py" in " ".join(cmd):
+            # Write candidate with binding_conflict discrepancy
+            Path(f"/tmp/{form}_lean.yaml").write_text(
+                """
+study: Test-Study
+form:
+  number: "9"
+  title: DupHeaders
+discrepancies:
+  - kind: dataset_duplicate_header_binding_conflict
+    note: duplicate headers need human review
+variables:
+  A: {}
+  B: {}
+sections:
+  main: {}
+""".lstrip(),
+                encoding="utf-8",
+            )
+
+    published: list[dict[str, object]] = []
+
+    def fake_publish(**kwargs: object) -> Path:
+        published.append(kwargs)
+        return (
+            Path(kwargs["out_root"]) / str(kwargs["form"]) / "pdf" / f"{kwargs['form']}_policy.yaml"
+        )
+
+    monkeypatch.setattr(generate_lean_outputs, "_run", fake_run)
+    monkeypatch.setattr(generate_lean_outputs, "_publish_verified_sot_outputs", fake_publish)
+
+    result = generate_form(repo_root, study, form, out_dir)
+
+    # Assert form is routed to SoT review (not published)
+    expected_review_path = repo_root / "output" / study / "audit" / "Sot_review" / form / "review_report.md"
+    assert result == expected_review_path, f"Expected review path {expected_review_path}, got {result}"
+    assert expected_review_path.is_file(), f"Review report must exist at {expected_review_path}"
+
+    review_text = expected_review_path.read_text(encoding="utf-8")
+    assert (
+        "dataset_duplicate_header_binding_conflict" in review_text
+    ), f"Review report must mention binding_conflict, got: {review_text}"
+
+    # Assert publishing was NOT called
+    assert len(published) == 0, f"Publishing must not be called for binding_conflict, but got: {published}"

@@ -55,6 +55,17 @@ ALIAS_ANNOTATION_KIND = "pdf_annotation_alias_to_dataset_header"
 
 HARD_PDF_MISSING_KIND = "printed_widget_without_dataset_header"
 
+# Duplicate row-1 header names may be documented two ways. Either is valid documentation
+# of the duplicate; the checker accepts both, and the orchestrator (generate_lean_outputs)
+# decides whether to publish or hold for review based on which kind is present:
+#   * combined_binding  — a human approved collapsing the duplicate columns into one variable.
+#   * binding_conflict  — the generator flagged the duplicate but did NOT collapse it; the form
+#     is held for human review (see generate_lean_outputs._duplicate_binding_review_reason).
+DUPLICATE_HEADER_DISCREPANCY_KINDS = (
+    "dataset_duplicate_header_combined_binding",
+    "dataset_duplicate_header_binding_conflict",
+)
+
 EXIT_VALIDATION_FAILURE = 1
 EXIT_SOURCE_MISMATCH = 2
 EXIT_SCRIPT_GAP = 3
@@ -202,6 +213,37 @@ def _has_discrepancy_kind(policy: dict[str, Any], kind: str) -> bool:
     if not isinstance(discrepancies, list):
         return False
     return any(isinstance(entry, dict) and entry.get("kind") == kind for entry in discrepancies)
+
+
+def _duplicate_header_errors(
+    variables: dict[str, Any], headers: Any, policy: dict[str, Any]
+) -> list[str]:
+    """Errors for the duplicate row-1 header invariant.
+
+    Duplicate header names collapse to one variable key (a YAML mapping cannot hold
+    duplicate keys), so the variable keys must equal the de-duplicated header order. When
+    the raw headers actually contain duplicates, that collapse must be documented by a
+    duplicate-header discrepancy — either a (human-approved) combined_binding or an
+    (un-reviewed, held-for-review) binding_conflict. Absence of both, when duplicates
+    exist, is a fail-closed error.
+    """
+    errors: list[str] = []
+    expected_headers = _unique_preserving_order(headers)
+    if list(variables.keys()) != expected_headers:
+        errors.append(
+            "variables keys do not match de-duplicated row-1 headers after duplicate-source collapse: "
+            f"{list(variables.keys())!r} != {expected_headers!r}"
+        )
+    if _duplicates(headers) and not any(
+        _has_discrepancy_kind(policy, kind) for kind in DUPLICATE_HEADER_DISCREPANCY_KINDS
+    ):
+        errors.append(
+            "dataset row-1 headers contain duplicate binding names; the final policy must document "
+            "the source-level collapse with a dataset_duplicate_header_combined_binding (human-approved) "
+            "or dataset_duplicate_header_binding_conflict (held for review) discrepancy: "
+            f"{_duplicates(headers)!r}"
+        )
+    return errors
 
 
 def _flatten_annotation_values(value: Any) -> list[str]:
@@ -409,18 +451,7 @@ def main() -> int:
         if not isinstance(variables, dict):
             errors.append("variables must be a mapping")
         elif duplicate_headers:
-            expected_headers = _unique_preserving_order(headers)
-            if list(variables.keys()) != expected_headers:
-                errors.append(
-                    "variables keys do not match de-duplicated row-1 headers after duplicate-source collapse: "
-                    f"{list(variables.keys())!r} != {expected_headers!r}"
-                )
-            if not _has_discrepancy_kind(policy, "dataset_duplicate_header_combined_binding"):
-                errors.append(
-                    "dataset row-1 headers contain duplicate binding names; final policy may combine them only when "
-                    "a dataset_duplicate_header_combined_binding discrepancy documents the source-level collapse: "
-                    f"{duplicate_headers!r}"
-                )
+            errors.extend(_duplicate_header_errors(variables, headers, policy))
         elif list(variables.keys()) != headers:
             errors.append(
                 f"variables keys do not match row-1 headers: {list(variables.keys())!r} != {headers!r}"
