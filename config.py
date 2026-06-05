@@ -266,7 +266,6 @@ LLM_SOURCE_DICTIONARY_CATALOG_PATH: Path = LLM_SOURCE_DICTIONARY_MAPPING_DIR / "
 LLM_SOURCE_STUDY_METADATA_DIR: Path = STUDY_LLM_SOURCE_DIR / "study_metadata"
 LLM_SOURCE_STUDY_METADATA_CATALOG_PATH: Path = LLM_SOURCE_STUDY_METADATA_DIR / "catalog.json"
 LLM_SOURCE_EVIDENCE_PACKS_DIR: Path = LLM_SOURCE_STUDY_METADATA_DIR / "evidence_packs"
-LLM_SOURCE_CONCEPT_DIR: Path = STUDY_LLM_SOURCE_DIR / "concept"
 LLM_SOURCE_SOT_DIR: Path = STUDY_LLM_SOURCE_DIR / "SoT"
 LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR: Path = STUDY_LLM_SOURCE_DIR / "source_truth"
 
@@ -276,9 +275,6 @@ LEAN_CATALOG_DATASET_SCHEMA_MAX_BYTES: int = 50 * 1024
 LEAN_CATALOG_STUDY_METADATA_MAX_BYTES: int = 200 * 1024
 
 # --- Phase 3: cross-verify ---------------------------------------------------
-# STUDY_AUDIT_DIR is defined above in the study-paths block; reuse it here.
-PHI_ID_MAPPING_PATH: Path = STUDY_AUDIT_DIR / "phi_id_mapping.json"
-CROSS_VERIFY_REPEAT_LEDGER_PATH: Path = STUDY_AUDIT_DIR / "cross_verify_repeat_ledger.json"
 CROSS_VERIFY_SAFE_REPORT_PATH: Path = TMP_DIR / "cross_verify_safe_report.json"
 CROSS_VERIFY_AGENT_WORKDIR: Path = TMP_DIR / "cross_verify_agent_workdir"
 CROSS_VERIFY_PR_DRAFTS_DIR: Path = TMP_DIR / "cross_verify_pr_drafts"
