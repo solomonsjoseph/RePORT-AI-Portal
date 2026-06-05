@@ -135,6 +135,7 @@ __all__ = [
     "GeneralizeRule",
     "IdRule",
     "PHIBandUnmappedError",
+    "PHIGeneralizeUnmappedError",
     "PHIKeyMissingError",
     "PHIKeyPermissionError",
     "PHIQuarantineOverflowError",
@@ -225,6 +226,14 @@ class PHIBandUnmappedError(PHIScrubError):
     cannot cover. The band scaffold is fail-closed: an uncoverable socioeconomic
     value is quarantined and the run hard-fails — never leaked, never silently
     dropped."""
+
+
+class PHIGeneralizeUnmappedError(PHIScrubError):
+    """Raised when a generalize field holds a non-empty value the configured
+    generalization map does not cover. generalize is fail-closed: an unmapped value
+    is never passed through (which would leak raw PHI) and never silently dropped —
+    the row is quarantined and the run hard-fails so an operator can curate the map.
+    Mirrors :class:`PHIBandUnmappedError` for the band action."""
 
 
 # ── Config ───────────────────────────────────────────────────────────────────
@@ -997,10 +1006,15 @@ def generalize_value(value: Any, *, mapping: dict[str, str]) -> tuple[Any, bool]
     """Map *value* to a broader category via *mapping* (case-insensitive).
 
     Returns ``(new_value, was_generalized)``. Non-string / empty values
-    pass through unchanged. Strings not present in the mapping also pass
-    through unchanged — operators must curate the mapping to cover every
-    valid value; unknown values surface as-is so the audit report flags
-    coverage gaps (via the false-count per field).
+    pass through unchanged with ``was_generalized=False``. Strings not
+    present in the mapping return ``(value, False)``.
+
+    As of T2.2, the caller (:func:`_scrub_row` rung 5) treats ``False``
+    on a non-empty value as fail-closed (quarantine + hard-fail), mirroring
+    :func:`band_categorical`. An unmapped non-empty string is never passed
+    through to clean output and never silently dropped — the row is
+    quarantined and :class:`PHIGeneralizeUnmappedError` is raised so an
+    operator can curate the generalization map.
     """
     if value is None:
         return value, False
@@ -1241,7 +1255,9 @@ def _scrub_row(
                 _bump("cap", field)
             continue
 
-        # 5. GENERALIZE — value mapped to broader category
+        # 5. GENERALIZE — value mapped to a broader category. Fail-closed: an unmapped
+        # non-empty value quarantines the whole row (return None) rather than leaking it
+        # (the pre-T2.2 passthrough) or silently dropping it. Mirrors band (rung 5b).
         gen_rule = cfg.generalize_rule_for(field)
         if gen_rule is not None:
             raw_val = row[field]
@@ -1251,7 +1267,8 @@ def _scrub_row(
             if was_generalized:
                 row[field] = new_val
                 _bump("generalize", field)
-            continue
+                continue
+            return None, {f"phi-scrub-generalize-quarantine:{field}": 1}
 
         # 5b. BAND — fail-closed categorical/numeric generalization. A value the
         # band cannot cover quarantines the whole row (return None) rather than
@@ -1317,19 +1334,23 @@ def _scrub_file(
     cfg: PHIScrubConfig,
     key: bytes,
     date_locales: dict[str, str] | None = None,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
-    """Read *jsonl_path*, scrub each row, return (kept, orphans, band_failed, counts).
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
+    """Read *jsonl_path*, scrub each row, return (kept, orphans, band_failed, generalize_failed, counts).
 
-    * kept        — rows that scrubbed successfully
-    * orphans     — rows with no resolvable subject_id (no row_counts)
-    * band_failed — rows where a band rung returned (None, non-empty counts),
-                    i.e. a value the band could not cover; caller quarantines
-                    and hard-fails (fail-closed)
-    * counts      — merged per-field scope counts for kept rows
+    * kept              — rows that scrubbed successfully
+    * orphans           — rows with no resolvable subject_id (no row_counts)
+    * band_failed       — rows where a band rung returned (None, non-empty counts),
+                          i.e. a value the band could not cover; caller quarantines
+                          and hard-fails (fail-closed)
+    * generalize_failed — rows where a generalize rung returned (None, non-empty counts),
+                          i.e. a non-empty value not in the generalization map; caller
+                          quarantines and hard-fails (fail-closed)
+    * counts            — merged per-field scope counts for kept rows
     """
     kept: list[dict[str, Any]] = []
     orphans: list[dict[str, Any]] = []
     band_failed: list[dict[str, Any]] = []
+    generalize_failed: list[dict[str, Any]] = []
     counts: dict[str, int] = {}
 
     # A dataset is subject-specific unless it is explicitly the non-subject Air Quality dataset.
@@ -1360,19 +1381,22 @@ def _scrub_file(
                 dataset_has_subject_col=dataset_has_subject_col,
             )
             if scrubbed is None:
-                if row_counts:
-                    # Non-empty row_counts on a None result → band-fail (fail-closed)
-                    band_failed.append(row)
-                    for scope, n in row_counts.items():
-                        counts[scope] = counts.get(scope, 0) + n
-                else:
+                if not row_counts:
                     orphans.append(row)
+                else:
+                    scope = next(iter(row_counts))
+                    if scope.startswith("phi-scrub-generalize-quarantine"):
+                        generalize_failed.append(row)
+                    else:  # band quarantine
+                        band_failed.append(row)
+                    for scope_k, n in row_counts.items():
+                        counts[scope_k] = counts.get(scope_k, 0) + n
             else:
                 kept.append(scrubbed)
                 for scope, n in row_counts.items():
                     counts[scope] = counts.get(scope, 0) + n
 
-    return kept, orphans, band_failed, counts
+    return kept, orphans, band_failed, generalize_failed, counts
 
 
 def _events_from_counts(
@@ -1426,6 +1450,7 @@ _SCOPE_TO_ACTION: dict[str, str] = {
     "phi-scrub-suppress-small-cell": "suppress_small_cell",
     "phi-scrub-band": "band",
     "phi-scrub-band-quarantine": "band_quarantine",
+    "phi-scrub-generalize-quarantine": "generalize_quarantine",
 }
 
 
@@ -1697,7 +1722,9 @@ def run_scrub(
     orphan_totals: dict[str, int] = {}
 
     for jsonl_file in sorted(staging_datasets.glob("*.jsonl")):
-        kept, orphans, band_failed, counts = _scrub_file(jsonl_file, cfg=cfg, key=key, date_locales=date_locales)
+        kept, orphans, band_failed, generalize_failed, counts = _scrub_file(
+            jsonl_file, cfg=cfg, key=key, date_locales=date_locales
+        )
 
         if orphans:
             orphan_totals[jsonl_file.name] = len(orphans)
@@ -1718,6 +1745,22 @@ def run_scrub(
                     f"threshold {cfg.orphan_quarantine_threshold}. "
                     f"Check subject_id_fields config."
                 )
+
+        if generalize_failed:
+            quarantine_dir.mkdir(parents=True, exist_ok=True)
+            assert_write_zone(quarantine_dir)
+            for _gf in generalize_failed:
+                _apply_field_only_rules(_gf, cfg=cfg)  # strip names/birthdate before quarantine write
+            atomic_write_jsonl(
+                quarantine_dir / f"generalize_unmapped_{jsonl_file.name}", generalize_failed
+            )
+            raise PHIGeneralizeUnmappedError(
+                f"{jsonl_file.name}: {len(generalize_failed)} row(s) hold values not covered "
+                f"by the configured generalization map for their field. generalize is "
+                f"fail-closed — curate the generalize map in phi_scrub.yaml to cover every "
+                f"valid value before these fields can be emitted. Quarantined rows: "
+                f"quarantine/generalize_unmapped_{jsonl_file.name}."
+            )
 
         if band_failed:
             quarantine_dir.mkdir(parents=True, exist_ok=True)

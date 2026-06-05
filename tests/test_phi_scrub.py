@@ -1376,14 +1376,12 @@ class TestScrubRowPriority:
         rows: list[dict[str, object]] = [
             {"SUBJID": "S1", "IS_MARITAL": "Married"},
             {"SUBJID": "S2", "IS_MARITAL": "divorced"},
-            {"SUBJID": "S3", "IS_MARITAL": "annulled"},  # unknown → passthrough
         ]
         src = _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
         out = [json.loads(line) for line in src.read_text().splitlines() if line]
         assert out[0]["IS_MARITAL"] == "Married"
         assert out[1]["IS_MARITAL"] == "Other"
-        assert out[2]["IS_MARITAL"] == "annulled"
 
     def test_suppress_small_cell_clamps(
         self, scrub_config_path: Path, sidecar_key: Path, monkeypatch_config: Path
@@ -1431,6 +1429,78 @@ class TestScrubRowPriority:
         assert "phi-scrub-cap" in scopes
         assert "phi-scrub-generalize" in scopes
         assert "phi-scrub-suppress-small-cell" in scopes
+
+
+# ── Generalize fail-closed ──────────────────────────────────────────────────
+
+
+class TestGeneralizeFailClosed:
+    """Tests for run_scrub generalize-miss exception and quarantine write.
+
+    Mirrors TestRunScrubBandFailClosed: an unmapped non-empty value in a
+    generalize field quarantines the row and raises PHIGeneralizeUnmappedError.
+    """
+
+    def test_generalize_unmapped_value_quarantines_and_raises(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """run_scrub with generalize-miss → raises PHIGeneralizeUnmappedError."""
+        _write_config(
+            scrub_config_path,
+            generalize_fields=[{"pattern": "(?:MARITAL)", "mapping": "marital"}],
+            generalization_maps={"marital": {"married": "Married"}},
+        )
+        rows = [
+            {"SUBJID": "S1", "IS_MARITAL": "married"},
+            {"SUBJID": "S2", "IS_MARITAL": "annulled"},
+        ]
+        _seed_staging(monkeypatch_config, rows)
+        with pytest.raises(phi_scrub.PHIGeneralizeUnmappedError):
+            phi_scrub.run_scrub(study_name="TEST")
+
+        quarantine = (
+            config.STUDY_STAGING_DIR / "quarantine" / "generalize_unmapped_1A_ICScreening.jsonl"
+        )
+        assert quarantine.is_file()
+        quarantined = [json.loads(line) for line in quarantine.read_text().splitlines() if line]
+        assert len(quarantined) == 1
+
+    def test_generalize_all_mapped_no_error(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """run_scrub with filled generalization map (value covered) → no error."""
+        _write_config(
+            scrub_config_path,
+            generalize_fields=[{"pattern": "(?:MARITAL)", "mapping": "marital"}],
+            generalization_maps={"marital": {"married": "Married", "annulled": "Other"}},
+        )
+        rows = [{"SUBJID": "S1", "IS_MARITAL": "annulled"}]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        # No error raised; file still exists
+        assert src.is_file()
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert len(loaded) == 1
+        assert loaded[0]["IS_MARITAL"] == "Other"
+
+
+class TestGeneralizeExceptionExports:
+    """Tests for PHIGeneralizeUnmappedError and module exports."""
+
+    def test_phi_generalize_unmapped_error_is_subclass_of_phi_scrub_error(self) -> None:
+        """PHIGeneralizeUnmappedError must be a subclass of PHIScrubError."""
+        assert issubclass(phi_scrub.PHIGeneralizeUnmappedError, phi_scrub.PHIScrubError)
+
+    def test_phi_generalize_unmapped_error_in_all(self) -> None:
+        """PHIGeneralizeUnmappedError must be in phi_scrub.__all__."""
+        assert "PHIGeneralizeUnmappedError" in phi_scrub.__all__
 
 
 # ── Catalog coverage — HIPAA §164.514(b)(2) baseline ────────────────────────
