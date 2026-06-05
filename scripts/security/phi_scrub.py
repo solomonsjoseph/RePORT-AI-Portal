@@ -135,6 +135,7 @@ __all__ = [
     "GeneralizeRule",
     "IdRule",
     "PHIBandUnmappedError",
+    "PHIDateUnshiftableError",
     "PHIGeneralizeUnmappedError",
     "PHIKeyMissingError",
     "PHIKeyPermissionError",
@@ -234,6 +235,16 @@ class PHIGeneralizeUnmappedError(PHIScrubError):
     is never passed through (which would leak raw PHI) and never silently dropped —
     the row is quarantined and the run hard-fails so an operator can curate the map.
     Mirrors :class:`PHIBandUnmappedError` for the band action."""
+
+
+class PHIDateUnshiftableError(PHIScrubError):
+    """Raised when a date field holds a non-empty value that cannot be safely
+    jittered — it does not parse as a date (``shift_date`` → ``None``) or its
+    slash-date locale is ambiguous (``parse_date`` → ``ValueError``). Date jitter
+    is fail-closed: such a value is never passed through (which would leak the raw
+    date) and never crashes the run unaccountably — the row is quarantined and the
+    run hard-fails so an operator can fix the data or add a ``date_locales`` entry.
+    Mirrors :class:`PHIBandUnmappedError` / :class:`PHIGeneralizeUnmappedError`."""
 
 
 # ── Config ───────────────────────────────────────────────────────────────────
@@ -1301,19 +1312,27 @@ def _scrub_row(
                 _bump("suppress-small-cell", field)
             continue
 
-        # 7. DATE — per-subject constant-offset jitter (includes birthdate
-        # when posture = limited_dataset)
+        # 7. DATE — per-subject constant-offset jitter (includes birthdate when
+        # posture = limited_dataset). Fail-closed: a non-empty value that does not
+        # parse as a date (shift_date -> None) or whose slash-date locale is ambiguous
+        # (parse_date -> ValueError) quarantines the whole row rather than leaking the
+        # raw value (the pre-T2.3 passthrough) or crashing the run unaccountably.
+        # Mirrors band (5b) / generalize (5).
         if cfg.field_is_date(field) or (
             cfg.field_is_birthdate(field) and cfg.compliance_posture == _POSTURE_LIMITED_DATASET
         ):
             raw_val = row[field]
             if raw_val is None or (isinstance(raw_val, str) and not raw_val.strip()):
                 continue
-            shifted = shift_date(str(raw_val), offset, field_name=field, date_locales=date_locales)
+            try:
+                shifted = shift_date(str(raw_val), offset, field_name=field, date_locales=date_locales)
+            except ValueError:
+                return None, {f"phi-scrub-date-quarantine:{field}": 1}
             if shifted is not None:
                 row[field] = shifted
                 _bump("date", field)
-            continue
+                continue
+            return None, {f"phi-scrub-date-quarantine:{field}": 1}
 
         # 8. ID — HMAC-SHA256 pseudonymize with domain-separated label
         id_label = cfg.id_label_for(field)
@@ -1334,8 +1353,8 @@ def _scrub_file(
     cfg: PHIScrubConfig,
     key: bytes,
     date_locales: dict[str, str] | None = None,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
-    """Read *jsonl_path*, scrub each row, return (kept, orphans, band_failed, generalize_failed, counts).
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
+    """Read *jsonl_path*, scrub each row, return (kept, orphans, band_failed, generalize_failed, date_failed, counts).
 
     * kept              — rows that scrubbed successfully
     * orphans           — rows with no resolvable subject_id (no row_counts)
@@ -1345,12 +1364,16 @@ def _scrub_file(
     * generalize_failed — rows where a generalize rung returned (None, non-empty counts),
                           i.e. a non-empty value not in the generalization map; caller
                           quarantines and hard-fails (fail-closed)
+    * date_failed       — rows where the date rung returned (None, non-empty counts),
+                          i.e. a non-empty date value that could not be safely jittered;
+                          caller quarantines and hard-fails (fail-closed)
     * counts            — merged per-field scope counts for kept rows
     """
     kept: list[dict[str, Any]] = []
     orphans: list[dict[str, Any]] = []
     band_failed: list[dict[str, Any]] = []
     generalize_failed: list[dict[str, Any]] = []
+    date_failed: list[dict[str, Any]] = []
     counts: dict[str, int] = {}
 
     # A dataset is subject-specific unless it is explicitly the non-subject Air Quality dataset.
@@ -1387,6 +1410,8 @@ def _scrub_file(
                     scope = next(iter(row_counts))
                     if scope.startswith("phi-scrub-generalize-quarantine"):
                         generalize_failed.append(row)
+                    elif scope.startswith("phi-scrub-date-quarantine"):
+                        date_failed.append(row)
                     else:  # band quarantine
                         band_failed.append(row)
                     for scope_k, n in row_counts.items():
@@ -1396,7 +1421,7 @@ def _scrub_file(
                 for scope, n in row_counts.items():
                     counts[scope] = counts.get(scope, 0) + n
 
-    return kept, orphans, band_failed, generalize_failed, counts
+    return kept, orphans, band_failed, generalize_failed, date_failed, counts
 
 
 def _events_from_counts(
@@ -1451,6 +1476,7 @@ _SCOPE_TO_ACTION: dict[str, str] = {
     "phi-scrub-band": "band",
     "phi-scrub-band-quarantine": "band_quarantine",
     "phi-scrub-generalize-quarantine": "generalize_quarantine",
+    "phi-scrub-date-quarantine": "date_quarantine",
 }
 
 
@@ -1722,7 +1748,7 @@ def run_scrub(
     orphan_totals: dict[str, int] = {}
 
     for jsonl_file in sorted(staging_datasets.glob("*.jsonl")):
-        kept, orphans, band_failed, generalize_failed, counts = _scrub_file(
+        kept, orphans, band_failed, generalize_failed, date_failed, counts = _scrub_file(
             jsonl_file, cfg=cfg, key=key, date_locales=date_locales
         )
 
@@ -1774,6 +1800,22 @@ def run_scrub(
                 f"band scaffold is fail-closed — fill the deferred TEMPLATE values in "
                 f"phi_scrub.yaml before these fields can be emitted. Quarantined rows: "
                 f"quarantine/band_unmapped_{jsonl_file.name}."
+            )
+
+        if date_failed:
+            quarantine_dir.mkdir(parents=True, exist_ok=True)
+            assert_write_zone(quarantine_dir)
+            for _df in date_failed:
+                _apply_field_only_rules(_df, cfg=cfg)  # strip names/birthdate before quarantine write
+            atomic_write_jsonl(
+                quarantine_dir / f"date_unshiftable_{jsonl_file.name}", date_failed
+            )
+            raise PHIDateUnshiftableError(
+                f"{jsonl_file.name}: {len(date_failed)} row(s) hold date values that cannot be "
+                f"safely jittered (unparseable, or an ambiguous slash-date with no date_locales "
+                f"entry). Date jitter is fail-closed — fix the source value or add a date_locales "
+                f"entry in the study's _forms_manifest.yaml before these fields can be emitted. "
+                f"Quarantined rows: quarantine/date_unshiftable_{jsonl_file.name}."
             )
 
         atomic_write_jsonl(jsonl_file, kept)

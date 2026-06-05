@@ -414,10 +414,10 @@ class TestScrubRowBand:
 class TestScrubFileBand:
     """Tests for _scrub_file return signature with band_failed."""
 
-    def test_scrub_file_returns_five_tuple(
+    def test_scrub_file_returns_six_tuple(
         self, scrub_config_path: Path, sidecar_key: Path, monkeypatch_config: Path
     ) -> None:
-        """_scrub_file returns (kept, orphans, band_failed, generalize_failed, counts)."""
+        """_scrub_file returns (kept, orphans, band_failed, generalize_failed, date_failed, counts)."""
         _write_config(scrub_config_path)
         rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
         src = _seed_staging(monkeypatch_config, rows)
@@ -426,12 +426,13 @@ class TestScrubFileBand:
         key = phi_scrub.load_key()
 
         result = phi_scrub._scrub_file(src, cfg=cfg, key=key)
-        assert len(result) == 5
-        kept, orphans, band_failed, generalize_failed, counts = result
+        assert len(result) == 6
+        kept, orphans, band_failed, generalize_failed, date_failed, counts = result
         assert isinstance(kept, list)
         assert isinstance(orphans, list)
         assert isinstance(band_failed, list)
         assert isinstance(generalize_failed, list)
+        assert isinstance(date_failed, list)
         assert isinstance(counts, dict)
 
     def test_band_miss_goes_to_band_failed_not_orphans(
@@ -449,7 +450,7 @@ class TestScrubFileBand:
         assert cfg is not None
         key = phi_scrub.load_key()
 
-        _kept, orphans, band_failed, _gen_failed, _counts = phi_scrub._scrub_file(src, cfg=cfg, key=key)
+        _kept, orphans, band_failed, _gen_failed, _date_failed, _counts = phi_scrub._scrub_file(src, cfg=cfg, key=key)
         assert len(band_failed) == 1
         assert len(orphans) == 0
 
@@ -464,7 +465,7 @@ class TestScrubFileBand:
         assert cfg is not None
         key = phi_scrub.load_key()
 
-        _kept, orphans, band_failed, _gen_failed, _counts = phi_scrub._scrub_file(src, cfg=cfg, key=key)
+        _kept, orphans, band_failed, _gen_failed, _date_failed, _counts = phi_scrub._scrub_file(src, cfg=cfg, key=key)
         assert len(orphans) == 1
         assert len(band_failed) == 0
 

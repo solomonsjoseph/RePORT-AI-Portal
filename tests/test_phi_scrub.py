@@ -1503,6 +1503,101 @@ class TestGeneralizeExceptionExports:
         assert "PHIGeneralizeUnmappedError" in phi_scrub.__all__
 
 
+# ── Date fail-closed ────────────────────────────────────────────────────────
+
+
+class TestDateFailClosed:
+    """Tests for run_scrub date-miss exception and quarantine write.
+
+    Mirrors TestRunScrubBandFailClosed and TestGeneralizeFailClosed: an
+    unparseable or ambiguous date value in a date field quarantines the row
+    and raises PHIDateUnshiftableError.
+    """
+
+    def test_unparseable_date_quarantines_and_raises(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """run_scrub with unparseable date → raises PHIDateUnshiftableError."""
+        _write_config(scrub_config_path)
+        rows = [
+            {"SUBJID": "S1", "VISDAT": "2014-07-15"},
+            {"SUBJID": "S2", "VISDAT": "not a date"},
+        ]
+        _seed_staging(monkeypatch_config, rows)
+        with pytest.raises(phi_scrub.PHIDateUnshiftableError):
+            phi_scrub.run_scrub(study_name="TEST")
+
+        quarantine = (
+            config.STUDY_STAGING_DIR / "quarantine" / "date_unshiftable_1A_ICScreening.jsonl"
+        )
+        assert quarantine.is_file()
+        quarantined = [json.loads(line) for line in quarantine.read_text().splitlines() if line]
+        assert len(quarantined) == 1
+
+    def test_ambiguous_date_quarantines_and_raises(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """run_scrub with ambiguous slash-date (H8 path) → raises PHIDateUnshiftableError."""
+        # AMBIG_DAT matches the _DAT$ pattern, is NOT in DMY_VARIABLES allowlist,
+        # has no manifest date_locales entry → ambiguous "07/05/2014" raises ValueError
+        # in parse_date, which is fail-closed by the date rung.
+        _write_config(scrub_config_path)
+        rows = [
+            {"SUBJID": "S1", "AMBIG_DAT": "2014-07-15"},
+            {"SUBJID": "S2", "AMBIG_DAT": "07/05/2014"},
+        ]
+        _seed_staging(monkeypatch_config, rows)
+        with pytest.raises(phi_scrub.PHIDateUnshiftableError):
+            phi_scrub.run_scrub(study_name="TEST")
+
+        quarantine = (
+            config.STUDY_STAGING_DIR / "quarantine" / "date_unshiftable_1A_ICScreening.jsonl"
+        )
+        assert quarantine.is_file()
+        quarantined = [json.loads(line) for line in quarantine.read_text().splitlines() if line]
+        assert len(quarantined) == 1
+
+    def test_valid_date_jittered_no_error(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """run_scrub with valid VISDAT → completes, date is shifted, no error."""
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        # No error raised; file still exists
+        assert src.is_file()
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert len(loaded) == 1
+        # VISDAT must be shifted by the per-subject offset (differs from input)
+        key = phi_scrub.load_key()
+        offset = phi_scrub.date_offset_days("S1", key=key, max_days=30)
+        expected = phi_scrub.shift_date("2014-07-15", offset)
+        assert loaded[0]["VISDAT"] == expected
+
+
+class TestDateExceptionExports:
+    """Tests for PHIDateUnshiftableError and module exports."""
+
+    def test_phi_date_unshiftable_error_is_subclass_of_phi_scrub_error(self) -> None:
+        """PHIDateUnshiftableError must be a subclass of PHIScrubError."""
+        assert issubclass(phi_scrub.PHIDateUnshiftableError, phi_scrub.PHIScrubError)
+
+    def test_phi_date_unshiftable_error_in_all(self) -> None:
+        """PHIDateUnshiftableError must be in phi_scrub.__all__."""
+        assert "PHIDateUnshiftableError" in phi_scrub.__all__
+
+
 # ── Catalog coverage — HIPAA §164.514(b)(2) baseline ────────────────────────
 
 
