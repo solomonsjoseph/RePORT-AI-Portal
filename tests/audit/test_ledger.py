@@ -279,3 +279,92 @@ def test_run_id_auto_generated(tmp_path: Path) -> None:
     data = json.loads((tmp_path / "ledger.json").read_text())
     assert data["run_id"].startswith("run_")
     assert len(data["run_id"]) > 4
+
+
+# ---------------------------------------------------------------------------
+# Test 11: add_phi_event with new classification and method fields
+# ---------------------------------------------------------------------------
+
+
+def test_phi_event_flush_file_and_shape_with_new_fields(tmp_path: Path) -> None:
+    """Extend test 1 to verify new default fields are present."""
+    writer = _make_writer(tmp_path)
+    writer.add_phi_event(**_phi_event_kwargs())
+    writer.flush()
+
+    out = tmp_path / "ledger.json"
+    assert out.exists()
+    data = json.loads(out.read_text())
+
+    event = data["events"][0]
+    # New default field assertions
+    assert event["rule"]["matched_rules"] == []
+    assert event["rule"]["jurisdictions"] == []
+    assert event["rule"]["rule_bundle_sha256"] is None
+    assert event["method"] is None
+
+
+def test_phi_event_with_classification_and_method(tmp_path: Path) -> None:
+    """Call add_phi_event with classification and method parameters."""
+    writer = _make_writer(tmp_path)
+    kwargs = _phi_event_kwargs()
+    kwargs.update({
+        "matched_rules": ["usa_safe_harbor_dates", "india_date_identifier"],
+        "jurisdictions": ["USA", "INDIA"],
+        "rule_bundle_sha256": "abc",
+        "method_name": "SANT_date_jitter",
+        "method_parameters": {"max_jitter_days": 30},
+    })
+    writer.add_phi_event(**kwargs)
+    writer.flush()
+
+    out = tmp_path / "ledger.json"
+    data = json.loads(out.read_text())
+
+    event = data["events"][0]
+    assert event["rule"]["matched_rules"] == ["usa_safe_harbor_dates", "india_date_identifier"]
+    assert event["rule"]["jurisdictions"] == ["USA", "INDIA"]
+    assert event["rule"]["rule_bundle_sha256"] == "abc"
+    assert event["method"] == {
+        "name": "SANT_date_jitter",
+        "parameters": {"max_jitter_days": 30},
+    }
+
+
+def test_keep_decision_added_and_flushed(tmp_path: Path) -> None:
+    """Call add_keep_decision and verify it appears in keep_decisions."""
+    writer = _make_writer(tmp_path)
+    writer.add_keep_decision(
+        form="6_HIV",
+        variable_id="hiv_visit",
+        jurisdictions=[],
+        matched_rules=[],
+        rationale="kept",
+        rule_bundle_sha256=None,
+    )
+    writer.flush()
+
+    out = tmp_path / "ledger.json"
+    data = json.loads(out.read_text())
+
+    assert "keep_decisions" in data
+    assert len(data["keep_decisions"]) == 1
+    keep = data["keep_decisions"][0]
+    assert keep["form"] == "6_HIV"
+    assert keep["variable_id"] == "hiv_visit"
+    assert keep["jurisdictions"] == []
+    assert keep["matched_rules"] == []
+    assert keep["rationale"] == "kept"
+    assert keep["rule_bundle_sha256"] is None
+
+
+def test_keep_decisions_omitted_when_empty(tmp_path: Path) -> None:
+    """When no keep_decisions are added, the key should not appear."""
+    writer = _make_writer(tmp_path)
+    writer.add_phi_event(**_phi_event_kwargs())
+    writer.flush()
+
+    out = tmp_path / "ledger.json"
+    data = json.loads(out.read_text())
+
+    assert "keep_decisions" not in data

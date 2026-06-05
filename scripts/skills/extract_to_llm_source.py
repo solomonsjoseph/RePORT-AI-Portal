@@ -46,6 +46,7 @@ EXIT_VERIFIER_FAIL       = 5   — verifier assertion failed
 EXIT_NEEDS_ADVICE        = 6   — paused — operator inspection required
 EXIT_DESTRUCTION_INCOMPLETE = 7 — destruction incomplete
 EXIT_PARTIAL_REVIEW      = 8   — partial publish; held forms need review
+EXIT_DECISION_MISMATCH = 9 — approved form's applied action != phi_review decided action
 
 Code 1 (generic error) is reserved for unexpected exceptions.
 
@@ -84,16 +85,29 @@ from typing import Any
 
 import yaml
 
-from scripts.audit.ledger import iter_dataset_phi_ledger_paths
+from scripts.audit.ledger import dataset_phi_ledger_path, iter_dataset_phi_ledger_paths
 from scripts.extraction.dataset_pipeline import (
     ManifestMismatchError,
     check_forms_manifest,
 )
 from scripts.security.llm_source_gate import scan_tree_for_phi
 from scripts.security.phi_patterns import SUBJECT_ID_PATTERNS
+from scripts.security.phi_review import _normalize_header as _normalize_hdr
 from scripts.utils.secure_staging import secure_remove_tree
 
+# phi_review decided Action -> set of acceptable phi_scrub applied actions
+_DECIDED_APPLIED_EQUIV: dict[str, set[str]] = {
+    "keep": {"keep"},
+    "suppress": {"suppress_small_cell"},
+    "cap": {"cap"},
+    "generalize": {"generalize", "band"},
+    "jitter_date": {"jitter_date", "birthdate_drop"},
+    "pseudonymize": {"pseudonymize"},
+    "drop": {"drop"},
+}
+
 __all__ = [
+    "EXIT_DECISION_MISMATCH",
     "EXIT_DESTRUCTION_INCOMPLETE",
     "EXIT_LEDGER_HASH_NULL",
     "EXIT_MANIFEST_MISMATCH",
@@ -122,6 +136,7 @@ EXIT_VERIFIER_FAIL: int = 5
 EXIT_NEEDS_ADVICE: int = 6
 EXIT_DESTRUCTION_INCOMPLETE: int = 7
 EXIT_PARTIAL_REVIEW: int = 8
+EXIT_DECISION_MISMATCH: int = 9
 
 # ---------------------------------------------------------------------------
 # Destruction helper (P0.6) — kept verbatim
@@ -614,6 +629,71 @@ def _verify_assertion_11_no_pipeline_lock(tmp_dir: Path, study: str) -> _Asserti
     return "pass", ""
 
 
+def _hold_run_for_review(run_dir: Path, forms: list[str]) -> None:
+    """Flip the run's status.json to held + record the offending forms (fail-closed routing)."""
+    status_path = run_dir / "status.json"
+    if not status_path.is_file():
+        return
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return
+    status["publish_status"] = "held"
+    existing = list(status.get("held_forms", []))
+    for f in forms:
+        if f not in existing:
+            existing.append(f)
+    status["held_forms"] = existing
+    status["verifier_passed"] = False
+    _atomic_write_json(status_path, status)
+
+
+def _verify_assertion_decided_vs_applied(audit_dir: Path, run_dir: Path) -> _AssertionResult:
+    """Each approved form's APPLIED action (ledger) must equal phi_review's DECIDED action (approval).
+
+    No approval file → pass (legacy/disabled scrub; nothing to cross-check). Fail-closed on mismatch:
+    hold the run for human review + EXIT_DECISION_MISMATCH.
+    """
+    approval_path = run_dir / "phi_handling_approval.json"
+    if not approval_path.is_file():
+        return "pass", ""
+    try:
+        approval = json.loads(approval_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return "fail", f"phi_handling_approval.json unreadable: {exc}"
+    approved = set(approval.get("approved_forms", []))
+    mismatches: list[str] = []
+    bad_forms: list[str] = []
+    for form in approval.get("forms", []):
+        form_name = str(form.get("form_name", ""))
+        if form_name not in approved:
+            continue  # held forms are already routed to review
+        applied: dict[str, str] = {}
+        ledger_path = dataset_phi_ledger_path(audit_dir, form_name)
+        if ledger_path.is_file():
+            try:
+                led = json.loads(ledger_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                led = {}
+            for ev in led.get("events", []):
+                applied[_normalize_hdr(str(ev.get("variable_id", "")))] = str(ev.get("action", ""))
+            for kd in led.get("keep_decisions", []):
+                applied.setdefault(_normalize_hdr(str(kd.get("variable_id", ""))), "keep")
+        for cls in form.get("classifications", []):
+            decided = str(cls.get("action", ""))
+            applied_action = applied.get(_normalize_hdr(str(cls.get("header", ""))), "keep")
+            if applied_action not in _DECIDED_APPLIED_EQUIV.get(decided, set()):
+                mismatches.append(
+                    f"{form_name}:{cls.get('header')} decided={decided} applied={applied_action}"
+                )
+                if form_name not in bad_forms:
+                    bad_forms.append(form_name)
+    if mismatches:
+        _hold_run_for_review(run_dir, bad_forms)
+        return "fail", "; ".join(mismatches[:10])
+    return "pass", ""
+
+
 def _assertion_12_update_status(
     run_dir: Path,
 ) -> _AssertionResult:
@@ -635,7 +715,7 @@ def _assertion_12_update_status(
 
 
 def _cmd_verify(args: argparse.Namespace) -> int:
-    """Run 12 verifier assertions for the given study.
+    """Run 13 verifier assertions for the given study.
 
     Exit codes mirror the assertion failure modes:
         EXIT_OK (0)                     — all assertions passed
@@ -645,6 +725,7 @@ def _cmd_verify(args: argparse.Namespace) -> int:
         EXIT_VERIFIER_FAIL (5)          — PHI/determinism assertions 8, 9
         EXIT_NEEDS_ADVICE (6)           — assertion 11 (lock file present)
         EXIT_DESTRUCTION_INCOMPLETE (7) — assertions 3, 4
+        EXIT_DECISION_MISMATCH (9)      — assertion 12 (decided vs applied)
     """
     import config  # lazy — keeps module testable without full config bootstrap
 
@@ -745,9 +826,15 @@ def _cmd_verify(args: argparse.Namespace) -> int:
         ),
         (
             12,
+            "decided_action_matches_applied",
+            lambda: _verify_assertion_decided_vs_applied(audit_dir, run_dir),
+            EXIT_DECISION_MISMATCH,
+        ),
+        (
+            13,
             "status_json_updated",
             lambda: _assertion_12_update_status(run_dir),
-            EXIT_VERIFIER_FAIL,  # exit code unused for assertion 12 (always last)
+            EXIT_VERIFIER_FAIL,  # exit code unused for assertion 13 (always last)
         ),
     ]
 

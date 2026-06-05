@@ -149,6 +149,7 @@ class LedgerWriter:
         self._compliance_posture = compliance_posture
         self._iso_timestamp: str = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         self._events: list[dict] = []
+        self._keeps: list[dict] = []
         self._sentinel_seen: bool = False
 
     # ------------------------------------------------------------------
@@ -208,6 +209,11 @@ class LedgerWriter:
         dataset_file: str | None,
         pdf_source: str | None,
         count: int | None,
+        matched_rules: list[str] | None = None,
+        jurisdictions: list[str] | None = None,
+        rule_bundle_sha256: str | None = None,
+        method_name: str | None = None,
+        method_parameters: dict | None = None,
     ) -> None:
         """Append one PHI handling event. Raises ValueError on unknown action."""
         self._phase4_guard()
@@ -227,13 +233,48 @@ class LedgerWriter:
                 "rule": {
                     "taxonomy": rule_taxonomy,
                     "project_category": rule_project_category,
+                    "matched_rules": list(matched_rules or []),
+                    "jurisdictions": list(jurisdictions or []),
+                    "rule_bundle_sha256": rule_bundle_sha256,
                 },
+                "method": (
+                    {"name": method_name, "parameters": dict(method_parameters or {})}
+                    if (method_name is not None or method_parameters)
+                    else None
+                ),
                 "rationale": rationale,
                 "where": {
                     "dataset_file": dataset_file,
                     "pdf_source": pdf_source,
                 },
                 "count": count,
+            }
+        )
+
+    def add_keep_decision(
+        self,
+        *,
+        form: str,
+        variable_id: str,
+        jurisdictions: list[str] | None,
+        matched_rules: list[str] | None,
+        rationale: str,
+        rule_bundle_sha256: str | None,
+    ) -> None:
+        """Append one KEEP decision (field retained, not scrubbed)."""
+        self._phase4_guard()
+        if not form:
+            raise ValueError("form must not be empty")
+        if not variable_id:
+            raise ValueError("variable_id must not be empty")
+        self._keeps.append(
+            {
+                "form": form,
+                "variable_id": variable_id,
+                "jurisdictions": list(jurisdictions or []),
+                "matched_rules": list(matched_rules or []),
+                "rationale": rationale,
+                "rule_bundle_sha256": rule_bundle_sha256,
             }
         )
 
@@ -294,6 +335,8 @@ class LedgerWriter:
             envelope["scrub_config_hash"] = self._scrub_config_hash
         if self._input_dataset_hash is not None:
             envelope["input_dataset_hash"] = self._input_dataset_hash
+        if self._keeps:
+            envelope["keep_decisions"] = self._keeps
         _atomic_write_json(self._output_path, envelope)
 
     def event_count(self) -> int:

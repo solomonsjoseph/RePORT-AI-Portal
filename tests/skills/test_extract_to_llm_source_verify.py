@@ -1,9 +1,9 @@
-"""Tests for the verify subcommand — 12-assertion verifier.
+"""Tests for the verify subcommand — 13-assertion verifier.
 
 Coverage
 --------
-A. Happy path: synthetic study setup with all 12 conditions satisfied → exit 0,
-   verifier_report.json has all 12 "pass", status.json updated with
+A. Happy path: synthetic study setup with all 13 conditions satisfied → exit 0,
+   verifier_report.json has all 13 "pass", status.json updated with
    verifier_passed: true.
 
 B. Failure-injection fixtures — one test per failure mode:
@@ -258,7 +258,7 @@ class TestVerifyHappyPath:
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         assert report_path.exists()
 
-    def test_report_has_12_assertions(
+    def test_report_has_13_assertions(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_config(monkeypatch, tmp_path)
@@ -266,7 +266,7 @@ class TestVerifyHappyPath:
         main(["verify", "--study", STUDY, "--run", RUN_ID])
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
-        assert len(report["assertions"]) == 12
+        assert len(report["assertions"]) == 13
 
     def test_all_assertions_pass(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_config(monkeypatch, tmp_path)
@@ -315,6 +315,68 @@ class TestVerifyHappyPath:
             assert "name" in a
             assert "result" in a
             assert "detail" in a
+
+    def test_decided_vs_applied_happy_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Verify passes when approval has all-keep classifications consistent with ledger."""
+        _patch_config(monkeypatch, tmp_path)
+        paths = _build_happy_study(tmp_path)
+        # Write approval with approved_forms and keep classifications for form_a
+        approval = {
+            "approved_forms": ["form_a.xlsx"],
+            "forms": [
+                {
+                    "form_name": "form_a.xlsx",
+                    "classifications": [
+                        {"header": "col_a", "action": "keep", "jurisdictions": [], "matched_rules": [], "reasons": []},
+                        {"header": "col_b", "action": "keep", "jurisdictions": [], "matched_rules": [], "reasons": []},
+                    ],
+                }
+            ],
+        }
+        approval_path = paths["run_dir"] / "phi_handling_approval.json"
+        approval_path.write_text(json.dumps(approval), encoding="utf-8")
+        rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
+        assert rc == EXIT_OK
+        report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
+        report = json.loads(report_path.read_text())
+        assert len(report["assertions"]) == 13
+        assert all(a["result"] == "pass" for a in report["assertions"])
+        assert report["overall"] == "pass"
+
+    def test_decided_vs_applied_mismatch_holds(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Verify fails and holds run when approval action doesn't match ledger action."""
+        _patch_config(monkeypatch, tmp_path)
+        paths = _build_happy_study(tmp_path)
+        # Write approval with drop action for a header that has no drop event in ledger
+        approval = {
+            "approved_forms": ["form_a.xlsx"],
+            "forms": [
+                {
+                    "form_name": "form_a.xlsx",
+                    "classifications": [
+                        {"header": "col_a", "action": "drop", "jurisdictions": [], "matched_rules": [], "reasons": []},
+                        {"header": "col_b", "action": "keep", "jurisdictions": [], "matched_rules": [], "reasons": []},
+                    ],
+                }
+            ],
+        }
+        approval_path = paths["run_dir"] / "phi_handling_approval.json"
+        approval_path.write_text(json.dumps(approval), encoding="utf-8")
+        rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
+        assert rc == 9  # EXIT_DECISION_MISMATCH
+        # Check status.json was updated to held
+        status_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "status.json"
+        status = json.loads(status_path.read_text())
+        assert status["publish_status"] == "held"
+        assert "form_a.xlsx" in status["held_forms"]
+        # Check verifier_report shows fail
+        report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
+        report = json.loads(report_path.read_text())
+        assert report["overall"] == "fail"
 
 
 # ---------------------------------------------------------------------------

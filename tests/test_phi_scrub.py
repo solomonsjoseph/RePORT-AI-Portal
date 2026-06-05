@@ -923,6 +923,7 @@ class TestAsWrittenLedger:
             "variable_id",
             "action",
             "rule",
+            "method",
             "rationale",
             "where",
             "count",
@@ -1096,6 +1097,155 @@ class TestAsWrittenLedger:
 
         assert actual == expected
         assert all(item[1] != "SCORE" for item in actual)
+
+
+# ── Ledger classification threading + method tracing ────────────────────────
+
+
+class TestLedgerClassificationThreading:
+    """Verify classification metadata and method tracing in ledger events."""
+
+    def test_method_present_without_approval(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Without approval, method is derived from cfg; rules are empty."""
+        _write_config(scrub_config_path)
+        rows = [
+            {"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15"},
+        ]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        ledger_path = _phi_ledger_path()
+        payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+        # Find the jitter_date event (VISDAT)
+        date_event = None
+        for event in payload["events"]:
+            if event["action"] == "jitter_date":
+                date_event = event
+                break
+        assert date_event is not None, "Expected at least one jitter_date event"
+        assert date_event["method"]["name"] == "SANT_date_jitter"
+        assert date_event["method"]["parameters"]["max_jitter_days"] == 30
+        assert date_event["rule"]["matched_rules"] == []
+        assert date_event["rationale"] == "Applied by PHI scrubber per phi_scrub.yaml configuration"
+
+    def test_classification_threaded_with_approval(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        tmp_path: Path,
+    ) -> None:
+        """With approval, classification metadata threads into the event."""
+        _write_config(scrub_config_path)
+        rows = [
+            {"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15"},
+        ]
+        _seed_staging(monkeypatch_config, rows)
+
+        # Create runs_dir and write approval
+        runs_dir = tmp_path / "runs"
+        run_id = "test_run_123"
+        (runs_dir / run_id).mkdir(parents=True)
+        approval_data = {
+            "rule_bundle": {"rules_sha256": "sha256_abc123"},
+            "forms": [
+                {
+                    "form_name": "1A_ICScreening.xlsx",
+                    "classifications": [
+                        {
+                            "header": "VISDAT",
+                            "action": "jitter_date",
+                            "jurisdictions": ["USA", "INDIA"],
+                            "matched_rules": ["usa_safe_harbor_dates", "india_date_identifier"],
+                            "reasons": ["HIPAA Safe Harbor date element header."],
+                        }
+                    ],
+                }
+            ],
+            "approved_forms": [],
+        }
+        approval_path = runs_dir / run_id / "phi_handling_approval.json"
+        approval_path.write_text(json.dumps(approval_data), encoding="utf-8")
+
+        # Run scrub with approval
+        phi_scrub.run_scrub(study_name="TEST", run_id=run_id, runs_dir=runs_dir)
+
+        ledger_path = _phi_ledger_path()
+        payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+        # Find the jitter_date event
+        date_event = None
+        for event in payload["events"]:
+            if event["action"] == "jitter_date":
+                date_event = event
+                break
+        assert date_event is not None
+        assert "usa_safe_harbor_dates" in date_event["rule"]["matched_rules"]
+        assert date_event["rule"]["jurisdictions"] == ["USA", "INDIA"]
+        assert date_event["rule"]["rule_bundle_sha256"] == "sha256_abc123"
+        assert date_event["rationale"] == "HIPAA Safe Harbor date element header."
+
+    def test_keep_decision_traced_with_approval(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        tmp_path: Path,
+    ) -> None:
+        """Approval with keep action traces into keep_decisions, not events."""
+        _write_config(
+            scrub_config_path,
+            drop_fields=[],
+            id_fields=[],
+            date_fields=[],
+            keep_fields=["^VISDAT$"],
+        )
+        rows = [
+            {"SUBJID": "S1", "VISDAT": "2014-07-15"},
+        ]
+        _seed_staging(monkeypatch_config, rows)
+
+        # Create approval with a keep classification
+        runs_dir = tmp_path / "runs"
+        run_id = "test_run_keep"
+        (runs_dir / run_id).mkdir(parents=True)
+        approval_data = {
+            "rule_bundle": {"rules_sha256": "sha256_keep"},
+            "forms": [
+                {
+                    "form_name": "1A_ICScreening.xlsx",
+                    "classifications": [
+                        {
+                            "header": "VISDAT",
+                            "action": "keep",
+                            "jurisdictions": ["USA"],
+                            "matched_rules": ["no_phi_rule"],
+                            "reasons": ["Retained per jurisdiction review (no PHI rule matched)."],
+                        }
+                    ],
+                }
+            ],
+            "approved_forms": [],
+        }
+        approval_path = runs_dir / run_id / "phi_handling_approval.json"
+        approval_path.write_text(json.dumps(approval_data), encoding="utf-8")
+
+        phi_scrub.run_scrub(study_name="TEST", run_id=run_id, runs_dir=runs_dir)
+
+        ledger_path = _phi_ledger_path()
+        payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+        # Verify keep_decisions is present
+        assert "keep_decisions" in payload
+        assert len(payload["keep_decisions"]) > 0
+        keep_decision = payload["keep_decisions"][0]
+        assert keep_decision["variable_id"] == "visdat"  # normalized header
+        assert "no_phi_rule" in keep_decision["matched_rules"]
+        # Verify VISDAT does NOT appear in events
+        assert all(event["variable_id"] != "VISDAT" for event in payload["events"])
 
 
 # ── Determinism across subject_id values (SANT spot-check) ──────────────────

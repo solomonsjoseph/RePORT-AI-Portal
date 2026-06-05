@@ -671,9 +671,7 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
     band_maps: dict[str, dict[str, str]] = {}
     for bm_name, bm_mapping in raw_band_maps.items():
         if not isinstance(bm_mapping, dict):
-            raise PHIScrubError(
-                f"band_maps[{bm_name}] must be a mapping of string → string"
-            )
+            raise PHIScrubError(f"band_maps[{bm_name}] must be a mapping of string → string")
         band_maps[str(bm_name)] = {
             str(src).strip().lower(): str(dst) for src, dst in bm_mapping.items()
         }
@@ -704,7 +702,9 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
                         f"band_ranges[{br_name}][{i}] 'max' must be a finite number"
                     ) from None
                 if not math.isfinite(upper):
-                    raise PHIScrubError(f"band_ranges[{br_name}][{i}] 'max' must be a finite number")
+                    raise PHIScrubError(
+                        f"band_ranges[{br_name}][{i}] 'max' must be a finite number"
+                    )
             compiled.append((upper, str(entry["label"])))
         # A no-'max' catch-all (None upper) may only be the LAST entry.
         for u, _lbl in compiled[:-1]:
@@ -732,9 +732,7 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
         bf_band = entry.get("band")
         bf_kind = entry.get("kind")
         if not bf_pat or not bf_band or not bf_kind:
-            raise PHIScrubError(
-                f"band_fields[{idx}] requires 'pattern', 'band', and 'kind'"
-            )
+            raise PHIScrubError(f"band_fields[{idx}] requires 'pattern', 'band', and 'kind'")
         bf_kind = str(bf_kind)
         if bf_kind not in ("categorical", "numeric"):
             raise PHIScrubError(
@@ -1214,11 +1212,17 @@ def _scrub_row(
     quarantines. Per-field counts are keyed by scope label
     (``phi-scrub-drop:FIELD``, ``phi-scrub-cap:FIELD`` etc.).
     """
-    if "_metadata" in row and isinstance(row["_metadata"], dict) and row["_metadata"].get("type") == "column_structure":
+    if (
+        "_metadata" in row
+        and isinstance(row["_metadata"], dict)
+        and row["_metadata"].get("type") == "column_structure"
+    ):
         row[_SCRUB_MARKER_FIELD] = _SCRUB_VERSION
         return row, {}
 
-    subj_id = _resolve_subject_id(row, cfg.subject_id_fields, dataset_has_subject_col=dataset_has_subject_col)
+    subj_id = _resolve_subject_id(
+        row, cfg.subject_id_fields, dataset_has_subject_col=dataset_has_subject_col
+    )
     if not subj_id:
         return None, {}
 
@@ -1325,7 +1329,9 @@ def _scrub_row(
             if raw_val is None or (isinstance(raw_val, str) and not raw_val.strip()):
                 continue
             try:
-                shifted = shift_date(str(raw_val), offset, field_name=field, date_locales=date_locales)
+                shifted = shift_date(
+                    str(raw_val), offset, field_name=field, date_locales=date_locales
+                )
             except ValueError:
                 return None, {f"phi-scrub-date-quarantine:{field}": 1}
             if shifted is not None:
@@ -1353,7 +1359,14 @@ def _scrub_file(
     cfg: PHIScrubConfig,
     key: bytes,
     date_locales: dict[str, str] | None = None,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
+) -> tuple[
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    dict[str, int],
+]:
     """Read *jsonl_path*, scrub each row, return (kept, orphans, band_failed, generalize_failed, date_failed, counts).
 
     * kept              — rows that scrubbed successfully
@@ -1513,6 +1526,80 @@ def _compute_input_dataset_hash(datasets_dir: Path) -> str:
     return hashlib.sha256(manifest.encode("utf-8")).hexdigest()
 
 
+# -- Classification threading helpers ----------------------------------------
+
+
+def _normalize_header_for_lookup(header: str) -> str:
+    """Normalize a column header for approval-lookup (mirrors phi_review._normalize_header)."""
+    s = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", header.strip())
+    s = re.sub(r"[^A-Za-z0-9]+", "_", s)
+    return s.strip("_").lower()
+
+
+def _load_approval_classifications(
+    runs_dir: Path | None, run_id: str | None
+) -> tuple[dict, str | None]:
+    """Load phi_handling_approval.json and return (lookup, rule_bundle_sha256).
+
+    Returns ({}, None) when runs_dir/run_id is None, file absent, or JSON malformed.
+    """
+    if runs_dir is None or run_id is None:
+        return {}, None
+    path = Path(runs_dir) / run_id / "phi_handling_approval.json"
+    if not path.is_file():
+        return {}, None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}, None
+    bundle_sha = (data.get("rule_bundle") or {}).get("rules_sha256")
+    lookup: dict[str, dict[str, dict]] = {}
+    for form in data.get("forms", []):
+        stem = Path(str(form.get("form_name", ""))).stem
+        per_header: dict[str, dict] = {}
+        for cls in form.get("classifications", []):
+            per_header[_normalize_header_for_lookup(str(cls.get("header", "")))] = {
+                "action": cls.get("action"),
+                "matched_rules": list(cls.get("matched_rules", []) or []),
+                "jurisdictions": list(cls.get("jurisdictions", []) or []),
+                "reasons": list(cls.get("reasons", []) or []),
+            }
+        if stem:
+            lookup[stem] = per_header
+    return lookup, bundle_sha
+
+
+def _method_for_action(
+    action: str, cfg: PHIScrubConfig | None, field: str
+) -> tuple[str | None, dict]:
+    """Return (method_name, method_parameters) for a given action + config."""
+    if cfg is None:
+        return None, {}
+    if action == "cap":
+        r = cfg.cap_rule_for(field)
+        if r is not None:
+            return "threshold_cap", {"threshold": r.threshold, "label": r.label}
+        return "threshold_cap", {"threshold": cfg.age_cap_threshold, "label": cfg.age_cap_label}
+    if action == "jitter_date":
+        return "SANT_date_jitter", {"max_jitter_days": cfg.max_jitter_days}
+    if action == "pseudonymize":
+        return "HMAC-SHA256", {"label": cfg.id_label_for(field)}
+    if action == "generalize":
+        r = cfg.generalize_rule_for(field)
+        return "generalization_map", {"map": r.mapping_name if r is not None else None}
+    if action == "band":
+        r = cfg.band_rule_for(field)
+        return "band_map", {
+            "band": r.band_name if r is not None else None,
+            "kind": r.kind if r is not None else None,
+        }
+    if action == "suppress_small_cell":
+        return "small_cell_clamp", {"threshold": cfg.small_cell_threshold}
+    if action in ("drop", "birthdate_drop"):
+        return "field_removal", {}
+    return None, {}
+
+
 def _emit_as_written_ledger(
     *,
     events: list[dict[str, Any]],
@@ -1522,6 +1609,9 @@ def _emit_as_written_ledger(
     dataset_files: list[str] | None = None,
     scrub_config_hash: str | None = None,
     input_dataset_hash: str | None = None,
+    approval_lookup: dict | None = None,
+    rule_bundle_sha256: str | None = None,
+    cfg: PHIScrubConfig | None = None,
 ) -> None:
     """Write one PHI as-written ledger under each dataset audit folder."""
     audit_dir = audit_path.parent
@@ -1553,17 +1643,58 @@ def _emit_as_written_ledger(
             sentinel_dir=audit_dir,
         )
         for event in grouped_events.get(stem, []):
+            cls = (
+                (approval_lookup or {})
+                .get(stem, {})
+                .get(_normalize_header_for_lookup(event["field"]))
+            )
+            if cls is not None:
+                matched_rules = cls["matched_rules"]
+                jurisdictions = cls["jurisdictions"]
+                rationale = (
+                    "; ".join(cls["reasons"])
+                    or "Applied by PHI scrubber per phi_scrub.yaml configuration"
+                )
+                rule_taxonomy = matched_rules[0] if matched_rules else None
+                rule_project_category = "|".join(jurisdictions) if jurisdictions else None
+            else:
+                matched_rules = []
+                jurisdictions = []
+                rationale = "Applied by PHI scrubber per phi_scrub.yaml configuration"
+                rule_taxonomy = None
+                rule_project_category = None
+            action = _SCOPE_TO_ACTION[event["scope"]]
+            method_name, method_parameters = _method_for_action(action, cfg, event["field"])
             writer.add_phi_event(
                 form=Path(event["file"]).stem,
                 variable_id=event["field"],
-                action=_SCOPE_TO_ACTION[event["scope"]],
-                rule_taxonomy=None,
-                rule_project_category=None,
-                rationale="Applied by PHI scrubber per phi_scrub.yaml configuration",
+                action=action,
+                rule_taxonomy=rule_taxonomy,
+                rule_project_category=rule_project_category,
+                rationale=rationale,
                 dataset_file=event["file"],
                 pdf_source=None,
                 count=event["count"],
+                matched_rules=matched_rules,
+                jurisdictions=jurisdictions,
+                rule_bundle_sha256=rule_bundle_sha256,
+                method_name=method_name,
+                method_parameters=method_parameters,
             )
+        # KEEP tracing — after emitting events for a stem, BEFORE flush
+        for norm_header, c in (approval_lookup or {}).get(stem, {}).items():
+            if c.get("action") == "keep":
+                writer.add_keep_decision(
+                    form=Path(display_names[stem]).stem,
+                    variable_id=norm_header,
+                    jurisdictions=c["jurisdictions"],
+                    matched_rules=c["matched_rules"],
+                    rationale=(
+                        "; ".join(c["reasons"])
+                        or "Retained per jurisdiction review (no PHI rule matched)."
+                    ),
+                    rule_bundle_sha256=rule_bundle_sha256,
+                )
         writer.flush()
 
 
@@ -1668,11 +1799,17 @@ def run_scrub(
             dataset_files=sorted(p.name for p in staging_datasets.glob("*.jsonl"))
             if staging_datasets.is_dir()
             else [],
+            approval_lookup={},
+            rule_bundle_sha256=None,
+            cfg=None,
         )
         return
 
     # Config is present — seal its hash into every subsequent ledger write.
     scrub_config_hash: str = hash_file(Path(config.PHI_SCRUB_CONFIG_PATH))
+
+    # Load approval classifications (no-op when run_id/runs_dir absent or file missing).
+    approval_lookup, rule_bundle_sha256_val = _load_approval_classifications(runs_dir, run_id)
 
     # Sentinel short-circuit — prevents accidental double-scrub on restart.
     if sentinel.is_file():
@@ -1716,6 +1853,9 @@ def run_scrub(
             compliance_posture=cfg.compliance_posture,
             dataset_files=[],
             scrub_config_hash=scrub_config_hash,
+            approval_lookup={},
+            rule_bundle_sha256=None,
+            cfg=cfg,
         )
         return
 
@@ -1776,7 +1916,9 @@ def run_scrub(
             quarantine_dir.mkdir(parents=True, exist_ok=True)
             assert_write_zone(quarantine_dir)
             for _gf in generalize_failed:
-                _apply_field_only_rules(_gf, cfg=cfg)  # strip names/birthdate before quarantine write
+                _apply_field_only_rules(
+                    _gf, cfg=cfg
+                )  # strip names/birthdate before quarantine write
             atomic_write_jsonl(
                 quarantine_dir / f"generalize_unmapped_{jsonl_file.name}", generalize_failed
             )
@@ -1792,7 +1934,9 @@ def run_scrub(
             quarantine_dir.mkdir(parents=True, exist_ok=True)
             assert_write_zone(quarantine_dir)
             for _bf in band_failed:
-                _apply_field_only_rules(_bf, cfg=cfg)  # strip names/birthdate before quarantine write
+                _apply_field_only_rules(
+                    _bf, cfg=cfg
+                )  # strip names/birthdate before quarantine write
             atomic_write_jsonl(quarantine_dir / f"band_unmapped_{jsonl_file.name}", band_failed)
             raise PHIBandUnmappedError(
                 f"{jsonl_file.name}: {len(band_failed)} row(s) hold socioeconomic "
@@ -1806,10 +1950,10 @@ def run_scrub(
             quarantine_dir.mkdir(parents=True, exist_ok=True)
             assert_write_zone(quarantine_dir)
             for _df in date_failed:
-                _apply_field_only_rules(_df, cfg=cfg)  # strip names/birthdate before quarantine write
-            atomic_write_jsonl(
-                quarantine_dir / f"date_unshiftable_{jsonl_file.name}", date_failed
-            )
+                _apply_field_only_rules(
+                    _df, cfg=cfg
+                )  # strip names/birthdate before quarantine write
+            atomic_write_jsonl(quarantine_dir / f"date_unshiftable_{jsonl_file.name}", date_failed)
             raise PHIDateUnshiftableError(
                 f"{jsonl_file.name}: {len(date_failed)} row(s) hold date values that cannot be "
                 f"safely jittered (unparseable, or an ambiguous slash-date with no date_locales "
@@ -1845,6 +1989,9 @@ def run_scrub(
         dataset_files=dataset_files,
         scrub_config_hash=scrub_config_hash,
         input_dataset_hash=input_dataset_hash,
+        approval_lookup=approval_lookup,
+        rule_bundle_sha256=rule_bundle_sha256_val,
+        cfg=cfg,
     )
 
     with sentinel.open("w", encoding="utf-8") as _sf:
