@@ -22,6 +22,7 @@ from scripts.ai_assistant.ui.conversations import (
     _conversation_has_artifacts,
     _export_conversation_as_md,
     _export_conversation_as_text,
+    _export_plots_as_zip,
     _list_conversations_bucketed,
 )
 from scripts.ai_assistant.ui.providers import (
@@ -908,6 +909,110 @@ class TestConversationHasArtifacts:
     ) -> None:
         self._setup(tmp_path, monkeypatch)
         assert _conversation_has_artifacts("does-not-exist") is False
+
+
+class TestExportPlotsZoneBoundary:
+    """PHI read-boundary enforcement for the ZIP figure/plot export.
+
+    The inline render path (``streaming.py``) gates every artifact read with
+    ``validate_agent_read``. The ZIP export must do the same: a figure or
+    Plotly path that resolves OUTSIDE the agent read zones (``llm_source/`` or
+    ``agent/``) — e.g. a raw-data PHI file — must never be read or embedded in
+    a downloadable archive, even though the candidate-resolution loop is happy
+    to point at it.
+    """
+
+    def test_out_of_zone_figure_is_not_embedded(self, monkeypatch_config: Path) -> None:
+        import zipfile
+        from io import BytesIO
+
+        # A legitimate figure INSIDE the agent output zone (agent/analysis/figures).
+        figures_dir = config.AGENT_OUTPUT_DIR / "figures"
+        figures_dir.mkdir(parents=True, exist_ok=True)
+        ok_fig = figures_dir / "ok.png"
+        ok_fig.write_bytes(b"\x89PNG-in-zone-ok")
+
+        # A figure OUTSIDE every read zone — stands in for a raw-data PHI file.
+        phi_fig = config.DATASETS_DIR / "phi_secret.png"
+        phi_fig.parent.mkdir(parents=True, exist_ok=True)
+        phi_bytes = b"\x89PNG-PHI-SECRET-do-not-leak"
+        phi_fig.write_bytes(phi_bytes)
+
+        conv_dir = config.CONVERSATIONS_DIR
+        conv_dir.mkdir(parents=True, exist_ok=True)
+        _write_conv_json(
+            conv_dir,
+            "zone-fig-01",
+            datetime.now(UTC).isoformat(),
+            messages=[
+                {
+                    "role": "assistant",
+                    "content": (
+                        f"in-zone <RPLN_FIGURE:{ok_fig}> "
+                        f"out-of-zone <RPLN_FIGURE:{phi_fig}>"
+                    ),
+                }
+            ],
+        )
+
+        raw = _export_plots_as_zip("zone-fig-01", "png")
+
+        assert raw, "expected a non-empty zip (the in-zone figure should export)"
+        with zipfile.ZipFile(BytesIO(raw)) as zf:
+            names = zf.namelist()
+            blob = b"".join(zf.read(n) for n in names if n != "README.txt")
+
+        # The in-zone figure exports normally...
+        assert "ok.png" in names
+        # ...but the out-of-zone (PHI) figure is neither named nor embedded.
+        assert "phi_secret.png" not in names
+        assert phi_bytes not in blob
+
+    def test_out_of_zone_plotly_is_not_read(
+        self, monkeypatch_config: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import zipfile
+        from io import BytesIO
+
+        import plotly.io as pio
+
+        # If the export ever reads + renders a file, it embeds this sentinel.
+        # After the guard lands, the out-of-zone file is never read, so the
+        # sentinel must never appear.
+        sentinel = b"RENDERED-SENTINEL-bytes"
+        monkeypatch.setattr(pio, "to_image", lambda *_a, **_k: sentinel)
+
+        phi_plotly = config.DATASETS_DIR / "phi_chart.json"
+        phi_plotly.parent.mkdir(parents=True, exist_ok=True)
+        phi_plotly.write_text('{"data": [], "layout": {}}', encoding="utf-8")
+
+        conv_dir = config.CONVERSATIONS_DIR
+        conv_dir.mkdir(parents=True, exist_ok=True)
+        _write_conv_json(
+            conv_dir,
+            "zone-plotly-01",
+            datetime.now(UTC).isoformat(),
+            messages=[
+                {
+                    "role": "assistant",
+                    "content": f"out-of-zone <RPLN_PLOTLY:{phi_plotly}>",
+                }
+            ],
+        )
+
+        raw = _export_plots_as_zip("zone-plotly-01", "png")
+
+        # The only out-of-zone plot was skipped: no rendered bytes leaked, and
+        # no plot-derived entry was added (a notes-only README may remain).
+        if raw:
+            with zipfile.ZipFile(BytesIO(raw)) as zf:
+                names = zf.namelist()
+                blob = b"".join(zf.read(n) for n in names)
+            assert sentinel not in blob
+            assert all(n == "README.txt" for n in names), names
+        # The path/filename must not appear anywhere in the archive bytes
+        # (skip notes are generic — paths can themselves be PHI-ish).
+        assert b"phi_chart" not in raw
 
 
 # ---------------------------------------------------------------------------

@@ -15,6 +15,7 @@ import streamlit as st
 
 import config
 from scripts.ai_assistant.agent_graph import reset_agent
+from scripts.ai_assistant.file_access import validate_agent_read
 from scripts.ai_assistant.phi_safe import redact_message_content, redact_phi_in_text
 
 logger = logging.getLogger(__name__)
@@ -564,6 +565,7 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
 
     buf = BytesIO()
     added = 0
+    skipped_out_of_zone = 0
     notes: list[str] = []
     used_names: set[str] = set()
 
@@ -585,16 +587,16 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
         for fig_str in figures:
             clean_str = fig_str.replace("\\", "/")
             p = Path(clean_str)
-            
+
             agent_out = Path(getattr(config, "AGENT_OUTPUT_DIR", "."))
             repo_root = Path(getattr(config, "REPO_ROOT", "."))
             filename = p.name.lstrip(".")
-            
+
             candidates = []
             if filename:
                 candidates.append(agent_out / "figures" / filename)
                 candidates.append(agent_out / "code" / filename)
-                
+
             if not p.is_absolute():
                 candidates.extend([
                     agent_out / clean_str,
@@ -603,7 +605,7 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
                 ])
             else:
                 candidates.append(p)
-                
+
             for cand in candidates:
                 try:
                     resolved = cand.resolve()
@@ -613,6 +615,15 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
                 except OSError:
                     continue
             if not p.exists():
+                continue
+            # PHI read-boundary: only embed artifacts inside the agent's
+            # permitted read zones (llm_source/ or agent/). A resolved path that
+            # escapes those zones (e.g. a raw-data file) is skipped, mirroring the
+            # inline render path's validate_agent_read gate in streaming.py.
+            try:
+                validate_agent_read(p)
+            except PermissionError:
+                skipped_out_of_zone += 1
                 continue
             try:
                 raw = p.read_bytes()
@@ -650,16 +661,16 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
                 for plt_str in plotly_paths:
                     clean_str = plt_str.replace("\\", "/")
                     p = Path(clean_str)
-                    
+
                     agent_out = Path(getattr(config, "AGENT_OUTPUT_DIR", "."))
                     repo_root = Path(getattr(config, "REPO_ROOT", "."))
                     filename = p.name.lstrip(".")
-                    
+
                     candidates = []
                     if filename:
                         candidates.append(agent_out / "figures" / filename)
                         candidates.append(agent_out / "code" / filename)
-                        
+
                     if not p.is_absolute():
                         candidates.extend([
                             agent_out / clean_str,
@@ -668,7 +679,7 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
                         ])
                     else:
                         candidates.append(p)
-                        
+
                     for cand in candidates:
                         try:
                             resolved = cand.resolve()
@@ -678,6 +689,13 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
                         except OSError:
                             continue
                     if not p.exists():
+                        continue
+                    # PHI read-boundary (see figure branch above): never read a
+                    # Plotly spec that resolves outside the agent read zones.
+                    try:
+                        validate_agent_read(p)
+                    except PermissionError:
+                        skipped_out_of_zone += 1
                         continue
                     try:
                         fig = pio.from_json(p.read_text(encoding="utf-8"))
@@ -694,6 +712,19 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
                     "Plotly JSON to static images. Install with `uv add kaleido` "
                     "or `pip install kaleido`."
                 )
+
+        if skipped_out_of_zone:
+            # Generic, path-free note — the path itself can be PHI-ish.
+            notes.append(
+                f"{skipped_out_of_zone} artifact(s) skipped: outside the "
+                "permitted read zone."
+            )
+            logger.warning(
+                "Export skipped %d artifact(s) outside the agent read zone "
+                "(conv_id=%s)",
+                skipped_out_of_zone,
+                conv_id,
+            )
 
         if notes:
             zf.writestr("README.txt", "\n".join(dict.fromkeys(notes)) + "\n")
