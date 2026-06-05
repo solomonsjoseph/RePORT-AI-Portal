@@ -39,6 +39,7 @@ import yaml
 
 from scripts.audit.ledger import dataset_phi_ledger_path
 from scripts.skills.extract_to_llm_source import (
+    EXIT_DECISION_MISMATCH,
     EXIT_DESTRUCTION_INCOMPLETE,
     EXIT_LEDGER_HASH_NULL,
     EXIT_MANIFEST_MISMATCH,
@@ -367,7 +368,7 @@ class TestVerifyHappyPath:
         approval_path = paths["run_dir"] / "phi_handling_approval.json"
         approval_path.write_text(json.dumps(approval), encoding="utf-8")
         rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
-        assert rc == 9  # EXIT_DECISION_MISMATCH
+        assert rc == EXIT_DECISION_MISMATCH
         # Check status.json was updated to held
         status_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "status.json"
         status = json.loads(status_path.read_text())

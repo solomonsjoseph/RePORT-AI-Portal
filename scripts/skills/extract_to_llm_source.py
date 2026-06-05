@@ -694,10 +694,10 @@ def _verify_assertion_decided_vs_applied(audit_dir: Path, run_dir: Path) -> _Ass
     return "pass", ""
 
 
-def _assertion_12_update_status(
+def _assertion_13_update_status(
     run_dir: Path,
 ) -> _AssertionResult:
-    """Assertion 12: status.json exists; on pass, set verifier_passed: true."""
+    """Assertion 13: status.json exists; on pass, set verifier_passed: true."""
     status_path = run_dir / "status.json"
     if not status_path.exists():
         return "fail", f"status.json not found at {status_path}"
@@ -833,7 +833,7 @@ def _cmd_verify(args: argparse.Namespace) -> int:
         (
             13,
             "status_json_updated",
-            lambda: _assertion_12_update_status(run_dir),
+            lambda: _assertion_13_update_status(run_dir),
             EXIT_VERIFIER_FAIL,  # exit code unused for assertion 13 (always last)
         ),
     ]
