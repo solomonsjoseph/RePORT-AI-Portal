@@ -24,6 +24,7 @@ __all__ = [
     "Action",
     "FormReviewApproval",
     "HeaderClassification",
+    "HeldReason",
     "OfficialSourceRejected",
     "PureTransformValidation",
     "RuleBundle",
@@ -149,6 +150,30 @@ class PureTransformValidation:
 
 
 @dataclass(frozen=True, slots=True)
+class HeldReason:
+    """Structured note written when classification is held after exhausting attempts.
+
+    All three fields are required by the operator-review contract:
+    - ``what_was_tried`` — description of the classification operations performed
+    - ``what_was_ambiguous`` — which aspect of the header/rule set was not resolved
+    - ``what_would_resolve`` — concrete information or action that would unblock the form
+
+    Header-name metadata only; never includes row values.
+    """
+
+    what_was_tried: str
+    what_was_ambiguous: str
+    what_would_resolve: str
+
+    def to_json(self) -> dict[str, str]:
+        return {
+            "what_was_tried": self.what_was_tried,
+            "what_was_ambiguous": self.what_was_ambiguous,
+            "what_would_resolve": self.what_would_resolve,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class FormReviewApproval:
     """Form-level review decision safe to serialize into audit ledgers."""
 
@@ -160,10 +185,11 @@ class FormReviewApproval:
     reasons: tuple[str, ...]
     rule_bundle_sha256: str
     source_mode: str
+    held_reason: HeldReason | None = None
 
     def to_json(self) -> dict[str, Any]:
         """Return a payload with headers/actions only; no row or fake values."""
-        return {
+        payload: dict[str, Any] = {
             "form_name": self.form_name,
             "status": self.status,
             "attempts": self.attempts,
@@ -173,6 +199,9 @@ class FormReviewApproval:
             "rule_bundle_sha256": self.rule_bundle_sha256,
             "source_mode": self.source_mode,
         }
+        if self.held_reason is not None:
+            payload["held_reason"] = self.held_reason.to_json()
+        return payload
 
 
 _SUPPORTED_JURISDICTIONS = frozenset({"USA", "INDIA"})
@@ -784,6 +813,41 @@ def _adversarial_header_validation(
     return tuple(failures)
 
 
+def _build_held_reason_for_adversarial_exhaustion(
+    failures: tuple[str, ...],
+    attempts: int,
+    privacy_config: StudyPrivacyConfig,
+) -> HeldReason:
+    """Construct the structured hold note after adversarial probes fail every attempt.
+
+    Header-name metadata only; never references row values.
+    """
+    failing_probes = ", ".join(
+        f.removeprefix("adversarial header probe failed: ") for f in failures
+    )
+    return HeldReason(
+        what_was_tried=(
+            f"Ran adversarial header classification probes {attempts} time(s) "
+            f"against the {privacy_config.conflict_policy} rule bundle "
+            f"(jurisdictions: {', '.join(privacy_config.jurisdictions)}). "
+            "Probes use synthetic header names only; no dataset row values were read."
+        ),
+        what_was_ambiguous=(
+            f"The following synthetic probe header(s) were not classified as expected "
+            f"after all {attempts} attempt(s): {failing_probes}. "
+            "This indicates the loaded rule bundle does not satisfy the minimum "
+            "correctness invariants required before any form can be approved."
+        ),
+        what_would_resolve=(
+            "Review the loaded jurisdiction rules in the rule bundle "
+            f"(rules_sha256 will appear in the approval payload) to confirm that "
+            "the patterns for the failing probe categories are present and correct. "
+            "Increasing max_synthetic_attempts in _study_privacy.yaml will not resolve "
+            "a systematic rule gap — the patterns themselves must be corrected."
+        ),
+    )
+
+
 def review_form_headers(
     *,
     form_name: str,
@@ -791,12 +855,40 @@ def review_form_headers(
     privacy_config: StudyPrivacyConfig,
     rule_bundle: RuleBundle,
 ) -> FormReviewApproval:
-    """Review one form's headers before any row-value extraction is allowed."""
+    """Review one form's headers before any row-value extraction is allowed.
+
+    Adversarial classification probes are retried up to
+    ``privacy_config.max_synthetic_attempts`` times.  On every attempt the full
+    probe suite is re-evaluated against the rule bundle.  If the probes pass
+    within the attempt bound the review continues to blocker and coverage-hold
+    checks (which are deterministic and not retried).  If the probes still fail
+    after all attempts are exhausted the form is held with a structured
+    ``HeldReason`` that records what was tried, what was ambiguous, and what
+    information would resolve the hold.
+
+    Headers-only invariant: no row values are read at any point.
+    """
+    # ------------------------------------------------------------------
+    # Step 1: Classify the real form headers (deterministic, done once).
+    # ------------------------------------------------------------------
     classifications_by_header = classify_headers(headers, privacy_config, rule_bundle)
     classifications = tuple(classifications_by_header[header] for header in headers)
     actions = {header: item.action.value for header, item in classifications_by_header.items()}
+
+    # ------------------------------------------------------------------
+    # Step 2: Adversarial probe retry loop — up to max_synthetic_attempts.
+    # ------------------------------------------------------------------
+    adversarial_failures: tuple[str, ...] = ()
+    attempt = 0
+    for attempt in range(1, privacy_config.max_synthetic_attempts + 1):
+        adversarial_failures = _adversarial_header_validation(privacy_config, rule_bundle)
+        if not adversarial_failures:
+            break
+
+    # ------------------------------------------------------------------
+    # Step 3: Deterministic blockers and coverage holds (no retry needed).
+    # ------------------------------------------------------------------
     blockers = _review_blockers(headers)
-    adversarial_failures = _adversarial_header_validation(privacy_config, rule_bundle)
     # Option C coverage hold: a KEEP header whose name looks like PHI would be
     # published unscrubbed. Hold the whole form (non-blocking) for human review
     # rather than silently keep it — "preserved must be preserved, dropped
@@ -811,16 +903,26 @@ def review_form_headers(
     reasons = tuple(dict.fromkeys((*blockers, *adversarial_failures, *coverage_holds)))
 
     status = "held" if reasons else "approved"
-    attempts = privacy_config.max_synthetic_attempts if status == "held" else 1
+
+    # ------------------------------------------------------------------
+    # Step 4: Build structured held_reason when adversarial probes exhausted.
+    # ------------------------------------------------------------------
+    held_reason: HeldReason | None = None
+    if adversarial_failures and attempt >= privacy_config.max_synthetic_attempts:
+        held_reason = _build_held_reason_for_adversarial_exhaustion(
+            adversarial_failures, attempt, privacy_config
+        )
+
     return FormReviewApproval(
         form_name=form_name,
         status=status,
-        attempts=attempts,
+        attempts=attempt,
         actions=actions,
         classifications=classifications,
         reasons=reasons,
         rule_bundle_sha256=rule_bundle.rules_sha256,
         source_mode=rule_bundle.source_mode,
+        held_reason=held_reason,
     )
 
 

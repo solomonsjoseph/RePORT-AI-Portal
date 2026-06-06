@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 import yaml
 
 from scripts.security.phi_review import (
     Action,
+    HeldReason,
     OfficialSourceRejected,
     classify_headers,
     is_phi_risky_header,
@@ -275,3 +277,237 @@ def test_risky_header_already_scrubbed_by_rule_does_not_coverage_hold(tmp_path: 
 
     # email/phone are dropped by rule, not kept — so no coverage hold is raised
     assert not any(reason.startswith(PHI_COVERAGE_HOLD_PREFIX) for reason in approval.reasons)
+
+
+# ---------------------------------------------------------------------------
+# W4: Bounded-attempt classification retry tests
+# ---------------------------------------------------------------------------
+
+
+def test_adversarial_probe_exhaustion_produces_held_with_structured_note(
+    tmp_path: Path,
+) -> None:
+    """When adversarial probes fail every attempt the form is held with a HeldReason.
+
+    We inject a stub that always returns failures so the retry loop is forced to
+    exhaust all max_synthetic_attempts before giving up.
+    """
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    _write_privacy_config(study_dir)
+    cfg = load_study_privacy_config(study_dir)
+    bundle = refresh_jurisdiction_rules(cfg, allow_network=False)
+
+    always_failing = ("adversarial header probe failed: synthetic_email_header",)
+
+    with patch(
+        "scripts.security.phi_review._adversarial_header_validation",
+        return_value=always_failing,
+    ):
+        approval = review_form_headers(
+            form_name="probe_fail.xlsx",
+            headers=["culture_result", "hemoglobin_g_dl"],
+            privacy_config=cfg,
+            rule_bundle=bundle,
+        )
+
+    assert approval.status == "held"
+    # All attempts consumed.
+    assert approval.attempts == cfg.max_synthetic_attempts
+    # The adversarial failure appears in reasons.
+    assert any("adversarial header probe failed" in r for r in approval.reasons)
+    # A structured HeldReason is attached.
+    assert approval.held_reason is not None
+    assert isinstance(approval.held_reason, HeldReason)
+    # All three required fields are present and non-empty.
+    assert approval.held_reason.what_was_tried
+    assert approval.held_reason.what_was_ambiguous
+    assert approval.held_reason.what_would_resolve
+
+
+def test_adversarial_probe_exhaustion_held_reason_serialises_to_json(
+    tmp_path: Path,
+) -> None:
+    """The structured held_reason must appear in to_json() output."""
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    _write_privacy_config(study_dir)
+    cfg = load_study_privacy_config(study_dir)
+    bundle = refresh_jurisdiction_rules(cfg, allow_network=False)
+
+    always_failing = ("adversarial header probe failed: synthetic_email_header",)
+
+    with patch(
+        "scripts.security.phi_review._adversarial_header_validation",
+        return_value=always_failing,
+    ):
+        approval = review_form_headers(
+            form_name="probe_fail.xlsx",
+            headers=["culture_result"],
+            privacy_config=cfg,
+            rule_bundle=bundle,
+        )
+
+    payload = approval.to_json()
+    assert "held_reason" in payload
+    held = payload["held_reason"]
+    assert "what_was_tried" in held
+    assert "what_was_ambiguous" in held
+    assert "what_would_resolve" in held
+    # Confirm no row values leaked into the note.
+    serialised = json.dumps(payload, sort_keys=True)
+    assert "raw_value" not in serialised
+    assert "sample_value" not in serialised
+    assert "Alice" not in serialised
+
+
+def test_adversarial_probe_resolves_within_bound_approves_clean_form(
+    tmp_path: Path,
+) -> None:
+    """If adversarial probes pass within the attempt bound the form is approved.
+
+    Simulate: first call fails, second call passes.  With max_synthetic_attempts=5
+    this resolves on attempt 2 and approval.status must be 'approved' (assuming
+    no other blockers or coverage holds).
+    """
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    _write_privacy_config(study_dir)
+    cfg = load_study_privacy_config(study_dir)
+    bundle = refresh_jurisdiction_rules(cfg, allow_network=False)
+
+    call_count = {"n": 0}
+
+    def _probe_side_effect(
+        privacy_config: object, rule_bundle: object
+    ) -> tuple[str, ...]:
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            return ("adversarial header probe failed: synthetic_email_header",)
+        return ()
+
+    with patch(
+        "scripts.security.phi_review._adversarial_header_validation",
+        side_effect=_probe_side_effect,
+    ):
+        approval = review_form_headers(
+            form_name="clean.xlsx",
+            headers=["culture_result", "hemoglobin_g_dl"],
+            privacy_config=cfg,
+            rule_bundle=bundle,
+        )
+
+    assert approval.status == "approved"
+    # Probes resolved on attempt 2.
+    assert approval.attempts == 2
+    # No held_reason when approved.
+    assert approval.held_reason is None
+    # No adversarial failure in reasons.
+    assert not any("adversarial header probe failed" in r for r in approval.reasons)
+
+
+def test_held_reason_note_contains_tried_ambiguous_resolving_fields(
+    tmp_path: Path,
+) -> None:
+    """Assert the structured note contains the three operator-review fields."""
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    _write_privacy_config(study_dir)
+    cfg = load_study_privacy_config(study_dir)
+    bundle = refresh_jurisdiction_rules(cfg, allow_network=False)
+
+    always_failing = (
+        "adversarial header probe failed: synthetic_email_header",
+        "adversarial header probe failed: synthetic_aadhaar_header",
+    )
+
+    with patch(
+        "scripts.security.phi_review._adversarial_header_validation",
+        return_value=always_failing,
+    ):
+        approval = review_form_headers(
+            form_name="multi_fail.xlsx",
+            headers=["culture_result"],
+            privacy_config=cfg,
+            rule_bundle=bundle,
+        )
+
+    assert approval.held_reason is not None
+    note = approval.held_reason
+    # what_was_tried must mention the attempt count and jurisdictions.
+    assert str(cfg.max_synthetic_attempts) in note.what_was_tried
+    assert any(j in note.what_was_tried for j in cfg.jurisdictions)
+    # what_was_ambiguous must name the failing probes.
+    assert "synthetic_email_header" in note.what_was_ambiguous
+    assert "synthetic_aadhaar_header" in note.what_was_ambiguous
+    # what_would_resolve must be actionable (non-empty, operator-facing text).
+    assert len(note.what_would_resolve) > 20
+
+
+def test_clean_form_has_no_held_reason(tmp_path: Path) -> None:
+    """A fully clean form must have held_reason=None and status=approved."""
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    _write_privacy_config(study_dir)
+    cfg = load_study_privacy_config(study_dir)
+    bundle = refresh_jurisdiction_rules(cfg, allow_network=False)
+
+    approval = review_form_headers(
+        form_name="clean.xlsx",
+        headers=["participant_id", "culture_result", "visit_date"],
+        privacy_config=cfg,
+        rule_bundle=bundle,
+    )
+
+    assert approval.status == "approved"
+    assert approval.held_reason is None
+    assert "held_reason" not in approval.to_json()
+
+
+def test_held_reason_not_set_for_non_adversarial_holds(tmp_path: Path) -> None:
+    """Coverage holds and structural blockers do NOT produce a held_reason note.
+
+    Only exhausted adversarial probes trigger the structured note; other hold
+    reasons are operator-visible in approval.reasons and need no extra annotation.
+    """
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    _write_privacy_config(study_dir)
+    cfg = load_study_privacy_config(study_dir)
+    bundle = refresh_jurisdiction_rules(cfg, allow_network=False)
+
+    # Blank header → structural blocker hold; adversarial probes still pass.
+    approval = review_form_headers(
+        form_name="blank_header.xlsx",
+        headers=["", "culture_result"],
+        privacy_config=cfg,
+        rule_bundle=bundle,
+    )
+
+    assert approval.status == "held"
+    assert any("blank header" in r for r in approval.reasons)
+    # No adversarial exhaustion → no structured held_reason.
+    assert approval.held_reason is None
+
+
+def test_max_synthetic_attempts_one_exhausts_on_first_failure(tmp_path: Path) -> None:
+    """With max_synthetic_attempts=1 a single probe failure immediately exhausts the bound."""
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    path = _write_privacy_config(study_dir)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["approval"]["max_synthetic_attempts"] = 1
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    cfg = load_study_privacy_config(study_dir)
+    bundle = refresh_jurisdiction_rules(cfg, allow_network=False)
+
+    always_failing = ("adversarial header probe failed: synthetic_email_header",)
+
+    with patch(
+        "scripts.security.phi_review._adversarial_header_validation",
+        return_value=always_failing,
+    ):
+        approval = review_form_headers(
+            form_name="single_attempt.xlsx",
+            headers=["culture_result"],
+            privacy_config=cfg,
+            rule_bundle=bundle,
+        )
+
+    assert approval.status == "held"
+    assert approval.attempts == 1
+    assert approval.held_reason is not None
+    assert "1" in approval.held_reason.what_was_tried
