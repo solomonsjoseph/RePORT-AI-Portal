@@ -1273,6 +1273,49 @@ def _release_pipeline_lock_for_skill() -> None:
     _main._release_pipeline_lock()
 
 
+def _try_commit_snapshot(
+    *,
+    study: str,
+    run_id: str,
+    run_dir: Path,
+) -> str | None:
+    """Attempt to commit an immutable snapshot of the current clean pass.
+
+    Called when the terminal state is fully clean (held_forms == [] AND
+    verifier_passed is True).  Returns the snapshot_id on success, or None
+    if the snapshot could not be written (e.g. the same content was already
+    snapshotted — immutability guard).
+
+    Writes ``snapshot_id`` into the run's ``status.json`` on success.  Never
+    raises: snapshot failures are non-fatal (the publish already succeeded).
+    """
+    try:
+        from scripts.utils.snapshot import SnapshotExistsError, write_snapshot
+
+        snap_dest = write_snapshot(study, run_id)
+        snapshot_id = snap_dest.name
+        # Record the snapshot_id in status.json.
+        status_path = run_dir / "status.json"
+        if status_path.is_file():
+            try:
+                status = json.loads(status_path.read_text(encoding="utf-8"))
+                status["snapshot_id"] = snapshot_id
+                _atomic_write_json(status_path, status)
+            except (json.JSONDecodeError, OSError) as exc:
+                print(
+                    f"Warning: snapshot written but status.json update failed: {exc}",
+                    file=sys.stderr,
+                )
+        print(f"Snapshot committed: {snapshot_id} → {snap_dest}")
+        return snapshot_id
+    except SnapshotExistsError as exc:
+        print(f"Snapshot already exists (immutability guard): {exc}", file=sys.stderr)
+        return None
+    except Exception as exc:
+        print(f"Warning: snapshot commit failed (publish still succeeded): {exc}", file=sys.stderr)
+        return None
+
+
 def _cmd_run(args: argparse.Namespace) -> int:
     """Drive the trusted host publish path for the dataset child skill.
 
@@ -1284,7 +1327,15 @@ def _cmd_run(args: argparse.Namespace) -> int:
     4. Post-run gates (ledger hashes, quarantine).
     5. Destruction (destroy_staging_and_attest).
     6. Write status.json.
-    7. Exit EXIT_OK.
+    7. If --resume-held and terminal state is fully clean: commit snapshot.
+    8. Exit EXIT_OK.
+
+    --resume-held flag
+    ------------------
+    When ``--resume-held`` is supplied the run re-processes ONLY the forms
+    listed in the prior run's ``status.json`` ``held_forms`` field, leaving
+    already-published forms untouched.  This is a CLI/maintainer-only path:
+    the flag is refused when ``REPORTAL_PROCESS_ROLE=llm-agent``.
     """
     import config  # lazy — avoids import at module level for testability
     from scripts.utils.run_context import (
@@ -1294,6 +1345,19 @@ def _cmd_run(args: argparse.Namespace) -> int:
     )
 
     study = args.study
+    resume_held: bool = bool(getattr(args, "resume_held", False))
+
+    # ── Guard: refuse --resume-held from within the LLM agent process ────────
+    if resume_held and os.environ.get("REPORTAL_PROCESS_ROLE") == "llm-agent":
+        msg = (
+            "--resume-held is a CLI/maintainer-only operation and must not be "
+            "triggered from the LLM agent process role. "
+            "Refusing (REPORTAL_PROCESS_ROLE=llm-agent)."
+        )
+        print(msg, file=sys.stderr)
+        # Do not write a status.json — there is no run_dir yet at this point.
+        return EXIT_NEEDS_ADVICE
+
     started_utc = datetime.now(UTC).isoformat()
 
     # Derive all study-scoped paths from the explicit --study argument so that
@@ -1304,6 +1368,37 @@ def _cmd_run(args: argparse.Namespace) -> int:
     study_datasets_dir = Path(config.RAW_DATA_DIR) / study / "datasets"
 
     # ── Step 1a: resolve run_id ────────────────────────────────────────────
+    # For --resume-held: locate the most-recent partial/held prior run and
+    # extract its held_forms BEFORE minting the new run_id.  This must happen
+    # early so any error here exits before any lock is acquired.
+    resume_held_forms: tuple[str, ...] = ()
+    if resume_held:
+        prior_run_id, resolve_err = _resolve_run_id(study_output_dir, None)
+        if prior_run_id is None:
+            msg = f"--resume-held: no prior terminal run found: {resolve_err}"
+            print(msg, file=sys.stderr)
+            return EXIT_NEEDS_ADVICE
+        prior_status_path = study_output_dir / "runs" / prior_run_id / "status.json"
+        try:
+            prior_status = json.loads(prior_status_path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError, OSError) as exc:
+            msg = f"--resume-held: could not read prior status.json ({prior_status_path}): {exc}"
+            print(msg, file=sys.stderr)
+            return EXIT_NEEDS_ADVICE
+        prior_held: list[str] = [str(f) for f in prior_status.get("held_forms", [])]
+        if not prior_held:
+            msg = (
+                f"--resume-held: prior run {prior_run_id!r} has no held forms; "
+                "nothing to resume (use a plain `run` to re-publish all forms)."
+            )
+            print(msg, file=sys.stderr)
+            return EXIT_NEEDS_ADVICE
+        resume_held_forms = tuple(prior_held)
+        print(
+            f"--resume-held: re-processing {len(resume_held_forms)} held form(s) "
+            f"from prior run {prior_run_id!r}: {list(resume_held_forms)}",
+        )
+
     run_id = resolve_run_id()
     run_dir = study_output_dir / "runs" / run_id
 
@@ -1391,13 +1486,20 @@ def _cmd_run(args: argparse.Namespace) -> int:
             )
 
         # ── Step 1e: header-only PHI handling approval gate ───────────────
+        # For --resume-held: override selected_forms with the prior run's held
+        # forms so only those are re-reviewed (already-published forms stay
+        # untouched — they are not passed to the pipeline subprocess).
+        if resume_held:
+            gate_selected_forms = resume_held_forms
+        else:
+            gate_selected_forms = tuple(getattr(args, "forms", None) or ())
         try:
             form_gate = _run_form_approval_gate(
                 study=study,
                 study_raw_dir=Path(config.RAW_DATA_DIR) / study,
                 run_dir=run_dir,
                 max_workers=getattr(args, "max_workers", None),
-                selected_forms=tuple(getattr(args, "forms", None) or ()),
+                selected_forms=gate_selected_forms,
             )
         except Exception as exc:
             msg = f"PHI form approval gate failed: {exc}"
@@ -1554,6 +1656,26 @@ def _cmd_run(args: argparse.Namespace) -> int:
             },
         )
 
+        # ── Step 7 (--resume-held only): run verifier + commit snapshot ────
+        # When --resume-held produces a fully-clean pass (no remaining held
+        # forms, verifier assertions all pass), the resolved state is committed
+        # as an immutable snapshot.  The verifier is called inline here rather
+        # than as a separate CLI invocation so the snapshot is only committed
+        # when this resume-held run's own verifier confirms correctness.
+        if resume_held and final_code == EXIT_OK:
+            # Build a minimal Namespace that _cmd_verify accepts.
+            verify_args = argparse.Namespace(study=study, run_id=run_id)
+            verify_exit = _cmd_verify(verify_args)
+            if verify_exit == EXIT_OK:
+                # Verifier passed — commit snapshot.
+                _try_commit_snapshot(study=study, run_id=run_id, run_dir=run_dir)
+            else:
+                print(
+                    f"--resume-held: verifier exited {verify_exit}; snapshot not committed.",
+                    file=sys.stderr,
+                )
+                final_code = verify_exit
+
     except _SkillInterrupted:
         # SIGINT/SIGTERM — clean up lock; do NOT invoke destruction.
         print(
@@ -1624,6 +1746,19 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Limit this run to one manifest-declared dataset filename or stem. "
             "May be repeated. Omit to process all manifest review forms."
+        ),
+    )
+    run_p.add_argument(
+        "--resume-held",
+        dest="resume_held",
+        action="store_true",
+        default=False,
+        help=(
+            "CLI/maintainer-only: re-process ONLY the forms held in the most "
+            "recent partial/held run, leaving already-published forms untouched. "
+            "Refused when REPORTAL_PROCESS_ROLE=llm-agent. "
+            "On a fully-clean pass (no remaining held forms, verifier passes) "
+            "commits an immutable snapshot."
         ),
     )
 
