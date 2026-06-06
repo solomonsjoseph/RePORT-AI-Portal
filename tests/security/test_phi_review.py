@@ -288,10 +288,11 @@ def test_risky_header_already_scrubbed_by_rule_does_not_coverage_hold(tmp_path: 
 def test_adversarial_probe_exhaustion_produces_held_with_structured_note(
     tmp_path: Path,
 ) -> None:
-    """When adversarial probes fail every attempt the form is held with a HeldReason.
+    """When the adversarial probe fails the form is held with a structured HeldReason.
 
-    We inject a stub that always returns failures so the retry loop is forced to
-    exhaust all max_synthetic_attempts before giving up.
+    The probe is a single deterministic evaluation — it is not retried.  We inject
+    a stub that returns failures to simulate a rule-bundle defect and verify the form
+    is held with attempts==1 and a structured HeldReason attached.
     """
     study_dir = tmp_path / "data" / "raw" / "Study"
     _write_privacy_config(study_dir)
@@ -312,8 +313,8 @@ def test_adversarial_probe_exhaustion_produces_held_with_structured_note(
         )
 
     assert approval.status == "held"
-    # All attempts consumed.
-    assert approval.attempts == cfg.max_synthetic_attempts
+    # Single deterministic evaluation — attempts is always 1.
+    assert approval.attempts == 1
     # The adversarial failure appears in reasons.
     assert any("adversarial header probe failed" in r for r in approval.reasons)
     # A structured HeldReason is attached.
@@ -360,14 +361,14 @@ def test_adversarial_probe_exhaustion_held_reason_serialises_to_json(
     assert "Alice" not in serialised
 
 
-def test_adversarial_probe_resolves_within_bound_approves_clean_form(
+def test_adversarial_probe_pass_approves_clean_form(
     tmp_path: Path,
 ) -> None:
-    """If adversarial probes pass within the attempt bound the form is approved.
+    """When the adversarial probe passes the form is approved with attempts==1.
 
-    Simulate: first call fails, second call passes.  With max_synthetic_attempts=5
-    this resolves on attempt 2 and approval.status must be 'approved' (assuming
-    no other blockers or coverage holds).
+    The probe is a single deterministic evaluation: pass → approved immediately
+    (no retry, no second chance).  A hypothetical "first-fail, second-pass"
+    scenario cannot occur for a deterministic probe against immutable args.
     """
     study_dir = tmp_path / "data" / "raw" / "Study"
     _write_privacy_config(study_dir)
@@ -376,15 +377,13 @@ def test_adversarial_probe_resolves_within_bound_approves_clean_form(
 
     call_count = {"n": 0}
 
-    def _probe_side_effect(privacy_config: object, rule_bundle: object) -> tuple[str, ...]:
+    def _probe_pass(privacy_config: object, rule_bundle: object) -> tuple[str, ...]:
         call_count["n"] += 1
-        if call_count["n"] == 1:
-            return ("adversarial header probe failed: synthetic_email_header",)
-        return ()
+        return ()  # probe passes
 
     with patch(
         "scripts.security.phi_review._adversarial_header_validation",
-        side_effect=_probe_side_effect,
+        side_effect=_probe_pass,
     ):
         approval = review_form_headers(
             form_name="clean.xlsx",
@@ -394,8 +393,9 @@ def test_adversarial_probe_resolves_within_bound_approves_clean_form(
         )
 
     assert approval.status == "approved"
-    # Probes resolved on attempt 2.
-    assert approval.attempts == 2
+    # Exactly one evaluation — never retried.
+    assert approval.attempts == 1
+    assert call_count["n"] == 1
     # No held_reason when approved.
     assert approval.held_reason is None
     # No adversarial failure in reasons.
@@ -429,8 +429,8 @@ def test_held_reason_note_contains_tried_ambiguous_resolving_fields(
 
     assert approval.held_reason is not None
     note = approval.held_reason
-    # what_was_tried must mention the attempt count and jurisdictions.
-    assert str(cfg.max_synthetic_attempts) in note.what_was_tried
+    # what_was_tried must mention the deterministic nature and jurisdictions.
+    assert "deterministic" in note.what_was_tried
     assert any(j in note.what_was_tried for j in cfg.jurisdictions)
     # what_was_ambiguous must name the failing probes.
     assert "synthetic_email_header" in note.what_was_ambiguous
@@ -461,8 +461,9 @@ def test_clean_form_has_no_held_reason(tmp_path: Path) -> None:
 def test_held_reason_not_set_for_non_adversarial_holds(tmp_path: Path) -> None:
     """Coverage holds and structural blockers do NOT produce a held_reason note.
 
-    Only exhausted adversarial probes trigger the structured note; other hold
-    reasons are operator-visible in approval.reasons and need no extra annotation.
+    Only adversarial probe failures trigger the structured note; structural blocker
+    and coverage-hold reasons are operator-visible in approval.reasons and need no
+    extra annotation.
     """
     study_dir = tmp_path / "data" / "raw" / "Study"
     _write_privacy_config(study_dir)
@@ -483,8 +484,13 @@ def test_held_reason_not_set_for_non_adversarial_holds(tmp_path: Path) -> None:
     assert approval.held_reason is None
 
 
-def test_max_synthetic_attempts_one_exhausts_on_first_failure(tmp_path: Path) -> None:
-    """With max_synthetic_attempts=1 a single probe failure immediately exhausts the bound."""
+def test_max_synthetic_attempts_one_probe_failure_holds(tmp_path: Path) -> None:
+    """A probe failure holds the form with attempts==1 regardless of max_synthetic_attempts.
+
+    max_synthetic_attempts is loaded from config but no longer drives a loop — a single
+    deterministic evaluation is always performed.  This test verifies that probe failure
+    with max_synthetic_attempts=1 still produces attempts==1 and a structured held_reason.
+    """
     study_dir = tmp_path / "data" / "raw" / "Study"
     path = _write_privacy_config(study_dir)
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
