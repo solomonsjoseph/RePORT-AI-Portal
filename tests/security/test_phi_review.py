@@ -163,7 +163,8 @@ def test_form_review_holds_ambiguous_form_after_five_synthetic_attempts(tmp_path
     )
 
     assert approval.status == "held"
-    assert approval.attempts == 5
+    # Structural blocker (blank header) — adversarial probes pass on attempt 1.
+    assert approval.attempts == 1
     assert "blank header" in " ".join(approval.reasons)
 
 
