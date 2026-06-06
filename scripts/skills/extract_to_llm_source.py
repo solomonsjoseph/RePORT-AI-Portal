@@ -1332,10 +1332,17 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
     --resume-held flag
     ------------------
-    When ``--resume-held`` is supplied the run re-processes ONLY the forms
-    listed in the prior run's ``status.json`` ``held_forms`` field, leaving
-    already-published forms untouched.  This is a CLI/maintainer-only path:
-    the flag is refused when ``REPORTAL_PROCESS_ROLE=llm-agent``.
+    ``--resume-held`` resumes after a maintainer has resolved the held forms of
+    a prior partial run.  It re-processes the FULL surviving form set (prior
+    ``approved_forms`` ∪ ``held_forms``) — NOT only the held forms — because
+    promotion (``main.py`` ``_publish_leg``) is a whole-leg atomic replace:
+    publishing only the held subset would securely delete every previously
+    approved form from ``llm_source/``.  Re-processing the union reproduces every
+    surviving form; the now-resolved held forms are re-reviewed and, on a fully
+    clean pass (no held forms left + verifier OK), the run is snapshotted.  This
+    is a CLI/maintainer-only path: the flag is refused when
+    ``REPORTAL_PROCESS_ROLE=llm-agent``.  It requires a prior run that actually
+    had held forms (otherwise use a plain ``run``).
     """
     import config  # lazy — avoids import at module level for testability
     from scripts.utils.run_context import (
@@ -1371,7 +1378,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     # For --resume-held: locate the most-recent partial/held prior run and
     # extract its held_forms BEFORE minting the new run_id.  This must happen
     # early so any error here exits before any lock is acquired.
-    resume_held_forms: tuple[str, ...] = ()
+    resume_surviving_forms: tuple[str, ...] = ()
     if resume_held:
         prior_run_id, resolve_err = _resolve_run_id(study_output_dir, None)
         if prior_run_id is None:
@@ -1393,10 +1400,18 @@ def _cmd_run(args: argparse.Namespace) -> int:
             )
             print(msg, file=sys.stderr)
             return EXIT_NEEDS_ADVICE
-        resume_held_forms = tuple(prior_held)
+        prior_approved: list[str] = [str(f) for f in prior_status.get("approved_forms", [])]
+        # Re-process the FULL surviving set (prior approved ∪ held), NOT only the
+        # held forms. Promotion (main.py _publish_leg) is a whole-leg atomic
+        # replace, so publishing only the held subset would securely DELETE every
+        # previously-approved form from llm_source/. Passing the union lets the
+        # whole-leg rebuild reproduce every surviving form; the gate re-reviews
+        # the now-resolved held forms and a fully-clean pass is snapshotted.
+        resume_surviving_forms = tuple(sorted(set(prior_approved) | set(prior_held)))
         print(
-            f"--resume-held: re-processing {len(resume_held_forms)} held form(s) "
-            f"from prior run {prior_run_id!r}: {list(resume_held_forms)}",
+            f"--resume-held: re-processing {len(prior_held)} resolved held form(s) "
+            f"within the full surviving set of {len(resume_surviving_forms)} form(s) "
+            f"from prior run {prior_run_id!r}: {list(resume_surviving_forms)}",
         )
 
     run_id = resolve_run_id()
@@ -1486,11 +1501,13 @@ def _cmd_run(args: argparse.Namespace) -> int:
             )
 
         # ── Step 1e: header-only PHI handling approval gate ───────────────
-        # For --resume-held: override selected_forms with the prior run's held
-        # forms so only those are re-reviewed (already-published forms stay
-        # untouched — they are not passed to the pipeline subprocess).
+        # For --resume-held: re-review the FULL surviving set (prior approved ∪
+        # held). The gate re-approves the now-resolved held forms and re-approves
+        # the prior-approved forms, so REPORTAL_ALLOWED_DATASET_FORMS — and thus
+        # the whole-leg republish — covers every surviving form. Passing only the
+        # held subset here would let the whole-leg replace delete approved forms.
         if resume_held:
-            gate_selected_forms = resume_held_forms
+            gate_selected_forms = resume_surviving_forms
         else:
             gate_selected_forms = tuple(getattr(args, "forms", None) or ())
         try:
