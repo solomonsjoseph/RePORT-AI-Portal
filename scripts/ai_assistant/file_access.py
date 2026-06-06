@@ -29,7 +29,7 @@ import os
 from pathlib import Path
 
 import config
-from scripts.audit.zone_guards import deny_if_audit_zone
+from scripts.audit.zone_guards import deny_if_audit_zone, deny_if_snapshot_root
 from scripts.security.secure_env import ZoneViolationError
 
 __all__ = [
@@ -88,8 +88,11 @@ def validate_agent_read(path: str | Path) -> Path:
     Raises:
         ZoneViolationError: *path* is outside the agent's permitted read zones.
         AuditZoneViolation: *path* resolves into ``output/*/audit/``.
+        SnapshotZoneViolation: *path* is under ``output/*/snapshots/<id>/`` but
+            outside that snapshot's ``<id>/llm_source/`` subtree.
     """
     deny_if_audit_zone(path)  # Phase 4 audit-zone deny
+    deny_if_snapshot_root(path)  # W1 snapshot-root deny (non-llm_source subtree)
     read_roots, _, allowlist = _zones()
     resolved = _resolve(path)
     if resolved in allowlist:

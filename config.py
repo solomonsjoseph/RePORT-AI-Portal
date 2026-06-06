@@ -309,6 +309,25 @@ CONVERSATIONS_DIR: Path = AGENT_STATE_DIR / "conversations"
 # path under this directory is hard-rejected by ``validate_agent_read``.
 STUDY_SNAPSHOTS_DIR: Path = DATA_DIR / "snapshots" / STUDY_NAME
 
+# ----------------------------------------------------------------------------
+# STUDY SNAPSHOT OUTPUT TIER (immutable clean-publish records — W1)
+# ----------------------------------------------------------------------------
+# Per-study, immutable record of a fully-clean publish pass written by
+# ``scripts/utils/snapshot.py``. Each ``snapshots/{snapshot_id}/`` holds a copy
+# of the run's ``llm_source/`` tree, its ``phi_handling_approval.json``, the
+# verifier report, and a ``snapshot_manifest.json``. The Load Study UI's
+# "existing study data" selector lists these and loads one in place of the live
+# pipeline output.
+#
+# SECURITY: the snapshot ROOT is OUTSIDE the agent read zone (which is
+# ``llm_source/`` + ``agent/``). ``validate_agent_read`` hard-rejects any path
+# under this directory EXCEPT a ``snapshots/{id}/llm_source/`` subtree that has
+# been explicitly selected (i.e. ``config.STUDY_LLM_SOURCE_DIR`` repointed at
+# it). A ``.NO_LLM_ZONE`` sentinel is dropped at each snapshot root as
+# defence-in-depth. Distinct from the legacy ``STUDY_SNAPSHOTS_DIR`` baseline
+# marker above, which lives under ``data/`` and is never auto-created.
+STUDY_SNAPSHOTS_OUTPUT_DIR: Path = STUDY_OUTPUT_DIR / "snapshots"
+
 # Staging workspace — per-study tree inside TMP_DIR. Managed per-run by
 # main.py's _prepare_staging() / _publish_staging(); NOT created eagerly by
 # ensure_directories() so a stale workspace from a crashed previous run is
