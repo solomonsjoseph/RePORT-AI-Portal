@@ -179,6 +179,12 @@ class FormReviewApproval:
 
     form_name: str
     status: str
+    # ``attempts`` = the ACTUAL number of adversarial-probe retry iterations run
+    # (1..max_synthetic_attempts), not a fixed "max-on-hold" sentinel. A held
+    # form may record attempts=1 when it was held for a DETERMINISTIC reason
+    # (structural blocker or Option-C coverage hold) whose probes already passed
+    # on the first iteration. For an auditor: attempts=1 on a held form means
+    # "held without needing probe retries", NOT "not reviewed".
     attempts: int
     actions: dict[str, str]
     classifications: tuple[HeaderClassification, ...]
