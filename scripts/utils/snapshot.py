@@ -164,6 +164,28 @@ def _tree_manifest(root: Path) -> dict[str, str]:
     return manifest
 
 
+def _assert_no_escaping_symlinks(root: Path) -> None:
+    """Fail-closed if any symlink under *root* resolves OUTSIDE *root*.
+
+    ``write_snapshot`` copies ``llm_source/`` with ``shutil.copytree`` (default
+    ``symlinks=False``), which DEREFERENCES symlinks and copies their *target*
+    content. A symlink inside a malformed/compromised ``llm_source/`` that
+    points at a raw ``.xlsx``/``.jsonl`` outside the tree would otherwise bake
+    that out-of-tree (possibly PHI) content into the immutable, re-exposable
+    snapshot. Reject any such escape before a single byte is copied.
+    """
+    root_real = root.resolve()
+    for path in sorted(root.rglob("*")):
+        if not path.is_symlink():
+            continue
+        target_real = path.resolve()
+        if target_real != root_real and root_real not in target_real.parents:
+            raise SnapshotError(
+                "llm_source contains a symlink that escapes the tree; refusing to "
+                f"snapshot (fail-closed): {path.relative_to(root).as_posix()}"
+            )
+
+
 def _mint_snapshot_id(llm_source_manifest: dict[str, str], run_id: str) -> str:
     """Mint a deterministic ``snap_<hash>`` id from the llm_source manifest + run_id.
 
@@ -229,6 +251,11 @@ def write_snapshot(study: str, run_id: str, *, snapshot_id: str | None = None) -
     llm_source_src = Path(config.STUDY_LLM_SOURCE_DIR)
     if not llm_source_src.is_dir():
         raise SnapshotError(f"llm_source tree not found at {llm_source_src}; cannot snapshot")
+
+    # Fail-closed: a symlink under llm_source/ that escapes the tree would be
+    # dereferenced by copytree and bake out-of-tree (possibly PHI) content into
+    # the immutable snapshot. Reject before hashing or copying anything.
+    _assert_no_escaping_symlinks(llm_source_src)
 
     run_dir = _run_dir(study, run_id)
     approval_src = run_dir / APPROVAL_FILENAME

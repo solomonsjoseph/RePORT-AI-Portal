@@ -434,3 +434,88 @@ class TestSnapshotRootGuardSegments:
     def test_non_snapshot_path_exempt(self) -> None:
         deny_if_snapshot_root("/srv/output/StudyX/llm_source/x.jsonl")
         deny_if_snapshot_root("/some/random/path")
+
+
+# ── symlink hardening (review finding #3) ────────────────────────────────────
+
+
+class TestSymlinkHardening:
+    """A symlink under ``llm_source/`` that escapes the tree must fail-closed:
+    ``copytree(symlinks=False)`` would otherwise dereference it and bake the
+    out-of-tree (possibly PHI) target content into the immutable, re-exposable
+    snapshot."""
+
+    def test_escaping_symlink_rejected(self, monkeypatch_config: Path) -> None:
+        study = config.STUDY_NAME
+        _seed_llm_source(config.STUDY_LLM_SOURCE_DIR)
+        _seed_run_artifacts(study, RUN_ID)
+
+        # A file OUTSIDE the llm_source tree (stand-in for a raw PHI file).
+        outside = Path(config.OUTPUT_DIR) / "outside_secret.jsonl"
+        outside.write_text('{"SUBJID": "leak"}\n', encoding="utf-8")
+        escaping = config.STUDY_LLM_SOURCE_DIR / "dataset_schema" / "files" / "link.jsonl"
+        escaping.symlink_to(outside)
+
+        with pytest.raises(SnapshotError):
+            write_snapshot(study, RUN_ID)
+
+    def test_in_tree_symlink_allowed(self, monkeypatch_config: Path) -> None:
+        study = config.STUDY_NAME
+        _seed_llm_source(config.STUDY_LLM_SOURCE_DIR)
+        _seed_run_artifacts(study, RUN_ID)
+        # A symlink whose target stays WITHIN the tree is fine — its content is
+        # already scrubbed; copytree materialises it as a regular file.
+        files_dir = config.STUDY_LLM_SOURCE_DIR / "dataset_schema" / "files"
+        (files_dir / "alias.jsonl").symlink_to(files_dir / "1A_form.jsonl")
+        dest = write_snapshot(study, RUN_ID)
+        assert dest.is_dir()
+
+
+# ── security zone under a REAL output layout (review finding #1) ──────────────
+
+
+class TestSecurityZoneRealOutputLayout:
+    """Co-test the ``deny_if_snapshot_root`` GUARD against a path that actually
+    contains an ``output`` segment, so the guard (not just read-root
+    containment) is what denies the snapshot root. The default ``tmp_path``
+    layout has no ``output`` segment, so the other zone tests deny via
+    containment only — this closes the guard+layout gap."""
+
+    def test_guard_fires_on_real_output_layout(
+        self, monkeypatch_config: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        study = config.STUDY_NAME
+        # Repoint config so every snapshot path carries a literal ``output``
+        # segment — the token deny_if_snapshot_root keys on.
+        out = Path(config.OUTPUT_DIR) / "output"
+        llm_source = out / study / "llm_source"
+        monkeypatch.setattr(config, "OUTPUT_DIR", out)
+        monkeypatch.setattr(config, "STUDY_OUTPUT_DIR", out)
+        monkeypatch.setattr(config, "STUDY_LLM_SOURCE_DIR", llm_source)
+
+        _seed_llm_source(llm_source)
+        _seed_run_artifacts(study, RUN_ID)
+        dest = write_snapshot(study, RUN_ID)
+
+        # Sanity: the path really does carry the segments the guard matches.
+        assert "output" in dest.parts and "snapshots" in dest.parts
+
+        # The GUARD itself denies the root/approval/manifest on this real layout.
+        with pytest.raises(SnapshotZoneViolation):
+            deny_if_snapshot_root(dest / "phi_handling_approval.json")
+        with pytest.raises(SnapshotZoneViolation):
+            deny_if_snapshot_root(dest / MANIFEST_FILENAME)
+
+        # And the integration surfaces those as ZoneViolationError...
+        with pytest.raises(ZoneViolationError):
+            validate_agent_read(dest / "phi_handling_approval.json")
+        with pytest.raises(ZoneViolationError):
+            validate_agent_read(dest / MANIFEST_FILENAME)
+
+        # ...while a SELECTED llm_source leaf is permitted, root still denied.
+        snap_llm_source = select_snapshot_llm_source(study, dest.name)
+        monkeypatch.setattr(config, "STUDY_LLM_SOURCE_DIR", snap_llm_source)
+        leaf = snap_llm_source / "dataset_schema" / "files" / "1A_form.jsonl"
+        assert validate_agent_read(leaf) == Path(leaf.resolve())
+        with pytest.raises(ZoneViolationError):
+            validate_agent_read(dest / "phi_handling_approval.json")
