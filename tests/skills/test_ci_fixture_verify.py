@@ -104,9 +104,9 @@ class TestFixtureVerifyHappyPath:
         data = json.loads(report.read_text())
         assert data["overall"] == "pass"
         assert data["exit_code"] == EXIT_OK
-        assert len(data["assertions"]) == 13
+        assert len(data["assertions"]) == 14
 
-    def test_all_13_assertions_pass(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_all_14_assertions_pass(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_config(monkeypatch, tmp_path)
         build_golden_output_tree(
             output_root=tmp_path / "output",

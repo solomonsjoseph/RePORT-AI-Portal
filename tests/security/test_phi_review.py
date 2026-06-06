@@ -10,12 +10,15 @@ from scripts.security.phi_review import (
     Action,
     OfficialSourceRejected,
     classify_headers,
+    is_phi_risky_header,
     load_study_privacy_config,
     refresh_jurisdiction_rules,
     review_form_headers,
     validate_official_source_url,
     validate_pure_transform_source,
 )
+
+PHI_COVERAGE_HOLD_PREFIX = "phi_coverage_hold"
 
 
 def _write_privacy_config(study_dir: Path) -> Path:
@@ -179,3 +182,96 @@ def test_form_review_payload_contains_no_synthetic_or_real_values(tmp_path: Path
     assert "Alice" not in payload
     assert "555" not in payload
     assert "123-45-6789" not in payload
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        "interviewer_remarks",
+        "clinical_notes",
+        "patient_name",
+        "subject_dob",
+        "home_address",
+        "guardian_phone",
+        "free_text_other",
+        "respondent_email",
+        "village",
+    ],
+)
+def test_phi_risky_header_flags_likely_phi_names(header: str) -> None:
+    assert is_phi_risky_header(header) is True
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        "culture_result",
+        "hemoglobin_g_dl",
+        "site_code",
+        "visit_count",
+        "bmi",
+        "age_years",
+        "weight_kg",
+        "treatment_outcome",
+        "",
+    ],
+)
+def test_phi_risky_header_passes_benign_clinical_names(header: str) -> None:
+    assert is_phi_risky_header(header) is False
+
+
+def test_form_held_when_risky_keep_header_escapes_rules(tmp_path: Path) -> None:
+    """A KEEP header with a PHI-risky name holds the form (Option C coverage hold)."""
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    _write_privacy_config(study_dir)
+    cfg = load_study_privacy_config(study_dir)
+    bundle = refresh_jurisdiction_rules(cfg, allow_network=False)
+
+    approval = review_form_headers(
+        form_name="04_FollowUp.xlsx",
+        headers=["participant_id", "visit_date", "culture_result", "interviewer_remarks"],
+        privacy_config=cfg,
+        rule_bundle=bundle,
+    )
+
+    assert approval.status == "held"
+    assert any(reason.startswith(PHI_COVERAGE_HOLD_PREFIX) for reason in approval.reasons)
+    assert any("interviewer_remarks" in reason for reason in approval.reasons)
+    # the escapee is classified KEEP — that is exactly why it must be held
+    assert approval.actions["interviewer_remarks"] == Action.KEEP.value
+
+
+def test_form_not_held_for_benign_keep_headers(tmp_path: Path) -> None:
+    """Benign KEEP columns must NOT trigger a coverage hold (no false positives)."""
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    _write_privacy_config(study_dir)
+    cfg = load_study_privacy_config(study_dir)
+    bundle = refresh_jurisdiction_rules(cfg, allow_network=False)
+
+    approval = review_form_headers(
+        form_name="lab.xlsx",
+        headers=["participant_id", "culture_result", "hemoglobin_g_dl", "site_code"],
+        privacy_config=cfg,
+        rule_bundle=bundle,
+    )
+
+    assert approval.status == "approved"
+    assert not any(reason.startswith(PHI_COVERAGE_HOLD_PREFIX) for reason in approval.reasons)
+
+
+def test_risky_header_already_scrubbed_by_rule_does_not_coverage_hold(tmp_path: Path) -> None:
+    """A risky name that a jurisdiction rule already scrubs is non-KEEP → no coverage hold."""
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    _write_privacy_config(study_dir)
+    cfg = load_study_privacy_config(study_dir)
+    bundle = refresh_jurisdiction_rules(cfg, allow_network=False)
+
+    approval = review_form_headers(
+        form_name="contact.xlsx",
+        headers=["participant_id", "email", "phone"],
+        privacy_config=cfg,
+        rule_bundle=bundle,
+    )
+
+    # email/phone are dropped by rule, not kept — so no coverage hold is raised
+    assert not any(reason.startswith(PHI_COVERAGE_HOLD_PREFIX) for reason in approval.reasons)

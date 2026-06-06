@@ -39,6 +39,7 @@ import yaml
 
 from scripts.audit.ledger import dataset_phi_ledger_path
 from scripts.skills.extract_to_llm_source import (
+    EXIT_AUDIT_COVERAGE_INCOMPLETE,
     EXIT_DECISION_MISMATCH,
     EXIT_DESTRUCTION_INCOMPLETE,
     EXIT_LEDGER_HASH_NULL,
@@ -113,14 +114,31 @@ def _make_valid_ledger(
     run_id: str = RUN_ID,
     forms: list[str] | None = None,
 ) -> None:
-    """Write valid per-dataset phi_handling_ledger.as_written.json files."""
+    """Write valid per-dataset phi_handling_ledger.as_written.json files.
+
+    Each ledger carries keep_decisions for the published columns (col_a, col_b)
+    so the fixture is audit-coverage-complete (assertion 14): every published
+    variable has a ledger accounting.
+    """
     audit_dir.mkdir(parents=True, exist_ok=True)
-    ledger = {
-        "run_id": run_id,
-        "scrub_config_hash": scrub_config_hash,
-        "input_dataset_hash": "abc123deadbeef",
-    }
     for form in forms or ["form_a.xlsx"]:
+        stem = Path(form).stem
+        ledger = {
+            "run_id": run_id,
+            "scrub_config_hash": scrub_config_hash,
+            "input_dataset_hash": "abc123deadbeef",
+            "keep_decisions": [
+                {
+                    "form": stem,
+                    "variable_id": col,
+                    "jurisdictions": [],
+                    "matched_rules": [],
+                    "rationale": "retained per review",
+                    "rule_bundle_sha256": None,
+                }
+                for col in ("col_a", "col_b")
+            ],
+        }
         dataset_phi_ledger_path(audit_dir, form).parent.mkdir(parents=True, exist_ok=True)
         dataset_phi_ledger_path(audit_dir, form).write_text(json.dumps(ledger), encoding="utf-8")
 
@@ -259,7 +277,7 @@ class TestVerifyHappyPath:
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         assert report_path.exists()
 
-    def test_report_has_13_assertions(
+    def test_report_has_14_assertions(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_config(monkeypatch, tmp_path)
@@ -267,7 +285,7 @@ class TestVerifyHappyPath:
         main(["verify", "--study", STUDY, "--run", RUN_ID])
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
-        assert len(report["assertions"]) == 13
+        assert len(report["assertions"]) == 14
 
     def test_all_assertions_pass(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_config(monkeypatch, tmp_path)
@@ -330,8 +348,20 @@ class TestVerifyHappyPath:
                 {
                     "form_name": "form_a.xlsx",
                     "classifications": [
-                        {"header": "col_a", "action": "keep", "jurisdictions": [], "matched_rules": [], "reasons": []},
-                        {"header": "col_b", "action": "keep", "jurisdictions": [], "matched_rules": [], "reasons": []},
+                        {
+                            "header": "col_a",
+                            "action": "keep",
+                            "jurisdictions": [],
+                            "matched_rules": [],
+                            "reasons": [],
+                        },
+                        {
+                            "header": "col_b",
+                            "action": "keep",
+                            "jurisdictions": [],
+                            "matched_rules": [],
+                            "reasons": [],
+                        },
                     ],
                 }
             ],
@@ -342,9 +372,96 @@ class TestVerifyHappyPath:
         assert rc == EXIT_OK
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
-        assert len(report["assertions"]) == 13
+        assert len(report["assertions"]) == 14
         assert all(a["result"] == "pass" for a in report["assertions"])
         assert report["overall"] == "pass"
+
+    def test_audit_coverage_complete_happy_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Assertion 14 passes when every published column has a ledger accounting."""
+        _patch_config(monkeypatch, tmp_path)
+        paths = _build_happy_study(tmp_path)
+        approval = {
+            "approved_forms": ["form_a.xlsx"],
+            "forms": [
+                {
+                    "form_name": "form_a.xlsx",
+                    "classifications": [
+                        {
+                            "header": "col_a",
+                            "action": "keep",
+                            "jurisdictions": [],
+                            "matched_rules": [],
+                            "reasons": [],
+                        },
+                        {
+                            "header": "col_b",
+                            "action": "keep",
+                            "jurisdictions": [],
+                            "matched_rules": [],
+                            "reasons": [],
+                        },
+                    ],
+                }
+            ],
+        }
+        (paths["run_dir"] / "phi_handling_approval.json").write_text(
+            json.dumps(approval), encoding="utf-8"
+        )
+        rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
+        assert rc == EXIT_OK
+        report = json.loads((paths["run_dir"] / "verifier_report.json").read_text(encoding="utf-8"))
+        cov = next(a for a in report["assertions"] if a["name"] == "ledger_covers_all_columns")
+        assert cov["result"] == "pass"
+
+    def test_audit_coverage_incomplete_holds_run(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A published column with NO ledger entry → assertion 14 holds + exit 10."""
+        _patch_config(monkeypatch, tmp_path)
+        paths = _build_happy_study(tmp_path)
+        approval = {
+            "approved_forms": ["form_a.xlsx"],
+            "forms": [
+                {
+                    "form_name": "form_a.xlsx",
+                    "classifications": [
+                        {
+                            "header": "col_a",
+                            "action": "keep",
+                            "jurisdictions": [],
+                            "matched_rules": [],
+                            "reasons": [],
+                        },
+                        {
+                            "header": "col_b",
+                            "action": "keep",
+                            "jurisdictions": [],
+                            "matched_rules": [],
+                            "reasons": [],
+                        },
+                    ],
+                }
+            ],
+        }
+        (paths["run_dir"] / "phi_handling_approval.json").write_text(
+            json.dumps(approval), encoding="utf-8"
+        )
+        # Publish an EXTRA column 'col_c' that has no ledger accounting.
+        jsonl = paths["llm_source_dir"] / "dataset_schema" / "files" / "form_a.jsonl"
+        jsonl.write_text(
+            json.dumps({"col_a": "v", "col_b": "v", "col_c": "v"}) + "\n", encoding="utf-8"
+        )
+        rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
+        assert rc == EXIT_AUDIT_COVERAGE_INCOMPLETE
+        status = json.loads((paths["run_dir"] / "status.json").read_text(encoding="utf-8"))
+        assert status["publish_status"] == "held"
+        assert "form_a.xlsx" in status["held_forms"]
+        report = json.loads((paths["run_dir"] / "verifier_report.json").read_text(encoding="utf-8"))
+        cov = next(a for a in report["assertions"] if a["name"] == "ledger_covers_all_columns")
+        assert cov["result"] == "fail"
+        assert "col_c" in cov["detail"]
 
     def test_decided_vs_applied_mismatch_holds(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -359,8 +476,20 @@ class TestVerifyHappyPath:
                 {
                     "form_name": "form_a.xlsx",
                     "classifications": [
-                        {"header": "col_a", "action": "drop", "jurisdictions": [], "matched_rules": [], "reasons": []},
-                        {"header": "col_b", "action": "keep", "jurisdictions": [], "matched_rules": [], "reasons": []},
+                        {
+                            "header": "col_a",
+                            "action": "drop",
+                            "jurisdictions": [],
+                            "matched_rules": [],
+                            "reasons": [],
+                        },
+                        {
+                            "header": "col_b",
+                            "action": "keep",
+                            "jurisdictions": [],
+                            "matched_rules": [],
+                            "reasons": [],
+                        },
                     ],
                 }
             ],

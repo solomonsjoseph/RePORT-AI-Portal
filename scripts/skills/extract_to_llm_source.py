@@ -47,6 +47,7 @@ EXIT_NEEDS_ADVICE        = 6   — paused — operator inspection required
 EXIT_DESTRUCTION_INCOMPLETE = 7 — destruction incomplete
 EXIT_PARTIAL_REVIEW      = 8   — partial publish; held forms need review
 EXIT_DECISION_MISMATCH = 9 — approved form's applied action != phi_review decided action
+EXIT_AUDIT_COVERAGE_INCOMPLETE = 10 — published column has no ledger accounting
 
 Code 1 (generic error) is reserved for unexpected exceptions.
 
@@ -107,6 +108,7 @@ _DECIDED_APPLIED_EQUIV: dict[str, set[str]] = {
 }
 
 __all__ = [
+    "EXIT_AUDIT_COVERAGE_INCOMPLETE",
     "EXIT_DECISION_MISMATCH",
     "EXIT_DESTRUCTION_INCOMPLETE",
     "EXIT_LEDGER_HASH_NULL",
@@ -137,6 +139,7 @@ EXIT_NEEDS_ADVICE: int = 6
 EXIT_DESTRUCTION_INCOMPLETE: int = 7
 EXIT_PARTIAL_REVIEW: int = 8
 EXIT_DECISION_MISMATCH: int = 9
+EXIT_AUDIT_COVERAGE_INCOMPLETE: int = 10
 
 # ---------------------------------------------------------------------------
 # Destruction helper (P0.6) — kept verbatim
@@ -694,6 +697,92 @@ def _verify_assertion_decided_vs_applied(audit_dir: Path, run_dir: Path) -> _Ass
     return "pass", ""
 
 
+def _published_header_keys(jsonl_path: Path) -> set[str]:
+    """Return row-1 header KEYS from a published JSONL — metadata only, no values.
+
+    Reads a single line and discards values; the published tree is already
+    PHI-scrubbed (the agent reads it directly), so enumerating its column names
+    is metadata. Internal ``__`` marker fields are excluded.
+    """
+    try:
+        with jsonl_path.open(encoding="utf-8") as handle:
+            first_line = handle.readline()
+    except OSError:
+        return set()
+    if not first_line.strip():
+        return set()
+    try:
+        record = json.loads(first_line)
+    except json.JSONDecodeError:
+        return set()
+    if not isinstance(record, dict):
+        return set()
+    return {key for key in record if not str(key).startswith("__")}
+
+
+def _ledger_accounted_headers(ledger_path: Path) -> set[str]:
+    """Return the normalized header set accounted for in one PHI ledger.
+
+    A header is accounted when it has a PHI ``event`` (dropped/transformed) OR a
+    ``keep_decision`` (deliberately retained).
+    """
+    if not ledger_path.is_file():
+        return set()
+    try:
+        ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return set()
+    accounted: set[str] = set()
+    for event in ledger.get("events", []):
+        accounted.add(_normalize_hdr(str(event.get("variable_id", ""))))
+    for keep in ledger.get("keep_decisions", []):
+        accounted.add(_normalize_hdr(str(keep.get("variable_id", ""))))
+    return accounted
+
+
+def _verify_assertion_14_audit_coverage(
+    audit_dir: Path, dataset_files_dir: Path, run_dir: Path
+) -> _AssertionResult:
+    """Every PUBLISHED dataset column has a PHI ledger accounting (event or keep).
+
+    This is the per-variable completeness guarantee: a published column with no
+    ledger entry means a variable was handled with no audit record. Fail-closed —
+    hold the run for review and exit ``EXIT_AUDIT_COVERAGE_INCOMPLETE``.
+
+    No approval file → pass (legacy/disabled scrub path carries no provenance,
+    consistent with assertion 12). Held forms are not published, so they are not
+    checked here; risky KEEP columns were already held pre-publish by the PHI
+    coverage gate (phi_review.is_phi_risky_header).
+    """
+    approval_path = run_dir / "phi_handling_approval.json"
+    if not approval_path.is_file() or not dataset_files_dir.is_dir():
+        return "pass", ""
+    try:
+        approval = json.loads(approval_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return "fail", f"phi_handling_approval.json unreadable: {exc}"
+
+    gaps: list[str] = []
+    bad_forms: list[str] = []
+    for form_name in sorted(set(approval.get("approved_forms", []))):
+        jsonl_path = dataset_files_dir / f"{Path(form_name).stem}.jsonl"
+        if not jsonl_path.is_file():
+            continue  # not published (held/optional) — nothing to verify
+        headers = _published_header_keys(jsonl_path)
+        if not headers:
+            continue
+        accounted = _ledger_accounted_headers(dataset_phi_ledger_path(audit_dir, form_name))
+        for header in sorted(headers):
+            if _normalize_hdr(header) not in accounted:
+                gaps.append(f"{form_name}:{header}")
+                if form_name not in bad_forms:
+                    bad_forms.append(form_name)
+    if gaps:
+        _hold_run_for_review(run_dir, bad_forms)
+        return "fail", "; ".join(gaps[:10])
+    return "pass", ""
+
+
 def _assertion_13_update_status(
     run_dir: Path,
 ) -> _AssertionResult:
@@ -830,6 +919,14 @@ def _cmd_verify(args: argparse.Namespace) -> int:
             lambda: _verify_assertion_decided_vs_applied(audit_dir, run_dir),
             EXIT_DECISION_MISMATCH,
         ),
+        # Assertion 14 runs BEFORE 13 by list position: 13 (status write) must
+        # stay terminal. The numeric label is 14; execution order is 12→14→13.
+        (
+            14,
+            "ledger_covers_all_columns",
+            lambda: _verify_assertion_14_audit_coverage(audit_dir, dataset_files_dir, run_dir),
+            EXIT_AUDIT_COVERAGE_INCOMPLETE,
+        ),
         (
             13,
             "status_json_updated",
@@ -898,6 +995,54 @@ class FormGateResult:
     held_forms: tuple[str, ...]
     approval_report_path: Path | None
     partial: bool
+
+
+_COVERAGE_HOLD_REASON_PREFIX = "phi_coverage_hold"
+
+
+def _write_coverage_review_notes(study: str, approvals: list[Any]) -> list[str]:
+    """Write a human-review note for each form held by a PHI coverage hold.
+
+    The note lives under ``output/{study}/audit/human_review/{form}/`` (the
+    no-LLM audit zone, denied to the agent by realpath check) and contains
+    column NAMES and reasons only — never row values. Returns the form names
+    that received a note. Non-blocking: the run continues; held forms are simply
+    not promoted, and the operator resolves them in maintainer mode later.
+    """
+    import config
+
+    audit_dir = Path(config.OUTPUT_DIR) / study / "audit"
+    noted: list[str] = []
+    for item in approvals:
+        coverage_reasons = [r for r in item.reasons if r.startswith(_COVERAGE_HOLD_REASON_PREFIX)]
+        if not coverage_reasons:
+            continue
+        form_stem = Path(item.form_name).stem
+        note_dir = audit_dir / "human_review" / form_stem
+        note_dir.mkdir(parents=True, exist_ok=True)
+        bullets = "\n".join(f"- {reason}" for reason in coverage_reasons)
+        note = (
+            f"# PHI coverage review — {item.form_name}\n\n"
+            "This form was held from automatic publishing: one or more columns "
+            "classified KEEP have names that match a PHI-risk pattern. Holding "
+            "the form prevents an unscrubbed PHI-bearing column from reaching "
+            "`llm_source/`.\n\n"
+            "## Held columns (names only — no row values were read)\n"
+            f"{bullets}\n\n"
+            "## How to resolve\n"
+            "For each column above:\n"
+            "- if it is NOT PHI (benign clinical/derived field) → declare it "
+            "explicitly as a keep in the study privacy classification / "
+            "`scripts/security/phi_scrub.yaml` so the KEEP is audited; or\n"
+            "- if it IS PHI → add the appropriate scrub rule (drop / "
+            "pseudonymize / jitter_date / generalize / band / suppress).\n\n"
+            "Then re-run the pipeline in debugging/maintainer mode for this "
+            "form. Other forms in this study were published normally.\n\n"
+            "## Status\nheld_publish_review\n"
+        )
+        (note_dir / "phi_coverage_review.md").write_text(note, encoding="utf-8")
+        noted.append(item.form_name)
+    return noted
 
 
 def _install_signal_handlers() -> None:
@@ -1072,6 +1217,10 @@ def _run_form_approval_gate(
     approvals = sorted(approvals, key=lambda item: item.form_name)
     approved_forms = tuple(item.form_name for item in approvals if item.status == "approved")
     held_forms = tuple(item.form_name for item in approvals if item.status != "approved")
+
+    # Non-blocking: forms held for a PHI coverage concern get a human-review note
+    # under audit/human_review/. The run continues and publishes approved forms.
+    _write_coverage_review_notes(study, approvals)
 
     payload = {
         "run_id": run_dir.name,

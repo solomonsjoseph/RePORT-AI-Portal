@@ -29,6 +29,7 @@ __all__ = [
     "RuleBundle",
     "StudyPrivacyConfig",
     "classify_headers",
+    "is_phi_risky_header",
     "load_study_privacy_config",
     "refresh_jurisdiction_rules",
     "review_form_headers",
@@ -399,6 +400,105 @@ def _header_match_texts(header: str) -> tuple[str, str]:
     return normalized, normalized.replace("_", " ")
 
 
+# ---------------------------------------------------------------------------
+# PHI-risk header detection (audit-completeness coverage hold — Option C)
+# ---------------------------------------------------------------------------
+# A header that matched NO jurisdiction rule is classified KEEP and would be
+# published unscrubbed. Most such headers are benign clinical/derived fields.
+# But some PHI-bearing names slip past the jurisdiction rule patterns (e.g.
+# "interviewer_remarks", "clinical_notes" — the free-text rule matches "note"
+# but not "notes"/"remarks"). These tokens flag a header whose NAME looks like
+# PHI so the form is held for human review rather than silently published.
+#
+# Token-based (split on "_") to avoid substring false positives, plus a small
+# set of compound substrings. Because rule-matched headers are already non-KEEP,
+# this only ever fires on the escapees — so a broad list cannot over-scrub data,
+# it can only route an ambiguous form to a (cheap, non-blocking) human review.
+_PHI_RISKY_TOKENS: frozenset[str] = frozenset(
+    {
+        # person identity
+        "name",
+        "fname",
+        "lname",
+        "surname",
+        "maiden",
+        "initials",
+        # free-text / verbatim narrative
+        "remark",
+        "remarks",
+        "note",
+        "notes",
+        "comment",
+        "comments",
+        "narrative",
+        "verbatim",
+        "specify",
+        "describe",
+        "description",
+        # direct contact
+        "phone",
+        "mobile",
+        "telephone",
+        "fax",
+        "email",
+        "whatsapp",
+        # geographic subdivisions smaller than state (HIPAA Safe Harbor #2)
+        "address",
+        "street",
+        "village",
+        "locality",
+        "landmark",
+        "pincode",
+        "gps",
+        "latitude",
+        "longitude",
+        "geocode",
+        # specific government / record identifiers
+        "aadhaar",
+        "aadhar",
+        "pan",
+        "passport",
+        "voter",
+        "mrn",
+        "ssn",
+        "uid",
+        "ration",
+        # life-event dates tied to an individual
+        "dob",
+        "dod",
+    }
+)
+_PHI_RISKY_SUBSTRINGS: tuple[str, ...] = (
+    "free_text",
+    "freetext",
+    "e_mail",
+    "phone_number",
+    "mobile_number",
+    "contact_person",
+    "national_id",
+    "birth_date",
+    "date_of_birth",
+    "death_date",
+    "date_of_death",
+)
+
+
+def is_phi_risky_header(header: str) -> bool:
+    """Return True when a header NAME looks like PHI (name/contact/location/id/free-text).
+
+    Header-name heuristic only — never reads values. Used to hold a form whose
+    KEEP-classified column would otherwise be published unscrubbed despite a
+    PHI-suspicious name. Errs toward flagging: a false positive costs one human
+    glance; a false negative risks publishing PHI.
+    """
+    normalized = _normalize_header(header)
+    if not normalized:
+        return False
+    if any(substr in normalized for substr in _PHI_RISKY_SUBSTRINGS):
+        return True
+    return bool(set(normalized.split("_")) & _PHI_RISKY_TOKENS)
+
+
 def validate_official_source_url(url: str) -> None:
     """Reject non-HTTPS, non-official rule sources."""
     parsed = urlparse(url)
@@ -697,7 +797,18 @@ def review_form_headers(
     actions = {header: item.action.value for header, item in classifications_by_header.items()}
     blockers = _review_blockers(headers)
     adversarial_failures = _adversarial_header_validation(privacy_config, rule_bundle)
-    reasons = tuple(dict.fromkeys((*blockers, *adversarial_failures)))
+    # Option C coverage hold: a KEEP header whose name looks like PHI would be
+    # published unscrubbed. Hold the whole form (non-blocking) for human review
+    # rather than silently keep it — "preserved must be preserved, dropped
+    # dropped". Rule-matched headers are already non-KEEP, so this only fires on
+    # the escapees.
+    coverage_holds = tuple(
+        f"phi_coverage_hold: '{item.header}' is KEEP but its name matches a "
+        f"PHI-risk pattern; classify keep/drop/scrub before publishing this form"
+        for item in classifications
+        if item.action == Action.KEEP and is_phi_risky_header(item.header)
+    )
+    reasons = tuple(dict.fromkeys((*blockers, *adversarial_failures, *coverage_holds)))
 
     status = "held" if reasons else "approved"
     attempts = privacy_config.max_synthetic_attempts if status == "held" else 1
