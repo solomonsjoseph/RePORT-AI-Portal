@@ -450,8 +450,10 @@ class TestResumeHeldHappyPath:
 
         from scripts.skills.extract_to_llm_source import _try_commit_snapshot
 
+        # _try_commit_snapshot lazily imports write_snapshot from
+        # scripts.utils.snapshot inside the function, so patch it at the source.
         with patch(
-            "scripts.skills.extract_to_llm_source.write_snapshot",
+            "scripts.utils.snapshot.write_snapshot",
             return_value=fake_snap_path,
         ):
             result = _try_commit_snapshot(
