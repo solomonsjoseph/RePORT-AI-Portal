@@ -126,10 +126,24 @@ def _make_prior_partial_run(
     run_id: str = "run_prior001",
     approved_forms: list[str],
     held_forms: list[str],
+    write_approval_report: bool = True,
 ) -> Path:
-    """Write a prior partial-run status.json so --resume-held has something to read."""
+    """Seed a prior partial run with the REAL production on-disk shape.
+
+    Production status.json (written by ``_finish``/``_write_run_status``)
+    records only COUNTS — ``approved_forms_count`` / ``held_forms_count`` — plus
+    the ``approval_report_path``; it NEVER writes the per-form name lists. The
+    authoritative ``approved_forms`` / ``held_forms`` LISTS live only in the
+    run's ``phi_handling_approval.json`` (written by ``_run_form_approval_gate``).
+
+    --resume-held must read the lists from the approval report, so this helper
+    deliberately omits the list keys from status.json and writes a real approval
+    report.  Hand-crafting the lists into status.json (the old fixture shape)
+    masked review finding #1.
+    """
     run_dir = study_output_dir / "runs" / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
+    approval_path = run_dir / "phi_handling_approval.json"
     status = {
         "run_id": run_id,
         "study": STUDY,
@@ -138,12 +152,27 @@ def _make_prior_partial_run(
         "started_utc": _iso_now(),
         "completed_utc": _iso_now(),
         "verifier_passed": False,
-        "approved_forms": approved_forms,
-        "held_forms": held_forms,
+        # Production shape: COUNTS only — NO approved_forms/held_forms lists.
         "approved_forms_count": len(approved_forms),
         "held_forms_count": len(held_forms),
+        "approval_report_path": str(approval_path),
     }
     (run_dir / "status.json").write_text(json.dumps(status), encoding="utf-8")
+
+    if write_approval_report:
+        approval = {
+            "run_id": run_id,
+            "study": STUDY,
+            "created_utc": _iso_now(),
+            "jurisdictions": [],
+            "conflict_policy": "strict_union",
+            "forms": [],
+            # The authoritative per-form name lists live here.
+            "approved_forms": approved_forms,
+            "held_forms": held_forms,
+            "status": "partial" if held_forms else "approved",
+        }
+        approval_path.write_text(json.dumps(approval), encoding="utf-8")
     return run_dir
 
 
@@ -464,6 +493,79 @@ class TestResumeHeldHappyPath:
         status = json.loads((run_dir / "status.json").read_text(encoding="utf-8"))
         assert status.get("snapshot_id") == "snap_testid0001"
 
+    def test_snapshot_failure_recorded_in_status_json(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Finding #11: a non-existence snapshot failure is recorded in status.json.
+
+        A SnapshotError (e.g. symlink-escape) raised by write_snapshot must not be
+        silently swallowed to stderr only; _try_commit_snapshot records a
+        "snapshot_failed" reason in the run's status.json (non-fatal: publish
+        already succeeded), so the failure is auditable after the fact.
+        """
+        _patch_config(monkeypatch, tmp_path)
+        study_output_dir = tmp_path / "output" / STUDY
+        run_dir = study_output_dir / "runs" / "run_snapfail001"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "status.json").write_text(
+            json.dumps(
+                {"run_id": "run_snapfail001", "study": STUDY, "exit_code": 0}
+            ),
+            encoding="utf-8",
+        )
+
+        from scripts.skills.extract_to_llm_source import _try_commit_snapshot
+
+        with patch(
+            "scripts.utils.snapshot.write_snapshot",
+            side_effect=RuntimeError("symlink escape detected in snapshot source"),
+        ):
+            result = _try_commit_snapshot(
+                study=STUDY, run_id="run_snapfail001", run_dir=run_dir
+            )
+
+        # Non-fatal: returns None (publish already succeeded)
+        assert result is None
+        status = json.loads((run_dir / "status.json").read_text(encoding="utf-8"))
+        assert "snapshot_failed" in status, (
+            "snapshot failure must be recorded in status.json for auditability"
+        )
+        assert "symlink escape" in status["snapshot_failed"]
+        # exit_code untouched — the publish itself still succeeded.
+        assert status["exit_code"] == 0
+
+    def test_snapshot_exists_error_not_recorded_as_failure(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """SnapshotExistsError (immutability guard) stays benign — NOT a recorded failure."""
+        _patch_config(monkeypatch, tmp_path)
+        study_output_dir = tmp_path / "output" / STUDY
+        run_dir = study_output_dir / "runs" / "run_snapexists001"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "status.json").write_text(
+            json.dumps(
+                {"run_id": "run_snapexists001", "study": STUDY, "exit_code": 0}
+            ),
+            encoding="utf-8",
+        )
+
+        from scripts.skills.extract_to_llm_source import _try_commit_snapshot
+        from scripts.utils.snapshot import SnapshotExistsError
+
+        with patch(
+            "scripts.utils.snapshot.write_snapshot",
+            side_effect=SnapshotExistsError("identical content already snapshotted"),
+        ):
+            result = _try_commit_snapshot(
+                study=STUDY, run_id="run_snapexists001", run_dir=run_dir
+            )
+
+        assert result is None
+        status = json.loads((run_dir / "status.json").read_text(encoding="utf-8"))
+        assert "snapshot_failed" not in status, (
+            "SnapshotExistsError is an immutability guard, not an auditable failure"
+        )
+
     def test_resume_held_verifier_fail_no_snapshot(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -672,12 +774,18 @@ class TestResumeHeldNoHeldForms:
     def test_prior_run_with_no_held_forms_exits_needs_advice(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """A prior run whose approval report has an EMPTY held_forms list resumes nothing.
+
+        Production shape: status.json carries counts; the per-form lists live in
+        phi_handling_approval.json.  An empty held_forms list there means there
+        is nothing to resume -> EXIT_NEEDS_ADVICE (use a plain run instead).
+        """
         _patch_config(monkeypatch, tmp_path)
         study_output_dir = tmp_path / "output" / STUDY
 
-        # Write a prior run that is fully clean (no held forms)
         run_dir = study_output_dir / "runs" / "run_clean001"
         run_dir.mkdir(parents=True, exist_ok=True)
+        approval_path = run_dir / "phi_handling_approval.json"
         status = {
             "run_id": "run_clean001",
             "study": STUDY,
@@ -685,9 +793,23 @@ class TestResumeHeldNoHeldForms:
             "publish_status": "complete",
             "started_utc": _iso_now(),
             "completed_utc": _iso_now(),
-            "held_forms": [],
+            "approved_forms_count": 1,
+            "held_forms_count": 0,
+            "approval_report_path": str(approval_path),
         }
         (run_dir / "status.json").write_text(json.dumps(status), encoding="utf-8")
+        approval_path.write_text(
+            json.dumps(
+                {
+                    "run_id": "run_clean001",
+                    "study": STUDY,
+                    "approved_forms": [CLEAN_FORM],
+                    "held_forms": [],
+                    "status": "approved",
+                }
+            ),
+            encoding="utf-8",
+        )
 
         rc = main(["run", "--study", STUDY, "--resume-held"])
         assert rc == EXIT_NEEDS_ADVICE, (
@@ -697,12 +819,13 @@ class TestResumeHeldNoHeldForms:
     def test_prior_run_held_forms_absent_key_exits_needs_advice(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """An approval report lacking the held_forms key entirely -> EXIT_NEEDS_ADVICE."""
         _patch_config(monkeypatch, tmp_path)
         study_output_dir = tmp_path / "output" / STUDY
 
-        # Write a prior run whose status.json lacks held_forms key entirely
         run_dir = study_output_dir / "runs" / "run_old001"
         run_dir.mkdir(parents=True, exist_ok=True)
+        approval_path = run_dir / "phi_handling_approval.json"
         status = {
             "run_id": "run_old001",
             "study": STUDY,
@@ -710,12 +833,58 @@ class TestResumeHeldNoHeldForms:
             "publish_status": "complete",
             "started_utc": _iso_now(),
             "completed_utc": _iso_now(),
-            # no "held_forms" key
+            "approved_forms_count": 1,
+            "held_forms_count": 0,
+            "approval_report_path": str(approval_path),
         }
         (run_dir / "status.json").write_text(json.dumps(status), encoding="utf-8")
+        approval_path.write_text(
+            json.dumps(
+                {
+                    "run_id": "run_old001",
+                    "study": STUDY,
+                    "approved_forms": [CLEAN_FORM],
+                    # no "held_forms" key
+                }
+            ),
+            encoding="utf-8",
+        )
 
         rc = main(["run", "--study", STUDY, "--resume-held"])
         assert rc == EXIT_NEEDS_ADVICE
+
+    def test_prior_run_missing_approval_report_exits_needs_advice(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Fail-closed: a terminal prior run with NO approval report cannot be resumed.
+
+        --resume-held reads the form lists from phi_handling_approval.json; if it
+        is absent or unreadable the run must fail closed with EXIT_NEEDS_ADVICE
+        rather than silently treating the held set as empty.
+        """
+        _patch_config(monkeypatch, tmp_path)
+        study_output_dir = tmp_path / "output" / STUDY
+
+        run_dir = study_output_dir / "runs" / "run_noapproval001"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        status = {
+            "run_id": "run_noapproval001",
+            "study": STUDY,
+            "exit_code": 8,  # EXIT_PARTIAL_REVIEW
+            "publish_status": "partial",
+            "started_utc": _iso_now(),
+            "completed_utc": _iso_now(),
+            "approved_forms_count": 1,
+            "held_forms_count": 1,
+            "approval_report_path": str(run_dir / "phi_handling_approval.json"),
+        }
+        (run_dir / "status.json").write_text(json.dumps(status), encoding="utf-8")
+        # Deliberately do NOT write phi_handling_approval.json.
+
+        rc = main(["run", "--study", STUDY, "--resume-held"])
+        assert rc == EXIT_NEEDS_ADVICE, (
+            f"Expected EXIT_NEEDS_ADVICE when approval report is absent, got {rc}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -818,3 +987,244 @@ class TestResumeHeldFormScope:
                 f"surviving set passed to the gate (omitting it would cause data loss): "
                 f"{selected!r}"
             )
+
+
+# ---------------------------------------------------------------------------
+# F. Review finding #1 (CRITICAL) regression: form lists come from the approval
+#    report, NOT from status.json. Production status.json carries only counts;
+#    reading lists from it always yielded [] -> --resume-held always exited
+#    EXIT_NEEDS_ADVICE on a real partial run. This test drives the PRODUCTION
+#    shape and asserts the run PROCEEDS.
+# ---------------------------------------------------------------------------
+
+
+class TestResumeHeldReadsListsFromApprovalReport:
+    """--resume-held must read approved/held form lists from phi_handling_approval.json.
+
+    The prior run's status.json records only ``approved_forms_count`` /
+    ``held_forms_count`` (+ ``approval_report_path``) — NEVER the name lists.
+    A previous implementation read ``status.json["held_forms"]``, which is
+    always absent in production, so ``prior_held`` was always ``[]`` and
+    --resume-held always fell into the "no held forms" branch and exited
+    EXIT_NEEDS_ADVICE.  This regression test seeds the REAL on-disk shape and
+    asserts the run PROCEEDS to the approval gate with the full surviving set.
+    """
+
+    def test_resume_held_reads_lists_from_approval_report_and_proceeds(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _patch_config(monkeypatch, tmp_path)
+        study_raw_dir = tmp_path / "data" / "raw" / STUDY
+        study_output_dir = tmp_path / "output" / STUDY
+
+        all_forms = [CLEAN_FORM, HELD_FORM]
+        approved_forms = [CLEAN_FORM]
+        held_forms = [HELD_FORM]
+        expected_union = tuple(sorted(set(approved_forms) | set(held_forms)))
+
+        _make_manifest(study_raw_dir, all_forms)
+        _make_datasets(study_raw_dir / "datasets", all_forms)
+        _make_phi_scrub_yaml(tmp_path / "scripts" / "security" / "phi_scrub.yaml")
+
+        # Production-shaped prior run: status.json has COUNTS ONLY (no lists) and
+        # records approval_report_path; the LISTS live in phi_handling_approval.json.
+        prior_run_dir = _make_prior_partial_run(
+            study_output_dir,
+            run_id="run_prior_f1",
+            approved_forms=approved_forms,
+            held_forms=held_forms,
+        )
+
+        # Sanity-check the fixture really mimics production: NO list keys in status.json.
+        prior_status = json.loads(
+            (prior_run_dir / "status.json").read_text(encoding="utf-8")
+        )
+        assert "held_forms" not in prior_status, (
+            "Fixture must mimic production: status.json must NOT carry the held_forms list"
+        )
+        assert "approved_forms" not in prior_status, (
+            "Fixture must mimic production: status.json must NOT carry the approved_forms list"
+        )
+        assert prior_status["held_forms_count"] == len(held_forms)
+
+        captured_selected: list[tuple[str, ...]] = []
+
+        def _fake_gate(*, study, study_raw_dir, run_dir, max_workers, selected_forms):
+            captured_selected.append(selected_forms)
+            return _make_form_approval_result(all_forms, [])
+
+        with (
+            patch(
+                "scripts.skills.extract_to_llm_source._run_form_approval_gate",
+                side_effect=_fake_gate,
+            ),
+            patch(
+                "scripts.skills.extract_to_llm_source._acquire_pipeline_lock_for_skill",
+            ),
+            patch(
+                "scripts.skills.extract_to_llm_source._release_pipeline_lock_for_skill",
+            ),
+            patch(
+                "scripts.skills.extract_to_llm_source.check_forms_manifest",
+            ),
+            patch(
+                "subprocess.run",
+                return_value=MagicMock(returncode=0),
+            ),
+            # Empty ledger list -> exits EXIT_LEDGER_HASH_NULL (3) after the gate.
+            # We only assert the gate was reached (run PROCEEDED, not advice-held).
+            patch(
+                "scripts.skills.extract_to_llm_source.iter_dataset_phi_ledger_paths",
+                return_value=[],
+            ),
+            patch(
+                "scripts.utils.run_context.resolve_run_id",
+                return_value="run_resume_f1",
+            ),
+            patch(
+                "scripts.utils.run_context.scan_for_in_progress_scrubs",
+                return_value=[],
+            ),
+        ):
+            rc = main(["run", "--study", STUDY, "--resume-held"])
+
+        # The defining assertion for finding #1: the run must NOT advice-hold; it
+        # must proceed past the held-forms precondition to the approval gate.
+        assert captured_selected, (
+            "Approval gate was never reached: --resume-held exited before the gate, "
+            "which means the held-forms precondition could not read the lists from "
+            "the approval report (regression #1)."
+        )
+        assert rc != EXIT_NEEDS_ADVICE, (
+            f"--resume-held must NOT exit EXIT_NEEDS_ADVICE when the approval report "
+            f"contains held forms; got {rc}"
+        )
+        assert captured_selected[0] == expected_union, (
+            f"Gate must receive the full surviving set {expected_union!r} read from the "
+            f"approval report, got: {captured_selected[0]!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# G. Review finding #2 (HIGH) regression: when the inline verifier fails during
+#    --resume-held, the on-disk status.json exit_code must reflect the verifier
+#    failure (not the false exit_code=0 written by the publish step).
+# ---------------------------------------------------------------------------
+
+
+class TestResumeHeldVerifierFailWritesExitCode:
+    """Inline verify failure on --resume-held must persist the non-zero exit_code.
+
+    Step 6 writes status.json with exit_code=0 (the publish succeeded). When the
+    inline verifier (Step 7) then fails, the process returns the verifier's
+    non-zero code — but a previous implementation left status.json on disk
+    claiming exit_code=0, a false success. This test asserts the on-disk
+    exit_code matches the returned (verifier) code.
+    """
+
+    def test_inline_verify_fail_persists_nonzero_exit_code(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _patch_config(monkeypatch, tmp_path)
+        study_raw_dir = tmp_path / "data" / "raw" / STUDY
+        study_output_dir = tmp_path / "output" / STUDY
+        audit_dir = study_output_dir / "audit"
+
+        all_forms = [CLEAN_FORM, HELD_FORM]
+        _make_manifest(study_raw_dir, all_forms)
+        _make_datasets(study_raw_dir / "datasets", all_forms)
+        _make_phi_scrub_yaml(tmp_path / "scripts" / "security" / "phi_scrub.yaml")
+        _make_no_llm_zone(audit_dir)
+
+        _make_prior_partial_run(
+            study_output_dir,
+            run_id="run_prior_f2",
+            approved_forms=[CLEAN_FORM],
+            held_forms=[HELD_FORM],
+        )
+
+        new_run_id = "run_resume_f2"
+        new_run_dir = study_output_dir / "runs" / new_run_id
+
+        import hashlib
+
+        scrub_hash = hashlib.sha256(b"scrub_config: test").hexdigest()
+
+        def _fake_ledger_paths(audit_dir):
+            paths = []
+            for form in all_forms:
+                ledger = dataset_phi_ledger_path(audit_dir, form)
+                ledger.parent.mkdir(parents=True, exist_ok=True)
+                ledger.write_text(
+                    json.dumps(
+                        {
+                            "run_id": new_run_id,
+                            "scrub_config_hash": scrub_hash,
+                            "input_dataset_hash": "deadbeef",
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                paths.append(ledger)
+            return paths
+
+        verifier_exit = 5  # EXIT_VERIFIER_FAIL
+        snapshot_calls: list[dict] = []
+
+        with (
+            patch(
+                "scripts.skills.extract_to_llm_source._run_form_approval_gate",
+                return_value=_make_form_approval_result(all_forms, []),
+            ),
+            patch(
+                "scripts.skills.extract_to_llm_source._acquire_pipeline_lock_for_skill",
+            ),
+            patch(
+                "scripts.skills.extract_to_llm_source._release_pipeline_lock_for_skill",
+            ),
+            patch(
+                "scripts.skills.extract_to_llm_source.check_forms_manifest",
+            ),
+            patch(
+                "subprocess.run",
+                return_value=MagicMock(returncode=0),
+            ),
+            patch(
+                "scripts.skills.extract_to_llm_source.iter_dataset_phi_ledger_paths",
+                side_effect=_fake_ledger_paths,
+            ),
+            patch(
+                "scripts.skills.extract_to_llm_source.destroy_staging_and_attest",
+                return_value=new_run_dir / "destruction_attestation.json",
+            ),
+            patch(
+                "scripts.skills.extract_to_llm_source._cmd_verify",
+                return_value=verifier_exit,
+            ),
+            patch(
+                "scripts.skills.extract_to_llm_source._try_commit_snapshot",
+                side_effect=lambda **kw: snapshot_calls.append(kw) or "snap_x",
+            ),
+            patch(
+                "scripts.utils.run_context.resolve_run_id",
+                return_value=new_run_id,
+            ),
+            patch(
+                "scripts.utils.run_context.scan_for_in_progress_scrubs",
+                return_value=[],
+            ),
+        ):
+            rc = main(["run", "--study", STUDY, "--resume-held"])
+
+        assert rc == verifier_exit, f"Expected verifier exit {verifier_exit}, got {rc}"
+        assert not snapshot_calls, "Snapshot must not be committed when the verifier fails"
+
+        # The defining assertion for finding #2: on-disk status.json exit_code must
+        # equal the verifier's non-zero code, NOT the false exit_code=0 from Step 6.
+        status_path = new_run_dir / "status.json"
+        assert status_path.is_file(), "status.json was not written for the resume-held run"
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+        assert status["exit_code"] == verifier_exit, (
+            f"On-disk status.json exit_code must reflect the verifier failure "
+            f"({verifier_exit}), not a false success; got {status['exit_code']}"
+        )
