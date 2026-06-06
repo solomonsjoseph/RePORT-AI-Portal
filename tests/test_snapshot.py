@@ -506,16 +506,23 @@ class TestSecurityZoneRealOutputLayout:
         with pytest.raises(SnapshotZoneViolation):
             deny_if_snapshot_root(dest / MANIFEST_FILENAME)
 
-        # And the integration surfaces those as ZoneViolationError...
-        with pytest.raises(ZoneViolationError):
+        # validate_agent_read surfaces the GUARD denial as SnapshotZoneViolation
+        # (the guard runs before read-root containment). Unlike the default tmp
+        # layout — where the same reads deny via containment as ZoneViolationError
+        # — production paths carry an ``output`` segment and hit the guard first.
+        # Both are PermissionError subclasses, so is_agent_readable (which catches
+        # the common base) denies uniformly either way.
+        with pytest.raises(SnapshotZoneViolation):
             validate_agent_read(dest / "phi_handling_approval.json")
-        with pytest.raises(ZoneViolationError):
+        with pytest.raises(SnapshotZoneViolation):
             validate_agent_read(dest / MANIFEST_FILENAME)
+        assert not is_agent_readable(dest / "phi_handling_approval.json")
+        assert not is_agent_readable(dest / MANIFEST_FILENAME)
 
         # ...while a SELECTED llm_source leaf is permitted, root still denied.
         snap_llm_source = select_snapshot_llm_source(study, dest.name)
         monkeypatch.setattr(config, "STUDY_LLM_SOURCE_DIR", snap_llm_source)
         leaf = snap_llm_source / "dataset_schema" / "files" / "1A_form.jsonl"
         assert validate_agent_read(leaf) == Path(leaf.resolve())
-        with pytest.raises(ZoneViolationError):
+        with pytest.raises(SnapshotZoneViolation):
             validate_agent_read(dest / "phi_handling_approval.json")
