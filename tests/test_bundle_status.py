@@ -243,3 +243,92 @@ def test_held_set_notice_never_raises_on_missing_status_file(monkeypatch_config:
         parents=True, exist_ok=True
     )
     assert held_set_notice(study) is None
+
+
+# ── #5/#9: chronological (completed_utc) + terminal-only run selection ─────────
+
+
+def test_held_set_notice_picks_latest_by_completed_utc_not_name(
+    monkeypatch_config: Path,
+) -> None:
+    """The lexicographically-LARGER run name has the EARLIER completed_utc.
+
+    Name-sort (the old buggy behaviour) would pick ``run_zzz...`` (clean) and
+    return None. Chronological selection by completed_utc must instead pick the
+    NEWER ``run_aaa...`` (held) and surface its notice.
+    """
+    study = config.STUDY_NAME
+    # Name 'zzz' sorts last/largest but is chronologically OLDER (clean run).
+    _write_run_status(
+        study,
+        "run_zzz000000001",
+        {
+            "publish_status": "complete",
+            "held_forms": [],
+            "exit_code": 0,
+            "completed_utc": "2026-06-01T00:00:00+00:00",
+        },
+    )
+    # Name 'aaa' sorts first/smallest but is chronologically NEWER (held run).
+    _write_run_status(
+        study,
+        "run_aaa000000002",
+        {
+            "publish_status": "partial",
+            "held_forms": ["NEW_HELD.xlsx"],
+            "exit_code": 8,
+            "completed_utc": "2026-06-05T00:00:00+00:00",
+        },
+    )
+    notice = held_set_notice(study)
+    assert notice is not None
+    assert "NEW_HELD.xlsx" in notice
+
+
+def test_held_set_notice_ignores_non_terminal_run(monkeypatch_config: Path) -> None:
+    """A non-terminal run (exit_code 6 needs-advice) must be ignored even if it
+    is the chronologically newest and reports held forms."""
+    study = config.STUDY_NAME
+    # Terminal partial run, older.
+    _write_run_status(
+        study,
+        "run_terminal00001",
+        {
+            "publish_status": "partial",
+            "held_forms": ["OLD_HELD.xlsx"],
+            "exit_code": 8,
+            "completed_utc": "2026-06-01T00:00:00+00:00",
+        },
+    )
+    # Non-terminal (paused/needs-advice) run, newer — must NOT be selected.
+    _write_run_status(
+        study,
+        "run_nonterminal02",
+        {
+            "publish_status": "held",
+            "held_forms": ["INFLIGHT.xlsx"],
+            "exit_code": 6,
+            "completed_utc": "2026-06-05T00:00:00+00:00",
+        },
+    )
+    notice = held_set_notice(study)
+    assert notice is not None
+    # The terminal run is used; the newer non-terminal run is ignored.
+    assert "OLD_HELD.xlsx" in notice
+    assert "INFLIGHT.xlsx" not in notice
+
+
+def test_held_set_notice_none_when_only_non_terminal_runs(monkeypatch_config: Path) -> None:
+    """If every run is non-terminal, there is no published outcome to report."""
+    study = config.STUDY_NAME
+    _write_run_status(
+        study,
+        "run_paused0000001",
+        {
+            "publish_status": "held",
+            "held_forms": ["INFLIGHT.xlsx"],
+            "exit_code": 6,
+            "completed_utc": "2026-06-05T00:00:00+00:00",
+        },
+    )
+    assert held_set_notice(study) is None

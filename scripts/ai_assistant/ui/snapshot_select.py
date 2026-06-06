@@ -17,8 +17,20 @@ SECURITY CONTRACT
   refuses the selection (the read zone is left untouched).
 * An unknown / malformed snapshot id is rejected before anything is exposed.
 * This module NEVER triggers a scrub / retry / resume. It only reads metadata
-  and repoints ``config.STUDY_LLM_SOURCE_DIR`` at an already-published,
+  and repoints the llm_source path constants at an already-published,
   already-scrubbed subtree.
+
+PROCESS-GLOBAL ACTIVATION (single-active-snapshot-per-process)
+-------------------------------------------------------------
+:func:`activate_snapshot` mutates PROCESS-GLOBAL ``config.*`` state via
+:func:`config.repoint_llm_source_base`. There is exactly ONE active snapshot
+per Python process. Streamlit shares a single process across browser sessions,
+so concurrent sessions selecting different snapshots RACE (last writer wins) —
+every session in the process then reads the most-recently-activated snapshot's
+``llm_source/``. This module assumes a single-session / single-active-snapshot
+deployment. A session-scoped config (per-session read zone) would remove the
+race but is a larger architectural change and is intentionally out of scope
+here; the limitation is documented rather than worked around.
 """
 
 from __future__ import annotations
@@ -94,10 +106,18 @@ def activate_snapshot(study: str | None, snapshot_id: str) -> Path:
        any path-bearing id before touching disk).
     2. RE-RUN the PHI-residual leak gate (:func:`scan_tree_for_phi`) against that
        subtree. A residual match refuses activation — the read zone is untouched.
-    3. Only then repoint ``config.STUDY_LLM_SOURCE_DIR`` at
-       ``snapshots/{id}/llm_source/``. ``file_access._zones()`` reads this
-       constant at call time, so the new read root takes effect immediately and
-       the snapshot ROOT / approval / manifest stay OUTSIDE it.
+    3. Only then repoint ``STUDY_LLM_SOURCE_DIR`` AND every llm_source-derived
+       constant at ``snapshots/{id}/llm_source/`` via
+       :func:`config.repoint_llm_source_base`. Repointing the base alone would
+       leave dataset-query / SoT-citation tools reading the LIVE output tree, so
+       the rebase MUST be atomic across all derived constants. ``file_access``
+       reads ``STUDY_LLM_SOURCE_DIR`` at call time, so the new read root takes
+       effect immediately and the snapshot ROOT / approval / manifest stay
+       OUTSIDE it.
+
+    PROCESS-GLOBAL: this mutates shared ``config.*`` state — see the module
+    docstring. There is one active snapshot per process; concurrent Streamlit
+    sessions race (last writer wins).
 
     Returns the absolute ``llm_source/`` path now exposed.
 
@@ -126,6 +146,9 @@ def activate_snapshot(study: str | None, snapshot_id: str) -> Path:
             f"expose it: {result.detail}"
         )
 
-    # 3. Repoint the assistant read zone at the snapshot's llm_source ONLY.
-    config.STUDY_LLM_SOURCE_DIR = llm_source  # type: ignore[attr-defined]
+    # 3. Atomically repoint the assistant read zone AND every llm_source-derived
+    #    constant at the snapshot's llm_source. A single setattr on
+    #    STUDY_LLM_SOURCE_DIR would leave dataset-query / SoT-citation tools
+    #    reading the LIVE tree; repoint_llm_source_base rebases all of them.
+    config.repoint_llm_source_base(llm_source)
     return llm_source

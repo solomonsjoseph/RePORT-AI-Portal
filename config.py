@@ -269,6 +269,36 @@ LLM_SOURCE_EVIDENCE_PACKS_DIR: Path = LLM_SOURCE_STUDY_METADATA_DIR / "evidence_
 LLM_SOURCE_SOT_DIR: Path = STUDY_LLM_SOURCE_DIR / "SoT"
 LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR: Path = STUDY_LLM_SOURCE_DIR / "source_truth"
 
+
+def repoint_llm_source_base(new_base: Path) -> None:
+    """Atomically repoint ``STUDY_LLM_SOURCE_DIR`` AND every derived constant.
+
+    The llm_source-derived path constants above are computed once at import time
+    from ``STUDY_LLM_SOURCE_DIR``. Setting ``STUDY_LLM_SOURCE_DIR`` alone (e.g.
+    when the Load Study UI activates a snapshot) leaves the dataset-query and
+    SoT-citation tools reading the LIVE output tree while only the readiness
+    checks observe the new base — a split-brain read zone.
+
+    This helper rebases ALL of them from *new_base*, mirroring the exact relative
+    subpaths declared above, so a snapshot activation is complete and atomic: a
+    single call repoints the whole llm_source surface to *new_base*.
+    """
+    new_base = Path(new_base)
+    g = globals()
+    g["STUDY_LLM_SOURCE_DIR"] = new_base
+    g["TRIO_DATASETS_DIR"] = new_base / "dataset_schema" / "files"
+    g["DICTIONARY_JSON_OUTPUT_DIR"] = new_base / "dictionary_mapping" / "jsonl"
+    g["LLM_SOURCE_DATASET_SCHEMA_FILES_DIR"] = new_base / "dataset_schema" / "files"
+    g["LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH"] = new_base / "dataset_schema" / "catalog.json"
+    g["LLM_SOURCE_DICTIONARY_MAPPING_DIR"] = new_base / "dictionary_mapping"
+    g["LLM_SOURCE_DICTIONARY_MAPPING_JSONL_DIR"] = new_base / "dictionary_mapping" / "jsonl"
+    g["LLM_SOURCE_DICTIONARY_CATALOG_PATH"] = new_base / "dictionary_mapping" / "catalog.json"
+    g["LLM_SOURCE_STUDY_METADATA_DIR"] = new_base / "study_metadata"
+    g["LLM_SOURCE_STUDY_METADATA_CATALOG_PATH"] = new_base / "study_metadata" / "catalog.json"
+    g["LLM_SOURCE_EVIDENCE_PACKS_DIR"] = new_base / "study_metadata" / "evidence_packs"
+    g["LLM_SOURCE_SOT_DIR"] = new_base / "SoT"
+    g["LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR"] = new_base / "source_truth"
+
 # Lean-catalog size thresholds (bytes). CI fails if a catalog exceeds.
 LEAN_CATALOG_DICTIONARY_MAX_BYTES: int = 20 * 1024
 LEAN_CATALOG_DATASET_SCHEMA_MAX_BYTES: int = 50 * 1024
