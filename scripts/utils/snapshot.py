@@ -248,7 +248,14 @@ def write_snapshot(study: str, run_id: str, *, snapshot_id: str | None = None) -
     if not run_id:
         raise SnapshotError("run_id must not be empty")
 
-    llm_source_src = Path(config.STUDY_LLM_SOURCE_DIR)
+    # Derive the source tree from the explicit *study* arg via config.OUTPUT_DIR
+    # — NOT from the module-global config.STUDY_LLM_SOURCE_DIR. That global is
+    # repointed when a snapshot is activated in the UI (see snapshot_select), so
+    # reading it here would capture the *previously-activated* snapshot's tree
+    # instead of the live publish; it would also read the wrong study when the
+    # *study* arg differs from config.STUDY_NAME. Every other path in this module
+    # already derives from the study arg via config.OUTPUT_DIR.
+    llm_source_src = Path(config.OUTPUT_DIR) / study / LLM_SOURCE_DIRNAME
     if not llm_source_src.is_dir():
         raise SnapshotError(f"llm_source tree not found at {llm_source_src}; cannot snapshot")
 
@@ -286,7 +293,13 @@ def write_snapshot(study: str, run_id: str, *, snapshot_id: str | None = None) -
     verifier_payload = _read_json(verifier_src)
     approved_forms = [str(f) for f in approval_payload.get("approved_forms", [])]
     held_forms = [str(f) for f in approval_payload.get("held_forms", [])]
-    verifier_passed = bool(verifier_payload.get("verifier_passed", False))
+    # verifier_report.json has no "verifier_passed" key — its canonical pass
+    # signal is "overall" == "pass" (with "exit_code" == 0 on pass). Accept
+    # either positive signal; default to False (fail-closed) when neither says
+    # pass.
+    verifier_passed = (
+        verifier_payload.get("overall") == "pass" or verifier_payload.get("exit_code") == 0
+    )
 
     # ---- Build under a temp dir, then atomically rename into place. ---------
     # A partial copy must never become a visible snapshot. Build beside the

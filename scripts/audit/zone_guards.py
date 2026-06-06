@@ -9,10 +9,17 @@ Audit-zone deny — two checks (defense in depth):
 Either signal triggers ``PermissionError``. Both must pass for allow.
 
 Snapshot-root deny (W1) — :func:`deny_if_snapshot_root` denies any path under
-``output/*/snapshots/<id>/`` that is NOT inside that snapshot's
+``<OUTPUT_DIR>/<study>/snapshots/<id>/`` that is NOT inside that snapshot's
 ``<id>/llm_source/`` subtree. The snapshot root holds the run's approval,
 verifier report, and manifest (all off-limits to the LLM); only a selected
 ``<id>/llm_source/`` subtree may be exposed.
+
+Detection is defense-in-depth: it is keyed FIRST on the configured
+``config.OUTPUT_DIR`` layout (robust to any layout, including test layouts whose
+resolved paths carry no literal ``output`` segment), then falls back to a
+literal ``output/<study>/snapshots/<id>/`` segment scan for paths outside the
+configured OUTPUT_DIR (e.g. synthetic absolute paths). Either positive signal
+denies.
 """
 
 from __future__ import annotations
@@ -60,29 +67,83 @@ def _is_inside_audit_zone_by_path(path: Path) -> bool:
     return False
 
 
+def _denied_after_snapshots(parts: tuple[str, ...], snapshots_idx: int) -> bool:
+    """Given ``parts`` and the index of the ``snapshots`` segment, decide deny.
+
+    Deny the ``snapshots`` dir itself and the snapshot root + every non-
+    ``llm_source`` child; exempt only ``<id>/llm_source/...``. The segment
+    immediately after ``<id>`` (i.e. ``snapshots_idx + 2``) must be
+    ``llm_source`` to be exempt.
+    """
+    if snapshots_idx + 1 >= len(parts):
+        # ``.../snapshots`` itself — deny.
+        return True
+    llm_source_idx = snapshots_idx + 2
+    return not (llm_source_idx < len(parts) and parts[llm_source_idx] == _LLM_SOURCE_SEGMENT)
+
+
+def _is_denied_by_output_dir_layout(real: Path) -> bool | None:
+    """Layout-aware snapshot-root detection keyed on the *configured* OUTPUT_DIR.
+
+    Resolves ``config.OUTPUT_DIR`` and tests whether *real* sits under
+    ``<OUTPUT_DIR>/<study>/snapshots/<id>/`` (and NOT under that
+    ``<id>/llm_source/`` subtree). This works regardless of whether the resolved
+    path carries a literal ``output`` segment — e.g. tests with
+    ``OUTPUT_DIR=tmp_path`` have none, and the legacy literal-segment scan never
+    fired there, leaving denial to read-root containment alone.
+
+    Returns ``True`` to deny, ``False`` to exempt (it IS a snapshot path but an
+    ``llm_source`` subtree), or ``None`` when the path is not under OUTPUT_DIR /
+    OUTPUT_DIR is unavailable — so the caller can fall back to the literal scan.
+    """
+    output_dir = getattr(config, "OUTPUT_DIR", None)
+    if output_dir is None:
+        return None
+    try:
+        output_real = Path(str(output_dir)).resolve()
+    except (OSError, ValueError):
+        return None
+    try:
+        rel_parts = real.relative_to(output_real).parts
+    except ValueError:
+        # Not under OUTPUT_DIR — let the caller fall back to the literal scan.
+        return None
+    # Layout under OUTPUT_DIR is ``<study>/snapshots/<id>/[llm_source/...]``.
+    if len(rel_parts) >= 2 and rel_parts[1] == _SNAPSHOTS_SEGMENT:
+        # snapshots is at rel index 1; translate to the helper's convention.
+        return _denied_after_snapshots(rel_parts, 1)
+    return None
+
+
 def _is_denied_snapshot_root_path(path: Path) -> bool:
-    """True iff *path* is under ``output/<study>/snapshots/<id>/`` but NOT under
-    that snapshot's ``<id>/llm_source/`` subtree.
+    """True iff *path* is under ``<OUTPUT_DIR>/<study>/snapshots/<id>/`` but NOT
+    under that snapshot's ``<id>/llm_source/`` subtree.
 
     The ``<id>/llm_source/`` subtree is the ONLY LLM-readable part of a snapshot
     (and only once selected). Everything else under the snapshot root — the root
     itself, the approval/verifier/manifest JSON — is denied.
+
+    Defense-in-depth: detection is keyed first on the *configured* OUTPUT_DIR
+    layout (robust to any test/prod layout, including one with no literal
+    ``output`` segment), then falls back to a literal ``output/<study>/snapshots``
+    segment scan for paths outside the configured OUTPUT_DIR (e.g. synthetic
+    absolute paths). Either positive signal denies; ``llm_source`` subtrees are
+    always exempt.
     """
     real = Path(str(path)).resolve()
+
+    # Primary: configured-layout detection (OUTPUT_DIR-relative).
+    layout_decision = _is_denied_by_output_dir_layout(real)
+    if layout_decision is not None:
+        return layout_decision
+
+    # Fallback: literal ``output/<study>/snapshots/<id>/...`` segment scan, for
+    # paths that are not under the configured OUTPUT_DIR.
     parts = real.parts
     for i, part in enumerate(parts):
         # Match ``output/<study>/snapshots/<id>/...`` — snapshots is 2 after output.
         if part == _OUTPUT_SEGMENT and i + 2 < len(parts) and parts[i + 2] == _SNAPSHOTS_SEGMENT:
-            snapshots_idx = i + 2
-            # Need at least a snapshot id segment after ``snapshots``.
-            if snapshots_idx + 1 >= len(parts):
-                # ``.../snapshots`` itself — deny.
-                return True
-            # Segment immediately after ``<id>`` must be ``llm_source`` to be exempt.
-            llm_source_idx = snapshots_idx + 2
-            return not (
-                llm_source_idx < len(parts) and parts[llm_source_idx] == _LLM_SOURCE_SEGMENT
-            )
+            return _denied_after_snapshots(parts, i + 2)
     return False
 
 
