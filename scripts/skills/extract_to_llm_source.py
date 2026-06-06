@@ -1312,7 +1312,29 @@ def _try_commit_snapshot(
         print(f"Snapshot already exists (immutability guard): {exc}", file=sys.stderr)
         return None
     except Exception as exc:
-        print(f"Warning: snapshot commit failed (publish still succeeded): {exc}", file=sys.stderr)
+        # Non-fatal: the publish already succeeded. But a real snapshot failure
+        # (e.g. a SnapshotError from a symlink-escape check) must leave an
+        # auditable trace rather than being swallowed to stderr only. Record a
+        # "snapshot_failed" entry in the run's status.json so the failure is
+        # discoverable after the fact. SnapshotExistsError (immutability) is
+        # handled above and stays benign — it is NOT recorded here.
+        reason = f"{type(exc).__name__}: {exc}"
+        print(
+            f"Warning: snapshot commit failed (publish still succeeded): {reason}",
+            file=sys.stderr,
+        )
+        status_path = run_dir / "status.json"
+        if status_path.is_file():
+            try:
+                status = json.loads(status_path.read_text(encoding="utf-8"))
+                status["snapshot_failed"] = reason
+                _atomic_write_json(status_path, status)
+            except (json.JSONDecodeError, OSError) as upd_exc:
+                print(
+                    "Warning: could not record snapshot_failed in status.json: "
+                    f"{upd_exc}",
+                    file=sys.stderr,
+                )
         return None
 
 
@@ -1385,14 +1407,25 @@ def _cmd_run(args: argparse.Namespace) -> int:
             msg = f"--resume-held: no prior terminal run found: {resolve_err}"
             print(msg, file=sys.stderr)
             return EXIT_NEEDS_ADVICE
-        prior_status_path = study_output_dir / "runs" / prior_run_id / "status.json"
+        # The prior run's status.json records only COUNTS
+        # (approved_forms_count / held_forms_count), never the form-name lists.
+        # The authoritative per-form lists live in the prior run's
+        # phi_handling_approval.json (written by _run_form_approval_gate); the
+        # status.json even records its location as "approval_report_path". Read
+        # the lists from there so --resume-held works against the real on-disk
+        # shape rather than from list keys that status.json never writes.
+        prior_run_dir = study_output_dir / "runs" / prior_run_id
+        prior_approval_path = prior_run_dir / "phi_handling_approval.json"
         try:
-            prior_status = json.loads(prior_status_path.read_text(encoding="utf-8"))
+            prior_approval = json.loads(prior_approval_path.read_text(encoding="utf-8"))
         except (FileNotFoundError, json.JSONDecodeError, OSError) as exc:
-            msg = f"--resume-held: could not read prior status.json ({prior_status_path}): {exc}"
+            msg = (
+                "--resume-held: could not read prior approval report "
+                f"({prior_approval_path}): {exc}"
+            )
             print(msg, file=sys.stderr)
             return EXIT_NEEDS_ADVICE
-        prior_held: list[str] = [str(f) for f in prior_status.get("held_forms", [])]
+        prior_held: list[str] = [str(f) for f in prior_approval.get("held_forms", [])]
         if not prior_held:
             msg = (
                 f"--resume-held: prior run {prior_run_id!r} has no held forms; "
@@ -1400,7 +1433,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
             )
             print(msg, file=sys.stderr)
             return EXIT_NEEDS_ADVICE
-        prior_approved: list[str] = [str(f) for f in prior_status.get("approved_forms", [])]
+        prior_approved: list[str] = [str(f) for f in prior_approval.get("approved_forms", [])]
         # Re-process the FULL surviving set (prior approved | held), NOT only the
         # held forms. Promotion (main.py _publish_leg) is a whole-leg atomic
         # replace, so publishing only the held subset would securely DELETE every
@@ -1692,6 +1725,29 @@ def _cmd_run(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
                 final_code = verify_exit
+                # Re-write status.json so the on-disk exit_code reflects the
+                # verifier failure. Step 6 above already wrote exit_code=0 (the
+                # publish succeeded); without this re-write the process would
+                # return non-zero while status.json on disk falsely claimed
+                # exit_code=0. Fail-closed: persisted state must match the
+                # returned code.
+                _finish(
+                    verify_exit,
+                    stage="postrun.resume_held_verify",
+                    reason=f"resume-held inline verifier exited {verify_exit}",
+                    staging_preserved=False,
+                    extra={
+                        "scope": "HIPAA Safe Harbor + configured study jurisdictions",
+                        "ledger_hash_present": True,
+                        "destruction_attestation_path": str(attest_path),
+                        "publish_status": "complete",
+                        "approved_forms_count": len(form_gate.approved_forms),
+                        "held_forms_count": len(form_gate.held_forms),
+                        "approval_report_path": str(form_gate.approval_report_path)
+                        if form_gate.approval_report_path
+                        else None,
+                    },
+                )
 
     except _SkillInterrupted:
         # SIGINT/SIGTERM — clean up lock; do NOT invoke destruction.
@@ -1771,8 +1827,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False,
         help=(
-            "CLI/maintainer-only: re-process ONLY the forms held in the most "
-            "recent partial/held run, leaving already-published forms untouched. "
+            "CLI/maintainer-only: re-process the FULL surviving form set "
+            "(prior approved + held) of the most recent partial/held run, so the "
+            "whole-leg republish reproduces every surviving form (publishing only "
+            "the held subset would delete previously-approved forms on the "
+            "whole-leg atomic replace). "
             "Refused when REPORTAL_PROCESS_ROLE=llm-agent. "
             "On a fully-clean pass (no remaining held forms, verifier passes) "
             "commits an immutable snapshot."
