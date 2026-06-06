@@ -2,8 +2,9 @@
 
 Coverage
 --------
-A. Happy path — held run -> (operator resolves) -> --resume-held re-runs ONLY
-   the held forms -> clean pass -> snapshot written + status.json.snapshot_id set.
+A. Happy path — held run -> (operator resolves) -> --resume-held re-runs the
+   FULL surviving set (prior_approved ∪ prior_held) -> clean pass -> snapshot
+   written + status.json.snapshot_id set.
 
 B. Negative: --resume-held under REPORTAL_PROCESS_ROLE=llm-agent exits non-zero
    (EXIT_NEEDS_ADVICE) without running anything (no status.json written).
@@ -12,11 +13,24 @@ C. Negative: --resume-held with no prior run exits EXIT_NEEDS_ADVICE.
 
 D. Negative: --resume-held when prior run has no held_forms exits EXIT_NEEDS_ADVICE.
 
-E. --resume-held passes only the held forms to the approval gate, not all forms.
+E. --resume-held passes the FULL surviving set (approved ∪ held) to the approval
+   gate, NOT only the held forms — data-loss guard: passing only held forms would
+   delete previously-approved forms from llm_source/ on the whole-leg atomic replace.
 
 All filesystem state lives under tmp_path; real study data is never touched.
 The subprocess invocation of main.py and the pipeline lock are mocked out so
 these tests are deterministic and require no live AI calls.
+
+Patch-target note
+-----------------
+``resolve_run_id`` and ``scan_for_in_progress_scrubs`` are LAZILY imported
+inside ``_cmd_run`` (not at module level in extract_to_llm_source), so they
+must be patched at their SOURCE module:
+  scripts.utils.run_context.resolve_run_id
+  scripts.utils.run_context.scan_for_in_progress_scrubs
+Patching them as extract_to_llm_source.* would raise AttributeError.
+``_run_form_approval_gate`` and ``_resolve_run_id`` (underscore) ARE real
+module-level attributes of extract_to_llm_source and are patched there.
 """
 
 from __future__ import annotations
@@ -125,6 +139,7 @@ def _make_prior_partial_run(
         "started_utc": _iso_now(),
         "completed_utc": _iso_now(),
         "verifier_passed": False,
+        "approved_forms": approved_forms,
         "held_forms": held_forms,
         "approved_forms_count": len(approved_forms),
         "held_forms_count": len(held_forms),
@@ -203,7 +218,7 @@ def _make_form_approval_result(approved: list[str], held: list[str]) -> MagicMoc
 
 
 class TestResumeHeldHappyPath:
-    """--resume-held re-runs only held forms; on clean pass snapshot is committed."""
+    """--resume-held re-runs the full surviving set; on clean pass snapshot is committed."""
 
     def _setup_partial_study(self, tmp_path: Path) -> dict:
         """Build a study with a prior partial run (clean_form published, held_form held)."""
@@ -239,19 +254,27 @@ class TestResumeHeldHappyPath:
             "prior_run_dir": prior_run_dir,
         }
 
-    def test_resume_held_selects_only_held_forms(
+    def test_resume_held_gate_receives_full_surviving_set(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """_run_form_approval_gate is called with ONLY the prior held forms."""
+        """_run_form_approval_gate is called with the UNION of prior approved + held forms.
+
+        Data-loss regression guard: passing only the held subset would cause the
+        whole-leg atomic replace in main.py to delete previously-approved forms from
+        llm_source/.  The implementation must pass sorted(prior_approved | prior_held).
+        """
         _patch_config(monkeypatch, tmp_path)
         paths = self._setup_partial_study(tmp_path)
         study_output_dir = paths["study_output_dir"]
+
+        # Prior run seeded by _setup_partial_study: approved=[CLEAN_FORM], held=[HELD_FORM]
+        expected_union = tuple(sorted({CLEAN_FORM, HELD_FORM}))
 
         captured_selected: list[tuple[str, ...]] = []
 
         def _fake_gate(*, study, study_raw_dir, run_dir, max_workers, selected_forms):
             captured_selected.append(selected_forms)
-            return _make_form_approval_result([HELD_FORM], [])
+            return _make_form_approval_result([CLEAN_FORM, HELD_FORM], [])
 
         with (
             patch(
@@ -291,37 +314,39 @@ class TestResumeHeldHappyPath:
                 return_value="snap_abc123",
             ),
             patch(
-                "scripts.skills.extract_to_llm_source.resolve_run_id",
+                "scripts.utils.run_context.resolve_run_id",
                 return_value="run_new001",
             ),
             patch(
-                "scripts.skills.extract_to_llm_source.scan_for_in_progress_scrubs",
+                "scripts.utils.run_context.scan_for_in_progress_scrubs",
                 return_value=[],
             ),
         ):
-            # Must fake the ledger hash check
-            held_ledger = dataset_phi_ledger_path(paths["audit_dir"], HELD_FORM)
-            held_ledger.parent.mkdir(parents=True, exist_ok=True)
+            # Provide ledger files for both forms so post-run ledger gate passes
             import hashlib
 
             scrub_hash = hashlib.sha256(b"scrub_config: test").hexdigest()
-            held_ledger.write_text(
-                json.dumps(
-                    {
-                        "run_id": "run_new001",
-                        "scrub_config_hash": scrub_hash,
-                        "input_dataset_hash": "deadbeef",
-                    }
-                ),
-                encoding="utf-8",
-            )
+            for form in (CLEAN_FORM, HELD_FORM):
+                ledger = dataset_phi_ledger_path(paths["audit_dir"], form)
+                ledger.parent.mkdir(parents=True, exist_ok=True)
+                ledger.write_text(
+                    json.dumps(
+                        {
+                            "run_id": "run_new001",
+                            "scrub_config_hash": scrub_hash,
+                            "input_dataset_hash": "deadbeef",
+                        }
+                    ),
+                    encoding="utf-8",
+                )
 
             rc = main(["run", "--study", STUDY, "--resume-held"])
 
-        # Approval gate should have been called with only the held form
+        # Approval gate must receive the FULL surviving set (approved ∪ held), sorted
         assert captured_selected, "approval gate was not called"
-        assert captured_selected[0] == (HELD_FORM,), (
-            f"Expected gate to receive only held form, got: {captured_selected[0]}"
+        assert captured_selected[0] == expected_union, (
+            f"Expected gate to receive full surviving set {expected_union!r}, "
+            f"got: {captured_selected[0]!r}"
         )
 
     def test_resume_held_clean_pass_snapshot_committed(
@@ -392,11 +417,11 @@ class TestResumeHeldHappyPath:
                 side_effect=_fake_snapshot,
             ),
             patch(
-                "scripts.skills.extract_to_llm_source.resolve_run_id",
+                "scripts.utils.run_context.resolve_run_id",
                 return_value="run_new001",
             ),
             patch(
-                "scripts.skills.extract_to_llm_source.scan_for_in_progress_scrubs",
+                "scripts.utils.run_context.scan_for_in_progress_scrubs",
                 return_value=[],
             ),
         ):
@@ -501,11 +526,11 @@ class TestResumeHeldHappyPath:
                 side_effect=lambda **kw: snapshot_calls.append(kw) or "snap_x",
             ),
             patch(
-                "scripts.skills.extract_to_llm_source.resolve_run_id",
+                "scripts.utils.run_context.resolve_run_id",
                 return_value="run_new001",
             ),
             patch(
-                "scripts.skills.extract_to_llm_source.scan_for_in_progress_scrubs",
+                "scripts.utils.run_context.scan_for_in_progress_scrubs",
                 return_value=[],
             ),
         ):
@@ -584,13 +609,13 @@ class TestResumeHeldLlmAgentGuard:
         ), patch(
             "scripts.skills.extract_to_llm_source._release_pipeline_lock_for_skill",
         ), patch(
-            "scripts.skills.extract_to_llm_source.scan_for_in_progress_scrubs",
+            "scripts.utils.run_context.scan_for_in_progress_scrubs",
             return_value=[],
         ), patch(
             "scripts.skills.extract_to_llm_source.check_forms_manifest",
             side_effect=ManifestMismatchError("missing form"),
         ), patch(
-            "scripts.skills.extract_to_llm_source.resolve_run_id",
+            "scripts.utils.run_context.resolve_run_id",
             return_value="run_plain001",
         ):
             rc = main(["run", "--study", STUDY])
@@ -687,23 +712,36 @@ class TestResumeHeldNoHeldForms:
 
 
 # ---------------------------------------------------------------------------
-# E. --resume-held only processes held forms, not all forms
+# E. --resume-held passes the FULL surviving set (approved ∪ held) to the gate
 # ---------------------------------------------------------------------------
 
 
 class TestResumeHeldFormScope:
-    """Verify the approval gate receives only the held subset, not all manifest forms."""
+    """Verify the approval gate receives the full surviving set (approved ∪ held).
 
-    def test_gate_receives_only_held_forms_not_all(
+    This is the data-loss regression guard: the whole-leg atomic replace in
+    main.py would delete previously-approved forms from llm_source/ if only the
+    held subset were passed.  The implementation must pass the UNION.
+    """
+
+    def test_resume_held_gate_receives_full_surviving_set(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """Gate receives sorted(prior_approved | prior_held), NOT a subset.
+
+        Setup: manifest has 3 forms; 2 were previously approved, 1 was held.
+        Expected: gate selected_forms == all 3 (the full surviving set, sorted).
+        """
         _patch_config(monkeypatch, tmp_path)
         study_raw_dir = tmp_path / "data" / "raw" / STUDY
         study_output_dir = tmp_path / "output" / STUDY
 
-        # Manifest has 3 forms; only one was held
+        # Manifest has 3 forms; 2 approved, 1 held in prior run
         all_forms = ["form_a.xlsx", "form_b.xlsx", "form_c.xlsx"]
+        approved_forms = ["form_a.xlsx", "form_b.xlsx"]
         held_form = "form_c.xlsx"
+        # The implementation computes: sorted(set(approved) | set(held))
+        expected_union = tuple(sorted(set(approved_forms) | {held_form}))
 
         _make_manifest(study_raw_dir, all_forms)
         _make_datasets(study_raw_dir / "datasets", all_forms)
@@ -712,7 +750,7 @@ class TestResumeHeldFormScope:
         _make_prior_partial_run(
             study_output_dir,
             run_id="run_prior002",
-            approved_forms=["form_a.xlsx", "form_b.xlsx"],
+            approved_forms=approved_forms,
             held_forms=[held_form],
         )
 
@@ -720,7 +758,7 @@ class TestResumeHeldFormScope:
 
         def _fake_gate(*, study, study_raw_dir, run_dir, max_workers, selected_forms):
             captured_selected.append(selected_forms)
-            return _make_form_approval_result([held_form], [])
+            return _make_form_approval_result(list(all_forms), [])
 
         with (
             patch(
@@ -747,11 +785,11 @@ class TestResumeHeldFormScope:
             # iter_dataset_phi_ledger_paths returns [] → exits EXIT_LEDGER_HASH_NULL (3)
             # before the snapshot step — that's fine, we only care about the gate call.
             patch(
-                "scripts.skills.extract_to_llm_source.resolve_run_id",
+                "scripts.utils.run_context.resolve_run_id",
                 return_value="run_resume002",
             ),
             patch(
-                "scripts.skills.extract_to_llm_source.scan_for_in_progress_scrubs",
+                "scripts.utils.run_context.scan_for_in_progress_scrubs",
                 return_value=[],
             ),
         ):
@@ -759,9 +797,19 @@ class TestResumeHeldFormScope:
 
         assert captured_selected, "Approval gate was never called"
         selected = captured_selected[0]
-        assert held_form in selected, f"Held form must be in gate selected_forms: {selected}"
-        # The already-approved forms must NOT be in the selected set
-        for non_held in ("form_a.xlsx", "form_b.xlsx"):
-            assert non_held not in selected, (
-                f"{non_held!r} is already published and must NOT be re-submitted: {selected}"
+
+        # All three forms must be present — held AND previously-approved
+        assert selected == expected_union, (
+            f"Gate must receive the full surviving set {expected_union!r} "
+            f"(prior_approved ∪ prior_held), got: {selected!r}"
+        )
+        # Explicit regression guards against each component
+        assert held_form in selected, (
+            f"Held form {held_form!r} must be in gate selected_forms"
+        )
+        for prev_approved in approved_forms:
+            assert prev_approved in selected, (
+                f"Previously-approved form {prev_approved!r} must be included in the "
+                f"surviving set passed to the gate (omitting it would cause data loss): "
+                f"{selected!r}"
             )
