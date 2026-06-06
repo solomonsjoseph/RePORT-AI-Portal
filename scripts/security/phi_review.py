@@ -846,7 +846,7 @@ def _build_held_reason_for_adversarial_exhaustion(
         ),
         what_would_resolve=(
             "Review the loaded jurisdiction rules in the rule bundle "
-            f"(rules_sha256 will appear in the approval payload) to confirm that "
+            "(rules_sha256 will appear in the approval payload) to confirm that "
             "the patterns for the failing probe categories are present and correct. "
             "Increasing max_synthetic_attempts in _study_privacy.yaml will not resolve "
             "a systematic rule gap — the patterns themselves must be corrected."
@@ -886,7 +886,9 @@ def review_form_headers(
     # ------------------------------------------------------------------
     adversarial_failures: tuple[str, ...] = ()
     attempt = 0
-    for attempt in range(1, privacy_config.max_synthetic_attempts + 1):
+    # `attempt` is intentionally consumed AFTER the loop (recorded as
+    # approval.attempts), so it is not referenced in the body — hence B007.
+    for attempt in range(1, privacy_config.max_synthetic_attempts + 1):  # noqa: B007
         adversarial_failures = _adversarial_header_validation(privacy_config, rule_bundle)
         if not adversarial_failures:
             break

@@ -116,9 +116,7 @@ def activate_snapshot(study: str | None, snapshot_id: str) -> Path:
     try:
         llm_source = snapshot.select_snapshot_llm_source(study, snapshot_id)
     except snapshot.SnapshotError as exc:
-        raise SnapshotActivationError(
-            f"cannot activate snapshot {snapshot_id!r}: {exc}"
-        ) from exc
+        raise SnapshotActivationError(f"cannot activate snapshot {snapshot_id!r}: {exc}") from exc
 
     # 2. Re-gate the selected subtree for PHI residuals BEFORE exposing it.
     result = scan_tree_for_phi(llm_source)

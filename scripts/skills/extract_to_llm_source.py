@@ -1334,7 +1334,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     ------------------
     ``--resume-held`` resumes after a maintainer has resolved the held forms of
     a prior partial run.  It re-processes the FULL surviving form set (prior
-    ``approved_forms`` ∪ ``held_forms``) — NOT only the held forms — because
+    ``approved_forms`` | ``held_forms``) — NOT only the held forms — because
     promotion (``main.py`` ``_publish_leg``) is a whole-leg atomic replace:
     publishing only the held subset would securely delete every previously
     approved form from ``llm_source/``.  Re-processing the union reproduces every
@@ -1401,7 +1401,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
             print(msg, file=sys.stderr)
             return EXIT_NEEDS_ADVICE
         prior_approved: list[str] = [str(f) for f in prior_status.get("approved_forms", [])]
-        # Re-process the FULL surviving set (prior approved ∪ held), NOT only the
+        # Re-process the FULL surviving set (prior approved | held), NOT only the
         # held forms. Promotion (main.py _publish_leg) is a whole-leg atomic
         # replace, so publishing only the held subset would securely DELETE every
         # previously-approved form from llm_source/. Passing the union lets the
@@ -1501,7 +1501,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
             )
 
         # ── Step 1e: header-only PHI handling approval gate ───────────────
-        # For --resume-held: re-review the FULL surviving set (prior approved ∪
+        # For --resume-held: re-review the FULL surviving set (prior approved |
         # held). The gate re-approves the now-resolved held forms and re-approves
         # the prior-approved forms, so REPORTAL_ALLOWED_DATASET_FORMS — and thus
         # the whole-leg republish — covers every surviving form. Passing only the

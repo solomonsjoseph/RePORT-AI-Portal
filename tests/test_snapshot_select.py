@@ -168,9 +168,7 @@ class TestActivateSnapshot:
         assert before == config.STUDY_LLM_SOURCE_DIR
 
     @pytest.mark.parametrize("bad", ["../escape", "a/b", "..", "x\x00y"])
-    def test_path_bearing_id_rejected(
-        self, monkeypatch_config: Path, bad: str
-    ) -> None:
+    def test_path_bearing_id_rejected(self, monkeypatch_config: Path, bad: str) -> None:
         study = config.STUDY_NAME
         before = config.STUDY_LLM_SOURCE_DIR
         with pytest.raises(SnapshotActivationError):
@@ -198,9 +196,7 @@ class TestActivateSnapshot:
             / "files"
             / "leak.jsonl"
         )
-        leaf.write_text(
-            json.dumps({"CONTACT": "patient@example.com"}) + "\n", encoding="utf-8"
-        )
+        leaf.write_text(json.dumps({"CONTACT": "patient@example.com"}) + "\n", encoding="utf-8")
 
         with pytest.raises(SnapshotActivationError):
             activate_snapshot(study, dest.name)

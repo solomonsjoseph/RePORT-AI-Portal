@@ -149,9 +149,7 @@ def _write_run_status(
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "status.json").write_text(json.dumps(status), encoding="utf-8")
     if approval is not None:
-        (run_dir / "phi_handling_approval.json").write_text(
-            json.dumps(approval), encoding="utf-8"
-        )
+        (run_dir / "phi_handling_approval.json").write_text(json.dumps(approval), encoding="utf-8")
     return run_dir
 
 

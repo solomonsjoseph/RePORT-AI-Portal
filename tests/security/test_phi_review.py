@@ -376,9 +376,7 @@ def test_adversarial_probe_resolves_within_bound_approves_clean_form(
 
     call_count = {"n": 0}
 
-    def _probe_side_effect(
-        privacy_config: object, rule_bundle: object
-    ) -> tuple[str, ...]:
+    def _probe_side_effect(privacy_config: object, rule_bundle: object) -> tuple[str, ...]:
         call_count["n"] += 1
         if call_count["n"] == 1:
             return ("adversarial header probe failed: synthetic_email_header",)

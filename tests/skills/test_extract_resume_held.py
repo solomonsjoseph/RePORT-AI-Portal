@@ -3,7 +3,7 @@
 Coverage
 --------
 A. Happy path — held run -> (operator resolves) -> --resume-held re-runs the
-   FULL surviving set (prior_approved ∪ prior_held) -> clean pass -> snapshot
+   FULL surviving set (prior_approved | prior_held) -> clean pass -> snapshot
    written + status.json.snapshot_id set.
 
 B. Negative: --resume-held under REPORTAL_PROCESS_ROLE=llm-agent exits non-zero
@@ -13,7 +13,7 @@ C. Negative: --resume-held with no prior run exits EXIT_NEEDS_ADVICE.
 
 D. Negative: --resume-held when prior run has no held_forms exits EXIT_NEEDS_ADVICE.
 
-E. --resume-held passes the FULL surviving set (approved ∪ held) to the approval
+E. --resume-held passes the FULL surviving set (approved | held) to the approval
    gate, NOT only the held forms — data-loss guard: passing only held forms would
    delete previously-approved forms from llm_source/ on the whole-leg atomic replace.
 
@@ -36,7 +36,6 @@ module-level attributes of extract_to_llm_source and are patched there.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -340,9 +339,9 @@ class TestResumeHeldHappyPath:
                     encoding="utf-8",
                 )
 
-            rc = main(["run", "--study", STUDY, "--resume-held"])
+            main(["run", "--study", STUDY, "--resume-held"])
 
-        # Approval gate must receive the FULL surviving set (approved ∪ held), sorted
+        # Approval gate must receive the FULL surviving set (approved | held), sorted
         assert captured_selected, "approval gate was not called"
         assert captured_selected[0] == expected_union, (
             f"Expected gate to receive full surviving set {expected_union!r}, "
@@ -406,7 +405,10 @@ class TestResumeHeldHappyPath:
             ),
             patch(
                 "scripts.skills.extract_to_llm_source.destroy_staging_and_attest",
-                return_value=study_output_dir / "runs" / "run_new001" / "destruction_attestation.json",
+                return_value=study_output_dir
+                / "runs"
+                / "run_new001"
+                / "destruction_attestation.json",
             ),
             patch(
                 "scripts.skills.extract_to_llm_source._cmd_verify",
@@ -456,9 +458,7 @@ class TestResumeHeldHappyPath:
             "scripts.utils.snapshot.write_snapshot",
             return_value=fake_snap_path,
         ):
-            result = _try_commit_snapshot(
-                study=STUDY, run_id="run_snap001", run_dir=run_dir
-            )
+            result = _try_commit_snapshot(study=STUDY, run_id="run_snap001", run_dir=run_dir)
 
         assert result == "snap_testid0001"
         status = json.loads((run_dir / "status.json").read_text(encoding="utf-8"))
@@ -516,7 +516,10 @@ class TestResumeHeldHappyPath:
             ),
             patch(
                 "scripts.skills.extract_to_llm_source.destroy_staging_and_attest",
-                return_value=study_output_dir / "runs" / "run_new001" / "destruction_attestation.json",
+                return_value=study_output_dir
+                / "runs"
+                / "run_new001"
+                / "destruction_attestation.json",
             ),
             # Verifier returns non-zero (e.g. EXIT_VERIFIER_FAIL)
             patch(
@@ -564,11 +567,7 @@ class TestResumeHeldLlmAgentGuard:
         assert rc == EXIT_NEEDS_ADVICE, f"Expected EXIT_NEEDS_ADVICE, got {rc}"
         # No new run directory should have been created (nothing ran)
         if runs_dir.exists():
-            new_runs = [
-                d
-                for d in runs_dir.iterdir()
-                if d.is_dir() and d.name != "run_prior001"
-            ]
+            new_runs = [d for d in runs_dir.iterdir() if d.is_dir() and d.name != "run_prior001"]
             assert not new_runs, (
                 f"No run should be created when llm-agent guard fires, got: {new_runs}"
             )
@@ -606,19 +605,25 @@ class TestResumeHeldLlmAgentGuard:
 
         from scripts.extraction.dataset_pipeline import ManifestMismatchError
 
-        with patch(
-            "scripts.skills.extract_to_llm_source._acquire_pipeline_lock_for_skill",
-        ), patch(
-            "scripts.skills.extract_to_llm_source._release_pipeline_lock_for_skill",
-        ), patch(
-            "scripts.utils.run_context.scan_for_in_progress_scrubs",
-            return_value=[],
-        ), patch(
-            "scripts.skills.extract_to_llm_source.check_forms_manifest",
-            side_effect=ManifestMismatchError("missing form"),
-        ), patch(
-            "scripts.utils.run_context.resolve_run_id",
-            return_value="run_plain001",
+        with (
+            patch(
+                "scripts.skills.extract_to_llm_source._acquire_pipeline_lock_for_skill",
+            ),
+            patch(
+                "scripts.skills.extract_to_llm_source._release_pipeline_lock_for_skill",
+            ),
+            patch(
+                "scripts.utils.run_context.scan_for_in_progress_scrubs",
+                return_value=[],
+            ),
+            patch(
+                "scripts.skills.extract_to_llm_source.check_forms_manifest",
+                side_effect=ManifestMismatchError("missing form"),
+            ),
+            patch(
+                "scripts.utils.run_context.resolve_run_id",
+                return_value="run_plain001",
+            ),
         ):
             rc = main(["run", "--study", STUDY])
 
@@ -714,12 +719,12 @@ class TestResumeHeldNoHeldForms:
 
 
 # ---------------------------------------------------------------------------
-# E. --resume-held passes the FULL surviving set (approved ∪ held) to the gate
+# E. --resume-held passes the FULL surviving set (approved | held) to the gate
 # ---------------------------------------------------------------------------
 
 
 class TestResumeHeldFormScope:
-    """Verify the approval gate receives the full surviving set (approved ∪ held).
+    """Verify the approval gate receives the full surviving set (approved | held).
 
     This is the data-loss regression guard: the whole-leg atomic replace in
     main.py would delete previously-approved forms from llm_source/ if only the
@@ -803,12 +808,10 @@ class TestResumeHeldFormScope:
         # All three forms must be present — held AND previously-approved
         assert selected == expected_union, (
             f"Gate must receive the full surviving set {expected_union!r} "
-            f"(prior_approved ∪ prior_held), got: {selected!r}"
+            f"(prior_approved | prior_held), got: {selected!r}"
         )
         # Explicit regression guards against each component
-        assert held_form in selected, (
-            f"Held form {held_form!r} must be in gate selected_forms"
-        )
+        assert held_form in selected, f"Held form {held_form!r} must be in gate selected_forms"
         for prev_approved in approved_forms:
             assert prev_approved in selected, (
                 f"Previously-approved form {prev_approved!r} must be included in the "
