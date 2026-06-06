@@ -824,7 +824,13 @@ def _build_held_reason_for_adversarial_exhaustion(
     attempts: int,
     privacy_config: StudyPrivacyConfig,
 ) -> HeldReason:
-    """Construct the structured hold note after adversarial probes fail every attempt.
+    """Construct the structured hold note when the adversarial probe check fails.
+
+    The adversarial probe is a deterministic correctness check — it evaluates
+    the rule bundle once against a fixed set of synthetic headers. A failure
+    cannot be resolved by retrying because the probe is pure pattern matching
+    with no I/O or randomness. The hold indicates a rule bundle defect that
+    requires operator intervention.
 
     Header-name metadata only; never references row values.
     """
@@ -833,14 +839,16 @@ def _build_held_reason_for_adversarial_exhaustion(
     )
     return HeldReason(
         what_was_tried=(
-            f"Ran adversarial header classification probes {attempts} time(s) "
+            f"Ran adversarial header classification probes (1 deterministic evaluation) "
             f"against the {privacy_config.conflict_policy} rule bundle "
             f"(jurisdictions: {', '.join(privacy_config.jurisdictions)}). "
-            "Probes use synthetic header names only; no dataset row values were read."
+            "Probes use synthetic header names only; no dataset row values were read. "
+            "The probe is a pure correctness check — it is not retried because "
+            "its result is deterministic given the same rule bundle."
         ),
         what_was_ambiguous=(
-            f"The following synthetic probe header(s) were not classified as expected "
-            f"after all {attempts} attempt(s): {failing_probes}. "
+            f"The following synthetic probe header(s) were not classified as expected: "
+            f"{failing_probes}. "
             "This indicates the loaded rule bundle does not satisfy the minimum "
             "correctness invariants required before any form can be approved."
         ),
@@ -863,14 +871,17 @@ def review_form_headers(
 ) -> FormReviewApproval:
     """Review one form's headers before any row-value extraction is allowed.
 
-    Adversarial classification probes are retried up to
-    ``privacy_config.max_synthetic_attempts`` times.  On every attempt the full
-    probe suite is re-evaluated against the rule bundle.  If the probes pass
-    within the attempt bound the review continues to blocker and coverage-hold
-    checks (which are deterministic and not retried).  If the probes still fail
-    after all attempts are exhausted the form is held with a structured
+    Adversarial classification probes are evaluated ONCE as a deterministic
+    correctness check on the rule bundle.  The probe is pure pattern matching
+    with no I/O or randomness — it is not retried because retrying the same
+    immutable probe against the same immutable rule bundle cannot change the
+    result.  If the probe fails the form is held with a structured
     ``HeldReason`` that records what was tried, what was ambiguous, and what
-    information would resolve the hold.
+    information would resolve the hold.  ``attempts`` is always 1.
+
+    ``max_synthetic_attempts`` in ``_study_privacy.yaml`` is loaded and
+    validated but no longer drives a loop — it is retained for configuration
+    compatibility and to communicate to operators that no retry will help.
 
     Headers-only invariant: no row values are read at any point.
     """
@@ -882,16 +893,14 @@ def review_form_headers(
     actions = {header: item.action.value for header, item in classifications_by_header.items()}
 
     # ------------------------------------------------------------------
-    # Step 2: Adversarial probe retry loop — up to max_synthetic_attempts.
+    # Step 2: Adversarial probe — single deterministic evaluation.
+    # The probe is pure pattern matching; retrying with the same frozen
+    # args cannot change the outcome, so one evaluation is sufficient.
     # ------------------------------------------------------------------
-    adversarial_failures: tuple[str, ...] = ()
-    attempt = 0
-    # `attempt` is intentionally consumed AFTER the loop (recorded as
-    # approval.attempts), so it is not referenced in the body — hence B007.
-    for attempt in range(1, privacy_config.max_synthetic_attempts + 1):  # noqa: B007
-        adversarial_failures = _adversarial_header_validation(privacy_config, rule_bundle)
-        if not adversarial_failures:
-            break
+    adversarial_failures: tuple[str, ...] = _adversarial_header_validation(
+        privacy_config, rule_bundle
+    )
+    attempt = 1  # always exactly one evaluation
 
     # ------------------------------------------------------------------
     # Step 3: Deterministic blockers and coverage holds (no retry needed).
@@ -913,10 +922,10 @@ def review_form_headers(
     status = "held" if reasons else "approved"
 
     # ------------------------------------------------------------------
-    # Step 4: Build structured held_reason when adversarial probes exhausted.
+    # Step 4: Build structured held_reason when adversarial probe fails.
     # ------------------------------------------------------------------
     held_reason: HeldReason | None = None
-    if adversarial_failures and attempt >= privacy_config.max_synthetic_attempts:
+    if adversarial_failures:
         held_reason = _build_held_reason_for_adversarial_exhaustion(
             adversarial_failures, attempt, privacy_config
         )

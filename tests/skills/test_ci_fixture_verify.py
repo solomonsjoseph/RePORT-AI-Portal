@@ -7,7 +7,7 @@ delegates to pytest).
 
 Happy path
 ----------
-One test builds a complete golden output tree (satisfying all 13 assertions)
+One test builds a complete golden output tree (satisfying all 14 assertions)
 and asserts verify exits 0 with overall="pass".
 
 Fail-injection matrix
@@ -20,6 +20,12 @@ Six mutation cases each assert a specific non-zero exit code:
   leftover_staging   — staging dir left behind                   → EXIT_DESTRUCTION_INCOMPLETE (7)
   leftover_lock      — pipeline lock file present                → EXIT_NEEDS_ADVICE (6)
   missing_attestation — destruction_attestation.json removed     → EXIT_DESTRUCTION_INCOMPLETE (7)
+
+Assertion 14 (non-vacuous)
+--------------------------
+The golden fixture writes a phi_handling_approval.json and ledger keep_decisions
+so assertion 14 actually fires.  A separate test removes a published column's
+ledger coverage and asserts that assertion 14 fails with EXIT_AUDIT_COVERAGE_INCOMPLETE.
 """
 
 from __future__ import annotations
@@ -31,6 +37,7 @@ import pytest
 
 from scripts.audit.ledger import dataset_phi_ledger_path
 from scripts.skills.extract_to_llm_source import (
+    EXIT_AUDIT_COVERAGE_INCOMPLETE,
     EXIT_DESTRUCTION_INCOMPLETE,
     EXIT_LEDGER_HASH_NULL,
     EXIT_MANIFEST_MISMATCH,
@@ -134,6 +141,105 @@ class TestFixtureVerifyHappyPath:
         status = tmp_path / "output" / FIXTURE_STUDY / "runs" / FIXTURE_RUN_ID / "status.json"
         data = json.loads(status.read_text())
         assert data["verifier_passed"] is True
+
+
+# ---------------------------------------------------------------------------
+# Assertion 14 — non-vacuous coverage tests (finding #10)
+# ---------------------------------------------------------------------------
+
+
+class TestAssertion14NonVacuous:
+    """Assertion 14 (ledger_covers_all_columns) must fire and pass in the golden fixture.
+
+    The golden fixture writes phi_handling_approval.json and per-column
+    keep_decisions so assertion 14 actually evaluates coverage rather than
+    short-circuiting on "no approval file".  These tests verify:
+
+    1. The golden fixture includes a phi_handling_approval.json.
+    2. The golden fixture passes assertion 14 (all columns accounted).
+    3. Removing a published column's ledger coverage trips assertion 14 with
+       EXIT_AUDIT_COVERAGE_INCOMPLETE — the assertion is NOT vacuous.
+    """
+
+    def test_golden_fixture_includes_phi_handling_approval(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Golden fixture must write phi_handling_approval.json so assertion 14 can fire."""
+        _patch_config(monkeypatch, tmp_path)
+        build_golden_output_tree(
+            output_root=tmp_path / "output",
+            raw_root=tmp_path / "data" / "raw",
+            tmp_root=tmp_path / "tmp",
+            phi_scrub_yaml_path=_PHI_SCRUB_YAML,
+        )
+        approval_path = (
+            tmp_path / "output" / FIXTURE_STUDY / "runs" / FIXTURE_RUN_ID
+            / "phi_handling_approval.json"
+        )
+        assert approval_path.is_file(), (
+            "phi_handling_approval.json must be written by build_golden_output_tree"
+        )
+        data = json.loads(approval_path.read_text())
+        assert data.get("approved_forms"), "approved_forms must be non-empty"
+        assert set(data["approved_forms"]) == set(FIXTURE_FORMS), (
+            "all fixture forms must be in approved_forms"
+        )
+
+    def test_assertion_14_passes_with_full_ledger_coverage(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Assertion 14 must pass when every published column has a ledger entry."""
+        _patch_config(monkeypatch, tmp_path)
+        build_golden_output_tree(
+            output_root=tmp_path / "output",
+            raw_root=tmp_path / "data" / "raw",
+            tmp_root=tmp_path / "tmp",
+            phi_scrub_yaml_path=_PHI_SCRUB_YAML,
+        )
+        main(["verify", "--study", FIXTURE_STUDY, "--run", FIXTURE_RUN_ID])
+        report = (
+            tmp_path / "output" / FIXTURE_STUDY / "runs" / FIXTURE_RUN_ID / "verifier_report.json"
+        )
+        data = json.loads(report.read_text())
+        a14 = next(
+            (a for a in data["assertions"] if a.get("name") == "ledger_covers_all_columns"),
+            None,
+        )
+        assert a14 is not None, "assertion 14 (ledger_covers_all_columns) must be in report"
+        assert a14["result"] == "pass", (
+            f"assertion 14 must pass on the golden fixture; got: {a14}"
+        )
+
+    def test_removing_column_ledger_coverage_trips_assertion_14(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Removing a column from the ledger must trip assertion 14 — coverage is not vacuous.
+
+        This is the key regression guard: if assertion 14 short-circuits on "no
+        approval file" then removing ledger entries would not be detected.  After
+        this fix, the fixture has an approval file and real keep_decisions, so a
+        removed keep_decision must fail assertion 14 with EXIT_AUDIT_COVERAGE_INCOMPLETE.
+        """
+        _patch_config(monkeypatch, tmp_path)
+        audit_dir = tmp_path / "output" / FIXTURE_STUDY / "audit"
+        build_golden_output_tree(
+            output_root=tmp_path / "output",
+            raw_root=tmp_path / "data" / "raw",
+            tmp_root=tmp_path / "tmp",
+            phi_scrub_yaml_path=_PHI_SCRUB_YAML,
+        )
+        # Remove all keep_decisions from the first form's ledger — the published
+        # columns will have no ledger accounting, which must trip assertion 14.
+        ledger_path = dataset_phi_ledger_path(audit_dir, FIXTURE_FORMS[0])
+        ledger_data = json.loads(ledger_path.read_text())
+        ledger_data.pop("keep_decisions", None)
+        ledger_path.write_text(json.dumps(ledger_data, indent=2), encoding="utf-8")
+
+        rc = main(["verify", "--study", FIXTURE_STUDY, "--run", FIXTURE_RUN_ID])
+        assert rc == EXIT_AUDIT_COVERAGE_INCOMPLETE, (
+            f"Expected EXIT_AUDIT_COVERAGE_INCOMPLETE ({EXIT_AUDIT_COVERAGE_INCOMPLETE}), "
+            f"got {rc} — assertion 14 was not exercised non-vacuously"
+        )
 
 
 # ---------------------------------------------------------------------------
