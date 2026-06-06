@@ -122,7 +122,34 @@ class TestAvailableSnapshots:
 # ── activate_snapshot ────────────────────────────────────────────────────────
 
 
+# All llm_source-derived config constants that activate_snapshot now rebases via
+# config.repoint_llm_source_base. Pre-registering them with monkeypatch ensures
+# the global mutations are restored at test teardown (monkeypatch_config only
+# patches a subset of these).
+_LLM_SOURCE_DERIVED_CONSTANTS = (
+    "STUDY_LLM_SOURCE_DIR",
+    "TRIO_DATASETS_DIR",
+    "DICTIONARY_JSON_OUTPUT_DIR",
+    "LLM_SOURCE_DATASET_SCHEMA_FILES_DIR",
+    "LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH",
+    "LLM_SOURCE_DICTIONARY_MAPPING_DIR",
+    "LLM_SOURCE_DICTIONARY_MAPPING_JSONL_DIR",
+    "LLM_SOURCE_DICTIONARY_CATALOG_PATH",
+    "LLM_SOURCE_STUDY_METADATA_DIR",
+    "LLM_SOURCE_STUDY_METADATA_CATALOG_PATH",
+    "LLM_SOURCE_EVIDENCE_PACKS_DIR",
+    "LLM_SOURCE_SOT_DIR",
+    "LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR",
+)
+
+
 class TestActivateSnapshot:
+    @pytest.fixture(autouse=True)
+    def _restore_derived_constants(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Register every derived constant so repoint mutations are reverted."""
+        for name in _LLM_SOURCE_DERIVED_CONSTANTS:
+            monkeypatch.setattr(config, name, getattr(config, name))
+
     def test_repoints_read_zone_to_llm_source(
         self, monkeypatch_config: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -157,15 +184,58 @@ class TestActivateSnapshot:
         with pytest.raises(ZoneViolationError):
             validate_agent_read(dest / "verifier_report.json")
 
+    def test_activation_repoints_all_derived_constants(
+        self, monkeypatch_config: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """#6: activation must atomically rebase EVERY llm_source-derived
+        constant — not just STUDY_LLM_SOURCE_DIR — so dataset-query and
+        SoT-citation tools read the snapshot, never the live tree."""
+        study = config.STUDY_NAME
+        dest = _make_snapshot(study)
+
+        exposed = activate_snapshot(study, dest.name)
+
+        # The exposed base is snapshots/{id}/llm_source/.
+        assert exposed == snapshot.snapshot_llm_source_path(study, dest.name)
+        assert config.STUDY_LLM_SOURCE_DIR == exposed
+
+        # Every derived constant now resolves UNDER the snapshot subtree, not
+        # the live tree. (Spot-check the ones called out in the finding plus the
+        # full derived set.)
+        derived = {
+            "TRIO_DATASETS_DIR": exposed / "dataset_schema" / "files",
+            "DICTIONARY_JSON_OUTPUT_DIR": exposed / "dictionary_mapping" / "jsonl",
+            "LLM_SOURCE_DATASET_SCHEMA_FILES_DIR": exposed / "dataset_schema" / "files",
+            "LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH": exposed / "dataset_schema" / "catalog.json",
+            "LLM_SOURCE_DICTIONARY_MAPPING_DIR": exposed / "dictionary_mapping",
+            "LLM_SOURCE_DICTIONARY_MAPPING_JSONL_DIR": exposed / "dictionary_mapping" / "jsonl",
+            "LLM_SOURCE_DICTIONARY_CATALOG_PATH": exposed / "dictionary_mapping" / "catalog.json",
+            "LLM_SOURCE_STUDY_METADATA_DIR": exposed / "study_metadata",
+            "LLM_SOURCE_STUDY_METADATA_CATALOG_PATH": exposed / "study_metadata" / "catalog.json",
+            "LLM_SOURCE_EVIDENCE_PACKS_DIR": exposed / "study_metadata" / "evidence_packs",
+            "LLM_SOURCE_SOT_DIR": exposed / "SoT",
+            "LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR": exposed / "source_truth",
+        }
+        for name, expected in derived.items():
+            actual = getattr(config, name)
+            assert actual == expected, f"{name} not repointed: {actual} != {expected}"
+            # And it is genuinely inside the snapshot tree (not the live tree).
+            assert "snapshots" in actual.parts
+            assert exposed in (actual, *actual.parents)
+
     def test_unknown_id_rejected(
         self, monkeypatch_config: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         study = config.STUDY_NAME
         before = config.STUDY_LLM_SOURCE_DIR
+        before_trio = config.TRIO_DATASETS_DIR
+        before_sot = config.LLM_SOURCE_SOT_DIR
         with pytest.raises(SnapshotActivationError):
             activate_snapshot(study, "snap_doesnotexist")
-        # Fail-closed: the read zone is untouched.
+        # Fail-closed: the read zone AND derived constants are untouched.
         assert before == config.STUDY_LLM_SOURCE_DIR
+        assert before_trio == config.TRIO_DATASETS_DIR
+        assert before_sot == config.LLM_SOURCE_SOT_DIR
 
     @pytest.mark.parametrize("bad", ["../escape", "a/b", "..", "x\x00y"])
     def test_path_bearing_id_rejected(self, monkeypatch_config: Path, bad: str) -> None:

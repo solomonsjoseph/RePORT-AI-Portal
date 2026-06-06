@@ -7,6 +7,14 @@ from pathlib import Path
 
 import config
 
+# Terminal-run gate (mirrors scripts.skills.extract_to_llm_source.EXIT_OK /
+# EXIT_PARTIAL_REVIEW). Kept as local literals so this UI-convenience module does
+# not import the heavy publishing CLI just to read two exit codes.
+_EXIT_OK = 0
+_EXIT_PARTIAL_REVIEW = 8
+_TERMINAL_EXIT_CODES = frozenset({_EXIT_OK, _EXIT_PARTIAL_REVIEW})
+_TERMINAL_PUBLISH_STATUSES = frozenset({"complete", "partial"})
+
 
 def _has_dataset_jsonl() -> bool:
     return config.TRIO_DATASETS_DIR.is_dir() and any(config.TRIO_DATASETS_DIR.glob("*.jsonl"))
@@ -66,11 +74,18 @@ def bundle_readiness_issues() -> list[str]:
 
 
 def _latest_run_status(study: str) -> tuple[Path, dict] | None:
-    """Return ``(run_dir, parsed_status)`` for the most recent run, or None.
+    """Return ``(run_dir, parsed_status)`` for the latest TERMINAL run, or None.
 
-    "Most recent" is the highest-sorting run directory name that carries a
-    parseable ``status.json`` (run ids embed a uuid4 hex, so name-sort is a
-    stable, timestamp-free ordering — matching the verifier's own resolution).
+    "Latest" is the chronologically most recent run by ``completed_utc`` (an
+    ISO-8601 timestamp from ``status.json``) — NOT by run-directory name. Run
+    ids embed a uuid4 hex (random), so name order is not chronological; sorting
+    by name would surface an arbitrary run as "latest". This mirrors
+    :func:`scripts.skills.extract_to_llm_source._resolve_run_id`.
+
+    Only TERMINAL runs are considered: ``exit_code`` in {0, 8} (EXIT_OK,
+    EXIT_PARTIAL_REVIEW) AND ``publish_status`` in {"complete", "partial"}. A
+    non-terminal run (e.g. paused needs-advice, exit 6) is ignored so the notice
+    reflects an actual published outcome, not an in-flight/aborted run.
 
     This is ADVISORY metadata for the Load Study UI: it never raises. Any
     missing/malformed path or unreadable JSON yields ``None`` so the caller can
@@ -80,12 +95,11 @@ def _latest_run_status(study: str) -> tuple[Path, dict] | None:
         runs_dir = Path(config.OUTPUT_DIR) / study / "runs"
         if not runs_dir.is_dir():
             return None
-        candidates = sorted(
-            (d for d in runs_dir.iterdir() if d.is_dir() and not d.name.startswith(".")),
-            key=lambda d: d.name,
-            reverse=True,
-        )
-        for run_dir in candidates:
+        # (completed_utc, run_dir, status) for each terminal run, picked by ts.
+        terminal: list[tuple[str, Path, dict]] = []
+        for run_dir in runs_dir.iterdir():
+            if not run_dir.is_dir() or run_dir.name.startswith("."):
+                continue
             status_path = run_dir / "status.json"
             if not status_path.is_file():
                 continue
@@ -93,9 +107,19 @@ def _latest_run_status(study: str) -> tuple[Path, dict] | None:
                 status = json.loads(status_path.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError, ValueError):
                 continue
-            if isinstance(status, dict):
-                return run_dir, status
-        return None
+            if not isinstance(status, dict):
+                continue
+            if status.get("exit_code") not in _TERMINAL_EXIT_CODES:
+                continue
+            if status.get("publish_status") not in _TERMINAL_PUBLISH_STATUSES:
+                continue
+            completed = status.get("completed_utc") or status.get("started_utc") or ""
+            terminal.append((str(completed), run_dir, status))
+        if not terminal:
+            return None
+        # Chronologically latest by completed_utc; run_dir name breaks ties.
+        latest = max(terminal, key=lambda item: (item[0], item[1].name))
+        return latest[1], latest[2]
     except OSError:
         return None
 
