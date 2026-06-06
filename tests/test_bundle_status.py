@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
 import config
-from scripts.ai_assistant.ui.bundle_status import bundle_readiness_issues, published_bundle_exists
+from scripts.ai_assistant.ui.bundle_status import (
+    bundle_readiness_issues,
+    held_set_notice,
+    published_bundle_exists,
+)
 
 
 def _point_bundle_config(monkeypatch: pytest.MonkeyPatch, llm_source: Path) -> None:
@@ -127,3 +132,116 @@ def test_published_bundle_accepts_legacy_source_truth_compatibility(
     (legacy_dir / "6_HIV_policy.lean.yaml").write_text("variables: {}\n", encoding="utf-8")
 
     assert published_bundle_exists() is True
+
+
+# ── held_set_notice (W2): advisory, non-blocking, never raises ───────────────
+
+
+def _write_run_status(
+    study: str,
+    run_id: str,
+    status: dict,
+    *,
+    approval: dict | None = None,
+) -> Path:
+    """Seed a run dir with status.json (+ optional approval) under OUTPUT_DIR."""
+    run_dir = Path(config.OUTPUT_DIR) / study / "runs" / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "status.json").write_text(json.dumps(status), encoding="utf-8")
+    if approval is not None:
+        (run_dir / "phi_handling_approval.json").write_text(
+            json.dumps(approval), encoding="utf-8"
+        )
+    return run_dir
+
+
+def test_held_set_notice_none_when_no_runs(monkeypatch_config: Path) -> None:
+    # No runs/ dir exists at all -> advisory returns None, never raises.
+    assert held_set_notice(config.STUDY_NAME) is None
+
+
+def test_held_set_notice_none_for_clean_run(monkeypatch_config: Path) -> None:
+    study = config.STUDY_NAME
+    _write_run_status(
+        study,
+        "run_clean00000000",
+        {"publish_status": "complete", "held_forms": [], "exit_code": 0},
+    )
+    assert held_set_notice(study) is None
+
+
+def test_held_set_notice_text_when_forms_held(monkeypatch_config: Path) -> None:
+    study = config.STUDY_NAME
+    _write_run_status(
+        study,
+        "run_held000000001",
+        {
+            "publish_status": "partial",
+            "held_forms": ["9Z_held.xlsx", "8Y_other.xlsx"],
+            "exit_code": 8,
+        },
+    )
+    notice = held_set_notice(study)
+    assert notice is not None
+    assert "9Z_held.xlsx" in notice
+    assert "8Y_other.xlsx" in notice
+    # Advisory framing: querying approved data may continue.
+    assert "approved" in notice.lower()
+
+
+def test_held_set_notice_includes_reasons_from_approval(monkeypatch_config: Path) -> None:
+    study = config.STUDY_NAME
+    _write_run_status(
+        study,
+        "run_held000000002",
+        {"publish_status": "partial", "held_forms": ["9Z_held.xlsx"], "exit_code": 8},
+        approval={
+            "approved_forms": ["1A_form.xlsx"],
+            "held_forms": ["9Z_held.xlsx"],
+            "forms": [
+                {
+                    "form_name": "9Z_held.xlsx",
+                    "status": "held",
+                    "reasons": ["phi_coverage_hold: column PATIENT_NAME looks like a name"],
+                }
+            ],
+        },
+    )
+    notice = held_set_notice(study)
+    assert notice is not None
+    assert "phi_coverage_hold" in notice
+    assert "PATIENT_NAME" in notice
+
+
+def test_held_set_notice_uses_latest_run(monkeypatch_config: Path) -> None:
+    study = config.STUDY_NAME
+    # Older run held a form; the newest (name-sorted) run is clean.
+    _write_run_status(
+        study,
+        "run_aaa000000001",
+        {"publish_status": "partial", "held_forms": ["OLD.xlsx"], "exit_code": 8},
+    )
+    _write_run_status(
+        study,
+        "run_zzz000000002",
+        {"publish_status": "complete", "held_forms": [], "exit_code": 0},
+    )
+    assert held_set_notice(study) is None
+
+
+def test_held_set_notice_never_raises_on_malformed_status(monkeypatch_config: Path) -> None:
+    study = config.STUDY_NAME
+    run_dir = Path(config.OUTPUT_DIR) / study / "runs" / "run_bad000000001"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "status.json").write_text("{ this is not json", encoding="utf-8")
+    # Malformed JSON -> skipped -> no parseable status -> None (no exception).
+    assert held_set_notice(study) is None
+
+
+def test_held_set_notice_never_raises_on_missing_status_file(monkeypatch_config: Path) -> None:
+    study = config.STUDY_NAME
+    # A run dir with no status.json at all.
+    (Path(config.OUTPUT_DIR) / study / "runs" / "run_empty00000001").mkdir(
+        parents=True, exist_ok=True
+    )
+    assert held_set_notice(study) is None

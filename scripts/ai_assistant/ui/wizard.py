@@ -14,6 +14,7 @@ import config
 from scripts.ai_assistant.agent_graph import reset_agent
 from scripts.ai_assistant.ui.bundle_status import (
     bundle_readiness_issues,
+    held_set_notice,
     published_bundle_exists,
 )
 from scripts.ai_assistant.ui.providers import (
@@ -22,6 +23,11 @@ from scripts.ai_assistant.ui.providers import (
     _build_ollama_selector_state,
     _default_provider_label,
     _get_ollama_models,
+)
+from scripts.ai_assistant.ui.snapshot_select import (
+    SnapshotActivationError,
+    activate_snapshot,
+    available_snapshots,
 )
 
 logger = logging.getLogger(__name__)
@@ -338,6 +344,79 @@ def _render_pipeline_log() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Held-set notice + snapshot selector (W2)
+# ---------------------------------------------------------------------------
+
+
+def _render_held_set_notice() -> None:
+    """Show a NON-BLOCKING warning when the latest run held forms for review.
+
+    Advisory only: the operator may keep querying the already-published approved
+    sets. The UI never triggers a retry/resume from here — held forms are
+    resolved by a maintainer in CLI mode, never from this surface.
+    """
+    try:
+        notice = held_set_notice(config.STUDY_NAME)
+    except Exception:  # pragma: no cover - advisory path must never crash chat
+        logger.debug("held_set_notice raised; suppressing for the UI", exc_info=True)
+        notice = None
+    if notice:
+        st.warning(notice, icon="⚠️")
+
+
+def _render_snapshot_selector() -> None:
+    """Render a dropdown to load a previously written immutable study snapshot.
+
+    Selecting a snapshot calls :func:`activate_snapshot`, which re-runs the PHI
+    leak gate and repoints the assistant read zone at that snapshot's
+    ``llm_source/`` ONLY. No scrub/retry/resume path is ever invoked.
+    """
+    try:
+        snapshots = available_snapshots(config.STUDY_NAME)
+    except Exception:  # pragma: no cover - advisory path must never crash chat
+        logger.debug("available_snapshots raised; suppressing for the UI", exc_info=True)
+        snapshots = []
+    if not snapshots:
+        return
+
+    _placeholder = "Use live pipeline output"
+
+    def _label(entry: dict[str, Any]) -> str:
+        passed = "verified" if entry.get("verifier_passed") else "unverified"
+        return (
+            f"{entry['id']} — {entry.get('approved_count', 0)} approved, "
+            f"{entry.get('held_count', 0)} held ({passed})"
+        )
+
+    options = [_placeholder] + [entry["id"] for entry in snapshots]
+    labels = {entry["id"]: _label(entry) for entry in snapshots}
+
+    selected = st.selectbox(
+        "Existing study data (snapshot)",
+        options,
+        index=0,
+        format_func=lambda opt: opt if opt == _placeholder else labels.get(opt, opt),
+        help=(
+            "Load a previously reviewed, immutable clean-pass snapshot instead of "
+            "the live pipeline output. Only the snapshot's PHI-scrubbed data is "
+            "exposed; its approval/manifest stay private."
+        ),
+    )
+
+    if selected != _placeholder and selected != st.session_state.get("active_snapshot_id"):
+        try:
+            activate_snapshot(config.STUDY_NAME, selected)
+        except SnapshotActivationError as exc:
+            st.error(f"Could not load snapshot: {exc}")
+            return
+        st.session_state["active_snapshot_id"] = selected
+        st.session_state.pipeline_ready = True
+        reset_agent()
+        st.toast(f"Loaded snapshot {selected}.", icon="✅")
+        st.rerun()
+
+
+# ---------------------------------------------------------------------------
 # Wizard header
 # ---------------------------------------------------------------------------
 
@@ -559,6 +638,12 @@ def render_setup_page() -> None:
                         "Run Load Study to activate the plugin and produce `llm_source/`.",
                         icon=":material/info:",
                     )
+
+                # Non-blocking held-set notice (advisory; never gates querying).
+                _render_held_set_notice()
+
+                # Existing study data: select a reviewed, immutable snapshot.
+                _render_snapshot_selector()
 
                 # ── Load Study: activate the report-ai-study-pipeline plugin. ──
                 load_label = "Reload Study" if pipeline_ready or output_exists else "Load Study"
