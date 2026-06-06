@@ -378,7 +378,15 @@ def load_snapshot(study: str, snapshot_id: str) -> dict:
     manifest_path = _snapshot_manifest_path(study, snapshot_id)
     if not manifest_path.is_file():
         raise SnapshotNotFoundError(f"snapshot {snapshot_id!r} has no manifest at {manifest_path}")
-    return _read_json(manifest_path)
+    try:
+        return _read_json(manifest_path)
+    except (json.JSONDecodeError, OSError) as exc:
+        # A corrupt/unreadable manifest is a SnapshotError (a subclass of which
+        # callers like ui.snapshot_select.available_snapshots already catch) so
+        # one bad snapshot is skipped rather than hiding every other snapshot.
+        raise SnapshotError(
+            f"snapshot {snapshot_id!r} manifest is unreadable at {manifest_path}"
+        ) from exc
 
 
 def select_snapshot_llm_source(study: str, snapshot_id: str) -> Path:
