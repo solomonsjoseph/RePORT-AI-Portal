@@ -173,7 +173,11 @@ class TestAssertion14NonVacuous:
             phi_scrub_yaml_path=_PHI_SCRUB_YAML,
         )
         approval_path = (
-            tmp_path / "output" / FIXTURE_STUDY / "runs" / FIXTURE_RUN_ID
+            tmp_path
+            / "output"
+            / FIXTURE_STUDY
+            / "runs"
+            / FIXTURE_RUN_ID
             / "phi_handling_approval.json"
         )
         assert approval_path.is_file(), (
@@ -206,9 +210,7 @@ class TestAssertion14NonVacuous:
             None,
         )
         assert a14 is not None, "assertion 14 (ledger_covers_all_columns) must be in report"
-        assert a14["result"] == "pass", (
-            f"assertion 14 must pass on the golden fixture; got: {a14}"
-        )
+        assert a14["result"] == "pass", f"assertion 14 must pass on the golden fixture; got: {a14}"
 
     def test_removing_column_ledger_coverage_trips_assertion_14(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

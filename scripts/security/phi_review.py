@@ -151,7 +151,7 @@ class PureTransformValidation:
 
 @dataclass(frozen=True, slots=True)
 class HeldReason:
-    """Structured note written when classification is held after exhausting attempts.
+    """Structured note written when a form is held (e.g. an adversarial probe fails).
 
     All three fields are required by the operator-review contract:
     - ``what_was_tried`` — description of the classification operations performed
@@ -179,12 +179,11 @@ class FormReviewApproval:
 
     form_name: str
     status: str
-    # ``attempts`` = the ACTUAL number of adversarial-probe retry iterations run
-    # (1..max_synthetic_attempts), not a fixed "max-on-hold" sentinel. A held
-    # form may record attempts=1 when it was held for a DETERMINISTIC reason
-    # (structural blocker or Option-C coverage hold) whose probes already passed
-    # on the first iteration. For an auditor: attempts=1 on a held form means
-    # "held without needing probe retries", NOT "not reviewed".
+    # ``attempts`` = number of adversarial-probe evaluations performed. The probe
+    # is a DETERMINISTIC correctness check on the rule bundle, so it is evaluated
+    # exactly ONCE (retrying could never change a deterministic result) — this
+    # value is therefore always 1. Retained as a stable audit-schema field;
+    # ``max_synthetic_attempts`` in _study_privacy.yaml no longer drives a loop.
     attempts: int
     actions: dict[str, str]
     classifications: tuple[HeaderClassification, ...]

@@ -1331,8 +1331,7 @@ def _try_commit_snapshot(
                 _atomic_write_json(status_path, status)
             except (json.JSONDecodeError, OSError) as upd_exc:
                 print(
-                    "Warning: could not record snapshot_failed in status.json: "
-                    f"{upd_exc}",
+                    f"Warning: could not record snapshot_failed in status.json: {upd_exc}",
                     file=sys.stderr,
                 )
         return None

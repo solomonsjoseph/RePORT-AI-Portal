@@ -299,6 +299,7 @@ def repoint_llm_source_base(new_base: Path) -> None:
     g["LLM_SOURCE_SOT_DIR"] = new_base / "SoT"
     g["LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR"] = new_base / "source_truth"
 
+
 # Lean-catalog size thresholds (bytes). CI fails if a catalog exceeds.
 LEAN_CATALOG_DICTIONARY_MAX_BYTES: int = 20 * 1024
 LEAN_CATALOG_DATASET_SCHEMA_MAX_BYTES: int = 50 * 1024

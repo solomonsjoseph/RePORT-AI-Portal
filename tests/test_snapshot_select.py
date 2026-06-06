@@ -22,12 +22,13 @@ from pathlib import Path
 import pytest
 
 import config
-from scripts.ai_assistant.file_access import ZoneViolationError, validate_agent_read
+from scripts.ai_assistant.file_access import validate_agent_read
 from scripts.ai_assistant.ui.snapshot_select import (
     SnapshotActivationError,
     activate_snapshot,
     available_snapshots,
 )
+from scripts.audit.zone_guards import SnapshotZoneViolation
 from scripts.utils import snapshot
 
 RUN_ID = "run_selecttestid001"
@@ -70,7 +71,14 @@ def _seed_run_artifacts(
         "status": "approved" if not held else "partial",
     }
     (run_dir / "phi_handling_approval.json").write_text(json.dumps(approval), encoding="utf-8")
-    verifier = {"run_id": run_id, "verifier_passed": verifier_passed, "assertions": []}
+    # write_snapshot derives verifier_passed from the report's canonical
+    # "overall"=="pass" signal (the report has no "verifier_passed" key).
+    verifier = {
+        "run_id": run_id,
+        "overall": "pass" if verifier_passed else "fail",
+        "exit_code": 0 if verifier_passed else 5,
+        "assertions": [],
+    }
     (run_dir / "verifier_report.json").write_text(json.dumps(verifier), encoding="utf-8")
     return run_dir
 
@@ -83,7 +91,11 @@ def _make_snapshot(
     held: list[str] | None = None,
     verifier_passed: bool = True,
 ) -> Path:
-    _seed_llm_source(config.STUDY_LLM_SOURCE_DIR, marker=marker)
+    # write_snapshot reads the LIVE tree at OUTPUT_DIR/study/llm_source (derived
+    # from the explicit study arg), not the module-global config.STUDY_LLM_SOURCE_DIR
+    # (which conftest sets to a different path and which a prior UI activation may
+    # have repointed). Seed where write_snapshot actually reads.
+    _seed_llm_source(Path(config.OUTPUT_DIR) / study / "llm_source", marker=marker)
     _seed_run_artifacts(
         study, RUN_ID, approved=approved, held=held, verifier_passed=verifier_passed
     )
@@ -175,13 +187,16 @@ class TestActivateSnapshot:
         activate_snapshot(study, dest.name)
 
         # Only llm_source/ is exposed; the root + sidecar metadata stay denied.
-        with pytest.raises(ZoneViolationError):
+        # The hardened guard (deny_if_snapshot_root, keyed on OUTPUT_DIR layout)
+        # fires for these snapshot-root paths -> SnapshotZoneViolation (a
+        # PermissionError sibling, so is_agent_readable still denies uniformly).
+        with pytest.raises(SnapshotZoneViolation):
             validate_agent_read(dest)
-        with pytest.raises(ZoneViolationError):
+        with pytest.raises(SnapshotZoneViolation):
             validate_agent_read(dest / "phi_handling_approval.json")
-        with pytest.raises(ZoneViolationError):
+        with pytest.raises(SnapshotZoneViolation):
             validate_agent_read(dest / snapshot.MANIFEST_FILENAME)
-        with pytest.raises(ZoneViolationError):
+        with pytest.raises(SnapshotZoneViolation):
             validate_agent_read(dest / "verifier_report.json")
 
     def test_activation_repoints_all_derived_constants(
@@ -197,7 +212,7 @@ class TestActivateSnapshot:
 
         # The exposed base is snapshots/{id}/llm_source/.
         assert exposed == snapshot.snapshot_llm_source_path(study, dest.name)
-        assert config.STUDY_LLM_SOURCE_DIR == exposed
+        assert exposed == config.STUDY_LLM_SOURCE_DIR
 
         # Every derived constant now resolves UNDER the snapshot subtree, not
         # the live tree. (Spot-check the ones called out in the finding plus the

@@ -303,7 +303,7 @@ def build_golden_output_tree(
                 "form_name": form,
                 "status": "approved",
                 "attempts": 1,
-                "actions": {col: "keep" for col in columns},
+                "actions": dict.fromkeys(columns, "keep"),
                 "classifications": classifications,
                 "reasons": [],
                 "rule_bundle_sha256": stub_rule_bundle["rules_sha256"],

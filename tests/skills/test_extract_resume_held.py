@@ -508,9 +508,7 @@ class TestResumeHeldHappyPath:
         run_dir = study_output_dir / "runs" / "run_snapfail001"
         run_dir.mkdir(parents=True, exist_ok=True)
         (run_dir / "status.json").write_text(
-            json.dumps(
-                {"run_id": "run_snapfail001", "study": STUDY, "exit_code": 0}
-            ),
+            json.dumps({"run_id": "run_snapfail001", "study": STUDY, "exit_code": 0}),
             encoding="utf-8",
         )
 
@@ -520,9 +518,7 @@ class TestResumeHeldHappyPath:
             "scripts.utils.snapshot.write_snapshot",
             side_effect=RuntimeError("symlink escape detected in snapshot source"),
         ):
-            result = _try_commit_snapshot(
-                study=STUDY, run_id="run_snapfail001", run_dir=run_dir
-            )
+            result = _try_commit_snapshot(study=STUDY, run_id="run_snapfail001", run_dir=run_dir)
 
         # Non-fatal: returns None (publish already succeeded)
         assert result is None
@@ -543,9 +539,7 @@ class TestResumeHeldHappyPath:
         run_dir = study_output_dir / "runs" / "run_snapexists001"
         run_dir.mkdir(parents=True, exist_ok=True)
         (run_dir / "status.json").write_text(
-            json.dumps(
-                {"run_id": "run_snapexists001", "study": STUDY, "exit_code": 0}
-            ),
+            json.dumps({"run_id": "run_snapexists001", "study": STUDY, "exit_code": 0}),
             encoding="utf-8",
         )
 
@@ -556,9 +550,7 @@ class TestResumeHeldHappyPath:
             "scripts.utils.snapshot.write_snapshot",
             side_effect=SnapshotExistsError("identical content already snapshotted"),
         ):
-            result = _try_commit_snapshot(
-                study=STUDY, run_id="run_snapexists001", run_dir=run_dir
-            )
+            result = _try_commit_snapshot(study=STUDY, run_id="run_snapexists001", run_dir=run_dir)
 
         assert result is None
         status = json.loads((run_dir / "status.json").read_text(encoding="utf-8"))
@@ -1036,9 +1028,7 @@ class TestResumeHeldReadsListsFromApprovalReport:
         )
 
         # Sanity-check the fixture really mimics production: NO list keys in status.json.
-        prior_status = json.loads(
-            (prior_run_dir / "status.json").read_text(encoding="utf-8")
-        )
+        prior_status = json.loads((prior_run_dir / "status.json").read_text(encoding="utf-8"))
         assert "held_forms" not in prior_status, (
             "Fixture must mimic production: status.json must NOT carry the held_forms list"
         )
