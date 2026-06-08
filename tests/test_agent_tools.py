@@ -272,7 +272,7 @@ class TestSafeImportCheck:
             _ast_pre_check("import subprocess")
 
     def test_allows_pandas(self) -> None:
-        from scripts.ai_assistant.sandbox.runner import SandboxRejectionError, _ast_pre_check
+        from scripts.ai_assistant.sandbox.runner import _ast_pre_check
 
         # Should not raise SandboxRejectionError
         _ast_pre_check("import pandas as pd")

@@ -308,13 +308,15 @@ def test_phi_event_with_classification_and_method(tmp_path: Path) -> None:
     """Call add_phi_event with classification and method parameters."""
     writer = _make_writer(tmp_path)
     kwargs = _phi_event_kwargs()
-    kwargs.update({
-        "matched_rules": ["usa_safe_harbor_dates", "india_date_identifier"],
-        "jurisdictions": ["USA", "INDIA"],
-        "rule_bundle_sha256": "abc",
-        "method_name": "SANT_date_jitter",
-        "method_parameters": {"max_jitter_days": 30},
-    })
+    kwargs.update(
+        {
+            "matched_rules": ["usa_safe_harbor_dates", "india_date_identifier"],
+            "jurisdictions": ["USA", "INDIA"],
+            "rule_bundle_sha256": "abc",
+            "method_name": "SANT_date_jitter",
+            "method_parameters": {"max_jitter_days": 30},
+        }
+    )
     writer.add_phi_event(**kwargs)
     writer.flush()
 

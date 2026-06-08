@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import pandas as pd
 
 from scripts.extraction.dedup import (
@@ -222,6 +220,3 @@ class TestCleanDuplicateColumns:
         assert "SUBJID2" not in result.columns, "classic autocomplete dup must still be removed"
         assert "SUBJID" in result.columns
         assert len(events) == 1
-
-
-

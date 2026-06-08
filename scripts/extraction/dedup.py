@@ -239,4 +239,3 @@ def clean_duplicate_columns(
         vlog.detail("No duplicate columns found")
 
     return df[columns_to_keep].copy(), drop_events
-

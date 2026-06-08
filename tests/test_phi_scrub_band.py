@@ -53,7 +53,6 @@ def scrub_config_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return cfg_path
 
 
-
 def _write_config(path: Path, **overrides: object) -> None:
     """Write a phi_scrub.yaml config with given overrides."""
     payload: dict[str, object] = {
@@ -102,9 +101,7 @@ class TestBandCategorical:
 
     def test_case_insensitive_match(self, key_bytes: bytes) -> None:
         """Case-insensitive lookup + whitespace strip."""
-        label, hit = phi_scrub.band_categorical(
-            "  MANAGER  ", mapping={"manager": "MGMT"}
-        )
+        label, hit = phi_scrub.band_categorical("  MANAGER  ", mapping={"manager": "MGMT"})
         assert label == "MGMT"
         assert hit is True
 
@@ -213,9 +210,7 @@ class TestBandConfigLoad:
         # ranges should be [(18.0, "Child"), (None, "Adult")] — upper-inclusive, no inversion
         assert rule.ranges == [(18.0, "Child"), (None, "Adult")]
 
-    def test_band_rule_for_unmatched_name_returns_none(
-        self, scrub_config_path: Path
-    ) -> None:
+    def test_band_rule_for_unmatched_name_returns_none(self, scrub_config_path: Path) -> None:
         """band_rule_for(name) for unmatched field → None."""
         _write_config(scrub_config_path)
         cfg = phi_scrub.load_scrub_config()
@@ -243,9 +238,7 @@ class TestBandConfigLoad:
         """band_fields entry with invalid kind → PHIScrubError."""
         _write_config(
             scrub_config_path,
-            band_fields=[
-                {"pattern": "^IC_JOB$", "band": "job_band", "kind": "invalid_kind"}
-            ],
+            band_fields=[{"pattern": "^IC_JOB$", "band": "job_band", "kind": "invalid_kind"}],
             band_maps={"job_band": {"manager": "MGMT"}},
         )
         with pytest.raises(phi_scrub.PHIScrubError):
@@ -296,9 +289,7 @@ class TestScrubRowBand:
         key = phi_scrub.load_key()
 
         row = {"SUBJID": "S1", "IC_JOB": "Manager"}
-        scrubbed, counts = phi_scrub._scrub_row(
-            row, cfg=cfg, key=key, dataset_has_subject_col=True
-        )
+        scrubbed, counts = phi_scrub._scrub_row(row, cfg=cfg, key=key, dataset_has_subject_col=True)
         assert scrubbed["IC_JOB"] == "MGMT"
         assert "phi-scrub-band:IC_JOB" in counts
 
@@ -316,9 +307,7 @@ class TestScrubRowBand:
         key = phi_scrub.load_key()
 
         row = {"SUBJID": "S1", "IC_AGE": 25}
-        scrubbed, counts = phi_scrub._scrub_row(
-            row, cfg=cfg, key=key, dataset_has_subject_col=True
-        )
+        scrubbed, counts = phi_scrub._scrub_row(row, cfg=cfg, key=key, dataset_has_subject_col=True)
         assert scrubbed["IC_AGE"] == "Adult"
         assert "phi-scrub-band:IC_AGE" in counts
 
@@ -336,9 +325,7 @@ class TestScrubRowBand:
         key = phi_scrub.load_key()
 
         row = {"SUBJID": "S1", "IC_JOB": "Unknown"}
-        scrubbed, counts = phi_scrub._scrub_row(
-            row, cfg=cfg, key=key, dataset_has_subject_col=True
-        )
+        scrubbed, counts = phi_scrub._scrub_row(row, cfg=cfg, key=key, dataset_has_subject_col=True)
         assert scrubbed is None
         assert counts.get("phi-scrub-band-quarantine:IC_JOB", 0) == 1
 
@@ -356,16 +343,12 @@ class TestScrubRowBand:
         key = phi_scrub.load_key()
 
         row = {"SUBJID": "S1", "IC_JOB": ""}
-        scrubbed, counts = phi_scrub._scrub_row(
-            row, cfg=cfg, key=key, dataset_has_subject_col=True
-        )
+        scrubbed, counts = phi_scrub._scrub_row(row, cfg=cfg, key=key, dataset_has_subject_col=True)
         assert scrubbed is not None
         assert scrubbed["IC_JOB"] == ""
         assert "phi-scrub-band-quarantine:IC_JOB" not in counts
 
-    def test_keep_fields_bypass_band(
-        self, scrub_config_path: Path, sidecar_key: Path
-    ) -> None:
+    def test_keep_fields_bypass_band(self, scrub_config_path: Path, sidecar_key: Path) -> None:
         """Field in keep_fields → unchanged, not banded, no quarantine."""
         _write_config(
             scrub_config_path,
@@ -378,16 +361,12 @@ class TestScrubRowBand:
         key = phi_scrub.load_key()
 
         row = {"SUBJID": "S1", "IC_JOB": "Unknown"}
-        scrubbed, counts = phi_scrub._scrub_row(
-            row, cfg=cfg, key=key, dataset_has_subject_col=True
-        )
+        scrubbed, counts = phi_scrub._scrub_row(row, cfg=cfg, key=key, dataset_has_subject_col=True)
         assert scrubbed is not None
         assert scrubbed["IC_JOB"] == "Unknown"
         assert "phi-scrub-band" not in str(counts)
 
-    def test_drop_fields_bypass_band(
-        self, scrub_config_path: Path, sidecar_key: Path
-    ) -> None:
+    def test_drop_fields_bypass_band(self, scrub_config_path: Path, sidecar_key: Path) -> None:
         """Field in drop_fields → removed, not banded, no quarantine."""
         _write_config(
             scrub_config_path,
@@ -400,9 +379,7 @@ class TestScrubRowBand:
         key = phi_scrub.load_key()
 
         row = {"SUBJID": "S1", "IC_JOB": "Unknown"}
-        scrubbed, counts = phi_scrub._scrub_row(
-            row, cfg=cfg, key=key, dataset_has_subject_col=True
-        )
+        scrubbed, counts = phi_scrub._scrub_row(row, cfg=cfg, key=key, dataset_has_subject_col=True)
         assert scrubbed is not None
         assert "IC_JOB" not in scrubbed
         assert "phi-scrub-band" not in str(counts)
@@ -450,7 +427,9 @@ class TestScrubFileBand:
         assert cfg is not None
         key = phi_scrub.load_key()
 
-        _kept, orphans, band_failed, _gen_failed, _date_failed, _counts = phi_scrub._scrub_file(src, cfg=cfg, key=key)
+        _kept, orphans, band_failed, _gen_failed, _date_failed, _counts = phi_scrub._scrub_file(
+            src, cfg=cfg, key=key
+        )
         assert len(band_failed) == 1
         assert len(orphans) == 0
 
@@ -465,7 +444,9 @@ class TestScrubFileBand:
         assert cfg is not None
         key = phi_scrub.load_key()
 
-        _kept, orphans, band_failed, _gen_failed, _date_failed, _counts = phi_scrub._scrub_file(src, cfg=cfg, key=key)
+        _kept, orphans, band_failed, _gen_failed, _date_failed, _counts = phi_scrub._scrub_file(
+            src, cfg=cfg, key=key
+        )
         assert len(orphans) == 1
         assert len(band_failed) == 0
 
@@ -510,9 +491,7 @@ class TestRunScrubBandFailClosed:
         with pytest.raises(phi_scrub.PHIBandUnmappedError):
             phi_scrub.run_scrub(study_name="TEST")
 
-        quarantine = (
-            config.STUDY_STAGING_DIR / "quarantine" / "band_unmapped_1A_ICScreening.jsonl"
-        )
+        quarantine = config.STUDY_STAGING_DIR / "quarantine" / "band_unmapped_1A_ICScreening.jsonl"
         assert quarantine.is_file()
         quarantined = [json.loads(line) for line in quarantine.read_text().splitlines() if line]
         assert len(quarantined) == 1

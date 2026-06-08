@@ -41,7 +41,9 @@ def llm_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         encoding="utf-8",
     )
     (sae / "dataset" / "95_SAE_schema.json").write_text(
-        json.dumps({"columns": [{"name": "SUBJID"}, {"name": "AE_AGE"}, {"name": "AE_EVENT"}]}, indent=2),
+        json.dumps(
+            {"columns": [{"name": "SUBJID"}, {"name": "AE_AGE"}, {"name": "AE_EVENT"}]}, indent=2
+        ),
         encoding="utf-8",
     )
     (files / "95_SAE.jsonl").write_text(

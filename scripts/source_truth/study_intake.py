@@ -492,7 +492,15 @@ def main(argv: list[str] | None = None) -> int:
     out_pack = Path(f"/tmp/sot_source_pack_{args.form}.json")
     render_dir = Path(f"/tmp/sot_render_{args.form}")
 
-    extract_script = repo_root / "plugins" / "report-ai-study-pipeline" / "skills" / "sot-lean-generator" / "scripts" / "extract_sources.py"
+    extract_script = (
+        repo_root
+        / "plugins"
+        / "report-ai-study-pipeline"
+        / "skills"
+        / "sot-lean-generator"
+        / "scripts"
+        / "extract_sources.py"
+    )
     if not extract_script.exists():
         print(
             f"error: extract_sources.py not found at {extract_script}",

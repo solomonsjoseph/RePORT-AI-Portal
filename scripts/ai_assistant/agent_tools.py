@@ -1018,6 +1018,7 @@ def _discover_trio_dataframe_paths() -> dict[str, str]:
             continue
     return out
 
+
 def _unsafe_sandbox_stdout_reason(stdout: str) -> str | None:
     """Return a security reason when stdout appears to expose row-level data."""
     text = stdout.strip()
@@ -1238,6 +1239,7 @@ def _load_catalog_artifact() -> Mapping[str, Any] | None:
 # Thread-safe in-memory cache for policy summaries to avoid repeated disk reads and safe_load parsing
 _POLICY_SUMMARIES_CACHE: dict[Path, dict[str, Any]] = {}
 
+
 @tool
 @phi_safe_return
 def answer_catalog_question(question: str) -> str:
@@ -1425,20 +1427,21 @@ def answer_catalog_question(question: str) -> str:
     analysis_queryable = phi_flag not in ("drop",)
     metadata: Any = var_meta
     source_path = Path(str(best["source"]))
-    
+
     # Try loading pre-compiled joined query view from file first to save dynamic parsing and join CPU/IO
     form_id = source_path.name
     for suffix in ("_policy.yaml", "_policy.lean.yaml", ".lean.yaml", ".yaml"):
         if form_id.endswith(suffix):
-            form_id = form_id[:-len(suffix)]
+            form_id = form_id[: -len(suffix)]
             break
     joined_view_path = source_path.parent.parent / "joined" / f"{form_id}_joined_query_view.yaml"
-    
+
     loaded_from_file = False
     if joined_view_path.is_file():
         try:
             validate_agent_read(joined_view_path)
             import yaml
+
             with open(joined_view_path, encoding="utf-8") as fh:
                 joined_view = yaml.safe_load(fh)
             joined_variables = joined_view.get("variables")
@@ -1448,7 +1451,11 @@ def answer_catalog_question(question: str) -> str:
                     metadata = dict(joined_meta)
                     loaded_from_file = True
         except Exception:
-            pass
+            logger.debug(
+                "joined-view metadata load failed for %s; falling back to schema",
+                var_id,
+                exc_info=True,
+            )
 
     if not loaded_from_file:
         schema_path = find_dataset_schema_for_policy(source_path)
@@ -1761,9 +1768,7 @@ def search_llm_source(query: str, subdir: str = "", max_results: int = 40) -> st
                         # metadata carries jittered ISO dates that the
                         # fail-closed PHI gate treats as blocking. Tag
                         # them here so useful protocol text still flows.
-                        "snippet": _redact_blocking_phi(
-                            line.strip()[:_LLM_SOURCE_SNIPPET_CHARS]
-                        ),
+                        "snippet": _redact_blocking_phi(line.strip()[:_LLM_SOURCE_SNIPPET_CHARS]),
                     }
                 )
                 if len(hits) >= pool_limit:

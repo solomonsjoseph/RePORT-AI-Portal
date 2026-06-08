@@ -598,11 +598,13 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
                 candidates.append(agent_out / "code" / filename)
 
             if not p.is_absolute():
-                candidates.extend([
-                    agent_out / clean_str,
-                    agent_out / "figures" / clean_str,
-                    repo_root / clean_str
-                ])
+                candidates.extend(
+                    [
+                        agent_out / clean_str,
+                        agent_out / "figures" / clean_str,
+                        repo_root / clean_str,
+                    ]
+                )
             else:
                 candidates.append(p)
 
@@ -672,11 +674,13 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
                         candidates.append(agent_out / "code" / filename)
 
                     if not p.is_absolute():
-                        candidates.extend([
-                            agent_out / clean_str,
-                            agent_out / "figures" / clean_str,
-                            repo_root / clean_str
-                        ])
+                        candidates.extend(
+                            [
+                                agent_out / clean_str,
+                                agent_out / "figures" / clean_str,
+                                repo_root / clean_str,
+                            ]
+                        )
                     else:
                         candidates.append(p)
 
@@ -716,12 +720,10 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
         if skipped_out_of_zone:
             # Generic, path-free note — the path itself can be PHI-ish.
             notes.append(
-                f"{skipped_out_of_zone} artifact(s) skipped: outside the "
-                "permitted read zone."
+                f"{skipped_out_of_zone} artifact(s) skipped: outside the permitted read zone."
             )
             logger.warning(
-                "Export skipped %d artifact(s) outside the agent read zone "
-                "(conv_id=%s)",
+                "Export skipped %d artifact(s) outside the agent read zone (conv_id=%s)",
                 skipped_out_of_zone,
                 conv_id,
             )

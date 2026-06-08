@@ -948,8 +948,7 @@ class TestExportPlotsZoneBoundary:
                 {
                     "role": "assistant",
                     "content": (
-                        f"in-zone <RPLN_FIGURE:{ok_fig}> "
-                        f"out-of-zone <RPLN_FIGURE:{phi_fig}>"
+                        f"in-zone <RPLN_FIGURE:{ok_fig}> out-of-zone <RPLN_FIGURE:{phi_fig}>"
                     ),
                 }
             ],

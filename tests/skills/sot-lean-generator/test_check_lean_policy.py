@@ -14,8 +14,7 @@ from pathlib import Path
 # The module is a script, not a package, so we use importlib.
 REPO = Path(__file__).resolve().parents[3]
 _checker_path = (
-    REPO
-    / "plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/check_lean_policy.py"
+    REPO / "plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/check_lean_policy.py"
 )
 spec = importlib.util.spec_from_file_location("check_lean_policy", _checker_path)
 assert spec is not None and spec.loader is not None, f"Failed to load {_checker_path}"
@@ -28,19 +27,21 @@ class TestDuplicateHeaderDiscrepancyKindsConstant:
 
     def test_duplicate_header_discrepancy_kinds_constant(self) -> None:
         """Assert both kind strings are members of DUPLICATE_HEADER_DISCREPANCY_KINDS."""
-        assert hasattr(
-            check_lean_policy, "DUPLICATE_HEADER_DISCREPANCY_KINDS"
-        ), "DUPLICATE_HEADER_DISCREPANCY_KINDS constant must exist"
+        assert hasattr(check_lean_policy, "DUPLICATE_HEADER_DISCREPANCY_KINDS"), (
+            "DUPLICATE_HEADER_DISCREPANCY_KINDS constant must exist"
+        )
 
         kinds = check_lean_policy.DUPLICATE_HEADER_DISCREPANCY_KINDS
-        assert isinstance(kinds, (list, tuple)), "DUPLICATE_HEADER_DISCREPANCY_KINDS must be iterable"
+        assert isinstance(kinds, (list, tuple)), (
+            "DUPLICATE_HEADER_DISCREPANCY_KINDS must be iterable"
+        )
 
-        assert (
-            "dataset_duplicate_header_combined_binding" in kinds
-        ), "Must accept dataset_duplicate_header_combined_binding kind"
-        assert (
-            "dataset_duplicate_header_binding_conflict" in kinds
-        ), "Must accept dataset_duplicate_header_binding_conflict kind"
+        assert "dataset_duplicate_header_combined_binding" in kinds, (
+            "Must accept dataset_duplicate_header_combined_binding kind"
+        )
+        assert "dataset_duplicate_header_binding_conflict" in kinds, (
+            "Must accept dataset_duplicate_header_binding_conflict kind"
+        )
 
 
 class TestDuplicateHeaderErrorsHelper:
@@ -81,9 +82,9 @@ class TestDuplicateHeaderErrorsHelper:
         errors = check_lean_policy._duplicate_header_errors(variables, headers, policy)
         assert len(errors) > 0, "Must error when duplicate headers exist but no discrepancy"
         error_text = " ".join(errors)
-        assert (
-            "duplicate binding names" in error_text
-        ), f"Error must mention 'duplicate binding names', got: {error_text}"
+        assert "duplicate binding names" in error_text, (
+            f"Error must mention 'duplicate binding names', got: {error_text}"
+        )
 
     def test_duplicate_header_without_discrepancy_key_fails(self) -> None:
         """Fails when policy is missing discrepancies key entirely."""
@@ -100,28 +101,20 @@ class TestDuplicateHeaderErrorsHelper:
         """Fails when variable keys don't match deduplicated header order."""
         variables = {"A": {}, "B": {}, "B_2": {}}
         headers = ["A", "B", "B"]  # Deduplicated order is ["A", "B"]
-        policy = {
-            "discrepancies": [
-                {"kind": "dataset_duplicate_header_binding_conflict"}
-            ]
-        }
+        policy = {"discrepancies": [{"kind": "dataset_duplicate_header_binding_conflict"}]}
 
         errors = check_lean_policy._duplicate_header_errors(variables, headers, policy)
         assert len(errors) > 0, "Must error when variable keys don't match deduplicated headers"
         error_text = " ".join(errors)
-        assert (
-            "do not match de-duplicated row-1 headers" in error_text
-        ), f"Error must mention de-duplicated mismatch, got: {error_text}"
+        assert "do not match de-duplicated row-1 headers" in error_text, (
+            f"Error must mention de-duplicated mismatch, got: {error_text}"
+        )
 
     def test_duplicate_header_with_wrong_discrepancy_kind_fails(self) -> None:
         """Fails when the discrepancy kind is neither of the accepted kinds."""
         variables = {"A": {}, "B": {}}
         headers = ["A", "B", "B"]  # B duplicated
-        policy = {
-            "discrepancies": [
-                {"kind": "some_other_discrepancy_kind"}
-            ]
-        }
+        policy = {"discrepancies": [{"kind": "some_other_discrepancy_kind"}]}
 
         errors = check_lean_policy._duplicate_header_errors(variables, headers, policy)
         assert len(errors) > 0, "Must error when discrepancy kind is not accepted"
@@ -141,14 +134,10 @@ class TestDuplicateHeaderErrorsHelper:
         """Handles multiple duplicated headers with valid discrepancy."""
         variables = {"A": {}, "B": {}, "C": {}}
         headers = ["A", "B", "B", "C", "C"]  # B and C duplicated
-        policy = {
-            "discrepancies": [
-                {"kind": "dataset_duplicate_header_binding_conflict"}
-            ]
-        }
+        policy = {"discrepancies": [{"kind": "dataset_duplicate_header_binding_conflict"}]}
 
         errors = check_lean_policy._duplicate_header_errors(variables, headers, policy)
-        assert errors == [], f"Expected no errors with multiple dupes and valid discrepancy"
+        assert errors == [], "Expected no errors with multiple dupes and valid discrepancy"
 
     def test_keys_not_deduped_but_no_duplicates_in_headers(self) -> None:
         """Fails when variable keys don't match even though headers have no dups."""

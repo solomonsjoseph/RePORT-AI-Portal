@@ -403,7 +403,11 @@ def _render_snapshot_selector() -> None:
         ),
     )
 
-    if selected != _placeholder and selected != st.session_state.get("active_snapshot_id"):
+    if (
+        selected is not None
+        and selected != _placeholder
+        and selected != st.session_state.get("active_snapshot_id")
+    ):
         try:
             activate_snapshot(config.STUDY_NAME, selected)
         except SnapshotActivationError as exc:

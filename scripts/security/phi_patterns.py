@@ -22,6 +22,7 @@ Act §29, SPDI Rule 3, ICMR 2017 §11.4.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from typing import Any
 
 __all__ = [
@@ -91,7 +92,7 @@ class VerhoeffPattern:
 
     @property
     def groupindex(self) -> dict[str, int]:
-        return self._pattern.groupindex
+        return dict(self._pattern.groupindex)
 
     def search(self, string: str, pos: int = 0, endpos: int = 2**31 - 1) -> re.Match[str] | None:
         for match in self._pattern.finditer(string, pos, endpos):
@@ -106,7 +107,7 @@ class VerhoeffPattern:
             if len(candidate) == 12 and _verhoeff_validate(candidate):
                 yield match
 
-    def sub(self, repl: Any, string: str, count: int = 0) -> str:
+    def sub(self, repl: str | Callable[[re.Match[str]], str], string: str, count: int = 0) -> str:
         def replacement_fn(match: re.Match[str]) -> str:
             candidate = "".join(c for c in match.group(0) if c.isdigit())
             if len(candidate) == 12 and _verhoeff_validate(candidate):
@@ -121,7 +122,7 @@ class VerhoeffPattern:
 def _is_valid_indian_phone(number: str) -> bool:
     if len(number) != 10:
         return False
-    counts = {}
+    counts: dict[str, int] = {}
     for char in number:
         counts[char] = counts.get(char, 0) + 1
     if any(count >= 8 for count in counts.values()):
@@ -153,7 +154,7 @@ class IndianPhonePattern:
 
     @property
     def groupindex(self) -> dict[str, int]:
-        return self._pattern.groupindex
+        return dict(self._pattern.groupindex)
 
     def search(self, string: str, pos: int = 0, endpos: int = 2**31 - 1) -> re.Match[str] | None:
         for match in self._pattern.finditer(string, pos, endpos):
@@ -174,7 +175,7 @@ class IndianPhonePattern:
             if len(candidate) == 10 and _is_valid_indian_phone(candidate):
                 yield match
 
-    def sub(self, repl: Any, string: str, count: int = 0) -> str:
+    def sub(self, repl: str | Callable[[re.Match[str]], str], string: str, count: int = 0) -> str:
         def replacement_fn(match: re.Match[str]) -> str:
             matched_text = match.group(0)
             candidate = "".join(c for c in matched_text if c.isdigit())

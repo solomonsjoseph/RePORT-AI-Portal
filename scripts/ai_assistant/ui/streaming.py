@@ -687,19 +687,22 @@ def split_conversational_and_evidence(content: str) -> tuple[str, str]:
     """Split the message content into conversational text and evidence text."""
     pattern = re.compile(
         r"(?i)(?:^|\n)(###?\s*(?:evidence|sources?|citations?|references?)\b.*?\n|\*\*?(?:evidence|sources?|citations?|references?)(?:\*\*?)?\s*:?\s*\n)(.*)",
-        re.DOTALL
+        re.DOTALL,
     )
     m = pattern.search(content)
     if m:
         evidence = m.group(2).strip()
-        conversational = content[:m.start()].strip()
-        
+        conversational = content[: m.start()].strip()
+
         # Re-attach any trailing figure/plot/code/analysis tags that should remain at the end of conversational
-        tags = []
-        for tag_match in re.finditer(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>", evidence):
-            tags.append(tag_match.group(0))
-            
-        evidence_clean = re.sub(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>", "", evidence).strip()
+        tags = [
+            tag_match.group(0)
+            for tag_match in re.finditer(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>", evidence)
+        ]
+
+        evidence_clean = re.sub(
+            r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>", "", evidence
+        ).strip()
         if tags:
             conversational += "\n\n" + "\n".join(tags)
         return conversational, evidence_clean
@@ -840,12 +843,14 @@ def _render_message_content(
                     candidates.append(agent_out / "code" / filename)
 
             if not p.is_absolute():
-                candidates.extend([
-                    agent_out / clean_seg,
-                    agent_out / "code" / clean_seg,
-                    agent_out / "figures" / clean_seg,
-                    repo_root / clean_seg
-                ])
+                candidates.extend(
+                    [
+                        agent_out / clean_seg,
+                        agent_out / "code" / clean_seg,
+                        agent_out / "figures" / clean_seg,
+                        repo_root / clean_seg,
+                    ]
+                )
             else:
                 candidates.append(p)
 

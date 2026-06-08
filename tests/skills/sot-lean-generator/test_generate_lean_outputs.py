@@ -286,7 +286,9 @@ variables:
     assert result is None, "Should return None for nonexistent file"
 
 
-def test_generate_form_holds_duplicate_binding_conflict_for_review(monkeypatch, tmp_path: Path) -> None:
+def test_generate_form_holds_duplicate_binding_conflict_for_review(
+    monkeypatch, tmp_path: Path
+) -> None:
     """Test that generate_form routes binding_conflict candidates to SoT review.
 
     When the verified candidate carries a binding_conflict discrepancy,
@@ -338,14 +340,20 @@ sections:
     result = generate_form(repo_root, study, form, out_dir)
 
     # Assert form is routed to SoT review (not published)
-    expected_review_path = repo_root / "output" / study / "audit" / "Sot_review" / form / "review_report.md"
-    assert result == expected_review_path, f"Expected review path {expected_review_path}, got {result}"
+    expected_review_path = (
+        repo_root / "output" / study / "audit" / "Sot_review" / form / "review_report.md"
+    )
+    assert result == expected_review_path, (
+        f"Expected review path {expected_review_path}, got {result}"
+    )
     assert expected_review_path.is_file(), f"Review report must exist at {expected_review_path}"
 
     review_text = expected_review_path.read_text(encoding="utf-8")
-    assert (
-        "dataset_duplicate_header_binding_conflict" in review_text
-    ), f"Review report must mention binding_conflict, got: {review_text}"
+    assert "dataset_duplicate_header_binding_conflict" in review_text, (
+        f"Review report must mention binding_conflict, got: {review_text}"
+    )
 
     # Assert publishing was NOT called
-    assert len(published) == 0, f"Publishing must not be called for binding_conflict, but got: {published}"
+    assert len(published) == 0, (
+        f"Publishing must not be called for binding_conflict, but got: {published}"
+    )

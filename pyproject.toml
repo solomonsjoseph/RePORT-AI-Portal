@@ -132,7 +132,10 @@ llm = [
 ]
 
 ai_assistant = [
-    "kaleido>=1.0.0,<2.0",
+    # Pinned to 0.2.1: kaleido 1.x requires plotly>=6.1.1, but plotly is
+    # capped <6.0.0 above. 0.2.1 is the stable static-export (to_image)
+    # backend for the plotly 5.x line the plotting code is written against.
+    "kaleido==0.2.1",
     # LangChain 1.x family bumped together for security: closes
     # langchain-openai GHSA-r7w7-9xr2-qq2r and langchain-text-splitters
     # GHSA-fv5p-p927-qmxr (April 2026 audit). Pinning <2.0 within the 1.x

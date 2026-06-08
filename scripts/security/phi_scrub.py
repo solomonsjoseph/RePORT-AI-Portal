@@ -1180,7 +1180,7 @@ def _resolve_subject_id(
                 return s
 
     if not dataset_has_subject_col:
-        return row.get("source_file", "SYSTEM")
+        return str(row.get("source_file", "SYSTEM"))
     return ""
 
 
@@ -1585,13 +1585,15 @@ def _method_for_action(
     if action == "pseudonymize":
         return "HMAC-SHA256", {"label": cfg.id_label_for(field)}
     if action == "generalize":
-        r = cfg.generalize_rule_for(field)
-        return "generalization_map", {"map": r.mapping_name if r is not None else None}
+        gen_rule = cfg.generalize_rule_for(field)
+        return "generalization_map", {
+            "map": gen_rule.mapping_name if gen_rule is not None else None
+        }
     if action == "band":
-        r = cfg.band_rule_for(field)
+        band_rule = cfg.band_rule_for(field)
         return "band_map", {
-            "band": r.band_name if r is not None else None,
-            "kind": r.kind if r is not None else None,
+            "band": band_rule.band_name if band_rule is not None else None,
+            "kind": band_rule.kind if band_rule is not None else None,
         }
     if action == "suppress_small_cell":
         return "small_cell_clamp", {"threshold": cfg.small_cell_threshold}
