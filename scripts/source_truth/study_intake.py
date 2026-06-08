@@ -100,19 +100,40 @@ def _find_pdf(study_dir: Path, form: str) -> Path | None:
     return None
 
 
+def _rejected_dataset_names(study_dir: Path) -> frozenset[str]:
+    """Return the set of rejected filenames from the study's ``_forms_manifest.yaml``.
+
+    Degrades gracefully to an empty set if the manifest is absent, unreadable,
+    or raises any error (including :class:`ManifestMismatchError` from unrelated
+    drift).  This mirrors the extraction leg's manifest handling but is
+    intentionally fail-open so that a manifest problem never blocks SoT intake.
+    """
+    try:
+        from scripts.extraction.dataset_pipeline import check_forms_manifest
+
+        return check_forms_manifest(study_dir / "datasets").rejected_files
+    except Exception:
+        return frozenset()
+
+
 def _find_dataset(study_dir: Path, form: str) -> Path | None:
     """Locate the dataset file for *form* under *study_dir/datasets/*.
 
     Tries ``<form>.xlsx`` and ``<form>.csv`` in that order, then falls back to
-    a glob search by form-code prefix.
+    a glob search by form-code prefix.  In both stages, files listed under
+    ``reject:`` in the study's ``_forms_manifest.yaml`` are excluded so that a
+    rejected duplicate stub (e.g. ``14_CaseControl.xlsx``) is never returned
+    when the kept variant (e.g. ``14_Case_Control.xlsx``) exists.
     """
     ds_dir = study_dir / "datasets"
     if not ds_dir.is_dir():
         return None
 
+    rejected = _rejected_dataset_names(study_dir)
+
     for ext in (".xlsx", ".xlsm", ".csv"):
         exact = ds_dir / f"{form}{ext}"
-        if exact.exists():
+        if exact.exists() and exact.name not in rejected:
             return exact
 
     target_code = _form_code(form)
@@ -121,7 +142,7 @@ def _find_dataset(study_dir: Path, form: str) -> Path | None:
         matches.extend(
             candidate
             for candidate in sorted(ds_dir.glob(f"*{ext}"))
-            if _form_code(candidate.stem) == target_code
+            if _form_code(candidate.stem) == target_code and candidate.name not in rejected
         )
     if len(matches) == 1:
         return matches[0]
