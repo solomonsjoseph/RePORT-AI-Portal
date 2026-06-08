@@ -73,6 +73,12 @@ EXCLUDED_PATH_PARTS: frozenset[str] = frozenset(
 )
 
 CANONICAL_MARKDOWN_ENTRYPOINTS: frozenset[str] = frozenset({"README.md"})
+# Tracked evidence directories whose Markdown is allowed to be standalone
+# (point-in-time evaluation results + review findings) rather than a Sphinx
+# pointer — analogous to the skills/ and plugins/ exemptions below, and kept
+# consistent with the docs/eval + docs/reviews entries in .gitignore's *.md
+# allowlist. These are evidence artifacts, not parallel user documentation.
+EVIDENCE_MARKDOWN_DIRS: tuple[str, ...] = ("docs/eval", "docs/reviews")
 POINTER_PHRASES: tuple[str, ...] = (
     "current project context lives in sphinx",
     "current release notes live in sphinx",
@@ -145,6 +151,8 @@ def _iter_tracked_markdown_files() -> Iterable[Path]:
             continue
         parts = Path(rel).parts
         if "skills" in parts or "plugins" in parts:
+            continue
+        if any(rel == d or rel.startswith(f"{d}/") for d in EVIDENCE_MARKDOWN_DIRS):
             continue
         yield REPO_ROOT / rel
 
