@@ -254,6 +254,12 @@ SUBJECT_ID_PATTERNS: list[re.Pattern[str]] = [
     # Indo-VAP / RePORT India subject ID shapes.
     re.compile(r"\bSUBJ[-_]?\d+\b"),
     re.compile(r"\bSC\d{4,}\b"),
-    re.compile(r"\bFID\d*\b"),
+    # Require >=4 digits (mirrors the SC subject-ID width): a real Family-ID
+    # *value* is a multi-digit identifier (e.g. "FID12345"), whereas the
+    # short-suffixed tokens "FID", "FID2"..."FID5" are column/header NAMES
+    # (family-member index) that legitimately appear in SoT schema metadata and
+    # must not trip the residual leak gate. Data-owner/security: confirm real
+    # FID values are >=4 digits.
+    re.compile(r"\bFID\d{4,}\b"),
 ]
 """Literal subject-ID substrings that the log wrapper HMAC-redacts per-subject."""

@@ -102,3 +102,45 @@ def test_scan_blocks_raw_subject_id_shape(tmp_path: Path) -> None:
 
     assert not result.ok
     assert result.findings[0].pattern_name.startswith("SUBJECT_ID")
+
+
+def test_scan_allows_fid_column_names_in_sot_schema(tmp_path: Path) -> None:
+    """Regression: Family-ID COLUMN NAMES ('FID', 'FID2'..'FID5' — family-member
+    index headers) in SoT schema metadata must not trip the SUBJECT_ID heuristic.
+    Only real multi-digit FID *values* are subject PHI; header tokens are not."""
+    root = tmp_path / "llm_source"
+    sot_dir = root / "SoT" / "9_EEval" / "dataset"
+    sot_dir.mkdir(parents=True)
+    (sot_dir / "9_EEval_schema.json").write_text(
+        json.dumps(
+            {
+                "columns": [
+                    {"name": "FID", "phi_action": "pseudonymize"},
+                    {"name": "FID2", "source_order": 130},
+                    {"name": "FID3", "source_order": 131},
+                    {"name": "FID4", "source_order": 132},
+                    {"name": "FID5", "source_order": 133},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert scan_tree_for_phi(root).ok
+
+
+def test_scan_blocks_real_fid_value(tmp_path: Path) -> None:
+    """A real Family-ID *value* (FID + >=4 digits) leaking into a published file
+    must still be blocked — tightening the pattern must not weaken detection."""
+    root = tmp_path / "llm_source"
+    data_dir = root / "dataset_schema" / "files"
+    data_dir.mkdir(parents=True)
+    (data_dir / "bad.jsonl").write_text(
+        json.dumps({"family_id": "FID12345"}) + "\n",
+        encoding="utf-8",
+    )
+
+    result = scan_tree_for_phi(root)
+
+    assert not result.ok
+    assert result.findings[0].pattern_name.startswith("SUBJECT_ID")
