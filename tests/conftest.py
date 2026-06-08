@@ -181,6 +181,12 @@ def _write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
             fh.write(json.dumps(rec) + "\n")
 
 
+def scrubbed_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Stamp the post-scrub marker on test records so they pass the
+    dataset_cleanup scrub-first guard."""
+    return [{**r, "_phi_scrubbed": "v3"} for r in records]
+
+
 # ── Pytest markers ─────────────────────────────────────────────────────────
 
 

@@ -130,6 +130,7 @@ from scripts.utils.integrity import hash_file
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "PHI_SCRUB_SENTINEL_NAME",
     "BandRule",
     "CapRule",
     "GeneralizeRule",
@@ -172,6 +173,9 @@ _SCRUB_VERSION = "v3"
 # forces re-scrub of any row written under the v2 ``<LABEL>_<hmac12>`` scheme.
 _SCRUB_MARKER_FIELD = "_phi_scrubbed"
 _SENTINEL_NAME = ".phi_scrub_complete"
+# Public alias so callers (e.g. main.py) can import a stable name without
+# reaching into a private constant.
+PHI_SCRUB_SENTINEL_NAME = _SENTINEL_NAME
 
 _DEFAULT_MAX_JITTER_DAYS = 30
 _DEFAULT_ORPHAN_THRESHOLD = 10

@@ -54,7 +54,7 @@ from scripts.security.secure_env import assert_output_zone, assert_write_zone
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["clean_trio_datasets"]
+__all__ = ["UnscrubbedDatasetError", "clean_trio_datasets"]
 
 
 # ── Configuration ───────────────────────────────────────────────────────────
@@ -99,7 +99,37 @@ class CleanupReport:
         return len(self.junk_removed) + len(self.duplicates_merged)
 
 
+class UnscrubbedDatasetError(Exception):
+    """Raised when clean_trio_datasets is asked to process a staging dataset that
+    has not been PHI-scrubbed. Fail-closed: the cleanup step reads row values
+    during duplicate detection and must never touch unredacted PHI. Run
+    scripts.security.phi_scrub.run_scrub (Step 1.6) before clean_trio_datasets
+    (Step 1.7)."""
+
+
 # ── Helpers ─────────────────────────────────────────────────────────────────
+
+
+def _assert_scrubbed(df: pd.DataFrame, file: Path) -> None:
+    """Raise UnscrubbedDatasetError if any row lacks the PHI-scrub marker
+    `_phi_scrubbed == "v3"`. A missing/old marker means phi_scrub (Step 1.6)
+    did not run on this file."""
+    marker_field = "_phi_scrubbed"  # mirrors phi_scrub.py _SCRUB_MARKER_FIELD
+    marker_value = "v3"  # mirrors phi_scrub.py _SCRUB_VERSION
+    if df.empty:
+        return  # genuinely empty file has no rows that could carry PHI
+    if marker_field not in df.columns:
+        raise UnscrubbedDatasetError(
+            f"{file.name}: '_phi_scrubbed' marker absent — run Step 1.6 "
+            f"(phi_scrub) before Step 1.7 (dataset_cleanup)."
+        )
+    bad = df[marker_field] != marker_value
+    n_bad = int(bad.sum())
+    if n_bad:
+        raise UnscrubbedDatasetError(
+            f"{file.name}: {n_bad} row(s) not scrubbed to v3 — run Step 1.6 "
+            f"(phi_scrub) before Step 1.7 (dataset_cleanup)."
+        )
 
 
 def _read_jsonl_df(path: Path) -> pd.DataFrame:
@@ -461,6 +491,14 @@ def clean_trio_datasets(
         audit_path = config.AUDIT_DATASET_REPORT_PATH
 
     assert_write_zone(datasets_dir)
+
+    # ── Fail-closed scrub-first guard ───────────────────────────────────────
+    # Cleanup reads row VALUES during duplicate detection, so the entire staging
+    # tree MUST already be PHI-scrubbed. Refuse to proceed otherwise.
+    if datasets_dir is not None and datasets_dir.is_dir():
+        for _jsonl in sorted(datasets_dir.glob("*.jsonl")):
+            _assert_scrubbed(_read_jsonl_df(_jsonl), _jsonl)
+    # ────────────────────────────────────────────────────────────────────────
 
     report = CleanupReport()
     dataset_files: list[str] = []

@@ -31,6 +31,7 @@ from scripts.extraction.dataset_pipeline import process_datasets
 from scripts.extraction.load_dictionary import load_study_dictionary
 from scripts.security.llm_source_gate import scan_tree_for_phi
 from scripts.security.phi_scrub import (
+    PHI_SCRUB_SENTINEL_NAME,
     PHIKeyMissingError,
     PHIKeyPermissionError,
     PHIScrubError,
@@ -1050,6 +1051,19 @@ For detailed documentation, see the Sphinx docs or README.md
         if args.process_datasets and not args.skip_datasets:
             cleanup_dir = Path(config.STAGING_DATASETS_DIR)
             if cleanup_dir.is_dir() and any(cleanup_dir.glob("*.jsonl")):
+                # ── Defense-in-depth sentinel check ─────────────────────────
+                # Verify that Step 1.6 (phi_scrub) completed before allowing
+                # Step 1.7 (dataset_cleanup) to read row values. The sentinel
+                # is written by run_scrub to the staging root on success.
+                _sentinel = Path(config.STUDY_STAGING_DIR) / PHI_SCRUB_SENTINEL_NAME
+                if not _sentinel.is_file():
+                    log.error(
+                        "Step 1.7 aborted: PHI scrub sentinel '%s' is absent. "
+                        "Run Step 1.6 (phi_scrub) before Step 1.7 (dataset_cleanup).",
+                        _sentinel,
+                    )
+                    sys.exit(1)
+                # ────────────────────────────────────────────────────────────
                 events_for_cleanup = dropped_events
 
                 def run_cleanup() -> None:

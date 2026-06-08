@@ -9,9 +9,10 @@ from pathlib import Path
 from scripts.audit.ledger import dataset_cleanup_ledger_path
 from scripts.extraction.dataset_cleanup import (
     CleanupReport,
+    UnscrubbedDatasetError,
     clean_trio_datasets,
 )
-from tests.conftest import _write_jsonl
+from tests.conftest import _write_jsonl, scrubbed_records
 
 
 class TestRemoveJunk:
@@ -19,8 +20,8 @@ class TestRemoveJunk:
         import config
 
         ds = config.TRIO_DATASETS_DIR
-        _write_jsonl(ds / "Paste Errors.jsonl", [{"a": 1}])
-        _write_jsonl(ds / "real_data.jsonl", [{"b": 2}])
+        _write_jsonl(ds / "Paste Errors.jsonl", scrubbed_records([{"a": 1}]))
+        _write_jsonl(ds / "real_data.jsonl", scrubbed_records([{"b": 2}]))
 
         report = clean_trio_datasets(ds)
         assert "Paste Errors.jsonl" in report.junk_removed
@@ -31,7 +32,7 @@ class TestRemoveJunk:
         import config
 
         ds = config.TRIO_DATASETS_DIR
-        _write_jsonl(ds / "TEST1EK.jsonl", [{"a": 1}])
+        _write_jsonl(ds / "TEST1EK.jsonl", scrubbed_records([{"a": 1}]))
 
         report = clean_trio_datasets(ds)
         assert "TEST1EK.jsonl" in report.junk_removed
@@ -40,7 +41,7 @@ class TestRemoveJunk:
         import config
 
         ds = config.TRIO_DATASETS_DIR
-        _write_jsonl(ds / "good_data.jsonl", [{"a": 1}])
+        _write_jsonl(ds / "good_data.jsonl", scrubbed_records([{"a": 1}]))
 
         report = clean_trio_datasets(ds)
         assert report.junk_removed == []
@@ -51,7 +52,7 @@ class TestMergeDuplicates:
         import config
 
         ds = config.TRIO_DATASETS_DIR
-        records = [{"SUBJID": f"S{i}", "AGE": 25 + i} for i in range(5)]
+        records = scrubbed_records([{"SUBJID": f"S{i}", "AGE": 25 + i} for i in range(5)])
         _write_jsonl(ds / "14_CaseControl.jsonl", records)
         _write_jsonl(ds / "14_Case_Control.jsonl", records)
 
@@ -65,8 +66,8 @@ class TestMergeDuplicates:
         import config
 
         ds = config.TRIO_DATASETS_DIR
-        small = [{"SUBJID": f"S{i}", "AGE": 25 + i} for i in range(3)]
-        large = [{"SUBJID": f"S{i}", "AGE": 25 + i} for i in range(10)]
+        small = scrubbed_records([{"SUBJID": f"S{i}", "AGE": 25 + i} for i in range(3)])
+        large = scrubbed_records([{"SUBJID": f"S{i}", "AGE": 25 + i} for i in range(10)])
         _write_jsonl(ds / "2A_ICBaseline.jsonl", large)
         _write_jsonl(ds / "2A_ICBaseline_1.jsonl", small)
 
@@ -79,8 +80,8 @@ class TestMergeDuplicates:
         import config
 
         ds = config.TRIO_DATASETS_DIR
-        _write_jsonl(ds / "21_DSTISO.jsonl", [{"COL_A": 1}])
-        _write_jsonl(ds / "21_DSTIsolate.jsonl", [{"COL_B": 2}])
+        _write_jsonl(ds / "21_DSTISO.jsonl", scrubbed_records([{"COL_A": 1}]))
+        _write_jsonl(ds / "21_DSTIsolate.jsonl", scrubbed_records([{"COL_B": 2}]))
 
         report = clean_trio_datasets(ds)
         assert len(report.duplicates_merged) == 0
@@ -90,7 +91,7 @@ class TestMergeDuplicates:
         import config
 
         ds = config.TRIO_DATASETS_DIR
-        _write_jsonl(ds / "14_CaseControl.jsonl", [{"A": 1}])
+        _write_jsonl(ds / "14_CaseControl.jsonl", scrubbed_records([{"A": 1}]))
         # 14_Case_Control.jsonl does NOT exist
 
         report = clean_trio_datasets(ds)
@@ -135,7 +136,7 @@ class TestAuditSerialization:
 
         ds = config.STAGING_DATASETS_DIR
         ds.mkdir(parents=True, exist_ok=True)
-        _write_jsonl(ds / "Paste Errors.jsonl", [{"a": 1}])
+        _write_jsonl(ds / "Paste Errors.jsonl", scrubbed_records([{"a": 1}]))
 
         clean_trio_datasets(
             ds,
@@ -171,7 +172,7 @@ class TestAuditSerialization:
 
         ds = config.STAGING_DATASETS_DIR
         ds.mkdir(parents=True, exist_ok=True)
-        records = [{"SUBJID": f"S{i}", "AGE": 25 + i} for i in range(5)]
+        records = scrubbed_records([{"SUBJID": f"S{i}", "AGE": 25 + i} for i in range(5)])
         _write_jsonl(ds / "14_CaseControl.jsonl", records)
         _write_jsonl(ds / "14_Case_Control.jsonl", records)
 
@@ -229,9 +230,9 @@ class TestAuditSerialization:
         ds = config.STAGING_DATASETS_DIR
         ds.mkdir(parents=True, exist_ok=True)
         # Junk file
-        _write_jsonl(ds / "Paste Errors.jsonl", [{"a": 1}])
+        _write_jsonl(ds / "Paste Errors.jsonl", scrubbed_records([{"a": 1}]))
         # Duplicate pair
-        records = [{"SUBJID": f"S{i}", "AGE": 25 + i} for i in range(5)]
+        records = scrubbed_records([{"SUBJID": f"S{i}", "AGE": 25 + i} for i in range(5)])
         _write_jsonl(ds / "14_CaseControl.jsonl", records)
         _write_jsonl(ds / "14_Case_Control.jsonl", records)
 
@@ -329,8 +330,8 @@ class TestAuditSerialization:
         ds.mkdir(parents=True, exist_ok=True)
 
         # Schema-mismatched pair → duplicates_skipped populated
-        _write_jsonl(ds / "21_DSTISO.jsonl", [{"COL_A": 1}])
-        _write_jsonl(ds / "21_DSTIsolate.jsonl", [{"COL_B": 2}])
+        _write_jsonl(ds / "21_DSTISO.jsonl", scrubbed_records([{"COL_A": 1}]))
+        _write_jsonl(ds / "21_DSTIsolate.jsonl", scrubbed_records([{"COL_B": 2}]))
 
         clean_trio_datasets(
             ds,
@@ -384,7 +385,7 @@ class TestAsWrittenLedger:
 
         ds = config.STAGING_DATASETS_DIR
         ds.mkdir(parents=True, exist_ok=True)
-        _write_jsonl(ds / "1A_ICScreening.jsonl", [{"a": 1}])
+        _write_jsonl(ds / "1A_ICScreening.jsonl", scrubbed_records([{"a": 1}]))
 
         clean_trio_datasets(
             ds,
@@ -441,7 +442,7 @@ class TestAsWrittenLedger:
 
         ds = config.STAGING_DATASETS_DIR
         ds.mkdir(parents=True, exist_ok=True)
-        _write_jsonl(ds / "Paste Errors.jsonl", [{"a": 1}])
+        _write_jsonl(ds / "Paste Errors.jsonl", scrubbed_records([{"a": 1}]))
 
         clean_trio_datasets(
             ds,
@@ -465,7 +466,7 @@ class TestAsWrittenLedger:
 
         ds = config.STAGING_DATASETS_DIR
         ds.mkdir(parents=True, exist_ok=True)
-        _write_jsonl(ds / "Paste Errors.jsonl", [{"a": 1}])
+        _write_jsonl(ds / "Paste Errors.jsonl", scrubbed_records([{"a": 1}]))
 
         # Only a non-column-scope event — should be filtered out of column-drop section
         non_column_event = {
@@ -486,3 +487,64 @@ class TestAsWrittenLedger:
         envelope = json.loads(self._ledger_path("Paste Errors.jsonl").read_text())
         col_drops = [e for e in envelope["events"] if e["action"] == "dataset_column_drop"]
         assert col_drops == [], "non-column scope must not produce dataset_column_drop events"
+
+
+class TestScrubFirstGuard:
+    """RED→GREEN tests for the fail-closed scrub-first guard in clean_trio_datasets."""
+
+    def test_unscrubbed_file_raises(self, monkeypatch_config: Path) -> None:
+        """A file with no _phi_scrubbed marker must raise UnscrubbedDatasetError."""
+        import pytest
+
+        import config
+
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
+        _write_jsonl(ds / "unscrubbed.jsonl", [{"SUBJID": "S1", "AGE": 30}])
+
+        with pytest.raises(UnscrubbedDatasetError, match=r"_phi_scrubbed.*marker absent"):
+            clean_trio_datasets(ds)
+
+    def test_old_marker_raises(self, monkeypatch_config: Path) -> None:
+        """A file with an old marker version (v1) must raise UnscrubbedDatasetError."""
+        import pytest
+
+        import config
+
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
+        _write_jsonl(ds / "old_marker.jsonl", [{"SUBJID": "S1", "_phi_scrubbed": "v1"}])
+
+        with pytest.raises(UnscrubbedDatasetError, match=r"1 row.*not scrubbed to v3"):
+            clean_trio_datasets(ds)
+
+    def test_mixed_rows_raises(self, monkeypatch_config: Path) -> None:
+        """A file where only some rows carry v3 must raise UnscrubbedDatasetError."""
+        import pytest
+
+        import config
+
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
+        _write_jsonl(
+            ds / "mixed.jsonl",
+            [
+                {"SUBJID": "S1", "_phi_scrubbed": "v3"},
+                {"SUBJID": "S2"},  # missing marker
+            ],
+        )
+
+        with pytest.raises(UnscrubbedDatasetError, match=r"1 row.*not scrubbed to v3"):
+            clean_trio_datasets(ds)
+
+    def test_fully_scrubbed_file_passes(self, monkeypatch_config: Path) -> None:
+        """A file where every row carries _phi_scrubbed == 'v3' must not raise."""
+        import config
+
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
+        _write_jsonl(ds / "scrubbed.jsonl", scrubbed_records([{"SUBJID": "S1", "AGE": 30}]))
+
+        # Must not raise — the guard should pass cleanly
+        report = clean_trio_datasets(ds, study_name="TestStudy")
+        assert report.total_actions == 0
