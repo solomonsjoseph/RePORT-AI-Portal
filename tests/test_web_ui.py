@@ -282,9 +282,7 @@ def test_theme_includes_hidden_end_chat_and_model_pill() -> None:
     # <RPLN_CODE:> marker). Both call sites must be guarded by
     # _content_has_saved_code so the same code never appears twice.
     assert streaming_source.count("_render_analysis_code_cards(") == 3  # 1 def + 2 calls
-    assert (
-        streaming_source.count("not _content_has_saved_code(") == 2
-    )  # both call sites guarded
+    assert streaming_source.count("not _content_has_saved_code(") == 2  # both call sites guarded
     assert 'on_click="ignore"' in streaming_source
     assert 'st.empty() if st.session_state.get("rpln_pending_stream")' in chat_source
     assert "assistant_slot = chat.render_thread()" in web_ui_source

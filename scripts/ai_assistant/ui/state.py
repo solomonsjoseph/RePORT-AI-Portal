@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 import streamlit as st
 
@@ -70,13 +70,3 @@ def _new_id() -> str:
 
 def _pipeline_output_exists() -> bool:
     return published_bundle_exists()
-
-
-def get_meta(idx: int) -> dict[str, Any]:
-    """Return (and lazily create) the meta dict for message at index `idx`."""
-    return cast(
-        "dict[str, Any]",
-        st.session_state.messages_meta.setdefault(
-            idx, {"feedback": None, "edited": False, "tools_used": None}
-        ),
-    )

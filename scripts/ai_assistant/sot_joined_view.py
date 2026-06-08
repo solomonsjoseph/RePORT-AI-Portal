@@ -82,12 +82,6 @@ def _form_id_from_policy_path(path: Path) -> str:
     return path.stem
 
 
-def _form_id_from_lean_path(path: Path) -> str:
-    """Backward-compatible alias for older callers."""
-
-    return _form_id_from_policy_path(path)
-
-
 def find_dataset_schema_for_policy(policy_path: Path) -> Path | None:
     """Return the matching per-form dataset schema path when present."""
 
@@ -108,12 +102,6 @@ def find_dataset_schema_for_policy(policy_path: Path) -> Path | None:
         llm_source_dir / "dataset_schema" / form_id / f"{form_id}_schema.json",
     ]
     return next((path for path in candidates if path.is_file()), None)
-
-
-def find_dataset_schema_for_lean(lean_path: Path) -> Path | None:
-    """Backward-compatible alias for older callers."""
-
-    return find_dataset_schema_for_policy(lean_path)
 
 
 def _dataset_columns_by_name(schema: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
