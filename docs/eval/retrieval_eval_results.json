@@ -1,0 +1,285 @@
+{
+  "bundle_present": true,
+  "resolvability": [
+    {
+      "id": "Q-A1",
+      "kind": "statistical",
+      "file_score": 1.0,
+      "col_score": 1.0,
+      "overall_score": 1.0,
+      "resolved_files": [
+        "dataset_schema/files/1A_ICScreening.jsonl",
+        "dataset_schema/files/2A_ICBaseline.jsonl",
+        "dataset_schema/files/98A_FOA.jsonl",
+        "study_metadata/study_variable_map.yaml"
+      ],
+      "missing_files": [],
+      "resolved_cols": [
+        "IS_AGE",
+        "IS_SEX",
+        "IC_DMDX",
+        "IC_ALCFRQ",
+        "IC_SMOKHX",
+        "IC_WEIGHT",
+        "IC_HEIGHT",
+        "IC_KNEEHT",
+        "FOA_COHAOUT",
+        "SUBJID"
+      ],
+      "missing_cols": []
+    },
+    {
+      "id": "Q-A2",
+      "kind": "statistical",
+      "file_score": 1.0,
+      "col_score": 1.0,
+      "overall_score": 1.0,
+      "resolved_files": [
+        "dataset_schema/files/1A_ICScreening.jsonl",
+        "dataset_schema/files/2A_ICBaseline.jsonl",
+        "dataset_schema/files/98A_FOA.jsonl",
+        "study_metadata/study_variable_map.yaml"
+      ],
+      "missing_files": [],
+      "resolved_cols": [
+        "IS_AGE",
+        "IS_SEX",
+        "IC_DMDX",
+        "IC_ALCFRQ",
+        "IC_SMOKHX",
+        "IC_WEIGHT",
+        "IC_HEIGHT",
+        "IC_KNEEHT",
+        "FOA_COHAOUT",
+        "SUBJID"
+      ],
+      "missing_cols": []
+    },
+    {
+      "id": "Q-A3",
+      "kind": "statistical",
+      "file_score": 1.0,
+      "col_score": 1.0,
+      "overall_score": 1.0,
+      "resolved_files": [
+        "dataset_schema/files/1A_ICScreening.jsonl",
+        "dataset_schema/files/2A_ICBaseline.jsonl",
+        "dataset_schema/files/98A_FOA.jsonl",
+        "study_metadata/study_variable_map.yaml"
+      ],
+      "missing_files": [],
+      "resolved_cols": [
+        "IS_AGE",
+        "IS_SEX",
+        "IC_DMDX",
+        "IC_ALCFRQ",
+        "IC_SMOKHX",
+        "IC_WEIGHT",
+        "IC_HEIGHT",
+        "IC_KNEEHT",
+        "FOA_COHAOUT",
+        "SUBJID"
+      ],
+      "missing_cols": []
+    },
+    {
+      "id": "Q-B1",
+      "kind": "statistical",
+      "file_score": 1.0,
+      "col_score": 1.0,
+      "overall_score": 1.0,
+      "resolved_files": [
+        "dataset_schema/files/1B_HCScreening.jsonl",
+        "dataset_schema/files/2B_HCBaseline.jsonl",
+        "dataset_schema/files/98B_FOB.jsonl",
+        "dataset_schema/files/12B_FUB.jsonl",
+        "study_metadata/study_variable_map.yaml"
+      ],
+      "missing_files": [],
+      "resolved_cols": [
+        "HHC_AGE",
+        "HHC_SEX",
+        "HC_DMDX",
+        "HC_ALCFRQ",
+        "HC_SMOKHX",
+        "HC_WEIGHT",
+        "HC_HEIGHT",
+        "HC_KNEEHT",
+        "FOB_COHBOUT",
+        "FUB_TBDIAG",
+        "SUBJID"
+      ],
+      "missing_cols": []
+    },
+    {
+      "id": "Q-D1",
+      "kind": "definitional",
+      "file_score": 1.0,
+      "col_score": 1.0,
+      "overall_score": 1.0,
+      "resolved_files": [
+        "dataset_schema/files/6_HIV.jsonl",
+        "dictionary_mapping/jsonl/Codelists/Codelists_table_3.jsonl"
+      ],
+      "missing_files": [],
+      "resolved_cols": [
+        "HIV_HIV",
+        "SUBJID"
+      ],
+      "missing_cols": []
+    },
+    {
+      "id": "Q-D2",
+      "kind": "definitional",
+      "file_score": 1.0,
+      "col_score": 1.0,
+      "overall_score": 1.0,
+      "resolved_files": [
+        "SoT/1A_ICScreening/joined/1A_ICScreening_joined_query_view.yaml",
+        "dataset_schema/files/17_EligConfirmation.jsonl"
+      ],
+      "missing_files": [],
+      "resolved_cols": [
+        "IS_ELIGIBLE",
+        "IS_ENROLL",
+        "EC_ELIGCONF",
+        "SUBJID"
+      ],
+      "missing_cols": []
+    },
+    {
+      "id": "Q-D3",
+      "kind": "definitional",
+      "file_score": 1.0,
+      "col_score": 1.0,
+      "overall_score": 1.0,
+      "resolved_files": [
+        "dataset_schema/files/98A_FOA.jsonl",
+        "SoT/98A_FOA/joined/98A_FOA_joined_query_view.yaml"
+      ],
+      "missing_files": [],
+      "resolved_cols": [
+        "FOA_COHAOUT",
+        "FOA_RNTCDCSP",
+        "SUBJID"
+      ],
+      "missing_cols": []
+    },
+    {
+      "id": "Q-D4",
+      "kind": "definitional",
+      "file_score": 1.0,
+      "col_score": 1.0,
+      "overall_score": 1.0,
+      "resolved_files": [
+        "dataset_schema/files/53_exposure.jsonl",
+        "dataset_schema/files/2B_HCBaseline.jsonl",
+        "dataset_schema/files/1B_HCScreening.jsonl"
+      ],
+      "missing_files": [],
+      "resolved_cols": [
+        "HC_MEAL",
+        "HC_SLEEPHX",
+        "HC_LIVEDY",
+        "HC_LIVEDM",
+        "HC_EXPDAY",
+        "HC_EXPH",
+        "HC_RELATN",
+        "SUBJID"
+      ],
+      "missing_cols": []
+    },
+    {
+      "id": "Q-D5",
+      "kind": "definitional",
+      "file_score": 1.0,
+      "col_score": 1.0,
+      "overall_score": 1.0,
+      "resolved_files": [
+        "dataset_schema/files/7_Culture.jsonl",
+        "dataset_schema/files/21_DSTIsolate.jsonl"
+      ],
+      "missing_files": [],
+      "resolved_cols": [
+        "CX_DSTINH",
+        "CX_DSTRMP",
+        "CX_DSTEMB",
+        "CX_DSTSM",
+        "CX_DSTPZA",
+        "CX_DSTKMY",
+        "CX_DSTOFX",
+        "CX_DSTETHIO",
+        "CX_DSTDAT",
+        "DST_DSTINH",
+        "DST_DSTRMP",
+        "DST_DSTDAT",
+        "SUBJID"
+      ],
+      "missing_cols": []
+    },
+    {
+      "id": "Q-D6",
+      "kind": "definitional",
+      "file_score": 1.0,
+      "col_score": 1.0,
+      "overall_score": 1.0,
+      "resolved_files": [
+        "dataset_schema/files/12B_FUB.jsonl",
+        "dataset_schema/files/3_Specimen_Collection.jsonl"
+      ],
+      "missing_files": [],
+      "resolved_cols": [
+        "FUB_VISIT",
+        "FUB_VISDAT",
+        "FUB_TBDIAG",
+        "SC_ICVST",
+        "SC_HHCVST",
+        "SC_BLDDAT",
+        "SUBJID"
+      ],
+      "missing_cols": []
+    }
+  ],
+  "latency_direct_read": {
+    "p50_s": 0.000781,
+    "p95_s": 0.001632
+  },
+  "latency_simulated_rag": {
+    "index_build_s": 0.001883,
+    "per_query_p50_s": 1.5e-05,
+    "per_query_p95_s": 6e-05,
+    "note": "ILLUSTRATIVE ONLY \u2014 in-memory numpy simulation of embedding-matrix construction and cosine search.  Does NOT include embedding model inference, network, or serialisation costs.  Cannot yield exact statistics; direct read cannot be meaningfully compared on speed alone."
+  },
+  "routing_correctness": {
+    "probes": [
+      {
+        "id": "R1",
+        "question": "list available datasets",
+        "expected_tool": "list_available_datasets",
+        "fired_tool": "list_available_datasets",
+        "pass": true,
+        "branch": "dataset + list|available|show"
+      },
+      {
+        "id": "R2",
+        "question": "how many records and stats are in the Cohort A baseline dataset?",
+        "expected_tool": "get_dataset_stats",
+        "fired_tool": "get_dataset_stats",
+        "pass": true,
+        "branch": "stat|record|row"
+      },
+      {
+        "id": "R3",
+        "question": "What is HIV_HIV and how is it coded?",
+        "expected_tool": "answer_catalog_question",
+        "fired_tool": "answer_catalog_question",
+        "pass": true,
+        "branch": "non-empty fallback (catalog)"
+      }
+    ],
+    "correct": 3,
+    "total": 3,
+    "accuracy": 1.0,
+    "note": "fake-local exercises the ROUTING CONTRACT (3 deterministic branches). Full 10-tool selection accuracy requires a real model (Track B, operator-run)."
+  }
+}
