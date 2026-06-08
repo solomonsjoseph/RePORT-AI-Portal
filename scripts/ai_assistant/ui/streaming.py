@@ -242,6 +242,7 @@ def _render_artifact_bar(
 _FILE_REF_EXTENSIONS = "jsonl|json|pdf|png|csv|xlsx|md"
 _INTERNAL_MARKER_RE = re.compile(r"<RPLN_[A-Za-z0-9_]+:[^>\r\n]*>")
 _ARTIFACT_MARKER_RE = re.compile(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>\r\n]*>")
+_CODE_MARKER_RE = re.compile(r"<RPLN_CODE:[^>\r\n]*>")
 _ABSOLUTE_FILE_REF_RE = re.compile(
     rf"(?<![\w.-])/(?:[\w.-]+/)*[\w.-]+\.(?:{_FILE_REF_EXTENSIONS})\b"
 )
@@ -262,6 +263,20 @@ def _sanitize_file_refs(text: str) -> str:
 def _strip_internal_markers(text: str) -> str:
     """Replace internal render markers with generic placeholders."""
     return _ARTIFACT_MARKER_RE.sub("[Artifact]", text)
+
+
+def _content_has_saved_code(content: str | None) -> bool:
+    """True when ``content`` carries a ``<RPLN_CODE:...>`` marker.
+
+    When the marker is present, ``_render_message_content`` already renders the
+    executed code inline from the saved ``.py`` file (with a download button),
+    so ``_render_analysis_code_cards`` must NOT render the same code a second
+    time — otherwise the generated code appears twice. The card path stays as
+    the fallback for runs where code was not persisted to disk (no marker
+    emitted; governed by the all-or-nothing ``SANDBOX_PERSIST_CODE`` config),
+    guaranteeing the code is shown exactly once in every case.
+    """
+    return bool(content and _CODE_MARKER_RE.search(content))
 
 
 # ---------------------------------------------------------------------------
@@ -1031,7 +1046,7 @@ def _render_chat_history() -> None:
                 tools_used=_replay_tools_used,
                 _role=msg["role"],
             )
-            if msg["role"] == "assistant":
+            if msg["role"] == "assistant" and not _content_has_saved_code(content_to_render):
                 _render_analysis_code_cards(_replay_tools_used, msg_idx=i)
             m = meta_map.get(i, {})
             # Timestamp
@@ -1204,7 +1219,11 @@ def _stream_response(question: str) -> tuple[str, list[dict[str, str]]]:
                 msg_idx=len(st.session_state.messages),
                 tools_used=tools_detail,
             )
-            _render_analysis_code_cards(tools_detail, msg_idx=len(st.session_state.messages))
+            # Only render the code cards when the inline saved-code render did
+            # NOT already fire (no <RPLN_CODE:> marker) — otherwise the same
+            # generated code would appear twice. See _content_has_saved_code.
+            if not _content_has_saved_code(conversational_content):
+                _render_analysis_code_cards(tools_detail, msg_idx=len(st.session_state.messages))
             # Render sources and tool call disclosure inline (so they appear
             # immediately after streaming without requiring a page rerun).
             if tools_detail or evidence:

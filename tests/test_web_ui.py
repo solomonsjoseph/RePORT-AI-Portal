@@ -36,6 +36,7 @@ from scripts.ai_assistant.ui.shell import _TITLE_DISPLAY_LIMIT, _truncate_title
 from scripts.ai_assistant.ui.streaming import (
     _MEMORY_KEYWORDS,
     _artifact_file_download,
+    _content_has_saved_code,
     _sanitize_file_refs,
 )
 from scripts.ai_assistant.web_ui import (
@@ -47,6 +48,25 @@ from scripts.ai_assistant.web_ui import (
 )
 
 _PROJECT_ROOT = Path(__file__).parent.parent
+
+
+def test_content_has_saved_code_detects_code_marker() -> None:
+    """The duplicate-generated-code guard: content carrying a <RPLN_CODE:> marker
+    means the inline saved-code render already fired, so the analysis-code cards
+    must be suppressed. Without a marker (code not persisted), cards are the
+    sole fallback. This is the predicate that keeps generated code rendered
+    exactly once."""
+    # Marker present -> inline saved-code render owns it; cards suppressed.
+    assert _content_has_saved_code(
+        "Here is the analysis.\n<RPLN_CODE:output/Indo-VAP/agent/analysis/code/run_abc.py>"
+    )
+    # Other artifact markers must NOT count as code (figures still need cards).
+    assert not _content_has_saved_code(
+        "See the plot.\n<RPLN_PLOTLY:output/Indo-VAP/agent/analysis/figures/fig_1.json>"
+    )
+    assert not _content_has_saved_code("Plain answer with no executed code.")
+    assert not _content_has_saved_code("")
+    assert not _content_has_saved_code(None)
 
 
 def test_ollama_model_matching_treats_latest_as_implicit() -> None:
@@ -257,6 +277,14 @@ def test_theme_includes_hidden_end_chat_and_model_pill() -> None:
     assert "_render_analysis_code_cards" in streaming_source
     assert "rpln_artifact_download_" in streaming_source
     assert "st.download_button(" in streaming_source
+    # Generated code must render exactly once: the analysis-code cards are the
+    # fallback that fires ONLY when the inline saved-code render did not (no
+    # <RPLN_CODE:> marker). Both call sites must be guarded by
+    # _content_has_saved_code so the same code never appears twice.
+    assert streaming_source.count("_render_analysis_code_cards(") == 3  # 1 def + 2 calls
+    assert (
+        streaming_source.count("not _content_has_saved_code(") == 2
+    )  # both call sites guarded
     assert 'on_click="ignore"' in streaming_source
     assert 'st.empty() if st.session_state.get("rpln_pending_stream")' in chat_source
     assert "assistant_slot = chat.render_thread()" in web_ui_source
