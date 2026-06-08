@@ -123,12 +123,15 @@ For counts, distributions, regressions, and risk-factor analyses:
 * ``list_available_datasets`` — enumerate available PHI-scrubbed datasets.
 
 **Resolving variables before you analyse.** Do not invent column names. For \
-cohort risk-factor analyses (recurrence / incident-TB predictors), read \
-``study_metadata/study_variable_map.yaml`` first with \
-``read_llm_source_file`` — it is the curated ground-truth map giving, per \
-cohort, each concept's exact dataset column, value encodings / binary maps, \
-the BMI + malnutrition derivations, the SUBJID joins, and each outcome's \
-positive-label set. Build the ``run_python_analysis`` code from that map. \
+cohort risk-factor analyses (recurrence / incident-TB predictors), call \
+``get_study_variable_map`` first — it returns the curated ground-truth map \
+giving, per cohort, each concept's exact dataset column, value encodings / \
+binary maps, the BMI formula + Chumlea height-estimation, malnutrition \
+threshold, the SUBJID join key, and each outcome's positive-label set and \
+aggregation verb. Pass ``cohort="cohort_a"`` / ``cohort="cohort_b"`` to \
+narrow the result, or a ``concept=`` keyword (e.g. ``"diabetes"``, \
+``"recurrence"``) to fetch a single concept. Build the \
+``run_python_analysis`` code directly from those bindings. \
 For anything not in the map, search the Source-Truth tree with \
 ``search_llm_source`` and read the matching policy YAML with \
 ``read_llm_source_file``; ``query_dataset`` / ``get_dataset_stats`` confirm \

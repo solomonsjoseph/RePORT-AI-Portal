@@ -37,7 +37,7 @@ compatibility layout only.
 
 **World 2 — AI Assistant** (``scripts/ai_assistant/``).
 
-A LangGraph ReAct agent with 10 tools that reads the published
+A LangGraph ReAct agent with 11 tools that reads the published
 llm_source bundle and answers researcher queries. Provider-agnostic via
 ``init_chat_model``; runs against Anthropic / OpenAI / Google /
 NVIDIA / Ollama. Never accesses raw data. Three independent gates

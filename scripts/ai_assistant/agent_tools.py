@@ -28,6 +28,7 @@ Tools
 8.  run_python_analysis — sandboxed code execution for statistical analysis (primary)
 9.  answer_catalog_question — variable metadata lookup via policy SoT YAMLs
 10. cite_source — deterministic (file, line, snippet) citation for form fields
+11. get_study_variable_map — concept→column bindings with encodings, derivations, outcomes
 
 The agent resolves variables and protocol facts through the ``llm_source``
 retrieval tools and performs all statistical analysis through the sandboxed
@@ -1864,6 +1865,120 @@ def read_llm_source_file(relative_path: str, max_bytes: int = 24000) -> str:
 
 
 # ============================================================================
+# Tool 11: study variable map — concept→column bindings
+# ============================================================================
+
+
+@tool
+@phi_safe_return
+def get_study_variable_map(cohort: str = "", concept: str = "") -> str:
+    """Return the curated concept→column bindings from ``study_variable_map.yaml``.
+
+    This is the **primary** tool to call before any cohort risk-factor or
+    outcome analysis.  It surfaces the exact dataset column, value encodings,
+    derivation formulas, and outcome aggregation rules so that
+    ``run_python_analysis`` code is built from ground truth rather than guessed
+    names.
+
+    The map covers:
+
+    * **Demographics** — sex, age column + dataset for each cohort.
+    * **Predictors** — smoking, diabetes (binary maps), alcohol
+      (valid-range/labels), height, weight, knee-height (for Chumlea
+      height estimation), HbA1c.
+    * **Derived variables** — BMI formula ``weight_kg / (height_m^2)``; Chumlea
+      knee-height estimation ``H = 2.02*knee - 0.04*age + 64.19``; malnutrition
+      threshold (BMI < 18.5).
+    * **Outcomes** — recurrence (cohort A: ``FOA_COHAOUT``, ``worst_per_subject``
+      aggregation), incident TB (cohort B: ``FOB_COHBOUT`` + ``FUB_TBDIAG``
+      additional source, ``any_positive_per_subject`` aggregation).
+    * **Join key** — ``SUBJID`` links all datasets within a cohort.
+
+    All fields are variable *names* and *encodings* — pure metadata, no row
+    values.
+
+    Args:
+        cohort:  Filter to a single cohort — ``"cohort_a"`` or ``"cohort_b"``.
+            Leave blank (or ``""``) to return both cohorts.
+        concept: Filter to a single concept key, e.g. ``"diabetes"``,
+            ``"bmi"``, ``"recurrence"``, ``"incident_tb"``.  Leave blank to
+            return all concepts for the requested cohort(s).
+
+    Returns:
+        A JSON string containing the requested slice of the variable map.
+        On a missing map file, returns a JSON object with an ``"error"`` key
+        describing the problem — never raises.
+    """
+    import yaml
+
+    map_path = Path(config.LLM_SOURCE_STUDY_METADATA_DIR) / "study_variable_map.yaml"
+    try:
+        resolved = validate_agent_read(map_path)
+    except PermissionError as exc:
+        return json.dumps({"error": f"Access denied to study_variable_map.yaml: {exc}"}, indent=2)
+
+    if not resolved.exists():
+        return json.dumps(
+            {
+                "error": (
+                    "study_variable_map.yaml not found at "
+                    f"{map_path}. Run the study build pipeline first."
+                )
+            },
+            indent=2,
+        )
+
+    try:
+        with resolved.open("r", encoding="utf-8") as fh:
+            raw_map: dict[str, Any] = yaml.safe_load(fh) or {}
+    except Exception as exc:
+        return json.dumps({"error": f"Failed to parse study_variable_map.yaml: {exc}"}, indent=2)
+
+    cohort_key = (cohort or "").strip().lower()
+    concept_key = (concept or "").strip().lower()
+
+    cohorts_src: dict[str, Any] = raw_map.get("cohorts", {})
+    dataset_relationships: dict[str, Any] = raw_map.get("dataset_relationships", {})
+    study_meta: dict[str, Any] = {
+        k: v for k, v in raw_map.items() if k not in ("cohorts", "dataset_relationships")
+    }
+
+    def _filter_cohort(cohort_data: dict[str, Any]) -> dict[str, Any]:
+        """Return cohort_data filtered to concept_key (or unfiltered if blank)."""
+        if not concept_key:
+            return cohort_data
+        result: dict[str, Any] = {}
+        # Look in all top-level sections for a key matching concept_key.
+        for section_name, section_val in cohort_data.items():
+            if not isinstance(section_val, dict):
+                result[section_name] = section_val
+                continue
+            if concept_key in section_val:
+                result[section_name] = {concept_key: section_val[concept_key]}
+            elif section_name == concept_key:
+                result[section_name] = section_val
+        return result
+
+    if cohort_key in ("cohort_a", "cohort_b"):
+        cohort_data = cohorts_src.get(cohort_key, {})
+        output: dict[str, Any] = {
+            "study": study_meta,
+            "cohort": cohort_key,
+            "data": _filter_cohort(cohort_data),
+            "dataset_relationships": dataset_relationships,
+        }
+    else:
+        # Return both cohorts.
+        output = {
+            "study": study_meta,
+            "cohorts": {name: _filter_cohort(data) for name, data in cohorts_src.items()},
+            "dataset_relationships": dataset_relationships,
+        }
+
+    return json.dumps(output, indent=2, ensure_ascii=False)
+
+
+# ============================================================================
 # Tool registry
 # ============================================================================
 
@@ -1878,4 +1993,5 @@ ALL_TOOLS = [
     run_python_analysis,
     answer_catalog_question,
     cite_source,
+    get_study_variable_map,
 ]

@@ -134,7 +134,7 @@ historical. Current LLM metadata comes from reviewed SoT policy YAMLs
 ``llm_source/SoT/<pair>/``.
 
 **World 2 — AI Assistant** (``scripts/ai_assistant/``):
-LangGraph ReAct agent with 10 tools for querying study data. Never
+LangGraph ReAct agent with 11 tools for querying study data. Never
 accesses raw data.
 
 **Output structure:**
