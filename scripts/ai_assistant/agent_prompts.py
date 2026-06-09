@@ -17,7 +17,6 @@ from __future__ import annotations
 # Verbatim deflection text for audit/PHI-handling questions surfaced through
 # the normal chat path. Pinned as a constant so tests, retrieval, and tool
 # descriptions all use the same exact wording — see issue #73 / HITL #83.
-# (Inlined from scripts.source_truth.catalog — Task 6a decoupling.)
 AUDIT_ONLY_NOTE = (
     "Note: PHI handling decisions are recorded in the study audit ledger "
     "and aren't exposed through normal chat. For audit questions, please "

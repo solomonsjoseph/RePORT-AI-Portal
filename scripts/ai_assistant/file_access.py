@@ -70,9 +70,10 @@ def _zones() -> tuple[list[str], list[str], frozenset[str]]:
     write_roots = [
         _resolve(config.AGENT_STATE_DIR),
     ]
-    # Repo-tracked config that StudyKnowledge + similar helpers load at
-    # tool-invocation time. This is the "how" surface (per the hard PHI
-    # rule), not the "what" — still inside the source tree.
+    # Repo-tracked config read at tool-invocation time by agent_prompts
+    # (system-prompt directive) and agent_tools readers. This is the
+    # "how" surface (per the hard PHI rule), not the "what" — still
+    # inside the source tree.
     project_root = Path(__file__).resolve().parents[2]
     read_allowlist = frozenset(
         {
