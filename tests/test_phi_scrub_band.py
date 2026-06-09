@@ -384,6 +384,33 @@ class TestScrubRowBand:
         assert "IC_JOB" not in scrubbed
         assert "phi-scrub-band" not in str(counts)
 
+    def test_force_drop_header_drops_direct_identifier_over_broad_keep(
+        self, scrub_config_path: Path, sidecar_key: Path
+    ) -> None:
+        """A column in the force-drop set (suppress_headers) is DROPPED even when a
+        broad keep would otherwise publish it raw — direct identifiers (signatures,
+        initials) must be removed; benign clinical columns and the subject ID stay."""
+        _write_config(scrub_config_path, keep_fields=["^CBC_"])  # broad keep covers CBC_INIT + CBC_WBC
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        key = phi_scrub.load_key()
+        # Without force-drop, CBC_INIT would be KEPT by ^CBC_.
+        assert cfg.field_is_keep("CBC_INIT") is True
+
+        row = {"SUBJID": "S1", "CBC_INIT": "ZZZ", "CBC_WBC": "5.0"}
+        scrubbed, counts = phi_scrub._scrub_row(
+            row,
+            cfg=cfg,
+            key=key,
+            dataset_has_subject_col=True,
+            suppress_headers=frozenset({phi_scrub._normalize_header_for_lookup("CBC_INIT")}),
+        )
+        assert scrubbed is not None
+        assert "CBC_INIT" not in scrubbed  # direct identifier dropped despite ^CBC_ keep
+        assert scrubbed["CBC_WBC"] == "5.0"  # benign clinical column preserved
+        assert scrubbed["SUBJID"].startswith("RID_")  # subject ID pseudonymized, not dropped
+        assert "phi-scrub-drop:CBC_INIT" in counts
+
 
 # ── _scrub_file 4-tuple return ──────────────────────────────────────────────
 

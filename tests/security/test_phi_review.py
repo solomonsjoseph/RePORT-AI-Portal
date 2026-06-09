@@ -248,8 +248,10 @@ def test_phi_risky_header_passes_benign_clinical_names(header: str) -> None:
     assert is_phi_risky_header(header) is False
 
 
-def test_form_held_when_risky_keep_header_escapes_rules(tmp_path: Path) -> None:
-    """A KEEP header with a PHI-risky name holds the form (Option C coverage hold)."""
+def test_risky_keep_header_escapee_is_force_dropped(tmp_path: Path) -> None:
+    """A KEEP header with a PHI-risky name (no SoT/keep confirmation) is a direct
+    identifier → FORCE-DROPPED (not held). Policy: direct identifiers must be
+    dropped; the form still publishes its remaining columns."""
     study_dir = tmp_path / "data" / "raw" / "Study"
     _write_privacy_config(study_dir)
     cfg = load_study_privacy_config(study_dir)
@@ -262,11 +264,11 @@ def test_form_held_when_risky_keep_header_escapes_rules(tmp_path: Path) -> None:
         rule_bundle=bundle,
     )
 
-    assert approval.status == "held"
-    assert any(reason.startswith(PHI_COVERAGE_HOLD_PREFIX) for reason in approval.reasons)
-    assert any("interviewer_remarks" in reason for reason in approval.reasons)
-    # the escapee is classified KEEP — that is exactly why it must be held
-    assert approval.actions["interviewer_remarks"] == Action.KEEP.value
+    # Not held for the risky escapee — it is dropped instead, so the form publishes.
+    assert approval.status == "approved"
+    assert "interviewer_remarks" in approval.force_drop_headers
+    # benign clinical columns are NOT force-dropped
+    assert "culture_result" not in approval.force_drop_headers
 
 
 def test_form_not_held_for_benign_keep_headers(tmp_path: Path) -> None:
@@ -582,8 +584,9 @@ def _benign_bundle(tmp_path: Path):
     return cfg, bundle
 
 
-def test_sot_disagreement_holds_when_published_raw(tmp_path: Path) -> None:
-    """A column the scrub PUBLISHES RAW that the SoT flags PHI → held for review."""
+def test_sot_flagged_phi_published_raw_is_force_dropped(tmp_path: Path) -> None:
+    """A column the scrub PUBLISHES RAW that the SoT flags PHI is a direct identifier
+    → FORCE-DROPPED (not held). The form still publishes its other columns."""
     cfg, bundle = _benign_bundle(tmp_path)
     approval = review_form_headers(
         form_name="F.xlsx",
@@ -595,15 +598,16 @@ def test_sot_disagreement_holds_when_published_raw(tmp_path: Path) -> None:
         },
         published_raw_headers=frozenset({"culture_result"}),
     )
-    assert approval.status == "held"
-    assert any("phi_sot_disagreement" in r for r in approval.reasons)
+    assert approval.status == "approved"
+    assert "culture_result" in approval.force_drop_headers
 
 
-def test_sot_disagreement_not_held_when_scrub_drops(tmp_path: Path) -> None:
-    """Same SoT-PHI flag, but the column is NOT published raw (scrub drops it) → no hold.
+def test_sot_flagged_phi_not_dropped_when_scrub_already_handles(tmp_path: Path) -> None:
+    """Same SoT-PHI flag, but the column is NOT published raw (scrub already
+    drops/pseudonymizes it) → not force-dropped again, not held.
 
     This is the published_raw gate: SUBJID2/signatures are phi_review-KEEP + SoT-PHI
-    but the scrub drops them, so they are never leaked and must not hold the form.
+    but the scrub drops them, so they are never leaked and need no override.
     """
     cfg, bundle = _benign_bundle(tmp_path)
     approval = review_form_headers(
@@ -617,7 +621,7 @@ def test_sot_disagreement_not_held_when_scrub_drops(tmp_path: Path) -> None:
         published_raw_headers=frozenset(),  # scrub does NOT publish it raw
     )
     assert approval.status == "approved"
-    assert not any("phi_sot_disagreement" in r for r in approval.reasons)
+    assert "culture_result" not in approval.force_drop_headers
 
 
 def test_sot_benign_column_not_held(tmp_path: Path) -> None:

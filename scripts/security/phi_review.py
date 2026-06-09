@@ -192,6 +192,11 @@ class FormReviewApproval:
     rule_bundle_sha256: str
     source_mode: str
     held_reason: HeldReason | None = None
+    # Direct-identifier columns the scrub must DROP even though the name-rules /
+    # broad keeps would publish them raw — signatures, initials, free-text notes,
+    # and any column the PDF-aware SoT flags PHI. The scrub force-drops these
+    # (see phi_scrub _scrub_row priority-0). Column NAMES only — never values.
+    force_drop_headers: tuple[str, ...] = ()
 
     def to_json(self) -> dict[str, Any]:
         """Return a payload with headers/actions only; no row or fake values."""
@@ -204,6 +209,7 @@ class FormReviewApproval:
             "reasons": list(self.reasons),
             "rule_bundle_sha256": self.rule_bundle_sha256,
             "source_mode": self.source_mode,
+            "force_drop_headers": list(self.force_drop_headers),
         }
         if self.held_reason is not None:
             payload["held_reason"] = self.held_reason.to_json()
@@ -992,28 +998,30 @@ def review_form_headers(
     # Step 3: Deterministic blockers and coverage holds (no retry needed).
     # ------------------------------------------------------------------
     blockers = _review_blockers(headers)
-    # Option C coverage hold: a KEEP header whose name looks like PHI would be
-    # published unscrubbed. Hold the whole form (non-blocking) for human review
-    # rather than silently keep it — "preserved must be preserved, dropped
-    # dropped". Rule-matched headers are already non-KEEP, so this only fires on
-    # the escapees.
+    # SoT CROSS-VERIFICATION → DIRECT-IDENTIFIER FORCE-DROP.
     #
-    # SoT CROSS-VERIFICATION. A coverage/disagreement hold only matters for a
-    # column the SCRUB actually PUBLISHES RAW (its configured action is keep) — a
-    # column the scrub drops/pseudonymizes/jitters is never leaked regardless of
-    # phi_review's name-classification (e.g. SUBJID2..7, signatures are KEEP by the
-    # name-regex but the scrub drops them). ``published_raw_headers`` is that set;
-    # when not supplied (legacy callers) every KEEP is treated as published-raw so
-    # behavior is unchanged.
+    # A column only needs handling if the SCRUB actually PUBLISHES IT RAW (its
+    # configured action is keep) — a column the scrub already drops/pseudonymizes/
+    # jitters is never leaked regardless of the name-regex (e.g. SUBJID2..7,
+    # IC_SIGN are KEEP by the name-regex but the scrub drops them).
+    # ``published_raw_headers`` is that set; when not supplied (legacy callers)
+    # every KEEP is treated as published-raw so behavior is unchanged.
+    #
+    # Among published-raw columns, a DIRECT IDENTIFIER must be DROPPED (policy:
+    # signatures, initials, names, free-text → drop; only the subject ID is
+    # pseudonymized, which the scrub's id_fields already handles). A column is a
+    # direct identifier when (a) the PDF-aware SoT flags it PHI, OR (b) its name
+    # matches a PHI-risk pattern and NOTHING confirms it benign (no printed
+    # clinical question in the SoT AND no deliberate documented keep_fields rule
+    # like the coded category IC_RATION). These are recorded in
+    # ``force_drop_headers`` and removed by the scrub — the form still publishes
+    # its remaining columns rather than being held.
     sot = sot_signals or {}
     published_raw = (
         published_raw_headers
         if published_raw_headers is not None
         else frozenset(item.header for item in classifications if item.action == Action.KEEP)
     )
-
-    def _published_raw(header: str) -> bool:
-        return header in published_raw
 
     def _sot_confirms_benign(header: str) -> bool:
         # SoT confirms a name-flagged KEEP is benign when the variable has a printed
@@ -1022,37 +1030,38 @@ def review_form_headers(
         sig = sot.get(header.upper())
         return bool(sig and sig.get("has_pdf_question") and not sig.get("is_phi"))
 
-    # Option-C coverage hold, cross-verified: a risky-NAMED column published raw is
-    # held UNLESS confirmed benign by (1) the SoT (printed question, not PHI) or
-    # (2) a deliberate documented keep_fields rule (a human keep decision — e.g. a
-    # coded category like IC_RATION, which has no PDF widget to verify against).
-    coverage_holds = tuple(
-        f"phi_coverage_hold: '{item.header}' is KEEP but its name matches a "
-        f"PHI-risk pattern; classify keep/drop/scrub before publishing this form"
-        for item in classifications
-        if item.action == Action.KEEP
-        and _published_raw(item.header)
-        and is_phi_risky_header(item.header)
-        and not _sot_confirms_benign(item.header)
-        and item.header not in confirmed_keep_headers
-    )
+    def _is_direct_identifier(item: HeaderClassification) -> bool:
+        # Only columns the scrub PUBLISHES RAW can leak; a column it already
+        # drops/pseudonymizes/jitters needs no override (subject IDs are
+        # pseudonymized here, NOT dropped — they are required for linkage).
+        if item.header not in published_raw:
+            return False
+        sig = sot.get(item.header.upper(), {})
+        # (a) the PDF-aware SoT flags it a direct identifier to DROP — overrides
+        #     even an explicit scrub keep (a direct identifier must be dropped).
+        if sig.get("sot_phi") == "drop":
+            return True
+        # (b) the regulation classifier itself decided DROP, but a scrub keep
+        #     would publish it raw. Honor the stricter DROP decision UNLESS a
+        #     deliberate documented keep_fields rule says keep (that human keep
+        #     overrides a name-regex over-match; the SoT path (a) still overrides
+        #     even a documented keep, since the SoT read the printed question).
+        if item.action == Action.DROP and item.header not in confirmed_keep_headers:
+            return True
+        # (c) a risky-NAMED keep with nothing confirming it benign (no printed
+        #     clinical question in the SoT, no documented keep_fields rule) →
+        #     a probable direct identifier → drop.
+        return (
+            item.action == Action.KEEP
+            and is_phi_risky_header(item.header)
+            and not _sot_confirms_benign(item.header)
+            and item.header not in confirmed_keep_headers
+        )
 
-    # SoT DISAGREEMENT hold (under-protection catch): the scrub PUBLISHES a column
-    # RAW that the PDF-aware SoT independently flags as PHI. The SoT saw the printed
-    # question and judged it identifying — trust it over the name/scrub keep and
-    # hold for human review rather than publish a possibly-identifying value.
-    disagreement_holds = tuple(
-        f"phi_sot_disagreement: '{item.header}' is published raw but the SoT "
-        f"(built from the PDF question) flags it PHI ({sot.get(item.header.upper(), {}).get('sot_phi')}); "
-        f"confirm keep or scrub before publishing"
-        for item in classifications
-        if item.action == Action.KEEP
-        and _published_raw(item.header)
-        and bool(sot.get(item.header.upper(), {}).get("is_phi"))
+    force_drop_headers = tuple(
+        item.header for item in classifications if _is_direct_identifier(item)
     )
-    reasons = tuple(
-        dict.fromkeys((*blockers, *adversarial_failures, *coverage_holds, *disagreement_holds))
-    )
+    reasons = tuple(dict.fromkeys((*blockers, *adversarial_failures)))
 
     status = "held" if reasons else "approved"
 
@@ -1075,6 +1084,7 @@ def review_form_headers(
         rule_bundle_sha256=rule_bundle.rules_sha256,
         source_mode=rule_bundle.source_mode,
         held_reason=held_reason,
+        force_drop_headers=force_drop_headers,
     )
 
 

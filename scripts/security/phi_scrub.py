@@ -1452,14 +1452,15 @@ def _scrub_row(
         if field.startswith("__"):
             continue
 
-        # 0. phi_review SUPPRESS override — the dual-jurisdiction regulation
-        # classifier flagged this column for free-text suppression (comment /
-        # note / narrative / "other (specify)"). That is STRICTER than any scrub
-        # keep, so honor it by DROPPING the field: free-text can carry PHI the
-        # value-level gate cannot be guaranteed to catch, and Safe Harbor removes
-        # such narrative fields. This aligns the scrub with phi_review (decided
-        # suppress → applied drop; decided-vs-applied verifier) and only ever
-        # ADDS protection — it never under-protects.
+        # 0. FORCE-DROP override — phi_review's review (incl. SoT cross-verification)
+        # flagged this column as a DIRECT IDENTIFIER that must be removed even
+        # though a broad form-prefix keep would otherwise publish it raw:
+        # free-text suppression (comment / note / "other (specify)"), signatures,
+        # initials, names, or any column the PDF-aware SoT flags PHI. Dropping is
+        # STRICTER than any scrub keep and only ever ADDS protection — it never
+        # under-protects. (The subject ID is NOT here — it is pseudonymized by the
+        # id rule, since it is required for record linkage.) ``suppress_headers``
+        # carries the combined force-drop set (suppress plus SoT direct identifiers).
         if suppress_headers and _normalize_header_for_lookup(field) in suppress_headers:
             del row[field]
             _bump("drop", field)
@@ -1802,22 +1803,29 @@ def _normalize_header_for_lookup(header: str) -> str:
 
 def _load_approval_classifications(
     runs_dir: Path | None, run_id: str | None
-) -> tuple[dict, str | None]:
-    """Load phi_handling_approval.json and return (lookup, rule_bundle_sha256).
+) -> tuple[dict, dict[str, frozenset[str]], str | None]:
+    """Load phi_handling_approval.json → (lookup, force_drop_by_stem, rule_bundle_sha256).
 
-    Returns ({}, None) when runs_dir/run_id is None, file absent, or JSON malformed.
+    ``force_drop_by_stem`` maps a dataset stem → the set of DIRECT-IDENTIFIER
+    headers phi_review's SoT cross-verification decided must be dropped even
+    though the scrub config would publish them raw (signatures, initials,
+    free-text notes, SoT-flagged PHI). Keys are normalized to the same form
+    ``_scrub_row`` compares against.
+
+    Returns ({}, {}, None) when runs_dir/run_id is None, file absent, or JSON malformed.
     """
     if runs_dir is None or run_id is None:
-        return {}, None
+        return {}, {}, None
     path = Path(runs_dir) / run_id / "phi_handling_approval.json"
     if not path.is_file():
-        return {}, None
+        return {}, {}, None
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
-        return {}, None
+        return {}, {}, None
     bundle_sha = (data.get("rule_bundle") or {}).get("rules_sha256")
     lookup: dict[str, dict[str, dict]] = {}
+    force_drop_by_stem: dict[str, frozenset[str]] = {}
     for form in data.get("forms", []):
         stem = Path(str(form.get("form_name", ""))).stem
         per_header: dict[str, dict] = {}
@@ -1830,7 +1838,10 @@ def _load_approval_classifications(
             }
         if stem:
             lookup[stem] = per_header
-    return lookup, bundle_sha
+            force_drop_by_stem[stem] = frozenset(
+                _normalize_header_for_lookup(str(h)) for h in form.get("force_drop_headers", []) or []
+            )
+    return lookup, force_drop_by_stem, bundle_sha
 
 
 def _method_for_action(
@@ -2126,7 +2137,9 @@ def run_scrub(
     scrub_config_hash: str = hash_file(Path(config.PHI_SCRUB_CONFIG_PATH))
 
     # Load approval classifications (no-op when run_id/runs_dir absent or file missing).
-    approval_lookup, rule_bundle_sha256_val = _load_approval_classifications(runs_dir, run_id)
+    approval_lookup, sot_force_drop_by_stem, rule_bundle_sha256_val = (
+        _load_approval_classifications(runs_dir, run_id)
+    )
 
     # Sentinel short-circuit — prevents accidental double-scrub on restart.
     if sentinel.is_file():
@@ -2206,12 +2219,16 @@ def run_scrub(
     # Per-form review-quarantine tally (only populated in partial_on_review mode).
     partial_forms: dict[str, dict[str, Any]] = {}
 
-    # Per-form set of headers phi_review decided to SUPPRESS (free-text). The
-    # scrub honors that stricter regulation decision by dropping those columns
-    # (see _scrub_row priority-0). Keyed by stem; headers are pre-normalized to
-    # match _scrub_row's _normalize_header_for_lookup() comparison.
-    suppress_by_stem: dict[str, frozenset[str]] = {
+    # Per-form set of headers the scrub must FORCE-DROP at priority-0 (overriding
+    # any keep), pre-normalized to match _scrub_row's comparison. Two sources, both
+    # the honor-the-stricter-decision direction (only ever ADD protection):
+    #   1. phi_review SUPPRESS decisions (free-text comment/other), and
+    #   2. force_drop_headers from phi_review's SoT cross-verification — DIRECT
+    #      IDENTIFIERS (signatures, initials, names, free-text notes, SoT-flagged
+    #      PHI) that a broad form-prefix keep would otherwise publish raw.
+    force_drop_by_stem: dict[str, frozenset[str]] = {
         stem: frozenset(h for h, c in per_header.items() if (c or {}).get("action") == "suppress")
+        | sot_force_drop_by_stem.get(stem, frozenset())
         for stem, per_header in (approval_lookup or {}).items()
     }
 
@@ -2221,7 +2238,7 @@ def run_scrub(
             cfg=cfg,
             key=key,
             date_locales=date_locales,
-            suppress_headers=suppress_by_stem.get(jsonl_file.stem, frozenset()),
+            suppress_headers=force_drop_by_stem.get(jsonl_file.stem, frozenset()),
         )
 
         if orphans:
