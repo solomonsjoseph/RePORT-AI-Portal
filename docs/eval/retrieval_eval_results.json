@@ -241,13 +241,13 @@
     }
   ],
   "latency_direct_read": {
-    "p50_s": 0.000781,
-    "p95_s": 0.001632
+    "p50_s": 0.000653,
+    "p95_s": 0.001059
   },
   "latency_simulated_rag": {
-    "index_build_s": 0.001883,
-    "per_query_p50_s": 1.5e-05,
-    "per_query_p95_s": 6e-05,
+    "index_build_s": 0.003029,
+    "per_query_p50_s": 1.3e-05,
+    "per_query_p95_s": 0.000278,
     "note": "ILLUSTRATIVE ONLY \u2014 in-memory numpy simulation of embedding-matrix construction and cosine search.  Does NOT include embedding model inference, network, or serialisation costs.  Cannot yield exact statistics; direct read cannot be meaningfully compared on speed alone."
   },
   "routing_correctness": {

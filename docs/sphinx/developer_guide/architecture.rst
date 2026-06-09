@@ -338,7 +338,7 @@ AI Assistant Agent Layer
   the only module that constructs an LLM client. Provider keys
   flow in via the explicit ``api_key=`` kwarg, sourced from the
   KeyStore (no ``os.environ`` lookup).
-* :mod:`scripts.ai_assistant.agent_tools` — 12 ``@tool``-decorated
+* :mod:`scripts.ai_assistant.agent_tools` — 11 ``@tool``-decorated
   functions. ``ALL_TOOLS`` is the canonical list; the
   doc-freshness lint ties prose docs to this list.
 * :mod:`scripts.ai_assistant.agent_prompts` — system prompt with
@@ -352,15 +352,6 @@ AI Assistant Agent Layer
   validator (the canonical chokepoint for every tool's file I/O).
 * :mod:`scripts.ai_assistant.keystore` — in-memory API-key registry.
 * :mod:`scripts.ai_assistant.tool_cache` — per-tool memoisation.
-
-Analytical Engine
-~~~~~~~~~~~~~~~~~
-
-:mod:`scripts.ai_assistant.analytical_engine` — deterministic
-epidemiology helpers (logistic regression, survival, descriptive
-stats) called from the ``run_python_analysis`` tool. Pre-loaded
-DataFrames come from ``config.TRIO_DATASETS_DIR`` only (GREEN
-zone).
 
 Subprocess Sandbox
 ~~~~~~~~~~~~~~~~~~

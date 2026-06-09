@@ -34,7 +34,7 @@ surface that the agent cannot read.
        the entire tree is overwritten with random bytes + ``fsync``-ed
        + unlinked. On failure preserved for forensic inspection.
    * - **GREEN**
-     - ``output/{STUDY}/llm_source/`` + ``output/{STUDY}/agent/``
+     - ``output/{STUDY}/llm_source/`` (live or repointed to a snapshot's ``snapshots/{id}/llm_source/``) + ``output/{STUDY}/agent/``
      - PHI-free published artifacts + agent's own state.
        :func:`scripts.ai_assistant.file_access.validate_agent_read`
        admits paths in this zone only.
@@ -65,12 +65,13 @@ Two complementary chokepoints:
   ``validate_agent_write``, ``validate_sandbox_write``,
   ``is_agent_readable``. Resolves every path with
   ``os.path.realpath`` and verifies containment with
-  ``os.path.commonpath``. Reads accept ``llm_source/`` ∪ ``agent/``
+  ``os.path.commonpath``. Reads accept the active ``llm_source/`` (which may be repointed to an active snapshot's ``llm_source/`` subtree) ∪ ``agent/``
   (plus ``config/study_knowledge.yaml`` via an explicit allowlist for
-  the StudyKnowledge helper). Agent-tool writes accept ``agent/`` only;
+  the study-knowledge YAML overlay consumed by agent prompts and tools).
+  Agent-tool writes accept ``agent/`` only;
   ``exec_python`` sandbox writes narrow further to
-  ``agent/analysis/``. Audit, telemetry, staging, and raw paths are
-  hard-rejected with ``ZoneViolationError``.
+  ``agent/analysis/``. Audit, telemetry, staging, snapshot-root metadata directories, and raw paths are
+  hard-rejected with ``ZoneViolationError`` or ``SnapshotZoneViolation``.
 
 The Eight-Action Scrub Catalog (Step 1.6)
 -----------------------------------------
@@ -146,9 +147,9 @@ The clinical-phrase allowlist exempts strings like "INH 5 mg/kg" or
 Gate 2 — k-anonymity (k=5) (``guard_rows_with_kanon``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Module: :mod:`scripts.security.kanon_gate`. Function:
-:func:`scripts.security.kanon_gate.kanon_check` (used as a
-primitive by ``guard_rows_with_kanon_and_ldiv`` below).
+Wrapper: :func:`scripts.ai_assistant.phi_safe.guard_rows_with_kanon`.
+Primitive: :func:`scripts.security.kanon_gate.kanon_check` (called
+internally by ``guard_rows_with_kanon`` and ``guard_rows_with_kanon_and_ldiv``).
 
 When a tool would surface row-level data, the gate computes the
 equivalence class of each row over the configured quasi-identifiers
@@ -160,8 +161,9 @@ gate suppresses the response and returns an aggregate or an explicit
 Gate 3 — l-diversity (l=2) (``guard_rows_with_kanon_and_ldiv``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Function: :func:`scripts.security.kanon_gate.l_diversity_check` (used as a
-primitive by ``guard_rows_with_kanon_and_ldiv``).
+Wrapper: :func:`scripts.ai_assistant.phi_safe.guard_rows_with_kanon_and_ldiv`.
+Primitive: :func:`scripts.security.kanon_gate.l_diversity_check` (called
+internally).
 
 When a k-anon-passing equivalence class shares the same sensitive
 attribute (e.g. all 5 rows have ``hiv_status = positive``), the gate
@@ -282,8 +284,8 @@ Module Map
      - Agent-output PHI gate. ``phi_gate_check`` returns blocked /
        allowed.
    * - :mod:`scripts.security.kanon_gate`
-     - k-anonymity (k=5) + l-diversity (l=2). ``kanon_check``,
-       ``l_diversity_check``, ``guard_rows_with_kanon_and_ldiv``.
+     - k-anonymity (k=5) + l-diversity (l=2) primitives: ``kanon_check``,
+       ``l_diversity_check``, ``mask_small_cell``, ``suppress_small_cells``.
    * - :mod:`scripts.security.secure_env`
      - Pipeline-side directory-level zone guards.
    * - :mod:`scripts.ai_assistant.file_access`
@@ -291,7 +293,9 @@ Module Map
    * - :mod:`scripts.ai_assistant.phi_safe`
      - Agent-side PHI helpers: ``phi_safe_return``, ``guard_text``,
        ``guard_user_prompt``, ``sanitise_untrusted_snippet``,
-       ``redact_phi_in_text``, ``sanitise_traceback``.
+       ``redact_phi_in_text``, ``sanitise_traceback``;
+       k-anon/l-diversity wrappers: ``guard_rows_with_kanon``,
+       ``guard_rows_with_kanon_and_ldiv``.
    * - :mod:`scripts.ai_assistant.keystore`
      - In-memory API-key registry.
    * - :mod:`scripts.utils.log_hygiene`

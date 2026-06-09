@@ -311,6 +311,8 @@ Exit codes:
   6 — needs-advice (paused — operator inspection required)
   7 — destruction incomplete
   8 — partial publish; held forms need human review
+  9 — phi_review decision != ledger-applied scrub action (under-protection)
+ 10 — published column has no PHI ledger entry or non-keep scrub rule
 """
 
 # ---------------------------------------------------------------------------

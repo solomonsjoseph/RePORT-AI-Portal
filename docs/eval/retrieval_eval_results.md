@@ -21,14 +21,14 @@ Bundle present: **True**
 
 ## (b) Retrieval-Primitive Latency
 ### Direct read (schema-JSON column scan + JSONL header-key read)
-- p50: **0.781 ms**
-- p95: **1.632 ms**
+- p50: **0.653 ms**
+- p95: **1.059 ms**
 - Iterations: 20
 
 ### Simulated RAG baseline (illustrative — see caveats)
-- Index build (one-time): **1.883 ms**
-- Per-query p50: **0.0150 ms**
-- Per-query p95: **0.0600 ms**
+- Index build (one-time): **3.029 ms**
+- Per-query p50: **0.0130 ms**
+- Per-query p95: **0.2780 ms**
 
 > **Headline finding**: direct read returns EXACT computable values (enabling p-values/regression) with NO index-build or re-embed-on-republish cost.  The simulated vector search above is an in-memory numpy illustration of per-query cosine-search cost only; it does NOT include embedding model inference, network, or serialisation costs, and CANNOT yield exact statistics.  Speed comparison between the two approaches is therefore not meaningful — they answer fundamentally different question types.
 

@@ -194,13 +194,22 @@ Exit Codes
    * - 8
      - ``EXIT_PARTIAL_REVIEW``
      - Approved forms published, held forms need review.
+   * - 9
+     - ``EXIT_DECISION_MISMATCH``
+     - phi_review decision ≠ ledger-applied scrub action (protection-lattice
+       under-protection detected).
+   * - 10
+     - ``EXIT_AUDIT_COVERAGE_INCOMPLETE``
+     - Published column has no PHI ledger entry and no non-keep configured
+       scrub rule.
 
 Verifier Assertions
 -------------------
 
 ``verify`` writes
 ``output/{STUDY}/runs/{run_id}/verifier_report.json`` on pass or fail.
-It checks, in order:
+It checks 14 assertions; execution order is 1→12, then 14, then 13
+(13 always runs last as the terminal status update):
 
 1. manifest exists and parses;
 2. manifest reconciles with the dataset directory;
@@ -213,8 +222,15 @@ It checks, in order:
 9. ``llm_source/`` has no runtime key material;
 10. required or approved dataset JSONL files exist;
 11. the pipeline lock is absent;
-12. ``status.json`` exists and is updated with
-    ``verifier_passed: true`` on full pass.
+12. decided action matches applied — cross-checks each approved form's
+    applied protection (ledger events + keep_decisions) against
+    ``phi_review``'s decided action via the protection lattice; fails
+    only under-protection (applied rank < decided rank); exits 9;
+14. ledger covers all columns — every published dataset column is
+    accounted for by a PHI ledger entry or a non-keep configured scrub
+    rule; exits 10;
+13. ``status.json`` exists and is updated with
+    ``verifier_passed: true`` on full pass (always runs last).
 
 Destruction Attestation
 -----------------------

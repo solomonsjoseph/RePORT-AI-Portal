@@ -269,22 +269,6 @@ Telemetry
    :undoc-members:
    :show-inheritance:
 
-Analytical Engine
-~~~~~~~~~~~~~~~~~
-
-.. automodule:: scripts.ai_assistant.analytical_engine
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Study Knowledge
-~~~~~~~~~~~~~~~
-
-.. automodule:: scripts.ai_assistant.study_knowledge
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Web UI Modules
 ~~~~~~~~~~~~~~
 

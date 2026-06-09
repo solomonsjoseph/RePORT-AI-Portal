@@ -203,8 +203,8 @@ Conversational-shortcut guard on fuzzy search tools
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * Greetings / acknowledgements / queries shorter than 3 chars are
-  short-circuited *inside* ``search_variables``,
-  ``find_variable_candidates``, ``search_pdf_context`` via
+  short-circuited *inside* ``search_variables`` and
+  ``answer_catalog_question`` via
   ``_query_looks_conversational`` in
   ``scripts/ai_assistant/agent_tools.py``. The tool returns a refusal
   (``_CONVERSATIONAL_REFUSAL_MESSAGE``) instead of surfacing noisy
@@ -233,7 +233,8 @@ Prompt-injection + at-rest defences
   vocab) must pass through
   :func:`scripts.ai_assistant.phi_safe.sanitise_untrusted_snippet`
   before it reaches the LLM. Already applied inside
-  ``search_pdf_context``.
+  ``read_llm_source_file`` and ``answer_catalog_question`` for
+  externally-sourced content.
 * **At-rest redaction.** Any surface that persists user-generated
   content (conversation JSONs, exports, future telemetry sinks) must
   run content through
@@ -316,12 +317,11 @@ Dataset discovery and analytical posture
   needs to know which forms and which columns are available before
   writing a ``run_python_analysis`` script or framing a custom
   evidence report.
-* The agent system prompts no longer treat the eleven canonical
-  question IDs as a routing gate. Verbatim canonical questions still
-  hit ``produce_evidence_report`` (the IRB-attested fast path).
-  Everything else — variants of the canonical eleven, ad-hoc analyses,
-  or general / off-topic questions — routes through
-  ``produce_custom_evidence_report`` or ``run_python_analysis``.
+* The agent system prompts no longer treat canonical question IDs as a
+  routing gate. Questions about the study catalog hit
+  ``answer_catalog_question`` (the primary fast path using Source Truth
+  policy YAMLs). Ad-hoc analyses and custom computation route through
+  ``run_python_analysis``.
 * For the boundary discussion (why this is safe, which gate enforces
   it, what is filtered where), see
   :doc:`phi_architecture` — section *Agent Autonomy and the PHI Gate*.
@@ -373,8 +373,7 @@ UI edit-forbidden files (hard stop)
   entry points only: ``stream_query``, ``invoke_query``,
   ``reset_agent``)
 * ``scripts/ai_assistant/agent_tools.py``, ``agent_prompts.py``,
-  ``analytical_engine.py``, ``study_knowledge.py``, ``file_access.py``,
-  ``tool_cache.py``, ``phi_safe.py``, ``cli.py``
+  ``file_access.py``, ``tool_cache.py``, ``phi_safe.py``, ``cli.py``
 * Everything under ``scripts/extraction/``, ``scripts/security/``,
   ``scripts/utils/``
 
