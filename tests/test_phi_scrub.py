@@ -2665,3 +2665,168 @@ class TestDateFieldsExclusionNonDateColumns:
         assert cfg.field_is_date("CX_PROCDAT") is True, (
             "CX_PROCDAT must still be classified as a date field after the exclusion fix"
         )
+
+
+# ── Partial-publish safety threshold ───────────────────────────────────────
+
+
+class TestPartialPublishThreshold:
+    """Tests for the partial_max_quarantine_fraction safety cap.
+
+    Covers:
+    - partial mode, fraction UNDER threshold → completes, kept rows published,
+      partial recorded, no raise.
+    - partial mode, fraction OVER threshold → raises PHIPartialThresholdExceededError.
+    - strict mode (partial_on_review=False) → raises original error (PHIDateUnshiftableError),
+      threshold not consulted (unchanged behavior).
+    - load_scrub_config picks up partial_max_quarantine_fraction from yaml.
+    - default applies when key is absent from yaml.
+    - invalid value (<=0 or >1) raises PHIScrubError.
+    """
+
+    # ── Config-level tests (no run_scrub, no staging) ────────────────────────
+
+    def test_load_scrub_config_reads_fraction_from_yaml(self, scrub_config_path: Path) -> None:
+        """load_scrub_config picks up partial_max_quarantine_fraction from yaml."""
+        _write_config(scrub_config_path, partial_max_quarantine_fraction=0.25)
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        assert cfg.partial_max_quarantine_fraction == pytest.approx(0.25)
+
+    def test_load_scrub_config_default_when_absent(self, scrub_config_path: Path) -> None:
+        """When key is absent from yaml, default of 0.10 applies."""
+        _write_config(scrub_config_path)  # no partial_max_quarantine_fraction key
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        assert cfg.partial_max_quarantine_fraction == pytest.approx(0.10)
+
+    def test_invalid_fraction_zero_raises(self, scrub_config_path: Path) -> None:
+        """partial_max_quarantine_fraction=0 is invalid (must be > 0)."""
+        _write_config(scrub_config_path, partial_max_quarantine_fraction=0.0)
+        with pytest.raises(phi_scrub.PHIScrubError, match="partial_max_quarantine_fraction"):
+            phi_scrub.load_scrub_config()
+
+    def test_invalid_fraction_above_one_raises(self, scrub_config_path: Path) -> None:
+        """partial_max_quarantine_fraction > 1 is invalid."""
+        _write_config(scrub_config_path, partial_max_quarantine_fraction=1.5)
+        with pytest.raises(phi_scrub.PHIScrubError, match="partial_max_quarantine_fraction"):
+            phi_scrub.load_scrub_config()
+
+    def test_fraction_of_one_is_valid(self, scrub_config_path: Path) -> None:
+        """partial_max_quarantine_fraction=1.0 is the inclusive upper bound (always partial)."""
+        _write_config(scrub_config_path, partial_max_quarantine_fraction=1.0)
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        assert cfg.partial_max_quarantine_fraction == pytest.approx(1.0)
+
+    def test_exception_is_subclass_of_phi_scrub_error(self) -> None:
+        """PHIPartialThresholdExceededError must be a subclass of PHIScrubError."""
+        assert issubclass(phi_scrub.PHIPartialThresholdExceededError, phi_scrub.PHIScrubError)
+
+    def test_exception_in_all(self) -> None:
+        """PHIPartialThresholdExceededError must be in phi_scrub.__all__."""
+        assert "PHIPartialThresholdExceededError" in phi_scrub.__all__
+
+    # ── run_scrub integration tests ───────────────────────────────────────────
+
+    def test_partial_under_threshold_completes(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        tmp_path: Path,
+    ) -> None:
+        """1 bad row out of 100 is under the 10% threshold → completes without raise,
+        kept rows (99) are published, partial_forms records the one quarantined file."""
+        # threshold 10%: 1/100 = 1% < 10% → should NOT raise
+        _write_config(scrub_config_path, partial_max_quarantine_fraction=0.10)
+        good_rows = [{"SUBJID": f"S{i:03d}", "VISDAT": "2014-07-15"} for i in range(99)]
+        bad_rows = [{"SUBJID": "SBAD", "VISDAT": "not-a-date"}]
+        src = _seed_staging(monkeypatch_config, good_rows + bad_rows)
+        runs_dir = tmp_path / "runs"
+        (runs_dir / "run_threshold_test").mkdir(parents=True, exist_ok=True)
+
+        # Must NOT raise
+        phi_scrub.run_scrub(
+            study_name="TEST",
+            run_id="run_threshold_test",
+            runs_dir=runs_dir,
+            partial_on_review=True,
+        )
+
+        # 99 kept rows published
+        published = [json.loads(line) for line in src.read_text().splitlines() if line.strip()]
+        assert len(published) == 99
+
+        # scrub_outcome.json records partial=True and lists the file
+        outcome_path = runs_dir / "run_threshold_test" / "scrub_outcome.json"
+        assert outcome_path.is_file()
+        outcome = json.loads(outcome_path.read_text())
+        assert outcome["partial"] is True
+        assert "1A_ICScreening.jsonl" in outcome["partial_forms"]
+
+    def test_partial_over_threshold_raises(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        tmp_path: Path,
+    ) -> None:
+        """Most rows quarantined (>10%) → raises PHIPartialThresholdExceededError,
+        even in partial_on_review=True mode."""
+        # 9 bad rows, 1 good = 90% quarantined → exceeds 10% threshold
+        _write_config(scrub_config_path, partial_max_quarantine_fraction=0.10)
+        good_rows = [{"SUBJID": "SGOOD", "VISDAT": "2014-07-15"}]
+        bad_rows = [{"SUBJID": f"SBAD{i}", "VISDAT": "not-a-date"} for i in range(9)]
+        _seed_staging(monkeypatch_config, good_rows + bad_rows)
+
+        with pytest.raises(phi_scrub.PHIPartialThresholdExceededError, match="10%"):
+            phi_scrub.run_scrub(
+                study_name="TEST",
+                partial_on_review=True,
+            )
+
+    def test_strict_mode_raises_original_error_not_threshold(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """strict mode (partial_on_review=False): un-jitterable date raises
+        PHIDateUnshiftableError regardless of the quarantine fraction, because
+        the threshold check is only reached in partial mode."""
+        _write_config(scrub_config_path, partial_max_quarantine_fraction=0.10)
+        # All 5 rows are bad — would be 100% quarantined, well above threshold.
+        # But strict mode should raise PHIDateUnshiftableError, not the threshold error.
+        bad_rows = [{"SUBJID": f"S{i}", "VISDAT": "not-a-date"} for i in range(5)]
+        _seed_staging(monkeypatch_config, bad_rows)
+
+        with pytest.raises(phi_scrub.PHIDateUnshiftableError):
+            phi_scrub.run_scrub(study_name="TEST")  # default partial_on_review=False
+
+    def test_clean_run_in_partial_mode_writes_empty_partial_forms(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        tmp_path: Path,
+    ) -> None:
+        """All-clean run in partial_on_review=True mode: scrub_outcome.json written
+        with partial=False and partial_forms={}."""
+        _write_config(scrub_config_path)
+        _seed_staging(monkeypatch_config, [{"SUBJID": "S1", "VISDAT": "2014-07-15"}])
+        runs_dir = tmp_path / "runs"
+        (runs_dir / "run_clean").mkdir(parents=True, exist_ok=True)
+
+        phi_scrub.run_scrub(
+            study_name="TEST",
+            run_id="run_clean",
+            runs_dir=runs_dir,
+            partial_on_review=True,
+        )
+
+        outcome_path = runs_dir / "run_clean" / "scrub_outcome.json"
+        assert outcome_path.is_file()
+        outcome = json.loads(outcome_path.read_text())
+        assert outcome["partial"] is False
+        assert outcome["partial_forms"] == {}

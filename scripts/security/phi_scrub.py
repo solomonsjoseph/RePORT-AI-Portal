@@ -140,6 +140,7 @@ __all__ = [
     "PHIGeneralizeUnmappedError",
     "PHIKeyMissingError",
     "PHIKeyPermissionError",
+    "PHIPartialThresholdExceededError",
     "PHIQuarantineOverflowError",
     "PHIScrubConfig",
     "PHIScrubError",
@@ -182,6 +183,7 @@ _DEFAULT_ORPHAN_THRESHOLD = 10
 _DEFAULT_AGE_CAP_THRESHOLD = 89
 _DEFAULT_AGE_CAP_LABEL = "90+"
 _DEFAULT_SMALL_CELL_THRESHOLD = 5
+_DEFAULT_PARTIAL_MAX_QUARANTINE_FRACTION = 0.10
 _PSEUDO_TAG_CHARS = 12  # 48-bit HMAC tag encoded as a-p letters
 _OFFSET_DIGEST_BYTES = 4  # first N bytes of digest for offset computation
 _HEX_TO_ALPHA = str.maketrans("0123456789abcdef", "abcdefghijklmnop")
@@ -294,6 +296,13 @@ class PHIDateUnshiftableError(PHIScrubError):
     date) and never crashes the run unaccountably — the row is quarantined and the
     run hard-fails so an operator can fix the data or add a ``date_locales`` entry.
     Mirrors :class:`PHIBandUnmappedError` / :class:`PHIGeneralizeUnmappedError`."""
+
+
+class PHIPartialThresholdExceededError(PHIScrubError):
+    """Raised in partial-publish mode when the quarantined fraction of a file
+    exceeds partial_max_quarantine_fraction — a systemic data/config problem
+    (not a small tail of bad rows). Fail-closed: halt rather than publish a
+    gutted dataset."""
 
 
 # ── Config ───────────────────────────────────────────────────────────────────
@@ -426,6 +435,7 @@ class PHIScrubConfig:
         "keep_patterns",
         "max_jitter_days",
         "orphan_quarantine_threshold",
+        "partial_max_quarantine_fraction",
         "small_cell_threshold",
         "subject_id_fields",
         "suppress_small_cell_patterns",
@@ -451,6 +461,7 @@ class PHIScrubConfig:
         age_cap_label: str = _DEFAULT_AGE_CAP_LABEL,
         small_cell_threshold: int = _DEFAULT_SMALL_CELL_THRESHOLD,
         date_null_tokens: frozenset[str] | None = None,
+        partial_max_quarantine_fraction: float = _DEFAULT_PARTIAL_MAX_QUARANTINE_FRACTION,
     ) -> None:
         if compliance_posture not in _VALID_POSTURES:
             raise PHIScrubError(
@@ -465,6 +476,11 @@ class PHIScrubConfig:
             raise PHIScrubError(f"age_cap_threshold must be >= 0, got {age_cap_threshold}")
         if small_cell_threshold < 1:
             raise PHIScrubError(f"small_cell_threshold must be >= 1, got {small_cell_threshold}")
+        if not (0 < partial_max_quarantine_fraction <= 1):
+            raise PHIScrubError(
+                f"partial_max_quarantine_fraction must be in (0, 1], "
+                f"got {partial_max_quarantine_fraction!r}"
+            )
         self.compliance_posture = compliance_posture
         self.subject_id_fields = subject_id_fields
         self.date_patterns = date_patterns
@@ -481,6 +497,7 @@ class PHIScrubConfig:
         self.age_cap_threshold = age_cap_threshold
         self.age_cap_label = age_cap_label
         self.small_cell_threshold = small_cell_threshold
+        self.partial_max_quarantine_fraction = partial_max_quarantine_fraction
         self.date_null_tokens: frozenset[str] = (
             date_null_tokens if date_null_tokens is not None else _DEFAULT_DATE_NULL_TOKENS
         )
@@ -660,6 +677,9 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
     max_jitter_days = int(raw.get("max_jitter_days", _DEFAULT_MAX_JITTER_DAYS))
     orphan_threshold = int(raw.get("orphan_quarantine_threshold", _DEFAULT_ORPHAN_THRESHOLD))
     small_cell_threshold = int(raw.get("small_cell_threshold", _DEFAULT_SMALL_CELL_THRESHOLD))
+    partial_max_quarantine_fraction = float(
+        raw.get("partial_max_quarantine_fraction", _DEFAULT_PARTIAL_MAX_QUARANTINE_FRACTION)
+    )
 
     # Age cap — top-level constants, also default for cap_fields entries
     # that do not specify their own threshold/label.
@@ -866,6 +886,7 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
         age_cap_label=default_cap_label,
         small_cell_threshold=small_cell_threshold,
         date_null_tokens=date_null_tokens,
+        partial_max_quarantine_fraction=partial_max_quarantine_fraction,
     )
 
 
@@ -1596,9 +1617,13 @@ _SCOPE_TO_ACTION: dict[str, str] = {
     "phi-scrub-generalize": "generalize",
     "phi-scrub-suppress-small-cell": "suppress_small_cell",
     "phi-scrub-band": "band",
-    "phi-scrub-band-quarantine": "band_quarantine",
-    "phi-scrub-generalize-quarantine": "generalize_quarantine",
-    "phi-scrub-date-quarantine": "date_quarantine",
+    # Quarantine scopes are intentionally absent: rows that were quarantined
+    # were never published and must not produce PHI ledger entries for any
+    # published dataset. The existing guard in _emit_as_written_ledger skips
+    # events whose scope maps to None (unrecognised / not a ledger action).
+    # "phi-scrub-band-quarantine" → omitted
+    # "phi-scrub-generalize-quarantine" → omitted
+    # "phi-scrub-date-quarantine" → omitted
 }
 
 
@@ -1814,6 +1839,7 @@ def run_scrub(
     *,
     run_id: str | None = None,
     runs_dir: Path | None = None,
+    partial_on_review: bool = False,
 ) -> None:
     """Orchestrate the scrub: load key + config, walk staging, emit audit.
 
@@ -1851,6 +1877,28 @@ def run_scrub(
     runs_dir:
         Directory under which per-run sidecars are stored
         (e.g. ``output/{STUDY}/runs``).  Required when *run_id* is set.
+    partial_on_review:
+        When ``False`` (default) the scrub is strictly fail-closed: the FIRST
+        form holding a row that cannot be safely jittered/mapped
+        (date/band/generalize) raises ``PHIDateUnshiftableError`` /
+        ``PHIBandUnmappedError`` / ``PHIGeneralizeUnmappedError`` and aborts the
+        whole study.  When ``True`` (set by the host pipeline) the scrub instead
+        **quarantines only the failing ROWS** (already field-scrubbed before the
+        quarantine write, kept in the AMBER no-LLM zone) and **publishes each
+        form's remaining fully-scrubbed rows**, so one bad form never blocks the
+        rest of the study.  The per-form quarantine counts are written to a
+        ``scrub_outcome.json`` sidecar in the run dir for the wrapper CLI to
+        surface as a non-blocking partial-run notice.
+
+        **Safety cap** — even in partial mode, if the quarantined fraction of a
+        single file exceeds ``cfg.partial_max_quarantine_fraction`` (default 10%)
+        the run still hard-fails with :class:`PHIPartialThresholdExceededError`:
+        a systemic data/config problem (not a small tail) should halt rather than
+        publish a gutted dataset.
+
+        The security invariant is unchanged either way: a row that cannot be
+        safely scrubbed is NEVER published — it is quarantined, never emitted
+        to ``llm_source/``.
 
     Post-conditions:
         * Datasets JSONL rewritten in place with scrubbed values + ``_phi_scrubbed``
@@ -1997,6 +2045,8 @@ def run_scrub(
     quarantine_dir = staging_root / "quarantine"
     counts_by_file: dict[str, dict[str, int]] = {}
     orphan_totals: dict[str, int] = {}
+    # Per-form review-quarantine tally (only populated in partial_on_review mode).
+    partial_forms: dict[str, dict[str, Any]] = {}
 
     for jsonl_file in sorted(staging_datasets.glob("*.jsonl")):
         kept, orphans, band_failed, generalize_failed, date_failed, counts = _scrub_file(
@@ -2033,13 +2083,14 @@ def run_scrub(
             atomic_write_jsonl(
                 quarantine_dir / f"generalize_unmapped_{jsonl_file.name}", generalize_failed
             )
-            raise PHIGeneralizeUnmappedError(
-                f"{jsonl_file.name}: {len(generalize_failed)} row(s) hold values not covered "
-                f"by the configured generalization map for their field. generalize is "
-                f"fail-closed — curate the generalize map in phi_scrub.yaml to cover every "
-                f"valid value before these fields can be emitted. Quarantined rows: "
-                f"quarantine/generalize_unmapped_{jsonl_file.name}."
-            )
+            if not partial_on_review:
+                raise PHIGeneralizeUnmappedError(
+                    f"{jsonl_file.name}: {len(generalize_failed)} row(s) hold values not covered "
+                    f"by the configured generalization map for their field. generalize is "
+                    f"fail-closed — curate the generalize map in phi_scrub.yaml to cover every "
+                    f"valid value before these fields can be emitted. Quarantined rows: "
+                    f"quarantine/generalize_unmapped_{jsonl_file.name}."
+                )
 
         if band_failed:
             quarantine_dir.mkdir(parents=True, exist_ok=True)
@@ -2049,13 +2100,14 @@ def run_scrub(
                     _bf, cfg=cfg
                 )  # strip names/birthdate before quarantine write
             atomic_write_jsonl(quarantine_dir / f"band_unmapped_{jsonl_file.name}", band_failed)
-            raise PHIBandUnmappedError(
-                f"{jsonl_file.name}: {len(band_failed)} row(s) hold socioeconomic "
-                f"values not coverable by the configured band_maps/band_ranges. The "
-                f"band scaffold is fail-closed — fill the deferred TEMPLATE values in "
-                f"phi_scrub.yaml before these fields can be emitted. Quarantined rows: "
-                f"quarantine/band_unmapped_{jsonl_file.name}."
-            )
+            if not partial_on_review:
+                raise PHIBandUnmappedError(
+                    f"{jsonl_file.name}: {len(band_failed)} row(s) hold socioeconomic "
+                    f"values not coverable by the configured band_maps/band_ranges. The "
+                    f"band scaffold is fail-closed — fill the deferred TEMPLATE values in "
+                    f"phi_scrub.yaml before these fields can be emitted. Quarantined rows: "
+                    f"quarantine/band_unmapped_{jsonl_file.name}."
+                )
 
         if date_failed:
             quarantine_dir.mkdir(parents=True, exist_ok=True)
@@ -2065,12 +2117,52 @@ def run_scrub(
                     _df, cfg=cfg
                 )  # strip names/birthdate before quarantine write
             atomic_write_jsonl(quarantine_dir / f"date_unshiftable_{jsonl_file.name}", date_failed)
-            raise PHIDateUnshiftableError(
-                f"{jsonl_file.name}: {len(date_failed)} row(s) hold date values that cannot be "
-                f"safely jittered (unparseable, or an ambiguous slash-date with no date_locales "
-                f"entry). Date jitter is fail-closed — fix the source value or add a date_locales "
-                f"entry in the study's _forms_manifest.yaml before these fields can be emitted. "
-                f"Quarantined rows: quarantine/date_unshiftable_{jsonl_file.name}."
+            if not partial_on_review:
+                raise PHIDateUnshiftableError(
+                    f"{jsonl_file.name}: {len(date_failed)} row(s) hold date values that cannot be "
+                    f"safely jittered (unparseable, or an ambiguous slash-date with no date_locales "
+                    f"entry). Date jitter is fail-closed — fix the source value or add a date_locales "
+                    f"entry in the study's _forms_manifest.yaml before these fields can be emitted. "
+                    f"Quarantined rows: quarantine/date_unshiftable_{jsonl_file.name}."
+                )
+
+        # Partial-publish mode: record the per-form review-quarantine tally so the
+        # wrapper CLI can surface a non-blocking partial-run notice. The good rows
+        # (``kept``) are published below exactly as in a clean run; only the
+        # un-scrubbable rows were diverted to quarantine (no-LLM zone) above.
+        review_q = len(date_failed) + len(band_failed) + len(generalize_failed)
+        if partial_on_review and review_q:
+            total_rows = len(kept) + len(orphans) + review_q
+            held_frac = review_q / max(total_rows, 1)
+            if held_frac > cfg.partial_max_quarantine_fraction:
+                raise PHIPartialThresholdExceededError(
+                    f"{jsonl_file.name}: {review_q}/{total_rows} rows "
+                    f"({held_frac:.1%}) quarantined exceeds the partial-publish "
+                    f"safety threshold ({cfg.partial_max_quarantine_fraction:.0%}). "
+                    f"This indicates a systemic data/config problem, not a few bad "
+                    f"rows — halting rather than publishing a gutted dataset. Inspect "
+                    f"the quarantine/ files or fix the source data, then re-run."
+                )
+            reasons = [
+                label
+                for label in (
+                    f"date_unshiftable:{len(date_failed)}" if date_failed else None,
+                    f"band_unmapped:{len(band_failed)}" if band_failed else None,
+                    f"generalize_unmapped:{len(generalize_failed)}" if generalize_failed else None,
+                )
+                if label
+            ]
+            partial_forms[jsonl_file.name] = {
+                "kept": len(kept),
+                "quarantined": review_q,
+                "reasons": reasons,
+            }
+            logger.warning(
+                "phi_scrub %s: PARTIAL publish — kept=%d, quarantined-for-review=%d (%s)",
+                jsonl_file.name,
+                len(kept),
+                review_q,
+                ", ".join(reasons),
             )
 
         atomic_write_jsonl(jsonl_file, kept)
@@ -2104,6 +2196,25 @@ def run_scrub(
         rule_bundle_sha256=rule_bundle_sha256_val,
         cfg=cfg,
     )
+
+    # Partial-run sidecar: record which forms had rows quarantined for review so
+    # the wrapper CLI can mark the run partial and the Load Study UI can show a
+    # non-blocking notice. Contains form NAMES + COUNTS only — never row values —
+    # and lives under runs/ (outside the LLM read zone). Written whenever a run id
+    # is available, even with an empty tally, so the wrapper can distinguish
+    # "clean run" from "no sidecar / legacy run".
+    if run_id is not None and runs_dir is not None:
+        outcome_path = runs_dir / run_id / "scrub_outcome.json"
+        outcome_path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_json(
+            outcome_path,
+            {
+                "run_id": run_id,
+                "study": study_name if study_name is not None else config.STUDY_NAME,
+                "partial": bool(partial_forms),
+                "partial_forms": partial_forms,
+            },
+        )
 
     with sentinel.open("w", encoding="utf-8") as _sf:
         _sf.write(_SCRUB_VERSION)

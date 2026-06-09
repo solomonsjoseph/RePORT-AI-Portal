@@ -69,6 +69,12 @@ max_jitter_days: 30
 # per file, the pipeline hard-fails.
 orphan_quarantine_threshold: 10
 
+# Partial-publish safety cap: in hold-and-continue mode, if MORE than this
+# fraction of a single file's rows are quarantined (date/band/generalize), the
+# run hard-fails instead of publishing a gutted dataset — a few bad rows are
+# held, a systemic failure halts. Range (0, 1].
+partial_max_quarantine_fraction: 0.10
+
 # ── Age cap (HIPAA §164.514(b)(2)(i)(C) — ages > 89 aggregated) ───────────
 age_cap:
   threshold: 89

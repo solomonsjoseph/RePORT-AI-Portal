@@ -199,6 +199,60 @@ def held_set_notice(study: str | None = None) -> str | None:
     return "\n".join(lines)
 
 
+def partial_run_notice(study: str | None = None) -> str | None:
+    """Return an INFORMATIONAL partial-scrub notice for the latest run, or None.
+
+    ADVISORY ONLY — parallel to :func:`held_set_notice`.  When the most recent
+    terminal run's ``status.json`` has a non-empty ``partial_forms`` list (written
+    by :func:`scripts.skills.extract_to_llm_source._cmd_run` after reading the
+    scrub-leg ``scrub_outcome.json``), this returns a human-readable string
+    naming each partially-published form, how many rows are queryable vs. held
+    for PHI review, and the scrub-leg reasons.
+
+    A "partial form" IS published — its remaining rows are queryable.  It is
+    distinct from a "held form" (phi-gate-held = NOT published at all).
+
+    The notice contains form NAMES, integer counts, and reason CODE strings only
+    — never row values.
+
+    Fail-closed-to-silent: any I/O or parse error yields ``None`` rather than
+    raising.  This is a UI convenience, never a correctness gate.
+    """
+    if study is None:
+        study = getattr(config, "STUDY_NAME", "") or ""
+    if not study:
+        return None
+
+    resolved = _latest_run_status(study)
+    if resolved is None:
+        return None
+    _run_dir, status = resolved
+
+    partial_forms = status.get("partial_forms")
+    if not isinstance(partial_forms, list) or not partial_forms:
+        return None
+
+    lines: list[str] = []
+    for entry in partial_forms:
+        if not isinstance(entry, dict):
+            continue
+        form = str(entry.get("form", ""))
+        kept = int(entry.get("kept", 0))
+        quarantined = int(entry.get("quarantined", 0))
+        reasons = [str(r) for r in (entry.get("reasons") or []) if str(r)]
+        reason_str = f" ({', '.join(reasons)})" if reasons else ""
+        lines.append(
+            f"- {form}: published with {quarantined} row(s) held for PHI review"
+            f"{reason_str}; {kept} row(s) are queryable."
+        )
+
+    if not lines:
+        return None
+
+    header = f"Partial run: {len(lines)} form(s) published with some rows held for PHI review."
+    return "\n".join([header] + lines)
+
+
 def published_bundle_exists() -> bool:
     """Return True when the assistant has the minimum published bundle.
 

@@ -1617,6 +1617,41 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 staging_preserved=True,
             )
 
+        # ── Step 3.5: read scrub_outcome.json (best-effort) ──────────────────
+        # main.py writes output/{STUDY}/runs/{run_id}/scrub_outcome.json when
+        # partial_on_review=True.  If the sidecar reports partial=True we surface
+        # EXIT_PARTIAL_REVIEW (8) — the rows themselves were still published, but
+        # some were quarantined inside the form's published JSONL.  The sidecar
+        # carries counts + reason strings only, never row values.
+        # Absent / unreadable / run_id-mismatched sidecar → treat as clean (no error).
+        _scrub_partial_forms: list[dict[str, Any]] = []
+        _scrub_partial: bool = False
+        _scrub_outcome_path = study_output_dir / "runs" / run_id / "scrub_outcome.json"
+        try:
+            if _scrub_outcome_path.is_file():
+                _scrub_raw = json.loads(_scrub_outcome_path.read_text(encoding="utf-8"))
+                # Guard: sidecar must belong to this run (run_id + study match).
+                if (
+                    isinstance(_scrub_raw, dict)
+                    and _scrub_raw.get("run_id") == run_id
+                    and _scrub_raw.get("study") == study
+                    and _scrub_raw.get("partial") is True
+                ):
+                    _scrub_partial = True
+                    for _form_name, _counts in (_scrub_raw.get("partial_forms") or {}).items():
+                        if not isinstance(_counts, dict):
+                            continue
+                        _scrub_partial_forms.append({
+                            "form": str(_form_name),
+                            "kept": int(_counts.get("kept", 0)),
+                            "quarantined": int(_counts.get("quarantined", 0)),
+                            "reasons": [str(r) for r in (_counts.get("reasons") or [])],
+                        })
+        except (json.JSONDecodeError, OSError, TypeError, ValueError):
+            # Best-effort: a corrupt or missing sidecar is treated as clean.
+            _scrub_partial = False
+            _scrub_partial_forms = []
+
         # ── Step 4a: assert per-dataset PHI ledger hashes are non-null ───────
         ledger_paths = iter_dataset_phi_ledger_paths(study_output_dir / "audit")
         if not ledger_paths:
@@ -1688,21 +1723,38 @@ def _cmd_run(args: argparse.Namespace) -> int:
             )
 
         # ── Step 6: write status.json ─────────────────────────────────────
+        # Determine the final exit code.  Form-gate partial (held_forms) already
+        # sets EXIT_PARTIAL_REVIEW.  Scrub-leg partial (some rows quarantined
+        # inside a published form) also sets EXIT_PARTIAL_REVIEW — but only when
+        # the current code is still EXIT_OK, so we never DOWNGRADE a worse code.
         final_code = EXIT_PARTIAL_REVIEW if form_gate.partial else EXIT_OK
+        if _scrub_partial and final_code == EXIT_OK:
+            final_code = EXIT_PARTIAL_REVIEW
+
+        # publish_status: "complete" when everything is clean; "partial" when
+        # either the form gate held forms OR the scrub leg quarantined rows.
+        _is_partial_run = form_gate.partial or _scrub_partial
+        _status_extra: dict[str, Any] = {
+            "scope": "HIPAA Safe Harbor + configured study jurisdictions",
+            "ledger_hash_present": True,
+            "destruction_attestation_path": str(attest_path),
+            "publish_status": "partial" if _is_partial_run else "complete",
+            "approved_forms_count": len(form_gate.approved_forms),
+            "held_forms_count": len(form_gate.held_forms),
+            "approval_report_path": str(form_gate.approval_report_path)
+            if form_gate.approval_report_path
+            else None,
+        }
+        # partial_forms: scrub-leg quarantine summary (counts + reasons per form).
+        # This is DISTINCT from held_forms (which are phi-gate-held = not published
+        # at all). A partial_form IS published; only some of its rows were
+        # quarantined.  Empty list on a fully-clean scrub leg.
+        if _scrub_partial_forms:
+            _status_extra["partial_forms"] = _scrub_partial_forms
         _finish(
             final_code,
             staging_preserved=False,
-            extra={
-                "scope": "HIPAA Safe Harbor + configured study jurisdictions",
-                "ledger_hash_present": True,
-                "destruction_attestation_path": str(attest_path),
-                "publish_status": "partial" if form_gate.partial else "complete",
-                "approved_forms_count": len(form_gate.approved_forms),
-                "held_forms_count": len(form_gate.held_forms),
-                "approval_report_path": str(form_gate.approval_report_path)
-                if form_gate.approval_report_path
-                else None,
-            },
+            extra=_status_extra,
         )
 
         # ── Step 7 (--resume-held only): run verifier + commit snapshot ────
