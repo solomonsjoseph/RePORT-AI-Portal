@@ -178,9 +178,23 @@ class TestFakeLocalRouting:
 # ---------------------------------------------------------------------------
 
 _BUNDLE_PATH = Path(__file__).parents[2] / "output" / "Indo-VAP" / "llm_source"
+_BUNDLE_DATASETS = _BUNDLE_PATH / "dataset_schema" / "files"
+
+
+def _bundle_has_datasets() -> bool:
+    """True only when the published bundle has actual dataset JSONL content.
+
+    Guards against a half-wiped state where ``llm_source/`` still exists (e.g. an
+    empty ``SoT/`` survives a failed rebuild) but the dataset files are gone — in
+    which case resolvability/latency must SKIP, not fail with a 0.0 score.
+    """
+    return _BUNDLE_DATASETS.is_dir() and any(_BUNDLE_DATASETS.glob("*.jsonl"))
+
+
 _BUNDLE_SKIP = pytest.mark.skipif(
-    not _BUNDLE_PATH.is_dir(),
-    reason="Published bundle absent (output/Indo-VAP/llm_source not found) — skip",
+    not _bundle_has_datasets(),
+    reason="Published dataset bundle absent/empty "
+    "(output/Indo-VAP/llm_source/dataset_schema/files has no *.jsonl) — skip",
 )
 
 
