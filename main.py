@@ -1035,12 +1035,22 @@ For detailed documentation, see the Sphinx docs or README.md
         if args.process_datasets and not args.skip_datasets:
             staging_ds = Path(config.STAGING_DATASETS_DIR)
             if staging_ds.is_dir() and any(staging_ds.glob("*.jsonl")):
+                # Pipeline policy (operator requirement): do NOT abort the whole
+                # study when a form holds rows that cannot be safely jittered/mapped.
+                # Quarantine only those rows and publish each form's remaining
+                # fully-scrubbed rows; the wrapper surfaces a non-blocking
+                # partial-run notice in the Load Study UI. Set
+                # REPORTAL_SCRUB_STRICT_ABORT=1 to restore strict fail-closed abort.
+                _strict_abort = os.environ.get(
+                    "REPORTAL_SCRUB_STRICT_ABORT", ""
+                ).strip().lower() in ("1", "true", "yes", "on")
                 run_step(
                     "Step 1.6: PHI Scrub",
                     lambda: run_phi_scrub(
                         config.STUDY_NAME,
                         run_id=resolve_run_id(),
                         runs_dir=Path(config.STUDY_OUTPUT_DIR) / "runs",
+                        partial_on_review=not _strict_abort,
                     ),
                 )
 

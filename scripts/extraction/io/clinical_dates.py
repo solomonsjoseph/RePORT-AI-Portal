@@ -507,8 +507,16 @@ def parse_date(
 
             try:
                 dt = datetime(ny, nmo, nd)
+                if not (1900 <= ny <= 2100):
+                    # H1 guard: the locale-resolved split produced a structurally
+                    # implausible year — e.g. "20030612" → DMY → year int("0612")=612,
+                    # which datetime() accepts (MINYEAR=1) and would silently emit as a
+                    # medieval year. Discard and fall through to the YYYYMMDD last resort
+                    # below instead of publishing a corrupted date.
+                    raise ValueError("resolved year outside plausible range [1900, 2100]")
             except (ValueError, OverflowError):
-                # Locale-resolved parse failed; try YYYYMMDD as last resort.
+                # Locale-resolved parse failed or yielded an implausible year; try
+                # YYYYMMDD as last resort.
                 y_try = int(s[0:4])
                 if 1900 <= y_try <= 2100:
                     try:
@@ -583,15 +591,16 @@ def parse_date(
                 nd, nmo, ny = dt.day, dt.month, dt.year
 
         else:
-            # ── 6-digit: DDMMYY (day-first) ──────────────────────────────────
+            # ── 6-digit: DDMMYY ──────────────────────────────────────────────
             # Split: d=s[0:2], m=s[2:4], yy=s[4:6]; expand yy → 4-digit year.
-            # Locale resolution follows the same priority as the separator branch
-            # (DMY allowlist → manifest → heuristic → default DMY for this study).
-            #
-            # Why default DMY?  The 6-digit format was observed only in
-            # day-first (Indian) columns; there is no evidence of MMDDYY in
-            # the scan.  We still apply the full precedence chain so an
-            # explicit manifest override of "MDY" is honoured.
+            # Locale resolution follows the SAME precedence as the separator and
+            # 8-digit branches: DMY allowlist → manifest → value heuristic →
+            # fail-closed (raise) on a genuinely-ambiguous KNOWN field; for an
+            # unknown field (field_name=None, non-production/legacy) it falls back
+            # to MDY exactly like the other branches. The study's "all day-first"
+            # assumption is encoded in the manifest/allowlist declarations, NOT a
+            # silent code default, so a genuinely-MDY column is never silently
+            # day/month-swapped.
             locale_6: str | None = None
             if field_name is not None and is_dmy_variable(field_name):
                 locale_6 = "DMY"

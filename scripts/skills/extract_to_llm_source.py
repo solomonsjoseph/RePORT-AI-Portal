@@ -1692,8 +1692,16 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 )
 
         # ── Step 4b: assert quarantine is empty or absent ─────────────────
+        # In partial-publish mode the scrub leg INTENTIONALLY quarantines the
+        # un-scrubbable rows it could not jitter/map, recording them in
+        # scrub_outcome.json (``_scrub_partial``). A non-empty quarantine is the
+        # EXPECTED steady state there — not an error — and it is still securely
+        # destroyed in Step 5 below (so no PHI persists) before the verifier's
+        # assertion 7 re-checks emptiness post-destruction. Only an UNEXPECTED
+        # non-empty quarantine (strict mode, or with no partial sidecar) is a hard
+        # fail. Fail-closed bias preserved: when in doubt (no sidecar) → exit 4.
         quarantine_dir = study_staging_dir / "quarantine"
-        if quarantine_dir.is_dir() and any(quarantine_dir.iterdir()):
+        if quarantine_dir.is_dir() and any(quarantine_dir.iterdir()) and not _scrub_partial:
             print(
                 f"Quarantine non-empty: {quarantine_dir}",
                 file=sys.stderr,

@@ -450,6 +450,29 @@ class TestCompact8DigitExtended:
         assert result.dt.day == 28
         assert result.format == "iso"
 
+    def test_8digit_yyyymmdd_year_ending_le12_not_silently_corrupted(self) -> None:
+        """H1 RED: 20120815 (YYYYMMDD 2012-08-15). Under DMY the split gives
+        year int('0815')=815, which datetime() ACCEPTS — the year-range guard must
+        reject it and fall through to YYYYMMDD, never emitting a medieval year."""
+        result = parse_date("20120815")
+        assert result is not None
+        assert (result.dt.year, result.dt.month, result.dt.day) == (2012, 8, 15)
+        assert result.dt.year >= 1900  # never the corrupted 815
+
+    def test_8digit_yyyymmdd_2003_not_corrupted_to_year_612(self) -> None:
+        """H1 RED: 20030612 → DMY split year int('0612')=612 (valid datetime).
+        Guard must fall through to YYYYMMDD 2003-06-12."""
+        result = parse_date("20030612")
+        assert result is not None
+        assert (result.dt.year, result.dt.month, result.dt.day) == (2003, 6, 12)
+
+    def test_8digit_ddmmyyyy_real_study_value_unaffected(self) -> None:
+        """Regression: a genuine DDMMYYYY value (this study's compact format) with
+        a valid in-range year is NOT disturbed by the H1 year-range guard."""
+        result = parse_date("28072014", field_name="IC_VISDAT")  # IC_VISDAT ∈ DMY allowlist
+        assert result is not None
+        assert (result.dt.year, result.dt.month, result.dt.day) == (2014, 7, 28)
+
 
 # ---------------------------------------------------------------------------
 # 7-digit compact: both-valid, neither-valid, single-valid

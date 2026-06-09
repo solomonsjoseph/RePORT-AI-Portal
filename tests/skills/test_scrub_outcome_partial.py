@@ -530,3 +530,98 @@ class TestPartialRunNotice:
         )
         # Must pick the newer clean run → None.
         assert partial_run_notice(study) is None
+
+
+# ---------------------------------------------------------------------------
+# Part D — Step 4b: a non-empty quarantine is the EXPECTED state in partial
+# mode (must reach EXIT_PARTIAL_REVIEW + be destroyed), but an UNEXPECTED
+# quarantine (no partial sidecar) must still hard-fail EXIT_QUARANTINE_NON_EMPTY.
+# This is the regression guard for the dead-feature bug: Step 4b used to return
+# exit 4 on ANY non-empty quarantine, blocking partial publish before exit 8.
+# ---------------------------------------------------------------------------
+
+
+def _run_cmd_with_quarantine(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, partial: bool
+) -> tuple[int, Path]:
+    """Same harness as _run_cmd but seeds a NON-EMPTY quarantine dir before the
+    run and writes a scrub_outcome.json with the given ``partial`` flag.
+
+    Returns (exit_code, staging_dir) — caller asserts staging_dir was destroyed
+    (Step 5 ran) for the partial case, or preserved (Step 4b bailed) otherwise.
+    """
+    output_dir = tmp_path / "output"
+    staging_dir = tmp_path / "tmp" / STUDY
+    datasets_dir = tmp_path / "data" / "raw" / STUDY / "datasets"
+
+    _patch_config(monkeypatch, tmp_path)
+    _write_valid_ledger(output_dir)
+    _make_staging(staging_dir)
+    _make_datasets_dir(datasets_dir)
+
+    # Seed a non-empty quarantine dir — what the scrub leg produces when it holds
+    # un-jitterable rows. Filename mirrors run_scrub's date_unshiftable_<file>.jsonl.
+    quarantine_dir = staging_dir / "quarantine"
+    quarantine_dir.mkdir(parents=True, exist_ok=True)
+    (quarantine_dir / "date_unshiftable_7_Culture.jsonl").write_text(
+        '{"_quarantined": true}\n', encoding="utf-8"
+    )
+
+    # Pin run_id and write the scrub_outcome sidecar the wrapper reads at Step 3.5.
+    monkeypatch.setenv("REPORTAL_RUN_ID", _FIXED_RUN_ID)
+    run_dir = output_dir / STUDY / "runs" / _FIXED_RUN_ID
+    _write_scrub_outcome(
+        run_dir,
+        {
+            "run_id": _FIXED_RUN_ID,
+            "study": STUDY,
+            "partial": partial,
+            "partial_forms": (
+                {"7_Culture.jsonl": {"kept": 1080, "quarantined": 37, "reasons": ["date_unshiftable:37"]}}
+                if partial
+                else {}
+            ),
+        },
+    )
+
+    monkeypatch.setattr(skill_mod, "_acquire_pipeline_lock_for_skill", lambda _s: None)
+    monkeypatch.setattr(skill_mod, "_release_pipeline_lock_for_skill", lambda: None)
+    monkeypatch.setattr(skill_mod, "check_forms_manifest", lambda _d: None)
+
+    with patch(
+        "scripts.utils.run_context.scan_for_in_progress_scrubs", return_value=[]
+    ), patch.object(skill_mod, "destroy_staging_and_attest", _fake_destroy), patch(
+        "subprocess.run", return_value=SimpleNamespace(returncode=0)
+    ):
+        rc = main(["run", "--study", STUDY])
+    return rc, staging_dir
+
+
+class TestStep4bPartialQuarantineTolerance:
+    """Step 4b must distinguish expected (partial) vs unexpected quarantine."""
+
+    def test_partial_with_nonempty_quarantine_reaches_exit_8(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """partial=True + non-empty quarantine → EXIT_PARTIAL_REVIEW (NOT exit 4).
+
+        This is the core regression: the un-scrubbable rows were quarantined on
+        purpose; the run must publish the good rows and partial-review, not abort.
+        """
+        rc, staging_dir = _run_cmd_with_quarantine(tmp_path, monkeypatch, partial=True)
+        assert rc == EXIT_PARTIAL_REVIEW
+        # Step 5 destruction ran → staging (incl. quarantine) is gone, no PHI persists.
+        assert not staging_dir.exists()
+
+    def test_nonpartial_with_nonempty_quarantine_still_fails_closed(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """partial=False + non-empty quarantine → EXIT_QUARANTINE_NON_EMPTY (4).
+
+        Fail-closed gate preserved: an UNEXPECTED quarantine (strict mode / no
+        partial sidecar) still hard-stops before destruction, staging preserved.
+        """
+        rc, staging_dir = _run_cmd_with_quarantine(tmp_path, monkeypatch, partial=False)
+        assert rc == skill_mod.EXIT_QUARANTINE_NON_EMPTY
+        # Bailed at Step 4b before Step 5 → staging preserved for operator review.
+        assert staging_dir.exists()

@@ -203,16 +203,34 @@ _DATE_BLANK_RE = re.compile(r"^[\s/.\-:]*$")
 
 
 def _is_date_sentinel(value: object) -> bool:
-    """True if a date value is an all-9s or all-0s sentinel (ignoring separators).
+    """True if a date value is an all-9s or all-0s *placeholder* (ignoring separators)
+    that does NOT also parse as a real calendar date.
 
     Clinical "unknown date" placeholders appear as 99999999, 9999-99-99, 999999,
     a bare 9, or the 0-valued equivalents — sometimes stored as integers (which
     bypass a string token list), so this checks digit content directly. Such
-    values skip jitter (kept as-is) rather than fail-closing. No valid date is
-    all-9 or all-0, so this never swallows real data.
+    values skip jitter (kept as-is) rather than fail-closing.
+
+    CRITICAL (PHI): an all-9 digit string can ALSO be a genuine date — e.g.
+    ``"9/9/99"`` = 1999-09-09 (digits "9999"). Classifying that as a sentinel
+    would skip jitter and publish a real, un-shifted date — a PHI leak (a date
+    more specific than year). So an all-9/all-0 value is a sentinel ONLY when it
+    does not parse as a real date; a parseable date returns False here and falls
+    through to jitter. The genuine sentinels (99999999, 9999-99-99, 999999, 9,
+    0…) are all unparseable, so they still classify correctly.
     """
     digits = "".join(ch for ch in str(value) if ch.isdigit())
-    return bool(digits) and (digits == "9" * len(digits) or digits == "0" * len(digits))
+    if not digits or not (digits == "9" * len(digits) or digits == "0" * len(digits)):
+        return False
+    # All-9/all-0 by digit content — but never swallow a real date.
+    try:
+        if parse_date(str(value)) is not None:
+            return False
+    except ValueError:
+        # Locale-ambiguous AND all-9/all-0 → a genuine placeholder, not a
+        # safely-shiftable date; treat as a sentinel.
+        return True
+    return True
 
 
 _DEFAULT_DATE_NULL_TOKENS: frozenset[str] = frozenset(

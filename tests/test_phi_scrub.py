@@ -508,6 +508,55 @@ class TestRunScrub:
         assert (dob_dt - datetime(1970, 1, 1)).days == expected_offset
         assert (vis_dt - datetime(2014, 7, 15)).days == expected_offset
 
+    def test_limited_dataset_unshiftable_birthdate_fail_closed(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """No-expose guarantee on the failure path.
+
+        Under ``limited_dataset`` a birthdate that cannot be SANT-jittered must
+        fail-closed: strict mode aborts the whole run (``PHIDateUnshiftableError``)
+        so nothing is promoted, AND the held quarantine copy has the birthdate
+        stripped — a raw / un-jittered DOB must never appear in any readable
+        artifact, published or quarantined.
+        """
+        monkeypatch.setattr(config, "BASE_DIR", tmp_path)
+        sidecar_key.write_text("00" * 32, encoding="utf-8")
+        sidecar_key.chmod(0o600)
+        authority = tmp_path / "authorities" / "phi_limited_dataset.md"
+        authority.parent.mkdir(parents=True)
+        authority.write_text("IRB + DUA", encoding="utf-8")
+        _write_config(scrub_config_path, compliance_posture="limited_dataset")
+        # DOB is an impossible calendar date (Feb 30) — unparseable, and not a
+        # missing-data sentinel, so it routes to the date-quarantine path.
+        rows = [{"SUBJID": "S1", "DOB": "2014-02-30", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+
+        # Strict mode (run_scrub default): the first un-jitterable DOB aborts the run.
+        with pytest.raises(phi_scrub.PHIDateUnshiftableError):
+            phi_scrub.run_scrub(study_name="TEST")
+
+        quarantine = (
+            config.STUDY_STAGING_DIR / "quarantine" / "date_unshiftable_1A_ICScreening.jsonl"
+        )
+        assert quarantine.is_file(), "date-unshiftable rows must be quarantined"
+        raw_text = quarantine.read_text()
+        held = [json.loads(line) for line in raw_text.splitlines() if line]
+        assert held, "quarantine file must contain the held row"
+        for row in held:
+            assert "DOB" not in row, (
+                "raw birthdate must be stripped from the quarantine copy "
+                "(_apply_field_only_rules drops it unconditionally, any posture)"
+            )
+        # Belt-and-braces: the raw DOB string must not survive anywhere in the file.
+        assert "2014-02-30" not in raw_text, (
+            "raw DOB value must never appear in any readable artifact"
+        )
+
     def test_audit_schema_uses_scrubbed_key(
         self,
         monkeypatch_config: Path,
@@ -2664,6 +2713,58 @@ class TestDateFieldsExclusionNonDateColumns:
             pytest.skip("phi_scrub.yaml not present in this environment")
         assert cfg.field_is_date("CX_PROCDAT") is True, (
             "CX_PROCDAT must still be classified as a date field after the exclusion fix"
+        )
+
+
+# ── Birthdate kept + SANT-jittered (limited_dataset posture) ────────────────
+
+
+class TestBirthdateKeptAndJitteredRealConfig:
+    """The shipped phi_scrub.yaml must KEEP birthdates and route them to SANT
+    jitter — never silently KEEP them raw (rung 1 is the only raw-passthrough
+    path) and never DROP them (so age-at-event is preserved). Locks the
+    'keep + jitter, no raw exposure' posture against config drift.
+    """
+
+    def _load_real_cfg(self) -> phi_scrub.PHIScrubConfig | None:
+        import config as _cfg
+
+        real_yaml = _cfg.PHI_SCRUB_CONFIG_PATH
+        if not real_yaml.is_file():
+            return None
+        return phi_scrub.load_scrub_config(real_yaml)
+
+    def test_shipped_posture_is_safe_harbor(self) -> None:
+        cfg = self._load_real_cfg()
+        if cfg is None:
+            pytest.skip("phi_scrub.yaml not present in this environment")
+        # Shipped posture is Safe Harbor: birthdate_field is DROPPED entirely
+        # (full HIPAA de-identification, no IRB/DUA paperwork required). A prior
+        # limited_dataset experiment (keep + SANT-jitter birthdates) was reverted
+        # per operator decision (2026-06-09).
+        assert cfg.compliance_posture == "safe_harbor"
+
+    @pytest.mark.parametrize(
+        "dob_col",
+        ["IS_BIRTHDAT", "IC_BIRTHDAT", "HHC_BRTHDAT", "HC_BRTHDAT"],
+    )
+    def test_subject_birthdate_columns_route_to_jitter_not_keep_or_drop(
+        self, dob_col: str
+    ) -> None:
+        cfg = self._load_real_cfg()
+        if cfg is None:
+            pytest.skip("phi_scrub.yaml not present in this environment")
+        # Recognized as a birthdate → posture-aware rungs apply.
+        assert cfg.field_is_birthdate(dob_col) is True, (
+            f"{dob_col} must match birthdate_field so posture routing applies"
+        )
+        # rung 1 KEEP is the ONLY raw-passthrough path — a DOB column must not hit it.
+        assert cfg.field_is_keep(dob_col) is False, (
+            f"{dob_col} must NOT match keep_fields — that would publish a raw DOB"
+        )
+        # Not dropped either, so it reaches rung 7 jitter (age-at-event preserved).
+        assert cfg.field_is_drop(dob_col) is False, (
+            f"{dob_col} must NOT match drop_fields under the keep+jitter posture"
         )
 
 
