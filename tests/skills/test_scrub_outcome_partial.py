@@ -119,6 +119,10 @@ def _run_cmd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[int, dict
             "subprocess.run",
             return_value=SimpleNamespace(returncode=0),
         ),
+        # Step 7 now runs on any clean pass; mock verifier + snapshot so
+        # these tests stay focused on scrub_outcome.json surfacing behavior.
+        patch.object(skill_mod, "_cmd_verify", return_value=EXIT_OK),
+        patch.object(skill_mod, "_try_commit_snapshot", return_value=None),
     ):
         rc = main(["run", "--study", STUDY])
 

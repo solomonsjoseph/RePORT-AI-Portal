@@ -1124,54 +1124,6 @@ class FormGateResult:
     partial: bool
 
 
-_COVERAGE_HOLD_REASON_PREFIX = "phi_coverage_hold"
-
-
-def _write_coverage_review_notes(study: str, approvals: list[Any]) -> list[str]:
-    """Write a human-review note for each form held by a PHI coverage hold.
-
-    The note lives under ``output/{study}/audit/human_review/{form}/`` (the
-    no-LLM audit zone, denied to the agent by realpath check) and contains
-    column NAMES and reasons only — never row values. Returns the form names
-    that received a note. Non-blocking: the run continues; held forms are simply
-    not promoted, and the operator resolves them in maintainer mode later.
-    """
-    import config
-
-    audit_dir = Path(config.OUTPUT_DIR) / study / "audit"
-    noted: list[str] = []
-    for item in approvals:
-        coverage_reasons = [r for r in item.reasons if r.startswith(_COVERAGE_HOLD_REASON_PREFIX)]
-        if not coverage_reasons:
-            continue
-        form_stem = Path(item.form_name).stem
-        note_dir = audit_dir / "human_review" / form_stem
-        note_dir.mkdir(parents=True, exist_ok=True)
-        bullets = "\n".join(f"- {reason}" for reason in coverage_reasons)
-        note = (
-            f"# PHI coverage review — {item.form_name}\n\n"
-            "This form was held from automatic publishing: one or more columns "
-            "classified KEEP have names that match a PHI-risk pattern. Holding "
-            "the form prevents an unscrubbed PHI-bearing column from reaching "
-            "`llm_source/`.\n\n"
-            "## Held columns (names only — no row values were read)\n"
-            f"{bullets}\n\n"
-            "## How to resolve\n"
-            "For each column above:\n"
-            "- if it is NOT PHI (benign clinical/derived field) → declare it "
-            "explicitly as a keep in the study privacy classification / "
-            "`scripts/security/phi_scrub.yaml` so the KEEP is audited; or\n"
-            "- if it IS PHI → add the appropriate scrub rule (drop / "
-            "pseudonymize / jitter_date / generalize / band / suppress).\n\n"
-            "Then re-run the pipeline in debugging/maintainer mode for this "
-            "form. Other forms in this study were published normally.\n\n"
-            "## Status\nheld_publish_review\n"
-        )
-        (note_dir / "phi_coverage_review.md").write_text(note, encoding="utf-8")
-        noted.append(item.form_name)
-    return noted
-
-
 def _install_signal_handlers() -> None:
     """Install SIGINT and SIGTERM handlers that raise _SkillInterrupted.
 
@@ -1368,10 +1320,6 @@ def _run_form_approval_gate(
     approvals = sorted(approvals, key=lambda item: item.form_name)
     approved_forms = tuple(item.form_name for item in approvals if item.status == "approved")
     held_forms = tuple(item.form_name for item in approvals if item.status != "approved")
-
-    # Non-blocking: forms held for a PHI coverage concern get a human-review note
-    # under audit/human_review/. The run continues and publishes approved forms.
-    _write_coverage_review_notes(study, approvals)
 
     payload = {
         "run_id": run_dir.name,
@@ -1924,13 +1872,14 @@ def _cmd_run(args: argparse.Namespace) -> int:
             extra=_status_extra,
         )
 
-        # ── Step 7 (--resume-held only): run verifier + commit snapshot ────
-        # When --resume-held produces a fully-clean pass (no remaining held
-        # forms, verifier assertions all pass), the resolved state is committed
-        # as an immutable snapshot.  The verifier is called inline here rather
-        # than as a separate CLI invocation so the snapshot is only committed
-        # when this resume-held run's own verifier confirms correctness.
-        if resume_held and final_code == EXIT_OK:
+        # ── Step 7: run verifier + commit snapshot on any fully-clean pass ──
+        # When any run (plain or --resume-held) produces a fully-clean pass
+        # (final_code == EXIT_OK: no form-gate holds AND no scrub-leg
+        # quarantine), the verifier is called inline and — if it passes — the
+        # resolved state is committed as an immutable snapshot.  This ensures
+        # that a study which never hits a form-hold can still produce a
+        # snapshot, not only the --resume-held path.
+        if final_code == EXIT_OK:
             # Build a minimal Namespace that _cmd_verify accepts.
             verify_args = argparse.Namespace(study=study, run_id=run_id)
             verify_exit = _cmd_verify(verify_args)
@@ -1939,7 +1888,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 _try_commit_snapshot(study=study, run_id=run_id, run_dir=run_dir)
             else:
                 print(
-                    f"--resume-held: verifier exited {verify_exit}; snapshot not committed.",
+                    f"Inline verifier exited {verify_exit}; snapshot not committed.",
                     file=sys.stderr,
                 )
                 final_code = verify_exit
@@ -1951,8 +1900,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 # returned code.
                 _finish(
                     verify_exit,
-                    stage="postrun.resume_held_verify",
-                    reason=f"resume-held inline verifier exited {verify_exit}",
+                    stage="postrun.inline_verify",
+                    reason=f"inline verifier exited {verify_exit}",
                     staging_preserved=False,
                     extra={
                         "scope": "HIPAA Safe Harbor + configured study jurisdictions",

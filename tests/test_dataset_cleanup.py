@@ -406,8 +406,9 @@ class TestAsWrittenLedger:
 
         envelope = json.loads(ledger_path.read_text())
         assert "run_id" in envelope
-        assert "iso_timestamp" in envelope
-        assert envelope["generated_utc"] == envelope["iso_timestamp"]
+        # Primary ledger is content-only — wall-clock fields moved to timing sidecar.
+        assert "iso_timestamp" not in envelope
+        assert "generated_utc" not in envelope
         assert envelope["study"] == "TestStudy"
         assert envelope["leg"] == "dataset"
         assert "events" in envelope

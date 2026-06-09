@@ -166,3 +166,118 @@ class TestEmitLineageManifest:
         )
         # Missing raw dir yields empty list (not an error).
         assert payload["inputs"]["datasets"] == []
+
+    def test_audit_datasets_in_manifest(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """audit_datasets key covers per-dataset ledgers under audit/datasets/."""
+        from scripts.security import secure_env
+
+        monkeypatch.setattr(secure_env, "_OUTPUT_MARKER", os.path.realpath(str(tmp_path)))
+
+        raw = tmp_path / "raw"
+        raw.mkdir()
+        (raw / "a.csv").write_bytes(b"raw-a")
+
+        audit = tmp_path / "audit"
+        audit.mkdir()
+        # Create a per-dataset ledger under audit/datasets/<stem>/
+        ds_dir = audit / "datasets" / "1A_ICScreening"
+        ds_dir.mkdir(parents=True)
+        ledger_file = ds_dir / "phi_handling_ledger.as_written.json"
+        ledger_file.write_text('{"run_id":"r1","events":[]}')
+        cleanup_file = ds_dir / "dataset_cleanup_ledger.as_written.json"
+        cleanup_file.write_text('{"run_id":"r1","events":[]}')
+        # Create a timing sidecar — must be EXCLUDED from the content hash.
+        timing_file = ds_dir / "phi_handling_ledger_timing.json"
+        timing_file.write_text('{"generated_utc":"2026-01-01T00:00:00Z"}')
+
+        llm_src = tmp_path / "llm_source"
+        llm_src.mkdir()
+
+        mpath = audit / "lineage_manifest.json"
+        payload = lineage.emit_lineage_manifest(
+            study_name="TEST",
+            raw_datasets_dir=raw,
+            raw_dictionary_dir=None,
+            raw_pdfs_dir=None,
+            llm_source_dir=llm_src,
+            audit_dir=audit,
+            pipeline_version="0.0.1",
+            compliance_posture="safe_harbor",
+            manifest_path=mpath,
+        )
+
+        assert "audit_datasets" in payload["outputs"], "audit_datasets must be a top-level output key"
+        ad_paths = {r["path"] for r in payload["outputs"]["audit_datasets"]}
+        # Ledger files must be present.
+        assert any("phi_handling_ledger.as_written.json" in p for p in ad_paths), \
+            "PHI ledger must appear in audit_datasets"
+        assert any("dataset_cleanup_ledger.as_written.json" in p for p in ad_paths), \
+            "cleanup ledger must appear in audit_datasets"
+        # Timing sidecar must be excluded.
+        assert not any("_timing.json" in p for p in ad_paths), \
+            "_timing.json sidecars must be excluded from content hash"
+
+    def test_run_id_in_primary_manifest(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """run_id must appear in the primary manifest when supplied (B-7)."""
+        from scripts.security import secure_env
+
+        monkeypatch.setattr(secure_env, "_OUTPUT_MARKER", os.path.realpath(str(tmp_path)))
+
+        raw = tmp_path / "raw"
+        raw.mkdir()
+        audit = tmp_path / "audit"
+        audit.mkdir()
+        llm_src = tmp_path / "llm_source"
+        llm_src.mkdir()
+        mpath = audit / "lineage_manifest.json"
+
+        payload = lineage.emit_lineage_manifest(
+            study_name="TEST",
+            raw_datasets_dir=raw,
+            raw_dictionary_dir=None,
+            raw_pdfs_dir=None,
+            llm_source_dir=llm_src,
+            audit_dir=audit,
+            pipeline_version="1.0.0",
+            compliance_posture="safe_harbor",
+            manifest_path=mpath,
+            run_id="run_abc123",
+        )
+
+        assert payload["run_id"] == "run_abc123"
+        on_disk = json.loads(mpath.read_text())
+        assert on_disk["run_id"] == "run_abc123"
+
+    def test_run_id_absent_when_not_supplied(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """run_id must be absent from the primary manifest when not supplied."""
+        from scripts.security import secure_env
+
+        monkeypatch.setattr(secure_env, "_OUTPUT_MARKER", os.path.realpath(str(tmp_path)))
+
+        raw = tmp_path / "raw"
+        raw.mkdir()
+        audit = tmp_path / "audit"
+        audit.mkdir()
+        llm_src = tmp_path / "llm_source"
+        llm_src.mkdir()
+        mpath = audit / "lineage_manifest.json"
+
+        payload = lineage.emit_lineage_manifest(
+            study_name="TEST",
+            raw_datasets_dir=raw,
+            raw_dictionary_dir=None,
+            raw_pdfs_dir=None,
+            llm_source_dir=llm_src,
+            audit_dir=audit,
+            pipeline_version="1.0.0",
+            compliance_posture="safe_harbor",
+            manifest_path=mpath,
+        )
+
+        assert "run_id" not in payload

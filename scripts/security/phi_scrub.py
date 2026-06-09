@@ -1277,13 +1277,24 @@ def suppress_small_cell(value: Any, *, threshold: int) -> tuple[Any, bool]:
 # ── Orchestration ───────────────────────────────────────────────────────────
 
 
-def _apply_field_only_rules(row: dict[str, Any], *, cfg: PHIScrubConfig) -> dict[str, int]:
+def _apply_field_only_rules(
+    row: dict[str, Any],
+    *,
+    cfg: PHIScrubConfig,
+    suppress_headers: frozenset[str] = frozenset(),
+) -> dict[str, int]:
     """Remove fields that can be scrubbed without a subject ID.
 
     Mutates row in place; returns drop counts (same ``phi-scrub-<scope>:<field>``
     shape as ``_scrub_row``'s second return value).
 
     Applies in-place to *row*:
+    * ``suppress_headers`` (priority-0, Fix A-1/A-2) — force-drop set of
+      direct-identifier headers (pre-normalized, same as ``_scrub_row``'s
+      priority-0 gate).  Applied first so a direct identifier in the
+      force-drop set is never exposed in the quarantine/amber zone even when
+      the scrub config would otherwise keep it raw.  Default empty frozenset
+      keeps legacy callers working with no behaviour change.
     * ``drop_fields``   — field removed entirely (rule 3 in the main scrub loop).
     * ``birthdate_field`` — field dropped unconditionally regardless of posture.
       Under ``limited_dataset``, jitter (rule 7) requires a subject_id; orphans by
@@ -1301,6 +1312,16 @@ def _apply_field_only_rules(row: dict[str, Any], *, cfg: PHIScrubConfig) -> dict
 
     for field in list(row.keys()):
         if field.startswith("__"):
+            continue
+        # Priority-0: force-drop direct identifiers (Fix A-1/A-2).
+        # A header in the suppress set is dropped unconditionally — it overrides
+        # both keep_fields and the absence of a drop_fields rule, mirroring
+        # _scrub_row's priority-0 gate so quarantine/orphan writes are as clean
+        # as the main published rows.
+        norm = _normalize_header_for_lookup(field)
+        if norm in suppress_headers:
+            del row[field]
+            _bump("drop", field)
             continue
         if cfg.field_is_keep(field):
             continue
@@ -1324,14 +1345,17 @@ def _quarantine_or_raise(
     quarantine_dir: Path,
     cfg: PHIScrubConfig,
     partial_on_review: bool,
+    suppress_headers: frozenset[str] = frozenset(),
 ) -> None:
     """Partial-scrub, write, and optionally raise for a batch of quarantine rows.
 
     PS11-simplify6: Consolidates the three near-identical quarantine blocks
     (generalize, band, date) into a single helper:
       1. mkdir + assert_write_zone for the quarantine directory.
-      2. Apply _apply_field_only_rules (drop_fields + birthdate) to each row
-         in-place BEFORE the quarantine write — identical to the original order.
+      2. Apply _apply_field_only_rules (drop_fields + birthdate + force-drop set)
+         to each row in-place BEFORE the quarantine write — identical to the
+         original order, with Fix A-1/A-2: ``suppress_headers`` is threaded
+         through so direct identifiers are stripped from quarantine/amber rows.
       3. Atomically write the scrubbed rows to ``quarantine_dir / filename``.
       4. Raise ``error_class(msg)`` in strict mode (not partial_on_review).
          In partial mode the rows are silently held in quarantine; the caller
@@ -1342,7 +1366,7 @@ def _quarantine_or_raise(
     quarantine_dir.mkdir(parents=True, exist_ok=True)
     assert_write_zone(quarantine_dir)
     for _row in rows:
-        _apply_field_only_rules(_row, cfg=cfg)  # strip names/birthdate before write
+        _apply_field_only_rules(_row, cfg=cfg, suppress_headers=suppress_headers)
     atomic_write_jsonl(quarantine_dir / filename.name, rows)
     if not partial_on_review:
         raise error_class(msg)
@@ -1725,18 +1749,29 @@ def _emit_audit(
     orphans: dict[str, int],
     audit_path: Path,
 ) -> None:
-    """Write the single-leg scrub audit atomically under the output zone."""
+    """Write the single-leg scrub audit atomically under the output zone.
+
+    **Byte-reproducibility**: the primary report (``phi_scrub_report.json``)
+    contains no wall-clock timestamps — identical inputs produce an identical
+    byte-for-byte report on every re-run.  The ``generated_utc`` wall-clock
+    field is written to a parallel sidecar (``phi_scrub_report_timing.json``)
+    beside the primary report, mirroring the ``lineage.py`` content-only +
+    ``*_timing.json`` pattern used for the lineage manifest.
+    """
     assert_output_zone(audit_path.parent)
     audit_path.parent.mkdir(parents=True, exist_ok=True)
     payload: dict[str, Any] = {
         "study": study_name,
-        "generated_utc": _now_utc_iso(),
         "leg": "phi-scrub",
         "compliance_posture": posture,
         "scrubbed": events,
         "orphan_rows": orphans,
     }
     atomic_write_json(audit_path, payload)
+    # Write the timing sidecar beside the primary report — wall-clock only,
+    # never mixed into the content-only primary so re-runs are byte-identical.
+    timing_path = audit_path.with_name(audit_path.stem + "_timing.json")
+    atomic_write_json(timing_path, {"generated_utc": _now_utc_iso()})
 
 
 _SCOPE_TO_ACTION: dict[str, str] = {
@@ -1889,8 +1924,26 @@ def _emit_as_written_ledger(
     approval_lookup: dict | None = None,
     rule_bundle_sha256: str | None = None,
     cfg: PHIScrubConfig | None = None,
+    force_drop_by_stem: dict[str, frozenset[str]] | None = None,
+    pdf_source_by_stem: dict[str, str | None] | None = None,
 ) -> None:
-    """Write one PHI as-written ledger under each dataset audit folder."""
+    """Write one PHI as-written ledger under each dataset audit folder.
+
+    Parameters
+    ----------
+    force_drop_by_stem:
+        Per-stem set of normalized headers that were force-dropped at priority-0
+        (direct identifiers from phi_review SoT cross-verification).  A column
+        in this set is skipped by the keep-decision tracing loop so the ledger
+        does not emit a contradictory "decided: keep / action: drop" pair for
+        the same variable — the drop event (already emitted via the scrub loop)
+        is the sole authoritative record.
+    pdf_source_by_stem:
+        Optional per-stem PDF source path for the ``where.pdf_source`` field in
+        PHI ledger events.  ``None`` (the default) keeps the existing
+        ``pdf_source=None`` behaviour for all stems; a partial dict leaves
+        unresolved stems as ``None``.
+    """
     audit_dir = audit_path.parent
     assert_output_zone(audit_dir)
     ensure_no_llm_sentinel(audit_dir)
@@ -1942,6 +1995,9 @@ def _emit_as_written_ledger(
                 rule_project_category = None
             action = _SCOPE_TO_ACTION[event["scope"]]
             method_name, method_parameters = _method_for_action(action, cfg, event["field"])
+            # Fix B-5: populate pdf_source from the per-stem map when available;
+            # fall back to None so the ledger is never fabricated.
+            stem_pdf_source = (pdf_source_by_stem or {}).get(stem)
             writer.add_phi_event(
                 form=Path(event["file"]).stem,
                 variable_id=event["field"],
@@ -1950,7 +2006,7 @@ def _emit_as_written_ledger(
                 rule_project_category=rule_project_category,
                 rationale=rationale,
                 dataset_file=event["file"],
-                pdf_source=None,
+                pdf_source=stem_pdf_source,
                 count=event["count"],
                 matched_rules=matched_rules,
                 jurisdictions=jurisdictions,
@@ -1958,9 +2014,17 @@ def _emit_as_written_ledger(
                 method_name=method_name,
                 method_parameters=method_parameters,
             )
-        # KEEP tracing — after emitting events for a stem, BEFORE flush
+        # Fix B-3: KEEP tracing — after emitting events for a stem, BEFORE flush.
+        # Skip any header that was force-dropped at priority-0: those headers
+        # already have a drop event above; emitting a keep_decision for the same
+        # variable would produce a contradictory "decided: keep / action: drop"
+        # pair in the ledger, which an IRB auditor would flag as inconsistent.
+        stem_force_drop = (force_drop_by_stem or {}).get(stem, frozenset())
         for norm_header, c in (approval_lookup or {}).get(stem, {}).items():
             if c.get("action") == "keep":
+                if norm_header in stem_force_drop:
+                    # Force-drop overrides keep — drop event is the sole record.
+                    continue
                 writer.add_keep_decision(
                     form=Path(display_names[stem]).stem,
                     variable_id=norm_header,
@@ -2246,9 +2310,15 @@ def run_scrub(
             quarantine_dir.mkdir(parents=True, exist_ok=True)
             assert_write_zone(quarantine_dir)
             orphan_counts: dict[str, int] = {}
-            # partial-scrub before write: drop_fields + birthdate
+            # Partial-scrub before write: drop_fields + birthdate + force-drop set
+            # (Fix A-1/A-2: suppress_headers ensures direct identifiers flagged by
+            # phi_review's SoT cross-verification are stripped from orphan/amber rows
+            # just as they are from the main published rows).
+            _stem_suppress = force_drop_by_stem.get(jsonl_file.stem, frozenset())
             for _orphan in orphans:
-                for scope_k, n in _apply_field_only_rules(_orphan, cfg=cfg).items():
+                for scope_k, n in _apply_field_only_rules(
+                    _orphan, cfg=cfg, suppress_headers=_stem_suppress
+                ).items():
                     orphan_counts[scope_k] = orphan_counts.get(scope_k, 0) + n
             if orphan_counts:
                 q_key = f"quarantine/{jsonl_file.name}"
@@ -2280,6 +2350,7 @@ def run_scrub(
                 quarantine_dir=quarantine_dir,
                 cfg=cfg,
                 partial_on_review=partial_on_review,
+                suppress_headers=force_drop_by_stem.get(jsonl_file.stem, frozenset()),
             )
 
         if band_failed:
@@ -2295,6 +2366,7 @@ def run_scrub(
                 quarantine_dir=quarantine_dir,
                 cfg=cfg,
                 partial_on_review=partial_on_review,
+                suppress_headers=force_drop_by_stem.get(jsonl_file.stem, frozenset()),
             )
 
         if date_failed:
@@ -2310,6 +2382,7 @@ def run_scrub(
                 quarantine_dir=quarantine_dir,
                 cfg=cfg,
                 partial_on_review=partial_on_review,
+                suppress_headers=force_drop_by_stem.get(jsonl_file.stem, frozenset()),
             )
 
         # Partial-publish mode: publish the form's correctly-scrubbed rows (``kept``)
@@ -2388,6 +2461,18 @@ def run_scrub(
         orphans=orphan_totals,
         audit_path=audit_path,
     )
+    # Fix B-5: Build a fail-soft per-stem → SoT policy YAML path map for the
+    # ``where.pdf_source`` ledger field.  The SoT policy YAML is the nearest
+    # available provenance artifact (it encodes the printed-PDF question text +
+    # annotation geometry); if the file doesn't exist for a given form the stem
+    # is simply absent from the map and the ledger falls back to pdf_source=None.
+    # This is metadata-only (path existence check, no file reads or value access).
+    _sot_root = Path(config.STUDY_LLM_SOURCE_DIR) / "SoT"
+    pdf_source_by_stem: dict[str, str | None] = {}
+    for _stem in sorted({Path(f).stem for f in (dataset_files or [])}):
+        _candidate = _sot_root / _stem / "pdf" / f"{_stem}_policy.yaml"
+        if _candidate.is_file():
+            pdf_source_by_stem[_stem] = str(_candidate)
     _emit_as_written_ledger(
         events=events,
         audit_path=audit_path,
@@ -2399,6 +2484,8 @@ def run_scrub(
         approval_lookup=approval_lookup,
         rule_bundle_sha256=rule_bundle_sha256_val,
         cfg=cfg,
+        force_drop_by_stem=force_drop_by_stem,
+        pdf_source_by_stem=pdf_source_by_stem if pdf_source_by_stem else None,
     )
 
     # Partial-run sidecar: record which forms had rows quarantined for review so

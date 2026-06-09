@@ -540,6 +540,77 @@ _PHI_RISKY_SUBSTRINGS: tuple[str, ...] = (
     "date_of_death",
 )
 
+# ---------------------------------------------------------------------------
+# STRONG direct-identifier subset of the PHI-risk tokens.
+#
+# These tokens name genuine person identifiers (person name, initials,
+# signature, and contact-point identifiers such as phone/fax/email and
+# government IDs).  A column in this subset must NOT be cleared benign by
+# the mere presence of a printed PDF question ("has_pdf_question=True,
+# sot_phi=None"): a real CRF legitimately *asks* for a patient's initials or
+# signature, so the SoT will have a pdf_question for it — but that does not
+# make the column safe to publish raw.
+#
+# Weaker/ambiguous tokens (sub-state geography, free-text remarks, life-event
+# dates) are NOT in this set; they keep the current clearance behavior where a
+# printed clinical question with no SoT PHI action confirms them benign.
+# ---------------------------------------------------------------------------
+_STRONG_DIRECT_ID_TOKENS: frozenset[str] = frozenset(
+    {
+        # person names and initials
+        "name",
+        "fname",
+        "lname",
+        "surname",
+        "maiden",
+        "initials",
+        # direct contact identifiers
+        "phone",
+        "mobile",
+        "telephone",
+        "fax",
+        "email",
+        "whatsapp",
+        # government / biometric identifiers
+        "aadhaar",
+        "aadhar",
+        "pan",
+        "passport",
+        "voter",
+        "mrn",
+        "ssn",
+        "uid",
+    }
+)
+_STRONG_DIRECT_ID_SUBSTRINGS: tuple[str, ...] = (
+    "e_mail",
+    "phone_number",
+    "mobile_number",
+    "national_id",
+    # "signature" and "initials" as substrings
+    "signature",
+    "sign",
+)
+
+
+def _is_strong_direct_id_header(header: str) -> bool:
+    """Return True when a header name matches the STRONG direct-identifier subset.
+
+    STRONG direct identifiers (person name/initials/signature, contact identifiers,
+    government IDs) must NOT be cleared benign by the mere presence of a printed PDF
+    question — a CRF legitimately asks for a patient's initials, but that does not
+    make the column safe to publish raw.
+
+    Weaker risk signals (sub-state geography, free-text remarks, life-event dates)
+    are deliberately excluded; they keep the normal SoT-question clearance path.
+    """
+    normalized = _normalize_header(header)
+    if not normalized:
+        return False
+    if any(substr in normalized for substr in _STRONG_DIRECT_ID_SUBSTRINGS):
+        return True
+    return bool(set(normalized.split("_")) & _STRONG_DIRECT_ID_TOKENS)
+
 
 def is_phi_risky_header(header: str) -> bool:
     """Return True when a header NAME looks like PHI (name/contact/location/id/free-text).
@@ -748,6 +819,14 @@ def classify_headers(
     if privacy_config.conflict_policy != "strictest_wins":
         raise ValueError(f"unsupported conflict_policy: {privacy_config.conflict_policy}")
 
+    # The set of jurisdictions evaluated for every header in this bundle —
+    # used to populate the jurisdictions field on KEEP classifications so the
+    # IRB ledger can show *which* regulations were checked and found no PHI rule
+    # (an empty jurisdictions list would imply no evaluation took place).
+    evaluated_jurisdictions: tuple[str, ...] = tuple(
+        dict.fromkeys(rule.jurisdiction for rule in rule_bundle.rules)
+    )
+
     result: dict[str, HeaderClassification] = {}
     for header in headers:
         match_texts = _header_match_texts(header)
@@ -765,11 +844,21 @@ def classify_headers(
             if _ACTION_RANK[rule.action] > _ACTION_RANK[action]:
                 action = rule.action
 
+        # B-4: for KEEP classifications (no rule matched) populate the jurisdictions
+        # field with the full evaluated set so the IRB ledger can show that the header
+        # was actively evaluated against every configured jurisdiction and found to be
+        # non-PHI under all of them — an empty list would falsely imply no evaluation.
+        effective_jurisdictions: tuple[str, ...]
+        if action == Action.KEEP:
+            effective_jurisdictions = evaluated_jurisdictions
+        else:
+            effective_jurisdictions = tuple(dict.fromkeys(jurisdictions))
+
         result[header] = HeaderClassification(
             header=header,
             action=action,
             matched_rules=tuple(matched_rules),
-            jurisdictions=tuple(dict.fromkeys(jurisdictions)),
+            jurisdictions=effective_jurisdictions,
             reasons=tuple(dict.fromkeys(reasons)),
         )
     return result
@@ -1027,8 +1116,31 @@ def review_form_headers(
         # SoT confirms a name-flagged KEEP is benign when the variable has a printed
         # PDF question (a known clinical question) AND the PDF-aware SoT did not
         # itself recommend a PHI action.
+        #
+        # EXCEPTION — STRONG direct identifiers (person name/initials/signature,
+        # contact IDs, government IDs): a CRF legitimately *asks* for a patient's
+        # initials or signature, so "has_pdf_question=True, sot_phi=None" is expected
+        # and does NOT confirm the column benign.  Only an explicit affirmative SoT
+        # non-PHI classification (``is_phi=False`` AND ``sot_phi`` is something benign
+        # rather than absent) OR a deliberate ``confirmed_keep_headers`` entry can
+        # clear a STRONG identifier — the latter is checked in the caller
+        # (_is_direct_identifier branch c).
         sig = sot.get(header.upper())
-        return bool(sig and sig.get("has_pdf_question") and not sig.get("is_phi"))
+        if not sig:
+            return False
+        if not sig.get("has_pdf_question"):
+            return False
+        if sig.get("is_phi"):
+            return False
+        # For STRONG direct identifiers, a printed question with a *silent* (None)
+        # sot_phi is ambiguous — we cannot tell whether the SoT builder reviewed
+        # the column and decided keep vs. simply left it unclassified.  Require an
+        # explicit non-PHI SoT classification (sot_phi is a non-None, non-empty
+        # benign value) before clearing.  Weaker risk tokens keep the original
+        # "present question + no PHI action = benign" logic.
+        if _is_strong_direct_id_header(header) and not sig.get("sot_phi"):
+            return False
+        return True
 
     def _is_direct_identifier(item: HeaderClassification) -> bool:
         # Only columns the scrub PUBLISHES RAW can leak; a column it already

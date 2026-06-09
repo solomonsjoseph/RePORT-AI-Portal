@@ -12,6 +12,7 @@ import config
 __all__ = [
     "CLEANUP_LEDGER_FILENAME",
     "PHI_LEDGER_FILENAME",
+    "PHI_LEDGER_TIMING_FILENAME",
     "LedgerWriter",
     "dataset_cleanup_ledger_path",
     "dataset_phi_ledger_path",
@@ -22,6 +23,7 @@ __all__ = [
 
 DATASET_LEDGER_DIRNAME = "datasets"
 PHI_LEDGER_FILENAME = "phi_handling_ledger.as_written.json"
+PHI_LEDGER_TIMING_FILENAME = "phi_handling_ledger_timing.json"
 CLEANUP_LEDGER_FILENAME = "dataset_cleanup_ledger.as_written.json"
 
 _PHI_ACTIONS: frozenset[str] = frozenset(
@@ -147,7 +149,6 @@ class LedgerWriter:
         self._study = study
         self._leg = leg
         self._compliance_posture = compliance_posture
-        self._iso_timestamp: str = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         self._events: list[dict] = []
         self._keeps: list[dict] = []
         self._sentinel_seen: bool = False
@@ -318,13 +319,18 @@ class LedgerWriter:
         )
 
     def flush(self) -> None:
-        """Write events to output_path atomically. Safe to call multiple times (overwrites)."""
+        """Write events to output_path atomically. Safe to call multiple times (overwrites).
+
+        The primary ledger is content-only (no wall-clock timestamps) so that
+        byte-identical re-runs on identical input produce byte-identical output.
+        Wall-clock fields (``generated_utc``) are written to a parallel timing
+        sidecar ``phi_handling_ledger_timing.json`` in the same directory.
+        """
         self._phase4_guard()
         self._output_path.parent.mkdir(parents=True, exist_ok=True)
+        # Primary ledger: content-only, no timestamps.
         envelope: dict = {
             "run_id": self._run_id,
-            "iso_timestamp": self._iso_timestamp,
-            "generated_utc": self._iso_timestamp,
             "study": self._study,
             "leg": self._leg,
             "events": self._events,
@@ -338,6 +344,15 @@ class LedgerWriter:
         if self._keeps:
             envelope["keep_decisions"] = self._keeps
         _atomic_write_json(self._output_path, envelope)
+
+        # Timing sidecar: wall-clock fields only, excluded from content hash.
+        generated_utc = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        timing_path = self._output_path.parent / PHI_LEDGER_TIMING_FILENAME
+        timing: dict = {
+            "run_id": self._run_id,
+            "generated_utc": generated_utc,
+        }
+        _atomic_write_json(timing_path, timing)
 
     def event_count(self) -> int:
         """Return number of events collected so far."""

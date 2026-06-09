@@ -77,6 +77,7 @@ def _collect_files(
     recursive: bool = True,
     mtime_map: dict[str, str] | None = None,
     exclude: Path | None = None,
+    exclude_timing_sidecars: bool = False,
 ) -> list[dict[str, Any]]:
     """Return content-only file-metadata records for every regular file below *root*.
 
@@ -96,6 +97,10 @@ def _collect_files(
     exclude:
         Optional single file path to skip (used to exclude the manifest file
         itself from the audit listing so consecutive runs are idempotent).
+    exclude_timing_sidecars:
+        When True, files whose names end with ``_timing.json`` are excluded
+        from the content hash.  Timing sidecars carry wall-clock timestamps by
+        design and must not enter the reproducible content manifest.
     """
     if not root.is_dir():
         return []
@@ -109,6 +114,8 @@ def _collect_files(
         if entry.suffix == ".tmp":
             continue
         if exclude is not None and entry.resolve() == exclude.resolve():
+            continue
+        if exclude_timing_sidecars and entry.name.endswith("_timing.json"):
             continue
         try:
             meta, mtime_utc = _file_metadata(entry)
@@ -189,6 +196,15 @@ def emit_lineage_manifest(
         "audit": _collect_files(
             audit_dir, recursive=False, mtime_map=mtime_map, exclude=manifest_path
         ),
+        # Per-dataset PHI and cleanup ledgers live under audit/datasets/<stem>/.
+        # Timing sidecars (*_timing.json) are excluded: they carry wall-clock
+        # timestamps and must not enter the reproducible content hash.
+        "audit_datasets": _collect_files(
+            audit_dir / "datasets",
+            recursive=True,
+            mtime_map=mtime_map,
+            exclude_timing_sidecars=True,
+        ),
     }
 
     steps: dict[str, Any] = {}
@@ -218,6 +234,10 @@ def emit_lineage_manifest(
         "outputs": outputs,
         "steps": steps,
     }
+    # run_id is a stable identifier (not a timestamp) — safe for the
+    # content-only manifest.  Lets an auditor tie this manifest to its run.
+    if run_id is not None:
+        manifest["run_id"] = run_id
     # The PHI key fingerprint (SHA-256 of the HMAC key bytes) lets an IRB
     # reviewer verify that the pseudonyms in llm_source/ were generated
     # with the claimed key — without exposing the key itself. Optional so
@@ -227,9 +247,10 @@ def emit_lineage_manifest(
 
     atomic_write_json(manifest_path, manifest)
     logger.info(
-        "lineage manifest: %d input files, %d llm_source output files, %d steps",
+        "lineage manifest: %d input files, %d llm_source output files, %d dataset ledgers, %d steps",
         sum(len(v) for v in inputs.values()),
         len(outputs["llm_source"]),
+        len(outputs["audit_datasets"]),
         len(steps),
     )
 

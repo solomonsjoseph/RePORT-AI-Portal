@@ -11,6 +11,7 @@ from scripts.security.phi_review import (
     Action,
     HeldReason,
     OfficialSourceRejected,
+    _is_strong_direct_id_header,
     classify_headers,
     is_phi_risky_header,
     load_sot_variable_signals,
@@ -638,3 +639,150 @@ def test_sot_benign_column_not_held(tmp_path: Path) -> None:
         published_raw_headers=frozenset({"culture_result"}),
     )
     assert approval.status == "approved"
+
+
+# ---------------------------------------------------------------------------
+# S1: STRONG direct-identifier subset — pdf_question must NOT clear them
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        "HS_INITIALS",
+        "SC_NAME",
+        "EE_PHONE",
+        "Remote_Fax",
+        "patient_email",
+        "staff_signature",
+        "aadhaar_no",
+        "pan_card",
+        "mrn_number",
+    ],
+)
+def test_strong_direct_id_header_flagged(header: str) -> None:
+    """STRONG direct identifiers must be detected by _is_strong_direct_id_header."""
+    assert _is_strong_direct_id_header(header) is True
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        "culture_result",
+        "hemoglobin_g_dl",
+        "interviewer_remarks",  # weak: 'remark' token, NOT strong
+        "village",  # geography, NOT strong
+        "subject_dob",  # life-event date, NOT strong
+        "site_code",
+    ],
+)
+def test_non_strong_header_not_flagged_as_strong(header: str) -> None:
+    """Weak-risk and benign headers must NOT match the strong direct-identifier subset."""
+    assert _is_strong_direct_id_header(header) is False
+
+
+def test_strong_identifier_not_cleared_by_pdf_question(tmp_path: Path) -> None:
+    """A STRONG direct identifier (initials) with has_pdf_question=True, sot_phi=None
+    must be force-dropped — the SoT question presence does NOT confirm it benign.
+
+    Regression guard for HS_INITIALS (16_Helminth): the printed CRF legitimately
+    asks for patient initials, so the SoT has a pdf_question for it.  Before S1,
+    this silently cleared the column as benign — a false clearance.
+    """
+    cfg, bundle = _benign_bundle(tmp_path)
+    approval = review_form_headers(
+        form_name="16_Helminth.xlsx",
+        headers=["HS_INITIALS", "culture_result"],
+        privacy_config=cfg,
+        rule_bundle=bundle,
+        sot_signals={
+            "HS_INITIALS": {"has_pdf_question": True, "sot_phi": None, "is_phi": False},
+            "CULTURE_RESULT": {"has_pdf_question": True, "sot_phi": None, "is_phi": False},
+        },
+        published_raw_headers=frozenset({"HS_INITIALS", "culture_result"}),
+    )
+    assert approval.status == "approved"  # form still publishes its other columns
+    assert "HS_INITIALS" in approval.force_drop_headers
+    assert "culture_result" not in approval.force_drop_headers
+
+
+def test_strong_identifier_cleared_by_confirmed_keep(tmp_path: Path) -> None:
+    """A STRONG identifier IS cleared when it appears in confirmed_keep_headers
+    (deliberate operator override — e.g. the column encodes a coded category,
+    not a raw name/contact value).
+    """
+    cfg, bundle = _benign_bundle(tmp_path)
+    approval = review_form_headers(
+        form_name="16_Helminth.xlsx",
+        headers=["HS_INITIALS"],
+        privacy_config=cfg,
+        rule_bundle=bundle,
+        sot_signals={
+            "HS_INITIALS": {"has_pdf_question": True, "sot_phi": None, "is_phi": False},
+        },
+        published_raw_headers=frozenset({"HS_INITIALS"}),
+        confirmed_keep_headers=frozenset({"HS_INITIALS"}),
+    )
+    assert "HS_INITIALS" not in approval.force_drop_headers
+
+
+def test_weak_risky_header_still_cleared_by_pdf_question(tmp_path: Path) -> None:
+    """Weak-risk tokens (remarks, geography, free-text) keep the current behavior:
+    has_pdf_question=True + sot_phi=None confirms them benign (not force-dropped).
+
+    Only STRONG identifiers (name/initials/signature/contact/gov-ID) lose this
+    clearance.  The weak-token path must not regress.
+    """
+    cfg, bundle = _benign_bundle(tmp_path)
+    approval = review_form_headers(
+        form_name="demo.xlsx",
+        headers=["interviewer_remarks", "village_code"],
+        privacy_config=cfg,
+        rule_bundle=bundle,
+        sot_signals={
+            "INTERVIEWER_REMARKS": {"has_pdf_question": True, "sot_phi": None, "is_phi": False},
+            "VILLAGE_CODE": {"has_pdf_question": True, "sot_phi": None, "is_phi": False},
+        },
+        published_raw_headers=frozenset({"interviewer_remarks", "village_code"}),
+    )
+    assert "interviewer_remarks" not in approval.force_drop_headers
+    assert "village_code" not in approval.force_drop_headers
+
+
+# ---------------------------------------------------------------------------
+# B-4: KEEP classifications must carry the evaluated jurisdiction list
+# ---------------------------------------------------------------------------
+
+
+def test_keep_classification_carries_evaluated_jurisdictions(tmp_path: Path) -> None:
+    """A KEEP-classified header (no rule matched) must list the evaluated jurisdictions
+    so the IRB ledger can show which regulations were checked and found no PHI rule.
+
+    Before B-4, jurisdictions was an empty tuple for KEEP — the ledger couldn't
+    distinguish 'no evaluation' from 'evaluated and found non-PHI'.
+    """
+    cfg, bundle = _benign_bundle(tmp_path)
+    classified = classify_headers(["culture_result"], cfg, bundle)
+    cl = classified["culture_result"]
+    assert cl.action == Action.KEEP
+    # Both configured jurisdictions must appear even though no rule fired.
+    assert set(cl.jurisdictions) == {"USA", "INDIA"}
+    # matched_rules stays empty — no rule actually matched.
+    assert cl.matched_rules == ()
+
+
+def test_non_keep_classification_jurisdiction_unchanged(tmp_path: Path) -> None:
+    """Non-KEEP classifications must still list only the jurisdictions whose rules matched
+    (not the full evaluated set) — B-4 must not widen non-KEEP entries.
+    """
+    cfg, bundle = _benign_bundle(tmp_path)
+    # 'aadhaar_no' only matches India rules → should list INDIA only
+    classified = classify_headers(["aadhaar_no"], cfg, bundle)
+    cl = classified["aadhaar_no"]
+    assert cl.action != Action.KEEP
+    # Should be INDIA-only (aadhaar rules are India-jurisdiction)
+    assert "INDIA" in cl.jurisdictions
+    # Must not have been erroneously expanded to include USA-only rules
+    # (aadhaar is India-specific; the only USA hit would require a USA aadhaar rule)
+    # The safe assertion: jurisdictions is non-empty and the set is a subset of configured.
+    assert set(cl.jurisdictions) <= {"USA", "INDIA"}

@@ -352,6 +352,11 @@ class TestRunHappyPath:
             patch.object(skill_mod, "_release_pipeline_lock_for_skill", _fake_release),
             patch.object(skill_mod, "destroy_staging_and_attest", _fake_destroy),
             patch("subprocess.run", return_value=SimpleNamespace(returncode=0)),
+            # Step 7 now runs on any clean pass; mock the verifier + snapshot so
+            # this test stays focused on plain-run publish behavior, not the
+            # verifier or snapshot infrastructure.
+            patch.object(skill_mod, "_cmd_verify", return_value=EXIT_OK),
+            patch.object(skill_mod, "_try_commit_snapshot", return_value=None),
         ):
             rc = main(["run", "--study", STUDY])
 
@@ -762,6 +767,10 @@ class TestDisabledScrubBypass:
             patch.object(skill_mod, "check_forms_manifest", return_value={}),
             patch.object(skill_mod, "_run_form_approval_gate", side_effect=_fake_gate),
             patch("subprocess.run", side_effect=_capturing_subprocess_run),
+            # Step 7 now runs on any clean pass; mock verifier + snapshot so
+            # this test stays focused on the form-selector/env behavior.
+            patch.object(skill_mod, "_cmd_verify", return_value=EXIT_OK),
+            patch.object(skill_mod, "_try_commit_snapshot", return_value=None),
         ):
             rc = main(["run", "--study", STUDY, "--form", "6_HIV"])
 

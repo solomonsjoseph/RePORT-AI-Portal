@@ -614,6 +614,37 @@ class TestRunScrub:
             assert set(event.keys()) == {"scope", "field", "file", "count"}
             assert isinstance(event["count"], int) and event["count"] >= 1
 
+    def test_scrub_report_no_timestamp_in_primary_timing_sidecar_written(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Fix B-2: phi_scrub_report.json must be byte-reproducible (no generated_utc).
+
+        The wall-clock timestamp is written to a parallel phi_scrub_report_timing.json
+        sidecar, mirroring the lineage manifest content-only + *_timing.json pattern.
+        """
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        report_path = Path(config.AUDIT_SCRUB_REPORT_PATH)
+        assert report_path.is_file(), "phi_scrub_report.json must be written"
+        payload = json.loads(report_path.read_text(encoding="utf-8"))
+        # Primary report must NOT carry any wall-clock fields.
+        assert "generated_utc" not in payload, (
+            "generated_utc must not appear in the primary phi_scrub_report.json — "
+            "it should be in the timing sidecar only"
+        )
+        # The timing sidecar must exist beside the primary report and carry the timestamp.
+        timing_path = report_path.with_name(report_path.stem + "_timing.json")
+        assert timing_path.is_file(), "phi_scrub_report_timing.json sidecar must be written"
+        timing = json.loads(timing_path.read_text(encoding="utf-8"))
+        assert "generated_utc" in timing, "timing sidecar must carry generated_utc"
+        assert timing["generated_utc"].endswith("Z"), "generated_utc must be UTC ISO format"
+
     def test_idempotency_via_sentinel(
         self,
         monkeypatch_config: Path,
@@ -888,6 +919,68 @@ class TestRunScrub:
         with pytest.raises(phi_scrub.PHIQuarantineOverflowError):
             phi_scrub.run_scrub(study_name="TEST")
 
+    def test_force_drop_applied_to_orphan_quarantine_rows(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        tmp_path: Path,
+    ) -> None:
+        """Fix A-1/A-2: force_drop_headers must strip direct identifiers from orphan rows.
+
+        A column in force_drop_headers (SoT cross-verification direct-identifier
+        override) that would be KEPT by a broad keep prefix must be absent from the
+        quarantine/amber zone file — the amber zone is not promoted to llm_source,
+        but an auditor opening it must not see a raw signature or initials column.
+
+        Acceptance criteria:
+        A. CBC_INIT (in force_drop_headers, broad-kept) → absent from quarantine row.
+        B. CBC_WBC (broad-kept, not force-dropped) → present in quarantine row.
+        C. VISDAT (date field, no subject_id → not jittered) → present in quarantine row.
+        """
+        _write_config(
+            scrub_config_path,
+            keep_fields=["^CBC_"],
+            orphan_quarantine_threshold=10,
+        )
+        # All rows are orphans (no SUBJID populated).
+        rows = [{"CBC_INIT": "ZZZ", "CBC_WBC": "5.0", "VISDAT": "2020-03-01"}]
+        _seed_staging(monkeypatch_config, rows)
+
+        runs_dir = tmp_path / "runs"
+        run_id = "test_run_a1a2"
+        (runs_dir / run_id).mkdir(parents=True)
+        approval_data = {
+            "rule_bundle": {"rules_sha256": "sha256_a1a2"},
+            "forms": [
+                {
+                    "form_name": "1A_ICScreening.xlsx",
+                    "classifications": [],
+                    "force_drop_headers": ["CBC_INIT"],
+                }
+            ],
+            "approved_forms": [],
+        }
+        approval_path = runs_dir / run_id / "phi_handling_approval.json"
+        approval_path.write_text(json.dumps(approval_data), encoding="utf-8")
+
+        phi_scrub.run_scrub(study_name="TEST", run_id=run_id, runs_dir=runs_dir)
+
+        quarantine = config.STUDY_STAGING_DIR / "quarantine" / "1A_ICScreening.jsonl"
+        assert quarantine.is_file(), "quarantine file must exist for orphan rows"
+        quarantined = [json.loads(line) for line in quarantine.read_text().splitlines() if line]
+        assert len(quarantined) == 1, f"expected 1 orphan row, got {len(quarantined)}"
+        q = quarantined[0]
+
+        # A — force-dropped direct identifier absent from amber zone
+        assert "CBC_INIT" not in q, (
+            "force-dropped direct identifier must be absent from quarantine row (Fix A-1/A-2)"
+        )
+        # B — benign keep column present
+        assert "CBC_WBC" in q, "broad-kept non-force-dropped column must survive in quarantine row"
+        # C — date field not jittered (no subject_id), still present
+        assert "VISDAT" in q, "date field must survive in quarantine row (not jittered, no subject_id)"
+
     def test_key_missing_hard_fails(
         self,
         monkeypatch_config: Path,
@@ -973,8 +1066,9 @@ class TestAsWrittenLedger:
         assert not (ledger_path.parent / config.AUDIT_NO_LLM_SENTINEL_NAME).exists()
         payload = json.loads(ledger_path.read_text(encoding="utf-8"))
         assert "run_id" in payload
-        assert "iso_timestamp" in payload
-        assert payload["generated_utc"] == payload["iso_timestamp"]
+        # Primary ledger is content-only — wall-clock fields moved to timing sidecar.
+        assert "iso_timestamp" not in payload
+        assert "generated_utc" not in payload
         assert payload["study"] == "TEST"
         assert payload["leg"] == "phi-scrub"
         assert payload["compliance_posture"] == "safe_harbor"
@@ -1327,6 +1421,81 @@ class TestLedgerClassificationThreading:
         assert "no_phi_rule" in keep_decision["matched_rules"]
         # Verify VISDAT does NOT appear in events
         assert all(event["variable_id"] != "VISDAT" for event in payload["events"])
+
+    def test_no_contradictory_keep_decision_for_force_dropped_column(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        tmp_path: Path,
+    ) -> None:
+        """Fix B-3: a column in the force-drop set must NOT produce a keep_decision.
+
+        When phi_review classifies a column as ``keep`` but the SoT cross-verification
+        adds it to ``force_drop_headers`` (e.g. a signature column matched by a broad
+        keep prefix), the scrub force-drops it at priority-0.  The ledger must show
+        only the ``drop`` event — emitting a contradictory ``keep_decision`` for the
+        same variable would confuse an IRB auditor.
+        """
+        # Broad keep prefix covers both CBC_INIT (direct identifier) and CBC_WBC (benign).
+        _write_config(scrub_config_path, keep_fields=["^CBC_"])
+        rows = [{"SUBJID": "S1", "CBC_INIT": "ZZZ", "CBC_WBC": "5.0"}]
+        _seed_staging(monkeypatch_config, rows)
+
+        runs_dir = tmp_path / "runs"
+        run_id = "test_run_b3"
+        (runs_dir / run_id).mkdir(parents=True)
+        # Approval: both columns classified as "keep" by the jurisdiction rules,
+        # but CBC_INIT is in force_drop_headers (SoT cross-verification override).
+        approval_data = {
+            "rule_bundle": {"rules_sha256": "sha256_b3"},
+            "forms": [
+                {
+                    "form_name": "1A_ICScreening.xlsx",
+                    "classifications": [
+                        {
+                            "header": "CBC_INIT",
+                            "action": "keep",
+                            "jurisdictions": ["USA"],
+                            "matched_rules": ["no_phi_rule"],
+                            "reasons": ["Retained per jurisdiction review."],
+                        },
+                        {
+                            "header": "CBC_WBC",
+                            "action": "keep",
+                            "jurisdictions": ["USA"],
+                            "matched_rules": ["no_phi_rule"],
+                            "reasons": ["Retained per jurisdiction review."],
+                        },
+                    ],
+                    "force_drop_headers": ["CBC_INIT"],
+                }
+            ],
+            "approved_forms": [],
+        }
+        approval_path = runs_dir / run_id / "phi_handling_approval.json"
+        approval_path.write_text(json.dumps(approval_data), encoding="utf-8")
+
+        phi_scrub.run_scrub(study_name="TEST", run_id=run_id, runs_dir=runs_dir)
+
+        ledger_path = _phi_ledger_path()
+        payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+
+        # CBC_INIT must appear as a drop event (force-dropped at priority-0).
+        drop_events = [e for e in payload["events"] if e["variable_id"] == "CBC_INIT"]
+        assert len(drop_events) >= 1, "force-dropped column must have a drop event in the ledger"
+        assert all(e["action"] == "drop" for e in drop_events)
+
+        # CBC_INIT must NOT appear in keep_decisions — that would be contradictory.
+        keep_vars = {kd["variable_id"] for kd in payload.get("keep_decisions", [])}
+        norm_init = phi_scrub._normalize_header_for_lookup("CBC_INIT")
+        assert norm_init not in keep_vars, (
+            "force-dropped column must NOT produce a keep_decision in the ledger"
+        )
+
+        # CBC_WBC is NOT force-dropped — it should still appear as a keep_decision.
+        norm_wbc = phi_scrub._normalize_header_for_lookup("CBC_WBC")
+        assert norm_wbc in keep_vars, "benign keep column must still produce a keep_decision"
 
 
 # ── Determinism across subject_id values (SANT spot-check) ──────────────────
