@@ -32,6 +32,7 @@ This module provides:
 * :func:`parse_date` — parse any of the above into a ``datetime``.
 * :func:`value_looks_like_date` — quick check for date-like strings.
 * :func:`is_dmy_variable` — check if a variable uses D/M order.
+* :func:`check_locale_consistency` — warn on DMY_VARIABLES/manifest conflicts.
 
 All functions are pure (no side effects) and safe to call from any module.
 
@@ -51,6 +52,7 @@ __all__ = [
     "_SEP_RE",
     "ParsedDate",
     "_disambiguate_locale",
+    "check_locale_consistency",
     "is_dmy_variable",
     "parse_date",
     "value_looks_like_date",
@@ -107,29 +109,23 @@ _ISO_RE = re.compile(
 
 # Separator-delimited: A<sep>B<sep>C [H:M:S [AM|PM]]
 # Accepts / (slash), - (hyphen), or . (dot) as the separator.  All three must
-# use the SAME separator within a single value.
-# Groups: (1)=first, (2)=second, (3)=year, (4)=hour, (5)=min, (6)=sec, (7)=AM/PM
+# use the SAME separator within a single value (enforced by backreference \2).
+# Groups: (1)=first, (2)=sep char, (3)=second, (4)=year,
+#         (5)=hour, (6)=min, (7)=sec, (8)=AM/PM
 # NOTE: ISO "YYYY-MM-DD" is already intercepted by _ISO_RE above, so when this
-# regex matches a hyphen-delimited value the year in group-3 is always 2-4 digits
-# (≤ 4) — but we guard in the parser anyway by checking _ISO_RE first.
+# regex matches a hyphen-delimited value the year in group-4 is always ≤ 4
+# digits — but we guard in the parser anyway by checking _ISO_RE first.
 _SEP_RE = re.compile(
     r"^(\d{1,2})([/.\-])(\d{1,2})\2(\d{2,4})"
-    r"(?:\s+(\d{1,2}):(\d{2}):(\d{2})(?:\s*([AP]M))?)?$",
-    re.I,
-)
-# Groups shift relative to _SLASH_RE: (1)=first, (2)=sep char, (3)=second,
-# (4)=year, (5)=hour, (6)=min, (7)=sec, (8)=AM/PM.
-
-# Legacy alias kept for backwards-compat with any caller that imported it.
-# _SLASH_RE now delegates to _SEP_RE internally; both are exported.
-_SLASH_RE = re.compile(
-    r"^(\d{1,2})/(\d{1,2})/(\d{2,4})"
     r"(?:\s+(\d{1,2}):(\d{2}):(\d{2})(?:\s*([AP]M))?)?$",
     re.I,
 )
 
 # Quick detection: matches any separator-delimited date with optional time.
 # Used only for value_looks_like_date() — does not need to distinguish ISO.
+# NOTE: the separator characters in each component need not match (e.g.
+# "28/05-2014" passes this check) — mixed-separator strings are caught and
+# rejected by _SEP_RE's backreference in the actual parser.
 _SLASH_DETECT_RE = re.compile(
     r"^\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}(?:\s+\d{1,2}:\d{2}:\d{2}(?:\s*[AP]M)?)?$",
     re.I,
@@ -239,6 +235,117 @@ def _disambiguate_locale(value: str, *, declared_locale: str | None = None) -> s
 
 
 # ============================================================================
+# PHI-safe value masking (for logs and exception messages only)
+# ============================================================================
+
+
+def _mask_date_value(value: str) -> str:
+    """Return a PHI-safe shape of *value* suitable for logs and error messages.
+
+    Digits → ``9``, ASCII letters → ``X``, separator characters kept.
+    This prevents raw date values from leaking into log files or exception
+    traces while still giving operators enough shape to diagnose the issue.
+
+    Examples::
+
+        >>> _mask_date_value("28/05/2014")
+        '99/99/9999'
+        >>> _mask_date_value("07.05.14")
+        '99.99.99'
+        >>> _mask_date_value("07-05-2014 14:30:00")
+        '99-99-9999 99:99:99'
+    """
+    result: list[str] = []
+    for ch in value:
+        if ch.isdigit():
+            result.append("9")
+        elif ch.isascii() and ch.isalpha():
+            result.append("X")
+        else:
+            result.append(ch)
+    return "".join(result)
+
+
+# ============================================================================
+# Locale resolution helper
+# ============================================================================
+
+
+def _resolve_locale(
+    field_name: str | None,
+    date_locales: dict[str, str] | None,
+) -> str | None:
+    """Resolve date locale for *field_name* using the canonical priority chain.
+
+    Priority (first match wins):
+    1. :func:`is_dmy_variable` allowlist (case-insensitive) → ``"DMY"``.
+    2. ``date_locales`` manifest override (keys already normalised to
+       UPPER-CASE at manifest load time) → declared value.
+    3. Returns ``None`` — caller applies value heuristic / fail-closed raise.
+
+    Args:
+        field_name: Column/variable name, or ``None`` for unknown field.
+        date_locales: Per-column locale overrides with UPPER-CASE keys
+                      (normalised once when the manifest is loaded by
+                      :func:`dataset_pipeline.check_forms_manifest`).
+                      May be ``None`` or empty.
+
+    Returns:
+        ``"DMY"``, ``"MDY"``, or ``None`` (locale not yet determined).
+    """
+    if field_name is None:
+        return None
+
+    # P1: canonical DMY allowlist (O(1) via precomputed _DMY_UPPER)
+    field_upper = field_name.upper()
+    if field_upper in _DMY_UPPER:
+        return "DMY"
+
+    # P2: manifest per-column override (keys are UPPER-CASE; single O(1) lookup)
+    if date_locales:
+        declared = date_locales.get(field_upper)
+        if declared is not None:
+            return declared
+
+    return None
+
+
+# ============================================================================
+# Import-time consistency check
+# ============================================================================
+
+
+def check_locale_consistency(date_locales: dict[str, str]) -> None:
+    """Emit a WARNING for columns that appear in both DMY_VARIABLES and the manifest
+    with a conflicting locale.
+
+    Call this once after loading the manifest's ``date_locales`` mapping (e.g.
+    from :func:`dataset_pipeline.check_forms_manifest`).  The function performs
+    no parsing — it is a sanity check only and never raises.
+
+    A *conflict* is a column whose UPPER-CASE name is in :data:`_DMY_UPPER`
+    (so the allowlist would resolve it to ``"DMY"``) but whose manifest entry
+    declares ``"MDY"`` (or vice versa).  The allowlist wins at parse time;
+    this warning surfaces the inconsistency so the operator can reconcile the
+    manifest.
+
+    Args:
+        date_locales: Per-column locale overrides with UPPER-CASE keys
+                      (as normalised by :func:`dataset_pipeline.check_forms_manifest`).
+    """
+    for col_upper, declared in date_locales.items():
+        if col_upper in _DMY_UPPER and declared.upper() != "DMY":
+            _log.warning(
+                "Locale conflict: column %r is in the DMY_VARIABLES allowlist "
+                "(resolved to DMY at parse time) but _forms_manifest.yaml declares %r. "
+                "Allowlist takes precedence; update the manifest to 'DMY' or remove "
+                "the column from DMY_VARIABLES to resolve.",
+                col_upper,
+                declared,
+            )
+
+
+# ============================================================================
 # Core parser
 # ============================================================================
 
@@ -269,15 +376,15 @@ def parse_date(
        * **8-digit** ``DDMMYYYY`` / ``MMDDYYYY`` — locale resolved via priority
          chain; YYYYMMDD is tried as a last resort when the locale-resolved
          parse yields an invalid date.
-       * **7-digit** ``DMMYYYY`` or ``DDMYYYY`` — both layouts tried; exactly
-         one must be valid (ambiguous → ``None``).
+       * **7-digit** ``DMMYYYY`` or ``DDMYYYY`` — both layouts tried for EACH
+         locale direction; exactly one must be valid (ambiguous → ``None``).
        * **6-digit** ``DDMMYY`` — defaults day-first (Indian study); 2-digit
          year expanded by :func:`_expand_year`.
 
     Locale-resolution priority for separator and compact formats:
 
     1. :func:`is_dmy_variable` allowlist (case-insensitive) → **DMY**.
-    2. ``date_locales`` manifest override (case-insensitive key) → declared.
+    2. ``date_locales`` manifest override (UPPER-CASE keys) → declared.
     3. Value heuristic: first component > 12 → DMY; second > 12 → MDY.
     4. Still ambiguous with ``field_name`` known → :class:`ValueError`
        (fail-closed; caller quarantines the row).
@@ -291,9 +398,10 @@ def parse_date(
                     ambiguous values.
         date_locales: Optional per-column locale overrides loaded from the
                       study's ``_forms_manifest.yaml`` ``date_locales:``
-                      section.  Keys are column names (compared
-                      case-insensitively).  Values are ``"DMY"`` or
-                      ``"MDY"``.  Takes precedence over the heuristic.
+                      section.  Keys must be UPPER-CASE (normalised by
+                      :func:`dataset_pipeline.check_forms_manifest`).
+                      Values are ``"DMY"`` or ``"MDY"``.
+                      Takes precedence over the heuristic.
 
     Returns:
         A :class:`ParsedDate` on success, or ``None`` if the string cannot
@@ -350,29 +458,13 @@ def parse_date(
     if m:
         # Groups: (1)=first, (2)=sep_char, (3)=second, (4)=year,
         #         (5)=hour, (6)=min, (7)=sec, (8)=AM/PM
-        g1, g2_raw, g3 = int(m.group(1)), m.group(2), int(m.group(3))
+        g1, g3 = int(m.group(1)), int(m.group(3))
         g_year = int(m.group(4))
         y = _expand_year(g_year)
-        del g2_raw  # separator char; not used further
 
         # ── Determine locale (DMY vs MDY) ──
-        # Priority order (identical to the former slash-only branch):
-        #   1. Canonical DMY allowlist (case-insensitive)
-        #   2. Per-column date_locales from _forms_manifest.yaml
-        #   3. Heuristic disambiguation from the value itself
-        #   4. Raise if genuinely ambiguous and field_name is known
-
-        locale: str | None = None
-
-        if field_name is not None and is_dmy_variable(field_name):
-            locale = "DMY"
-        elif date_locales and field_name is not None:
-            # Case-insensitive key lookup in the manifest overrides
-            field_upper = field_name.upper()
-            for key, declared in date_locales.items():
-                if key.upper() == field_upper:
-                    locale = declared
-                    break
+        # Priority order: DMY allowlist → manifest override → value heuristic
+        locale: str | None = _resolve_locale(field_name, date_locales)
 
         if locale is None:
             # Try to resolve from the value itself
@@ -384,7 +476,7 @@ def parse_date(
                     raise ValueError(
                         f"Ambiguous date locale for column {field_name!r}: "
                         "declare in _forms_manifest.yaml under date_locales: "
-                        f"(values like {value!r} have both components ≤ 12)"
+                        f"(values like {_mask_date_value(value)!r} have both components ≤ 12)"
                     )
                 # No field_name → legacy fall-through: default MDY (no raise)
                 locale = "MDY"
@@ -392,10 +484,10 @@ def parse_date(
                 if field_name is not None:
                     _log.info(
                         "Date locale for %r disambiguated heuristically to %s "
-                        "(value %r); declare in _forms_manifest.yaml to silence",
+                        "(value shape %s); declare in _forms_manifest.yaml to silence",
                         field_name,
                         locale,
-                        value,
+                        _mask_date_value(value),
                     )
 
         dmy = locale == "DMY"
@@ -452,15 +544,7 @@ def parse_date(
             # when the locale-resolved parse yields an invalid datetime.
 
             # Resolve locale first (same priority as separator branch).
-            locale_int: str | None = None
-            if field_name is not None and is_dmy_variable(field_name):
-                locale_int = "DMY"
-            elif date_locales and field_name is not None:
-                field_upper = field_name.upper()
-                for key, declared in date_locales.items():
-                    if key.upper() == field_upper:
-                        locale_int = declared
-                        break
+            locale_int: str | None = _resolve_locale(field_name, date_locales)
 
             if locale_int is None:
                 # Try value-level disambiguation from the two leading 2-char groups.
@@ -492,19 +576,17 @@ def parse_date(
                         raise ValueError(
                             f"Ambiguous integer date locale for column {field_name!r}: "
                             "declare in _forms_manifest.yaml under date_locales: "
-                            f"(value {value!r} has both leading components ≤ 12)"
+                            f"(value {_mask_date_value(value)!r} has both leading components ≤ 12)"
                         )
                     # No field_name → legacy fall-through: default MDY
                     locale_int = "MDY"
-                if field_name is not None and d_cand <= 12 and mo_cand <= 12:
-                    pass  # already raised or defaulted above
-                elif field_name is not None and locale_int is not None:
+                if field_name is not None:
                     _log.info(
                         "Integer date locale for %r disambiguated heuristically to %s "
-                        "(value %r); declare in _forms_manifest.yaml to silence",
+                        "(value shape %s); declare in _forms_manifest.yaml to silence",
                         field_name,
                         locale_int,
-                        value,
+                        _mask_date_value(value),
                     )
 
             if locale_int == "DMY":
@@ -540,40 +622,58 @@ def parse_date(
                 return None
 
         elif len(s) == 7:
-            # ── 7-digit: day-first study only ────────────────────────────────
-            # Two possible layouts (both day-first):
-            #   DMMYYYY: d=s[0:1], m=s[1:3], y=s[3:7]   (single-digit day)
-            #   DDMYYYY: d=s[0:2], m=s[2:3], y=s[3:7]   (single-digit month)
+            # ── 7-digit: DMMYYYY (1+2+4) vs DDMYYYY (2+1+4) ─────────────────
+            # Two possible split widths exist for each locale direction:
+            #   DMY: DMMYYYY d=s[0:1], m=s[1:3], y=s[3:7]  (single-digit day)
+            #        DDMYYYY  d=s[0:2], m=s[2:3], y=s[3:7]  (single-digit month)
+            #   MDY: MDDYYYY m=s[0:1], d=s[1:3], y=s[3:7]  (single-digit month)
+            #        MMDYYYY  m=s[0:2], d=s[2:3], y=s[3:7]  (single-digit day)
             #
-            # Strategy: try BOTH; if exactly one yields a valid datetime use it;
-            # if both are valid OR neither is valid → return None (caller
-            # quarantines; we must not guess between two plausible readings).
-            # The locale-resolution precedence (DMY allowlist / manifest) is
-            # honoured before attempting the heuristic split.
+            # For an explicit locale, try BOTH split widths for that direction and
+            # pick the one that yields a valid datetime. If both or neither are
+            # valid → return None (quarantine), mirroring the no-locale path.
+            # This is symmetric: the explicit locale pins *direction* (day/month
+            # role), not the specific 1+2 vs 2+1 split width.
 
-            # Check locale overrides — but for 7-digit we cannot meaningfully
-            # use MDY because we have no MMDDYYYY data in this study.  If the
-            # manifest explicitly declares MDY, trust it (M=first component).
-            locale_7: str | None = None
-            if field_name is not None and is_dmy_variable(field_name):
-                locale_7 = "DMY"
-            elif date_locales and field_name is not None:
-                field_upper = field_name.upper()
-                for key, declared in date_locales.items():
-                    if key.upper() == field_upper:
-                        locale_7 = declared
-                        break
+            # Resolve locale (DMY allowlist → manifest override).
+            locale_7: str | None = _resolve_locale(field_name, date_locales)
 
             if locale_7 is not None:
-                # Explicit locale declared; use DMMYYYY / MDDYYYY as appropriate.
+                # Explicit locale declared — try BOTH split widths for this direction,
+                # then pick the unique valid result (ambiguous → None).
                 if locale_7 == "DMY":
-                    nd, nmo, ny = int(s[0:1]), int(s[1:3]), int(s[3:7])
+                    # DMMYYYY: d=s[0:1], m=s[1:3], y=s[3:7]
+                    dt_split1: datetime | None = None
+                    try:
+                        dt_split1 = datetime(int(s[3:7]), int(s[1:3]), int(s[0:1]))
+                    except (ValueError, OverflowError):
+                        dt_split1 = None
+                    # DDMYYYY: d=s[0:2], m=s[2:3], y=s[3:7]
+                    dt_split2: datetime | None = None
+                    try:
+                        dt_split2 = datetime(int(s[3:7]), int(s[2:3]), int(s[0:2]))
+                    except (ValueError, OverflowError):
+                        dt_split2 = None
                 else:  # MDY
-                    nmo, nd, ny = int(s[0:1]), int(s[1:3]), int(s[3:7])
-                try:
-                    dt = datetime(ny, nmo, nd)
-                except (ValueError, OverflowError):
+                    # MDDYYYY: m=s[0:1], d=s[1:3], y=s[3:7]
+                    dt_split1 = None
+                    try:
+                        dt_split1 = datetime(int(s[3:7]), int(s[0:1]), int(s[1:3]))
+                    except (ValueError, OverflowError):
+                        dt_split1 = None
+                    # MMDYYYY: m=s[0:2], d=s[2:3], y=s[3:7]
+                    dt_split2 = None
+                    try:
+                        dt_split2 = datetime(int(s[3:7]), int(s[0:2]), int(s[2:3]))
+                    except (ValueError, OverflowError):
+                        dt_split2 = None
+
+                # Exactly one split must be valid; otherwise quarantine.
+                valid_count_7 = (dt_split1 is not None) + (dt_split2 is not None)
+                if valid_count_7 != 1:
                     return None
+                dt = dt_split1 if dt_split1 is not None else dt_split2  # type: ignore[assignment]
+                nd, nmo, ny = dt.day, dt.month, dt.year
             else:
                 # No explicit locale: try both DMY layouts and pick unambiguous winner.
                 # DMMYYYY: d=s[0], m=s[1:3], y=s[3:7]
@@ -608,15 +708,7 @@ def parse_date(
             # assumption is encoded in the manifest/allowlist declarations, NOT a
             # silent code default, so a genuinely-MDY column is never silently
             # day/month-swapped.
-            locale_6: str | None = None
-            if field_name is not None and is_dmy_variable(field_name):
-                locale_6 = "DMY"
-            elif date_locales and field_name is not None:
-                field_upper = field_name.upper()
-                for key, declared in date_locales.items():
-                    if key.upper() == field_upper:
-                        locale_6 = declared
-                        break
+            locale_6: str | None = _resolve_locale(field_name, date_locales)
 
             if locale_6 is None:
                 # Heuristic: if first 2 digits > 12 → must be day (DMY).
@@ -639,7 +731,7 @@ def parse_date(
                         raise ValueError(
                             f"Ambiguous 6-digit date locale for column {field_name!r}: "
                             "declare in _forms_manifest.yaml under date_locales: "
-                            f"(value {value!r} has both leading components ≤ 12)"
+                            f"(value {_mask_date_value(value)!r} has both leading components ≤ 12)"
                         )
                     # No field_name → legacy fall-through: default MDY (matches
                     # the separator + 8-digit branches).
@@ -678,6 +770,8 @@ def value_looks_like_date(value: str) -> bool:
     """Return True if *value* looks like a date/datetime string.
 
     This is a quick check — it does NOT validate the date components.
+    Matches ISO dates, separator-delimited dates (``/``, ``-``, ``.``),
+    and compact integer dates (6-8 pure digits).
     """
     v = value.strip()
-    return bool(_ISO_DETECT_RE.match(v) or _SLASH_DETECT_RE.match(v))
+    return bool(_ISO_DETECT_RE.match(v) or _SLASH_DETECT_RE.match(v) or _NUM_DATE_RE.match(v))

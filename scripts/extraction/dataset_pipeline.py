@@ -63,6 +63,7 @@ from scripts.extraction.io import (
     promote_header,
     split_sheet_into_tables,
 )
+from scripts.extraction.io.clinical_dates import check_locale_consistency
 from scripts.extraction.io.file_discovery import (
     DEFAULT_JUNK_FILENAMES,
     SUPPORTED_TABULAR_EXTENSIONS,
@@ -278,7 +279,14 @@ def check_forms_manifest(datasets_dir: Path | str) -> ManifestCheckResult:
     required: list[str] = raw.get("required") or []
     optional: list[str] = raw.get("optional") or []
     reject: list[str] = raw.get("reject") or []
-    date_locales: dict[str, str] = dict(raw.get("date_locales") or {})
+    # Normalise keys to UPPER-CASE once here so all downstream callers
+    # (including _resolve_locale in clinical_dates) can do O(1) dict.get()
+    # without repeated field_name.upper() conversions per row.
+    date_locales: dict[str, str] = {
+        k.upper(): v for k, v in (raw.get("date_locales") or {}).items()
+    }
+    # Warn if any manifest entry conflicts with the hardcoded DMY_VARIABLES allowlist.
+    check_locale_consistency(date_locales)
 
     # Collect actual .xlsx/.csv filenames present in the directory
     actual_files: list[str] = sorted(
@@ -942,7 +950,6 @@ def extract_datasets(
     # and filtered out below).  When the manifest is absent a warning is
     # logged and extraction proceeds with no rejects (backward-compatible).
     _manifest = check_forms_manifest(_datasets_dir)
-    _date_locales = _manifest.date_locales
     _rejected_files = _manifest.rejected_files
 
     try:

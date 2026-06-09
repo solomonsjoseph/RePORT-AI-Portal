@@ -48,11 +48,14 @@ Limitations
 
 from __future__ import annotations
 
+import logging
 from typing import cast
 
 import pandas as pd
 
 from scripts.utils import logging_system as log
+
+_log = logging.getLogger(__name__)
 
 __all__ = [
     "promote_header",
@@ -226,12 +229,29 @@ def promote_header(
         marker_lower = footer_marker.lower()
 
         def _is_footer_row(row: pd.Series) -> bool:  # type: ignore[type-arg]
+            """True when the first non-null cell starts with *footer_marker*.
+
+            Footer/summary rows (e.g. a ``TOTAL | 155 | 165`` column-sum row) are
+            structural artefacts, not clinical records — they legitimately carry
+            values in the non-first cells, so we deliberately do NOT require the
+            rest of the row to be empty. Dropping them is a deterministic extraction
+            cleanup, and every drop is logged below (index + marker only, never the
+            cell value) so the removal is auditable (UP2 transparency).
+            """
             first_val = next((v for v in row if pd.notna(v) and str(v).strip()), None)
             if first_val is None:
                 return False
             return str(first_val).strip().lower().startswith(marker_lower)
 
         mask = data_df.apply(_is_footer_row, axis=1)
+        dropped_indices = data_df.index[mask].tolist()
+        if dropped_indices:
+            _log.debug(
+                "promote_header: dropping %d footer row(s) matching %r at indices %s",
+                len(dropped_indices),
+                footer_marker,
+                dropped_indices,
+            )
         data_df = data_df[~mask].reset_index(drop=True)
 
     # Step 4: drop fully-null rows.

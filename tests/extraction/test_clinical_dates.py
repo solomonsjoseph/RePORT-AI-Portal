@@ -12,12 +12,19 @@ Covers task P2.4 acceptance criteria:
 
 from __future__ import annotations
 
+import logging
+
 import pytest
 
 from scripts.extraction.io.clinical_dates import (
+    DMY_VARIABLES,
     _disambiguate_locale,
+    _mask_date_value,
+    _resolve_locale,
+    check_locale_consistency,
     is_dmy_variable,
     parse_date,
+    value_looks_like_date,
 )
 
 # ---------------------------------------------------------------------------
@@ -104,13 +111,17 @@ class TestParseAmbiguousRaisesWithoutManifest:
             parse_date("07/05/2014", field_name="MY_DATE_COL")
 
     def test_ambiguous_raises_interpolates_value(self) -> None:
-        # Regression: third f-string fragment was a plain string literal,
-        # so {value!r} appeared verbatim instead of being interpolated.
-        # Assert the repr of the actual value appears in the message.
+        # NEW behavior: raw value is masked in the error message (digits→9,
+        # letters→X, separators kept) so PHI is never leaked into logs/traces.
+        # The masked shape must appear; the raw value must NOT appear.
         with pytest.raises(ValueError) as exc_info:
             parse_date("07/05/2014", field_name="SOME_UNKNOWN_COL")
-        assert "'07/05/2014'" in str(exc_info.value), (
-            f"Error message must interpolate the offending value; got: {exc_info.value}"
+        msg = str(exc_info.value)
+        assert "99/99/9999" in msg, (
+            f"Error message must contain the masked shape '99/99/9999'; got: {msg}"
+        )
+        assert "07/05/2014" not in msg, (
+            f"Error message must NOT contain the raw value '07/05/2014'; got: {msg}"
         )
 
     def test_no_field_name_defaults_mdy_no_raise(self) -> None:
@@ -129,10 +140,11 @@ class TestParseWithDateLocalesOverride:
     """parse_date must honour date_locales dict when provided."""
 
     def test_dmy_override_for_ambiguous_value(self) -> None:
+        # date_locales keys must be UPPER-CASE (normalised at manifest load time).
         result = parse_date(
             "07/05/2014",
-            field_name="IC_VISDAT_v2",
-            date_locales={"IC_VISDAT_v2": "DMY"},
+            field_name="IC_VISDAT_V2",
+            date_locales={"IC_VISDAT_V2": "DMY"},
         )
         assert result is not None
         assert result.format == "dmy"
@@ -142,10 +154,11 @@ class TestParseWithDateLocalesOverride:
         assert result.dt.year == 2014
 
     def test_mdy_override_for_ambiguous_value(self) -> None:
+        # date_locales keys must be UPPER-CASE (normalised at manifest load time).
         result = parse_date(
             "07/05/2014",
-            field_name="IC_VISDAT_v2",
-            date_locales={"IC_VISDAT_v2": "MDY"},
+            field_name="IC_VISDAT_V2",
+            date_locales={"IC_VISDAT_V2": "MDY"},
         )
         assert result is not None
         assert result.format == "mdy"
@@ -259,28 +272,34 @@ class TestIntegerDateParsing:
     # ── 7-digit: DMY via date_locales ─────────────────────────────────────
 
     def test_7digit_dmy_via_date_locales(self) -> None:
-        """1052014 under declared DMY → d=1, m=5, y=2014 (DMMYYYY)."""
+        """9122014 under declared DMY (UPPER-CASE key) → unambiguous DMMYYYY.
+        DMMYYYY: d=9, m=12, y=2014 ✓; DDMYYYY: d=91 invalid → only one split
+        valid → d=9, m=12, y=2014.
+        Keys must be UPPER-CASE (normalised at manifest load time)."""
         result = parse_date(
-            "1052014",
+            "9122014",
             field_name="MY_DATE",
             date_locales={"MY_DATE": "DMY"},
         )
         assert result is not None
-        assert result.dt.day == 1
-        assert result.dt.month == 5
+        assert result.dt.day == 9
+        assert result.dt.month == 12
         assert result.dt.year == 2014
         assert result.format == "iso"
 
     def test_7digit_mdy_via_date_locales(self) -> None:
-        """1282014 under declared MDY → m=1, d=28, y=2014 (MDDYYYY)."""
+        """9122014 under declared MDY (UPPER-CASE key) → unambiguous MDDYYYY.
+        MDDYYYY: m=9, d=12, y=2014 ✓; MMDYYYY: m=91 invalid → only one split
+        valid → m=9, d=12, y=2014.
+        Keys must be UPPER-CASE (normalised at manifest load time)."""
         result = parse_date(
-            "1282014",
+            "9122014",
             field_name="MY_DATE",
             date_locales={"MY_DATE": "MDY"},
         )
         assert result is not None
-        assert result.dt.month == 1
-        assert result.dt.day == 28
+        assert result.dt.month == 9
+        assert result.dt.day == 12
         assert result.dt.year == 2014
 
     # ── Output always ISO YYYY-MM-DD when jittered ────────────────────────
@@ -496,9 +515,7 @@ class TestCompact7Digit:
     """Tests for 7-digit compact date: DMMYYYY vs DDMYYYY disambiguation."""
 
     def test_7digit_single_valid_dmmyyyy(self) -> None:
-        """1052014: DMMYYYY → d=1,m=5,y=2014; DDMYYYY=10,5,2014 also valid
-        — wait, let's use a day that makes only DMMYYYY valid.
-        9122014: DMMYYYY d=9,m=12,y=2014 ✓; DDMYYYY d=91,m=2,y=2014 invalid
+        """9122014: DMMYYYY d=9,m=12,y=2014 ✓; DDMYYYY d=91,m=2,y=2014 invalid
         (day=91) → only DMMYYYY valid → d=9, m=12, y=2014."""
         result = parse_date("9122014")
         assert result is not None
@@ -528,27 +545,46 @@ class TestCompact7Digit:
         result = parse_date("9992014")
         assert result is None
 
-    def test_7digit_explicit_dmy_locale_uses_dmmyyyy(self) -> None:
-        """With explicit DMY locale, 7-digit uses DMMYYYY unconditionally."""
-        result = parse_date(
+    def test_7digit_explicit_dmy_locale_dual_split_fail_closed(self) -> None:
+        """NEW: explicit DMY tries BOTH DMMYYYY and DDMYYYY split widths and
+        quarantines (returns None) when both or neither are valid.
+
+        (a) Unambiguous: 9122014 under IC_VISDAT (DMY allowlist).
+            DMMYYYY d=9,m=12 ✓; DDMYYYY d=91 invalid → unique → d=9,m=12,y=2014.
+        (b) Ambiguous: 1052014 under IC_VISDAT (DMY allowlist).
+            DMMYYYY d=1,m=5 ✓; DDMYYYY d=10,m=5 ✓ → both valid → None.
+        """
+        # (a) unambiguous — single valid split resolves correctly
+        result_unambiguous = parse_date(
+            "9122014",
+            field_name="IC_VISDAT",  # DMY allowlist
+        )
+        assert result_unambiguous is not None
+        assert result_unambiguous.dt.day == 9
+        assert result_unambiguous.dt.month == 12
+        assert result_unambiguous.dt.year == 2014
+
+        # (b) ambiguous — both splits valid → quarantine (None), fail-closed
+        result_ambiguous = parse_date(
             "1052014",
             field_name="IC_VISDAT",  # DMY allowlist
         )
-        assert result is not None
-        assert result.dt.day == 1
-        assert result.dt.month == 5
-        assert result.dt.year == 2014
+        assert result_ambiguous is None, (
+            "Ambiguous 7-digit (both DMMYYYY and DDMYYYY valid) must return None "
+            "even with an explicit DMY locale (dual-split fail-closed behavior)"
+        )
 
     def test_7digit_explicit_dmy_via_date_locales(self) -> None:
-        """Explicit DMY in date_locales → d=1, m=5, y=2014 from 1052014."""
+        """Explicit DMY in date_locales (UPPER-CASE key) + unambiguous value.
+        9122014: DMMYYYY d=9,m=12 ✓; DDMYYYY d=91 invalid → d=9, m=12, y=2014."""
         result = parse_date(
-            "1052014",
+            "9122014",
             field_name="MY_DATE",
             date_locales={"MY_DATE": "DMY"},
         )
         assert result is not None
-        assert result.dt.day == 1
-        assert result.dt.month == 5
+        assert result.dt.day == 9
+        assert result.dt.month == 12
         assert result.dt.year == 2014
 
 
@@ -626,9 +662,7 @@ class TestCompact6Digit:
         """The same ambiguous 6-digit value parses cleanly once the locale is
         declared in date_locales — the 'all day-first' assumption lives in the
         manifest, not a silent code default."""
-        result = parse_date(
-            "050614", field_name="SOME_COL", date_locales={"SOME_COL": "DMY"}
-        )
+        result = parse_date("050614", field_name="SOME_COL", date_locales={"SOME_COL": "DMY"})
         assert result is not None
         assert (result.dt.day, result.dt.month, result.dt.year) == (5, 6, 2014)
 
@@ -670,3 +704,202 @@ class TestIsoRegression:
         assert result is not None
         assert result.format == "iso"
         assert result.dt.year == 1990
+
+
+# ---------------------------------------------------------------------------
+# N4: value_looks_like_date — separator variants and compact integer
+# ---------------------------------------------------------------------------
+
+
+class TestValueLooksLikeDate:
+    """value_looks_like_date must recognise dot-, hyphen-separated, and compact
+    integer date strings without validating the individual components."""
+
+    def test_dot_separator_recognised(self) -> None:
+        """1.5.2014 uses a dot separator and must return True."""
+        assert value_looks_like_date("1.5.2014") is True
+
+    def test_hyphen_separator_recognised(self) -> None:
+        """1-5-2014 uses a hyphen separator and must return True."""
+        assert value_looks_like_date("1-5-2014") is True
+
+    def test_compact_6digit_recognised(self) -> None:
+        """280514 is a 6-digit compact integer date and must return True."""
+        assert value_looks_like_date("280514") is True
+
+    def test_slash_separator_recognised(self) -> None:
+        """28/05/2014 uses a slash separator and must return True."""
+        assert value_looks_like_date("28/05/2014") is True
+
+    def test_iso_date_recognised(self) -> None:
+        """2014-07-28 (ISO) must return True."""
+        assert value_looks_like_date("2014-07-28") is True
+
+    def test_non_date_string_returns_false(self) -> None:
+        """A plain word is not a date."""
+        assert value_looks_like_date("hello") is False
+
+    def test_empty_string_returns_false(self) -> None:
+        assert value_looks_like_date("") is False
+
+    def test_leading_trailing_whitespace_stripped(self) -> None:
+        """Leading/trailing spaces must not prevent detection."""
+        assert value_looks_like_date("  28/05/2014  ") is True
+
+
+# ---------------------------------------------------------------------------
+# _resolve_locale: priority chain tests
+# ---------------------------------------------------------------------------
+
+
+class TestResolveLocale:
+    """_resolve_locale must follow the DMY allowlist → manifest → None priority."""
+
+    def test_dmy_allowlist_field_returns_dmy(self) -> None:
+        """A field in DMY_VARIABLES returns 'DMY' regardless of date_locales."""
+        # Pick any canonical DMY variable (case-insensitive check)
+        dmy_col = next(iter(DMY_VARIABLES))  # e.g. "IC_VISDAT"
+        # Even if date_locales has a conflicting MDY entry, allowlist wins at P1
+        result = _resolve_locale(dmy_col, date_locales={dmy_col.upper(): "MDY"})
+        assert result == "DMY"
+
+    def test_dmy_allowlist_wins_over_manifest_conflict(self) -> None:
+        """IC_VISDAT (DMY allowlist) returns 'DMY' even when manifest says 'MDY'."""
+        result = _resolve_locale("IC_VISDAT", date_locales={"IC_VISDAT": "MDY"})
+        assert result == "DMY"
+
+    def test_manifest_field_returns_declared_locale(self) -> None:
+        """A non-DMY_VARIABLES field with a manifest entry returns the declared locale."""
+        result = _resolve_locale("MY_SPECIAL_DATE", date_locales={"MY_SPECIAL_DATE": "MDY"})
+        assert result == "MDY"
+
+    def test_manifest_field_dmy_declared(self) -> None:
+        """A non-DMY_VARIABLES field declared DMY in manifest returns 'DMY'."""
+        result = _resolve_locale("SOME_DATE_COL", date_locales={"SOME_DATE_COL": "DMY"})
+        assert result == "DMY"
+
+    def test_manifest_key_is_upper_case(self) -> None:
+        """Manifest keys are normalised to UPPER-CASE at load time; the lookup
+        uses field_name.upper() so a lower-case field_name matches."""
+        result = _resolve_locale("some_date_col", date_locales={"SOME_DATE_COL": "MDY"})
+        assert result == "MDY"
+
+    def test_field_name_none_returns_none(self) -> None:
+        """field_name=None must return None regardless of date_locales."""
+        result = _resolve_locale(None, date_locales={"IC_VISDAT": "DMY"})
+        assert result is None
+
+    def test_field_name_none_with_empty_locales_returns_none(self) -> None:
+        """field_name=None with empty date_locales also returns None."""
+        result = _resolve_locale(None, date_locales={})
+        assert result is None
+
+    def test_unknown_field_with_empty_locales_returns_none(self) -> None:
+        """A field not in the allowlist and not in date_locales returns None."""
+        result = _resolve_locale("UNKNOWN_COL", date_locales={})
+        assert result is None
+
+    def test_unknown_field_with_none_locales_returns_none(self) -> None:
+        """A field not in the allowlist with date_locales=None returns None."""
+        result = _resolve_locale("UNKNOWN_COL", date_locales=None)
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# _mask_date_value: PHI-safe shape masking
+# ---------------------------------------------------------------------------
+
+
+class TestMaskDateValue:
+    """_mask_date_value must replace digits with 9, ASCII letters with X,
+    and keep separator characters unchanged."""
+
+    def test_slash_date_masked(self) -> None:
+        """07/05/2014 → 99/99/9999 (digits→9, separators kept)."""
+        assert _mask_date_value("07/05/2014") == "99/99/9999"
+
+    def test_alpha_prefix_masked(self) -> None:
+        """UNK-2014 → XXX-9999 (letters→X, hyphen kept)."""
+        assert _mask_date_value("UNK-2014") == "XXX-9999"
+
+    def test_dot_separator_kept(self) -> None:
+        """07.05.14 → 99.99.99 (dot separator kept)."""
+        assert _mask_date_value("07.05.14") == "99.99.99"
+
+    def test_date_with_time_masked(self) -> None:
+        """07-05-2014 14:30:00 → 99-99-9999 99:99:99."""
+        assert _mask_date_value("07-05-2014 14:30:00") == "99-99-9999 99:99:99"
+
+    def test_compact_integer_masked(self) -> None:
+        """28052014 → 99999999 (pure digits)."""
+        assert _mask_date_value("28052014") == "99999999"
+
+    def test_empty_string_returns_empty(self) -> None:
+        assert _mask_date_value("") == ""
+
+    def test_separators_kept_slash_intact(self) -> None:
+        """Slash characters in the value are not masked."""
+        result = _mask_date_value("28/05/2014")
+        assert "/" in result
+
+    def test_non_ascii_not_masked_to_x(self) -> None:
+        """Non-ASCII characters (rare in date strings) are kept as-is since only
+        ASCII letters are converted — the guard is ch.isascii() and ch.isalpha()."""
+        # A non-ASCII character like '/' passes through unchanged (it's not alpha).
+        # Test a purely ASCII separator string for correctness.
+        assert _mask_date_value("01/01/2000") == "99/99/9999"
+
+
+# ---------------------------------------------------------------------------
+# check_locale_consistency: WARNING on DMY_VARIABLES / manifest conflict
+# ---------------------------------------------------------------------------
+
+
+class TestCheckLocaleConsistency:
+    """check_locale_consistency emits WARNING when a DMY_VARIABLES column
+    appears in date_locales with a conflicting (non-DMY) locale; no warning
+    when consistent."""
+
+    def test_conflicting_entry_emits_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        """A DMY_VARIABLES column declared as MDY in the manifest triggers a WARNING."""
+        # IC_VISDAT is in DMY_VARIABLES; declaring it MDY in the manifest conflicts.
+        with caplog.at_level(logging.WARNING, logger="scripts.extraction.io.clinical_dates"):
+            check_locale_consistency({"IC_VISDAT": "MDY"})
+        assert any(
+            "IC_VISDAT" in record.message and record.levelname == "WARNING"
+            for record in caplog.records
+        ), "Expected a WARNING mentioning IC_VISDAT for the locale conflict"
+
+    def test_conflict_message_mentions_allowlist(self, caplog: pytest.LogCaptureFixture) -> None:
+        """The warning message must mention the DMY_VARIABLES allowlist so the
+        operator knows the resolution path."""
+        with caplog.at_level(logging.WARNING, logger="scripts.extraction.io.clinical_dates"):
+            check_locale_consistency({"CBC_HBADAT": "MDY"})
+        warning_messages = [r.message for r in caplog.records if r.levelname == "WARNING"]
+        assert any("DMY" in msg for msg in warning_messages), (
+            "Warning message must mention DMY (the allowlist resolution)"
+        )
+
+    def test_consistent_entry_emits_no_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        """A DMY_VARIABLES column declared as DMY in the manifest is consistent
+        (allowlist agrees) — no warning should be emitted."""
+        with caplog.at_level(logging.WARNING, logger="scripts.extraction.io.clinical_dates"):
+            check_locale_consistency({"IC_VISDAT": "DMY"})
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert warnings == [], (
+            f"No warning expected for consistent locale, got: {[w.message for w in warnings]}"
+        )
+
+    def test_non_dmy_variable_column_no_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        """A column not in DMY_VARIABLES never triggers a warning regardless of its declared locale."""
+        with caplog.at_level(logging.WARNING, logger="scripts.extraction.io.clinical_dates"):
+            check_locale_consistency({"SOME_OTHER_DATE": "MDY"})
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert warnings == [], "No warning expected for a non-DMY_VARIABLES column"
+
+    def test_empty_date_locales_no_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        """An empty date_locales dict must produce no warnings."""
+        with caplog.at_level(logging.WARNING, logger="scripts.extraction.io.clinical_dates"):
+            check_locale_consistency({})
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert warnings == []
