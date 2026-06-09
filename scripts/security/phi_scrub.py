@@ -201,6 +201,10 @@ _VALID_POSTURES = frozenset({_POSTURE_SAFE_HARBOR, _POSTURE_LIMITED_DATASET})
 # Checked BEFORE the null-token lookup and shift_date call inside _scrub_row.
 _DATE_BLANK_RE = re.compile(r"^[\s/.\-:]*$")
 
+# Pre-compiled character-class patterns reused in _mask_date_shape.
+_DIGIT_RE = re.compile(r"\d")
+_ALPHA_RE = re.compile(r"[A-Za-z]")
+
 
 def _is_date_sentinel(value: object) -> bool:
     """True if a date value is an all-9s or all-0s *placeholder* (ignoring separators)
@@ -889,9 +893,9 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
     raw_null_tokens = raw.get("date_null_tokens")
     if raw_null_tokens is None:
         date_null_tokens = _DEFAULT_DATE_NULL_TOKENS
+    elif not isinstance(raw_null_tokens, list):
+        raise PHIScrubError("date_null_tokens must be a list of strings")
     else:
-        if not isinstance(raw_null_tokens, list):
-            raise PHIScrubError("date_null_tokens must be a list of strings")
         date_null_tokens = frozenset(str(t).strip().upper() for t in raw_null_tokens)
 
     return PHIScrubConfig(
@@ -1031,6 +1035,11 @@ def _format_date(dt: datetime, *, fmt: str, has_time: bool, ampm: str | None) ->
 
     Preserves ISO / M-D-Y / D-M-Y layout. Two-digit years are promoted to
     four-digit on output (minor, not a correctness concern).
+
+    OUTPUT CONTRACT (PS13): non-ISO dates are emitted as slash-separated,
+    non-zero-padded integers (e.g. ``5/3/2014``, not ``05/03/2014``).  The
+    row-level PHI redactor regex in phi_patterns.py must match this shape —
+    a separate agent owns that side of the contract.
     """
     if fmt == "iso":
         if has_time:
@@ -1271,6 +1280,39 @@ def _apply_field_only_rules(row: dict[str, Any], *, cfg: PHIScrubConfig) -> dict
     return counts
 
 
+def _quarantine_or_raise(
+    rows: list[dict[str, Any]],
+    filename: Path,
+    error_class: type[PHIScrubError],
+    msg: str,
+    *,
+    quarantine_dir: Path,
+    cfg: PHIScrubConfig,
+    partial_on_review: bool,
+) -> None:
+    """Partial-scrub, write, and optionally raise for a batch of quarantine rows.
+
+    PS11-simplify6: Consolidates the three near-identical quarantine blocks
+    (generalize, band, date) into a single helper:
+      1. mkdir + assert_write_zone for the quarantine directory.
+      2. Apply _apply_field_only_rules (drop_fields + birthdate) to each row
+         in-place BEFORE the quarantine write — identical to the original order.
+      3. Atomically write the scrubbed rows to ``quarantine_dir / filename``.
+      4. Raise ``error_class(msg)`` in strict mode (not partial_on_review).
+         In partial mode the rows are silently held in quarantine; the caller
+         records them in its per-form tally as usual.
+
+    Behavior is identical to the three inlined blocks it replaces.
+    """
+    quarantine_dir.mkdir(parents=True, exist_ok=True)
+    assert_write_zone(quarantine_dir)
+    for _row in rows:
+        _apply_field_only_rules(_row, cfg=cfg)  # strip names/birthdate before write
+    atomic_write_jsonl(quarantine_dir / filename.name, rows)
+    if not partial_on_review:
+        raise error_class(msg)
+
+
 def _resolve_subject_id(
     row: dict[str, Any],
     candidates: tuple[str, ...],
@@ -1320,7 +1362,7 @@ def _mask_date_shape(value: str) -> str:
     """Digit/letter-masked shape of a value for PHI-safe diagnostics:
     every digit -> '9', every ASCII letter -> 'X', separators kept.
     e.g. '15-03-2014' -> '99-99-9999', 'UNK' -> 'XXX'. Never reveals the value."""
-    return re.sub(r"[A-Za-z]", "X", re.sub(r"\d", "9", str(value)))
+    return _ALPHA_RE.sub("X", _DIGIT_RE.sub("9", str(value)))
 
 
 def _scrub_row(
@@ -1459,16 +1501,22 @@ def _scrub_row(
         # Mirrors band (5b) / generalize (5).
         # Exception: recognized missing-data sentinels (date_null_tokens) are left
         # as-is (skipped) rather than quarantined — they are not real dates.
+        is_birthdate_field = cfg.field_is_birthdate(field)
         if cfg.field_is_date(field) or (
-            cfg.field_is_birthdate(field) and cfg.compliance_posture == _POSTURE_LIMITED_DATASET
+            is_birthdate_field and cfg.compliance_posture == _POSTURE_LIMITED_DATASET
         ):
             raw_val = row[field]
             if raw_val is None or (isinstance(raw_val, str) and not raw_val.strip()):
                 continue
             # Separator/whitespace-only values (e.g. '/  /', '//', '. .') are
             # missing dates — skip jitter rather than fail-closing.
+            # PS7: count blank-separator dates in audit report same as other null tokens.
             if isinstance(raw_val, str) and _DATE_BLANK_RE.match(raw_val):
+                _bump("date_null_token", field)
                 continue
+            # PS-L3: _is_date_sentinel also catches integer-typed sentinels (e.g. bare int
+            # 99999999) and separator-form sentinels (9999-99-99) that bypass the string-only
+            # is_date_null_token() lookup.
             if cfg.is_date_null_token(raw_val) or _is_date_sentinel(raw_val):
                 _bump("date_null_token", field)
                 continue
@@ -1477,6 +1525,10 @@ def _scrub_row(
                     str(raw_val), offset, field_name=field, date_locales=date_locales
                 )
             except ValueError:
+                shifted = None
+            # PS-simplify5: single trailing quarantine-return covering both the
+            # ValueError branch and the shift_date→None branch.
+            if shifted is None:
                 logger.warning(
                     "date-unshiftable field=%s shape=%s (declare a date_null_tokens "
                     "entry if this is a missing-data placeholder)",
@@ -1484,17 +1536,18 @@ def _scrub_row(
                     _mask_date_shape(str(raw_val)),
                 )
                 return None, {f"phi-scrub-date-quarantine:{field}": 1}
-            if shifted is not None:
-                row[field] = shifted
-                _bump("date", field)
-                continue
-            logger.warning(
-                "date-unshiftable field=%s shape=%s (declare a date_null_tokens "
-                "entry if this is a missing-data placeholder)",
-                field,
-                _mask_date_shape(str(raw_val)),
-            )
-            return None, {f"phi-scrub-date-quarantine:{field}": 1}
+            # Birthdate fields under limited_dataset fall through to the SAME per-subject
+            # SANT offset as every other date — deliberately NOT clamped to force birth-year
+            # preservation. Clamping the DOB to its original calendar year would give it a
+            # different effective offset than the subject's other dates, breaking interval /
+            # age-at-event preservation (the very property limited_dataset exists to provide;
+            # see test_age_at_event_preserved_in_limited_dataset). Birth *year* is preserved
+            # statistically because the offset (±max_jitter_days, default 30) is far smaller
+            # than a year, so it almost never crosses a year boundary — a probabilistic
+            # guarantee, not a hard clamp. (Considered and rejected: GAP-4 year-clamp.)
+            row[field] = shifted
+            _bump("date", field)
+            continue
 
         # 8. ID — HMAC-SHA256 pseudonymize with domain-separated label
         id_label = cfg.id_label_for(field)
@@ -1952,10 +2005,30 @@ def run_scrub(
     cfg = load_scrub_config()
     if cfg is None:
         # Missing scrub config = no rule application = raw PHI flows to
-        # ``llm_source/``. That is unsafe for any production run; require
-        # an explicit opt-in env var to acknowledge the risk in dev/test.
-        if config.production_mode_enabled():
-            raise PHIScrubError("REPORTALIN_ALLOW_DISABLED_SCRUB is forbidden in production mode.")
+        # ``llm_source/``. That is unsafe for any run against real study data.
+        #
+        # GAP-5 (AUTOMATED FULL-SECURE): Disabled scrub is refused on real study
+        # data, regardless of any operator/attacker env flag. The floor holds by
+        # default — no operator flag required to activate it. The ONLY relaxation is
+        # automatic test-context detection (is_test_context() == "pytest" loaded),
+        # which no pipeline entry point can satisfy, so it cannot be spoofed from the
+        # environment. Defense-in-depth: production_mode_enabled() ALSO forces the
+        # raise even inside a detected test context, so the production flag can never
+        # be overridden by a test signal.
+        #
+        # Legacy flow: when REPORTALIN_ALLOW_DISABLED_SCRUB=1 IS set AND we are in a
+        # genuine (pytest) test context AND not production mode, the disabled-mode path
+        # runs (no-op audit, no rule application). Anywhere else the env var has no
+        # effect — the floor cannot be lowered.
+        if config.production_mode_enabled() or not config.is_test_context():
+            raise PHIScrubError(
+                "phi_scrub: config not found at "
+                f"{config.PHI_SCRUB_CONFIG_PATH}. Refusing to publish without "
+                "rule application — raw PHI would flow through unredacted. "
+                "Provision the YAML to enable scrubbing. "
+                "(REPORTALIN_ALLOW_DISABLED_SCRUB is ignored on real study data.)"
+            )
+        # In a test context: allow the explicit opt-in env var to pass through.
         allow_disabled = os.environ.get("REPORTALIN_ALLOW_DISABLED_SCRUB", "").strip().lower() in (
             "1",
             "true",
@@ -2114,57 +2187,49 @@ def run_scrub(
                 )
 
         if generalize_failed:
-            quarantine_dir.mkdir(parents=True, exist_ok=True)
-            assert_write_zone(quarantine_dir)
-            for _gf in generalize_failed:
-                _apply_field_only_rules(
-                    _gf, cfg=cfg
-                )  # strip names/birthdate before quarantine write
-            atomic_write_jsonl(
-                quarantine_dir / f"generalize_unmapped_{jsonl_file.name}", generalize_failed
+            _quarantine_or_raise(
+                generalize_failed,
+                Path(f"generalize_unmapped_{jsonl_file.name}"),
+                PHIGeneralizeUnmappedError,
+                f"{jsonl_file.name}: {len(generalize_failed)} row(s) hold values not covered "
+                f"by the configured generalization map for their field. generalize is "
+                f"fail-closed — curate the generalize map in phi_scrub.yaml to cover every "
+                f"valid value before these fields can be emitted. Quarantined rows: "
+                f"quarantine/generalize_unmapped_{jsonl_file.name}.",
+                quarantine_dir=quarantine_dir,
+                cfg=cfg,
+                partial_on_review=partial_on_review,
             )
-            if not partial_on_review:
-                raise PHIGeneralizeUnmappedError(
-                    f"{jsonl_file.name}: {len(generalize_failed)} row(s) hold values not covered "
-                    f"by the configured generalization map for their field. generalize is "
-                    f"fail-closed — curate the generalize map in phi_scrub.yaml to cover every "
-                    f"valid value before these fields can be emitted. Quarantined rows: "
-                    f"quarantine/generalize_unmapped_{jsonl_file.name}."
-                )
 
         if band_failed:
-            quarantine_dir.mkdir(parents=True, exist_ok=True)
-            assert_write_zone(quarantine_dir)
-            for _bf in band_failed:
-                _apply_field_only_rules(
-                    _bf, cfg=cfg
-                )  # strip names/birthdate before quarantine write
-            atomic_write_jsonl(quarantine_dir / f"band_unmapped_{jsonl_file.name}", band_failed)
-            if not partial_on_review:
-                raise PHIBandUnmappedError(
-                    f"{jsonl_file.name}: {len(band_failed)} row(s) hold socioeconomic "
-                    f"values not coverable by the configured band_maps/band_ranges. The "
-                    f"band scaffold is fail-closed — fill the deferred TEMPLATE values in "
-                    f"phi_scrub.yaml before these fields can be emitted. Quarantined rows: "
-                    f"quarantine/band_unmapped_{jsonl_file.name}."
-                )
+            _quarantine_or_raise(
+                band_failed,
+                Path(f"band_unmapped_{jsonl_file.name}"),
+                PHIBandUnmappedError,
+                f"{jsonl_file.name}: {len(band_failed)} row(s) hold socioeconomic "
+                f"values not coverable by the configured band_maps/band_ranges. The "
+                f"band scaffold is fail-closed — fill the deferred TEMPLATE values in "
+                f"phi_scrub.yaml before these fields can be emitted. Quarantined rows: "
+                f"quarantine/band_unmapped_{jsonl_file.name}.",
+                quarantine_dir=quarantine_dir,
+                cfg=cfg,
+                partial_on_review=partial_on_review,
+            )
 
         if date_failed:
-            quarantine_dir.mkdir(parents=True, exist_ok=True)
-            assert_write_zone(quarantine_dir)
-            for _df in date_failed:
-                _apply_field_only_rules(
-                    _df, cfg=cfg
-                )  # strip names/birthdate before quarantine write
-            atomic_write_jsonl(quarantine_dir / f"date_unshiftable_{jsonl_file.name}", date_failed)
-            if not partial_on_review:
-                raise PHIDateUnshiftableError(
-                    f"{jsonl_file.name}: {len(date_failed)} row(s) hold date values that cannot be "
-                    f"safely jittered (unparseable, or an ambiguous slash-date with no date_locales "
-                    f"entry). Date jitter is fail-closed — fix the source value or add a date_locales "
-                    f"entry in the study's _forms_manifest.yaml before these fields can be emitted. "
-                    f"Quarantined rows: quarantine/date_unshiftable_{jsonl_file.name}."
-                )
+            _quarantine_or_raise(
+                date_failed,
+                Path(f"date_unshiftable_{jsonl_file.name}"),
+                PHIDateUnshiftableError,
+                f"{jsonl_file.name}: {len(date_failed)} row(s) hold date values that cannot be "
+                f"safely jittered (unparseable, or an ambiguous slash-date with no date_locales "
+                f"entry). Date jitter is fail-closed — fix the source value or add a date_locales "
+                f"entry in the study's _forms_manifest.yaml before these fields can be emitted. "
+                f"Quarantined rows: quarantine/date_unshiftable_{jsonl_file.name}.",
+                quarantine_dir=quarantine_dir,
+                cfg=cfg,
+                partial_on_review=partial_on_review,
+            )
 
         # Partial-publish mode: publish the form's correctly-scrubbed rows (``kept``)
         # and HOLD every un-scrubbable / un-jitterable / orphan row in the no-LLM
@@ -2185,8 +2250,12 @@ def run_scrub(
         review_q = len(date_failed) + len(band_failed) + len(generalize_failed)
         held_count = len(orphans) + review_q
         if partial_on_review and held_count:
-            total_rows = len(kept) + held_count
-            held_frac = held_count / max(total_rows, 1)
+            # PS3-M3: The held-fraction denominator counts only the reviewable-quarantine
+            # rows (date/band/generalize failures), not orphans.  Orphans are governed by
+            # their own orphan_quarantine_threshold guard; mixing them into the fraction
+            # denominator inflated the total and could mask a high review-quarantine rate.
+            total_for_frac = len(kept) + review_q
+            held_frac = review_q / max(total_for_frac, 1)
             elevated = (
                 len(orphans) > cfg.orphan_quarantine_threshold
                 or held_frac > cfg.partial_max_quarantine_fraction
@@ -2260,6 +2329,7 @@ def run_scrub(
     if run_id is not None and runs_dir is not None:
         outcome_path = runs_dir / run_id / "scrub_outcome.json"
         outcome_path.parent.mkdir(parents=True, exist_ok=True)
+        assert_write_zone(outcome_path.parent)  # N1: consistent with every other write site
         atomic_write_json(
             outcome_path,
             {

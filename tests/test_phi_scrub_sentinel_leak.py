@@ -6,6 +6,7 @@
 PHI leak (a date more specific than year). The fix: an all-9/all-0 value is a
 sentinel ONLY when it does not parse as a real date.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -17,9 +18,9 @@ class TestAll9SentinelDoesNotSwallowRealDates:
     @pytest.mark.parametrize(
         "value",
         [
-            "9/9/99",   # 1999-09-09, digits "9999" — the leak case
-            "9-9-99",   # same date, hyphen separator
-            "9.9.99",   # same date, dot separator
+            "9/9/99",  # 1999-09-09, digits "9999" — the leak case
+            "9-9-99",  # same date, hyphen separator
+            "9.9.99",  # same date, dot separator
             "09/09/99",  # has 0s, plainly a real date
             "2014-07-28",
             "28072014",  # compact DDMMYYYY
@@ -33,13 +34,13 @@ class TestAll9SentinelDoesNotSwallowRealDates:
     @pytest.mark.parametrize(
         "value",
         [
-            "99999999",   # 8-digit unknown-date sentinel
+            "99999999",  # 8-digit unknown-date sentinel
             "9999-99-99",  # ISO-shaped sentinel
-            "999999",     # 6-digit sentinel
-            "9",          # bare-9 sentinel
-            "0",          # zero placeholder
-            "00000000",   # zero-date sentinel
-            99999999,     # integer form (bypasses string token list)
+            "999999",  # 6-digit sentinel
+            "9",  # bare-9 sentinel
+            "0",  # zero placeholder
+            "00000000",  # zero-date sentinel
+            99999999,  # integer form (bypasses string token list)
             0,
         ],
     )

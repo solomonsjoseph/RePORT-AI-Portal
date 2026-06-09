@@ -43,24 +43,6 @@ def alt_key_bytes() -> bytes:
     return bytes.fromhex("ff" * 32)
 
 
-@pytest.fixture()
-def sidecar_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Write a valid 64-hex-char key file with 0600 and monkeypatch PHI_KEY_PATH."""
-    key_path = tmp_path / "phi_key"
-    key_path.write_text(secrets.token_hex(32), encoding="utf-8")
-    key_path.chmod(0o600)
-    monkeypatch.setattr(config, "PHI_KEY_PATH", key_path)
-    return key_path
-
-
-@pytest.fixture()
-def scrub_config_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Point PHI_SCRUB_CONFIG_PATH at a fresh tmp_path file (absent by default)."""
-    cfg_path = tmp_path / "phi_scrub.yaml"
-    monkeypatch.setattr(config, "PHI_SCRUB_CONFIG_PATH", cfg_path)
-    return cfg_path
-
-
 def _write_config(path: Path, **overrides: object) -> None:
     payload: dict[str, object] = {
         "compliance_posture": "safe_harbor",
@@ -192,24 +174,24 @@ class TestShiftDate:
     def test_ambiguous_with_date_locales_dmy_no_raise(self) -> None:
         # Regression: ambiguous date (both components ≤ 12) with a matching
         # date_locales entry must parse and shift without raising ValueError.
-        # Without threading date_locales through shift_date → parse_date,
-        # this would raise ValueError aborting scrub mid-record.
+        # date_locales keys must be UPPER-CASE (normalised at manifest load time).
         result = phi_scrub.shift_date(
             "07/05/2014",
             1,
-            field_name="IC_VISDAT_v2",
-            date_locales={"IC_VISDAT_v2": "DMY"},
+            field_name="IC_VISDAT_V2",
+            date_locales={"IC_VISDAT_V2": "DMY"},
         )
         # DMY: day=7, month=5 → 2014-05-07 + 1 day = 2014-05-08 → "8/5/2014"
         assert result is not None
         assert result == "8/5/2014"
 
     def test_ambiguous_with_date_locales_mdy_no_raise(self) -> None:
+        # date_locales keys must be UPPER-CASE (normalised at manifest load time).
         result = phi_scrub.shift_date(
             "07/05/2014",
             1,
-            field_name="IC_VISDAT_v2",
-            date_locales={"IC_VISDAT_v2": "MDY"},
+            field_name="IC_VISDAT_V2",
+            date_locales={"IC_VISDAT_V2": "MDY"},
         )
         # MDY: month=7, day=5 → 2014-07-05 + 1 day = 2014-07-06 → "7/6/2014"
         assert result is not None
@@ -380,6 +362,56 @@ class TestLoadScrubConfig:
         # exclude birthdate so posture logic routes correctly.
         assert cfg.field_is_date("DOB") is False
         assert cfg.field_is_birthdate("DOB") is True
+
+    def test_non_list_date_null_tokens_raises(self, scrub_config_path: Path) -> None:
+        """L4: a date_null_tokens value that is not a list must raise PHIScrubError.
+
+        The key is optional in the YAML; when present it MUST be a list of strings.
+        A non-list value (e.g. a bare string) is a misconfiguration that must
+        fail-closed rather than silently falling back to the default token set.
+        """
+        import yaml
+
+        # Write a config with date_null_tokens set to a plain string (invalid).
+        payload: dict[str, object] = {
+            "compliance_posture": "safe_harbor",
+            "subject_id_field": "SUBJID",
+            "date_fields": ["^VISDAT$"],
+            "id_fields": [{"pattern": "^SUBJID$", "label": "SUBJ"}],
+            "max_jitter_days": 30,
+            "date_null_tokens": "not-a-list",  # must be a list
+        }
+        scrub_config_path.write_text(yaml.safe_dump(payload), encoding="utf-8")
+
+        with pytest.raises(phi_scrub.PHIScrubError):
+            phi_scrub.load_scrub_config()
+
+    def test_non_list_date_null_tokens_dict_raises(self, scrub_config_path: Path) -> None:
+        """L4 variant: a dict value for date_null_tokens also raises PHIScrubError."""
+        import yaml
+
+        payload: dict[str, object] = {
+            "compliance_posture": "safe_harbor",
+            "subject_id_field": "SUBJID",
+            "date_fields": ["^VISDAT$"],
+            "id_fields": [{"pattern": "^SUBJID$", "label": "SUBJ"}],
+            "max_jitter_days": 30,
+            "date_null_tokens": {"UNK": True},  # dict, not a list
+        }
+        scrub_config_path.write_text(yaml.safe_dump(payload), encoding="utf-8")
+
+        with pytest.raises(phi_scrub.PHIScrubError):
+            phi_scrub.load_scrub_config()
+
+    def test_null_date_null_tokens_uses_default(self, scrub_config_path: Path) -> None:
+        """L4 complement: absent key falls back to the module default (no raise)."""
+        # _write_config does not include date_null_tokens → key is absent
+        _write_config(scrub_config_path)
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        # Default set includes "UNK" — verify fallback is active
+        assert cfg.is_date_null_token("UNK")
+        assert cfg.is_date_null_token("NA")
 
 
 # ── run_scrub end-to-end ────────────────────────────────────────────────────
@@ -2362,16 +2394,21 @@ class TestProductionBypassGuard:
         scrub_config_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Acceptance A: prod mode ON + env var set → PHIScrubError; bypass never runs."""
+        """GAP-5: disabled-scrub refusal is now an UNCONDITIONAL floor on real
+        study data. When config.is_test_context() is False (production / non-test
+        context), run_scrub raises PHIScrubError with the new message regardless of
+        REPORTALIN_ALLOW_DISABLED_SCRUB. Under pytest is_test_context() is True by
+        default, so we monkeypatch it to False to exercise the production floor."""
         monkeypatch.setenv("REPORTALIN_ALLOW_DISABLED_SCRUB", "1")
-        monkeypatch.setattr(config, "production_mode_enabled", lambda: True)
+        # Override is_test_context() so the code sees a non-test (production) context.
+        monkeypatch.setattr(config, "is_test_context", lambda: False)
 
         rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
         _seed_staging(monkeypatch_config, rows)
 
         with pytest.raises(
             phi_scrub.PHIScrubError,
-            match="REPORTALIN_ALLOW_DISABLED_SCRUB is forbidden in production mode",
+            match="REPORTALIN_ALLOW_DISABLED_SCRUB is ignored on real study data",
         ):
             phi_scrub.run_scrub(study_name="TEST")
 
@@ -2400,6 +2437,42 @@ class TestProductionBypassGuard:
             for record in caplog.records
             if record.levelno >= logging.WARNING
         ), "Expected a WARNING mentioning REPORTALIN_ALLOW_DISABLED_SCRUB"
+
+    def test_production_mode_forces_raise_even_in_test_context(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """GAP-5 defense-in-depth: production_mode_enabled() forces the disabled-scrub
+        floor to raise EVEN inside a detected test context (is_test_context True) and
+        even with REPORTALIN_ALLOW_DISABLED_SCRUB=1. The production flag can never be
+        overridden by a test-context signal."""
+        monkeypatch.setenv("REPORTALIN_ALLOW_DISABLED_SCRUB", "1")
+        monkeypatch.setattr(config, "production_mode_enabled", lambda: True)
+        # Leave is_test_context() at its real pytest value (True) — the production
+        # flag must still force the raise via the OR clause.
+        assert config.is_test_context() is True
+
+        rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+
+        with pytest.raises(phi_scrub.PHIScrubError):
+            phi_scrub.run_scrub(study_name="TEST")
+
+    def test_is_test_context_ignores_env_signals(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """GAP-5: is_test_context() must depend ONLY on `"pytest" in sys.modules`,
+        never on operator/attacker-settable env vars. With pytest removed from
+        sys.modules, REPORTAL_TEST_FAKE_LLM=1 and PYTEST_CURRENT_TEST set must NOT
+        make it return True — otherwise a production operator could lower the
+        disabled-scrub floor by setting the fake-LLM smoke flag."""
+        import sys
+
+        monkeypatch.setenv("REPORTAL_TEST_FAKE_LLM", "1")
+        monkeypatch.setenv("PYTEST_CURRENT_TEST", "tests/foo.py::bar (call)")
+        monkeypatch.delitem(sys.modules, "pytest", raising=False)
+        assert config.is_test_context() is False
 
 
 # ── In-progress token (P1.2) ─────────────────────────────────────────────────

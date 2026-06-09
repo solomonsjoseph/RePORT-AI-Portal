@@ -17,7 +17,6 @@ Also covers the default (partial_on_review=False) contract:
 from __future__ import annotations
 
 import json
-import secrets
 from pathlib import Path
 from typing import Any
 
@@ -27,26 +26,7 @@ import yaml
 import config
 from scripts.security import phi_scrub
 
-
-# ── Fixtures ─────────────────────────────────────────────────────────────────
-
-
-@pytest.fixture()
-def sidecar_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Valid 64-hex-char key at 0600 mode; config.PHI_KEY_PATH redirected."""
-    key_path = tmp_path / "phi_key"
-    key_path.write_text(secrets.token_hex(32), encoding="utf-8")
-    key_path.chmod(0o600)
-    monkeypatch.setattr(config, "PHI_KEY_PATH", key_path)
-    return key_path
-
-
-@pytest.fixture()
-def scrub_config_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Redirect PHI_SCRUB_CONFIG_PATH to an absent tmp file (tests write it)."""
-    cfg_path = tmp_path / "phi_scrub.yaml"
-    monkeypatch.setattr(config, "PHI_SCRUB_CONFIG_PATH", cfg_path)
-    return cfg_path
+# ── Fixtures (sidecar_key and scrub_config_path live in conftest.py) ─────────
 
 
 def _write_config(path: Path, **overrides: object) -> None:
@@ -274,9 +254,7 @@ class TestSI2CleanRowMarked:
         published = [json.loads(ln) for ln in staging_file.read_text().splitlines() if ln.strip()]
         assert len(published) == 1
         subj = published[0].get("SUBJID", "")
-        assert subj.startswith("RID_SUBJ_"), (
-            f"Kept row SUBJID must be pseudonymized; got: {subj!r}"
-        )
+        assert subj.startswith("RID_SUBJ_"), f"Kept row SUBJID must be pseudonymized; got: {subj!r}"
 
 
 # ── Security invariant SI-3: two-form mix ─────────────────────────────────────
@@ -360,9 +338,9 @@ class TestSI3TwoFormMix:
 
         _seed_staging(
             [
-                {"SUBJID": "S1", "VISDAT": GOOD_DATE},   # kept
-                {"SUBJID": "S2", "VISDAT": BAD_DATE},    # quarantined
-                {"SUBJID": "S3", "VISDAT": BAD_DATE},    # quarantined
+                {"SUBJID": "S1", "VISDAT": GOOD_DATE},  # kept
+                {"SUBJID": "S2", "VISDAT": BAD_DATE},  # quarantined
+                {"SUBJID": "S3", "VISDAT": BAD_DATE},  # quarantined
             ],
             filename="1A_Form.jsonl",
         )
@@ -428,9 +406,7 @@ class TestSI3TwoFormMix:
         assert row.get("_phi_scrubbed") == "v3"
         # SI-1: BAD_DATE not anywhere in published row values
         for v in row.values():
-            assert BAD_DATE not in str(v), (
-                f"BAD_DATE leaked into published row field value: {row}"
-            )
+            assert BAD_DATE not in str(v), f"BAD_DATE leaked into published row field value: {row}"
 
 
 # ── Security invariant SI-4: all-clean run writes partial=false ────────────────
@@ -517,9 +493,11 @@ class TestSI4AllCleanPartialFalse:
         phi_scrub.run_scrub(study_name="TEST", partial_on_review=True)
 
         # No stray outcome files under tmp
-        stray = list((tmp_path / "runs").glob("**/scrub_outcome.json")) if (
-            tmp_path / "runs"
-        ).exists() else []
+        stray = (
+            list((tmp_path / "runs").glob("**/scrub_outcome.json"))
+            if (tmp_path / "runs").exists()
+            else []
+        )
         assert not stray, f"Unexpected scrub_outcome.json written with no run_id: {stray}"
 
 
@@ -587,4 +565,187 @@ class TestOutcomeSidecarIntegrity:
         # BAD_DATE is the unparseable raw value — must also not appear
         assert BAD_DATE not in sidecar_text, (
             f"Unparseable raw date {BAD_DATE!r} leaked into scrub_outcome.json"
+        )
+
+
+# ── M2: partial-mode ledger contains NO quarantine actions ────────────────────
+
+
+class TestM2LedgerNoQuarantineActions:
+    """M2 (SECURITY INVARIANT): the as-written PHI ledger for a partially-published
+    form must contain NO event whose action contains the substring 'quarantine'.
+
+    This locks the _SCOPE_TO_ACTION omission: quarantine scopes are deliberately
+    absent from the mapping so quarantined rows (never published) never generate
+    PHI ledger entries for the published dataset.
+    """
+
+    def test_partial_ledger_has_no_quarantine_action(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        tmp_path: Path,
+    ) -> None:
+        """After a partial-mode run with one quarantined row, the per-dataset
+        phi_handling_ledger.as_written.json must have zero events whose
+        ``action`` field contains the substring 'quarantine'.
+        """
+        import config
+        from scripts.audit.ledger import dataset_phi_ledger_path
+
+        _write_config(scrub_config_path)
+
+        # Two rows: one publishable, one with an unparseable date that will be quarantined.
+        _seed_staging(
+            [
+                {"SUBJID": "S1", "VISDAT": GOOD_DATE},  # kept + published
+                {"SUBJID": "S2", "VISDAT": BAD_DATE},  # quarantined
+            ],
+            filename="1A_Form.jsonl",
+        )
+        runs_dir = _make_runs_dir(tmp_path, "runM2")
+
+        phi_scrub.run_scrub(
+            study_name="TEST",
+            run_id="runM2",
+            runs_dir=runs_dir,
+            partial_on_review=True,
+        )
+
+        # Locate the per-dataset ledger
+        audit_dir = Path(config.AUDIT_SCRUB_REPORT_PATH).parent
+        ledger_path = dataset_phi_ledger_path(audit_dir, "1A_Form.jsonl")
+        assert ledger_path.is_file(), (
+            "phi_handling_ledger.as_written.json must exist after partial-mode run"
+        )
+
+        payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+
+        # Security invariant: no event action must contain 'quarantine'
+        quarantine_events = [
+            ev for ev in payload.get("events", []) if "quarantine" in str(ev.get("action", ""))
+        ]
+        assert not quarantine_events, (
+            f"Ledger must contain no quarantine-action events; found: {quarantine_events}"
+        )
+
+    def test_partial_ledger_kept_row_actions_are_valid_phi_actions(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        tmp_path: Path,
+    ) -> None:
+        """All actions in the ledger must be recognised PHI handling actions —
+        none should be a quarantine-scope action or any other unknown action.
+        Valid actions (from ledger._PHI_ACTIONS): drop, pseudonymize, jitter_date,
+        generalize, suppress_small_cell, cap, birthdate_drop, band.
+        """
+        import config
+        from scripts.audit.ledger import dataset_phi_ledger_path
+
+        _write_config(scrub_config_path)
+
+        _seed_staging(
+            [
+                {"SUBJID": "S1", "VISDAT": GOOD_DATE},
+                {"SUBJID": "S2", "VISDAT": BAD_DATE},
+            ],
+            filename="1A_Form.jsonl",
+        )
+        runs_dir = _make_runs_dir(tmp_path, "runM2b")
+
+        phi_scrub.run_scrub(
+            study_name="TEST",
+            run_id="runM2b",
+            runs_dir=runs_dir,
+            partial_on_review=True,
+        )
+
+        audit_dir = Path(config.AUDIT_SCRUB_REPORT_PATH).parent
+        ledger_path = dataset_phi_ledger_path(audit_dir, "1A_Form.jsonl")
+        payload = json.loads(ledger_path.read_text(encoding="utf-8"))
+
+        valid_actions = frozenset(
+            {
+                "drop",
+                "pseudonymize",
+                "jitter_date",
+                "generalize",
+                "suppress_small_cell",
+                "cap",
+                "birthdate_drop",
+                "band",
+            }
+        )
+        for ev in payload.get("events", []):
+            action = ev.get("action", "")
+            assert action in valid_actions, (
+                f"Event action {action!r} is not a valid PHI action; event: {ev}"
+            )
+
+
+# ── M4: strict mode — PHIDateUnshiftableError + JSONL byte-unchanged ──────────
+
+
+class TestM4StrictModeByteUnchanged:
+    """M4 (SECURITY INVARIANT): in strict mode (partial_on_review=False), a
+    date-unshiftable row must (a) raise PHIDateUnshiftableError, and (b) leave
+    the staging JSONL byte-for-byte unchanged.
+
+    The byte-equality assertion proves no partial rewrite happened on a strict abort.
+    """
+
+    def test_strict_mode_raises_and_jsonl_unchanged(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Strict default: bad date raises PHIDateUnshiftableError; JSONL is untouched."""
+        _write_config(scrub_config_path)
+
+        staging_file = _seed_staging(
+            [
+                {"SUBJID": "S1", "VISDAT": GOOD_DATE},
+                {"SUBJID": "S2", "VISDAT": BAD_DATE},
+            ],
+            filename="1A_Form.jsonl",
+        )
+
+        # Capture bytes BEFORE the attempted scrub
+        before_bytes = staging_file.read_bytes()
+
+        with pytest.raises(phi_scrub.PHIDateUnshiftableError):
+            phi_scrub.run_scrub(study_name="TEST")  # partial_on_review defaults to False
+
+        # Capture bytes AFTER the (aborted) scrub
+        after_bytes = staging_file.read_bytes()
+
+        assert before_bytes == after_bytes, (
+            "Strict-mode abort must leave the staging JSONL byte-for-byte unchanged; "
+            f"before={len(before_bytes)} bytes, after={len(after_bytes)} bytes"
+        )
+
+    def test_strict_mode_no_partial_write_single_bad_row(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Even when the bad row is the only row, strict mode must not rewrite the file."""
+        _write_config(scrub_config_path)
+
+        staging_file = _seed_staging(
+            [{"SUBJID": "S1", "VISDAT": BAD_DATE}],
+            filename="1A_Form.jsonl",
+        )
+        before_bytes = staging_file.read_bytes()
+
+        with pytest.raises(phi_scrub.PHIDateUnshiftableError):
+            phi_scrub.run_scrub(study_name="TEST")
+
+        assert staging_file.read_bytes() == before_bytes, (
+            "Strict-mode abort on a single-row file must not rewrite the JSONL"
         )

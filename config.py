@@ -64,6 +64,27 @@ def production_mode_enabled() -> bool:
     )
 
 
+def is_test_context() -> bool:
+    """Return True ONLY when this process is genuinely running under pytest.
+
+    Used by security-floor code (the disabled-scrub refusal in phi_scrub.run_scrub)
+    to relax a control that would otherwise block deliberate test-only paths.
+
+    SECURITY: the sole signal is ``"pytest" in sys.modules`` — a fact about the
+    running interpreter that no pipeline entry point (``main.py --pipeline``, the
+    skill wrapper, the SoT CLIs) ever satisfies, because none of them import
+    pytest.  We deliberately do NOT consult operator/attacker-settable environment
+    variables (``REPORTAL_TEST_FAKE_LLM``, ``PYTEST_CURRENT_TEST``): those are
+    ordinary runtime flags (the fake-LLM smoke mode sets the former), so trusting
+    them here would let a production operator who happens to have one set lower a
+    raw-PHI fail-closed floor. Detection stays fully automatic — no operator flag
+    needed — and cannot be spoofed from the environment.
+    """
+    import sys  # local import to avoid circular dependency at module level
+
+    return "pytest" in sys.modules
+
+
 def strict_study_detection_enabled() -> bool:
     """Return True when missing auto-detected study inputs should abort import."""
 

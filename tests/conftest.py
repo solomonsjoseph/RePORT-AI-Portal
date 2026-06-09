@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,34 @@ skip_as_root = pytest.mark.skipif(
     hasattr(os, "geteuid") and os.geteuid() == 0,
     reason="chmod-based denial has no effect for root",
 )
+
+
+# ── Shared PHI-scrub fixtures ──────────────────────────────────────────────
+# Defined here to avoid duplication between test_phi_scrub.py and
+# test_phi_scrub_partial.py.  Both files inject these by fixture name.
+
+
+@pytest.fixture()
+def sidecar_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Write a valid 64-hex-char key file with 0600 and monkeypatch PHI_KEY_PATH."""
+    import config
+
+    key_path = tmp_path / "phi_key"
+    key_path.write_text(secrets.token_hex(32), encoding="utf-8")
+    key_path.chmod(0o600)
+    monkeypatch.setattr(config, "PHI_KEY_PATH", key_path)
+    return key_path
+
+
+@pytest.fixture()
+def scrub_config_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Point PHI_SCRUB_CONFIG_PATH at a fresh tmp_path file (absent by default)."""
+    import config
+
+    cfg_path = tmp_path / "phi_scrub.yaml"
+    monkeypatch.setattr(config, "PHI_SCRUB_CONFIG_PATH", cfg_path)
+    return cfg_path
+
 
 # ── Synthetic data helpers ──────────────────────────────────────────────────
 
