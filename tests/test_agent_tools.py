@@ -376,3 +376,155 @@ def test_build_variables_reference_module_removed() -> None:
     """The build_variables_reference module must be deleted."""
     with pytest.raises(ImportError):
         from scripts.extraction import build_variables_reference  # noqa: F401
+
+
+# ---------------------------------------------------------------------------
+# GAP-1: _gate_figure_path suppresses figures whose content contains a
+#         blocking PHI pattern; clean aggregate figures pass through.
+# ---------------------------------------------------------------------------
+
+
+class TestGateFigurePath:
+    """GAP-1 — figure-level PHI gate enforced before path is emitted."""
+
+    def test_suppresses_figure_containing_email(self, tmp_path: Path) -> None:
+        """A plotly JSON that embeds an email address is gated (suppressed)."""
+        from scripts.ai_assistant.agent_tools import _gate_figure_path
+
+        phi_figure = tmp_path / "phi_chart.json"
+        phi_figure.write_text(
+            json.dumps({"data": [{"x": ["a@b.com", "c@d.org"], "y": [1, 2], "type": "bar"}]}),
+            encoding="utf-8",
+        )
+
+        assert _gate_figure_path(phi_figure) is False
+
+    def test_clean_aggregate_figure_passes(self, tmp_path: Path) -> None:
+        """A plotly JSON with only aggregate numeric data is NOT suppressed."""
+        from scripts.ai_assistant.agent_tools import _gate_figure_path
+
+        clean_figure = tmp_path / "clean_chart.json"
+        clean_figure.write_text(
+            json.dumps(
+                {
+                    "data": [{"x": ["18-34", "35-54", "55+"], "y": [12, 25, 8], "type": "bar"}],
+                    "layout": {"title": "Age distribution"},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        assert _gate_figure_path(clean_figure) is True
+
+    def test_format_sandbox_result_omits_phi_figure_path(
+        self, tmp_path: Path, monkeypatch_config: Path
+    ) -> None:
+        """_format_sandbox_result_for_agent must NOT include the path of a
+        suppressed (PHI-containing) figure and MUST include a redaction note."""
+        from unittest.mock import MagicMock
+
+        from scripts.ai_assistant.agent_tools import _format_sandbox_result_for_agent
+
+        # Build a fake SandboxResult with one PHI figure
+        phi_figure = tmp_path / "agent" / "phi_plot.json"
+        phi_figure.parent.mkdir(parents=True, exist_ok=True)
+        phi_figure.write_text(
+            json.dumps({"data": [{"x": ["user@example.com"], "y": [1], "type": "scatter"}]}),
+            encoding="utf-8",
+        )
+
+        result = MagicMock()
+        result.exit_code = 0
+        result.timed_out = False
+        result.oom_killed = False
+        result.stdout = "some output"
+        result.stderr = ""
+        result.figure_paths = [phi_figure]
+        result.code_paths = []
+
+        formatted = _format_sandbox_result_for_agent(result)
+
+        # The suppressed path must NOT appear
+        assert str(phi_figure) not in formatted
+        # A redaction/suppression note must be present
+        assert "suppressed" in formatted.lower()
+
+    def test_format_sandbox_result_includes_clean_plotly_path(
+        self, tmp_path: Path, monkeypatch_config: Path
+    ) -> None:
+        """A clean plotly figure path IS included in the formatted result."""
+        from unittest.mock import MagicMock
+
+        from scripts.ai_assistant.agent_tools import _format_sandbox_result_for_agent
+
+        clean_figure = tmp_path / "agent" / "clean_plot.json"
+        clean_figure.parent.mkdir(parents=True, exist_ok=True)
+        clean_figure.write_text(
+            json.dumps({"data": [{"x": ["18-34", "35+"], "y": [10, 20], "type": "bar"}]}),
+            encoding="utf-8",
+        )
+
+        result = MagicMock()
+        result.exit_code = 0
+        result.timed_out = False
+        result.oom_killed = False
+        result.stdout = ""
+        result.stderr = ""
+        result.figure_paths = [clean_figure]
+        result.code_paths = []
+
+        formatted = _format_sandbox_result_for_agent(result)
+
+        assert str(clean_figure) in formatted
+
+
+# ---------------------------------------------------------------------------
+# GAP-6: query_dataset no-QI branch — rows returned (date-redacted),
+#         kanon_note is a non-null string, kanon_violation is null.
+# ---------------------------------------------------------------------------
+
+
+class TestQueryDatasetNoQIBranch:
+    """GAP-6 — no-quasi-identifier datasets return rows with advisory note."""
+
+    def test_no_qi_columns_returns_rows_with_kanon_note(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A 2-row dataset with only VISDAT + RESULT (no QI column) must:
+        1. Return records (not suppress to empty).
+        2. Redact date values to '<DATE_SHIFTED>'.
+        3. Set kanon_note to a non-null string.
+        4. Leave kanon_violation as null.
+        """
+        import config
+        import scripts.ai_assistant.agent_tools as ag
+
+        ds_dir = tmp_path / "trio_bundle" / "datasets"
+        ds_dir.mkdir(parents=True)
+        rows = [
+            {"VISDAT": "2014-07-02", "RESULT": "Pos"},
+            {"VISDAT": "2014-08-10", "RESULT": "Neg"},
+        ]
+        (ds_dir / "NoQI.jsonl").write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
+
+        monkeypatch.setattr(config, "TRIO_DATASETS_DIR", ds_dir)
+        monkeypatch.setattr(ag, "assert_output_zone", lambda _p: None)
+        monkeypatch.setattr(ag, "validate_agent_read", lambda p: p)
+
+        from scripts.ai_assistant.agent_tools import query_dataset
+        from scripts.ai_assistant.tool_cache import tool_cache
+
+        tool_cache.clear()
+
+        payload = json.loads(query_dataset.invoke({"dataset_name": "NoQI", "limit": 10}))
+
+        # Records must be present
+        assert len(payload["records"]) == 2, "expected rows to be returned for no-QI dataset"
+        # Date values must be redacted
+        for rec in payload["records"]:
+            assert rec["VISDAT"] == "<DATE_SHIFTED>", "date field not redacted"
+        # kanon_violation must be null (not suppressed)
+        assert payload["kanon_violation"] is None
+        # kanon_note must be a non-empty string
+        assert isinstance(payload["kanon_note"], str)
+        assert len(payload["kanon_note"]) > 0

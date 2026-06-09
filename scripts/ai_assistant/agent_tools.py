@@ -74,7 +74,12 @@ _INTERNAL_COLUMNS = frozenset(
 )
 
 _DATE_VALUE_RE = re.compile(
+    # ISO date (YYYY-MM-DD), optionally with time component.
     r"^\d{4}-\d{2}-\d{2}(?:[T\s]\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:?\d{2})?)?$"
+    # GAP-2: also match slash/dot/hyphen day-granular dates (DMY/MDY) emitted by
+    # phi_scrub when a separator-locale date is kept and jitter-shifted.
+    # Anchored at start/end so a bare year or partial token doesn't match.
+    r"|^\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}$"
 )
 
 _FORM_TOKEN_EXPANSIONS: dict[str, str] = {
@@ -623,6 +628,7 @@ def query_dataset(
 
     safe_records: list[Mapping[str, Any]] = list(results)
     kanon_violation: dict[str, Any] | None = None
+    kanon_note: str | None = None
 
     if subject_identifier_filter:
         safe_records = []
@@ -684,6 +690,31 @@ def query_dataset(
             # ``gated`` is the full-row safety check. Surface only the caller's
             # projected records after the gate passes.
             safe_records = list(results)
+    elif not qi_present and gating_rows and len(gating_rows) > 1:
+        # GAP-6: make the no-quasi-identifier case EXPLICIT rather than silently
+        # passing rows through. k-anonymity protects against QI-based
+        # re-identification; when a result set has NO recognised QI column, the
+        # remaining columns are clinical outcomes/measurements (the *sensitive
+        # attribute* k-anon is meant to shield, not a QI) plus dates that are
+        # already jittered and redacted to <DATE_SHIFTED> downstream. Treating
+        # those as quasi-identifiers and suppressing would over-redact legitimate,
+        # non-identifying research data with no privacy gain. So we RETURN the rows
+        # (still date-redacted via _surface_safe_records and PHI-text-gated via
+        # @phi_safe_return) but log the gap and flag it in the payload so it is
+        # auditable. If a form carries a genuine identifier not in
+        # _DEFAULT_QUASI_IDENTIFIERS, extend that list so the qi_present branch
+        # above gates it — that is the correct lever, not blanket suppression.
+        logger.warning(
+            "query_dataset: no recognised quasi-identifier columns in result set "
+            "(%d rows) — row-level k-anon not applicable; returning date-redacted, "
+            "PHI-text-gated rows. Extend _DEFAULT_QUASI_IDENTIFIERS if a QI is missing.",
+            len(gating_rows),
+        )
+        kanon_note = (
+            "No recognised quasi-identifier columns are present in this result set, "
+            "so row-level k-anonymity was not applicable. Rows are date-redacted and "
+            "PHI-text-gated. Treat any cross-column combination with caution."
+        )
 
     safe_records, date_values_redacted = _surface_safe_records(safe_records)
 
@@ -699,6 +730,7 @@ def query_dataset(
             "records": safe_records,
             "date_values_redacted": date_values_redacted,
             "kanon_violation": kanon_violation,
+            "kanon_note": kanon_note,
         },
         indent=2,
         ensure_ascii=False,
@@ -1124,6 +1156,46 @@ def run_python_analysis(code: str) -> str:
     return _format_sandbox_result_for_agent(result)
 
 
+def _gate_figure_path(path: Path) -> bool:
+    """GAP-1: Gate a figure file through the PHI check before exposing its path.
+
+    Figure content is an LLM/user-visible surface that requires the same PHI
+    gating as stdout — a Plotly JSON embeds every data point, hover text, and
+    annotation in plain text, potentially surfacing raw quasi-identifier
+    combinations, pseudonymized IDs, and day-granular dates that bypass the
+    k-anon gate enforced at the query_dataset level.
+
+    Returns True when the figure is safe to emit, False when it must be
+    suppressed. Fail-closed: any read/parse failure returns False.
+
+    Known limitation (residual, not a regression): Plotly JSON — the primary
+    vector — stores all data/labels as TEXT and is fully scanned. A matplotlib
+    PNG, by contrast, rasterises any text into PIXELS, which a text scan cannot
+    inspect; PHI baked into a PNG as rendered glyphs is therefore not detectable
+    here. Mitigations elsewhere still apply (dates are jittered, IDs
+    pseudonymized, query_dataset enforces k-anon on the data the code reads), so
+    this is a defense-in-depth gap, not an open raw-PHI channel. OCR-grade PNG
+    inspection is out of scope.
+    """
+    from scripts.security.phi_gate import phi_gate_check
+
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        logger.warning("run_python_analysis: figure unreadable — suppressed: %s", path.name)
+        return False
+
+    result = phi_gate_check(text)
+    if not result:
+        logger.warning(
+            "run_python_analysis: figure suppressed due to PHI gate findings %s: %s",
+            list(result.findings),
+            path.name,
+        )
+        return False
+    return True
+
+
 def _format_sandbox_result_for_agent(result: Any) -> str:
     """Format a :class:`SandboxResult` into the marker-bearing string the
     streaming UI parses (``<RPLN_PLOTLY:>``, ``<RPLN_FIGURE:>``, ``<RPLN_CODE:>``).
@@ -1169,13 +1241,32 @@ def _format_sandbox_result_for_agent(result: Any) -> str:
     if result.stdout.strip():
         parts.append(result.stdout.strip())
 
-    plotly_paths = [p for p in result.figure_paths if p.suffix == ".json"]
-    matplotlib_paths = [p for p in result.figure_paths if p.suffix == ".png"]
+    # GAP-1: Gate figure content through the PHI check before emitting paths.
+    # Plotly JSON files embed every data point and annotation in plain text;
+    # a figure can surface raw quasi-identifier combos and day-granular dates
+    # that bypass the k-anon gate enforced at query_dataset level. Suppressed
+    # figures are replaced with a redaction note; fail-closed (unreadable → suppress).
+    plotly_paths_raw = [p for p in result.figure_paths if p.suffix == ".json"]
+    matplotlib_paths_raw = [p for p in result.figure_paths if p.suffix == ".png"]
+
+    plotly_paths = [p for p in plotly_paths_raw if _gate_figure_path(p)]
+    matplotlib_paths = [p for p in matplotlib_paths_raw if _gate_figure_path(p)]
+
+    suppressed_count = (len(plotly_paths_raw) - len(plotly_paths)) + (
+        len(matplotlib_paths_raw) - len(matplotlib_paths)
+    )
+
     total_figs = len(plotly_paths) + len(matplotlib_paths)
     if total_figs:
         parts.append(f"\n[{total_figs} figure(s) generated]")
         parts.extend(f"\n<RPLN_PLOTLY:{p}>" for p in plotly_paths)
         parts.extend(f"\n<RPLN_FIGURE:{p}>" for p in matplotlib_paths)
+
+    if suppressed_count:
+        parts.append(
+            f"\n[{suppressed_count} figure(s) suppressed by PHI security gate — "
+            "regenerate using aggregate values, model coefficients, or binned data.]"
+        )
 
     parts.extend(f"\n<RPLN_CODE:{code_path}>" for code_path in result.code_paths)
 
@@ -1184,11 +1275,13 @@ def _format_sandbox_result_for_agent(result: Any) -> str:
 
     formatted = "\n".join(parts)
     logger.info(
-        "run_python_analysis: %d chars stdout, %d plotly, %d matplotlib, %d code-saved",
+        "run_python_analysis: %d chars stdout, %d plotly, %d matplotlib, %d code-saved, "
+        "%d figure(s) suppressed by PHI gate",
         len(result.stdout),
         len(plotly_paths),
         len(matplotlib_paths),
         len(result.code_paths),
+        suppressed_count,
     )
     return formatted
 

@@ -217,6 +217,32 @@ def test_query_dataset_blocks_when_a_filter_returns_a_small_class(
     assert "smallest_class_size" in out["kanon_violation"]
 
 
+# ── mask_small_cell ─────────────────────────────────────────────────────────
+
+
+def test_mask_small_cell_uses_k_as_label() -> None:
+    """GAP-8: default label is '<k>' not the hardcoded '<5'."""
+    from scripts.security.kanon_gate import mask_small_cell
+
+    assert mask_small_cell(3, k=10) == "<10"
+    assert mask_small_cell(3, k=5) == "<5"
+
+
+def test_mask_small_cell_explicit_label_overrides() -> None:
+    """GAP-8: an explicit label kwarg still overrides the derived default."""
+    from scripts.security.kanon_gate import mask_small_cell
+
+    assert mask_small_cell(3, k=10, label="suppressed") == "suppressed"
+
+
+def test_mask_small_cell_passes_through_when_at_or_above_k() -> None:
+    """Values at or above k are returned as-is (integer, not label)."""
+    from scripts.security.kanon_gate import mask_small_cell
+
+    assert mask_small_cell(10, k=10) == 10
+    assert mask_small_cell(11, k=5) == 11
+
+
 def test_query_dataset_passes_through_safe_rows(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any, cast
@@ -50,6 +51,12 @@ _TRUTHY = frozenset({"1", "true", "yes", "on"})
 # Module-level singletons (lazy-initialised)
 _agent: CompiledStateGraph | None = None
 _checkpointer: MemorySaver | None = None
+
+# UP7: Session-start PHI rescan gate.
+# Cached per-process to run once per agent session (reset clears it).
+# WP-E is scoping scan_tree_for_phi so dictionary prose (e.g. "Use 1900-01-01…")
+# no longer false-positives — this call relies on that tuning landing first.
+_phi_rescan_passed: bool | None = None
 
 
 # Ollama OOM signals. Substring match on ``str(exc).lower()`` — see
@@ -274,15 +281,75 @@ def get_checkpointer() -> MemorySaver:
     return _checkpointer
 
 
+def _is_test_context() -> bool:
+    """Return True when running inside the test suite.
+
+    Checks config.is_test_context() when available (added by WP-E);
+    falls back to detecting pytest in the module registry.
+    """
+    try:
+        return bool(config.is_test_context())  # type: ignore[attr-defined]
+    except AttributeError:
+        return "pytest" in sys.modules
+
+
+def _run_phi_rescan() -> None:
+    """UP7: Run a session-start PHI residual scan of the live llm_source tree.
+
+    Fail-closed: if the scan finds PHI patterns, raise RuntimeError with a
+    PHI-safe message (relative_path + pattern_name only, never the matched
+    value). Skipped under test contexts so the suite is not gated on a
+    published bundle.
+
+    WP-E is tuning scan_tree_for_phi so dictionary prose ("Use 1900-01-01…")
+    no longer false-positives — this call relies on that scoping landing.
+    """
+    global _phi_rescan_passed
+    if _phi_rescan_passed is True:
+        return  # already scanned and passed this session
+
+    if _is_test_context():
+        logger.debug("UP7: phi rescan skipped (test context)")
+        _phi_rescan_passed = True
+        return
+
+    from scripts.security.llm_source_gate import scan_tree_for_phi
+
+    llm_source_dir = config.STUDY_LLM_SOURCE_DIR
+    logger.info("UP7: scanning llm_source tree for PHI residuals: %s", llm_source_dir)
+    scan_result = scan_tree_for_phi(llm_source_dir)
+    if not scan_result.ok:
+        finding = scan_result.findings[0]
+        raise RuntimeError(
+            f"PHI residual detected in llm_source tree — agent start blocked. "
+            f"Pattern: {finding.pattern_name}, "
+            f"File: {finding.relative_path}, "
+            f"Line: {finding.line_number}. "
+            "Re-run the PHI scrub pipeline and resolve the finding before "
+            "starting an agent session. (Matched value deliberately omitted.)"
+        )
+
+    _phi_rescan_passed = True
+    logger.info("UP7: llm_source PHI rescan passed")
+
+
 def get_agent() -> CompiledStateGraph:
     """Return the compiled ReAct agent (create on first call).
 
     Uses single-agent mode with the full tool set.  The agent resolves
     variables through the ``llm_source`` retrieval tools and performs
     statistical analysis through the sandboxed ``run_python_analysis`` tool.
+
+    UP7: Runs a session-start PHI rescan of the live llm_source tree before
+    the agent is constructed. Fail-closed: if the scan finds PHI residuals,
+    raises RuntimeError and refuses to build the agent. The scan is cached
+    for the session lifetime (reset_agent() clears it).
     """
     global _agent
     if _agent is None:
+        # UP7: PHI rescan must pass before the agent is handed to any caller.
+        _run_phi_rescan()
+
         llm = _init_llm()
         prompt = SYSTEM_PROMPT.format(study_name=config.STUDY_NAME)
 
@@ -304,9 +371,10 @@ def get_agent() -> CompiledStateGraph:
 
 def reset_agent() -> None:
     """Reset the agent and checkpointer (clears all sessions + tool cache)."""
-    global _agent, _checkpointer
+    global _agent, _checkpointer, _phi_rescan_passed
     _agent = None
     _checkpointer = None
+    _phi_rescan_passed = None  # UP7: force rescan on next session start
     tool_cache.clear()
     logger.info("Agent and checkpointer reset")
 

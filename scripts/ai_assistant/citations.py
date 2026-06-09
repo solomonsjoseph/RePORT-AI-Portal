@@ -145,9 +145,34 @@ def _cite_in_jsonl(form_dir: Path, field: str) -> Citation | None:
 
 
 def _cite_in_study_config(field: str) -> Citation | None:
-    """Find *field* as a mapped column in the study variable map."""
+    """Find *field* as a mapped column in the study variable map.
+
+    GAP-9: anchored to structural positions where a column name is a value
+    of a ``column:`` / ``backing_column:`` key, or a mapping key of a
+    concept block — mirroring the anchored patterns in
+    :func:`_cite_in_form_policy` and :func:`_cite_in_dataset_schema`.
+    A free word-boundary substring match would return coincidental wrong
+    citations (e.g. a field named "AGE" hitting a line containing "CAGE").
+    We prefer returning no citation over a wrong one.
+    """
     path = Path(config.LLM_SOURCE_STUDY_METADATA_DIR) / "study_variable_map.yaml"
-    pattern = re.compile(rf"\b{re.escape(field)}\b", re.IGNORECASE)
+    # Match the field when it appears as:
+    #   column: FIELD_NAME          (mapping value after "column:" key)
+    #   backing_column: FIELD_NAME  (mapping value after "backing_column:" key)
+    #   FIELD_NAME:                 (a YAML mapping key — concept-block entry)
+    # All patterns are case-insensitive and anchor to column-name boundaries
+    # (whitespace, quotes, or end-of-token) to avoid partial-word coincidences.
+    esc = re.escape(field)
+    pattern = re.compile(
+        rf"(?:"
+        # value of column/backing_column — quoted form is exact; the unquoted form
+        # needs an explicit end-of-token boundary, else field 'AGE' would match
+        # `column: AGE_AT_ENROLL` (optional quotes can't bound the right edge).
+        rf"(?:column|backing_column)\s*:\s*(?:['\"]{esc}['\"]|{esc}(?![\w-]))"
+        rf"|^\s*{esc}\s*:"  # YAML mapping key at line start
+        rf")",
+        re.IGNORECASE,
+    )
     found = _first_match(path, pattern)
     if found is None:
         return None
