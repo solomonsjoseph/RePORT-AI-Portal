@@ -30,6 +30,10 @@ Per-line allow rules (do NOT flag the line):
   - The line is inside a triple-quoted docstring block.
   - The line references ``TMP_DIR`` (e.g. ``config.TMP_DIR / study / "staging"``).
   - The line references ``TRIO_BUNDLE_DIR`` (legacy rollback/back-compat constant).
+  - The line references ``STUDY_AUDIT_DIR`` or a local ``audit_dir`` — the
+    *live* ``output/{study}/audit/human_review/`` coverage/duplicate-review
+    artifacts are legitimate (distinct from the legacy top-level
+    ``human_review/`` output sub-tree that ``make clean-legacy`` prunes).
 
 Skipped files (the file itself legitimately names the legacy strings):
   - ``lint_legacy_dirs.py``       (this linter — its regex literals self-flag)
@@ -89,6 +93,10 @@ _SKIP_FILES: frozenset[str] = frozenset(
 _LINE_ALLOW_TOKENS: tuple[str, ...] = (
     "TMP_DIR",
     "TRIO_BUNDLE_DIR",
+    # Live audit-zone human_review artifacts (audit/human_review/) are legitimate
+    # and distinct from the pruned legacy top-level human_review/ output sub-tree.
+    "STUDY_AUDIT_DIR",
+    "audit_dir",
 )
 
 _TRIPLE_QUOTE_RE = re.compile(r'"""|\'\'\'')

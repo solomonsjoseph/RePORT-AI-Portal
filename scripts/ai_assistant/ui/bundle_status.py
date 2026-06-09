@@ -275,7 +275,7 @@ def partial_run_notice(study: str | None = None) -> str | None:
             f" {elevated_count} flagged for review (large held fraction — "
             "published rows are valid but the form may be incomplete)."
         )
-    return "\n".join([header] + lines)
+    return "\n".join([header, *lines])
 
 
 def published_bundle_exists() -> bool:

@@ -1,0 +1,16 @@
+# Plugin-level LLM adapter metadata for generic-llm and codex adapters.
+# This file is the agent_metadata target declared in plugin.yaml adapters.
+# Per-skill adapter files live at skills/<skill>/agents/llm.yaml and carry
+# skill-specific display names / default prompts; this file covers the
+# plugin as a whole for adapters that load at the plugin (not skill) level.
+interface:
+  display_name: "RePORT-AI Study Pipeline"
+  short_description: "PHI-safe study preparation pipeline (duplicate handling, SoT, publish)"
+  default_prompt: >
+    Use $report-ai-study-pipeline to run the full PHI-safe study preparation
+    pipeline: duplicate dataset triage, Source Truth policy generation from
+    PDFs and row-1 headers, and dataset-to-llm-source publishing.
+  skills:
+    - excel-duplicate-handler
+    - sot-lean-generator
+    - dataset-to-llm-source

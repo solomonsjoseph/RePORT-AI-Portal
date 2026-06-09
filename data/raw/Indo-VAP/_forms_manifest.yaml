@@ -97,7 +97,9 @@ date_locales:
   CX_MBDAT: DMY
   CX_MBRECDAT: DMY
   CX_PROCDAT: MDY  # data-derived MDY correction: month-first per PHI-safe magnitude scan
-  CX_PROCDAT_ND: MDY  # "Not Done" flag — kept by keep_fields; locale entry harmless
+  # CX_PROCDAT_ND is in keep_fields (priority-1 KEEP), so field_is_date() returns
+  # False for it and this locale entry would never be consulted.  Removed to avoid
+  # misleading future readers.
   CX_STDAT: DMY
   CX_VISDAT: MDY  # data-derived MDY correction: month-first per PHI-safe magnitude scan
   DST_COMPDAT: DMY

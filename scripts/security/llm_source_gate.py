@@ -46,10 +46,30 @@ class LeakScanResult:
         )
 
 
+_DATE_PATTERN_NAMES: frozenset[str] = frozenset({"DATE_ISO", "DATE_MDY"})
+
+
 def _patterns() -> list[tuple[str, re.Pattern[str]]]:
     return list(BLOCKING_PATTERNS) + [
         (f"SUBJECT_ID[{i}]", pattern) for i, pattern in enumerate(SUBJECT_ID_PATTERNS)
     ]
+
+
+def _is_dictionary_mapping_path(fpath: Path, root: Path) -> bool:
+    """Return True when fpath sits under a 'dictionary_mapping/' tree.
+
+    Dictionary codelist JSONL files contain help text (e.g. "Use 1900-01-01
+    as an Unknown date") that is documentation prose, not a PHI date value.
+    We still scan them for blocking ID/contact patterns — only date-class
+    patterns are suppressed for this subtree.  Both the publish-time gate and
+    the snapshot-activation rescan call scan_tree_for_phi, so this exemption
+    is applied centrally here.
+    """
+    try:
+        parts = fpath.relative_to(root).parts
+    except ValueError:
+        parts = fpath.parts
+    return "dictionary_mapping" in parts
 
 
 _cached_scrub_cfg = None
@@ -126,10 +146,19 @@ def scan_tree_for_phi(root: Path) -> LeakScanResult:
         return LeakScanResult(ok=True, findings=())
 
     findings: list[LeakScanFinding] = []
-    patterns = _patterns()
+    all_patterns = _patterns()
     for fpath in sorted(root.rglob("*")):
         if not fpath.is_file():
             continue
+        # Dictionary codelist files carry help-text dates (e.g. "1900-01-01
+        # Unknown date sentinel").  Strip date-class patterns for this subtree;
+        # blocking ID/contact patterns are still enforced.
+        if _is_dictionary_mapping_path(fpath, root):
+            patterns = [
+                (name, pat) for name, pat in all_patterns if name not in _DATE_PATTERN_NAMES
+            ]
+        else:
+            patterns = all_patterns
         try:
             with fpath.open(encoding="utf-8", errors="replace") as fh:
                 for line_number, line in enumerate(fh, start=1):

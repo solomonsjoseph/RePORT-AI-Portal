@@ -5,7 +5,7 @@
 # concepts (e.g., "smoking") and actual dataset columns, value
 # encodings, dataset relationships, and outcome definitions.
 #
-# Used by: scripts/ai_assistant/study_knowledge.py → StudyKnowledge class
+# Consumed via: agent_prompts.py system-prompt directive + read_llm_source_file / get_study_variable_map (agent_tools.py)
 # ============================================================
 
 study:
