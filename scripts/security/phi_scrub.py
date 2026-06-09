@@ -190,6 +190,32 @@ _POSTURE_SAFE_HARBOR = "safe_harbor"
 _POSTURE_LIMITED_DATASET = "limited_dataset"
 _VALID_POSTURES = frozenset({_POSTURE_SAFE_HARBOR, _POSTURE_LIMITED_DATASET})
 
+# Recognized missing-data sentinels for DATE fields. A value equal to one of
+# these (after .strip().upper()) skips date jitter rather than fail-closing.
+# Mirrors the default ``date_null_tokens`` list in phi_scrub.yaml. Kept here
+# as a fallback so older configs that predate the key behave sanely.
+_DEFAULT_DATE_NULL_TOKENS: frozenset[str] = frozenset(
+    {
+        "UNK",
+        "UNKNOWN",
+        "NA",
+        "N/A",
+        "N.A.",
+        "NONE",
+        "NIL",
+        "NOT DONE",
+        "NOT APPLICABLE",
+        "NOT AVAILABLE",
+        "NOT REPORTED",
+        "ND",
+        "NR",
+        ".",
+        "-",
+        "--",
+        "?",
+    }
+)
+
 _KEY_FILE_MODE = 0o600
 _KEY_HEX_LEN = 64  # 32 bytes = 64 hex chars
 
@@ -373,6 +399,7 @@ class PHIScrubConfig:
         "birthdate_pattern",
         "cap_rules",
         "compliance_posture",
+        "date_null_tokens",
         "date_patterns",
         "drop_patterns",
         "generalize_rules",
@@ -404,6 +431,7 @@ class PHIScrubConfig:
         age_cap_threshold: int = _DEFAULT_AGE_CAP_THRESHOLD,
         age_cap_label: str = _DEFAULT_AGE_CAP_LABEL,
         small_cell_threshold: int = _DEFAULT_SMALL_CELL_THRESHOLD,
+        date_null_tokens: frozenset[str] | None = None,
     ) -> None:
         if compliance_posture not in _VALID_POSTURES:
             raise PHIScrubError(
@@ -434,6 +462,9 @@ class PHIScrubConfig:
         self.age_cap_threshold = age_cap_threshold
         self.age_cap_label = age_cap_label
         self.small_cell_threshold = small_cell_threshold
+        self.date_null_tokens: frozenset[str] = (
+            date_null_tokens if date_null_tokens is not None else _DEFAULT_DATE_NULL_TOKENS
+        )
 
     def field_is_keep(self, name: str) -> bool:
         """Return True if *name* matches any ``keep_fields`` pattern.
@@ -500,6 +531,14 @@ class PHIScrubConfig:
 
     def field_is_birthdate(self, name: str) -> bool:
         return self.birthdate_pattern is not None and bool(self.birthdate_pattern.search(name))
+
+    def is_date_null_token(self, value: object) -> bool:
+        """True if *value* is a recognized not-applicable/unknown date placeholder
+        (case-insensitive, stripped). Such values skip date jitter rather than
+        fail-closing."""
+        if not isinstance(value, str):
+            return False
+        return value.strip().upper() in self.date_null_tokens
 
 
 def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
@@ -772,6 +811,17 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
                 )
             )
 
+    # date_null_tokens — recognized missing-data sentinels for DATE fields.
+    # If the key is absent, fall back to the module-level default so older
+    # configs continue to behave correctly without any migration.
+    raw_null_tokens = raw.get("date_null_tokens")
+    if raw_null_tokens is None:
+        date_null_tokens = _DEFAULT_DATE_NULL_TOKENS
+    else:
+        if not isinstance(raw_null_tokens, list):
+            raise PHIScrubError("date_null_tokens must be a list of strings")
+        date_null_tokens = frozenset(str(t).strip().upper() for t in raw_null_tokens)
+
     return PHIScrubConfig(
         compliance_posture=posture,
         subject_id_fields=subject_id_fields,
@@ -789,6 +839,7 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
         age_cap_threshold=default_cap_threshold,
         age_cap_label=default_cap_label,
         small_cell_threshold=small_cell_threshold,
+        date_null_tokens=date_null_tokens,
     )
 
 
@@ -1192,6 +1243,13 @@ def _now_utc_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _mask_date_shape(value: str) -> str:
+    """Digit/letter-masked shape of a value for PHI-safe diagnostics:
+    every digit -> '9', every ASCII letter -> 'X', separators kept.
+    e.g. '15-03-2014' -> '99-99-9999', 'UNK' -> 'XXX'. Never reveals the value."""
+    return re.sub(r"[A-Za-z]", "X", re.sub(r"\d", "9", str(value)))
+
+
 def _scrub_row(
     row: dict[str, Any],
     *,
@@ -1326,22 +1384,39 @@ def _scrub_row(
         # (parse_date -> ValueError) quarantines the whole row rather than leaking the
         # raw value (the pre-T2.3 passthrough) or crashing the run unaccountably.
         # Mirrors band (5b) / generalize (5).
+        # Exception: recognized missing-data sentinels (date_null_tokens) are left
+        # as-is (skipped) rather than quarantined — they are not real dates.
         if cfg.field_is_date(field) or (
             cfg.field_is_birthdate(field) and cfg.compliance_posture == _POSTURE_LIMITED_DATASET
         ):
             raw_val = row[field]
             if raw_val is None or (isinstance(raw_val, str) and not raw_val.strip()):
                 continue
+            if cfg.is_date_null_token(raw_val):
+                _bump("date_null_token", field)
+                continue
             try:
                 shifted = shift_date(
                     str(raw_val), offset, field_name=field, date_locales=date_locales
                 )
             except ValueError:
+                logger.warning(
+                    "date-unshiftable field=%s shape=%s (declare a date_null_tokens "
+                    "entry if this is a missing-data placeholder)",
+                    field,
+                    _mask_date_shape(str(raw_val)),
+                )
                 return None, {f"phi-scrub-date-quarantine:{field}": 1}
             if shifted is not None:
                 row[field] = shifted
                 _bump("date", field)
                 continue
+            logger.warning(
+                "date-unshiftable field=%s shape=%s (declare a date_null_tokens "
+                "entry if this is a missing-data placeholder)",
+                field,
+                _mask_date_shape(str(raw_val)),
+            )
             return None, {f"phi-scrub-date-quarantine:{field}": 1}
 
         # 8. ID — HMAC-SHA256 pseudonymize with domain-separated label

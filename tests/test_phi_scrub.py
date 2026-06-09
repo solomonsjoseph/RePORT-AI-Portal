@@ -1748,6 +1748,240 @@ class TestDateExceptionExports:
         assert "PHIDateUnshiftableError" in phi_scrub.__all__
 
 
+# ── Date null-token (missing-data placeholder) handling ─────────────────────
+
+
+class TestDateNullTokens:
+    """Date fields holding recognized missing-data sentinels must be left as-is
+    (not jittered, not quarantined) while genuinely-bad values still fail-close.
+    """
+
+    # ── is_date_null_token unit tests ────────────────────────────────────────
+
+    def test_declared_token_upper(self, scrub_config_path: Path) -> None:
+        _write_config(scrub_config_path)
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        assert cfg.is_date_null_token("UNK") is True
+
+    def test_declared_token_lower(self, scrub_config_path: Path) -> None:
+        _write_config(scrub_config_path)
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        assert cfg.is_date_null_token("unk") is True
+
+    def test_declared_token_with_spaces(self, scrub_config_path: Path) -> None:
+        _write_config(scrub_config_path)
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        assert cfg.is_date_null_token(" na ") is True
+
+    def test_na_slash_token(self, scrub_config_path: Path) -> None:
+        _write_config(scrub_config_path)
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        assert cfg.is_date_null_token("N/A") is True
+
+    def test_real_date_string_returns_false(self, scrub_config_path: Path) -> None:
+        _write_config(scrub_config_path)
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        assert cfg.is_date_null_token("2014-07-15") is False
+
+    def test_non_str_returns_false(self, scrub_config_path: Path) -> None:
+        _write_config(scrub_config_path)
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        assert cfg.is_date_null_token(None) is False
+        assert cfg.is_date_null_token(42) is False
+
+    def test_default_constant_covers_expected_tokens(self) -> None:
+        from scripts.security.phi_scrub import _DEFAULT_DATE_NULL_TOKENS
+
+        for token in (
+            "UNK",
+            "UNKNOWN",
+            "NA",
+            "N/A",
+            "N.A.",
+            "NONE",
+            "NIL",
+            "NOT DONE",
+            "NOT APPLICABLE",
+            "NOT AVAILABLE",
+            "NOT REPORTED",
+            "ND",
+            "NR",
+            ".",
+            "-",
+            "--",
+            "?",
+        ):
+            assert token in _DEFAULT_DATE_NULL_TOKENS, f"{token!r} missing from default set"
+
+    # ── Integration: null-token in date field keeps row, value unchanged ─────
+
+    def test_unk_in_date_field_row_kept(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """A date field holding 'UNK' must NOT be quarantined; row is kept."""
+        _write_config(scrub_config_path)
+        rows = [
+            {"SUBJID": "S1", "VISDAT": "2014-07-15"},
+            {"SUBJID": "S2", "VISDAT": "UNK"},
+        ]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")  # must not raise
+
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert len(loaded) == 2
+        # S2's VISDAT must still be "UNK" — unchanged
+        s2 = next(r for r in loaded if r.get("VISDAT") == "UNK")
+        assert s2["VISDAT"] == "UNK"
+        assert s2["_phi_scrubbed"] == "v3"
+
+    def test_na_in_date_field_row_kept(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """'NA' in a date field must be kept as-is."""
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "VISDAT": "NA"}]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert loaded[0]["VISDAT"] == "NA"
+
+    def test_lowercase_token_in_date_field_kept(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Case-insensitive match: 'unk' must be kept as-is."""
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "VISDAT": "unk"}]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert loaded[0]["VISDAT"] == "unk"
+
+    def test_n_slash_a_in_date_field_kept(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """'N/A' in a date field must be kept as-is."""
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "VISDAT": "N/A"}]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert loaded[0]["VISDAT"] == "N/A"
+
+    def test_padded_na_in_date_field_kept(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """' na ' (with spaces) in a date field must be kept as-is."""
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "VISDAT": " na "}]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert loaded[0]["VISDAT"] == " na "
+
+    # ── Fail-closed preserved: non-token unparseable still quarantines ────────
+
+    def test_non_token_unparseable_still_quarantines(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """A genuinely-bad value that is NOT a null-token still quarantines
+        the row and raises PHIDateUnshiftableError (fail-closed preserved)."""
+        _write_config(scrub_config_path)
+        rows = [
+            {"SUBJID": "S1", "VISDAT": "2014-07-15"},
+            {"SUBJID": "S2", "VISDAT": "garbage"},
+        ]
+        _seed_staging(monkeypatch_config, rows)
+        with pytest.raises(phi_scrub.PHIDateUnshiftableError):
+            phi_scrub.run_scrub(study_name="TEST")
+
+        quarantine = (
+            config.STUDY_STAGING_DIR / "quarantine" / "date_unshiftable_1A_ICScreening.jsonl"
+        )
+        assert quarantine.is_file()
+        quarantined = [json.loads(line) for line in quarantine.read_text().splitlines() if line]
+        assert len(quarantined) == 1
+
+    # ── Valid date in same field still jittered ───────────────────────────────
+
+    def test_valid_date_alongside_token_both_handled_correctly(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """S1 has a valid date (must be jittered); S2 has UNK (must be kept)."""
+        _write_config(scrub_config_path)
+        rows = [
+            {"SUBJID": "S1", "VISDAT": "2014-07-15"},
+            {"SUBJID": "S2", "VISDAT": "UNK"},
+        ]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert len(loaded) == 2
+
+        key = phi_scrub.load_key()
+        # S1: valid date jittered
+        s1 = next(r for r in loaded if r.get("VISDAT") != "UNK")
+        offset = phi_scrub.date_offset_days("S1", key=key, max_days=30)
+        expected = phi_scrub.shift_date("2014-07-15", offset)
+        assert s1["VISDAT"] == expected
+
+        # S2: UNK preserved as-is
+        s2 = next(r for r in loaded if r.get("VISDAT") == "UNK")
+        assert s2["VISDAT"] == "UNK"
+
+    # ── Config loading: custom date_null_tokens in YAML ───────────────────────
+
+    def test_custom_tokens_loaded_from_yaml(self, scrub_config_path: Path) -> None:
+        """Operator-defined date_null_tokens in YAML override the defaults."""
+        _write_config(scrub_config_path, date_null_tokens=["CUSTOM_MISSING", "PENDING"])
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        assert cfg.is_date_null_token("CUSTOM_MISSING") is True
+        assert cfg.is_date_null_token("pending") is True  # case-insensitive
+        # Default tokens NOT in custom list are absent when list is explicitly set
+        # (the custom list replaces, not extends, the defaults)
+        assert cfg.is_date_null_token("UNK") is False
+
+    def test_absent_tokens_key_uses_defaults(self, scrub_config_path: Path) -> None:
+        """When date_null_tokens is absent from YAML, defaults are used."""
+        _write_config(scrub_config_path)  # no date_null_tokens key
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        assert cfg.is_date_null_token("UNK") is True
+        assert cfg.is_date_null_token("NA") is True
+
+
 # ── Catalog coverage — HIPAA §164.514(b)(2) baseline ────────────────────────
 
 

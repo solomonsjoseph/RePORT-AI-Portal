@@ -534,6 +534,34 @@ suppress_small_cell_fields:
   - "(?:contacts?_?(?:total|count|6yrs)?$)"
 
 # ──────────────────────────────────────────────────────────────────────────
+# DATE NULL TOKENS
+# ──────────────────────────────────────────────────────────────────────────
+# Recognized missing-data placeholders permitted in DATE fields. A date-field
+# value equal to one of these (case-insensitive, stripped) is treated as
+# "no date" — left as-is, NOT jittered, NOT quarantined. Anything else that
+# fails to parse as a date STILL fail-closes (quarantines the row). Keep this
+# list tight: only genuine not-applicable/unknown sentinels, never anything
+# that could be a real date. Operators may extend it per study.
+date_null_tokens:
+  - UNK
+  - UNKNOWN
+  - NA
+  - "N/A"
+  - "N.A."
+  - NONE
+  - NIL
+  - "NOT DONE"
+  - "NOT APPLICABLE"
+  - "NOT AVAILABLE"
+  - "NOT REPORTED"
+  - ND
+  - NR
+  - "."
+  - "-"
+  - "--"
+  - "?"
+
+# ──────────────────────────────────────────────────────────────────────────
 # FILE EXCLUSIONS — DOCUMENTATION ONLY (not consumed by this scrubber)
 # ──────────────────────────────────────────────────────────────────────────
 # These patterns are NOT read by load_scrub_config and have no runtime
