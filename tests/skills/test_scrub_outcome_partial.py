@@ -18,8 +18,8 @@ All fixtures are synthetic JSON only — no real PHI, no real dataset values.
 
 from __future__ import annotations
 
+import contextlib
 import json
-import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -30,18 +30,25 @@ import pytest
 import config
 import scripts.skills.extract_to_llm_source as skill_mod
 from scripts.ai_assistant.ui.bundle_status import partial_run_notice
-from scripts.audit.ledger import dataset_phi_ledger_path
 from scripts.skills.extract_to_llm_source import (
     EXIT_OK,
     EXIT_PARTIAL_REVIEW,
     main,
+)
+from tests.skills.conftest import (
+    SKILLS_TEST_STUDY,
+    fake_destroy,
+    make_datasets_dir,
+    make_staging,
+    patch_config,
+    write_valid_ledger,
 )
 
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
 
-STUDY = "Test-Study"
+STUDY = SKILLS_TEST_STUDY
 _FIXED_RUN_ID = "run_test_scrub_partial_001"
 
 
@@ -60,57 +67,9 @@ def _bypass_phi_gate(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _patch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output", raising=False)
-    monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp", raising=False)
-    monkeypatch.setattr(
-        config,
-        "DATASETS_DIR",
-        tmp_path / f"data/raw/{STUDY}/datasets",
-        raising=False,
-    )
-    monkeypatch.setattr(
-        config,
-        "RAW_DATA_DIR",
-        tmp_path / "data" / "raw",
-        raising=False,
-    )
-
-
-def _write_valid_ledger(output_dir: Path) -> None:
-    audit_dir = output_dir / STUDY / "audit"
-    audit_dir.mkdir(parents=True, exist_ok=True)
-    ledger = {
-        "run_id": _FIXED_RUN_ID,
-        "scrub_config_hash": "abc123",
-        "input_dataset_hash": "def456",
-    }
-    ledger_path = dataset_phi_ledger_path(audit_dir, "approved.xlsx")
-    ledger_path.parent.mkdir(parents=True, exist_ok=True)
-    ledger_path.write_text(json.dumps(ledger), encoding="utf-8")
-
-
-def _make_staging(staging_dir: Path) -> None:
-    staging_dir.mkdir(parents=True, exist_ok=True)
-    (staging_dir / "dummy.jsonl").write_bytes(b"data")
-
-
-def _make_datasets_dir(datasets_dir: Path) -> None:
-    datasets_dir.mkdir(parents=True, exist_ok=True)
-
-
 def _write_scrub_outcome(run_dir: Path, payload: dict[str, Any]) -> None:
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "scrub_outcome.json").write_text(json.dumps(payload), encoding="utf-8")
-
-
-def _fake_destroy(**kwargs: Any) -> Path:
-    """Mock destroy_staging_and_attest: remove staging + write stub attestation."""
-    shutil.rmtree(str(kwargs["staging_dir"]), ignore_errors=True)
-    attest_path = kwargs["output_dir"] / "runs" / kwargs["run_id"] / "destruction_attestation.json"
-    attest_path.parent.mkdir(parents=True, exist_ok=True)
-    attest_path.write_text(json.dumps({"stub": True}), encoding="utf-8")
-    return attest_path
 
 
 # ---------------------------------------------------------------------------
@@ -130,10 +89,10 @@ def _run_cmd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[int, dict
     staging_dir = tmp_path / "tmp" / STUDY
     datasets_dir = tmp_path / "data" / "raw" / STUDY / "datasets"
 
-    _patch_config(monkeypatch, tmp_path)
-    _write_valid_ledger(output_dir)
-    _make_staging(staging_dir)
-    _make_datasets_dir(datasets_dir)
+    patch_config(monkeypatch, tmp_path)
+    write_valid_ledger(output_dir, run_id=_FIXED_RUN_ID)
+    make_staging(staging_dir)
+    make_datasets_dir(datasets_dir)
 
     # Pin run_id via env var (resolve_run_id reads REPORTAL_RUN_ID first).
     monkeypatch.setenv("REPORTAL_RUN_ID", _FIXED_RUN_ID)
@@ -154,7 +113,7 @@ def _run_cmd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[int, dict
         patch.object(
             skill_mod,
             "destroy_staging_and_attest",
-            _fake_destroy,
+            fake_destroy,
         ),
         patch(
             "subprocess.run",
@@ -167,10 +126,8 @@ def _run_cmd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[int, dict
     status_path = output_dir / STUDY / "runs" / _FIXED_RUN_ID / "status.json"
     status: dict = {}
     if status_path.is_file():
-        try:
+        with contextlib.suppress(json.JSONDecodeError, OSError):
             status = json.loads(status_path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            pass
     return rc, status
 
 
@@ -645,10 +602,10 @@ def _run_cmd_with_quarantine(
     staging_dir = tmp_path / "tmp" / STUDY
     datasets_dir = tmp_path / "data" / "raw" / STUDY / "datasets"
 
-    _patch_config(monkeypatch, tmp_path)
-    _write_valid_ledger(output_dir)
-    _make_staging(staging_dir)
-    _make_datasets_dir(datasets_dir)
+    patch_config(monkeypatch, tmp_path)
+    write_valid_ledger(output_dir, run_id=_FIXED_RUN_ID)
+    make_staging(staging_dir)
+    make_datasets_dir(datasets_dir)
 
     # Seed a non-empty quarantine dir — what the scrub leg produces when it holds
     # un-jitterable rows. Filename mirrors run_scrub's date_unshiftable_<file>.jsonl.
@@ -687,7 +644,7 @@ def _run_cmd_with_quarantine(
 
     with (
         patch("scripts.utils.run_context.scan_for_in_progress_scrubs", return_value=[]),
-        patch.object(skill_mod, "destroy_staging_and_attest", _fake_destroy),
+        patch.object(skill_mod, "destroy_staging_and_attest", fake_destroy),
         patch("subprocess.run", return_value=SimpleNamespace(returncode=0)),
     ):
         rc = main(["run", "--study", STUDY])
