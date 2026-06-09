@@ -58,3 +58,29 @@ def test_describe_allowlist_mentions_requirements() -> None:
     assert "Pro" in text
     assert "GPT" in text
     assert "Ollama" in text
+
+
+# ── UI wiring — the gate must actually guard the wizard's Load Study button ──
+
+
+def test_wizard_wires_model_gate_and_partial_notice() -> None:
+    """The wizard must (a) gate the Load Study button on the model-policy
+    allowlist and (b) render the partial-run notice beside the held-set
+    notice. Both were once fully implemented but orphaned (no production
+    caller) — this locks the wiring so it cannot silently regress."""
+    from pathlib import Path
+
+    wizard_src = Path("scripts/ai_assistant/ui/wizard.py").read_text(encoding="utf-8")
+    assert "is_model_allowed_for_study_load(" in wizard_src, (
+        "wizard.py must evaluate is_model_allowed_for_study_load before "
+        "the Load Study button — an unguarded button lets any model trigger "
+        "an irreversible output/{STUDY} rewrite."
+    )
+    assert "disabled=not model_gate.allowed" in wizard_src, (
+        "The Load Study st.button must be disabled when the model gate "
+        "rejects the current provider/model."
+    )
+    assert "partial_run_notice" in wizard_src, (
+        "wizard.py must render partial_run_notice so operators see "
+        "partially-published forms (rows held for review) in the UI."
+    )

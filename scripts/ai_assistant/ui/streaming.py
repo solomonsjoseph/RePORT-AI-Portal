@@ -729,8 +729,6 @@ def _render_message_content(
     *,
     msg_idx: int = 0,
     tools_used: list[dict[str, str]] | None = None,
-    _from_narrative: bool = False,
-    _role: str = "assistant",
 ) -> None:
     """Render message content: figures as images, Python code collapsed, output visible.
 
@@ -747,76 +745,12 @@ def _render_message_content(
         # Remove thinking blocks from content for main display
         content = think_pattern.sub("", content).strip()
 
-    # Render full analysis results directly from disk (bypasses LLM context limits)
-    analysis_pattern = re.compile(r"<RPLN_ANALYSIS:([^>]+)>")
-    analysis_match = analysis_pattern.search(content)
-    if analysis_match:
-        analysis_path = Path(analysis_match.group(1).strip())
-        # Zone guard: only read files inside the agent zone (llm_source + agent/).
-        # Matches the unified chokepoint used by every agent tool.
-        try:
-            validate_agent_read(analysis_path)
-        except PermissionError as _perm_exc:
-            # Show a debuggable card: path + reason + permitted zone.
-            st.error(
-                "**Analysis result blocked by zone guard.**\n\n"
-                "The analysis tool saved results outside the permitted agent zone. "
-                "This is a configuration error — contact your system administrator.",
-                icon="🔒",
-            )
-            logger.error(
-                "Zone guard blocked analysis read: path=%s reason=%s", analysis_path, _perm_exc
-            )
-            return
-        if analysis_path.exists():
-            # Replace the marker in content with just a brief note
-            content = analysis_pattern.sub("", content).strip()
-            # Render the full narrative from the saved file
-            full_narrative = analysis_path.read_text(encoding="utf-8")
-            # Recursively render the full narrative (which contains RPLN_FIGURE markers)
-            _render_message_content(
-                full_narrative,
-                msg_idx=msg_idx,
-                _from_narrative=True,
-            )
-            if content:
-                st.markdown(_sanitize_file_refs(content))
-            return
-        else:
-            st.warning(
-                "**Analysis result not found.**  \n"
-                "The analysis result was not saved to disk — the tool may have failed silently. "
-                "Try running the query again.",
-                icon="📂",
-            )
-            logger.warning("Analysis file missing: path=%s", analysis_path)
-            content = analysis_pattern.sub("", content).strip()
-
-    # Fallback: if content looks like an analysis response but the LLM
-    # paraphrased the tool output and dropped the RPLN_ANALYSIS marker,
-    # auto-render the narrative from disk.
-    if not analysis_match and not _from_narrative and _role == "assistant":
-        _fallback_cohort_ids: list[str] = []
-        if re.search(r"cohort.?a|index.cases", content, re.IGNORECASE):
-            _fallback_cohort_ids.append("cohort_a")
-        if re.search(r"cohort.?b|household.contacts", content, re.IGNORECASE):
-            _fallback_cohort_ids.append("cohort_b")
-
-        for _cid in _fallback_cohort_ids:
-            _narrative_path = config.STUDY_OUTPUT_DIR / "analysis" / f"{_cid}_narrative.md"
-            _render_key = f"_narrative_rendered_{msg_idx}_{_cid}"
-            if _narrative_path.exists() and _render_key not in st.session_state:
-                st.session_state[_render_key] = True
-                with st.expander(
-                    f"\U0001f4ca Full Analysis Report \u2014 {_cid.replace('_', ' ').title()}",
-                    expanded=True,
-                ):
-                    _full_narrative = _narrative_path.read_text(encoding="utf-8")
-                    _render_message_content(
-                        _full_narrative,
-                        msg_idx=msg_idx * 1000 + hash(_cid) % 1000,
-                        _from_narrative=True,
-                    )
+    # Legacy ``<RPLN_ANALYSIS:...>`` markers come from the removed
+    # analytical-engine flow; nothing emits them anymore. Conversations saved
+    # by older versions may still carry one -- strip it rather than render it,
+    # and never read its path from disk (the old fallback read
+    # ``output/{STUDY}/analysis/`` without the zone guard).
+    content = re.sub(r"<RPLN_ANALYSIS:[^>]+>", "", content).strip()
 
     # Split content on all artifact markers — figures (Plotly JSON, matplotlib
     # PNG) and saved analysis code (.py file from the sandbox).
@@ -1044,7 +978,6 @@ def _render_chat_history() -> None:
                 content_to_render,
                 msg_idx=i,
                 tools_used=_replay_tools_used,
-                _role=msg["role"],
             )
             if msg["role"] == "assistant" and not _content_has_saved_code(content_to_render):
                 _render_analysis_code_cards(_replay_tools_used, msg_idx=i)

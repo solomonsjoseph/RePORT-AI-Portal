@@ -15,7 +15,12 @@ from scripts.ai_assistant.agent_graph import reset_agent
 from scripts.ai_assistant.ui.bundle_status import (
     bundle_readiness_issues,
     held_set_notice,
+    partial_run_notice,
     published_bundle_exists,
+)
+from scripts.ai_assistant.ui.model_policy import (
+    describe_allowlist,
+    is_model_allowed_for_study_load,
 )
 from scripts.ai_assistant.ui.providers import (
     _OTHER_MODEL_OPTION,
@@ -364,6 +369,23 @@ def _render_held_set_notice() -> None:
         st.warning(notice, icon="⚠️")
 
 
+def _render_partial_run_notice() -> None:
+    """Show a NON-BLOCKING notice when the latest run partially published forms.
+
+    The scrub-leg counterpart of :func:`_render_held_set_notice`: a *partial*
+    form IS published (its surviving rows are queryable) while its quarantined
+    rows await review — distinct from a *held* form, which is not published at
+    all. Form names + counts + reason codes only; never row values.
+    """
+    try:
+        notice = partial_run_notice(config.STUDY_NAME)
+    except Exception:  # pragma: no cover - advisory path must never crash chat
+        logger.debug("partial_run_notice raised; suppressing for the UI", exc_info=True)
+        notice = None
+    if notice:
+        st.info(notice, icon=":material/info:")
+
+
 def _render_snapshot_selector() -> None:
     """Render a dropdown to load a previously written immutable study snapshot.
 
@@ -646,15 +668,32 @@ def render_setup_page() -> None:
                 # Non-blocking held-set notice (advisory; never gates querying).
                 _render_held_set_notice()
 
+                # Non-blocking partial-publish notice (scrub-leg counterpart).
+                _render_partial_run_notice()
+
                 # Existing study data: select a reviewed, immutable snapshot.
                 _render_snapshot_selector()
 
                 # ── Load Study: activate the report-ai-study-pipeline plugin. ──
+                # High-risk gate: a study load/reload irreversibly rewrites
+                # output/{STUDY}. Only allowlisted high-capability models (or
+                # local Ollama) may trigger it; snapshots and existing-bundle
+                # querying stay available regardless of model.
+                model_gate = is_model_allowed_for_study_load(
+                    provider=config.LLM_PROVIDER, model=config.LLM_MODEL
+                )
+                if not model_gate.allowed:
+                    st.warning(
+                        f"Load Study is disabled for the current model: {model_gate.reason}",
+                        icon="🛡️",
+                    )
+                    st.caption(describe_allowlist())
                 load_label = "Reload Study" if pipeline_ready or output_exists else "Load Study"
                 if st.button(
                     load_label,
                     type="primary" if not output_exists else "secondary",
                     width="stretch",
+                    disabled=not model_gate.allowed,
                 ):
                     with st.spinner("Activating study plugin — this may take a minute..."):
                         result = run_pipeline()
