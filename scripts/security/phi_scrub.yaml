@@ -174,13 +174,25 @@ keep_fields:
   - "^TST_TUOTHER$"
   # ── Home/residence duration — TB-exposure relevant (T2.1 Q2 KEEP) ──────
   - "(?:IC_HOMEHOUR|IC_HOMETIME|IC_HOMETIME_MONTHS)"
+  # ── Non-date "Not Done" flag columns whose names contain date sub-tokens ─
+  # These columns store free-text status indicators ("Not Done", "Not Recorded")
+  # or binary flags, NOT actual dates. Their names contain date sub-tokens
+  # (MBDAT, PROCDAT) so they would otherwise be swept by the specific-catalog
+  # date rule via re.search. KEEP at priority-1 short-circuits the date rule.
+  # field_is_date() also respects keep_fields, so these return False there too.
+  - "^CX_PROCDAT_ND$"
+  - "^ZN_MBDATNR$"
+  - "^ZN_MBDATNR2$"
 
 # ──────────────────────────────────────────────────────────────────────────
 # DATE FIELDS (jittered with per-subject constant offset)
 # ──────────────────────────────────────────────────────────────────────────
 date_fields:
   # ── Specific clinical-date catalog (Indo-VAP CRF-tuned) ──────────────────
-  - "(?:VISDAT|ICFDT|COMPDAT|COMPDTE|TBTXDT|ENRDT|SCRDT|RANDDT|ONSDT|ENDDT|ADMDT|DISDT|RXSTDT|RXENDT|FOLDT|VISTDAT|BLDDAT|RECDAT|HIVDAT|IGRADAT|CXRDAT|PREGOUTDAT|MBDAT|STDAT|ENDAT|DSTDAT|GIVEDAT|ARTDAT|HBAND|HBADAT|HEMDAT|EVENTDAT|AWAREDAT|WOUTDAT|WITHDAT|RLPSDAT|PREGDAT|PROCD|MBRECDAT|PROCDAT|COLLDAT|LINDAT|LOUTDAT|GENOPROCDAT|GENORECDAT|PAXPROCDAT|PAXRECDAT|PBMCPROCDAT|PBMCRECDAT|PLASMAPROCDAT|PLASMARECDAT|QTFGITPROCDAT|QTFGITRECDAT|SLVPROCDAT|SLVRECDAT|URNPROCDAT|URNRECDAT|ARTSTDAT|ARTENDAT|INHSTDAT|INHENDAT|RIFSTDAT|RIFENDAT|PROPHSTDAT|PROPHENDAT|RPTSTDAT|RPTENDAT|COMPDATE|xraydat|PREGOUTDAT_2|COMPDAT_2|MBDAT2|SC_URNPROC80DAT|CAREDAT|TBDIAGDAT|ENROLLDAT|CD4DAT|LNDAT|LNDATND|GENOPROC80DAT|PAXPROC80DAT|PBMCPROC80DAT|PLASMAPROC80DAT|QTFGITPROC80DAT|SLVPROC80DAT|URNPROC80DAT|LIQENDAT|LIQSTDAT|SOLENDAT|SOLSTDAT|MBDATNR|MBDATNR2|RECDAT2|BatchRDate|TBTRTSP)"
+  - "(?:VISDAT|ICFDT|COMPDAT|COMPDTE|TBTXDT|ENRDT|SCRDT|RANDDT|ONSDT|ENDDT|ADMDT|DISDT|RXSTDT|RXENDT|FOLDT|VISTDAT|BLDDAT|RECDAT|HIVDAT|IGRADAT|CXRDAT|PREGOUTDAT|MBDAT|STDAT|ENDAT|DSTDAT|GIVEDAT|ARTDAT|HBAND|HBADAT|HEMDAT|EVENTDAT|AWAREDAT|WOUTDAT|WITHDAT|RLPSDAT|PREGDAT|PROCD|MBRECDAT|PROCDAT|COLLDAT|LINDAT|LOUTDAT|GENOPROCDAT|GENORECDAT|PAXPROCDAT|PAXRECDAT|PBMCPROCDAT|PBMCRECDAT|PLASMAPROCDAT|PLASMARECDAT|QTFGITPROCDAT|QTFGITRECDAT|SLVPROCDAT|SLVRECDAT|URNPROCDAT|URNRECDAT|ARTSTDAT|ARTENDAT|INHSTDAT|INHENDAT|RIFSTDAT|RIFENDAT|PROPHSTDAT|PROPHENDAT|RPTSTDAT|RPTENDAT|COMPDATE|xraydat|PREGOUTDAT_2|COMPDAT_2|MBDAT2|SC_URNPROC80DAT|CAREDAT|TBDIAGDAT|ENROLLDAT|CD4DAT|LNDAT|LNDATND|GENOPROC80DAT|PAXPROC80DAT|PBMCPROC80DAT|PLASMAPROC80DAT|QTFGITPROC80DAT|SLVPROC80DAT|URNPROC80DAT|LIQENDAT|LIQSTDAT|SOLENDAT|SOLSTDAT|RECDAT2|BatchRDate|TBTRTSP)"
+  # NOTE: MBDATNR and MBDATNR2 were removed from the catalog above — those
+  # columns (ZN_MBDATNR, ZN_MBDATNR2) store free-text "Not Done" / "Not
+  # Recorded" status strings, not actual dates, and must NOT be date-scrubbed.
   # ── Generic date-suffix catch-alls ────────────────────────────────────────
   - "(?:_?DAT\\d*$|_DT$|DATE\\d*$|_date$)"
   - "^TST_DAT\\d+$"
@@ -560,6 +572,10 @@ date_null_tokens:
   - "-"
   - "--"
   - "?"
+  # ── Sentinel placeholder values seen in date fields (not real dates) ─────
+  - "99999999"   # numeric sentinel for "unknown/missing" in specimen forms
+  - "00000000"   # zero-date sentinel
+  - "0"          # single-zero placeholder
 
 # ──────────────────────────────────────────────────────────────────────────
 # FILE EXCLUSIONS — DOCUMENTATION ONLY (not consumed by this scrubber)

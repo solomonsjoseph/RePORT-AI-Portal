@@ -83,8 +83,8 @@ date_locales:
   CC_COMPDAT: DMY
   CC_PREGDAT: DMY
   CC_VISDAT: DMY
-  CM_COMPDAT: DMY
-  CM_MBDAT2: DMY
+  CM_COMPDAT: MDY  # data-derived MDY correction: month-first per PHI-safe magnitude scan
+  CM_MBDAT2: MDY  # data-derived MDY correction: month-first per PHI-safe magnitude scan
   COE_COMPDATE: DMY
   COE_ENROLLDAT: DMY
   COE_VISDAT: DMY
@@ -93,13 +93,13 @@ date_locales:
   CX_COMPDAT: DMY
   CX_DSTDAT: DMY
   CX_ENDAT: DMY
-  CX_ISOLATEDAT: DMY
+  CX_ISOLATEDAT: MDY  # data-derived MDY correction: month-first per PHI-safe magnitude scan
   CX_MBDAT: DMY
   CX_MBRECDAT: DMY
-  CX_PROCDAT: DMY
-  CX_PROCDAT_ND: DMY
+  CX_PROCDAT: MDY  # data-derived MDY correction: month-first per PHI-safe magnitude scan
+  CX_PROCDAT_ND: MDY  # "Not Done" flag — kept by keep_fields; locale entry harmless
   CX_STDAT: DMY
-  CX_VISDAT: DMY
+  CX_VISDAT: MDY  # data-derived MDY correction: month-first per PHI-safe magnitude scan
   DST_COMPDAT: DMY
   DST_DSTDAT: DMY
   DST_ISOLATEDAT: DMY
@@ -127,10 +127,10 @@ date_locales:
   FOB_VISDAT: DMY
   FUA_COMPDAT: DMY
   FUA_PREGOUTDAT: DMY
-  FUA_PREGOUTDAT_2: DMY
+  FUA_PREGOUTDAT_2: MDY  # data-derived MDY correction: month-first per PHI-safe magnitude scan
   FUA_VISDAT: DMY
   FUB_COMPDAT: DMY
-  FUB_COMPDAT_2: DMY
+  FUB_COMPDAT_2: MDY  # data-derived MDY correction: month-first per PHI-safe magnitude scan
   FUB_PREGOUTDAT: DMY
   FUB_TBTRTSP: DMY
   FUB_VISDAT: DMY
@@ -218,10 +218,14 @@ date_locales:
   NC_COMPDAT: DMY
   NC_COMPDTE: DMY
   NC_VISDAT: DMY
-  RE_CAREDAT: DMY
-  RE_COMPDAT: DMY
-  RE_TBDIAGDAT: DMY
-  RE_VISDAT: DMY
+  # Form 101 (HHC Recontact) dates are US-style MDY (month-first), not DMY.
+  # Evidence (PHI-safe magnitude scan, 2026-06-09): RE_VISDAT/RE_COMPDAT have
+  # 19 rows with the 2nd component >12 (valid only as MDY) and ZERO rows with
+  # the 1st component >12 — impossible for a genuine day-first column.
+  RE_CAREDAT: MDY
+  RE_COMPDAT: MDY
+  RE_TBDIAGDAT: MDY
+  RE_VISDAT: MDY
   SC_BLDDAT: DMY
   SC_COMPDAT: DMY
   SC_GENOPROC80DAT: DMY
@@ -260,7 +264,7 @@ date_locales:
   TBE_COMPDAT: DMY
   TBE_VISDAT: DMY
   TC_COMPDAT: DMY
-  TC_xraydat: DMY
+  TC_xraydat: MDY  # data-derived MDY correction: month-first per PHI-safe magnitude scan
   TST_DAT1: DMY
   TST_DAT2: DMY
   TST_DAT3: DMY

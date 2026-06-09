@@ -194,6 +194,25 @@ _VALID_POSTURES = frozenset({_POSTURE_SAFE_HARBOR, _POSTURE_LIMITED_DATASET})
 # these (after .strip().upper()) skips date jitter rather than fail-closing.
 # Mirrors the default ``date_null_tokens`` list in phi_scrub.yaml. Kept here
 # as a fallback so older configs that predate the key behave sanely.
+# Blank/separator-only date string guard.  Values like "/  /", "//", ". ."
+# contain no actual date — treat them as empty (missing date) and skip jitter.
+# Checked BEFORE the null-token lookup and shift_date call inside _scrub_row.
+_DATE_BLANK_RE = re.compile(r"^[\s/.\-:]*$")
+
+
+def _is_date_sentinel(value: object) -> bool:
+    """True if a date value is an all-9s or all-0s sentinel (ignoring separators).
+
+    Clinical "unknown date" placeholders appear as 99999999, 9999-99-99, 999999,
+    a bare 9, or the 0-valued equivalents — sometimes stored as integers (which
+    bypass a string token list), so this checks digit content directly. Such
+    values skip jitter (kept as-is) rather than fail-closing. No valid date is
+    all-9 or all-0, so this never swallows real data.
+    """
+    digits = "".join(ch for ch in str(value) if ch.isdigit())
+    return bool(digits) and (digits == "9" * len(digits) or digits == "0" * len(digits))
+
+
 _DEFAULT_DATE_NULL_TOKENS: frozenset[str] = frozenset(
     {
         "UNK",
@@ -507,7 +526,14 @@ class PHIScrubConfig:
         Birthdate fields are excluded here — they are handled separately via
         :meth:`field_is_birthdate` so Safe Harbor drops can be distinguished
         from jitter events.
+
+        Keep fields are also excluded: a field matching ``keep_fields`` is
+        never date-processed regardless of whether its name also matches a
+        date pattern.  This mirrors the priority-1 keep rule in ``_scrub_row``
+        and allows test callers to assert ``field_is_date(kept_col) == False``.
         """
+        if self.field_is_keep(name):
+            return False
         if self.birthdate_pattern is not None and self.birthdate_pattern.search(name):
             return False
         return any(p.search(name) for p in self.date_patterns)
@@ -1392,7 +1418,11 @@ def _scrub_row(
             raw_val = row[field]
             if raw_val is None or (isinstance(raw_val, str) and not raw_val.strip()):
                 continue
-            if cfg.is_date_null_token(raw_val):
+            # Separator/whitespace-only values (e.g. '/  /', '//', '. .') are
+            # missing dates — skip jitter rather than fail-closing.
+            if isinstance(raw_val, str) and _DATE_BLANK_RE.match(raw_val):
+                continue
+            if cfg.is_date_null_token(raw_val) or _is_date_sentinel(raw_val):
                 _bump("date_null_token", field)
                 continue
             try:

@@ -2454,3 +2454,214 @@ class TestInProgressToken:
         # Call without run_id / runs_dir — must not raise and must not leave any token.
         phi_scrub.run_scrub(study_name="TEST")
         # No assertion on a specific path; just verify the call succeeds.
+
+
+# ── Date handling remediation: blank separators + sentinel tokens ─────────────
+#    (Change 2 + Change 3 coverage)
+
+
+class TestDateRemediationBlankSeparators:
+    """Blank/separator-only date values must be treated as missing (not quarantined)."""
+
+    def test_slash_spaces_date_field_skipped_not_quarantined(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """/  / in a date field → row KEPT, field left as-is, no quarantine."""
+        _write_config(scrub_config_path, date_fields=["^VISDAT$"])
+        rows = [{"SUBJID": "S1", "VISDAT": "/  /"}]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert len(loaded) == 1, "Row must be KEPT (not quarantined)"
+        assert loaded[0]["VISDAT"] == "/  /", "Blank-separator value must pass through unchanged"
+
+        quarantine = config.STUDY_STAGING_DIR / "quarantine" / "1A_ICScreening.jsonl"
+        assert not quarantine.exists(), "Quarantine file must not exist for blank-sep date"
+
+    def test_double_slash_date_field_skipped_not_quarantined(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """// in a date field → row KEPT, field left as-is."""
+        _write_config(scrub_config_path, date_fields=["^VISDAT$"])
+        rows = [{"SUBJID": "S1", "VISDAT": "//"}]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert len(loaded) == 1, "Row must be KEPT (not quarantined)"
+
+        quarantine = config.STUDY_STAGING_DIR / "quarantine" / "1A_ICScreening.jsonl"
+        assert not quarantine.exists()
+
+    def test_dot_space_dot_date_field_skipped_not_quarantined(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """. . in a date field → row KEPT, field left as-is."""
+        _write_config(scrub_config_path, date_fields=["^VISDAT$"])
+        rows = [{"SUBJID": "S1", "VISDAT": ". ."}]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert len(loaded) == 1, "Row must be KEPT (not quarantined)"
+
+        quarantine = config.STUDY_STAGING_DIR / "quarantine" / "1A_ICScreening.jsonl"
+        assert not quarantine.exists()
+
+    def test_genuinely_bad_date_still_quarantines(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """A truly unparseable non-blank date value must quarantine and raise (fail-closed).
+
+        run_scrub raises PHIDateUnshiftableError and writes the row to
+        quarantine/date_unshiftable_<file>.jsonl — it does NOT silently keep
+        or drop the row.  This verifies the fail-closed contract is intact
+        even after the blank-separator and sentinel-token relaxations.
+        """
+        _write_config(scrub_config_path, date_fields=["^VISDAT$"])
+        rows = [{"SUBJID": "S1", "VISDAT": "not-a-date-at-all"}]
+        _seed_staging(monkeypatch_config, rows)
+
+        # run_scrub raises — this is the fail-closed behavior
+        with pytest.raises(phi_scrub.PHIDateUnshiftableError):
+            phi_scrub.run_scrub(study_name="TEST")
+
+        # Row must be in the date_unshiftable quarantine file, not the kept output
+        quarantine = (
+            config.STUDY_STAGING_DIR / "quarantine" / "date_unshiftable_1A_ICScreening.jsonl"
+        )
+        assert quarantine.exists(), "Quarantine file must exist for genuinely bad date"
+
+
+class TestDateRemediationSentinelTokens:
+    """Sentinel placeholder values (99999999, 00000000, 0) must skip jitter."""
+
+    def test_99999999_in_date_field_skipped_not_quarantined(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """99999999 in a date field → row KEPT, field left as-is (null token)."""
+        _write_config(
+            scrub_config_path,
+            date_fields=["^VISDAT$"],
+            date_null_tokens=[
+                "UNK",
+                "UNKNOWN",
+                "NA",
+                "N/A",
+                "N.A.",
+                "NONE",
+                "NIL",
+                "NOT DONE",
+                "NOT APPLICABLE",
+                "NOT AVAILABLE",
+                "NOT REPORTED",
+                "ND",
+                "NR",
+                ".",
+                "-",
+                "--",
+                "?",
+                "99999999",
+                "00000000",
+                "0",
+            ],
+        )
+        rows = [{"SUBJID": "S1", "VISDAT": "99999999"}]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert len(loaded) == 1, "Row must be KEPT"
+        assert loaded[0]["VISDAT"] == "99999999", "Sentinel value must pass through unchanged"
+
+        quarantine = config.STUDY_STAGING_DIR / "quarantine" / "1A_ICScreening.jsonl"
+        assert not quarantine.exists(), "Quarantine must not exist for null token"
+
+
+# ── date_fields exclusion: non-date columns must not be date-scrubbed ─────────
+#    (Change 3 coverage — verifying cfg.field_is_date logic)
+
+
+class TestDateFieldsExclusionNonDateColumns:
+    """Columns ZN_MBDATNR, ZN_MBDATNR2, CX_PROCDAT_ND must not be date-classified."""
+
+    def _load_real_cfg(self) -> phi_scrub.PHIScrubConfig | None:
+        """Load the real phi_scrub.yaml from the project."""
+        import config as _cfg
+
+        real_yaml = _cfg.PHI_SCRUB_CONFIG_PATH
+        if not real_yaml.is_file():
+            return None
+        return phi_scrub.load_scrub_config(real_yaml)
+
+    def test_zn_mbdatnr_is_not_date(self) -> None:
+        """ZN_MBDATNR stores free-text status; field_is_date must return False."""
+        cfg = self._load_real_cfg()
+        if cfg is None:
+            pytest.skip("phi_scrub.yaml not present in this environment")
+        assert cfg.field_is_date("ZN_MBDATNR") is False, (
+            "ZN_MBDATNR must NOT be classified as a date field "
+            "(it stores 'Not Done'/'Not Recorded' text, not a date)"
+        )
+
+    def test_zn_mbdatnr2_is_not_date(self) -> None:
+        """ZN_MBDATNR2 stores free-text status; field_is_date must return False."""
+        cfg = self._load_real_cfg()
+        if cfg is None:
+            pytest.skip("phi_scrub.yaml not present in this environment")
+        assert cfg.field_is_date("ZN_MBDATNR2") is False, (
+            "ZN_MBDATNR2 must NOT be classified as a date field"
+        )
+
+    def test_cx_procdat_nd_is_not_date(self) -> None:
+        """CX_PROCDAT_ND is a binary Not-Done flag; field_is_date must return False."""
+        cfg = self._load_real_cfg()
+        if cfg is None:
+            pytest.skip("phi_scrub.yaml not present in this environment")
+        assert cfg.field_is_date("CX_PROCDAT_ND") is False, (
+            "CX_PROCDAT_ND must NOT be classified as a date field "
+            "(it is a binary indicator, not a date)"
+        )
+
+    def test_cx_procdat_nd_is_keep(self) -> None:
+        """CX_PROCDAT_ND must match keep_fields (so it is not scrubbed at all)."""
+        cfg = self._load_real_cfg()
+        if cfg is None:
+            pytest.skip("phi_scrub.yaml not present in this environment")
+        assert cfg.field_is_keep("CX_PROCDAT_ND") is True, (
+            "CX_PROCDAT_ND must match keep_fields to be exempt from all scrub rules"
+        )
+
+    def test_cx_procdat_nd_not_in_drop_fields(self) -> None:
+        """CX_PROCDAT_ND must not accidentally match drop_fields."""
+        cfg = self._load_real_cfg()
+        if cfg is None:
+            pytest.skip("phi_scrub.yaml not present in this environment")
+        assert cfg.field_is_drop("CX_PROCDAT_ND") is False, (
+            "CX_PROCDAT_ND must not match drop_fields"
+        )
+
+    def test_cx_procdat_still_is_date(self) -> None:
+        """CX_PROCDAT (without _ND suffix) must still be classified as a date field."""
+        cfg = self._load_real_cfg()
+        if cfg is None:
+            pytest.skip("phi_scrub.yaml not present in this environment")
+        assert cfg.field_is_date("CX_PROCDAT") is True, (
+            "CX_PROCDAT must still be classified as a date field after the exclusion fix"
+        )

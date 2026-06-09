@@ -1,22 +1,31 @@
 """Variable-aware date parsing for the Indo-VAP clinical dataset.
 
-The Indo-VAP Excel sheets store dates in **three** distinct ways:
+The Indo-VAP Excel sheets store dates in **five** distinct ways:
 
 1. **Excel datetime cells** — openpyxl / pandas parse these into Python
    ``datetime`` objects automatically.  No ambiguity.
-2. **Slash-delimited text strings** — stored as plain text in the cell.
+2. **Separator-delimited text strings** — stored as plain text in the cell,
+   using ``/``, ``-``, or ``.`` as the field separator.
    The date *order* (month-first vs day-first) **varies per variable**:
 
    * **Most variables** use US-style **M/D/YYYY** or **M/D/YY**
-     (e.g. ``"08/12/2014 12:27:48 PM"``, ``"7/28/14"``).
+     (e.g. ``"08/12/2014 12:27:48 PM"``, ``"7.28.14"``).
    * **Six specific variables** use Indian-style **D/M/YYYY** or **D/M/YY**
-     (e.g. ``IC_VISDAT="28/05/2014"``, ``IT_IGRADAT="12/12/12"``).
+     (e.g. ``IC_VISDAT="28/05/2014"``, ``IT_IGRADAT="12.12.12"``).
 
    The canonical set of day-first variables is maintained in
    :data:`DMY_VARIABLES` below.
 
 3. **ISO datetime strings** — ``"2014-07-28"`` or ``"2014-07-28 00:00:00"``.
-   Unambiguous; year-month-day order.
+   Unambiguous; year-month-day order.  **Tried before separator-delimited so
+   ``YYYY-MM-DD`` is never mis-routed to the separator branch.**
+
+4. **Compact integer dates** — 6, 7, or 8 pure digits stored as strings or
+   integers (e.g. ``"20140728"`` for YYYYMMDD, ``"28052014"`` for DDMMYYYY,
+   ``"07282014"`` for MMDDYYYY, ``"280514"`` for DDMMYY).  Locale resolution
+   follows the same priority as the separator branch (DMY allowlist →
+   manifest → heuristic → raise on ambiguous).  Output is always normalised
+   to ISO ``YYYY-MM-DD``.
 
 This module provides:
 
@@ -38,6 +47,8 @@ from typing import NamedTuple
 
 __all__ = [
     "DMY_VARIABLES",
+    "_NUM_DATE_RE",
+    "_SEP_RE",
     "ParsedDate",
     "_disambiguate_locale",
     "is_dmy_variable",
@@ -85,30 +96,56 @@ All other slash-date variables default to M/D/YYYY (month first, US).
 # ============================================================================
 
 # ISO: YYYY-MM-DD [HH:MM:SS]
+# Must be tried FIRST so "2014-07-28" is never routed to the separator branch.
+# Month/day accept 1-2 digits (non-zero-padded "2014-3-5" is valid); the
+# datetime() construction in parse_date validates the actual ranges, so the
+# regex stays permissive rather than rejecting real dates on formatting alone.
 _ISO_RE = re.compile(
-    r"^((?:19|20)\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])"
-    r"(?:\s+(\d{2}):(\d{2}):(\d{2}))?$"
+    r"^((?:19|20)\d{2})-(\d{1,2})-(\d{1,2})"
+    r"(?:[ T](\d{1,2}):(\d{2}):(\d{2}))?$"
 )
 
-# Slash-delimited: A/B/C [H:M:S [AM|PM]]
+# Separator-delimited: A<sep>B<sep>C [H:M:S [AM|PM]]
+# Accepts / (slash), - (hyphen), or . (dot) as the separator.  All three must
+# use the SAME separator within a single value.
 # Groups: (1)=first, (2)=second, (3)=year, (4)=hour, (5)=min, (6)=sec, (7)=AM/PM
+# NOTE: ISO "YYYY-MM-DD" is already intercepted by _ISO_RE above, so when this
+# regex matches a hyphen-delimited value the year in group-3 is always 2-4 digits
+# (≤ 4) — but we guard in the parser anyway by checking _ISO_RE first.
+_SEP_RE = re.compile(
+    r"^(\d{1,2})([/.\-])(\d{1,2})\2(\d{2,4})"
+    r"(?:\s+(\d{1,2}):(\d{2}):(\d{2})(?:\s*([AP]M))?)?$",
+    re.I,
+)
+# Groups shift relative to _SLASH_RE: (1)=first, (2)=sep char, (3)=second,
+# (4)=year, (5)=hour, (6)=min, (7)=sec, (8)=AM/PM.
+
+# Legacy alias kept for backwards-compat with any caller that imported it.
+# _SLASH_RE now delegates to _SEP_RE internally; both are exported.
 _SLASH_RE = re.compile(
     r"^(\d{1,2})/(\d{1,2})/(\d{2,4})"
     r"(?:\s+(\d{1,2}):(\d{2}):(\d{2})(?:\s*([AP]M))?)?$",
     re.I,
 )
 
-# Quick detection: matches any slash-date (M/D or D/M) with optional time
+# Quick detection: matches any separator-delimited date with optional time.
+# Used only for value_looks_like_date() — does not need to distinguish ISO.
 _SLASH_DETECT_RE = re.compile(
-    r"^\d{1,2}/\d{1,2}/\d{2,4}(?:\s+\d{1,2}:\d{2}:\d{2}(?:\s*[AP]M)?)?$",
+    r"^\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}(?:\s+\d{1,2}:\d{2}:\d{2}(?:\s*[AP]M)?)?$",
     re.I,
 )
 
 # Quick detection: ISO date
 _ISO_DETECT_RE = re.compile(
-    r"^(?:19|20)\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])"
-    r"(?:\s+\d{2}:\d{2}:\d{2})?$"
+    r"^(?:19|20)\d{2}-\d{1,2}-\d{1,2}"
+    r"(?:[ T]\d{1,2}:\d{2}:\d{2})?$"
 )
+
+# Compact integer date: 6, 7, or 8 pure digits (no separators).
+# 8-digit: YYYYMMDD / DDMMYYYY / MMDDYYYY
+# 7-digit: DMMYYYY (1+2+4) or DDMYYYY (2+1+4)  — day-first study only
+# 6-digit: DDMMYY (2+2+2)
+_NUM_DATE_RE = re.compile(r"^(\d{6,8})$")
 
 
 # ============================================================================
@@ -161,9 +198,9 @@ def _disambiguate_locale(value: str, *, declared_locale: str | None = None) -> s
     """Attempt to determine whether *value* is in DMY or MDY format.
 
     Args:
-        value: A slash-delimited date string like ``"28/05/2014"`` or
-               ``"05/28/2014"``.  Only the first two numeric components
-               (before the year) are inspected.
+        value: A separator-delimited date string like ``"28/05/2014"``,
+               ``"28-05-2014"``, or ``"05.28.2014"``.  Only the first two
+               numeric components (before the year) are inspected.
         declared_locale: If provided (``"DMY"`` or ``"MDY"``), return it
                          immediately without inspecting *value*.
 
@@ -179,11 +216,13 @@ def _disambiguate_locale(value: str, *, declared_locale: str | None = None) -> s
     if declared_locale is not None:
         return declared_locale
 
-    m = _SLASH_RE.match(value.strip())
+    # Accept /, -, or . as separator (ISO YYYY-MM-DD is caught by _ISO_RE first).
+    m = _SEP_RE.match(value.strip())
     if not m:
         return None
 
-    g1, g2 = int(m.group(1)), int(m.group(2))
+    # Groups: (1)=first_component, (2)=sep, (3)=second_component, (4)=year
+    g1, g2 = int(m.group(1)), int(m.group(3))
 
     if g1 > 12 and g2 > 12:
         raise ValueError(f"Invalid date string: {value!r} (both components exceed 12)")
@@ -219,13 +258,37 @@ def parse_date(
 ) -> ParsedDate | None:
     """Parse a date/datetime text string into a :class:`ParsedDate`.
 
+    Accepted formats (tried in order):
+
+    1. ISO ``YYYY-MM-DD`` (with optional ``HH:MM:SS``) — unambiguous.
+    2. Separator-delimited ``A<sep>B<sep>C`` where *sep* is ``/``, ``-``, or
+       ``.`` (all three separators within a single value must be the same).
+       Locale (DMY vs MDY) is resolved via the priority chain below.
+    3. Compact integer:
+
+       * **8-digit** ``DDMMYYYY`` / ``MMDDYYYY`` — locale resolved via priority
+         chain; YYYYMMDD is tried as a last resort when the locale-resolved
+         parse yields an invalid date.
+       * **7-digit** ``DMMYYYY`` or ``DDMYYYY`` — both layouts tried; exactly
+         one must be valid (ambiguous → ``None``).
+       * **6-digit** ``DDMMYY`` — defaults day-first (Indian study); 2-digit
+         year expanded by :func:`_expand_year`.
+
+    Locale-resolution priority for separator and compact formats:
+
+    1. :func:`is_dmy_variable` allowlist (case-insensitive) → **DMY**.
+    2. ``date_locales`` manifest override (case-insensitive key) → declared.
+    3. Value heuristic: first component > 12 → DMY; second > 12 → MDY.
+    4. Still ambiguous with ``field_name`` known → :class:`ValueError`
+       (fail-closed; caller quarantines the row).
+
     Args:
-        value: The raw text string (e.g. ``"7/28/14"``, ``"28/05/2014"``,
-               ``"2014-07-28 00:00:00"``).
+        value: The raw text string (e.g. ``"7/28/14"``, ``"28.05.2014"``,
+               ``"28052014"``, ``"2014-07-28 00:00:00"``).
         field_name: The column/variable name the value came from.  Used to
-                    determine M/D vs D/M order for slash-delimited dates.
-                    If ``None``, defaults to M/D (US-style) when unambiguous
-                    and raises on genuinely ambiguous values.
+                    determine M/D vs D/M order.  If ``None``, defaults to
+                    M/D (US-style) when unambiguous and raises on genuinely
+                    ambiguous values.
         date_locales: Optional per-column locale overrides loaded from the
                       study's ``_forms_manifest.yaml`` ``date_locales:``
                       section.  Keys are column names (compared
@@ -237,16 +300,22 @@ def parse_date(
         be parsed as a date.
 
     Raises:
-        ValueError: If the slash-date locale cannot be determined (both
-                    components ≤ 12, no manifest entry).
+        ValueError: If the separator/compact-date locale cannot be determined
+                    (both components ≤ 12, no manifest entry, field known).
 
     Examples::
 
         >>> parse_date("7/28/14")
         ParsedDate(dt=datetime(2014, 7, 28), ..., format='mdy', ...)
 
-        >>> parse_date("28/05/2014", field_name="IC_VISDAT")
+        >>> parse_date("28.05.2014", field_name="IC_VISDAT")
         ParsedDate(dt=datetime(2014, 5, 28), ..., format='dmy', ...)
+
+        >>> parse_date("28-05-2014", field_name="IC_VISDAT")
+        ParsedDate(dt=datetime(2014, 5, 28), ..., format='dmy', ...)
+
+        >>> parse_date("28072014", field_name="IC_VISDAT")
+        ParsedDate(dt=datetime(2014, 7, 28), ..., format='iso', ...)
 
         >>> parse_date("2014-07-28 00:00:00")
         ParsedDate(dt=datetime(2014, 7, 28), ..., format='iso', ...)
@@ -256,6 +325,8 @@ def parse_date(
         return None
 
     # ── Try ISO: YYYY-MM-DD [HH:MM:SS] ──
+    # Must run BEFORE the separator branch so "2014-07-28" is never
+    # mis-routed to the hyphen-separator path.
     m = _ISO_RE.match(value)
     if m:
         y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
@@ -271,14 +342,21 @@ def parse_date(
             original=value,
         )
 
-    # ── Try slash-delimited: A/B/C [H:M:S [AM/PM]] ──
-    m = _SLASH_RE.match(value)
+    # ── Try separator-delimited: A<sep>B<sep>C [H:M:S [AM/PM]] ──
+    # Accepts / (slash), - (hyphen), or . (dot) as the field separator.
+    # The backreference \2 in _SEP_RE enforces that all three separators
+    # within a single value are identical.
+    m = _SEP_RE.match(value)
     if m:
-        g1, g2, g3 = int(m.group(1)), int(m.group(2)), int(m.group(3))
-        y = _expand_year(g3)
+        # Groups: (1)=first, (2)=sep_char, (3)=second, (4)=year,
+        #         (5)=hour, (6)=min, (7)=sec, (8)=AM/PM
+        g1, g2_raw, g3 = int(m.group(1)), m.group(2), int(m.group(3))
+        g_year = int(m.group(4))
+        y = _expand_year(g_year)
+        del g2_raw  # separator char; not used further
 
         # ── Determine locale (DMY vs MDY) ──
-        # Priority order:
+        # Priority order (identical to the former slash-only branch):
         #   1. Canonical DMY allowlist (case-insensitive)
         #   2. Per-column date_locales from _forms_manifest.yaml
         #   3. Heuristic disambiguation from the value itself
@@ -322,12 +400,12 @@ def parse_date(
 
         dmy = locale == "DMY"
         if dmy:
-            # D/M/Y: group1=day, group2=month
-            day, month = g1, g2
+            # D/M/Y: group1=day, group3=month
+            day, month = g1, g3
             fmt = "dmy"
         else:
-            # M/D/Y: group1=month, group2=day
-            month, day = g1, g2
+            # M/D/Y: group1=month, group3=day
+            month, day = g1, g3
             fmt = "mdy"
 
         try:
@@ -335,12 +413,240 @@ def parse_date(
         except (ValueError, OverflowError):
             return None
 
-        ampm = m.group(7).upper() if m.group(7) else None
+        ampm = m.group(8).upper() if m.group(8) else None
         return ParsedDate(
             dt=dt,
-            has_time=m.group(4) is not None,
+            has_time=m.group(5) is not None,
             ampm=ampm,
             format=fmt,
+            original=value,
+        )
+
+    # ── Try compact integer date: 6, 7, or 8 pure digits ──
+    m = _NUM_DATE_RE.match(value)
+    if m:
+        s = m.group(1)
+        # ny/nmo/nd are used as local ints to avoid shadowing the separator-branch
+        # names (y, mo, d) which mypy tracks even across branches.
+        ny: int
+        nmo: int
+        nd: int
+
+        if len(s) == 8:
+            # ── 8-digit ──────────────────────────────────────────────────────
+            # Step 1: If the first four digits form a plausible year (1900-2100)
+            # try YYYYMMDD first.  For this study the scan proved no 8-digit
+            # dates are YYYYMMDD (all start with a day/month pair, not a year),
+            # but we keep the YYYYMMDD path as a last-resort safety net for
+            # values that cannot be interpreted under any DMY/MDY reading.
+            #
+            # NOTE: We do NOT attempt YYYYMMDD as the *preferred* path; instead
+            # we resolve locale (DMY/MDY) first and only fall back to YYYYMMDD
+            # when the locale-resolved parse yields an invalid datetime.
+
+            # Resolve locale first (same priority as separator branch).
+            locale_int: str | None = None
+            if field_name is not None and is_dmy_variable(field_name):
+                locale_int = "DMY"
+            elif date_locales and field_name is not None:
+                field_upper = field_name.upper()
+                for key, declared in date_locales.items():
+                    if key.upper() == field_upper:
+                        locale_int = declared
+                        break
+
+            if locale_int is None:
+                # Try value-level disambiguation from the two leading 2-char groups.
+                d_cand, mo_cand = int(s[0:2]), int(s[2:4])
+                if d_cand > 12 and mo_cand > 12:
+                    # Both exceed 12 — impossible under DDMM or MMDD layout.
+                    # Try YYYYMMDD as last resort.
+                    y_try = int(s[0:4])
+                    if 1900 <= y_try <= 2100:
+                        try:
+                            dt = datetime(y_try, int(s[4:6]), int(s[6:8]))
+                            return ParsedDate(
+                                dt=dt,
+                                has_time=False,
+                                ampm=None,
+                                format="iso",
+                                original=value,
+                            )
+                        except (ValueError, OverflowError):
+                            pass
+                    return None
+                if d_cand > 12:
+                    locale_int = "DMY"
+                elif mo_cand > 12:
+                    locale_int = "MDY"
+                else:
+                    # Genuinely ambiguous
+                    if field_name is not None:
+                        raise ValueError(
+                            f"Ambiguous integer date locale for column {field_name!r}: "
+                            "declare in _forms_manifest.yaml under date_locales: "
+                            f"(value {value!r} has both leading components ≤ 12)"
+                        )
+                    # No field_name → legacy fall-through: default MDY
+                    locale_int = "MDY"
+                if field_name is not None and d_cand <= 12 and mo_cand <= 12:
+                    pass  # already raised or defaulted above
+                elif field_name is not None and locale_int is not None:
+                    _log.info(
+                        "Integer date locale for %r disambiguated heuristically to %s "
+                        "(value %r); declare in _forms_manifest.yaml to silence",
+                        field_name,
+                        locale_int,
+                        value,
+                    )
+
+            if locale_int == "DMY":
+                nd, nmo, ny = int(s[0:2]), int(s[2:4]), int(s[4:8])
+            else:  # MDY
+                nmo, nd, ny = int(s[0:2]), int(s[2:4]), int(s[4:8])
+
+            try:
+                dt = datetime(ny, nmo, nd)
+            except (ValueError, OverflowError):
+                # Locale-resolved parse failed; try YYYYMMDD as last resort.
+                y_try = int(s[0:4])
+                if 1900 <= y_try <= 2100:
+                    try:
+                        dt = datetime(y_try, int(s[4:6]), int(s[6:8]))
+                        return ParsedDate(
+                            dt=dt,
+                            has_time=False,
+                            ampm=None,
+                            format="iso",
+                            original=value,
+                        )
+                    except (ValueError, OverflowError):
+                        pass
+                return None
+
+        elif len(s) == 7:
+            # ── 7-digit: day-first study only ────────────────────────────────
+            # Two possible layouts (both day-first):
+            #   DMMYYYY: d=s[0:1], m=s[1:3], y=s[3:7]   (single-digit day)
+            #   DDMYYYY: d=s[0:2], m=s[2:3], y=s[3:7]   (single-digit month)
+            #
+            # Strategy: try BOTH; if exactly one yields a valid datetime use it;
+            # if both are valid OR neither is valid → return None (caller
+            # quarantines; we must not guess between two plausible readings).
+            # The locale-resolution precedence (DMY allowlist / manifest) is
+            # honoured before attempting the heuristic split.
+
+            # Check locale overrides — but for 7-digit we cannot meaningfully
+            # use MDY because we have no MMDDYYYY data in this study.  If the
+            # manifest explicitly declares MDY, trust it (M=first component).
+            locale_7: str | None = None
+            if field_name is not None and is_dmy_variable(field_name):
+                locale_7 = "DMY"
+            elif date_locales and field_name is not None:
+                field_upper = field_name.upper()
+                for key, declared in date_locales.items():
+                    if key.upper() == field_upper:
+                        locale_7 = declared
+                        break
+
+            if locale_7 is not None:
+                # Explicit locale declared; use DMMYYYY / MDDYYYY as appropriate.
+                if locale_7 == "DMY":
+                    nd, nmo, ny = int(s[0:1]), int(s[1:3]), int(s[3:7])
+                else:  # MDY
+                    nmo, nd, ny = int(s[0:1]), int(s[1:3]), int(s[3:7])
+                try:
+                    dt = datetime(ny, nmo, nd)
+                except (ValueError, OverflowError):
+                    return None
+            else:
+                # No explicit locale: try both DMY layouts and pick unambiguous winner.
+                # DMMYYYY: d=s[0], m=s[1:3], y=s[3:7]
+                dt_dmmyyyy: datetime | None = None
+                try:
+                    dt_dmmyyyy = datetime(int(s[3:7]), int(s[1:3]), int(s[0:1]))
+                except (ValueError, OverflowError):
+                    dt_dmmyyyy = None
+
+                # DDMYYYY: d=s[0:2], m=s[2:3], y=s[3:7]
+                dt_ddmyyyy: datetime | None = None
+                try:
+                    dt_ddmyyyy = datetime(int(s[3:7]), int(s[2:3]), int(s[0:2]))
+                except (ValueError, OverflowError):
+                    dt_ddmyyyy = None
+
+                valid_count = (dt_dmmyyyy is not None) + (dt_ddmyyyy is not None)
+                if valid_count != 1:
+                    # Both valid (ambiguous) or neither valid (invalid) → quarantine.
+                    return None
+                dt = dt_dmmyyyy if dt_dmmyyyy is not None else dt_ddmyyyy  # type: ignore[assignment]
+                nd, nmo, ny = dt.day, dt.month, dt.year
+
+        else:
+            # ── 6-digit: DDMMYY (day-first) ──────────────────────────────────
+            # Split: d=s[0:2], m=s[2:4], yy=s[4:6]; expand yy → 4-digit year.
+            # Locale resolution follows the same priority as the separator branch
+            # (DMY allowlist → manifest → heuristic → default DMY for this study).
+            #
+            # Why default DMY?  The 6-digit format was observed only in
+            # day-first (Indian) columns; there is no evidence of MMDDYY in
+            # the scan.  We still apply the full precedence chain so an
+            # explicit manifest override of "MDY" is honoured.
+            locale_6: str | None = None
+            if field_name is not None and is_dmy_variable(field_name):
+                locale_6 = "DMY"
+            elif date_locales and field_name is not None:
+                field_upper = field_name.upper()
+                for key, declared in date_locales.items():
+                    if key.upper() == field_upper:
+                        locale_6 = declared
+                        break
+
+            if locale_6 is None:
+                # Heuristic: if first 2 digits > 12 → must be day (DMY).
+                # If second pair > 12 → MDY.  Both ≤ 12: genuinely ambiguous.
+                d6, m6 = int(s[0:2]), int(s[2:4])
+                if d6 > 12 and m6 > 12:
+                    return None  # Impossible regardless of layout.
+                if d6 > 12:
+                    locale_6 = "DMY"
+                elif m6 > 12:
+                    locale_6 = "MDY"
+                else:
+                    # Genuinely ambiguous — fail-closed for a known field,
+                    # IDENTICAL to the separator + 8-digit branches. The study's
+                    # "all day-first" assumption is encoded in the manifest /
+                    # allowlist declarations (which resolve locale BEFORE this
+                    # heuristic), NOT in a silent code default — so a future
+                    # genuinely-MDY column can never be silently day/month-swapped.
+                    if field_name is not None:
+                        raise ValueError(
+                            f"Ambiguous 6-digit date locale for column {field_name!r}: "
+                            "declare in _forms_manifest.yaml under date_locales: "
+                            f"(value {value!r} has both leading components ≤ 12)"
+                        )
+                    # No field_name → legacy fall-through: default MDY (matches
+                    # the separator + 8-digit branches).
+                    locale_6 = "MDY"
+
+            yy6 = _expand_year(int(s[4:6]))
+            if locale_6 == "DMY":
+                nd, nmo, ny = int(s[0:2]), int(s[2:4]), yy6
+            else:  # MDY
+                nmo, nd, ny = int(s[0:2]), int(s[2:4]), yy6
+
+            try:
+                dt = datetime(ny, nmo, nd)
+            except (ValueError, OverflowError):
+                return None
+
+        # Integer dates are always normalised to ISO output (format='iso') so the
+        # jittered value re-emits as YYYY-MM-DD via the existing _format_date path.
+        return ParsedDate(
+            dt=dt,
+            has_time=False,
+            ampm=None,
+            format="iso",
             original=value,
         )
 
