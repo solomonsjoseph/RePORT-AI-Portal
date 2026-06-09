@@ -31,6 +31,7 @@ __all__ = [
     "StudyPrivacyConfig",
     "classify_headers",
     "is_phi_risky_header",
+    "load_sot_variable_signals",
     "load_study_privacy_config",
     "refresh_jurisdiction_rules",
     "review_form_headers",
@@ -550,6 +551,72 @@ def is_phi_risky_header(header: str) -> bool:
     return bool(set(normalized.split("_")) & _PHI_RISKY_TOKENS)
 
 
+# SoT `phi`/`phi_action` values that denote an actual PHI handling (anything but a
+# plain keep). Used by the SoT cross-verification to decide whether the SoT — which
+# was built from the PDF question + headers — independently considers a variable PHI.
+_SOT_PHI_ACTIONS: frozenset[str] = frozenset(
+    {
+        "pseudonymize",
+        "drop",
+        "jitter_date",
+        "generalize",
+        "cap",
+        "suppress",
+        "band",
+        "birthdate_drop",
+    }
+)
+
+
+def load_sot_variable_signals(sot_root: Path, form_name: str) -> dict[str, dict[str, object]]:
+    """Load per-variable SoT semantic signals for *form_name* — fail-soft to ``{}``.
+
+    The SoT (generated FIRST, from the printed PDF question + dataset headers) is
+    an independent source of each variable's MEANING and a PHI recommendation. We
+    read the per-form joined query view at
+    ``{sot_root}/{stem}/joined/{stem}_joined_query_view.yaml`` (falling back to the
+    policy YAML) and return ``{VAR_UPPER: {"has_pdf_question": bool, "sot_phi":
+    str|None, "is_phi": bool}}``. Any missing/unreadable SoT yields ``{}`` so the
+    name-only review proceeds unchanged (the SoT is an enhancer, never a hard dep).
+
+    Reads METADATA only (variable names, printed questions, PHI recommendations) —
+    never dataset row values.
+    """
+    stem = Path(form_name).stem
+    candidates = (
+        sot_root / stem / "joined" / f"{stem}_joined_query_view.yaml",
+        sot_root / stem / "pdf" / f"{stem}_policy.yaml",
+    )
+    for path in candidates:
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        except (OSError, yaml.YAMLError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        variables = data.get("variables", data)
+        if not isinstance(variables, dict):
+            continue
+        signals: dict[str, dict[str, object]] = {}
+        for var, entry in variables.items():
+            if not isinstance(entry, dict):
+                continue
+            pdf_raw = entry.get("pdf")
+            pdf: dict[str, Any] = pdf_raw if isinstance(pdf_raw, dict) else entry
+            ds_raw = entry.get("dataset")
+            dataset_blk: dict[str, Any] = ds_raw if isinstance(ds_raw, dict) else {}
+            question = pdf.get("pdf_question", pdf.get("question"))
+            sot_phi = pdf.get("phi") or dataset_blk.get("phi_action")
+            sot_phi_str = str(sot_phi).strip().lower() if sot_phi else None
+            signals[str(var).upper()] = {
+                "has_pdf_question": bool(question) and str(question).strip().lower() != "null",
+                "sot_phi": sot_phi_str,
+                "is_phi": sot_phi_str in _SOT_PHI_ACTIONS,
+            }
+        return signals
+    return {}
+
+
 def validate_official_source_url(url: str) -> None:
     """Reject non-HTTPS, non-official rule sources."""
     parsed = urlparse(url)
@@ -884,6 +951,9 @@ def review_form_headers(
     headers: list[str] | tuple[str, ...],
     privacy_config: StudyPrivacyConfig,
     rule_bundle: RuleBundle,
+    sot_signals: dict[str, dict[str, object]] | None = None,
+    published_raw_headers: frozenset[str] | None = None,
+    confirmed_keep_headers: frozenset[str] = frozenset(),
 ) -> FormReviewApproval:
     """Review one form's headers before any row-value extraction is allowed.
 
@@ -927,13 +997,62 @@ def review_form_headers(
     # rather than silently keep it — "preserved must be preserved, dropped
     # dropped". Rule-matched headers are already non-KEEP, so this only fires on
     # the escapees.
+    #
+    # SoT CROSS-VERIFICATION. A coverage/disagreement hold only matters for a
+    # column the SCRUB actually PUBLISHES RAW (its configured action is keep) — a
+    # column the scrub drops/pseudonymizes/jitters is never leaked regardless of
+    # phi_review's name-classification (e.g. SUBJID2..7, signatures are KEEP by the
+    # name-regex but the scrub drops them). ``published_raw_headers`` is that set;
+    # when not supplied (legacy callers) every KEEP is treated as published-raw so
+    # behavior is unchanged.
+    sot = sot_signals or {}
+    published_raw = (
+        published_raw_headers
+        if published_raw_headers is not None
+        else frozenset(item.header for item in classifications if item.action == Action.KEEP)
+    )
+
+    def _published_raw(header: str) -> bool:
+        return header in published_raw
+
+    def _sot_confirms_benign(header: str) -> bool:
+        # SoT confirms a name-flagged KEEP is benign when the variable has a printed
+        # PDF question (a known clinical question) AND the PDF-aware SoT did not
+        # itself recommend a PHI action.
+        sig = sot.get(header.upper())
+        return bool(sig and sig.get("has_pdf_question") and not sig.get("is_phi"))
+
+    # Option-C coverage hold, cross-verified: a risky-NAMED column published raw is
+    # held UNLESS confirmed benign by (1) the SoT (printed question, not PHI) or
+    # (2) a deliberate documented keep_fields rule (a human keep decision — e.g. a
+    # coded category like IC_RATION, which has no PDF widget to verify against).
     coverage_holds = tuple(
         f"phi_coverage_hold: '{item.header}' is KEEP but its name matches a "
         f"PHI-risk pattern; classify keep/drop/scrub before publishing this form"
         for item in classifications
-        if item.action == Action.KEEP and is_phi_risky_header(item.header)
+        if item.action == Action.KEEP
+        and _published_raw(item.header)
+        and is_phi_risky_header(item.header)
+        and not _sot_confirms_benign(item.header)
+        and item.header not in confirmed_keep_headers
     )
-    reasons = tuple(dict.fromkeys((*blockers, *adversarial_failures, *coverage_holds)))
+
+    # SoT DISAGREEMENT hold (under-protection catch): the scrub PUBLISHES a column
+    # RAW that the PDF-aware SoT independently flags as PHI. The SoT saw the printed
+    # question and judged it identifying — trust it over the name/scrub keep and
+    # hold for human review rather than publish a possibly-identifying value.
+    disagreement_holds = tuple(
+        f"phi_sot_disagreement: '{item.header}' is published raw but the SoT "
+        f"(built from the PDF question) flags it PHI ({sot.get(item.header.upper(), {}).get('sot_phi')}); "
+        f"confirm keep or scrub before publishing"
+        for item in classifications
+        if item.action == Action.KEEP
+        and _published_raw(item.header)
+        and bool(sot.get(item.header.upper(), {}).get("is_phi"))
+    )
+    reasons = tuple(
+        dict.fromkeys((*blockers, *adversarial_failures, *coverage_holds, *disagreement_holds))
+    )
 
     status = "held" if reasons else "approved"
 

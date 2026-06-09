@@ -1302,12 +1302,15 @@ def _run_form_approval_gate(
     selected_forms: tuple[str, ...] = (),
 ) -> FormGateResult:
     """Run header-only PHI handling review before any row values are opened."""
+    import config
     from scripts.security.phi_review import (
+        load_sot_variable_signals,
         load_study_privacy_config,
         refresh_jurisdiction_rules,
         review_form_headers,
         verify_approval_payload,
     )
+    from scripts.security.phi_scrub import load_scrub_config
     from scripts.source_truth.study_intake import read_headers_only
 
     privacy_config = load_study_privacy_config(study_raw_dir)
@@ -1323,15 +1326,36 @@ def _run_form_approval_gate(
     )
     worker_count = _auto_worker_count(max_workers)
 
+    # SoT cross-verification inputs: the SoT (generated FIRST) gives each variable
+    # an independent meaning + PHI signal, and the scrub's keep_fields record the
+    # deliberate human keep decisions. Both let review_form_headers clear
+    # false-positive coverage holds and catch SoT/name-rule disagreements.
+    sot_root = Path(config.OUTPUT_DIR) / study / "llm_source" / "SoT"
+    _scrub_cfg = load_scrub_config(Path(config.PHI_SCRUB_CONFIG_PATH))
+
     approvals: list[Any] = []
 
     def _review_one(form_name: str) -> Any:
         headers = read_headers_only(datasets_dir / form_name)
+        # published_raw: the scrub's configured action is keep → the column reaches
+        # llm_source unchanged (a coverage/disagreement hold only matters for these;
+        # a dropped/scrubbed column is never leaked). confirmed_keeps: a deliberate
+        # documented keep_fields rule (a human keep decision that clears a false
+        # coverage hold for a no-PDF column like IC_RATION).
+        published_raw = frozenset(
+            h for h in headers if _configured_scrub_action(_scrub_cfg, h) == "keep"
+        )
+        confirmed_keeps = frozenset(
+            h for h in headers if _scrub_cfg is not None and _scrub_cfg.field_is_keep(h)
+        )
         return review_form_headers(
             form_name=form_name,
             headers=headers,
             privacy_config=privacy_config,
             rule_bundle=rule_bundle,
+            sot_signals=load_sot_variable_signals(sot_root, form_name),
+            published_raw_headers=published_raw,
+            confirmed_keep_headers=confirmed_keeps,
         )
 
     if review_forms:

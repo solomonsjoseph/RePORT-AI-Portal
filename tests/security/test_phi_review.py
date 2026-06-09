@@ -13,6 +13,7 @@ from scripts.security.phi_review import (
     OfficialSourceRejected,
     classify_headers,
     is_phi_risky_header,
+    load_sot_variable_signals,
     load_study_privacy_config,
     refresh_jurisdiction_rules,
     review_form_headers,
@@ -540,3 +541,96 @@ def test_max_synthetic_attempts_one_probe_failure_holds(tmp_path: Path) -> None:
     assert approval.attempts == 1
     assert approval.held_reason is not None
     assert "1" in approval.held_reason.what_was_tried
+
+
+# ---------------------------------------------------------------------------
+# SoT cross-verification of PHI handling
+# ---------------------------------------------------------------------------
+
+
+def test_load_sot_variable_signals_parses_joined_view(tmp_path: Path) -> None:
+    """The loader extracts per-variable has_pdf_question + PHI recommendation."""
+    sot_root = tmp_path / "SoT"
+    form_dir = sot_root / "FormX" / "joined"
+    form_dir.mkdir(parents=True)
+    (form_dir / "FormX_joined_query_view.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "variables": {
+                    "VISDAT": {"pdf": {"question": "Visit date", "type": "date"}, "dataset": {}},
+                    "STAFF_SIG": {"pdf": {"question": "Signature", "phi": "drop"}, "dataset": {}},
+                    "NO_Q_COL": {"pdf": {"question": None}, "dataset": {}},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    sig = load_sot_variable_signals(sot_root, "FormX.xlsx")
+    assert sig["VISDAT"]["has_pdf_question"] is True
+    assert sig["VISDAT"]["is_phi"] is False
+    assert sig["STAFF_SIG"]["is_phi"] is True  # SoT recommends drop
+    assert sig["NO_Q_COL"]["has_pdf_question"] is False
+    # Missing SoT → empty dict (fail-soft, name-only review proceeds).
+    assert load_sot_variable_signals(sot_root, "Absent.xlsx") == {}
+
+
+def _benign_bundle(tmp_path: Path):
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    _write_privacy_config(study_dir)
+    cfg = load_study_privacy_config(study_dir)
+    bundle = refresh_jurisdiction_rules(cfg, allow_network=False)
+    return cfg, bundle
+
+
+def test_sot_disagreement_holds_when_published_raw(tmp_path: Path) -> None:
+    """A column the scrub PUBLISHES RAW that the SoT flags PHI → held for review."""
+    cfg, bundle = _benign_bundle(tmp_path)
+    approval = review_form_headers(
+        form_name="F.xlsx",
+        headers=["culture_result"],  # phi_review KEEPs this
+        privacy_config=cfg,
+        rule_bundle=bundle,
+        sot_signals={
+            "CULTURE_RESULT": {"has_pdf_question": True, "sot_phi": "drop", "is_phi": True}
+        },
+        published_raw_headers=frozenset({"culture_result"}),
+    )
+    assert approval.status == "held"
+    assert any("phi_sot_disagreement" in r for r in approval.reasons)
+
+
+def test_sot_disagreement_not_held_when_scrub_drops(tmp_path: Path) -> None:
+    """Same SoT-PHI flag, but the column is NOT published raw (scrub drops it) → no hold.
+
+    This is the published_raw gate: SUBJID2/signatures are phi_review-KEEP + SoT-PHI
+    but the scrub drops them, so they are never leaked and must not hold the form.
+    """
+    cfg, bundle = _benign_bundle(tmp_path)
+    approval = review_form_headers(
+        form_name="F.xlsx",
+        headers=["culture_result"],
+        privacy_config=cfg,
+        rule_bundle=bundle,
+        sot_signals={
+            "CULTURE_RESULT": {"has_pdf_question": True, "sot_phi": "drop", "is_phi": True}
+        },
+        published_raw_headers=frozenset(),  # scrub does NOT publish it raw
+    )
+    assert approval.status == "approved"
+    assert not any("phi_sot_disagreement" in r for r in approval.reasons)
+
+
+def test_sot_benign_column_not_held(tmp_path: Path) -> None:
+    """A SoT-confirmed-benign clinical column (pdf_question, no PHI) is not held."""
+    cfg, bundle = _benign_bundle(tmp_path)
+    approval = review_form_headers(
+        form_name="F.xlsx",
+        headers=["culture_result"],
+        privacy_config=cfg,
+        rule_bundle=bundle,
+        sot_signals={
+            "CULTURE_RESULT": {"has_pdf_question": True, "sot_phi": None, "is_phi": False}
+        },
+        published_raw_headers=frozenset({"culture_result"}),
+    )
+    assert approval.status == "approved"
