@@ -1591,8 +1591,13 @@ def _cmd_run(args: argparse.Namespace) -> int:
         env["STUDY_NAME"] = study
         # The wrapper already holds the pipeline lock (acquired above); signal
         # the subprocess so main.py's _acquire_pipeline_lock skips re-acquisition
-        # rather than racing itself on the same fcntl flock.
+        # rather than racing itself on the same fcntl flock. We pass our PID so
+        # main.py can VALIDATE the baton (live parent == os.getppid()) instead of
+        # honoring an inherited/stale env var unconditionally — otherwise a leaked
+        # REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT would silently disable the lock for
+        # an unrelated direct `python main.py` run (GAP-3).
         env["REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT"] = "1"
+        env["REPORTAL_PIPELINE_LOCK_PARENT_PID"] = str(os.getpid())
         repo_root = Path(__file__).parent.parent.parent
         # stdout/stderr are not captured here; main.py installs its own PHI log
         # redactor at startup. If that install fails non-fatally (non-production

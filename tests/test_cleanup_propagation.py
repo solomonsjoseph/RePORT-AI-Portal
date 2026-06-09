@@ -342,3 +342,83 @@ class TestRunPropagation:
         #    that we seeded in step 1 should exist under STUDY_AUDIT_DIR.
         audit_files = sorted(p.name for p in config.STUDY_AUDIT_DIR.glob("*.json"))
         assert audit_files == ["dataset_cleanup_report.json"]
+
+
+# ── GAP-7: fail-closed on malformed JSONL ──────────────────────────────────
+
+
+class TestComputePropagationSetMalformedJsonl:
+    """GAP-7: compute_propagation_set must RAISE (not silently skip) when a staging
+    JSONL file contains a malformed line.
+
+    Silently continuing would risk over-pruning: a variable that only appears
+    on the unparseable row would be excluded from 'surviving' and then pruned
+    from the dictionary — dangling-reference integrity loss.
+    """
+
+    def test_raises_on_malformed_jsonl_line(self, monkeypatch_config: Path) -> None:
+        """One valid line + one malformed line → RuntimeError, never silent continue."""
+        import pytest
+
+        # Seed audit with a column-scope drop so the propagation set is non-empty
+        # (the code only scans dataset JSONLs when dropped is non-empty).
+        _write_dataset_audit(
+            config.AUDIT_DATASET_REPORT_PATH,
+            [
+                {
+                    "scope": "dataset-column",
+                    "name": "DROPPED_COL",
+                    "file": "x.jsonl",
+                    "sheet": None,
+                    "reason": "dup",
+                    "kept": None,
+                }
+            ],
+        )
+
+        ds_dir = config.STAGING_DATASETS_DIR
+        ds_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write a JSONL file with one valid JSON object line and one malformed line.
+        bad_jsonl = ds_dir / "mixed_validity.jsonl"
+        bad_jsonl.write_text(
+            '{"SUBJID": "S1", "SOME_COL": 1}\nNOT VALID JSON {{{{{\n',
+            encoding="utf-8",
+        )
+
+        with pytest.raises(RuntimeError, match="malformed JSONL"):
+            compute_propagation_set(config.AUDIT_DATASET_REPORT_PATH, ds_dir)
+
+    def test_error_message_names_the_file(self, monkeypatch_config: Path) -> None:
+        """The RuntimeError message must name the offending file so operators can act."""
+        import pytest
+
+        _write_dataset_audit(
+            config.AUDIT_DATASET_REPORT_PATH,
+            [
+                {
+                    "scope": "dataset-column",
+                    "name": "SOME_VAR",
+                    "file": "f.jsonl",
+                    "sheet": None,
+                    "reason": "dup",
+                    "kept": None,
+                }
+            ],
+        )
+
+        ds_dir = config.STAGING_DATASETS_DIR
+        ds_dir.mkdir(parents=True, exist_ok=True)
+
+        bad_jsonl = ds_dir / "broken_dataset.jsonl"
+        bad_jsonl.write_text(
+            '{"SUBJID": "S1"}\n{{not json at all}}\n',
+            encoding="utf-8",
+        )
+
+        with pytest.raises(RuntimeError) as exc_info:
+            compute_propagation_set(config.AUDIT_DATASET_REPORT_PATH, ds_dir)
+
+        assert "broken_dataset.jsonl" in str(exc_info.value), (
+            "RuntimeError message must name the offending file"
+        )

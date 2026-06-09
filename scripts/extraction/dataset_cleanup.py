@@ -47,7 +47,6 @@ from scripts.audit.ledger import (
     remove_dataset_no_llm_sentinels,
 )
 from scripts.extraction.io import (
-    atomic_write_dataframe_jsonl,
     atomic_write_json,
 )
 from scripts.security.secure_env import assert_output_zone, assert_write_zone
@@ -167,6 +166,67 @@ def _is_subset(df_small: pd.DataFrame, df_large: pd.DataFrame) -> bool:
         return False
 
 
+# ── Human-review note writer ────────────────────────────────────────────────
+
+
+def _write_jsonl_union_review_note(
+    datasets_dir: Path,
+    stem_a: str,
+    stem_b: str,
+    df_a: pd.DataFrame,
+    df_b: pd.DataFrame,
+) -> None:
+    """Write a COUNT-ONLY human-review note for a value-divergent duplicate pair.
+
+    The note goes to ``output/{STUDY}/audit/human_review/{stem_a}/jsonl_union_review.md``
+    — inside the audit (no-LLM) zone, using config.STUDY_AUDIT_DIR so the path
+    is always correct regardless of staging layout.  NEVER writes row values.
+    """
+    note_dir = Path(config.STUDY_AUDIT_DIR) / "human_review" / stem_a
+    note_dir.mkdir(parents=True, exist_ok=True)
+    assert_output_zone(note_dir)
+
+    cols_a = sorted(df_a.columns.tolist())
+    note = (
+        f"# Human Review Required: Value-Divergent JSONL Pair\n\n"
+        f"## Files\n"
+        f"- `{stem_a}.jsonl` — {len(df_a):,} rows\n"
+        f"- `{stem_b}.jsonl` — {len(df_b):,} rows\n\n"
+        f"## Schema (identical)\n"
+        f"{cols_a}\n\n"
+        f"## What was tried\n"
+        f"Schema match was confirmed (identical column sets).\n"
+        f"Subset check was performed: neither file's rows are a strict subset "
+        f"of the other.\n"
+        f"Row counts differ (`{stem_a}`: {len(df_a):,}, `{stem_b}`: {len(df_b):,}).\n"
+        f"Automated union-concat was NOT performed — this would risk silently "
+        f"discarding real clinical rows or creating duplicate subject records.\n\n"
+        f"## What is ambiguous\n"
+        f"Some rows are present in one file but absent from the other.  These "
+        f"may be: (a) legitimately separate subject records, (b) corrected "
+        f"re-entries, or (c) a true superset/subset relationship hidden by "
+        f"minor value differences.  Only a domain expert can determine the "
+        f"authoritative source.\n\n"
+        f"## What would resolve it\n"
+        f"1. Open both staging JSONL files and compare by subject ID.\n"
+        f"2. Identify which file is the authoritative source (or confirm they "
+        f"   should both be kept as separate datasets).\n"
+        f"3. Once resolved, update `SUSPECTED_DUPLICATE_PAIRS` in "
+        f"   `scripts/extraction/dataset_cleanup.py` to remove this pair "
+        f"   (if they are not duplicates) or manually consolidate them before "
+        f"   re-running the pipeline.\n\n"
+        f"*Note: this file contains column NAMES and row COUNTS only — "
+        f"no row values are recorded here.*\n"
+    )
+    (note_dir / "jsonl_union_review.md").write_text(note, encoding="utf-8")
+    logger.info(
+        "Human-review note written for value-divergent pair (%s, %s): %s",
+        stem_a,
+        stem_b,
+        note_dir / "jsonl_union_review.md",
+    )
+
+
 # ── Core ────────────────────────────────────────────────────────────────────
 
 
@@ -264,36 +324,50 @@ def _merge_duplicate_pair(
             report.errors.append(msg)
             logger.warning(msg)
     else:
-        # Same schema but not a subset — union them into the keep file
-        try:
-            combined = pd.concat([keep_df, drop_df], ignore_index=True).drop_duplicates()
-            atomic_write_dataframe_jsonl(
-                datasets_dir / f"{keep_stem}.jsonl",
-                combined,
-                prefix=config.TEMP_PREFIX_DATASET,
-            )
-            drop_file.unlink()
-            report.duplicates_merged.append(
-                {
-                    "kept": f"{keep_stem}.jsonl",
-                    "removed": f"{drop_stem}.jsonl",
-                    "kept_rows": str(len(combined)),
-                    "original_rows_a": str(len(df_a)),
-                    "original_rows_b": str(len(df_b)),
-                    "reason": "union_merge",
-                }
-            )
-            logger.info(
-                "Union-merged duplicates: %s + %s → %s (%d rows)",
-                stem_a,
-                stem_b,
-                keep_stem,
-                len(combined),
-            )
-        except Exception as exc:
-            msg = f"Failed to union-merge ({stem_a}, {stem_b}): {exc}"
-            report.errors.append(msg)
-            logger.warning(msg)
+        # Same schema but row counts differ and neither is a subset of the other.
+        # This means the files contain value-divergent rows that cannot be
+        # safely merged automatically — a union concat could silently discard
+        # real clinical data or produce duplicate subject records.  Route to
+        # human review instead of auto-merging, leaving BOTH files in staging.
+        # Mirror the fail-closed spirit of merge_excel_duplicates.MergeNotSafeError.
+        _write_jsonl_union_review_note(
+            datasets_dir=datasets_dir,
+            stem_a=stem_a,
+            stem_b=stem_b,
+            df_a=df_a,
+            df_b=df_b,
+        )
+        report.duplicates_skipped.append(
+            {
+                "pair": f"{stem_a} / {stem_b}",
+                "reason": "value_divergent_needs_human_review",
+                "rows_a": str(len(df_a)),
+                "rows_b": str(len(df_b)),
+                "schema": str(sorted(df_a.columns.tolist())),
+                "what_was_tried": (
+                    "schema match confirmed; subset check passed (neither is a subset of the other); "
+                    "row counts differ — automated union not safe"
+                ),
+                "what_was_ambiguous": (
+                    "rows present in one file but absent from the other "
+                    "(value-divergent, not provably duplicate)"
+                ),
+                "what_would_resolve_it": (
+                    "human review of the two files to determine the correct superset "
+                    "or authoritative source; update SUSPECTED_DUPLICATE_PAIRS with "
+                    "the confirmed action"
+                ),
+            }
+        )
+        logger.warning(
+            "Duplicate pair (%s, %s): same schema but value-divergent rows "
+            "(rows_a=%d, rows_b=%d) — BOTH files left in staging; "
+            "human review note written to audit zone",
+            stem_a,
+            stem_b,
+            len(df_a),
+            len(df_b),
+        )
 
 
 def _serialize_audit(

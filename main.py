@@ -73,13 +73,51 @@ def _acquire_pipeline_lock(study: str | None = None) -> None:
     """
     global _PIPELINE_LOCK_FILE
 
-    # When the skill wrapper invokes main.py --pipeline as a subprocess, the
-    # wrapper already holds the fcntl flock on the study lockfile. Re-acquiring
-    # it here would deadlock against ourselves on POSIX, so we skip cleanly
-    # when the parent process signals it owns the lock. Direct `python main.py`
-    # invocations do not set this env var and acquire the lock normally.
+    # Lock-baton handoff: the skill wrapper (scripts/skills/extract_to_llm_source.py)
+    # acquires the study fcntl flock BEFORE spawning main.py --pipeline as a
+    # subprocess.  Re-acquiring here would deadlock (POSIX: same lock file,
+    # different fd). We honour the baton ONLY when:
+    #   1. REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT == "1", AND
+    #   2. REPORTAL_PIPELINE_LOCK_PARENT_PID names a live process that equals
+    #      os.getppid() (our actual parent).
+    #
+    # If (2) fails — missing PID var, stale PID, or a spoofed env — we fall
+    # through and acquire for real so nothing breaks if the wrapper hasn't been
+    # updated yet.
+    #
+    # NOTE FOR WRAPPER MAINTAINERS: scripts/skills/extract_to_llm_source.py
+    # must also export:
+    #   env["REPORTAL_PIPELINE_LOCK_PARENT_PID"] = str(os.getpid())
+    # alongside REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT=1, so this validation
+    # can confirm the baton is authentic.
     if os.environ.get("REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT") == "1":
-        return
+        pid_str = os.environ.get("REPORTAL_PIPELINE_LOCK_PARENT_PID", "").strip()
+        try:
+            claimed_pid = int(pid_str)
+        except (ValueError, TypeError):
+            claimed_pid = None
+
+        if claimed_pid is not None and claimed_pid == os.getppid():
+            # Validate that the claimed PID is still alive.
+            try:
+                os.kill(claimed_pid, 0)
+                parent_alive = True
+            except OSError:
+                parent_alive = False
+
+            if parent_alive:
+                # Baton is valid — skip acquisition (parent already holds the lock).
+                return
+
+        # Baton could not be validated (missing PID var, PID mismatch, dead
+        # process, or non-POSIX platform). Fall through to real acquisition.
+        # NOTE: main.py has no module-level `logger`; use logging.getLogger here.
+        logging.getLogger(__name__).debug(
+            "REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT=1 but PID validation failed "
+            "(claimed_pid=%s, getppid=%s) — acquiring lock normally.",
+            pid_str,
+            os.getppid(),
+        )
 
     study_name = study if study is not None else config.STUDY_NAME
     lock_dir = Path(config.TMP_DIR)
@@ -133,9 +171,14 @@ def _release_pipeline_lock(study: str | None = None) -> None:
             of which study it was acquired for.
     """
     global _PIPELINE_LOCK_FILE
-    # Symmetric to the acquire-side env-var guard: when the parent holds the
-    # lock, this process never opened the file handle and has nothing to close.
-    if os.environ.get("REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT") == "1":
+    # Symmetric to the acquire-side guard: skip release only when the baton
+    # was validated on acquire — i.e. parent is alive with matching PID.
+    # If the module-level handle is None, we never acquired (baton was accepted
+    # or acquire never ran), so there is nothing to close regardless.
+    if (
+        os.environ.get("REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT") == "1"
+        and _PIPELINE_LOCK_FILE is None
+    ):
         return
     if _PIPELINE_LOCK_FILE is None:
         return
@@ -144,6 +187,26 @@ def _release_pipeline_lock(study: str | None = None) -> None:
         lock_path.unlink()
     _PIPELINE_LOCK_FILE.close()
     _PIPELINE_LOCK_FILE = None
+
+
+def _prune_empty_staged_forms(staging_dir: Path) -> list[str]:
+    """Remove zero-byte (fully-quarantined) staged JSONL forms before publish.
+
+    A 100%-quarantined form (every row held for PHI review) is written by
+    ``run_scrub`` as an empty JSONL. The publish step (`_publish_leg`) does a
+    whole-directory atomic rename with no per-file size check, so an empty form
+    would otherwise be promoted to ``llm_source/`` as an empty dataset whenever
+    any other form has rows (N6). Physically remove such files here.
+
+    Returns the stems (form NAMES only — never row values) of removed forms so
+    the caller can emit a count-only log line.
+    """
+    if not staging_dir.is_dir():
+        return []
+    removed = [f for f in sorted(staging_dir.glob("*.jsonl")) if f.stat().st_size == 0]
+    for f in removed:
+        f.unlink()
+    return [f.stem for f in removed]
 
 
 def _streamlit_port_available(host: str, port: int) -> bool:
@@ -1060,7 +1123,11 @@ For detailed documentation, see the Sphinx docs or README.md
         # before llm_source/dataset_schema/files/ is re-materialised.
         if args.process_datasets and not args.skip_datasets:
             cleanup_dir = Path(config.STAGING_DATASETS_DIR)
-            if cleanup_dir.is_dir() and any(cleanup_dir.glob("*.jsonl")):
+            # Require at least one non-empty JSONL — an all-rows-quarantined form
+            # writes an empty JSONL; we must not treat that as publishable content.
+            if cleanup_dir.is_dir() and any(
+                f for f in cleanup_dir.glob("*.jsonl") if f.stat().st_size > 0
+            ):
                 # ── Defense-in-depth sentinel check ─────────────────────────
                 # Verify that Step 1.6 (phi_scrub) completed before allowing
                 # Step 1.7 (dataset_cleanup) to read row values. The sentinel
@@ -1106,13 +1173,37 @@ For detailed documentation, see the Sphinx docs or README.md
                 lambda: run_propagation(),
             )
 
+        # ── Step 1.9: Prune fully-quarantined (zero-byte) staged forms ──
+        # A 100%-quarantined form (every row held for review) is written by
+        # run_scrub as a zero-byte JSONL. Publish (_publish_leg) does a WHOLE-
+        # DIRECTORY atomic rename with no per-file size check, so without this
+        # prune such a form would be promoted to llm_source/ as an empty dataset
+        # whenever *any other* form has rows (the step-level size guards below are
+        # all-or-nothing). Physically remove zero-byte staged JSONLs here. The held
+        # rows are recorded in the run's partial_forms / status.json and surfaced
+        # by the UI partial-run notice, so the form stays accounted for — just not
+        # published. Count-only logging (form NAMES, never row values).
+        if args.process_datasets and not args.skip_datasets:
+            _pruned_forms = _prune_empty_staged_forms(Path(config.STAGING_DATASETS_DIR))
+            if _pruned_forms:
+                log.info(
+                    "Pruned %d fully-quarantined (empty) staged form(s) before publish: %s",
+                    len(_pruned_forms),
+                    _pruned_forms,
+                )
+
         # ── Step 2: Publish Staging → llm_source/ ──
         # Atomic-rename each staging leg into llm_source/; empty legs leave
         # their published counterpart untouched so a skipped-fresh leg keeps
         # its prior publish.
         if args.process_datasets and not args.skip_datasets:
             staging_ds = Path(config.STAGING_DATASETS_DIR)
-            if staging_ds.is_dir() and any(staging_ds.glob("*.jsonl")):
+            # Require at least one non-empty JSONL before running the PHI scan —
+            # an empty file (100%-quarantined form) must not be published, so there
+            # is nothing meaningful to scan or promote if all surviving files are empty.
+            if staging_ds.is_dir() and any(
+                f for f in staging_ds.glob("*.jsonl") if f.stat().st_size > 0
+            ):
                 scan = scan_tree_for_phi(staging_ds)
                 if not scan.ok:
                     raise RuntimeError(f"Pre-publication PHI leak scan failed: {scan.detail}")
@@ -1145,6 +1236,27 @@ For detailed documentation, see the Sphinx docs or README.md
             log.info("Published study variable map → %s", dest_dir / "study_variable_map.yaml")
 
         run_step("Step 3: Publish Study Variable Map", run_publish_variable_map)
+
+        # ── Step 3b: Publish Protocol Narrative (optional) ──
+        # Copies data/raw/{STUDY}/protocol_narrative.md → llm_source/study_metadata/
+        # if the source exists.  The narrative gives the AI assistant high-level
+        # clinical context without exposing raw subject data.  Gracefully skipped
+        # when the file is absent so the pipeline does not break on studies that
+        # have not yet authored a narrative.
+        def run_publish_protocol_narrative() -> None:
+            src = Path(config.DATASETS_DIR).parent / "protocol_narrative.md"
+            if not src.is_file():
+                log.info("Protocol narrative: %s not found — skipped", src)
+                return
+            dest_dir = Path(config.LLM_SOURCE_STUDY_METADATA_DIR)
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dest_dir / "protocol_narrative.md")
+            log.info(
+                "Published protocol narrative → %s",
+                dest_dir / "protocol_narrative.md",
+            )
+
+        run_step("Step 3b: Publish Protocol Narrative", run_publish_protocol_narrative)
 
         # Removed: scripts.source_truth.build — see docs/sphinx/developer_guide/source_truth_build.rst
 

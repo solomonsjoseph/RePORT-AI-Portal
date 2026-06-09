@@ -80,7 +80,7 @@ N := \033[0m
 	chat-deps chat-cli-deps chat-cli chat \
 	test test-all lint typecheck security ci verify release-check \
 	docs doc-freshness docs-quality docs-linkcheck docs-ci release-notes \
-	chat-smoke \
+	chat-smoke check-study-knowledge \
 	clean nuke
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -144,6 +144,7 @@ help:
 	@printf "$(B)$(G)  Maintenance$(N)\n"
 	@printf "  $(C)make clean$(N)            Remove caches, docs build output, stale logs\n"
 	@printf "  $(C)make nuke$(N)             Remove generated state; preserve data/raw\n"
+	@printf "  $(C)make check-study-knowledge$(N) Diff published study_variable_map.yaml against config/study_knowledge.yaml\n"
 	@printf "\n"
 	@printf "$(Y)  Modifiers:$(N)\n"
 	@printf "  $(Y)VERBOSE=1$(N) make <target>   Enable DEBUG logging\n"
@@ -382,6 +383,23 @@ release-notes:
 # ═══════════════════════════════════════════════════════════════════════
 # MAINTENANCE
 # ═══════════════════════════════════════════════════════════════════════
+
+check-study-knowledge: ## Diff published study_variable_map.yaml against config/study_knowledge.yaml
+	@PUBLISHED="output/$(STUDY)/llm_source/study_metadata/study_variable_map.yaml"; \
+	SOURCE="config/study_knowledge.yaml"; \
+	if [ ! -f "$$SOURCE" ]; then \
+		printf "$(R)ERROR: source not found: $$SOURCE$(N)\n"; exit 1; \
+	fi; \
+	if [ ! -f "$$PUBLISHED" ]; then \
+		printf "$(Y)SKIP: published file not found: $$PUBLISHED (run the pipeline first)$(N)\n"; exit 0; \
+	fi; \
+	if diff -q "$$SOURCE" "$$PUBLISHED" >/dev/null 2>&1; then \
+		printf "$(G)✓ study_variable_map.yaml matches config/study_knowledge.yaml$(N)\n"; \
+	else \
+		printf "$(R)✗ Drift detected between config/study_knowledge.yaml and $$PUBLISHED$(N)\n"; \
+		diff "$$SOURCE" "$$PUBLISHED" || true; \
+		exit 1; \
+	fi
 
 clean:
 	@find scripts tests docs/sphinx -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true

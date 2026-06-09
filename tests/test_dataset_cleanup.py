@@ -19,7 +19,8 @@ class TestRemoveJunk:
     def test_removes_paste_errors(self, monkeypatch_config: Path) -> None:
         import config
 
-        ds = config.TRIO_DATASETS_DIR
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
         _write_jsonl(ds / "Paste Errors.jsonl", scrubbed_records([{"a": 1}]))
         _write_jsonl(ds / "real_data.jsonl", scrubbed_records([{"b": 2}]))
 
@@ -31,7 +32,8 @@ class TestRemoveJunk:
     def test_removes_test1ek(self, monkeypatch_config: Path) -> None:
         import config
 
-        ds = config.TRIO_DATASETS_DIR
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
         _write_jsonl(ds / "TEST1EK.jsonl", scrubbed_records([{"a": 1}]))
 
         report = clean_trio_datasets(ds)
@@ -40,7 +42,8 @@ class TestRemoveJunk:
     def test_no_junk_present(self, monkeypatch_config: Path) -> None:
         import config
 
-        ds = config.TRIO_DATASETS_DIR
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
         _write_jsonl(ds / "good_data.jsonl", scrubbed_records([{"a": 1}]))
 
         report = clean_trio_datasets(ds)
@@ -51,7 +54,8 @@ class TestMergeDuplicates:
     def test_merge_identical_schemas_same_rows(self, monkeypatch_config: Path) -> None:
         import config
 
-        ds = config.TRIO_DATASETS_DIR
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
         records = scrubbed_records([{"SUBJID": f"S{i}", "AGE": 25 + i} for i in range(5)])
         _write_jsonl(ds / "14_CaseControl.jsonl", records)
         _write_jsonl(ds / "14_Case_Control.jsonl", records)
@@ -65,7 +69,8 @@ class TestMergeDuplicates:
     def test_keeps_larger_file(self, monkeypatch_config: Path) -> None:
         import config
 
-        ds = config.TRIO_DATASETS_DIR
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
         small = scrubbed_records([{"SUBJID": f"S{i}", "AGE": 25 + i} for i in range(3)])
         large = scrubbed_records([{"SUBJID": f"S{i}", "AGE": 25 + i} for i in range(10)])
         _write_jsonl(ds / "2A_ICBaseline.jsonl", large)
@@ -79,7 +84,8 @@ class TestMergeDuplicates:
     def test_different_schemas_kept(self, monkeypatch_config: Path) -> None:
         import config
 
-        ds = config.TRIO_DATASETS_DIR
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
         _write_jsonl(ds / "21_DSTISO.jsonl", scrubbed_records([{"COL_A": 1}]))
         _write_jsonl(ds / "21_DSTIsolate.jsonl", scrubbed_records([{"COL_B": 2}]))
 
@@ -90,7 +96,8 @@ class TestMergeDuplicates:
     def test_missing_pair_file_skipped(self, monkeypatch_config: Path) -> None:
         import config
 
-        ds = config.TRIO_DATASETS_DIR
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
         _write_jsonl(ds / "14_CaseControl.jsonl", scrubbed_records([{"A": 1}]))
         # 14_Case_Control.jsonl does NOT exist
 
@@ -548,3 +555,109 @@ class TestScrubFirstGuard:
         # Must not raise — the guard should pass cleanly
         report = clean_trio_datasets(ds, study_name="TestStudy")
         assert report.total_actions == 0
+
+
+class TestValueDivergentPairRoutedToHumanReview:
+    """UP5-A: a SUSPECTED_DUPLICATE_PAIRS pair whose files have identical schema,
+    non-subset rows, and DIFFERENT row counts must NOT be auto-merged.
+
+    Expected outcomes:
+      (a) Both files still exist in staging after clean_trio_datasets.
+      (b) A jsonl_union_review.md human-review note is written under audit/human_review/.
+      (c) The CleanupReport's duplicates_skipped contains a 'value_divergent_needs_human_review'
+          entry and duplicates_merged does NOT include a union of these files.
+
+    Rows carry _phi_scrubbed=='v3' so the _assert_scrubbed pre-flight passes.
+    """
+
+    def test_both_files_survive_after_cleanup(self, monkeypatch_config: Path) -> None:
+        """Neither file is deleted when the rows are value-divergent."""
+        import config
+
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
+
+        # Use a pair registered in SUSPECTED_DUPLICATE_PAIRS:
+        # ("14_CaseControl", "14_Case_Control")
+        # Identical schema: {SUBJID, STATUS, _phi_scrubbed}
+        # File A: 5 rows; File B: 3 rows that are completely different subjects.
+        # Neither file is a subset of the other → must route to human review.
+        file_a_rows = scrubbed_records(
+            [{"SUBJID": f"SA{i}", "STATUS": "enrolled"} for i in range(5)]
+        )
+        file_b_rows = scrubbed_records(
+            [{"SUBJID": f"SB{i}", "STATUS": "enrolled"} for i in range(3)]
+        )
+        _write_jsonl(ds / "14_CaseControl.jsonl", file_a_rows)
+        _write_jsonl(ds / "14_Case_Control.jsonl", file_b_rows)
+
+        clean_trio_datasets(ds, study_name="TestStudy")
+
+        assert (ds / "14_CaseControl.jsonl").exists(), "File A must not be deleted"
+        assert (ds / "14_Case_Control.jsonl").exists(), "File B must not be deleted"
+
+    def test_human_review_note_written(self, monkeypatch_config: Path) -> None:
+        """A jsonl_union_review.md note must be written under audit/human_review/."""
+        import config
+
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
+
+        file_a_rows = scrubbed_records(
+            [{"SUBJID": f"SA{i}", "STATUS": "enrolled"} for i in range(5)]
+        )
+        file_b_rows = scrubbed_records(
+            [{"SUBJID": f"SB{i}", "STATUS": "enrolled"} for i in range(3)]
+        )
+        _write_jsonl(ds / "14_CaseControl.jsonl", file_a_rows)
+        _write_jsonl(ds / "14_Case_Control.jsonl", file_b_rows)
+
+        clean_trio_datasets(ds, study_name="TestStudy")
+
+        review_note = (
+            config.STUDY_AUDIT_DIR / "human_review" / "14_CaseControl" / "jsonl_union_review.md"
+        )
+        assert review_note.exists(), (
+            f"Human-review note not found at {review_note}; "
+            "value-divergent pair must be routed to human review"
+        )
+        # The note must mention column names only (no row values)
+        content = review_note.read_text(encoding="utf-8")
+        assert "14_CaseControl" in content
+        assert "14_Case_Control" in content
+
+    def test_cleanup_ledger_records_needs_human_review(self, monkeypatch_config: Path) -> None:
+        """The CleanupReport must record a 'value_divergent_needs_human_review' reason
+        in duplicates_skipped and must NOT include these files in duplicates_merged."""
+        import config
+
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
+
+        file_a_rows = scrubbed_records(
+            [{"SUBJID": f"SA{i}", "STATUS": "enrolled"} for i in range(5)]
+        )
+        file_b_rows = scrubbed_records(
+            [{"SUBJID": f"SB{i}", "STATUS": "enrolled"} for i in range(3)]
+        )
+        _write_jsonl(ds / "14_CaseControl.jsonl", file_a_rows)
+        _write_jsonl(ds / "14_Case_Control.jsonl", file_b_rows)
+
+        report = clean_trio_datasets(ds, study_name="TestStudy")
+
+        # duplicates_merged must NOT contain the value-divergent pair
+        merged_files = {e.get("kept", "") for e in report.duplicates_merged} | {
+            e.get("removed", "") for e in report.duplicates_merged
+        }
+        assert "14_CaseControl.jsonl" not in merged_files, (
+            "Value-divergent pair must not appear in duplicates_merged"
+        )
+        assert "14_Case_Control.jsonl" not in merged_files, (
+            "Value-divergent pair must not appear in duplicates_merged"
+        )
+
+        # duplicates_skipped must contain the human-review reason
+        skipped_reasons = [e.get("reason", "") for e in report.duplicates_skipped]
+        assert any("human_review" in r for r in skipped_reasons), (
+            f"Expected 'human_review' in a skipped reason, got: {skipped_reasons}"
+        )

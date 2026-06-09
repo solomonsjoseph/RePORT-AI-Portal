@@ -36,6 +36,22 @@ from scripts.extraction.io import (
     atomic_write_jsonl,
     load_json_object_line,
 )
+
+# Import the canonical internal-column set from agent_tools so PROVENANCE_FIELDS
+# stays in sync without re-listing.  agent_tools._INTERNAL_COLUMNS covers
+# source_file, _provenance, _source_row, _ingestion_ts.  We also add the
+# PHI scrub marker (_phi_scrubbed, imported by name from phi_scrub constants)
+# so the marker never leaks into the 'surviving' variable set and is never
+# mistakenly treated as a schema variable subject to dictionary pruning.
+try:
+    from scripts.ai_assistant.agent_tools import _INTERNAL_COLUMNS as _AGENT_INTERNAL_COLUMNS
+except ImportError:
+    # Fallback when the AI-assistant deps are not installed (e.g. test environments
+    # that deliberately exclude the 'ai_assistant' group).
+    _AGENT_INTERNAL_COLUMNS = frozenset(  # type: ignore[no-redef]
+        {"source_file", "_provenance", "_source_row", "_ingestion_ts"}
+    )
+
 from scripts.security.secure_env import assert_write_zone
 
 logger = logging.getLogger(__name__)
@@ -53,7 +69,18 @@ __all__ = [
 # Dataset-row metadata keys that are NOT "variables" — they should be excluded
 # from the "surviving dataset vars" set so propagation doesn't treat them as
 # schema members.
-PROVENANCE_FIELDS: frozenset[str] = frozenset({"source_file", "_provenance", "_metadata"})
+#
+# This set is the union of:
+#   • _AGENT_INTERNAL_COLUMNS (canonical pipeline-internal columns shared with
+#     agent_tools — source_file, _provenance, _source_row, _ingestion_ts)
+#   • "_metadata" (extraction-leg provenance blob)
+#   • "_phi_scrubbed" (PHI scrub version marker — never a study variable)
+#
+# If agent_tools._INTERNAL_COLUMNS gains new internal columns, they are
+# automatically included here — no secondary update required.
+PROVENANCE_FIELDS: frozenset[str] = _AGENT_INTERNAL_COLUMNS | frozenset(
+    {"_metadata", "_phi_scrubbed"}
+)
 
 
 # ── Step 1: compute_propagation_set ─────────────────────────────────────────
@@ -113,9 +140,20 @@ def compute_propagation_set(
                         row = load_json_object_line(
                             raw, source_path=jsonl_file, line_number=line_no
                         )
-                    except JSONLParseError:
-                        logger.debug("Skipping malformed line %d in %s", line_no, jsonl_file.name)
-                        continue
+                    except JSONLParseError as exc:
+                        # Fail-closed: a malformed line means we cannot determine
+                        # which variables survive in this file.  Silently continuing
+                        # would risk over-pruning — a variable that only appears on
+                        # the unparseable row would be excluded from 'surviving' and
+                        # then pruned from the dictionary (dangling-reference
+                        # integrity loss).  Abort so the operator can inspect the
+                        # malformed JSONL before propagation runs.
+                        raise RuntimeError(
+                            f"Propagation aborted: malformed JSONL at "
+                            f"{jsonl_file.name}:{line_no} — fix or remove the "
+                            f"file before re-running. "
+                            f"(Original error: {exc})"
+                        ) from exc
                     for key in row:
                         if isinstance(key, str) and key not in PROVENANCE_FIELDS:
                             surviving.add(key.casefold())

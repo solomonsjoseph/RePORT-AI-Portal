@@ -444,3 +444,35 @@ class TestEmitOutputSignpost:
 
         assert fresh.is_dir()
         assert (fresh / "README.md").is_file()
+
+
+# ── _prune_empty_staged_forms (N6) ───────────────────────────────────────────
+
+
+class TestPruneEmptyStagedForms:
+    """N6: zero-byte (100%-quarantined) staged forms must be removed before the
+    whole-directory publish rename, so they are never promoted as empty datasets."""
+
+    def test_removes_only_empty_jsonl_and_returns_stems(self, tmp_path: Path) -> None:
+        staging = tmp_path / "datasets"
+        staging.mkdir()
+        full = staging / "12B_FUB.jsonl"
+        full.write_text('{"SUBJID": "S1"}\n', encoding="utf-8")
+        empty = staging / "7_Culture.jsonl"
+        empty.write_text("", encoding="utf-8")  # 100%-quarantined → zero bytes
+
+        removed = main._prune_empty_staged_forms(staging)
+
+        assert removed == ["7_Culture"]  # NAME only, no row values
+        assert not empty.exists(), "empty form must be physically removed before publish"
+        assert full.exists(), "a form with rows must survive (mixed case)"
+
+    def test_noop_when_all_nonempty(self, tmp_path: Path) -> None:
+        staging = tmp_path / "datasets"
+        staging.mkdir()
+        (staging / "a.jsonl").write_text('{"x": 1}\n', encoding="utf-8")
+        assert main._prune_empty_staged_forms(staging) == []
+        assert (staging / "a.jsonl").exists()
+
+    def test_missing_dir_returns_empty(self, tmp_path: Path) -> None:
+        assert main._prune_empty_staged_forms(tmp_path / "nope") == []
