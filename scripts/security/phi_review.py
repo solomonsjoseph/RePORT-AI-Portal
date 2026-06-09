@@ -290,10 +290,14 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
             r"(^|[_ -])(dob|dod)([_ -]|$)",
             r"\b(birth|admission|discharge|death)[_ -]?date\b",
             # Date-suffix columns: DAT/DATE (e.g. CBC_VISDAT, ST_COMPDATE) and
-            # DT/DTE (e.g. CXR_COMPDTE, HHC_COMPDTE). DTE/DATE were missing and
+            # DTE (e.g. CXR_COMPDTE, HHC_COMPDTE). DTE/DATE were missing and
             # mis-classified those completion-date columns as KEEP — a date leak
             # and a decided-vs-applied mismatch against the scrub's jitter.
-            r"(^|[_ -])[a-z0-9]*(date|dat|dte|dt)\d*$",
+            r"(^|[_ -])[a-z0-9]*(date|dat|dte)\d*$",
+            # Bare "dt" only as its own token / separator-prefixed (VISIT_DT, DT),
+            # NOT as a word ending — otherwise it falsely matches RESPNDT
+            # (respondent), VERDICT, etc. and decides jitter for a non-date.
+            r"(^|[_ -])dt\d*$",
         ),
     },
     {
@@ -337,7 +341,11 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
         "reason": "India personal-data direct contact identifier header.",
         "patterns": (
             r"\b(email|e[-_ ]?mail|phone|telephone|mobile|cell|address|postal|pin[_ -]?code)\b",
-            r"\b(passport|voter|ration|pan|bank|account)\b",
+            r"\b(passport|voter|pan|bank|account)\b",
+            # Ration-card NUMBER is a government ID → drop. The bare ration
+            # CATEGORY (APL/BPL/None, e.g. IC_RATION) is socioeconomic, not an
+            # identifier — require card/no/number so the category is not flagged.
+            r"\bration[_ -]?(?:card|no|num|number)\b",
         ),
     },
     {
@@ -360,7 +368,10 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
             r"(^|[_ -])(dob|dod)([_ -]|$)",
             # DTE/DATE suffixes included so completion-date columns (CXR_COMPDTE,
             # HHC_COMPDTE) classify as dates, matching the USA rule above.
-            r"(^|[_ -])[a-z0-9]*(date|dat|dte|dt)\d*$",
+            r"(^|[_ -])[a-z0-9]*(date|dat|dte)\d*$",
+            # Bare "dt" only separator-prefixed (VISIT_DT) — not as a word ending
+            # (RESPNDT respondent), matching the USA rule above.
+            r"(^|[_ -])dt\d*$",
         ),
     },
     {

@@ -451,10 +451,11 @@ class PHIScrubConfig:
         3. ``drop_patterns`` — field removed from row
         4. ``cap_rules`` — numeric capped to label
         5. ``generalize_rules`` — value mapped to broad category
-        5b. ``band_rules`` — fail-closed categorical/numeric generalization
-        6. ``suppress_small_cell_patterns`` — numeric clamped to threshold
-        7. ``date_patterns`` — jitter via SANT
-        8. ``id_patterns`` — HMAC-SHA256 pseudonymize
+        6. ``band_rules`` — fail-closed categorical/numeric generalization
+        7. ``suppress_small_cell_patterns`` — numeric clamped to threshold
+        8. ``date_patterns`` — jitter via SANT
+        9. ``id_patterns`` — HMAC-SHA256 pseudonymize
+
     """
 
     __slots__ = (
@@ -1406,6 +1407,7 @@ def _scrub_row(
     key: bytes,
     date_locales: dict[str, str] | None = None,
     dataset_has_subject_col: bool = True,
+    suppress_headers: frozenset[str] = frozenset(),
 ) -> tuple[dict[str, Any] | None, dict[str, int]]:
     """Scrub a single row. Return (scrubbed_row_or_None, per-field-counts).
 
@@ -1448,6 +1450,19 @@ def _scrub_row(
     for field in list(row.keys()):
         # Skip pipeline-internal metadata
         if field.startswith("__"):
+            continue
+
+        # 0. phi_review SUPPRESS override — the dual-jurisdiction regulation
+        # classifier flagged this column for free-text suppression (comment /
+        # note / narrative / "other (specify)"). That is STRICTER than any scrub
+        # keep, so honor it by DROPPING the field: free-text can carry PHI the
+        # value-level gate cannot be guaranteed to catch, and Safe Harbor removes
+        # such narrative fields. This aligns the scrub with phi_review (decided
+        # suppress → applied drop; decided-vs-applied verifier) and only ever
+        # ADDS protection — it never under-protects.
+        if suppress_headers and _normalize_header_for_lookup(field) in suppress_headers:
+            del row[field]
+            _bump("drop", field)
             continue
 
         # 1. KEEP — allowlist short-circuits every other rule
@@ -1602,6 +1617,7 @@ def _scrub_file(
     cfg: PHIScrubConfig,
     key: bytes,
     date_locales: dict[str, str] | None = None,
+    suppress_headers: frozenset[str] = frozenset(),
 ) -> tuple[
     list[dict[str, Any]],
     list[dict[str, Any]],
@@ -1658,6 +1674,7 @@ def _scrub_file(
                 key=key,
                 date_locales=date_locales,
                 dataset_has_subject_col=dataset_has_subject_col,
+                suppress_headers=suppress_headers,
             )
             if scrubbed is None:
                 if not row_counts:
@@ -2189,9 +2206,22 @@ def run_scrub(
     # Per-form review-quarantine tally (only populated in partial_on_review mode).
     partial_forms: dict[str, dict[str, Any]] = {}
 
+    # Per-form set of headers phi_review decided to SUPPRESS (free-text). The
+    # scrub honors that stricter regulation decision by dropping those columns
+    # (see _scrub_row priority-0). Keyed by stem; headers are pre-normalized to
+    # match _scrub_row's _normalize_header_for_lookup() comparison.
+    suppress_by_stem: dict[str, frozenset[str]] = {
+        stem: frozenset(h for h, c in per_header.items() if (c or {}).get("action") == "suppress")
+        for stem, per_header in (approval_lookup or {}).items()
+    }
+
     for jsonl_file in sorted(staging_datasets.glob("*.jsonl")):
         kept, orphans, band_failed, generalize_failed, date_failed, counts = _scrub_file(
-            jsonl_file, cfg=cfg, key=key, date_locales=date_locales
+            jsonl_file,
+            cfg=cfg,
+            key=key,
+            date_locales=date_locales,
+            suppress_headers=suppress_by_stem.get(jsonl_file.stem, frozenset()),
         )
 
         if orphans:

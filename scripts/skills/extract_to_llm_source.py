@@ -96,16 +96,10 @@ from scripts.security.phi_patterns import SUBJECT_ID_PATTERNS
 from scripts.security.phi_review import _normalize_header as _normalize_hdr
 from scripts.utils.secure_staging import secure_remove_tree
 
-# phi_review decided Action -> set of acceptable phi_scrub applied actions
-_DECIDED_APPLIED_EQUIV: dict[str, set[str]] = {
-    "keep": {"keep"},
-    "suppress": {"suppress_small_cell"},
-    "cap": {"cap"},
-    "generalize": {"generalize", "band"},
-    "jitter_date": {"jitter_date", "birthdate_drop"},
-    "pseudonymize": {"pseudonymize"},
-    "drop": {"drop"},
-}
+# NOTE: the former symmetric-strict `_DECIDED_APPLIED_EQUIV` table was replaced by
+# the protection lattice `_PROTECTION_RANK` (defined near assertion 12). Assertion
+# 12 now fails only the UNDER-protection direction (applied less protective than
+# phi_review decided) instead of every over-protection / absent-header case.
 
 __all__ = [
     "EXIT_AUDIT_COVERAGE_INCOMPLETE",
@@ -651,11 +645,84 @@ def _hold_run_for_review(run_dir: Path, forms: list[str]) -> None:
     _atomic_write_json(status_path, status)
 
 
-def _verify_assertion_decided_vs_applied(audit_dir: Path, run_dir: Path) -> _AssertionResult:
-    """Each approved form's APPLIED action (ledger) must equal phi_review's DECIDED action (approval).
+# Protection lattice for the decided-vs-applied check (assertion 12). Higher rank
+# = more protective. The verifier fails ONLY the under-protection direction
+# (scrub did LESS than phi_review decided = potential leak). Scrub being MORE
+# protective than decided (e.g. phi_review keep, scrub drop) is always acceptable —
+# it cannot leak. This replaces the old symmetric-strict equivalence table, which
+# falsely flagged ~every over-protection and every classified-but-absent header.
+_PROTECTION_RANK: dict[str, int] = {
+    "keep": 0,
+    # value retained but coarsened / bounded
+    "generalize": 1,
+    "band": 1,
+    "cap": 1,
+    "suppress_small_cell": 1,
+    "suppress": 1,
+    # value replaced by a non-identifying token, column retained
+    "jitter_date": 2,
+    "pseudonymize": 2,
+    # value / column removed entirely (maximally protective)
+    "drop": 3,
+    "birthdate_drop": 3,
+}
 
-    No approval file → pass (legacy/disabled scrub; nothing to cross-check). Fail-closed on mismatch:
-    hold the run for human review + EXIT_DECISION_MISMATCH.
+
+def _configured_scrub_action(cfg: Any, name: str) -> str:
+    """The action the scrub CONFIG would apply to *name*, by rule priority.
+
+    Fallback for assertion 12 when the ledger carries no event for a PUBLISHED
+    column: a CONDITIONAL transform (cap fires only for age > 89; pseudonymize
+    only for a non-null id; suppress_small_cell only above the threshold)
+    legitimately emits no event when no value qualifies, yet the column is still
+    PROTECTED by the configured rule. Mirrors the rule priority in
+    ``phi_scrub._scrub_row`` (keep→birthdate→drop→cap→generalize→band→
+    suppress→date→id). Returns ``"keep"`` when nothing matches (genuine keep).
+    """
+    if cfg is None:
+        return "keep"
+    if cfg.field_is_keep(name):
+        return "keep"
+    if cfg.field_is_birthdate(name):
+        return "birthdate_drop" if cfg.compliance_posture == "safe_harbor" else "jitter_date"
+    if cfg.field_is_drop(name):
+        return "drop"
+    if cfg.cap_rule_for(name) is not None:
+        return "cap"
+    if cfg.generalize_rule_for(name) is not None:
+        return "generalize"
+    if cfg.band_rule_for(name) is not None:
+        return "band"
+    if cfg.field_is_suppress_small_cell(name):
+        return "suppress_small_cell"
+    if cfg.field_is_date(name):
+        return "jitter_date"
+    if cfg.id_label_for(name) is not None:
+        return "pseudonymize"
+    return "keep"
+
+
+def _verify_assertion_decided_vs_applied(
+    audit_dir: Path,
+    run_dir: Path,
+    dataset_files_dir: Path,
+    scrub_config_path: Path,
+) -> _AssertionResult:
+    """Each approved form's APPLIED protection must be ≥ phi_review's DECIDED protection.
+
+    Fail-closed on the UNDER-protection direction only (scrub did less than the
+    regulation classifier decided → potential leak). Over-protection (scrub did
+    MORE) passes. Two scoping rules prevent false positives:
+
+      * A classified header NOT present in the published dataset is skipped — a
+        dropped / renamed / duplicate-collapsed upstream column cannot be
+        under-protected in an output it is absent from.
+      * When a published column has no ledger event/keep_decision, the CONFIGURED
+        scrub action (``_configured_scrub_action``) is used — so a conditional
+        transform that did not fire (cap with no age > 89, pseudonymize on a null
+        id) still counts as its configured protection, not a false "keep".
+
+    No approval file → pass (legacy/disabled scrub; nothing to cross-check).
     """
     approval_path = run_dir / "phi_handling_approval.json"
     if not approval_path.is_file():
@@ -664,6 +731,15 @@ def _verify_assertion_decided_vs_applied(audit_dir: Path, run_dir: Path) -> _Ass
         approval = json.loads(approval_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
         return "fail", f"phi_handling_approval.json unreadable: {exc}"
+
+    cfg: Any = None
+    try:
+        import scripts.security.phi_scrub as _phi_scrub
+
+        cfg = _phi_scrub.load_scrub_config(scrub_config_path)
+    except Exception:  # config load failure → conservative keep fallback
+        cfg = None
+
     approved = set(approval.get("approved_forms", []))
     mismatches: list[str] = []
     bad_forms: list[str] = []
@@ -671,6 +747,11 @@ def _verify_assertion_decided_vs_applied(audit_dir: Path, run_dir: Path) -> _Ass
         form_name = str(form.get("form_name", ""))
         if form_name not in approved:
             continue  # held forms are already routed to review
+        # Only verify columns ACTUALLY PRESENT in the published output.
+        jsonl_path = dataset_files_dir / f"{Path(form_name).stem}.jsonl"
+        published = {_normalize_hdr(h) for h in _published_header_keys(jsonl_path)}
+        if not published:
+            continue
         applied: dict[str, str] = {}
         ledger_path = dataset_phi_ledger_path(audit_dir, form_name)
         if ledger_path.is_file():
@@ -683,11 +764,17 @@ def _verify_assertion_decided_vs_applied(audit_dir: Path, run_dir: Path) -> _Ass
             for kd in led.get("keep_decisions", []):
                 applied.setdefault(_normalize_hdr(str(kd.get("variable_id", ""))), "keep")
         for cls in form.get("classifications", []):
+            raw_header = str(cls.get("header", ""))
+            hdr = _normalize_hdr(raw_header)
+            if hdr not in published:
+                continue  # not in published output — nothing to under-protect
             decided = str(cls.get("action", ""))
-            applied_action = applied.get(_normalize_hdr(str(cls.get("header", ""))), "keep")
-            if applied_action not in _DECIDED_APPLIED_EQUIV.get(decided, set()):
+            applied_action = applied.get(hdr)
+            if applied_action is None:
+                applied_action = _configured_scrub_action(cfg, raw_header)
+            if _PROTECTION_RANK.get(applied_action, 0) < _PROTECTION_RANK.get(decided, 0):
                 mismatches.append(
-                    f"{form_name}:{cls.get('header')} decided={decided} applied={applied_action}"
+                    f"{form_name}:{raw_header} decided={decided} applied={applied_action}"
                 )
                 if form_name not in bad_forms:
                     bad_forms.append(form_name)
@@ -697,12 +784,24 @@ def _verify_assertion_decided_vs_applied(audit_dir: Path, run_dir: Path) -> _Ass
     return "pass", ""
 
 
+# Pipeline-internal / provenance columns that may appear in a published JSONL but
+# are NOT study variables — they require no per-variable PHI ledger accounting.
+# Mirrors cleanup_propagation.PROVENANCE_FIELDS (agent_tools._INTERNAL_COLUMNS plus
+# _metadata / _phi_scrubbed); kept as a local literal to avoid importing the
+# agent-tools dependency chain into the trusted host CLI.
+_INTERNAL_PUBLISHED_COLUMNS: frozenset[str] = frozenset(
+    {"source_file", "_provenance", "_source_row", "_ingestion_ts", "_metadata", "_phi_scrubbed"}
+)
+
+
 def _published_header_keys(jsonl_path: Path) -> set[str]:
-    """Return row-1 header KEYS from a published JSONL — metadata only, no values.
+    """Return row-1 STUDY-VARIABLE header KEYS from a published JSONL — metadata only.
 
     Reads a single line and discards values; the published tree is already
     PHI-scrubbed (the agent reads it directly), so enumerating its column names
-    is metadata. Internal ``__`` marker fields are excluded.
+    is metadata. ``__`` marker fields and pipeline-internal/provenance columns
+    (:data:`_INTERNAL_PUBLISHED_COLUMNS`) are excluded — they are not study
+    variables and carry no per-variable PHI ledger entry.
     """
     try:
         with jsonl_path.open(encoding="utf-8") as handle:
@@ -717,7 +816,11 @@ def _published_header_keys(jsonl_path: Path) -> set[str]:
         return set()
     if not isinstance(record, dict):
         return set()
-    return {key for key in record if not str(key).startswith("__")}
+    return {
+        key
+        for key in record
+        if not str(key).startswith("__") and key not in _INTERNAL_PUBLISHED_COLUMNS
+    }
 
 
 def _ledger_accounted_headers(ledger_path: Path) -> set[str]:
@@ -741,13 +844,17 @@ def _ledger_accounted_headers(ledger_path: Path) -> set[str]:
 
 
 def _verify_assertion_14_audit_coverage(
-    audit_dir: Path, dataset_files_dir: Path, run_dir: Path
+    audit_dir: Path, dataset_files_dir: Path, run_dir: Path, scrub_config_path: Path
 ) -> _AssertionResult:
-    """Every PUBLISHED dataset column has a PHI ledger accounting (event or keep).
+    """Every PUBLISHED dataset column has a per-variable audit accounting.
 
-    This is the per-variable completeness guarantee: a published column with no
-    ledger entry means a variable was handled with no audit record. Fail-closed —
-    hold the run for review and exit ``EXIT_AUDIT_COVERAGE_INCOMPLETE``.
+    A column is accounted when it has a PHI ledger ``event`` / ``keep_decision``
+    OR the scrub CONFIG defines a non-keep rule for it (``_configured_scrub_action``
+    != "keep") — a conditional transform (e.g. an all-null date column the date
+    rule processed but found nothing to jitter) fires no event yet is still a
+    handled variable. A column the config would KEEP must carry an explicit
+    keep_decision; otherwise it was silently retained with no audit record.
+    Fail-closed — hold the run and exit ``EXIT_AUDIT_COVERAGE_INCOMPLETE``.
 
     No approval file → pass (legacy/disabled scrub path carries no provenance,
     consistent with assertion 12). Held forms are not published, so they are not
@@ -762,6 +869,14 @@ def _verify_assertion_14_audit_coverage(
     except (json.JSONDecodeError, OSError) as exc:
         return "fail", f"phi_handling_approval.json unreadable: {exc}"
 
+    cfg: Any = None
+    try:
+        import scripts.security.phi_scrub as _phi_scrub
+
+        cfg = _phi_scrub.load_scrub_config(scrub_config_path)
+    except Exception:  # config load failure → conservative (keep) classification
+        cfg = None
+
     gaps: list[str] = []
     bad_forms: list[str] = []
     for form_name in sorted(set(approval.get("approved_forms", []))):
@@ -773,10 +888,16 @@ def _verify_assertion_14_audit_coverage(
             continue
         accounted = _ledger_accounted_headers(dataset_phi_ledger_path(audit_dir, form_name))
         for header in sorted(headers):
-            if _normalize_hdr(header) not in accounted:
-                gaps.append(f"{form_name}:{header}")
-                if form_name not in bad_forms:
-                    bad_forms.append(form_name)
+            if _normalize_hdr(header) in accounted:
+                continue
+            # No ledger entry: a CONFIGURED non-keep rule (conditional transform
+            # that fired no event on this data) still counts as handled; a
+            # config-keep column with no keep_decision is a genuine silent-keep gap.
+            if _configured_scrub_action(cfg, header) != "keep":
+                continue
+            gaps.append(f"{form_name}:{header}")
+            if form_name not in bad_forms:
+                bad_forms.append(form_name)
     if gaps:
         _hold_run_for_review(run_dir, bad_forms)
         return "fail", "; ".join(gaps[:10])
@@ -916,7 +1037,9 @@ def _cmd_verify(args: argparse.Namespace) -> int:
         (
             12,
             "decided_action_matches_applied",
-            lambda: _verify_assertion_decided_vs_applied(audit_dir, run_dir),
+            lambda: _verify_assertion_decided_vs_applied(
+                audit_dir, run_dir, dataset_files_dir, phi_scrub_config_path
+            ),
             EXIT_DECISION_MISMATCH,
         ),
         # Assertion 14 runs BEFORE 13 by list position: 13 (status write) must
@@ -924,7 +1047,9 @@ def _cmd_verify(args: argparse.Namespace) -> int:
         (
             14,
             "ledger_covers_all_columns",
-            lambda: _verify_assertion_14_audit_coverage(audit_dir, dataset_files_dir, run_dir),
+            lambda: _verify_assertion_14_audit_coverage(
+                audit_dir, dataset_files_dir, run_dir, phi_scrub_config_path
+            ),
             EXIT_AUDIT_COVERAGE_INCOMPLETE,
         ),
         (

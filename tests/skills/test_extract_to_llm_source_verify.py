@@ -508,6 +508,110 @@ class TestVerifyHappyPath:
         report = json.loads(report_path.read_text())
         assert report["overall"] == "fail"
 
+    def test_decided_vs_applied_over_protection_passes(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """phi_review KEEP but scrub applied a MORE protective action must PASS.
+
+        The protection lattice fails ONLY under-protection (applied < decided).
+        Over-protection (here: decided keep, applied pseudonymize) cannot leak,
+        so it must pass — this was a false positive under the old strict table.
+        """
+        _patch_config(monkeypatch, tmp_path)
+        paths = _build_happy_study(tmp_path)
+        approval = {
+            "approved_forms": ["form_a.xlsx"],
+            "forms": [
+                {
+                    "form_name": "form_a.xlsx",
+                    "classifications": [
+                        {
+                            "header": "col_a",
+                            "action": "keep",
+                            "jurisdictions": [],
+                            "matched_rules": [],
+                            "reasons": [],
+                        },
+                        {
+                            "header": "col_b",
+                            "action": "keep",
+                            "jurisdictions": [],
+                            "matched_rules": [],
+                            "reasons": [],
+                        },
+                    ],
+                }
+            ],
+        }
+        (paths["run_dir"] / "phi_handling_approval.json").write_text(
+            json.dumps(approval), encoding="utf-8"
+        )
+        # Scrub pseudonymized col_a (MORE protective than the keep decision).
+        ledger_path = dataset_phi_ledger_path(paths["audit_dir"], "form_a.xlsx")
+        led = json.loads(ledger_path.read_text(encoding="utf-8"))
+        led["events"] = [{"variable_id": "col_a", "action": "pseudonymize"}]
+        led["keep_decisions"] = [kd for kd in led["keep_decisions"] if kd["variable_id"] != "col_a"]
+        ledger_path.write_text(json.dumps(led), encoding="utf-8")
+
+        rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
+        assert rc == EXIT_OK
+        report = json.loads((paths["run_dir"] / "verifier_report.json").read_text(encoding="utf-8"))
+        a12 = next(a for a in report["assertions"] if a["name"] == "decided_action_matches_applied")
+        assert a12["result"] == "pass"
+
+    def test_decided_vs_applied_absent_header_skipped(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A classified header NOT present in the published dataset is skipped.
+
+        phi_review classifies headers from the form schema; some are dropped /
+        renamed / duplicate-collapsed upstream and never reach the output. Such a
+        column cannot be under-protected in an output it is absent from, so it
+        must not falsely fail assertion 12 (the old default-to-keep behavior did).
+        """
+        _patch_config(monkeypatch, tmp_path)
+        paths = _build_happy_study(tmp_path)
+        approval = {
+            "approved_forms": ["form_a.xlsx"],
+            "forms": [
+                {
+                    "form_name": "form_a.xlsx",
+                    "classifications": [
+                        {
+                            "header": "col_a",
+                            "action": "keep",
+                            "jurisdictions": [],
+                            "matched_rules": [],
+                            "reasons": [],
+                        },
+                        {
+                            "header": "col_b",
+                            "action": "keep",
+                            "jurisdictions": [],
+                            "matched_rules": [],
+                            "reasons": [],
+                        },
+                        # Classified DROP but NOT present in the published jsonl:
+                        {
+                            "header": "col_gone",
+                            "action": "drop",
+                            "jurisdictions": [],
+                            "matched_rules": [],
+                            "reasons": [],
+                        },
+                    ],
+                }
+            ],
+        }
+        (paths["run_dir"] / "phi_handling_approval.json").write_text(
+            json.dumps(approval), encoding="utf-8"
+        )
+        rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
+        assert rc == EXIT_OK
+        report = json.loads((paths["run_dir"] / "verifier_report.json").read_text(encoding="utf-8"))
+        a12 = next(a for a in report["assertions"] if a["name"] == "decided_action_matches_applied")
+        assert a12["result"] == "pass"
+
 
 # ---------------------------------------------------------------------------
 # B. Failure-injection tests (stop at first failing assertion)
