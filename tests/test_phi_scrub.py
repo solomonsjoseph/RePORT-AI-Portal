@@ -2161,16 +2161,74 @@ class TestCatalogCoverage:
         assert real_cfg.field_is_keep("IS_SEX") is True
         assert real_cfg.field_is_keep("HHC_SEX") is True
 
-    def test_marital_generalized(self, real_cfg: phi_scrub.PHIScrubConfig) -> None:
-        rule = real_cfg.generalize_rule_for("IS_MARITAL")
-        assert rule is not None
-        assert rule.mapping_name == "marital"
-        # Sanity: at least Married/Single/Other present.
-        values = set(rule.mapping.values())
-        assert {"Married", "Single", "Other"} <= values
+    def test_marital_kept_not_generalized(self, real_cfg: phi_scrub.PHIScrubConfig) -> None:
+        # Marital status is NOT a HIPAA Safe Harbor / DPDPA identifier, and the
+        # dual-jurisdiction classifier (phi_review) decides KEEP for it. Routing
+        # it to generalize contradicted that decision (decided keep != applied
+        # generalize → assertion 12) so the generalize rule was removed; marital
+        # is now kept as-is (no transform rule matches).
+        for col in ["IS_MARITAL", "IC_MARISTAT", "HC_MARISTAT"]:
+            assert real_cfg.generalize_rule_for(col) is None, f"{col} must not generalize"
+            assert real_cfg.band_rule_for(col) is None, f"{col} must not band"
+            assert real_cfg.field_is_drop(col) is False, f"{col} must not drop"
+            assert real_cfg.field_is_date(col) is False, f"{col} must not date-jitter"
 
     def test_household_contact_count_suppressed(self, real_cfg: phi_scrub.PHIScrubConfig) -> None:
         assert real_cfg.field_is_suppress_small_cell("IS_CONTACTS") is True
+
+    def test_date_columns_under_broad_keep_are_jittered_not_kept(
+        self, real_cfg: phi_scrub.PHIScrubConfig
+    ) -> None:
+        # DATE-LEAK GUARD: a genuine clinical date column must NEVER be kept raw,
+        # even when a broad form-prefix keep (^CBC_, ^CXR_, ^DST_, ^CX_, ^SC_,
+        # ^AE_) also matches its name. It must fall through to the date-jitter
+        # rule (temporal identifier, HIPAA #3) — otherwise it publishes un-shifted
+        # and trips the pre-publication leak gate.
+        for col in [
+            "CBC_VISDAT",
+            "CBC_COMPDAT",
+            "CXR_CXRDAT",
+            "CXR_COMPDTE",
+            "CX_DSTDAT",
+            "CX_ISOLATEDAT",
+            "DST_DSTDAT",
+            "DST_ISOLATEDAT",
+            "SC_PAXRECDAT",
+            "SC_GENORECDAT",
+            "AE_EVENTDAT",
+            "CC_PREGDAT",
+        ]:
+            assert real_cfg.field_is_keep(col) is False, f"{col} must NOT be kept raw"
+            assert real_cfg.field_is_date(col) is True, f"{col} must date-jitter"
+
+    def test_date_named_status_flags_stay_kept(
+        self, real_cfg: phi_scrub.PHIScrubConfig
+    ) -> None:
+        # EXCEPTION to the date-leak guard: date-NAMED but non-date "Not Done" /
+        # "Not Recorded" status flags (suffix ND/NR) hold text, not a date, and
+        # must stay KEPT (the reason those anchored keep rules exist).
+        for col in ["CX_PROCDAT_ND", "ZN_MBDATNR", "ZN_MBDATNR2"]:
+            assert real_cfg.field_is_keep(col) is True, f"{col} must stay kept"
+            assert real_cfg.field_is_date(col) is False, f"{col} must NOT date-jitter"
+
+    def test_socioeconomic_fields_kept_not_banded(
+        self, real_cfg: phi_scrub.PHIScrubConfig
+    ) -> None:
+        # phi_review decides KEEP for education/occupation/wage (not Safe Harbor
+        # / DPDPA identifiers). The band rule is empty/inert so they are kept as
+        # is rather than quarantined against an empty band map (which 100%-held
+        # forms 2A/2B). They must match no transform rule.
+        for col in [
+            "IC_SCHOOLDU",
+            "IC_MASCHOOLDU",
+            "HC_SCHOOLDU",
+            "EE_SCHOOL",
+            "IC_JOB",
+            "EE_WAGE",
+        ]:
+            assert real_cfg.band_rule_for(col) is None, f"{col} must not band"
+            assert real_cfg.field_is_drop(col) is False, f"{col} must not drop"
+            assert real_cfg.field_is_date(col) is False, f"{col} must not date-jitter"
 
 
 # ── Audit hash wiring (P0.1) ─────────────────────────────────────────────────

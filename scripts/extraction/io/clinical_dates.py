@@ -622,57 +622,39 @@ def parse_date(
                 return None
 
         elif len(s) == 7:
-            # ── 7-digit: DMMYYYY (1+2+4) vs DDMYYYY (2+1+4) ─────────────────
-            # Two possible split widths exist for each locale direction:
-            #   DMY: DMMYYYY d=s[0:1], m=s[1:3], y=s[3:7]  (single-digit day)
-            #        DDMYYYY  d=s[0:2], m=s[2:3], y=s[3:7]  (single-digit month)
-            #   MDY: MDDYYYY m=s[0:1], d=s[1:3], y=s[3:7]  (single-digit month)
-            #        MMDYYYY  m=s[0:2], d=s[2:3], y=s[3:7]  (single-digit day)
-            #
-            # For an explicit locale, try BOTH split widths for that direction and
-            # pick the one that yields a valid datetime. If both or neither are
-            # valid → return None (quarantine), mirroring the no-locale path.
-            # This is symmetric: the explicit locale pins *direction* (day/month
-            # role), not the specific 1+2 vs 2+1 split width.
+            # ── 7-digit: canonical leading-zero-truncation split ────────────
+            # A 7-digit integer date can only physically arise from an 8-digit
+            # zero-padded DDMMYYYY (DMY) / MMDDYYYY (MDY) whose *leading* field
+            # lost its zero during integer conversion — i.e. a single-digit DAY
+            # (DMY) or single-digit MONTH (MDY). The month/day zero that sits in
+            # the INTERIOR of the 8-digit value (e.g. the "05" in "07052014") is
+            # never dropped by int() truncation, so the only physically-possible
+            # layout is the canonical 1+2+4 split:
+            #   DMY: DMMYYYY  d=s[0:1], m=s[1:3], y=s[3:7]  (single-digit day)
+            #   MDY: MDDYYYY  m=s[0:1], d=s[1:3], y=s[3:7]  (single-digit month)
+            # The 2+1+4 "DDMYYYY"/"MMDYYYY" split is a PHANTOM — it cannot occur
+            # from truncation, and trying it merely manufactures false ambiguity
+            # (both splits valid → quarantine) that held real dates (e.g. the
+            # ~400 ST_LOUTDAT values in 96_Specimen_Tracking). For an explicit
+            # locale we therefore pin the canonical split; an invalid result is a
+            # genuinely-bad value → quarantine (fail-closed), never the phantom.
 
             # Resolve locale (DMY allowlist → manifest override).
             locale_7: str | None = _resolve_locale(field_name, date_locales)
 
             if locale_7 is not None:
-                # Explicit locale declared — try BOTH split widths for this direction,
-                # then pick the unique valid result (ambiguous → None).
-                if locale_7 == "DMY":
-                    # DMMYYYY: d=s[0:1], m=s[1:3], y=s[3:7]
-                    dt_split1: datetime | None = None
-                    try:
-                        dt_split1 = datetime(int(s[3:7]), int(s[1:3]), int(s[0:1]))
-                    except (ValueError, OverflowError):
-                        dt_split1 = None
-                    # DDMYYYY: d=s[0:2], m=s[2:3], y=s[3:7]
-                    dt_split2: datetime | None = None
-                    try:
-                        dt_split2 = datetime(int(s[3:7]), int(s[2:3]), int(s[0:2]))
-                    except (ValueError, OverflowError):
-                        dt_split2 = None
-                else:  # MDY
-                    # MDDYYYY: m=s[0:1], d=s[1:3], y=s[3:7]
-                    dt_split1 = None
-                    try:
-                        dt_split1 = datetime(int(s[3:7]), int(s[0:1]), int(s[1:3]))
-                    except (ValueError, OverflowError):
-                        dt_split1 = None
-                    # MMDYYYY: m=s[0:2], d=s[2:3], y=s[3:7]
-                    dt_split2 = None
-                    try:
-                        dt_split2 = datetime(int(s[3:7]), int(s[0:2]), int(s[2:3]))
-                    except (ValueError, OverflowError):
-                        dt_split2 = None
-
-                # Exactly one split must be valid; otherwise quarantine.
-                valid_count_7 = (dt_split1 is not None) + (dt_split2 is not None)
-                if valid_count_7 != 1:
+                y7 = int(s[3:7])
+                try:
+                    if locale_7 == "DMY":
+                        # DMMYYYY: day=s[0:1], month=s[1:3]
+                        dt = datetime(y7, int(s[1:3]), int(s[0:1]))
+                    else:  # MDY — MDDYYYY: month=s[0:1], day=s[1:3]
+                        dt = datetime(y7, int(s[0:1]), int(s[1:3]))
+                except (ValueError, OverflowError):
                     return None
-                dt = dt_split1 if dt_split1 is not None else dt_split2  # type: ignore[assignment]
+                if not (1900 <= y7 <= 2100):
+                    # Same year-range guard the separator + 8-digit branches apply.
+                    return None
                 nd, nmo, ny = dt.day, dt.month, dt.year
             else:
                 # No explicit locale: try both DMY layouts and pick unambiguous winner.

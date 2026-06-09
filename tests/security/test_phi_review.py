@@ -112,6 +112,30 @@ def test_strictest_wins_across_usa_and_india_rules(tmp_path: Path) -> None:
     assert classified["SUBJID"].action == Action.PSEUDONYMIZE
 
 
+def test_dte_and_date_suffixes_classify_as_jitter_date(tmp_path: Path) -> None:
+    """DTE/DATE date-suffix columns must classify as JITTER_DATE, not KEEP.
+
+    Regression: the date heuristic matched only the DAT/DT suffixes, so
+    completion-date columns ending in DTE (CXR_COMPDTE, HHC_COMPDTE) and DATE
+    (ST_COMPDATE) fell through to KEEP — a raw-date leak and a decided-vs-applied
+    mismatch against the scrub's jitter. They now classify as JITTER_DATE.
+    """
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    _write_privacy_config(study_dir)
+    cfg = load_study_privacy_config(study_dir)
+    bundle = refresh_jurisdiction_rules(cfg, allow_network=False)
+
+    classified = classify_headers(
+        ["CXR_COMPDTE", "HHC_COMPDTE", "ST_COMPDATE", "CBC_VISDAT", "CXR_CXRDAT"],
+        cfg,
+        bundle,
+    )
+    for col in ["CXR_COMPDTE", "HHC_COMPDTE", "ST_COMPDATE", "CBC_VISDAT", "CXR_CXRDAT"]:
+        assert classified[col].action == Action.JITTER_DATE, (
+            f"{col} must classify as JITTER_DATE (date-suffix), got {classified[col].action}"
+        )
+
+
 def test_pure_transform_source_rejects_io_import_logging_and_subprocess() -> None:
     bad_source = """
 import os

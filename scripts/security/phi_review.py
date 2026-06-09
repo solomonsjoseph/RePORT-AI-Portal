@@ -289,7 +289,11 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
             r"\b(date|datetime|timestamp|time[_ -]?stamp)\b",
             r"(^|[_ -])(dob|dod)([_ -]|$)",
             r"\b(birth|admission|discharge|death)[_ -]?date\b",
-            r"(^|[_ -])[a-z0-9]*(dat|dt)\d*$",
+            # Date-suffix columns: DAT/DATE (e.g. CBC_VISDAT, ST_COMPDATE) and
+            # DT/DTE (e.g. CXR_COMPDTE, HHC_COMPDTE). DTE/DATE were missing and
+            # mis-classified those completion-date columns as KEEP — a date leak
+            # and a decided-vs-applied mismatch against the scrub's jitter.
+            r"(^|[_ -])[a-z0-9]*(date|dat|dte|dt)\d*$",
         ),
     },
     {
@@ -354,7 +358,9 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
         "patterns": (
             r"\b(date|datetime|timestamp|time[_ -]?stamp)\b",
             r"(^|[_ -])(dob|dod)([_ -]|$)",
-            r"(^|[_ -])[a-z0-9]*(dat|dt)\d*$",
+            # DTE/DATE suffixes included so completion-date columns (CXR_COMPDTE,
+            # HHC_COMPDTE) classify as dates, matching the USA rule above.
+            r"(^|[_ -])[a-z0-9]*(date|dat|dte|dt)\d*$",
         ),
     },
     {

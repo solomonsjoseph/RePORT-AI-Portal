@@ -461,12 +461,24 @@ cap_fields:
 # ──────────────────────────────────────────────────────────────────────────
 # GENERALIZE FIELDS (value-level categorical mapping)
 # ──────────────────────────────────────────────────────────────────────────
+# Generalize only columns that phi_review (the dual-jurisdiction regulation
+# classifier) also decided to GENERALIZE. Columns it decided KEEP must not be
+# routed here, or they (a) quarantine when their values don't fit the map and
+# (b) fail the decided-vs-applied verifier (assertion 12: keep ≠ generalize).
+#
+# REMOVED (phi_review decides KEEP — not Safe Harbor / DPDPA identifiers):
+#   * marital status (IC_MARISTAT / HC_MARISTAT) — kept as-is.
+#   * the per-option care-seeking INDICATOR columns Govthosp / Munhosp /
+#     MedColl / Medshop / Nonallo — these are binary 0/1 checkboxes, NOT a
+#     categorical facility-TYPE value, so the facility value-map cannot cover
+#     them (every row quarantined — this 100%-held forms 2A/2B). CareOther is a
+#     free-text "other (specify)" field → handled by drop_fields (suppression),
+#     never generalize.
+# RETAINED: a genuine categorical facility-TYPE column (HOSP_TYPE / FACIL_TYPE…)
+#   would still generalize via the value map below — IF phi_review decides
+#   generalize for it. None exist in the current study, so this is inert.
 generalize_fields:
-  - pattern: "(?:MARISTAT|MARIT|MARITAL)"
-    mapping: "marital"
   - pattern: "(?:HOSP_?TYPE|HOSPITAL_?TYPE|FACIL_?TYPE|SITE_?TYPE|CENTER_?TYPE|CLINIC_?TYPE)"
-    mapping: "facility"
-  - pattern: "^(?:Govthosp|Munhosp|MedColl|Medshop|Nonallo|CareOther)$"
     mapping: "facility"
 
 # Value-to-value mappings invoked by generalize_fields
@@ -510,22 +522,27 @@ generalization_maps:
     "other": "Other"
 
 # ──────────────────────────────────────────────────────────────────────────
-# BAND FIELDS (T2.1 — fail-closed preserve-generalization of socioeconomic vars)
+# BAND FIELDS (fail-closed preserve-generalization of socioeconomic vars)
 # ──────────────────────────────────────────────────────────────────────────
 # Education / occupation / income / wages / work-hours are epidemiologically
-# needed for TB analysis but identifying at raw resolution, so they are PRESERVED
-# as broad bands instead of dropped. FAIL-CLOSED: a value the band cannot cover is
-# quarantined and the run hard-fails — never leaked, never silently dropped. The
-# band_maps / band_ranges are operator-curated TEMPLATES whose VALUES are DEFERRED
-# (the option/code sets live in the AMBER data dictionary, not authorable here).
-# Empty template ⇒ fail-closed until a human fills it. See tasks/todo.md T2.1.
-band_fields:
-  - {pattern: "(?:SCHOOL|EDUC|LITERACY)", band: education_band, kind: categorical}
-  - {pattern: "^IC_JOB$", band: occupation_band, kind: categorical}
-  - {pattern: "(?:OCCUP|EMPLOY|PROFESSION|DESIGNATION)", band: occupation_band, kind: categorical}
-  - {pattern: "(?:IC_HHINCOME|INCOME|SALARY|EARNING)", band: income_band, kind: categorical}
-  - {pattern: "^EE_WAGE$", band: wage_amount_band, kind: numeric}
-  - {pattern: "(?:LABOUR_?HOUR|LABOR_?HOUR|HRS_?WORK)", band: work_hours_band, kind: numeric}
+# useful for TB analysis. Under the active dual-jurisdiction rule bundle
+# (HIPAA Safe Harbor + India DPDPA), `phi_review` classifies these columns as
+# **KEEP** — they are NOT among the HIPAA Safe Harbor 18 identifiers, so they
+# are published as-is (with a `keep_decision` audit trace) rather than scrubbed.
+#
+# The band rule below is therefore EMPTY by default: routing a KEEP-decided
+# column to a fail-closed empty band would (a) quarantine 100% of every form
+# that carries it (e.g. 2A/2B baseline → 0 rows published) and (b) contradict
+# `phi_review`'s decision, failing the decided-vs-applied verifier (assertion
+# 12). The band machinery is retained for a FUTURE policy in which an operator
+# *both* (1) makes `phi_review` decide GENERALIZE for a column AND (2) populates
+# the matching band_maps/band_ranges from the AMBER data dictionary. Until then
+# these stay empty and inert (no field routes to band).
+#
+# To re-enable banding for a column: add its pattern here AND fill the matching
+# band_maps/band_ranges entry. An empty band map remains fail-closed
+# (PHIBandUnmappedError) so a half-configured band can never silently leak.
+band_fields: []
 
 # Categorical band maps — exact (lower-cased) raw value → broad label.
 # DEFERRED TEMPLATES: empty ⇒ fail-closed (every value quarantines until filled).

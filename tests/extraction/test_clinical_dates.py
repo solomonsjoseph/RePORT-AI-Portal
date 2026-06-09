@@ -272,9 +272,8 @@ class TestIntegerDateParsing:
     # ── 7-digit: DMY via date_locales ─────────────────────────────────────
 
     def test_7digit_dmy_via_date_locales(self) -> None:
-        """9122014 under declared DMY (UPPER-CASE key) → unambiguous DMMYYYY.
-        DMMYYYY: d=9, m=12, y=2014 ✓; DDMYYYY: d=91 invalid → only one split
-        valid → d=9, m=12, y=2014.
+        """9122014 under declared DMY (UPPER-CASE key) → canonical DMMYYYY split.
+        DMMYYYY: d=9, m=12, y=2014.
         Keys must be UPPER-CASE (normalised at manifest load time)."""
         result = parse_date(
             "9122014",
@@ -288,9 +287,8 @@ class TestIntegerDateParsing:
         assert result.format == "iso"
 
     def test_7digit_mdy_via_date_locales(self) -> None:
-        """9122014 under declared MDY (UPPER-CASE key) → unambiguous MDDYYYY.
-        MDDYYYY: m=9, d=12, y=2014 ✓; MMDYYYY: m=91 invalid → only one split
-        valid → m=9, d=12, y=2014.
+        """9122014 under declared MDY (UPPER-CASE key) → canonical MDDYYYY split.
+        MDDYYYY: m=9, d=12, y=2014.
         Keys must be UPPER-CASE (normalised at manifest load time)."""
         result = parse_date(
             "9122014",
@@ -545,34 +543,49 @@ class TestCompact7Digit:
         result = parse_date("9992014")
         assert result is None
 
-    def test_7digit_explicit_dmy_locale_dual_split_fail_closed(self) -> None:
-        """NEW: explicit DMY tries BOTH DMMYYYY and DDMYYYY split widths and
-        quarantines (returns None) when both or neither are valid.
+    def test_7digit_explicit_locale_uses_canonical_split(self) -> None:
+        """An EXPLICIT locale pins the canonical leading-zero-truncation split
+        (DMMYYYY for DMY, MDDYYYY for MDY) — the only layout a 7-digit value can
+        physically have. The 2+1 "DDMYYYY"/"MMDYYYY" phantom split is NOT tried,
+        so a real date whose both-split reading was previously "ambiguous" is now
+        recovered (this is the ST_LOUTDAT / 96_Specimen_Tracking regression fix).
 
-        (a) Unambiguous: 9122014 under IC_VISDAT (DMY allowlist).
-            DMMYYYY d=9,m=12 ✓; DDMYYYY d=91 invalid → unique → d=9,m=12,y=2014.
-        (b) Ambiguous: 1052014 under IC_VISDAT (DMY allowlist).
-            DMMYYYY d=1,m=5 ✓; DDMYYYY d=10,m=5 ✓ → both valid → None.
+        (a) Canonical valid:   9122014 / IC_VISDAT (DMY) → d=9,  m=12, y=2014.
+        (b) Recovered (was None under the old dual-split): 1052014 / IC_VISDAT
+            (DMY) → canonical DMMYYYY → d=1, m=5, y=2014 (NOT quarantined).
+        (c) Canonical invalid → quarantine: 1392014 / IC_VISDAT (DMY) → DMMYYYY
+            m=39 invalid → None. The phantom DDMYYYY (13/9/2014) is NOT used,
+            because that value cannot arise from truncating a zero-padded
+            DDMMYYYY (13 ≥ 10 keeps 8 digits) — fail-closed on a junk value.
+        (d) MDY symmetry: 1052014 / MY_DATE (MDY) → canonical MDDYYYY → m=1,
+            d=5, y=2014.
         """
-        # (a) unambiguous — single valid split resolves correctly
-        result_unambiguous = parse_date(
-            "9122014",
-            field_name="IC_VISDAT",  # DMY allowlist
-        )
-        assert result_unambiguous is not None
-        assert result_unambiguous.dt.day == 9
-        assert result_unambiguous.dt.month == 12
-        assert result_unambiguous.dt.year == 2014
+        # (a) canonical split valid — resolves correctly
+        result_a = parse_date("9122014", field_name="IC_VISDAT")  # DMY allowlist
+        assert result_a is not None
+        assert (result_a.dt.year, result_a.dt.month, result_a.dt.day) == (2014, 12, 9)
 
-        # (b) ambiguous — both splits valid → quarantine (None), fail-closed
-        result_ambiguous = parse_date(
-            "1052014",
-            field_name="IC_VISDAT",  # DMY allowlist
+        # (b) RECOVERED — canonical DMMYYYY, no longer "ambiguous" under explicit DMY
+        result_b = parse_date("1052014", field_name="IC_VISDAT")  # DMY allowlist
+        assert result_b is not None, (
+            "Explicit DMY must use the canonical DMMYYYY split (1+2+4) and recover "
+            "this date, not quarantine it as phantom-ambiguous"
         )
-        assert result_ambiguous is None, (
-            "Ambiguous 7-digit (both DMMYYYY and DDMYYYY valid) must return None "
-            "even with an explicit DMY locale (dual-split fail-closed behavior)"
+        assert (result_b.dt.year, result_b.dt.month, result_b.dt.day) == (2014, 5, 1)
+
+        # (c) canonical split invalid → quarantine (phantom split NOT used)
+        result_c = parse_date("1392014", field_name="IC_VISDAT")  # DMY allowlist
+        assert result_c is None, (
+            "Canonical DMMYYYY is invalid (month=39) and the 2+1 phantom split is "
+            "not a physical truncation layout → must fail-closed to None"
         )
+
+        # (d) MDY symmetry — canonical MDDYYYY split
+        result_d = parse_date(
+            "1052014", field_name="MY_DATE", date_locales={"MY_DATE": "MDY"}
+        )
+        assert result_d is not None
+        assert (result_d.dt.year, result_d.dt.month, result_d.dt.day) == (2014, 1, 5)
 
     def test_7digit_explicit_dmy_via_date_locales(self) -> None:
         """Explicit DMY in date_locales (UPPER-CASE key) + unambiguous value.

@@ -205,6 +205,13 @@ _DATE_BLANK_RE = re.compile(r"^[\s/.\-:]*$")
 _DIGIT_RE = re.compile(r"\d")
 _ALPHA_RE = re.compile(r"[A-Za-z]")
 
+# A date-NAMED column that is actually a "Not Done" / "Not Recorded" status flag
+# (suffix ND / NR, optionally with a trailing index) holds free text, NOT a date,
+# so it must stay KEPT rather than fall through to the date-jitter rule. Examples:
+# CX_PROCDAT_ND, ZN_MBDATNR, ZN_MBDATNR2, CBC_HBAND. Used by the date-leak guard
+# in PHIScrubConfig.field_is_keep to distinguish real date columns from these.
+_DATE_STATUS_FLAG_RE = re.compile(r"(?:ND|NR)\d*$", re.IGNORECASE)
+
 
 def _is_date_sentinel(value: object) -> bool:
     """True if a date value is an all-9s or all-0s *placeholder* (ignoring separators)
@@ -537,8 +544,35 @@ class PHIScrubConfig:
 
         Keep rules short-circuit every other rule — a kept field passes
         through the scrubber unchanged with no audit event recorded.
+
+        DATE-LEAK GUARD: a column whose NAME is a genuine clinical date is
+        NEVER kept raw, even when a broad form-prefix keep (``^CBC_``,
+        ``^CXR_``, ``^DST_``, ``^CX_(...)``, ``^SC_(...)`` …) also matches it.
+        A date is a temporal identifier (HIPAA Safe Harbor §164.514(b)(2)(i)(C))
+        and must fall through to the date-jitter rule — otherwise visit /
+        collection / result dates (e.g. ``CBC_VISDAT``, ``DST_ISOLATEDAT``,
+        ``SC_PAXRECDAT``) would publish un-shifted and trip the pre-publication
+        leak gate. This also keeps the keep-rule in agreement with
+        ``phi_review``'s ``jitter_date`` decision for those columns
+        (decided-vs-applied verifier, assertion 12). EXCEPTION: date-NAMED but
+        non-date status flags ("Not Done" / "Not Recorded", suffix ND / NR —
+        e.g. ``CX_PROCDAT_ND``, ``ZN_MBDATNR``) are the very reason those
+        anchored keep rules exist, so they stay kept.
         """
-        return any(p.search(name) for p in self.keep_patterns)
+        if not any(p.search(name) for p in self.keep_patterns):
+            return False
+        return not self._name_is_jitterable_date(name)
+
+    def _name_is_jitterable_date(self, name: str) -> bool:
+        """True when *name* is a real clinical date column that must be jittered:
+        it matches a ``date_fields`` pattern, is not a birthdate (handled
+        separately via :meth:`field_is_birthdate`), and is not an ND / NR
+        'Not Done' / 'Not Recorded' status flag (date-NAMED but holds text)."""
+        if self.birthdate_pattern is not None and self.birthdate_pattern.search(name):
+            return False
+        if not any(p.search(name) for p in self.date_patterns):
+            return False
+        return not _DATE_STATUS_FLAG_RE.search(name)
 
     def field_is_drop(self, name: str) -> bool:
         return any(p.search(name) for p in self.drop_patterns)
