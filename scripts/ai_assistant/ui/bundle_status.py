@@ -233,6 +233,7 @@ def partial_run_notice(study: str | None = None) -> str | None:
         return None
 
     lines: list[str] = []
+    elevated_count = 0
     for entry in partial_forms:
         if not isinstance(entry, dict):
             continue
@@ -245,17 +246,35 @@ def partial_run_notice(study: str | None = None) -> str | None:
             # raising into the chat UI. This advisory notice is fail-closed-to-silent
             # (mirrors published_bundle_exists below and held_set_notice).
             continue
+        elevated = bool(entry.get("elevated", False))
         reasons = [str(r) for r in (entry.get("reasons") or []) if str(r)]
         reason_str = f" ({', '.join(reasons)})" if reasons else ""
-        lines.append(
-            f"- {form}: published with {quarantined} row(s) held for PHI review"
-            f"{reason_str}; {kept} row(s) are queryable."
-        )
+        if elevated:
+            # A large held fraction or orphan overflow — published rows are each
+            # individually correct, but the high held count suggests a systemic
+            # data/config issue; flag it so the operator reviews before relying on
+            # this form. NOT a block: the queryable rows are still usable.
+            elevated_count += 1
+            lines.append(
+                f"- ⚠ {form}: published with {quarantined} row(s) held for PHI "
+                f"review{reason_str}; {kept} row(s) are queryable — review "
+                "recommended (large held fraction may indicate a data/config issue)."
+            )
+        else:
+            lines.append(
+                f"- {form}: published with {quarantined} row(s) held for PHI review"
+                f"{reason_str}; {kept} row(s) are queryable."
+            )
 
     if not lines:
         return None
 
     header = f"Partial run: {len(lines)} form(s) published with some rows held for PHI review."
+    if elevated_count:
+        header += (
+            f" {elevated_count} flagged for review (large held fraction — "
+            "published rows are valid but the form may be incomplete)."
+        )
     return "\n".join([header] + lines)
 
 

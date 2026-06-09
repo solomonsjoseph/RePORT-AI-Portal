@@ -317,10 +317,18 @@ class PHIDateUnshiftableError(PHIScrubError):
 
 
 class PHIPartialThresholdExceededError(PHIScrubError):
-    """Raised in partial-publish mode when the quarantined fraction of a file
-    exceeds partial_max_quarantine_fraction — a systemic data/config problem
-    (not a small tail of bad rows). Fail-closed: halt rather than publish a
-    gutted dataset."""
+    """Retained for API/strict-mode compatibility — NO LONGER raised on the
+    partial-publish path.
+
+    Historically, partial mode hard-failed when a single file's quarantined
+    fraction exceeded ``partial_max_quarantine_fraction``. That aborted the whole
+    study and denied the operator every *clean* form's usable data, which
+    contradicted the partial-publish contract ("move on with the forms that
+    worked"). The over-threshold condition is now surfaced as an ``elevated``
+    review flag on the form's ``scrub_outcome.json`` entry instead of an abort —
+    every published row remains individually correct (row-level fail-closed
+    scrub/date logic), so an elevated form is *incomplete*, never *corrupt*. The
+    class is kept defined + exported so existing imports/`__all__` stay stable."""
 
 
 # ── Config ───────────────────────────────────────────────────────────────────
@@ -1908,15 +1916,23 @@ def run_scrub(
         ``scrub_outcome.json`` sidecar in the run dir for the wrapper CLI to
         surface as a non-blocking partial-run notice.
 
-        **Safety cap** — even in partial mode, if the quarantined fraction of a
-        single file exceeds ``cfg.partial_max_quarantine_fraction`` (default 10%)
-        the run still hard-fails with :class:`PHIPartialThresholdExceededError`:
-        a systemic data/config problem (not a small tail) should halt rather than
-        publish a gutted dataset.
+        **Elevated-review flag (not an abort)** — in partial mode, a form whose
+        held fraction exceeds ``cfg.partial_max_quarantine_fraction`` (default 10%)
+        or whose orphan count exceeds ``cfg.orphan_quarantine_threshold`` is marked
+        ``elevated`` in its ``scrub_outcome.json`` entry: "published, but review
+        recommended — likely a systemic data/config issue, not a small tail." It is
+        deliberately NOT a hard abort: halting the whole study would deny the
+        operator every *clean* form's usable data, which contradicts the partial-
+        publish contract. The elevated flag preserves the systemic-failure signal
+        for the operator without blocking the queryable forms. (The
+        :class:`PHIPartialThresholdExceededError` class is retained for API/strict-
+        mode compatibility; it is no longer raised on the partial path.)
 
         The security invariant is unchanged either way: a row that cannot be
         safely scrubbed is NEVER published — it is quarantined, never emitted
-        to ``llm_source/``.
+        to ``llm_source/``. Every PUBLISHED row is individually correct (row-level
+        fail-closed scrub/date logic), so an elevated form is incomplete, never
+        corrupt.
 
     Post-conditions:
         * Datasets JSONL rewritten in place with scrubbed values + ``_phi_scrubbed``
@@ -2084,7 +2100,13 @@ def run_scrub(
                 q_key = f"quarantine/{jsonl_file.name}"
                 counts_by_file[q_key] = orphan_counts
             atomic_write_jsonl(quarantine_dir / jsonl_file.name, orphans)
-            if len(orphans) > cfg.orphan_quarantine_threshold:
+            if len(orphans) > cfg.orphan_quarantine_threshold and not partial_on_review:
+                # Strict mode only: an orphan-row count over the threshold signals a
+                # likely subject_id_fields misconfiguration → fail-closed-stop.
+                # Partial mode does NOT abort here (that would block every clean form
+                # too); instead the orphan rows are held in quarantine and the
+                # correctly-jittered non-orphan rows are published, with the form
+                # flagged ``elevated`` for review in the unified tally below.
                 raise PHIQuarantineOverflowError(
                     f"{jsonl_file.name}: {len(orphans)} orphan rows exceeds "
                     f"threshold {cfg.orphan_quarantine_threshold}. "
@@ -2144,43 +2166,57 @@ def run_scrub(
                     f"Quarantined rows: quarantine/date_unshiftable_{jsonl_file.name}."
                 )
 
-        # Partial-publish mode: record the per-form review-quarantine tally so the
-        # wrapper CLI can surface a non-blocking partial-run notice. The good rows
-        # (``kept``) are published below exactly as in a clean run; only the
-        # un-scrubbable rows were diverted to quarantine (no-LLM zone) above.
+        # Partial-publish mode: publish the form's correctly-scrubbed rows (``kept``)
+        # and HOLD every un-scrubbable / un-jitterable / orphan row in the no-LLM
+        # quarantine zone, recording a per-form tally so the wrapper can surface a
+        # non-blocking partial-run notice.  Each PUBLISHED row is individually
+        # correct: date jitter and locale resolution are fail-closed at the row
+        # level (an ambiguous date is quarantined, never resolved under a guessed
+        # locale), so a row only reaches ``kept`` when it scrubbed cleanly.
+        #
+        # A held-fraction over ``partial_max_quarantine_fraction`` or an orphan
+        # count over ``orphan_quarantine_threshold`` no longer ABORTS the run — that
+        # would deny the operator every clean form's usable data.  Instead the form
+        # is flagged ``elevated`` ("published, but review recommended — likely a
+        # systemic data/config issue") so the UI can distinguish a small tail of
+        # bad rows from a systemic failure while keeping both queryable.  The PHI
+        # security invariant is unchanged: a held row is NEVER promoted.  Strict
+        # mode (``partial_on_review=False``) still aborts on the first failed row.
         review_q = len(date_failed) + len(band_failed) + len(generalize_failed)
-        if partial_on_review and review_q:
-            total_rows = len(kept) + len(orphans) + review_q
-            held_frac = review_q / max(total_rows, 1)
-            if held_frac > cfg.partial_max_quarantine_fraction:
-                raise PHIPartialThresholdExceededError(
-                    f"{jsonl_file.name}: {review_q}/{total_rows} rows "
-                    f"({held_frac:.1%}) quarantined exceeds the partial-publish "
-                    f"safety threshold ({cfg.partial_max_quarantine_fraction:.0%}). "
-                    f"This indicates a systemic data/config problem, not a few bad "
-                    f"rows — halting rather than publishing a gutted dataset. Inspect "
-                    f"the quarantine/ files or fix the source data, then re-run."
-                )
+        held_count = len(orphans) + review_q
+        if partial_on_review and held_count:
+            total_rows = len(kept) + held_count
+            held_frac = held_count / max(total_rows, 1)
+            elevated = (
+                len(orphans) > cfg.orphan_quarantine_threshold
+                or held_frac > cfg.partial_max_quarantine_fraction
+            )
             reasons = [
                 label
                 for label in (
+                    f"orphan_no_subject_id:{len(orphans)}" if orphans else None,
                     f"date_unshiftable:{len(date_failed)}" if date_failed else None,
                     f"band_unmapped:{len(band_failed)}" if band_failed else None,
                     f"generalize_unmapped:{len(generalize_failed)}" if generalize_failed else None,
                 )
                 if label
             ]
+            if elevated:
+                reasons.append(f"elevated_review:{held_frac:.0%}_held")
             partial_forms[jsonl_file.name] = {
                 "kept": len(kept),
-                "quarantined": review_q,
+                "quarantined": held_count,
                 "reasons": reasons,
+                "elevated": elevated,
             }
-            logger.warning(
-                "phi_scrub %s: PARTIAL publish — kept=%d, quarantined-for-review=%d (%s)",
+            log_fn = logger.warning if elevated else logger.info
+            log_fn(
+                "phi_scrub %s: PARTIAL publish — kept=%d, held-for-review=%d (%s)%s",
                 jsonl_file.name,
                 len(kept),
-                review_q,
+                held_count,
                 ", ".join(reasons),
+                " [ELEVATED — review recommended]" if elevated else "",
             )
 
         atomic_write_jsonl(jsonl_file, kept)

@@ -29,8 +29,8 @@ import pytest
 
 import config
 import scripts.skills.extract_to_llm_source as skill_mod
-from scripts.audit.ledger import dataset_phi_ledger_path
 from scripts.ai_assistant.ui.bundle_status import partial_run_notice
+from scripts.audit.ledger import dataset_phi_ledger_path
 from scripts.skills.extract_to_llm_source import (
     EXIT_OK,
     EXIT_PARTIAL_REVIEW,
@@ -146,16 +146,20 @@ def _run_cmd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[int, dict
     monkeypatch.setattr(skill_mod, "check_forms_manifest", lambda _d: None)
 
     # Intercept scan_for_in_progress_scrubs (no in-progress tokens).
-    with patch(
-        "scripts.utils.run_context.scan_for_in_progress_scrubs",
-        return_value=[],
-    ), patch.object(
-        skill_mod,
-        "destroy_staging_and_attest",
-        _fake_destroy,
-    ), patch(
-        "subprocess.run",
-        return_value=SimpleNamespace(returncode=0),
+    with (
+        patch(
+            "scripts.utils.run_context.scan_for_in_progress_scrubs",
+            return_value=[],
+        ),
+        patch.object(
+            skill_mod,
+            "destroy_staging_and_attest",
+            _fake_destroy,
+        ),
+        patch(
+            "subprocess.run",
+            return_value=SimpleNamespace(returncode=0),
+        ),
     ):
         rc = main(["run", "--study", STUDY])
 
@@ -192,7 +196,11 @@ class TestScrubOutcomePartial:
                 "study": STUDY,
                 "partial": True,
                 "partial_forms": {
-                    "7_Culture.jsonl": {"kept": 1080, "quarantined": 37, "reasons": ["date_unshiftable:37"]}
+                    "7_Culture.jsonl": {
+                        "kept": 1080,
+                        "quarantined": 37,
+                        "reasons": ["date_unshiftable:37"],
+                    }
                 },
             },
         )
@@ -212,7 +220,11 @@ class TestScrubOutcomePartial:
                 "study": STUDY,
                 "partial": True,
                 "partial_forms": {
-                    "7_Culture.jsonl": {"kept": 1080, "quarantined": 37, "reasons": ["date_unshiftable:37"]}
+                    "7_Culture.jsonl": {
+                        "kept": 1080,
+                        "quarantined": 37,
+                        "reasons": ["date_unshiftable:37"],
+                    }
                 },
             },
         )
@@ -232,7 +244,11 @@ class TestScrubOutcomePartial:
                 "study": STUDY,
                 "partial": True,
                 "partial_forms": {
-                    "7_Culture.jsonl": {"kept": 1080, "quarantined": 37, "reasons": ["date_unshiftable:37"]}
+                    "7_Culture.jsonl": {
+                        "kept": 1080,
+                        "quarantined": 37,
+                        "reasons": ["date_unshiftable:37"],
+                    }
                 },
             },
         )
@@ -331,9 +347,7 @@ class TestScrubOutcomeClean:
 class TestScrubOutcomeAbsent:
     """No scrub_outcome.json → clean run (best-effort, no error)."""
 
-    def test_absent_sidecar_exit_ok(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_absent_sidecar_exit_ok(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         # Do NOT write scrub_outcome.json
         rc, _status = _run_cmd(tmp_path, monkeypatch)
         assert rc == EXIT_OK
@@ -370,7 +384,11 @@ class TestScrubOutcomeAbsent:
                 "study": STUDY,
                 "partial": True,
                 "partial_forms": {
-                    "7_Culture.jsonl": {"kept": 1080, "quarantined": 37, "reasons": ["date_unshiftable:37"]}
+                    "7_Culture.jsonl": {
+                        "kept": 1080,
+                        "quarantined": 37,
+                        "reasons": ["date_unshiftable:37"],
+                    }
                 },
             },
         )
@@ -494,6 +512,52 @@ class TestPartialRunNotice:
         assert "7_Culture.jsonl" in notice
         assert "3_Xray.jsonl" in notice
 
+    def test_elevated_form_is_flagged_for_review(self, monkeypatch_config: Path) -> None:
+        """An ``elevated`` form (held fraction over the cap, formerly an abort) is
+        rendered with a review-recommended marker and counted in the header, while a
+        normal partial form in the same run is not — so the operator can tell a small
+        tail of bad rows from a likely systemic data/config issue. Both stay queryable.
+        """
+        study = config.STUDY_NAME
+        _write_run_status_fixture(
+            study,
+            "run_elevated00001",
+            {
+                "publish_status": "partial",
+                "exit_code": 8,
+                "partial_forms": [
+                    {
+                        "form": "9_Locale.jsonl",
+                        "kept": 12,
+                        "quarantined": 88,
+                        "reasons": ["date_unshiftable:88", "elevated_review:88%_held"],
+                        "elevated": True,
+                    },
+                    {
+                        "form": "7_Culture.jsonl",
+                        "kept": 1080,
+                        "quarantined": 37,
+                        "reasons": ["date_unshiftable:37"],
+                        "elevated": False,
+                    },
+                ],
+            },
+        )
+        notice = partial_run_notice(study)
+        assert notice is not None
+        # Elevated form is flagged for review; the run header counts it.
+        assert "9_Locale.jsonl" in notice
+        assert "review recommended" in notice.lower()
+        assert "flagged for review" in notice.lower()
+        # Both forms remain reported as queryable (non-blocking).
+        assert "7_Culture.jsonl" in notice
+        assert "queryable" in notice.lower()
+        # The review marker attaches to the elevated line, not the normal one.
+        elevated_line = next(ln for ln in notice.splitlines() if "9_Locale.jsonl" in ln)
+        normal_line = next(ln for ln in notice.splitlines() if "7_Culture.jsonl" in ln)
+        assert "review recommended" in elevated_line.lower()
+        assert "review recommended" not in normal_line.lower()
+
     def test_never_raises_on_malformed_status(self, monkeypatch_config: Path) -> None:
         study = config.STUDY_NAME
         run_dir = Path(config.OUTPUT_DIR) / study / "runs" / "run_bad0000001"
@@ -604,7 +668,13 @@ def _run_cmd_with_quarantine(
             "study": STUDY,
             "partial": partial,
             "partial_forms": (
-                {"7_Culture.jsonl": {"kept": 1080, "quarantined": 37, "reasons": ["date_unshiftable:37"]}}
+                {
+                    "7_Culture.jsonl": {
+                        "kept": 1080,
+                        "quarantined": 37,
+                        "reasons": ["date_unshiftable:37"],
+                    }
+                }
                 if partial
                 else {}
             ),
@@ -615,10 +685,10 @@ def _run_cmd_with_quarantine(
     monkeypatch.setattr(skill_mod, "_release_pipeline_lock_for_skill", lambda: None)
     monkeypatch.setattr(skill_mod, "check_forms_manifest", lambda _d: None)
 
-    with patch(
-        "scripts.utils.run_context.scan_for_in_progress_scrubs", return_value=[]
-    ), patch.object(skill_mod, "destroy_staging_and_attest", _fake_destroy), patch(
-        "subprocess.run", return_value=SimpleNamespace(returncode=0)
+    with (
+        patch("scripts.utils.run_context.scan_for_in_progress_scrubs", return_value=[]),
+        patch.object(skill_mod, "destroy_staging_and_attest", _fake_destroy),
+        patch("subprocess.run", return_value=SimpleNamespace(returncode=0)),
     ):
         rc = main(["run", "--study", STUDY])
     return rc, staging_dir

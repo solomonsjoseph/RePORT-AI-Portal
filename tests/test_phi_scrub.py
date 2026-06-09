@@ -2748,9 +2748,7 @@ class TestBirthdateKeptAndJitteredRealConfig:
         "dob_col",
         ["IS_BIRTHDAT", "IC_BIRTHDAT", "HHC_BRTHDAT", "HC_BRTHDAT"],
     )
-    def test_subject_birthdate_columns_route_to_jitter_not_keep_or_drop(
-        self, dob_col: str
-    ) -> None:
+    def test_subject_birthdate_columns_route_to_jitter_not_keep_or_drop(self, dob_col: str) -> None:
         cfg = self._load_real_cfg()
         if cfg is None:
             pytest.skip("phi_scrub.yaml not present in this environment")
@@ -2776,8 +2774,10 @@ class TestPartialPublishThreshold:
 
     Covers:
     - partial mode, fraction UNDER threshold → completes, kept rows published,
-      partial recorded, no raise.
-    - partial mode, fraction OVER threshold → raises PHIPartialThresholdExceededError.
+      partial recorded, no raise, not elevated.
+    - partial mode, fraction OVER threshold → NO raise: the good rows are published
+      and the form is flagged ``elevated`` in scrub_outcome.json (one systemic form
+      must not block the clean forms — review recommended, not aborted).
     - strict mode (partial_on_review=False) → raises original error (PHIDateUnshiftableError),
       threshold not consulted (unchanged behavior).
     - load_scrub_config picks up partial_max_quarantine_fraction from yaml.
@@ -2866,26 +2866,48 @@ class TestPartialPublishThreshold:
         assert outcome["partial"] is True
         assert "1A_ICScreening.jsonl" in outcome["partial_forms"]
 
-    def test_partial_over_threshold_raises(
+    def test_partial_over_threshold_publishes_elevated(
         self,
         monkeypatch_config: Path,
         sidecar_key: Path,
         scrub_config_path: Path,
         tmp_path: Path,
     ) -> None:
-        """Most rows quarantined (>10%) → raises PHIPartialThresholdExceededError,
-        even in partial_on_review=True mode."""
-        # 9 bad rows, 1 good = 90% quarantined → exceeds 10% threshold
+        """Most rows quarantined (>10%) in partial mode: NO abort.
+
+        The good rows are published and the form is flagged ``elevated`` in
+        scrub_outcome.json so the UI can recommend review. Aborting here would deny
+        the operator every *clean* form's usable data — the explicit partial-publish
+        contract is "move on with the forms that worked, flag the rest."
+        """
+        # 9 bad rows, 1 good = 90% held → over the 10% threshold → elevated, not raise.
         _write_config(scrub_config_path, partial_max_quarantine_fraction=0.10)
         good_rows = [{"SUBJID": "SGOOD", "VISDAT": "2014-07-15"}]
         bad_rows = [{"SUBJID": f"SBAD{i}", "VISDAT": "not-a-date"} for i in range(9)]
-        _seed_staging(monkeypatch_config, good_rows + bad_rows)
+        src = _seed_staging(monkeypatch_config, good_rows + bad_rows)
+        runs_dir = tmp_path / "runs"
+        (runs_dir / "run_elevated").mkdir(parents=True, exist_ok=True)
 
-        with pytest.raises(phi_scrub.PHIPartialThresholdExceededError, match="10%"):
-            phi_scrub.run_scrub(
-                study_name="TEST",
-                partial_on_review=True,
-            )
+        # Must NOT raise — partial mode holds the bad rows and publishes the good one.
+        phi_scrub.run_scrub(
+            study_name="TEST",
+            run_id="run_elevated",
+            runs_dir=runs_dir,
+            partial_on_review=True,
+        )
+
+        # The single good row is published; the 9 bad rows are NOT promoted.
+        published = [json.loads(line) for line in src.read_text().splitlines() if line.strip()]
+        assert len(published) == 1
+
+        # scrub_outcome.json: partial=True, form flagged elevated with kept/held counts.
+        outcome = json.loads((runs_dir / "run_elevated" / "scrub_outcome.json").read_text())
+        assert outcome["partial"] is True
+        entry = outcome["partial_forms"]["1A_ICScreening.jsonl"]
+        assert entry["elevated"] is True
+        assert entry["kept"] == 1
+        assert entry["quarantined"] == 9
+        assert any("elevated_review" in r for r in entry["reasons"])
 
     def test_strict_mode_raises_original_error_not_threshold(
         self,

@@ -1641,12 +1641,15 @@ def _cmd_run(args: argparse.Namespace) -> int:
                     for _form_name, _counts in (_scrub_raw.get("partial_forms") or {}).items():
                         if not isinstance(_counts, dict):
                             continue
-                        _scrub_partial_forms.append({
-                            "form": str(_form_name),
-                            "kept": int(_counts.get("kept", 0)),
-                            "quarantined": int(_counts.get("quarantined", 0)),
-                            "reasons": [str(r) for r in (_counts.get("reasons") or [])],
-                        })
+                        _scrub_partial_forms.append(
+                            {
+                                "form": str(_form_name),
+                                "kept": int(_counts.get("kept", 0)),
+                                "quarantined": int(_counts.get("quarantined", 0)),
+                                "reasons": [str(r) for r in (_counts.get("reasons") or [])],
+                                "elevated": bool(_counts.get("elevated", False)),
+                            }
+                        )
         except (json.JSONDecodeError, OSError, TypeError, ValueError):
             # Best-effort: a corrupt or missing sidecar is treated as clean.
             _scrub_partial = False
