@@ -39,6 +39,7 @@ from scripts.extraction.io import (
     split_sheet_into_tables as _split_sheet_into_tables_shared,
 )
 from scripts.extraction.io.file_discovery import SUPPORTED_TABULAR_EXTENSIONS
+from scripts.security.phi_patterns import BLOCKING_PATTERNS
 from scripts.security.secure_env import assert_not_raw
 from scripts.utils import logging_system as log
 
@@ -54,6 +55,16 @@ NAMED_TEMP_PREFIX = config.TEMP_PREFIX_DICT
 
 # Supported dictionary file extensions (deterministic ordering)
 SUPPORTED_EXTENSIONS: tuple[str, ...] = SUPPORTED_TABULAR_EXTENSIONS
+
+# Publish-time URL scrub: dictionary help-text may carry staff-authored
+# reference links (e.g. a codelist note citing the ISO 3166 standard).
+# The PHI residual leak gate (scan_tree_for_phi) blocks ANY URL in the
+# published tree, so URLs are masked here — with the gate's own pattern,
+# so publisher and gate can never drift — rather than carving the gate
+# down. The mask token contains no scheme, so it can never re-trip the
+# gate.
+_URL_PATTERN = next(pat for name, pat in BLOCKING_PATTERNS if name == "URL")
+_URL_MASK = "<URL_REMOVED>"
 
 
 def _deduplicate_columns(columns: Any) -> list[str]:
@@ -90,6 +101,26 @@ def _deduplicate_columns(columns: Any) -> list[str]:
             new_cols.append(col_str)
             counts[col_str] = 0
     return new_cols
+
+
+def _strip_doc_urls(df: pd.DataFrame) -> pd.DataFrame:
+    """Mask URLs in dictionary text cells before publication.
+
+    Dictionary content is staff-authored documentation (codelist
+    help-text, notes), so a URL there is a citation — but the published
+    ``llm_source/`` tree must pass the residual leak gate, whose ``URL``
+    pattern is blocking everywhere. Masking at publish keeps the gate
+    maximally broad instead of widening a carve-out.
+
+    Uses the gate's own compiled pattern (``phi_patterns.BLOCKING_PATTERNS``)
+    so the two can never disagree. Non-string cells pass through untouched.
+    """
+    for col in df.columns:
+        if df[col].dtype == object:
+            df[col] = df[col].map(
+                lambda v: _URL_PATTERN.sub(_URL_MASK, v) if isinstance(v, str) else v
+            )
+    return df
 
 
 def _split_sheet_into_tables(df: pd.DataFrame) -> list[pd.DataFrame] | None:
@@ -197,6 +228,7 @@ def _process_and_save_tables(
             table_df[METADATA_TABLE_KEY] = metadata_name
             if source_file:
                 table_df[METADATA_SOURCE_FILE_KEY] = source_file
+            table_df = _strip_doc_urls(table_df)
             atomic_write_dataframe_jsonl(output_path, table_df, prefix=NAMED_TEMP_PREFIX)
             log.info(f"Saved {len(table_df)} rows → '{output_path}'")
         except OSError as e:
@@ -354,6 +386,7 @@ def process_csv_file(
         return True
 
     try:
+        df = _strip_doc_urls(df)
         atomic_write_dataframe_jsonl(output_path, df, prefix=NAMED_TEMP_PREFIX)
         log.info(f"Saved {len(df)} rows → '{output_path}'")
     except Exception as e:
