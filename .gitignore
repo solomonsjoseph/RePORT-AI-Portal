@@ -286,21 +286,14 @@ output*/**
 docs/.vision/
 docs/.vision/**
 
-# Documentation Policy: NO .md files except README.md, docs/*.md,
-# AGENTS.md (agent-facing instructions, tracked convention), docs/agents/*.md
-# (agent skill configuration), the IRB dossier under docs/irb_dossier/
-# (regulatory evidence package), and the tracked evidence directories
-# docs/eval/ (evaluation results + abstract) and docs/reviews/ (data-owner
-# review findings). All long-form non-regulatory documentation still goes in
-# docs/sphinx/*.rst.
+# Documentation Policy: inside docs/, ONLY docs/sphinx/ is tracked (long-form
+# documentation as reStructuredText). Every other markdown file under docs/ —
+# eval results, review findings, abstracts, agent notes, the IRB dossier — is
+# gitignored. Tracked-markdown exceptions OUTSIDE docs/ are README.md, AGENTS.md,
+# the plugin/skill SKILL.md files, and the authority records under authorities/.
 *.md
 !README.md
-!docs/*.md
 !AGENTS.md
-!docs/agents/*.md
-!docs/irb_dossier/*.md
-!docs/eval/*.md
-!docs/reviews/*.md
 !skills/sot-lean-generator/SKILL.md
 !skills/sot-lean-generator/references/*.md
 !skills/excel-duplicate-handler/SKILL.md
@@ -322,7 +315,6 @@ NOTES.md
 *_AUDIT*.md
 *_REPORT*.md
 *_SUMMARY*.md
-!docs/irb_dossier/*.md
 
 # AI related artifacts
 .claude/
