@@ -412,6 +412,13 @@ def parse_date(
             dt = datetime(y, month, day)
         except (ValueError, OverflowError):
             return None
+        if not (1900 <= y <= 2100):
+            # L1 guard (same class as the 8-digit year-range guard): a 3-digit or
+            # otherwise implausible year (e.g. "28/05/100" → 100) is not a real
+            # clinical date — return None so the caller quarantines it rather than
+            # emitting a structurally-wrong year. Valid 2-digit years expand to
+            # 1900-2099 and 4-digit years in [1900, 2100] are unaffected.
+            return None
 
         ampm = m.group(8).upper() if m.group(8) else None
         return ParsedDate(

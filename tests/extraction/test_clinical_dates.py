@@ -401,6 +401,19 @@ class TestSeparatorVariants:
         assert result.dt.day == 28
         assert result.dt.month == 5
 
+    def test_separator_3digit_year_rejected_l1(self) -> None:
+        """L1: a 3-digit year (e.g. 28/05/100 → year 100) is structurally
+        implausible and must return None (quarantine), not emit year 100."""
+        assert parse_date("28/05/100", field_name="IC_VISDAT") is None
+        assert parse_date("28-05-100", field_name="IC_VISDAT") is None
+
+    def test_separator_2digit_and_4digit_years_unaffected_by_l1(self) -> None:
+        """Regression: valid 2-digit (→1900-2099) and in-range 4-digit years still parse."""
+        r2 = parse_date("28/05/14", field_name="IC_VISDAT")
+        assert r2 is not None and r2.dt.year == 2014
+        r4 = parse_date("28/05/2014", field_name="IC_VISDAT")
+        assert r4 is not None and r4.dt.year == 2014
+
 
 # ---------------------------------------------------------------------------
 # 8-digit compact: day>12 and ambiguous cases

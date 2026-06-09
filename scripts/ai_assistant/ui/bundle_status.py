@@ -236,9 +236,15 @@ def partial_run_notice(study: str | None = None) -> str | None:
     for entry in partial_forms:
         if not isinstance(entry, dict):
             continue
-        form = str(entry.get("form", ""))
-        kept = int(entry.get("kept", 0))
-        quarantined = int(entry.get("quarantined", 0))
+        try:
+            form = str(entry.get("form", ""))
+            kept = int(entry.get("kept", 0))
+            quarantined = int(entry.get("quarantined", 0))
+        except (ValueError, TypeError):
+            # Malformed/hand-edited status.json field — skip this entry rather than
+            # raising into the chat UI. This advisory notice is fail-closed-to-silent
+            # (mirrors published_bundle_exists below and held_set_notice).
+            continue
         reasons = [str(r) for r in (entry.get("reasons") or []) if str(r)]
         reason_str = f" ({', '.join(reasons)})" if reasons else ""
         lines.append(

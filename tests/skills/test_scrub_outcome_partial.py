@@ -502,6 +502,33 @@ class TestPartialRunNotice:
         # Must not raise.
         assert partial_run_notice(study) is None
 
+    def test_skips_entry_with_nonnumeric_field_m1(self, monkeypatch_config: Path) -> None:
+        """M1: valid JSON but a partial_forms entry has a non-numeric kept/quarantined
+        (corrupt / hand-edited status.json). The bad entry must be SKIPPED, not raise
+        a ValueError into the chat UI; valid entries still surface."""
+        study = config.STUDY_NAME
+        _write_run_status_fixture(
+            study,
+            "run_badfield0001",
+            {
+                "publish_status": "partial",
+                "exit_code": 8,
+                "partial_forms": [
+                    {"form": "bad.jsonl", "kept": "abc", "quarantined": 5, "reasons": []},
+                    {
+                        "form": "good.jsonl",
+                        "kept": 100,
+                        "quarantined": 2,
+                        "reasons": ["date_unshiftable:2"],
+                    },
+                ],
+            },
+        )
+        notice = partial_run_notice(study)  # must not raise
+        assert notice is not None
+        assert "good.jsonl" in notice
+        assert "bad.jsonl" not in notice
+
     def test_uses_latest_run_by_completed_utc(self, monkeypatch_config: Path) -> None:
         """Chronologically latest run is used, not lexicographically largest name."""
         study = config.STUDY_NAME
