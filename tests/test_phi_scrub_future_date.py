@@ -154,6 +154,36 @@ class TestFutureDateSentinelUnitLevel:
         assert scrubbed["VISDAT"] == ""
         assert any("date_future_sentinel" in k for k in counts)
 
+    def test_iso_string_year_2914_beyond_parser_ceiling_sentinel(self) -> None:
+        """ISO string with year > 2100 (e.g. '2914-05-28') — parse_date returns
+        None (beyond its plausible ceiling), so the ISO-leading-year fallback must
+        resolve the year and treat it as a future placeholder. This is the
+        datetime-origin shape Excel cells serialise to post-extraction.
+        """
+        cfg = _minimal_cfg(plausible_max_year=2026, future_date_policy="sentinel")
+        # value with valid month/day but a far-future year — parse_date rejects it
+        row: dict[str, Any] = {"SUBJID": "S1", "VISDAT": "2914-05-28 00:00:00"}
+
+        scrubbed, counts = phi_scrub._scrub_row(row, cfg=cfg, key=_key())
+
+        assert scrubbed is not None, "Row must be published under sentinel policy"
+        assert scrubbed["VISDAT"] == "", "ISO future date must be blanked (treated missing)"
+        assert any("date_future_sentinel" in k for k in counts)
+
+    def test_iso_string_old_year_1014_not_blanked_quarantines(self) -> None:
+        """ISO string with an OLD year (<1900) is NOT a future placeholder — the
+        fallback resolves 1014 but 1014 <= plausible_max_year so it is NOT blanked;
+        it falls through to the strict path and quarantines (a typo for source review)."""
+        cfg = _minimal_cfg(plausible_max_year=2026, future_date_policy="sentinel")
+        row: dict[str, Any] = {"SUBJID": "S1", "VISDAT": "1014-05-28"}
+
+        scrubbed, counts = phi_scrub._scrub_row(row, cfg=cfg, key=_key())
+        # Old-year ISO must NOT be blanked as a future sentinel.
+        if scrubbed is not None:
+            assert scrubbed.get("VISDAT") != "" or not any(
+                "date_future_sentinel" in k for k in counts
+            ), "Old year must not be treated as a future sentinel"
+
     def test_normal_date_2014_unaffected(self) -> None:
         """Test 5: A normal past date (year=2014) must still be jittered exactly
         as before — the new keys must not change any existing behavior."""

@@ -207,6 +207,13 @@ _VALID_POSTURES = frozenset({_POSTURE_SAFE_HARBOR, _POSTURE_LIMITED_DATASET})
 # Checked BEFORE the null-token lookup and shift_date call inside _scrub_row.
 _DATE_BLANK_RE = re.compile(r"^[\s/.\-:]*$")
 
+# ISO leading-year date (YYYY-MM-DD, optionally followed by time/separator). Used
+# by the future-date check to read the UNAMBIGUOUS leading year of an Excel
+# datetime cell that parse_date rejected for being beyond its plausible ceiling
+# (e.g. a year-2914 placeholder). ISO year is always the leading group — no locale
+# ambiguity — so this never reinterprets a DMY/slash value.
+_ISO_LEADING_DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})(?:\b|$)")
+
 # Pre-compiled character-class patterns reused in _mask_date_shape.
 _DIGIT_RE = re.compile(r"\d")
 _ALPHA_RE = re.compile(r"[A-Za-z]")
@@ -1663,6 +1670,24 @@ def _scrub_row(
                         # Locale-ambiguous → fall through to the existing
                         # shift_date path which will raise/quarantine correctly.
                         _resolved_year = None
+                    if _resolved_year is None:
+                        # parse_date rejects years beyond its plausible ceiling
+                        # (e.g. 2914), so a far-future date returns None above. An
+                        # ISO-leading-year value (YYYY-MM-DD…, the shape Excel
+                        # datetime cells serialise to) is UNAMBIGUOUS — the year is
+                        # always the leading 4 digits, no locale guessing. If those
+                        # digits form a year and the month/day are valid, use it.
+                        # Ambiguous DMY/slash/compact values are deliberately NOT
+                        # reinterpreted here — they stay quarantined for review.
+                        _iso = _ISO_LEADING_DATE_RE.match(str(raw_val).strip())
+                        if _iso:
+                            _y, _mo, _d = (
+                                int(_iso.group(1)),
+                                int(_iso.group(2)),
+                                int(_iso.group(3)),
+                            )
+                            if 1 <= _mo <= 12 and 1 <= _d <= 31:
+                                _resolved_year = _y
                 if _resolved_year is not None and _resolved_year > cfg.plausible_max_year:
                     if cfg.future_date_policy == "sentinel":
                         # Treat as a missing-data placeholder. Unlike a text/digit
