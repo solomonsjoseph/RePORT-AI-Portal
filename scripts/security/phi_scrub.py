@@ -184,6 +184,12 @@ _DEFAULT_AGE_CAP_THRESHOLD = 89
 _DEFAULT_AGE_CAP_LABEL = "90+"
 _DEFAULT_SMALL_CELL_THRESHOLD = 5
 _DEFAULT_PARTIAL_MAX_QUARANTINE_FRACTION = 0.10
+# Future-date placeholder policy.
+# Default plausible_max_year=9999 keeps the future-check a NO-OP for any
+# config/test that doesn't set it — back-compat, no changed behavior.
+_DEFAULT_PLAUSIBLE_MAX_YEAR = 9999
+_DEFAULT_FUTURE_DATE_POLICY = "quarantine"
+_VALID_FUTURE_DATE_POLICIES = frozenset({"sentinel", "quarantine"})
 _PSEUDO_TAG_CHARS = 12  # 48-bit HMAC tag encoded as a-p letters
 _OFFSET_DIGEST_BYTES = 4  # first N bytes of digest for offset computation
 _HEX_TO_ALPHA = str.maketrans("0123456789abcdef", "abcdefghijklmnop")
@@ -468,12 +474,14 @@ class PHIScrubConfig:
         "date_null_tokens",
         "date_patterns",
         "drop_patterns",
+        "future_date_policy",
         "generalize_rules",
         "id_patterns",
         "keep_patterns",
         "max_jitter_days",
         "orphan_quarantine_threshold",
         "partial_max_quarantine_fraction",
+        "plausible_max_year",
         "small_cell_threshold",
         "subject_id_fields",
         "suppress_small_cell_patterns",
@@ -500,6 +508,8 @@ class PHIScrubConfig:
         small_cell_threshold: int = _DEFAULT_SMALL_CELL_THRESHOLD,
         date_null_tokens: frozenset[str] | None = None,
         partial_max_quarantine_fraction: float = _DEFAULT_PARTIAL_MAX_QUARANTINE_FRACTION,
+        plausible_max_year: int = _DEFAULT_PLAUSIBLE_MAX_YEAR,
+        future_date_policy: str = _DEFAULT_FUTURE_DATE_POLICY,
     ) -> None:
         if compliance_posture not in _VALID_POSTURES:
             raise PHIScrubError(
@@ -518,6 +528,15 @@ class PHIScrubConfig:
             raise PHIScrubError(
                 f"partial_max_quarantine_fraction must be in (0, 1], "
                 f"got {partial_max_quarantine_fraction!r}"
+            )
+        if not isinstance(plausible_max_year, int) or not (1900 <= plausible_max_year <= 9999):
+            raise PHIScrubError(
+                f"plausible_max_year must be an int in [1900, 9999], got {plausible_max_year!r}"
+            )
+        if future_date_policy not in _VALID_FUTURE_DATE_POLICIES:
+            raise PHIScrubError(
+                f"future_date_policy must be one of {sorted(_VALID_FUTURE_DATE_POLICIES)}, "
+                f"got {future_date_policy!r}"
             )
         self.compliance_posture = compliance_posture
         self.subject_id_fields = subject_id_fields
@@ -539,6 +558,8 @@ class PHIScrubConfig:
         self.date_null_tokens: frozenset[str] = (
             date_null_tokens if date_null_tokens is not None else _DEFAULT_DATE_NULL_TOKENS
         )
+        self.plausible_max_year: int = plausible_max_year
+        self.future_date_policy: str = future_date_policy
 
     def field_is_keep(self, name: str) -> bool:
         """Return True if *name* matches any ``keep_fields`` pattern.
@@ -933,6 +954,32 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
     else:
         date_null_tokens = frozenset(str(t).strip().upper() for t in raw_null_tokens)
 
+    # plausible_max_year — a date whose resolved year > this is treated as a
+    # future placeholder. Absent key → high default (9999) so the check is a
+    # NO-OP for configs that don't set it (full back-compat).
+    raw_max_year = raw.get("plausible_max_year")
+    if raw_max_year is None:
+        plausible_max_year = _DEFAULT_PLAUSIBLE_MAX_YEAR
+    else:
+        if not isinstance(raw_max_year, int) or not (1900 <= raw_max_year <= 9999):
+            raise PHIScrubError(
+                f"plausible_max_year must be an int in [1900, 9999], got {raw_max_year!r}"
+            )
+        plausible_max_year = int(raw_max_year)
+
+    # future_date_policy — what to do when a date's year > plausible_max_year.
+    # Absent key → "quarantine" (fail-closed default).
+    raw_fdp = raw.get("future_date_policy")
+    if raw_fdp is None:
+        future_date_policy = _DEFAULT_FUTURE_DATE_POLICY
+    else:
+        future_date_policy = str(raw_fdp)
+        if future_date_policy not in _VALID_FUTURE_DATE_POLICIES:
+            raise PHIScrubError(
+                f"future_date_policy must be one of {sorted(_VALID_FUTURE_DATE_POLICIES)}, "
+                f"got {future_date_policy!r}"
+            )
+
     return PHIScrubConfig(
         compliance_posture=posture,
         subject_id_fields=subject_id_fields,
@@ -952,6 +999,8 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
         small_cell_threshold=small_cell_threshold,
         date_null_tokens=date_null_tokens,
         partial_max_quarantine_fraction=partial_max_quarantine_fraction,
+        plausible_max_year=plausible_max_year,
+        future_date_policy=future_date_policy,
     )
 
 
@@ -1594,6 +1643,43 @@ def _scrub_row(
             if cfg.is_date_null_token(raw_val) or _is_date_sentinel(raw_val):
                 _bump("date_null_token", field)
                 continue
+            # Future-dated value = placeholder (a real observation date is never
+            # in the future). A date whose resolved year > cfg.plausible_max_year
+            # is treated as a missing-data placeholder (sentinel) or quarantined
+            # depending on cfg.future_date_policy. This runs BEFORE shift_date so
+            # a future placeholder is never jittered and published.
+            # Back-compat: plausible_max_year defaults to 9999, so this block is
+            # a no-op unless the key is explicitly set in phi_scrub.yaml.
+            if cfg.plausible_max_year < 9999:
+                _resolved_year: int | None = None
+                if isinstance(raw_val, datetime):
+                    _resolved_year = raw_val.year
+                else:
+                    try:
+                        _parsed = parse_date(str(raw_val), field_name=field, date_locales=date_locales)
+                        if _parsed is not None:
+                            _resolved_year = _parsed.dt.year
+                    except ValueError:
+                        # Locale-ambiguous → fall through to the existing
+                        # shift_date path which will raise/quarantine correctly.
+                        _resolved_year = None
+                if _resolved_year is not None and _resolved_year > cfg.plausible_max_year:
+                    if cfg.future_date_policy == "sentinel":
+                        # Treat as a missing-data placeholder. Unlike a text/digit
+                        # null-token (self-evidently not a date, so naturally ignored
+                        # by date math), a future DATE is valid-looking ISO and would
+                        # silently corrupt interval/age computations if left in place.
+                        # Blank it so it reads as genuinely missing in llm_source.
+                        row[field] = ""
+                        _bump("date_future_sentinel", field)
+                        continue
+                    else:  # "quarantine" — fail-closed: a future date is implausible
+                        logger.warning(
+                            "date-future-quarantine field=%s shape=%s",
+                            field,
+                            _mask_date_shape(str(raw_val)),
+                        )
+                        return None, {f"phi-scrub-date-quarantine:{field}": 1}
             try:
                 shifted = shift_date(
                     str(raw_val), offset, field_name=field, date_locales=date_locales

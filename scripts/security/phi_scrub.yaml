@@ -63,6 +63,25 @@ subject_id_fields:
 # structure while obscuring exact event dates.
 max_jitter_days: 30
 
+# ── Future-dated value policy ─────────────────────────────────────────────
+# A real clinical observation date is always in the past (year <= current year).
+# A date whose resolved year > plausible_max_year is treated as a placeholder,
+# never as a real visit/collection date that should be jittered + published.
+#
+# plausible_max_year: the upper inclusive bound for a plausible observation year.
+#   Set to the current study year. Code default when absent: 9999 (check is off).
+#   Valid range: [1900, 9999].
+plausible_max_year: 2026
+#
+# future_date_policy: what to do when a date's resolved year > plausible_max_year.
+#   "sentinel"   — treat as a missing-data placeholder (same as date_null_token):
+#                  leave the raw value unchanged, bump date_future_sentinel counter,
+#                  publish the row normally. Use when future-year values are a known
+#                  data-entry convention for "unknown/pending" in this study.
+#   "quarantine" — quarantine the whole row (fail-closed). Code default when absent.
+#                  Use when future dates are unexpected and may indicate bad data.
+future_date_policy: "sentinel"
+
 # ── Orphan row handling ───────────────────────────────────────────────────
 # A row whose subject_id_field is missing / blank / null gets moved to
 # tmp/{STUDY}/quarantine/{file}.jsonl. If more than this many orphans
