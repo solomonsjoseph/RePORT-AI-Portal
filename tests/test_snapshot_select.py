@@ -149,7 +149,6 @@ _LLM_SOURCE_DERIVED_CONSTANTS = (
     "LLM_SOURCE_DICTIONARY_CATALOG_PATH",
     "LLM_SOURCE_STUDY_METADATA_DIR",
     "LLM_SOURCE_STUDY_METADATA_CATALOG_PATH",
-    "LLM_SOURCE_EVIDENCE_PACKS_DIR",
     "LLM_SOURCE_SOT_DIR",
     "LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR",
 )
@@ -227,7 +226,6 @@ class TestActivateSnapshot:
             "LLM_SOURCE_DICTIONARY_CATALOG_PATH": exposed / "dictionary_mapping" / "catalog.json",
             "LLM_SOURCE_STUDY_METADATA_DIR": exposed / "study_metadata",
             "LLM_SOURCE_STUDY_METADATA_CATALOG_PATH": exposed / "study_metadata" / "catalog.json",
-            "LLM_SOURCE_EVIDENCE_PACKS_DIR": exposed / "study_metadata" / "evidence_packs",
             "LLM_SOURCE_SOT_DIR": exposed / "SoT",
             "LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR": exposed / "source_truth",
         }

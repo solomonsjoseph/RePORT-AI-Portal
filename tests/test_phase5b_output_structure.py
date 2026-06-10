@@ -39,35 +39,6 @@ def test_live_output_structure_has_no_legacy_subdirs() -> None:
     assert not forbidden_found, f"Legacy subdirs reappeared under {output_root}: {forbidden_found}"
 
 
-def test_evidence_packs_contain_only_per_form_packs() -> None:
-    """No per-variable evidence packs remain in llm_source/study_metadata/evidence_packs/."""
-    import config
-
-    packs_dir = Path(config.LLM_SOURCE_EVIDENCE_PACKS_DIR)
-    if not packs_dir.is_dir():
-        pytest.skip("evidence_packs dir does not exist")
-
-    sot_dir = Path(config.SOT_DIR)
-    if not sot_dir.is_dir():
-        pytest.skip("SoT dir does not exist")
-
-    from scripts.utils.evidence_pack_pruner import _form_names_from_sot
-
-    known_forms = _form_names_from_sot(sot_dir)
-    if not known_forms:
-        pytest.skip("No SoT policy YAMLs found — cannot derive keep-set")
-
-    actual_packs = {p.stem for p in packs_dir.glob("*.json")}
-    per_variable = actual_packs - known_forms
-
-    # Skip if pruning hasn't run yet
-    if len(per_variable) > len(known_forms):
-        pytest.skip(
-            f"Phase 5b pruning not yet executed; {len(per_variable)} per-variable packs remain"
-        )
-
-    assert not per_variable, f"Per-variable evidence packs reappeared: {sorted(per_variable)[:5]}"
-
 
 def test_pre_delete_manifest_exists_after_deletion() -> None:
     """After deletion, lineage_manifest_pre_delete.json must be in audit/."""

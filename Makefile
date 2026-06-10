@@ -406,7 +406,7 @@ clean:
 	@if [ -d ".logs" ]; then find .logs/ -type f -mtime +7 -delete 2>/dev/null || true; fi
 	@printf "$(G)✓ Caches, sessions, stale logs cleaned$(N)\n"
 
-clean-legacy: ## Phase 5b: write pre-delete manifest, prune per-variable packs, delete legacy output dirs
+clean-legacy: ## Phase 5b: write pre-delete manifest, delete legacy output dirs
 	$(UV) run --all-groups python -m scripts.utils.pre_delete_cleanup
 
 clean-legacy-dry-run: ## Phase 5b: print what clean-legacy would delete (no filesystem changes)

@@ -259,8 +259,6 @@ SOT_GAP_DRAFTS_DIR: Path = TMP_DIR / "sot_gap_drafts"
 # Coverage and report artefacts written at the end of a gap run.
 SOT_GAP_COVERAGE_PATH: Path = TMP_DIR / "sot_gap_coverage.json"
 SOT_GAP_REPORT_PATH: Path = TMP_DIR / "sot_gap_report.md"
-# Evidence packs are subdirectories of the gap-drafts workspace.
-SOT_EVIDENCE_PACK_DRAFTS_DIR: Path = SOT_GAP_DRAFTS_DIR / "evidence_packs"
 
 # --- Phase 1: PHI rule audit and expand --------------------------------------
 PHI_TECHNIQUES_INVENTORY_PATH: Path = (
@@ -281,12 +279,8 @@ LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH: Path = (
 LLM_SOURCE_DICTIONARY_MAPPING_DIR: Path = STUDY_LLM_SOURCE_DIR / "dictionary_mapping"
 LLM_SOURCE_DICTIONARY_MAPPING_JSONL_DIR: Path = LLM_SOURCE_DICTIONARY_MAPPING_DIR / "jsonl"
 LLM_SOURCE_DICTIONARY_CATALOG_PATH: Path = LLM_SOURCE_DICTIONARY_MAPPING_DIR / "catalog.json"
-# Compatibility-only metadata paths for legacy cleanup/redaction helpers.
-# The active Load Study flow does not produce study_metadata evidence packs or
-# a concept index; it uses plugin-published SoT sets instead.
 LLM_SOURCE_STUDY_METADATA_DIR: Path = STUDY_LLM_SOURCE_DIR / "study_metadata"
 LLM_SOURCE_STUDY_METADATA_CATALOG_PATH: Path = LLM_SOURCE_STUDY_METADATA_DIR / "catalog.json"
-LLM_SOURCE_EVIDENCE_PACKS_DIR: Path = LLM_SOURCE_STUDY_METADATA_DIR / "evidence_packs"
 LLM_SOURCE_SOT_DIR: Path = STUDY_LLM_SOURCE_DIR / "SoT"
 LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR: Path = STUDY_LLM_SOURCE_DIR / "source_truth"
 
@@ -316,7 +310,6 @@ def repoint_llm_source_base(new_base: Path) -> None:
     g["LLM_SOURCE_DICTIONARY_CATALOG_PATH"] = new_base / "dictionary_mapping" / "catalog.json"
     g["LLM_SOURCE_STUDY_METADATA_DIR"] = new_base / "study_metadata"
     g["LLM_SOURCE_STUDY_METADATA_CATALOG_PATH"] = new_base / "study_metadata" / "catalog.json"
-    g["LLM_SOURCE_EVIDENCE_PACKS_DIR"] = new_base / "study_metadata" / "evidence_packs"
     g["LLM_SOURCE_SOT_DIR"] = new_base / "SoT"
     g["LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR"] = new_base / "source_truth"
 
