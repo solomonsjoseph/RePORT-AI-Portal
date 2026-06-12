@@ -352,14 +352,6 @@ Step Cache
    :undoc-members:
    :show-inheritance:
 
-Artifact Version Registry
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: scripts.artifact_versions
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Sandbox Subprocess
 ------------------
 
