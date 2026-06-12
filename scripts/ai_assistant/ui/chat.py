@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import html
-import logging
 from datetime import UTC, datetime
 from typing import Any
 
@@ -19,8 +18,9 @@ from scripts.ai_assistant.ui.providers import (
     _get_ollama_models,
     _is_ollama_chat_model,
 )
+from scripts.utils.logging_system import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _rate_limit_status(

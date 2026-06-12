@@ -36,6 +36,7 @@ from scripts.extraction.io import (
     atomic_write_jsonl,
     load_json_object_line,
 )
+from scripts.utils.logging_system import get_logger
 
 # Import the canonical internal-column set from agent_tools so PROVENANCE_FIELDS
 # stays in sync without re-listing.  agent_tools._INTERNAL_COLUMNS covers
@@ -54,7 +55,7 @@ except ImportError:
 
 from scripts.security.secure_env import assert_write_zone
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 __all__ = [
     "PROVENANCE_FIELDS",

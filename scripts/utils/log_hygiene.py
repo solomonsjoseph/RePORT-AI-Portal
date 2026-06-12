@@ -180,6 +180,16 @@ def install_phi_redactor(
         subject_id_patterns=subject_id_patterns,
     )
     root.addFilter(flt)
+    # Logger-level filters never apply to records propagated from child
+    # loggers, so also attach at the handler level on the report_ai_portal
+    # handlers created by setup_logging() — the path every module logger's
+    # records take. (Deliberately NOT attached to root handlers: in tests
+    # pytest's caplog handler sits on root and a leaked filter would redact
+    # unrelated tests' captured messages.) The reverse order (redactor
+    # first, setup later) is covered inside setup_logging, which late-binds
+    # this filter onto its new handlers.
+    for handler in logging.getLogger("report_ai_portal").handlers:
+        handler.addFilter(flt)
     return flt
 
 

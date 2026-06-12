@@ -27,12 +27,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import threading
 from collections import OrderedDict
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from scripts.utils.logging_system import get_logger
+
+logger = get_logger(__name__)
 
 _DEFAULT_MAX_SIZE = 256
 

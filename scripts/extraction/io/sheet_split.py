@@ -55,7 +55,7 @@ import pandas as pd
 
 from scripts.utils import logging_system as log
 
-_log = logging.getLogger(__name__)
+_log = logging.getLogger(f"report_ai_portal.{__name__}")
 
 __all__ = [
     "promote_header",

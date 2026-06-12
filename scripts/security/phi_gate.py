@@ -25,15 +25,15 @@ IRB-grade benchmark anchors:
 
 from __future__ import annotations
 
-import logging
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 
 from scripts.security import phi_allowlist
 from scripts.security.phi_patterns import BLOCKING_PATTERNS, WARN_PATTERNS
+from scripts.utils.logging_system import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 __all__ = [
     "PHIGateConfigError",

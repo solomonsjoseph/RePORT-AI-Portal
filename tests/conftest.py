@@ -19,6 +19,30 @@ skip_as_root = pytest.mark.skipif(
 )
 
 
+# ── Logging propagation for caplog ─────────────────────────────────────────
+# Module loggers are children of ``report_ai_portal`` (propagate=False in
+# production so Streamlit/root handlers never double-print). pytest's caplog
+# captures via a root-logger handler, so re-enable propagation during tests.
+
+
+@pytest.fixture(autouse=True)
+def _propagate_portal_logs():
+    import logging
+
+    portal = logging.getLogger("report_ai_portal")
+    root = logging.getLogger()
+    prior = portal.propagate
+    portal.propagate = True
+    # Strip PHIRedactingFilters leaked by earlier tests (the logger and its
+    # handlers are process-global singletons); each test installs its own.
+    for obj in (root, portal, *portal.handlers, *root.handlers):
+        for flt in list(obj.filters):
+            if type(flt).__name__ == "PHIRedactingFilter":
+                obj.removeFilter(flt)
+    yield
+    portal.propagate = prior
+
+
 # ── Shared PHI-scrub fixtures ──────────────────────────────────────────────
 # Defined here to avoid duplication between test_phi_scrub.py and
 # test_phi_scrub_partial.py.  Both files inject these by fixture name.

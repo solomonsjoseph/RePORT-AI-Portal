@@ -42,6 +42,7 @@ from scripts.utils import logging_system as log
 from scripts.utils.errors import format_for_log, wrap
 from scripts.utils.lineage import emit_lineage_manifest
 from scripts.utils.log_hygiene import install_phi_redactor
+from scripts.utils.logging_system import get_logger
 from scripts.utils.run_context import resolve_run_id
 from scripts.utils.secure_staging import (
     prepare_staging,
@@ -112,7 +113,7 @@ def _acquire_pipeline_lock(study: str | None = None) -> None:
         # Baton could not be validated (missing PID var, PID mismatch, dead
         # process, or non-POSIX platform). Fall through to real acquisition.
         # NOTE: main.py has no module-level `logger`; use logging.getLogger here.
-        logging.getLogger(__name__).debug(
+        get_logger(__name__).debug(
             "REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT=1 but PID validation failed "
             "(claimed_pid=%s, getppid=%s) — acquiring lock normally.",
             pid_str,

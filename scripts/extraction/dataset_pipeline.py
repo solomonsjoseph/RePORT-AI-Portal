@@ -37,7 +37,6 @@ Notes:
 from __future__ import annotations
 
 import fnmatch
-import logging
 import os
 import sys
 import time
@@ -71,6 +70,7 @@ from scripts.extraction.io.file_discovery import (
 from scripts.utils import logging_system as log
 from scripts.utils.errors import format_for_log, wrap
 from scripts.utils.integrity import hash_file as _hash_file
+from scripts.utils.logging_system import get_logger
 
 _PIPELINE_VERSION: str = _pipeline_version
 """Captured at import time so per-row provenance records a stable string."""
@@ -79,7 +79,7 @@ vlog = log.get_verbose_logger()
 
 # Standard library logger for the gate — used by check_forms_manifest so
 # that pytest's caplog fixture can capture messages during tests.
-_gate_log = logging.getLogger(__name__)
+_gate_log = get_logger(__name__)
 
 # ============================================================================
 # Module Constants

@@ -33,7 +33,6 @@ summarized in `docs/sphinx/irb_auditor/conformance.rst`.
 from __future__ import annotations
 
 import functools
-import logging
 import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
@@ -46,8 +45,9 @@ from scripts.security.kanon_gate import (
     l_diversity_check,
 )
 from scripts.security.phi_gate import PHIGateResult, phi_gate_check
+from scripts.utils.logging_system import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 __all__ = [
     "PHISafetyError",

@@ -32,7 +32,6 @@ IRB-grade benchmark anchors:
 from __future__ import annotations
 
 import json
-import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -40,8 +39,9 @@ from typing import Any
 from scripts.extraction.io import atomic_write_json
 from scripts.security.secure_env import assert_output_zone
 from scripts.utils.integrity import hash_file as hash_path
+from scripts.utils.logging_system import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 __all__ = [
     "LineageManifestError",

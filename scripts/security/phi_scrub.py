@@ -102,7 +102,6 @@ import contextlib
 import hashlib
 import hmac
 import json
-import logging
 import math
 import os
 import re
@@ -126,8 +125,9 @@ from scripts.audit.ledger import (
 from scripts.extraction.io import atomic_write_json, atomic_write_jsonl, parse_date
 from scripts.security.secure_env import assert_output_zone, assert_write_zone
 from scripts.utils.integrity import hash_file
+from scripts.utils.logging_system import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 __all__ = [
     "PHI_SCRUB_SENTINEL_NAME",

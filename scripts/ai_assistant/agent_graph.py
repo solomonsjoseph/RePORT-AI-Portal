@@ -9,7 +9,6 @@ LLM provider is controlled by ``config.LLM_PROVIDER`` / ``config.LLM_MODEL``.
 
 from __future__ import annotations
 
-import logging
 import os
 import sys
 from collections.abc import Iterator
@@ -32,8 +31,9 @@ from scripts.ai_assistant.agent_tools import ALL_TOOLS
 from scripts.ai_assistant.ollama_config import get_ollama_base_url
 from scripts.ai_assistant.phi_safe import redact_phi_in_text
 from scripts.ai_assistant.tool_cache import tool_cache
+from scripts.utils.logging_system import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 __all__ = [
     "get_agent",

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import html
-import logging
 import subprocess
 import sys
 from typing import Any
@@ -34,8 +33,9 @@ from scripts.ai_assistant.ui.snapshot_select import (
     activate_snapshot,
     available_snapshots,
 )
+from scripts.utils.logging_system import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------

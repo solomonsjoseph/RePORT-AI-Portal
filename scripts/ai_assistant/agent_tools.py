@@ -38,7 +38,6 @@ retrieval tools and performs all statistical analysis through the sandboxed
 from __future__ import annotations
 
 import json
-import logging
 import re
 from collections.abc import Mapping
 from pathlib import Path
@@ -55,8 +54,9 @@ from scripts.ai_assistant.phi_safe import (
 )
 from scripts.ai_assistant.tool_cache import tool_cache
 from scripts.security.secure_env import assert_output_zone
+from scripts.utils.logging_system import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Internal helpers

@@ -5,7 +5,6 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import json
-import logging
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -17,8 +16,9 @@ import config
 from scripts.ai_assistant.agent_graph import reset_agent
 from scripts.ai_assistant.file_access import validate_agent_read
 from scripts.ai_assistant.phi_safe import redact_message_content, redact_phi_in_text
+from scripts.utils.logging_system import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _FILE_REF_EXTENSIONS = "jsonl|json|pdf|png|csv|xlsx|md"
 _EXPORT_ARTIFACT_MARKER_RE = re.compile(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>\r\n]*>")

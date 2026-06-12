@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import html as _html
 import json
-import logging
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,8 +19,9 @@ from scripts.ai_assistant.phi_safe import (
     redact_phi_in_text,
     sanitise_traceback,
 )
+from scripts.utils.logging_system import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Ollama OOM surface — the ladder in agent_graph._init_llm catches this at
 # boot, but if every rung also refuses (very low free RAM) the RuntimeError

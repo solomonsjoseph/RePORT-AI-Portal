@@ -12,7 +12,6 @@ Commands:
 from __future__ import annotations
 
 import getpass
-import logging
 import os
 import uuid
 from typing import Any
@@ -21,8 +20,9 @@ from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 
 import config
 from scripts.ai_assistant.agent_graph import reset_agent, stream_query
+from scripts.utils.logging_system import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # LLM provider / model selection

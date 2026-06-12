@@ -24,12 +24,13 @@ Reference: ICMR 2017 §11.7; NIST SP 800-188 §5.
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from scripts.utils.logging_system import get_logger
+
+logger = get_logger(__name__)
 
 __all__ = [
     "KAnonResult",

@@ -58,7 +58,7 @@ __all__ = [
     "value_looks_like_date",
 ]
 
-_log = logging.getLogger(__name__)
+_log = logging.getLogger(f"report_ai_portal.{__name__}")
 
 # ============================================================================
 # Per-variable date order — D/M (day-first) variables

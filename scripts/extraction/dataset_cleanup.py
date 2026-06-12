@@ -30,7 +30,6 @@ Usage:
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -50,8 +49,9 @@ from scripts.extraction.io import (
     atomic_write_json,
 )
 from scripts.security.secure_env import assert_output_zone, assert_write_zone
+from scripts.utils.logging_system import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 __all__ = ["UnscrubbedDatasetError", "clean_trio_datasets"]
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
 import subprocess
 import time
@@ -13,8 +12,9 @@ from typing import Any
 
 import config
 from scripts.ai_assistant.ollama_config import get_ollama_base_url
+from scripts.utils.logging_system import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _OTHER_MODEL_OPTION = "Other (type below)"
 _OLLAMA_FALLBACK_MODELS = ["qwen3:8b", "qwen3:4b", "qwen3:1.7b", "mistral:latest", "gemma3:12b"]
