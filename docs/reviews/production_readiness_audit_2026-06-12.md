@@ -40,22 +40,33 @@ and all 14 verifier checks passed. **The safety gate caught real drift — it wo
 - `2ceac0c` — refreshed eval results (now 100% across the board).
 - `cf83b25` — this report.
 
-## Your decisions (reply with numbers)
+## Decisions — status after follow-up session (2026-06-12)
 
-1. **Logger style conflict.** 23 files use `logging.getLogger()`, but the project rule
-   says use `get_logger()`. Problem: `get_logger()` creates log files the moment a
-   module is imported — a side effect we don't want. Options: change the rule, or make
-   `get_logger()` lazy. Do not bulk-convert as-is.
-2. **Old leftovers in `output/Indo-VAP/`.** The `trio_bundle/` folder and two run
-   folders point at your old repo checkout. Safe to delete (`make clean-legacy` covers
-   part of it). Also unset the stale `VIRTUAL_ENV` in your shell — it points at the old repo.
-3. **58 held-back rows** (bad dates that can't be shifted; biggest: 35 in
-   `3_Specimen_Collection`). Each one is correct fail-closed behavior, but this is the
-   only thing blocking a committed snapshot. Fix the source dates or accept the partial.
-4. **Two modules with no real users**: `scripts/artifact_versions.py` and
-   `scripts/ai_assistant/ui/wizard.py` are only used by tests. Wire them in or delete them.
-5. **`mypy` is not installed**, so type checking was skipped this audit. Add it to the
-   dev dependencies if you want that guarantee.
+1. **Logger style conflict — DONE.** `get_logger()` is now lazy (no file or folder is
+   created until something actually logs), and all 24 module loggers were converted to
+   it. Bonus fix found on the way: the PHI log-redaction filter sat on the root logger,
+   which Python never consults for child-logger records — it is now also attached at
+   the handler level, so module logs are genuinely redacted. Commit `7730b4a`.
+2. **Old leftovers — DONE.** Deleted `output/Indo-VAP/trio_bundle/` and the two run
+   folders pointing at the old checkout. The `.venv` was also rebuilt — it had been
+   carried over from the old checkout with broken script paths. Still on you: run
+   `unset VIRTUAL_ENV` in your shell (or open a new terminal) — it points at the old repo.
+3. **58 held-back rows — SKIPPED at your request**, pending your review. Still the only
+   blocker to a committed snapshot.
+4. **Unused modules — DONE, with a correction.** `ui/wizard.py` IS used in production
+   (`web_ui.py` imports it for the setup page) — the original finding was wrong, it stays.
+   `scripts/artifact_versions.py` was genuinely test-only and is deleted. Commit `399a47e`.
+5. **mypy — DONE.** It was already in the dev dependencies; it only failed before
+   because of the stale venv. After the rebuild: clean, 0 issues in 83 files.
+
+## Stale-artifact purge (follow-up request)
+
+A sweep for files whose purpose is over removed: 9 one-time review/worklist scratch
+files in `docs/reviews/`, the spent `docs/plans/` folder (6 old plan files), and the
+tracked `phi_handling_review_checkpoint.md` (its finding was remediated). Kept:
+the 3 Indo-VAP review docs (still cited), `smart-commit.sh` (documented in
+`versioning.rst`), the generated eval results, and `docs/eval/abstract.md` —
+that one has your uncommitted edits and looks like active work, so it was not touched.
 
 ## What "90%" means exactly
 
