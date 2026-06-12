@@ -226,10 +226,10 @@ It checks 14 assertions; execution order is 1→12, then 14, then 13
     applied protection (ledger events + keep_decisions) against
     ``phi_review``'s decided action via the protection lattice; fails
     only under-protection (applied rank < decided rank); exits 9;
-14. ledger covers all columns — every published dataset column is
-    accounted for by a PHI ledger entry or a non-keep configured scrub
-    rule; exits 10;
-13. ``status.json`` exists and is updated with
+13. ledger covers all columns (assertion 14) — every published dataset
+    column is accounted for by a PHI ledger entry or a non-keep
+    configured scrub rule; exits 10;
+14. ``status.json`` exists and is updated (assertion 13) with
     ``verifier_passed: true`` on full pass (always runs last).
 
 Destruction Attestation

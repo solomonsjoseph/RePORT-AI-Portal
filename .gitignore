@@ -286,6 +286,9 @@ output*/**
 docs/.vision/
 docs/.vision/**
 
+# Abstract drafts (working documents incl. non-markdown .docx — never tracked)
+docs/abstracts/
+
 # Documentation Policy: inside docs/, ONLY docs/sphinx/ is tracked (long-form
 # documentation as reStructuredText). Every other markdown file under docs/ —
 # eval results, review findings, abstracts, agent notes, the IRB dossier — is
