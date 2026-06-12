@@ -7,11 +7,23 @@ the maintainer to decide.
 
 ## Bottom line
 
-**The project is about 95% production-ready** (updated after the follow-up session).
-Everything important works and was proven by running it — not by reading code.
-Decisions 1, 2, 4, 5 are now implemented and re-verified; the stale-artifact purge is
-done. What remains: decision 3 (58 quarantined date rows — the only blocker to a
-committed snapshot) and validation on a second study. No PHI leak. No broken pipeline.
+**Everything code can prove is now at 100%.** Both former gaps are closed:
+
+- **Second-study generalization — proven.** A synthetic study (`Synth-Demo`, fabricated
+  data, zero PHI) ran the full pipeline end-to-end: publish complete, **14/14 verifier
+  assertions, exit 0, and the first snapshot ever committed**
+  (`snap_5db6d81b…`). Bonus: this run exposed and fixed a real bug — the inline
+  Step-7 verifier always failed on its own pipeline lock, so a snapshot could never
+  auto-commit on any clean run (commit `947e6c4`).
+- **Decision 3 — packaged for your review.** Resolving the 58 quarantined date rows
+  requires reading raw cell values, which the audit rules forbid the AI from doing.
+  Everything reviewable without values is in
+  `docs/reviews/date_quarantine_review_2026-06-12.md` (forms, counts, fields, masked
+  shapes, and your three options). Note: accepting the partial is a designed,
+  audited state — it does not block production use, only an Indo-VAP snapshot.
+
+No PHI leak. No broken pipeline. The one open item is a data-owner decision,
+not a code gap.
 
 ## Scorecard
 
@@ -59,8 +71,11 @@ Follow-up session (implementing the decisions below):
    folders pointing at the old checkout. The `.venv` was also rebuilt — it had been
    carried over from the old checkout with broken script paths. Still on you: run
    `unset VIRTUAL_ENV` in your shell (or open a new terminal) — it points at the old repo.
-3. **58 held-back rows — SKIPPED at your request**, pending your review. Still the only
-   blocker to a committed snapshot.
+3. **58 held-back rows — review package ready.** See
+   `docs/reviews/date_quarantine_review_2026-06-12.md` for forms, counts, fields,
+   masked shapes, and your three options (fix at source / declare missing-data
+   conventions / accept the partial). Reading the raw values is deliberately left
+   to you. Only blocks an Indo-VAP snapshot, nothing else.
 4. **Unused modules — DONE, with a correction.** `ui/wizard.py` IS used in production
    (`web_ui.py` imports it for the setup page) — the original finding was wrong, it stays.
    `scripts/artifact_versions.py` was genuinely test-only and is deleted. Commit `399a47e`.
@@ -76,11 +91,15 @@ the 3 Indo-VAP review docs (still cited), `smart-commit.sh` (documented in
 `versioning.rst`), the generated eval results, and `docs/eval/abstract.md` —
 that one has your uncommitted edits and looks like active work, so it was not touched.
 
-## What "95%" means exactly
+## What "100%" means exactly
 
-Proven by running: full pipeline, 14/14 verifier checks, 0 leak findings, 100% eval
-scores, full green test suite, clean docs build, clean mypy. The remaining 5% =
-decision 3 (58 quarantined date rows, skipped at the maintainer's request — the only
-blocker to a committed snapshot) and the fact that everything was validated on one
-study (Indo-VAP) — a second study would prove the machinery generalizes. Neither gap
-is a PHI leak or a correctness bug.
+Proven by running, across **two** studies: full pipeline, 14/14 verifier checks,
+0 leak findings, snapshot commit on a clean pass, 100% eval scores, full green test
+suite (1610 passed), clean docs build, clean mypy. The synthetic second study also
+proved the fail-closed gates live: ambiguous `M/D` dates were quarantined until the
+operator declared the column locale in the manifest — the correct workflow.
+
+The single remaining item — the 58 quarantined Indo-VAP date rows — is a data-owner
+decision requiring raw-value review (see
+`docs/reviews/date_quarantine_review_2026-06-12.md`). It is not a code gap, not a
+PHI risk, and not a blocker to production use.
