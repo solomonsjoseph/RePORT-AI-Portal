@@ -7,9 +7,11 @@ the maintainer to decide.
 
 ## Bottom line
 
-**The project is about 90% production-ready.** Everything important works and was
-proven by running it — not by reading code. The missing 10% is cleanup and small
-decisions, listed under "Your decisions" below. No PHI leak. No broken pipeline.
+**The project is about 95% production-ready** (updated after the follow-up session).
+Everything important works and was proven by running it — not by reading code.
+Decisions 1, 2, 4, 5 are now implemented and re-verified; the stale-artifact purge is
+done. What remains: decision 3 (58 quarantined date rows — the only blocker to a
+committed snapshot) and validation on a second study. No PHI leak. No broken pipeline.
 
 ## Scorecard
 
@@ -18,8 +20,8 @@ decisions, listed under "Your decisions" below. No PHI leak. No broken pipeline.
 | Pipeline works end-to-end | ✅ | Fresh full run (cache cleared): 37 forms approved, 0 held, exit 8 (partial — 58 rows held back, see decision 3). Verifier: **all 14 checks passed, exit 0**. |
 | No PHI leak | ✅ | PHI scanner on the published data: **0 findings**. Quarantine destroyed and attested. Only 3 harmless files tracked under `data/`. |
 | All PHI rules applied | ✅ | Verifier checks 12 (decided action = applied action) and 14 (every published column accounted for) both pass. |
-| Tests | ✅ | All 431 tests pass, before and after every fix. |
-| Lint / format | ✅ | `ruff` fully clean (3 errors fixed, 9 files reformatted). `mypy` could not run — see decision 5. |
+| Tests | ✅ | Full deterministic suite green before and after every fix (1617 passed, 5 skipped at last run). |
+| Lint / format / types | ✅ | `ruff` fully clean (3 errors fixed, 9 files reformatted). `mypy`: clean, 0 issues in 83 files (ran after the venv rebuild). |
 | LLM tool calls — accuracy & speed | ✅ | Retrieval eval: **100% resolvability, 100% routing**, 0.62 ms median read. Agent smoke test: 100% answered, 100% correct tool use. |
 | Docs up to date | ✅ | Doc-freshness check passes. Sphinx builds with zero warnings after a small fix. No stale references found. |
 | Dead code / bloat | ✅ | No dead production code found. Only 3 TODOs in the whole repo. Loose draft files now gitignored. |
@@ -33,12 +35,18 @@ SoT force-drop check existed. The pipeline cache had said "inputs unchanged" and
 skipped rebuilding. A fresh rebuild dropped `Image_Seq` and `Remote_Cmp` correctly
 and all 14 verifier checks passed. **The safety gate caught real drift — it works.**
 
-## Fixes already applied (4 commits)
+## Fixes applied
 
+Audit session:
 - `c0d1592` — lint/format sweep; clearer exit-code-10 wording; cleaner import in `cloud_eval.py`.
 - `29b0f06` — gitignore `docs/abstracts/`; fixed a doc numbering error so Sphinx builds clean.
 - `2ceac0c` — refreshed eval results (now 100% across the board).
 - `cf83b25` — this report.
+
+Follow-up session (implementing the decisions below):
+- `7730b4a` — lazy logging + module-logger conversion + PHI log-redaction handler fix.
+- `399a47e` — removed test-only `scripts/artifact_versions.py`.
+- `4fec191` — stale review/plan artifact purge.
 
 ## Decisions — status after follow-up session (2026-06-12)
 
@@ -68,10 +76,11 @@ the 3 Indo-VAP review docs (still cited), `smart-commit.sh` (documented in
 `versioning.rst`), the generated eval results, and `docs/eval/abstract.md` —
 that one has your uncommitted edits and looks like active work, so it was not touched.
 
-## What "90%" means exactly
+## What "95%" means exactly
 
 Proven by running: full pipeline, 14/14 verifier checks, 0 leak findings, 100% eval
-scores, 431 green tests, clean docs build. The remaining 10% = the 5 decisions above,
-plus two structural notes: no committed snapshot yet (blocked only by decision 3), and
-everything was validated on one study (Indo-VAP) — a second study would prove the
-machinery generalizes. None of the gaps is a PHI leak or a correctness bug.
+scores, full green test suite, clean docs build, clean mypy. The remaining 5% =
+decision 3 (58 quarantined date rows, skipped at the maintainer's request — the only
+blocker to a committed snapshot) and the fact that everything was validated on one
+study (Indo-VAP) — a second study would prove the machinery generalizes. Neither gap
+is a PHI leak or a correctness bug.
