@@ -621,9 +621,26 @@ def _verify_assertion_10_required_jsonls_present(
 
 
 def _verify_assertion_11_no_pipeline_lock(tmp_dir: Path, study: str) -> _AssertionResult:
-    """Assertion 11: pipeline lock file must be absent."""
+    """Assertion 11: pipeline lock file must be absent.
+
+    Exception: when THIS process is the lock holder (Step 7 inline verify
+    runs while the wrapper still holds its own flock; it is released only
+    in the run flow's ``finally``), the lock is evidence of the run in
+    progress, not a stale leftover — pass with a detail note. A standalone
+    ``verify`` in a separate process never holds the flock, so a genuinely
+    stale lock file still fails.
+    """
     lock_path = tmp_dir / f".{study}.pipeline.lock"
     if lock_path.exists():
+        import main as _main  # local import, matching the lock acquire/release helpers
+
+        lock_fh = getattr(_main, "_PIPELINE_LOCK_FILE", None)
+        if (
+            lock_fh is not None
+            and not lock_fh.closed
+            and Path(str(lock_fh.name)).resolve() == lock_path.resolve()
+        ):
+            return "pass", "lock held by this process (inline verify during run)"
         return "fail", f"pipeline lock file still present: {lock_path}"
     return "pass", ""
 

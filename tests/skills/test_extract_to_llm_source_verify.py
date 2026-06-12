@@ -872,6 +872,22 @@ class TestVerifyFailures:
         rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
         assert rc == EXIT_NEEDS_ADVICE
 
+    def test_assertion11_passes_when_this_process_holds_lock(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Inline Step 7 verify: the wrapper's own lock must not fail the run."""
+        import main as main_module
+
+        _patch_config(monkeypatch, tmp_path)
+        _build_happy_study(tmp_path)
+        tmp_dir = tmp_path / "tmp"
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        lock_file = tmp_dir / f".{STUDY}.pipeline.lock"
+        with lock_file.open("a+", encoding="utf-8") as fh:
+            monkeypatch.setattr(main_module, "_PIPELINE_LOCK_FILE", fh)
+            rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
+        assert rc == EXIT_OK
+
     # --- Skipped assertions in report after first failure ---
     def test_skipped_assertions_after_first_failure(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
