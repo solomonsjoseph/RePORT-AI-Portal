@@ -1,11 +1,11 @@
 {
   "aggregate": {
-    "model": "fake-local",
+    "model": "qwen3:8b",
     "provider": "fake-local",
     "run_type": "smoke-fake-local",
-    "n_questions": 2,
-    "latency_p50_s": 0.3602,
-    "latency_p95_s": 0.3602,
+    "n_questions": 3,
+    "latency_p50_s": 0.0093,
+    "latency_p95_s": 0.3272,
     "tool_usage_rate": 1.0,
     "answered_rate": 1.0
   },
@@ -13,7 +13,7 @@
     {
       "id": "Q-A1",
       "kind": "statistical",
-      "latency_s": 0.3602,
+      "latency_s": 0.3272,
       "tools_called": [
         "answer_catalog_question"
       ],
@@ -26,7 +26,20 @@
     {
       "id": "Q-A2",
       "kind": "statistical",
-      "latency_s": 0.0111,
+      "latency_s": 0.0093,
+      "tools_called": [
+        "answer_catalog_question"
+      ],
+      "answered": true,
+      "tools_used_ok": true,
+      "keyword_overlap": 0.0,
+      "answer_excerpt": "Fake local LLM final answer after tool use. Tool `answer_catalog_question` returned the study evidence needed for this query.",
+      "error": null
+    },
+    {
+      "id": "Q-A3",
+      "kind": "statistical",
+      "latency_s": 0.0081,
       "tools_called": [
         "answer_catalog_question"
       ],

@@ -31,14 +31,14 @@ harness scoring (a) retrieval *resolvability*, (b) tool-routing correctness, and
 (c) retrieval-primitive latency over a 10-question, clinician-authored benchmark
 spanning cohort-level statistical modeling and protocol-definition questions.
 
-**Results.** The deterministic PHI / security / audit test suite passes 388/388.
+**Results.** The deterministic PHI / security / audit test suite passes 431/431.
 All 18 identifier classes map to a specific scrub rule; k-anonymity (k ≥ 5) and
 l-diversity (l ≥ 2) additionally gate query-time row output, closing the residual
 re-identification vector that file-level de-identification leaves open. Retrieval
 resolvability — whether each question's authoritative source columns are present and
 reachable through the security-gated tool layer — was 100% (4/4 statistical; 6/6
 definitional). Tool-routing correctness was 100% on the deterministic contract, and
-direct structured reads completed in 0.78 ms (p50) / 1.63 ms (p95). Unlike RAG,
+direct structured reads completed in 0.60 ms (p50) / 1.13 ms (p95). Unlike RAG,
 tool-call retrieval returns exact computable values — enabling p-values, multivariable
 logistic regression with backward selection, and interaction models — alongside
 verifiable file-and-line citations, with no embedding index to build or re-embed on
@@ -56,7 +56,7 @@ zone. Both are bounded and tracked; neither produces silent incorrect output.
 
 ---
 
-*Evidence: PHI suite 388/388 (`tests/test_phi_scrub*.py`, `tests/security/`,
+*Evidence: PHI suite 431/431 (`tests/test_phi_scrub*.py`, `tests/security/`,
 `tests/audit/`); retrieval metrics from `scripts/eval/retrieval_eval.py` →
 `docs/eval/retrieval_eval_results.md`; feasibility and data-gap detail in
 `docs/reviews/indo_vap_retrieval_eval_readiness.md`. Numbers are single-host
