@@ -39,7 +39,6 @@ def test_live_output_structure_has_no_legacy_subdirs() -> None:
     assert not forbidden_found, f"Legacy subdirs reappeared under {output_root}: {forbidden_found}"
 
 
-
 def test_pre_delete_manifest_exists_after_deletion() -> None:
     """After deletion, lineage_manifest_pre_delete.json must be in audit/."""
     import config

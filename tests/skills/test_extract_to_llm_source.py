@@ -346,4 +346,3 @@ class TestPhiGuard:
                 staging_dir=staging_dir,
                 output_dir=output_dir,
             )
-

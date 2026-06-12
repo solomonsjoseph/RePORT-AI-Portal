@@ -390,7 +390,9 @@ class TestScrubRowBand:
         """A column in the force-drop set (suppress_headers) is DROPPED even when a
         broad keep would otherwise publish it raw — direct identifiers (signatures,
         initials) must be removed; benign clinical columns and the subject ID stay."""
-        _write_config(scrub_config_path, keep_fields=["^CBC_"])  # broad keep covers CBC_INIT + CBC_WBC
+        _write_config(
+            scrub_config_path, keep_fields=["^CBC_"]
+        )  # broad keep covers CBC_INIT + CBC_WBC
         cfg = phi_scrub.load_scrub_config()
         assert cfg is not None
         key = phi_scrub.load_key()

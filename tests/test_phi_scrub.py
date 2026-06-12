@@ -979,7 +979,9 @@ class TestRunScrub:
         # B — benign keep column present
         assert "CBC_WBC" in q, "broad-kept non-force-dropped column must survive in quarantine row"
         # C — date field not jittered (no subject_id), still present
-        assert "VISDAT" in q, "date field must survive in quarantine row (not jittered, no subject_id)"
+        assert "VISDAT" in q, (
+            "date field must survive in quarantine row (not jittered, no subject_id)"
+        )
 
     def test_key_missing_hard_fails(
         self,
@@ -2370,9 +2372,7 @@ class TestCatalogCoverage:
             assert real_cfg.field_is_keep(col) is False, f"{col} must NOT be kept raw"
             assert real_cfg.field_is_date(col) is True, f"{col} must date-jitter"
 
-    def test_date_named_status_flags_stay_kept(
-        self, real_cfg: phi_scrub.PHIScrubConfig
-    ) -> None:
+    def test_date_named_status_flags_stay_kept(self, real_cfg: phi_scrub.PHIScrubConfig) -> None:
         # EXCEPTION to the date-leak guard: date-NAMED but non-date "Not Done" /
         # "Not Recorded" status flags (suffix ND/NR) hold text, not a date, and
         # must stay KEPT (the reason those anchored keep rules exist).
@@ -2380,9 +2380,7 @@ class TestCatalogCoverage:
             assert real_cfg.field_is_keep(col) is True, f"{col} must stay kept"
             assert real_cfg.field_is_date(col) is False, f"{col} must NOT date-jitter"
 
-    def test_socioeconomic_fields_kept_not_banded(
-        self, real_cfg: phi_scrub.PHIScrubConfig
-    ) -> None:
+    def test_socioeconomic_fields_kept_not_banded(self, real_cfg: phi_scrub.PHIScrubConfig) -> None:
         # phi_review decides KEEP for education/occupation/wage (not Safe Harbor
         # / DPDPA identifiers). The band rule is empty/inert so they are kept as
         # is rather than quarantined against an empty band map (which 100%-held

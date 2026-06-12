@@ -263,6 +263,7 @@ def test_envelope_keys_and_types(tmp_path: Path) -> None:
 
     # Timing sidecar carries the wall-clock fields.
     from scripts.audit.ledger import PHI_LEDGER_TIMING_FILENAME
+
     timing_data = json.loads((tmp_path / PHI_LEDGER_TIMING_FILENAME).read_text())
     assert timing_data["run_id"] == "run_test123"
     assert isinstance(timing_data["generated_utc"], str)

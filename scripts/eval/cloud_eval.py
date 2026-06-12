@@ -489,9 +489,7 @@ def main() -> None:
         config.LLM_MODEL = args.model  # type: ignore[attr-defined]
         # Re-infer provider when model is overridden via CLI
         if not os.environ.get("LLM_PROVIDER"):
-            from config import _infer_provider  # type: ignore[attr-defined]
-
-            config.LLM_PROVIDER = _infer_provider(args.model)  # type: ignore[attr-defined]
+            config.LLM_PROVIDER = config._infer_provider(args.model)  # type: ignore[attr-defined]
 
     # Reset the agent singleton so it picks up any config changes
     from scripts.ai_assistant import agent_graph as ag

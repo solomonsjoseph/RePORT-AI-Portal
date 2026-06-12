@@ -1138,8 +1138,8 @@ def review_form_headers(
         # explicit non-PHI SoT classification (sot_phi is a non-None, non-empty
         # benign value) before clearing.  Weaker risk tokens keep the original
         # "present question + no PHI action = benign" logic.
-        if _is_strong_direct_id_header(header) and not sig.get("sot_phi"):
-            return False
+        if _is_strong_direct_id_header(header):
+            return bool(sig.get("sot_phi"))
         return True
 
     def _is_direct_identifier(item: HeaderClassification) -> bool:

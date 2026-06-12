@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, date
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -31,10 +31,10 @@ import config
 from scripts.security import phi_scrub
 from scripts.security.phi_scrub import PHIScrubConfig, PHIScrubError
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _minimal_cfg(
     *,

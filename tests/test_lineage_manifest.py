@@ -208,16 +208,21 @@ class TestEmitLineageManifest:
             manifest_path=mpath,
         )
 
-        assert "audit_datasets" in payload["outputs"], "audit_datasets must be a top-level output key"
+        assert "audit_datasets" in payload["outputs"], (
+            "audit_datasets must be a top-level output key"
+        )
         ad_paths = {r["path"] for r in payload["outputs"]["audit_datasets"]}
         # Ledger files must be present.
-        assert any("phi_handling_ledger.as_written.json" in p for p in ad_paths), \
+        assert any("phi_handling_ledger.as_written.json" in p for p in ad_paths), (
             "PHI ledger must appear in audit_datasets"
-        assert any("dataset_cleanup_ledger.as_written.json" in p for p in ad_paths), \
+        )
+        assert any("dataset_cleanup_ledger.as_written.json" in p for p in ad_paths), (
             "cleanup ledger must appear in audit_datasets"
+        )
         # Timing sidecar must be excluded.
-        assert not any("_timing.json" in p for p in ad_paths), \
+        assert not any("_timing.json" in p for p in ad_paths), (
             "_timing.json sidecars must be excluded from content hash"
+        )
 
     def test_run_id_in_primary_manifest(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

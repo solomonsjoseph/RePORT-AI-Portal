@@ -47,7 +47,7 @@ EXIT_NEEDS_ADVICE        = 6   — paused — operator inspection required
 EXIT_DESTRUCTION_INCOMPLETE = 7 — destruction incomplete
 EXIT_PARTIAL_REVIEW      = 8   — partial publish; held forms need review
 EXIT_DECISION_MISMATCH = 9 — approved form's applied action != phi_review decided action
-EXIT_AUDIT_COVERAGE_INCOMPLETE = 10 — published column has no ledger accounting
+EXIT_AUDIT_COVERAGE_INCOMPLETE = 10 — published column has neither a PHI ledger entry nor a non-keep configured scrub rule
 
 Code 1 (generic error) is reserved for unexpected exceptions.
 
@@ -312,7 +312,7 @@ Exit codes:
   7 — destruction incomplete
   8 — partial publish; held forms need human review
   9 — phi_review decision != ledger-applied scrub action (under-protection)
- 10 — published column has no PHI ledger entry or non-keep scrub rule
+ 10 — published column has neither a PHI ledger entry nor a non-keep scrub rule
 """
 
 # ---------------------------------------------------------------------------

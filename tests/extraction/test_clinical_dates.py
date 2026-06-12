@@ -581,9 +581,7 @@ class TestCompact7Digit:
         )
 
         # (d) MDY symmetry — canonical MDDYYYY split
-        result_d = parse_date(
-            "1052014", field_name="MY_DATE", date_locales={"MY_DATE": "MDY"}
-        )
+        result_d = parse_date("1052014", field_name="MY_DATE", date_locales={"MY_DATE": "MDY"})
         assert result_d is not None
         assert (result_d.dt.year, result_d.dt.month, result_d.dt.day) == (2014, 1, 5)
 

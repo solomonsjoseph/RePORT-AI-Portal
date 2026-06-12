@@ -1663,7 +1663,9 @@ def _scrub_row(
                     _resolved_year = raw_val.year
                 else:
                     try:
-                        _parsed = parse_date(str(raw_val), field_name=field, date_locales=date_locales)
+                        _parsed = parse_date(
+                            str(raw_val), field_name=field, date_locales=date_locales
+                        )
                         if _parsed is not None:
                             _resolved_year = _parsed.dt.year
                     except ValueError:
@@ -1985,7 +1987,8 @@ def _load_approval_classifications(
         if stem:
             lookup[stem] = per_header
             force_drop_by_stem[stem] = frozenset(
-                _normalize_header_for_lookup(str(h)) for h in form.get("force_drop_headers", []) or []
+                _normalize_header_for_lookup(str(h))
+                for h in form.get("force_drop_headers", []) or []
             )
     return lookup, force_drop_by_stem, bundle_sha
 
