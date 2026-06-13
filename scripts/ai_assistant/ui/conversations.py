@@ -530,6 +530,7 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
         try:
             ap = Path(analysis_path_str)
             if ap.exists():
+                validate_agent_read(ap)
                 narrative = ap.read_text(encoding="utf-8")
                 refs["figures"].extend(
                     m.group(1).strip() for m in _FIGURE_MARKER_RE.finditer(narrative)
@@ -846,10 +847,12 @@ def _export_tables_as_zip(conv_id: str, fmt: str) -> bytes:
             tables: list[dict[str, Any]] = []
             try:
                 if ap.exists() and ap.suffix.lower() in {".md", ".markdown", ".txt"}:
+                    validate_agent_read(ap)
                     tables = _parse_markdown_tables(ap.read_text(encoding="utf-8"))
                 elif ap.exists() and ap.suffix.lower() == ".json":
                     # Defensive: also support the originally-specified JSON shape
                     # ``{"tables": [{"name","rows","columns"}, ...]}``.
+                    validate_agent_read(ap)
                     data = json.loads(ap.read_text(encoding="utf-8"))
                     for t in data.get("tables", []) or []:
                         if not isinstance(t, dict):

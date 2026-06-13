@@ -247,6 +247,8 @@ def run_pipeline() -> dict[str, Any]:
                 sys.executable,
                 str(
                     config.BASE_DIR
+                    / "plugins"
+                    / "report-ai-study-pipeline"
                     / "skills"
                     / "excel-duplicate-handler"
                     / "scripts"

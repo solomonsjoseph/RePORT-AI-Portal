@@ -108,20 +108,18 @@ class TestFakeLocalRouting:
 
     @pytest.fixture(autouse=True)
     def _patch_env_and_config(
-        self, monkeypatch: pytest.MonkeyPatch, monkeypatch_config: Path, tmp_path: Path
+        self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Set fake-local provider.
 
-        We intentionally do NOT redirect STUDY_LLM_SOURCE_DIR away from the
-        real output/ tree here.  Tools like get_dataset_stats and
-        list_available_datasets call assert_output_zone(), which is
-        hardcoded against the project's real output/ directory at import
-        time — redirecting to a tmp dir would fail that check.
-
-        The monkeypatch_config fixture is accepted to satisfy the conftest
-        signature; it configures tmp paths that are unused by this fixture.
-        answer_catalog_question reads from STUDY_LLM_SOURCE_DIR/SoT/ — the
-        real 6_HIV policy YAML is present in the published bundle.
+        STUDY_LLM_SOURCE_DIR intentionally stays at the real output/ tree.
+        Tools like get_dataset_stats and list_available_datasets call
+        assert_output_zone(), which is hardcoded against the project's real
+        output/ directory. answer_catalog_question reads SoT YAMLs via
+        load_policy_yaml(), which now calls validate_agent_read() — that
+        gate checks the path against STUDY_LLM_SOURCE_DIR, so the real
+        output/ path must remain the zone root (a tmp redirect would cause
+        zone violations on valid SoT YAML reads).
         """
         import config as _config
 

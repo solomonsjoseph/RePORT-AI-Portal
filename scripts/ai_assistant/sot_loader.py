@@ -9,6 +9,8 @@ from typing import Any
 
 import yaml
 
+from scripts.ai_assistant.file_access import validate_agent_read
+
 # ---------------------------------------------------------------------------
 # Validation dataclasses
 # ---------------------------------------------------------------------------
@@ -460,6 +462,7 @@ def load_policy_yaml(path: Path) -> dict[str, Any]:
     """
     if not path.exists():
         raise ValueError(f"Policy YAML not found: {path}")
+    validate_agent_read(path)
     try:
         data: Any = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
