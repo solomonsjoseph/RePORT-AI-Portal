@@ -46,7 +46,6 @@ import re
 from datetime import datetime
 from typing import NamedTuple
 
-
 __all__ = [
     "DMY_VARIABLES",
     "_NUM_DATE_RE",

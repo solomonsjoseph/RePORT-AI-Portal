@@ -107,9 +107,7 @@ class TestFakeLocalRouting:
     ]
 
     @pytest.fixture(autouse=True)
-    def _patch_env_and_config(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def _patch_env_and_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Set fake-local provider.
 
         STUDY_LLM_SOURCE_DIR intentionally stays at the real output/ tree.

@@ -678,12 +678,8 @@ class TestValueDivergentPairRoutedToHumanReview:
         ds.mkdir(parents=True, exist_ok=True)
 
         # Same column schema, same row count, but DIFFERENT values
-        file_a_rows = scrubbed_records(
-            [{"SUBJID": f"SA{i}", "STATUS": "A"} for i in range(3)]
-        )
-        file_b_rows = scrubbed_records(
-            [{"SUBJID": f"SB{i}", "STATUS": "B"} for i in range(3)]
-        )
+        file_a_rows = scrubbed_records([{"SUBJID": f"SA{i}", "STATUS": "A"} for i in range(3)])
+        file_b_rows = scrubbed_records([{"SUBJID": f"SB{i}", "STATUS": "B"} for i in range(3)])
         _write_jsonl(ds / "14_CaseControl.jsonl", file_a_rows)
         _write_jsonl(ds / "14_Case_Control.jsonl", file_b_rows)
 
