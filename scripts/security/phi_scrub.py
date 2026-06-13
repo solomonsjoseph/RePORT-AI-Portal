@@ -490,6 +490,7 @@ class PHIScrubConfig:
         "id_patterns",
         "keep_patterns",
         "max_jitter_days",
+        "no_subject_id_forms",
         "orphan_quarantine_threshold",
         "partial_max_quarantine_fraction",
         "plausible_max_year",
@@ -521,6 +522,7 @@ class PHIScrubConfig:
         partial_max_quarantine_fraction: float = _DEFAULT_PARTIAL_MAX_QUARANTINE_FRACTION,
         plausible_max_year: int = _DEFAULT_PLAUSIBLE_MAX_YEAR,
         future_date_policy: str = _DEFAULT_FUTURE_DATE_POLICY,
+        no_subject_id_forms: frozenset[str] | None = None,
     ) -> None:
         if compliance_posture not in _VALID_POSTURES:
             raise PHIScrubError(
@@ -571,6 +573,7 @@ class PHIScrubConfig:
         )
         self.plausible_max_year: int = plausible_max_year
         self.future_date_policy: str = future_date_policy
+        self.no_subject_id_forms: frozenset[str] = no_subject_id_forms or frozenset()
 
     def field_is_keep(self, name: str) -> bool:
         """Return True if *name* matches any ``keep_fields`` pattern.
@@ -774,6 +777,11 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
     max_jitter_days = int(raw.get("max_jitter_days", _DEFAULT_MAX_JITTER_DAYS))
     orphan_threshold = int(raw.get("orphan_quarantine_threshold", _DEFAULT_ORPHAN_THRESHOLD))
     small_cell_threshold = int(raw.get("small_cell_threshold", _DEFAULT_SMALL_CELL_THRESHOLD))
+
+    raw_no_subj = raw.get("no_subject_id_forms") or []
+    if not isinstance(raw_no_subj, list):
+        raise PHIScrubError("no_subject_id_forms must be a list of filename substring patterns")
+    no_subject_id_forms: frozenset[str] = frozenset(str(p) for p in raw_no_subj)
     partial_max_quarantine_fraction = float(
         raw.get("partial_max_quarantine_fraction", _DEFAULT_PARTIAL_MAX_QUARANTINE_FRACTION)
     )
@@ -1012,6 +1020,7 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
         partial_max_quarantine_fraction=partial_max_quarantine_fraction,
         plausible_max_year=plausible_max_year,
         future_date_policy=future_date_policy,
+        no_subject_id_forms=no_subject_id_forms,
     )
 
 
@@ -1791,8 +1800,8 @@ def _scrub_file(
     date_failed: list[dict[str, Any]] = []
     counts: dict[str, int] = {}
 
-    # A dataset is subject-specific unless it is explicitly the non-subject Air Quality dataset.
-    dataset_has_subject_col = "Air_Quality" not in jsonl_path.name
+    # A dataset is subject-specific unless its filename matches a no_subject_id_forms pattern.
+    dataset_has_subject_col = not any(pat in jsonl_path.name for pat in cfg.no_subject_id_forms)
 
     with jsonl_path.open("r", encoding="utf-8") as fh:
         for line in fh:

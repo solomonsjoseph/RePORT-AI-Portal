@@ -88,6 +88,14 @@ future_date_policy: "sentinel"
 # per file, the pipeline hard-fails.
 orphan_quarantine_threshold: 10
 
+# JSONL filename substrings that legitimately lack a subject-ID column.
+# Any file whose name contains one of these patterns is treated as a
+# non-subject dataset — orphan-quarantine is skipped for those rows.
+# Add study-specific entries here rather than hardcoding names in the
+# scrub engine.
+no_subject_id_forms:
+  - "Air_Quality"
+
 # Partial-publish safety cap: in hold-and-continue mode, if MORE than this
 # fraction of a single file's rows are quarantined (date/band/generalize), the
 # run hard-fails instead of publishing a gutted dataset — a few bad rows are
