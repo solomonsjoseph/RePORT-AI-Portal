@@ -21,7 +21,6 @@ UV_RUN_LOCKED ?= $(UV) run --locked
 STUDY ?= Indo-VAP
 CANDIDATE ?= /tmp/$(FORM)_lean.yaml
 SOT_PAIR ?= $(FORM)
-COLUMN_INVENTORY ?=
 
 ifeq ($(OS),Windows_NT)
 VENV_PYTHON := $(abspath .venv/Scripts/python.exe)
@@ -194,7 +193,7 @@ build-llm-source: sot-generate-all
 rebuild-llm-source:
 	@printf "$(Y)Removing generated llm_source/staging for STUDY=$(STUDY); preserving audit manifest, agent state, and raw inputs.$(N)\n"
 	@$(UV) run --all-groups python -m scripts.utils.pre_delete_cleanup
-	@rm -rf output/$(STUDY)/llm_source tmp/$(STUDY) 2>/dev/null || true
+	@rm -rf "output/$(STUDY)/llm_source" "tmp/$(STUDY)" 2>/dev/null || true
 	@$(MAKE) build-llm-source STUDY=$(STUDY) FORCE=1
 
 # ═══════════════════════════════════════════════════════════════════════
