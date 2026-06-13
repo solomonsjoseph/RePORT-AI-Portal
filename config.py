@@ -272,7 +272,6 @@ PHI_SWEEP_HITL_DRAFTS_DIR: Path = TMP_DIR / "phi_sweep_hitl_drafts"
 PHI_SWEEP_PR_DRAFTS_DIR: Path = TMP_DIR / "phi_sweep_pr_drafts"
 
 # --- Phase 2: llm_source restructure -----------------------------------------
-LLM_SOURCE_DATASET_SCHEMA_FILES_DIR: Path = STUDY_LLM_SOURCE_DIR / "dataset_schema" / "files"
 LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH: Path = (
     STUDY_LLM_SOURCE_DIR / "dataset_schema" / "catalog.json"
 )
@@ -303,7 +302,6 @@ def repoint_llm_source_base(new_base: Path) -> None:
     g["STUDY_LLM_SOURCE_DIR"] = new_base
     g["TRIO_DATASETS_DIR"] = new_base / "dataset_schema" / "files"
     g["DICTIONARY_JSON_OUTPUT_DIR"] = new_base / "dictionary_mapping" / "jsonl"
-    g["LLM_SOURCE_DATASET_SCHEMA_FILES_DIR"] = new_base / "dataset_schema" / "files"
     g["LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH"] = new_base / "dataset_schema" / "catalog.json"
     g["LLM_SOURCE_DICTIONARY_MAPPING_DIR"] = new_base / "dictionary_mapping"
     g["LLM_SOURCE_DICTIONARY_MAPPING_JSONL_DIR"] = new_base / "dictionary_mapping" / "jsonl"

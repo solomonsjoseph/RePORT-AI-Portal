@@ -775,7 +775,7 @@ def _list_available_datasets_impl(*, include_columns: bool = False) -> list[dict
     counts and inferred column schema. Free-text narrative columns are
     dropped as defense in depth; the count is reported on each record.
     """
-    datasets_dir_raw = config.LLM_SOURCE_DATASET_SCHEMA_FILES_DIR
+    datasets_dir_raw = config.TRIO_DATASETS_DIR
     # Gate: ensures the dataset zone is inside the agent read allowlist
     # (``llm_source/`` or ``agent/``). Never bypass.
     try:

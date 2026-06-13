@@ -129,7 +129,7 @@ def _cite_in_jsonl(form_dir: Path, field: str) -> Citation | None:
     and the returned snippet names the column rather than echoing row content,
     so no data values leak into a citation.
     """
-    path = Path(config.LLM_SOURCE_DATASET_SCHEMA_FILES_DIR) / f"{form_dir.name}.jsonl"
+    path = Path(config.TRIO_DATASETS_DIR) / f"{form_dir.name}.jsonl"
     if not path.is_file():
         return None
     pattern = re.compile(rf'"{re.escape(field)}"\s*:', re.IGNORECASE)

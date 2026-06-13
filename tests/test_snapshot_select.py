@@ -142,7 +142,6 @@ _LLM_SOURCE_DERIVED_CONSTANTS = (
     "STUDY_LLM_SOURCE_DIR",
     "TRIO_DATASETS_DIR",
     "DICTIONARY_JSON_OUTPUT_DIR",
-    "LLM_SOURCE_DATASET_SCHEMA_FILES_DIR",
     "LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH",
     "LLM_SOURCE_DICTIONARY_MAPPING_DIR",
     "LLM_SOURCE_DICTIONARY_MAPPING_JSONL_DIR",
@@ -219,7 +218,6 @@ class TestActivateSnapshot:
         derived = {
             "TRIO_DATASETS_DIR": exposed / "dataset_schema" / "files",
             "DICTIONARY_JSON_OUTPUT_DIR": exposed / "dictionary_mapping" / "jsonl",
-            "LLM_SOURCE_DATASET_SCHEMA_FILES_DIR": exposed / "dataset_schema" / "files",
             "LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH": exposed / "dataset_schema" / "catalog.json",
             "LLM_SOURCE_DICTIONARY_MAPPING_DIR": exposed / "dictionary_mapping",
             "LLM_SOURCE_DICTIONARY_MAPPING_JSONL_DIR": exposed / "dictionary_mapping" / "jsonl",

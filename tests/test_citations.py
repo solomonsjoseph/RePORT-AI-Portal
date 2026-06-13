@@ -66,7 +66,7 @@ def llm_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
     monkeypatch.setattr(config, "BASE_DIR", tmp_path, raising=False)
     monkeypatch.setattr(config, "LLM_SOURCE_SOT_DIR", sot, raising=False)
-    monkeypatch.setattr(config, "LLM_SOURCE_DATASET_SCHEMA_FILES_DIR", files, raising=False)
+    monkeypatch.setattr(config, "TRIO_DATASETS_DIR", files, raising=False)
     monkeypatch.setattr(config, "LLM_SOURCE_STUDY_METADATA_DIR", meta, raising=False)
     return root
 
@@ -164,7 +164,7 @@ def variable_map_llm_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
 
     monkeypatch.setattr(config, "BASE_DIR", tmp_path, raising=False)
     monkeypatch.setattr(config, "LLM_SOURCE_SOT_DIR", sot, raising=False)
-    monkeypatch.setattr(config, "LLM_SOURCE_DATASET_SCHEMA_FILES_DIR", files, raising=False)
+    monkeypatch.setattr(config, "TRIO_DATASETS_DIR", files, raising=False)
     monkeypatch.setattr(config, "LLM_SOURCE_STUDY_METADATA_DIR", meta, raising=False)
     return root
 
