@@ -30,7 +30,6 @@ from pathlib import Path
 from typing import Any
 
 import config
-from scripts.extraction._dict_keys import DICT_VAR_KEY as _DICT_VAR_KEY
 from scripts.extraction.io import (
     JSONLParseError,
     atomic_write_jsonl,
@@ -82,6 +81,8 @@ __all__ = [
 PROVENANCE_FIELDS: frozenset[str] = _AGENT_INTERNAL_COLUMNS | frozenset(
     {"_metadata", "_phi_scrubbed"}
 )
+
+_DICT_VAR_KEY: str = "Question Short Name (Databank Fieldname)"
 
 
 # ── Step 1: compute_propagation_set ─────────────────────────────────────────
