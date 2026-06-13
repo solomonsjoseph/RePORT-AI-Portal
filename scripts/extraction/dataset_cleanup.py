@@ -299,8 +299,8 @@ def _merge_duplicate_pair(
     # Check if the smaller is a subset of the larger
     is_sub = _is_subset(drop_df, keep_df)
 
-    if is_sub or len(df_a) == len(df_b):
-        # Subset or identical row count with same schema → drop the smaller
+    if is_sub:
+        # Smaller file is a strict subset of the larger → safe to drop
         try:
             drop_file.unlink()
             report.duplicates_merged.append(
@@ -309,7 +309,7 @@ def _merge_duplicate_pair(
                     "removed": f"{drop_stem}.jsonl",
                     "kept_rows": str(len(keep_df)),
                     "removed_rows": str(len(drop_df)),
-                    "reason": "subset" if is_sub else "same_schema_same_count",
+                    "reason": "subset",
                 }
             )
             logger.info(
@@ -322,7 +322,68 @@ def _merge_duplicate_pair(
         except OSError as exc:
             msg = f"Failed to remove duplicate {drop_stem}: {exc}"
             report.errors.append(msg)
-            logger.warning(msg)
+    elif len(df_a) == len(df_b):
+        # Same row count, same schema — must confirm values are identical before merging.
+        # A union of value-divergent equal-size files could silently produce incorrect
+        # subject records; route to human review when rows differ.
+        values_identical = df_a.equals(df_b)
+        if values_identical:
+            try:
+                drop_file.unlink()
+                report.duplicates_merged.append(
+                    {
+                        "kept": f"{keep_stem}.jsonl",
+                        "removed": f"{drop_stem}.jsonl",
+                        "kept_rows": str(len(keep_df)),
+                        "removed_rows": str(len(drop_df)),
+                        "reason": "same_schema_same_count_identical_values",
+                    }
+                )
+                logger.info(
+                    "Merged duplicate: kept %s (%d rows), removed %s (%d rows)",
+                    keep_stem,
+                    len(keep_df),
+                    drop_stem,
+                    len(drop_df),
+                )
+            except OSError as exc:
+                msg = f"Failed to remove duplicate {drop_stem}: {exc}"
+                report.errors.append(msg)
+        else:
+            # Equal row count but value-divergent — auto-union not safe.
+            _write_jsonl_union_review_note(
+                datasets_dir=datasets_dir,
+                stem_a=stem_a,
+                stem_b=stem_b,
+                df_a=df_a,
+                df_b=df_b,
+            )
+            report.duplicates_skipped.append(
+                {
+                    "pair": f"{stem_a} / {stem_b}",
+                    "reason": "value_divergent_equal_count_needs_human_review",
+                    "rows_a": str(len(df_a)),
+                    "rows_b": str(len(df_b)),
+                    "schema": str(sorted(df_a.columns.tolist())),
+                    "what_was_tried": (
+                        "schema match confirmed; row counts equal; "
+                        "element-wise value comparison shows divergence"
+                    ),
+                    "what_was_ambiguous": (
+                        "files have the same shape but different values — "
+                        "cannot determine which is authoritative without domain knowledge"
+                    ),
+                    "what_would_resolve_it": (
+                        "human review to identify which file is the authoritative CRF export, "
+                        "then delete the other"
+                    ),
+                }
+            )
+            logger.warning(
+                "Equal-count value-divergent duplicate pair (%s / %s) routed to human review",
+                stem_a,
+                stem_b,
+            )
     else:
         # Same schema but row counts differ and neither is a subset of the other.
         # This means the files contain value-divergent rows that cannot be

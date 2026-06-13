@@ -662,3 +662,46 @@ class TestValueDivergentPairRoutedToHumanReview:
         assert any("human_review" in r for r in skipped_reasons), (
             f"Expected 'human_review' in a skipped reason, got: {skipped_reasons}"
         )
+
+    def test_equal_count_value_divergent_pair_routes_to_human_review(
+        self, monkeypatch_config: Path
+    ) -> None:
+        """Equal row count + same schema but different values must NOT be auto-merged.
+
+        Regression test for the bug where 'if is_sub or len(df_a) == len(df_b)'
+        silently deleted the smaller file for equal-size pairs without checking
+        whether values were actually identical.
+        """
+        import config
+
+        ds = config.STAGING_DATASETS_DIR
+        ds.mkdir(parents=True, exist_ok=True)
+
+        # Same column schema, same row count, but DIFFERENT values
+        file_a_rows = scrubbed_records(
+            [{"SUBJID": f"SA{i}", "STATUS": "A"} for i in range(3)]
+        )
+        file_b_rows = scrubbed_records(
+            [{"SUBJID": f"SB{i}", "STATUS": "B"} for i in range(3)]
+        )
+        _write_jsonl(ds / "14_CaseControl.jsonl", file_a_rows)
+        _write_jsonl(ds / "14_Case_Control.jsonl", file_b_rows)
+
+        report = clean_trio_datasets(ds, study_name="TestStudy")
+
+        # Neither file should be deleted
+        assert (ds / "14_CaseControl.jsonl").exists(), "file_a must not be deleted"
+        assert (ds / "14_Case_Control.jsonl").exists(), "file_b must not be deleted"
+
+        # Must appear in duplicates_skipped with the equal-count divergent reason
+        skipped_reasons = [e.get("reason", "") for e in report.duplicates_skipped]
+        assert any("equal_count" in r for r in skipped_reasons), (
+            f"Expected 'equal_count' in a skipped reason, got: {skipped_reasons}"
+        )
+
+        # Must NOT appear in duplicates_merged
+        merged_files = {e.get("kept", "") for e in report.duplicates_merged} | {
+            e.get("removed", "") for e in report.duplicates_merged
+        }
+        assert "14_CaseControl.jsonl" not in merged_files
+        assert "14_Case_Control.jsonl" not in merged_files
