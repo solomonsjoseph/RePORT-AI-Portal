@@ -127,6 +127,7 @@ from scripts.audit.ledger import (
     remove_dataset_no_llm_sentinels,
 )
 from scripts.extraction.io import atomic_write_json, atomic_write_jsonl, parse_date
+from scripts.security.phi_patterns import mask_date_shape as _mask_date_shape
 from scripts.security.secure_env import assert_output_zone, assert_write_zone
 from scripts.utils.integrity import hash_file
 from scripts.utils.logging_system import get_logger
@@ -217,10 +218,6 @@ _DATE_BLANK_RE = re.compile(r"^[\s/.\-:]*$")
 # (e.g. a year-2914 placeholder). ISO year is always the leading group — no locale
 # ambiguity — so this never reinterprets a DMY/slash value.
 _ISO_LEADING_DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})(?:\b|$)")
-
-# Pre-compiled character-class patterns reused in _mask_date_shape.
-_DIGIT_RE = re.compile(r"\d")
-_ALPHA_RE = re.compile(r"[A-Za-z]")
 
 # A date-NAMED column that is actually a "Not Done" / "Not Recorded" status flag
 # (suffix ND / NR, optionally with a trailing index) holds free text, NOT a date,
@@ -1484,13 +1481,6 @@ def _resolve_subject_id(
 
 def _now_utc_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def _mask_date_shape(value: str) -> str:
-    """Digit/letter-masked shape of a value for PHI-safe diagnostics:
-    every digit -> '9', every ASCII letter -> 'X', separators kept.
-    e.g. '15-03-2014' -> '99-99-9999', 'UNK' -> 'XXX'. Never reveals the value."""
-    return _ALPHA_RE.sub("X", _DIGIT_RE.sub("9", str(value)))
 
 
 def _scrub_row(

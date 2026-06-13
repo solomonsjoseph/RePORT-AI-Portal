@@ -263,3 +263,28 @@ SUBJECT_ID_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\bFID\d{4,}\b"),
 ]
 """Literal subject-ID substrings that the log wrapper HMAC-redacts per-subject."""
+
+
+# ── PHI-safe shape masking ───────────────────────────────────────────────────
+
+_DIGIT_RE = re.compile(r"\d")
+_ALPHA_RE = re.compile(r"[A-Za-z]")
+
+
+def mask_date_shape(value: str) -> str:
+    """Return a PHI-safe shape of *value* for logs and error messages.
+
+    Every digit → ``'9'``, every ASCII letter → ``'X'``, separator
+    characters are kept.  The shape gives operators enough structural
+    information to diagnose parsing issues without revealing the raw value.
+
+    Examples::
+
+        >>> mask_date_shape("28/05/2014")
+        '99/99/9999'
+        >>> mask_date_shape("UNK")
+        'XXX'
+        >>> mask_date_shape("07-05-2014 14:30:00")
+        '99-99-9999 99:99:99'
+    """
+    return _ALPHA_RE.sub("X", _DIGIT_RE.sub("9", str(value)))

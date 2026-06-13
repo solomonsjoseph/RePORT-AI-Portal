@@ -46,6 +46,7 @@ import re
 from datetime import datetime
 from typing import NamedTuple
 
+
 __all__ = [
     "DMY_VARIABLES",
     "_NUM_DATE_RE",
@@ -240,20 +241,14 @@ def _disambiguate_locale(value: str, *, declared_locale: str | None = None) -> s
 
 
 def _mask_date_value(value: str) -> str:
-    """Return a PHI-safe shape of *value* suitable for logs and error messages.
+    """Return a PHI-safe shape of *value* for logs and error messages.
 
     Digits → ``9``, ASCII letters → ``X``, separator characters kept.
-    This prevents raw date values from leaking into log files or exception
-    traces while still giving operators enough shape to diagnose the issue.
 
-    Examples::
-
-        >>> _mask_date_value("28/05/2014")
-        '99/99/9999'
-        >>> _mask_date_value("07.05.14")
-        '99.99.99'
-        >>> _mask_date_value("07-05-2014 14:30:00")
-        '99-99-9999 99:99:99'
+    Note: mirrors ``scripts.security.phi_patterns.mask_date_shape``.  A direct
+    import is not possible because ``scripts.security.__init__`` imports
+    ``phi_scrub``, which imports ``scripts.extraction.io``, creating a circular
+    dependency.  If the masking contract changes, update both implementations.
     """
     result: list[str] = []
     for ch in value:
