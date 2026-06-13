@@ -1,6 +1,6 @@
 """PHI scrubber — structural-field honest-broker catalog for RePORT AI Portal.
 
-Eight structural-field action classes, evaluated in strict priority order
+Nine structural-field action classes, evaluated in strict priority order
 (first match wins per field):
 
 1. **keep** (``keep_fields``) — allowlist; short-circuits every other rule.
@@ -26,15 +26,19 @@ Eight structural-field action classes, evaluated in strict priority order
 5. **generalize** (``generalize_fields`` + ``generalization_maps``) —
    value-level categorical mapping (e.g. marital status → Married / Single
    / Other; facility type → Government / Private / Other).
-6. **suppress_small_cell** (``suppress_small_cell_fields``) — numeric
+6. **band** (``band_fields``) — numeric or categorical values mapped to
+   broad ranges or categories (e.g. age groups, income bands). Configured
+   via ``band_ranges`` (numeric) and ``band_maps`` (categorical) in
+   ``phi_scrub.yaml``. Fail-closed: an unmapped value quarantines the row.
+7. **suppress_small_cell** (``suppress_small_cell_fields``) — numeric
    values strictly greater than ``small_cell_threshold`` are clamped to the
    threshold (ICMR §11.7 k-anonymity proxy for household-contact counts).
-7. **date** (``date_fields``) — per-subject deterministic offset in
+8. **date** (``date_fields``) — per-subject deterministic offset in
    ``[-max_jitter_days, +max_jitter_days]``. Offset = ``HMAC-SHA256(key,
    subject_id)[:4] as int mod (2*N+1) - N``. SANT-method interval
    preservation for epidemiological survival / incidence / person-time
    analyses.
-8. **id** (``id_fields``) — replaced with
+9. **id** (``id_fields``) — replaced with
    ``"RID_" + label + "_" + alpha12(hmac_sha256(key, label + ":" + raw_id))``.
    Deterministic cross-file linkage preserved; non-reversible without key
    possession. The ``RID_`` envelope plus alphabet-only tag keeps generated
@@ -79,14 +83,14 @@ the key forfeits the ability to re-derive the same pseudonyms.
 
 Idempotency
 -----------
-Each scrubbed record gets a ``_phi_scrubbed: "v1"`` marker. A second run
+Each scrubbed record gets a ``_phi_scrubbed: "v3"`` marker. A second run
 with the same key is a no-op (the sentinel file
 ``tmp/{STUDY}/.phi_scrub_complete`` short-circuits the orchestrator).
 
 Threat-model summary
 --------------------
 * HMAC-SHA256 with a secret key is non-reversible without key possession.
-* 12 hex (48 bits) collision surface is adequate for single-study cohorts
+* 12 alphabet (a-p) chars (48 bits) collision surface is adequate for single-study cohorts
   under 100 000 subjects. Larger cohorts should widen the slice.
 * Same (key, subject_id) always yields the same pseudonym → cross-run
   joins remain stable across re-ingestion.
@@ -285,7 +289,7 @@ _KEY_HEX_LEN = 64  # 32 bytes = 64 hex chars
 _LIMITED_DATASET_AUTHORITY = "authorities/phi_limited_dataset.md"
 
 # Action priority (first match wins when walking a row's fields).
-# keep > birthdate > drop > cap > generalize > suppress > date > id
+# keep > birthdate > drop > cap > generalize > band > suppress_small_cell > date > id
 _ACTION_KEEP = "keep"
 _ACTION_DROP = "drop"
 _ACTION_CAP = "cap"
@@ -1497,9 +1501,10 @@ def _scrub_row(
         3. drop_patterns       — field removed from row entirely
         4. cap_rules           — numeric > threshold → label
         5. generalize_rules    — value looked up in mapping
-        6. suppress_small_cell — numeric > threshold → threshold
-        7. date_patterns       — jitter via SANT per-subject offset
-        8. id_patterns         — HMAC-SHA256 pseudonymize
+        6. band_rules          — value mapped to broad range/category
+        7. suppress_small_cell — numeric > threshold → threshold
+        8. date_patterns       — jitter via SANT per-subject offset
+        9. id_patterns         — HMAC-SHA256 pseudonymize
 
     Returns ``None`` for the row when no resolvable subject_id — caller
     quarantines. Per-field counts are keyed by scope label

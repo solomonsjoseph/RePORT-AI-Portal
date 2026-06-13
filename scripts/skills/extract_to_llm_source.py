@@ -327,7 +327,7 @@ def _cmd_status(_args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Subcommand: verify — 12-assertion verifier (P4.1)
+# Subcommand: verify — 14-assertion verifier (assertions 1-12, 14, 13 in execution order)
 # ---------------------------------------------------------------------------
 
 # Determinism-check: these keys must not appear in any llm_source/ artifact.
