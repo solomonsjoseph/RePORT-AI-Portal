@@ -671,6 +671,12 @@ def parse_date(
                     # Both valid (ambiguous) or neither valid (invalid) → quarantine.
                     return None
                 dt = dt_dmmyyyy if dt_dmmyyyy is not None else dt_ddmyyyy  # type: ignore[assignment]
+                if not (1900 <= dt.year <= 2100):
+                    # Same year-range guard the separator + 8-digit + explicit-locale
+                    # 7-digit branches apply: a structurally-implausible resolved year
+                    # (e.g. "1130615" → year 615, where s[3:7] is not a real year) is
+                    # quarantined rather than emitted as a corrupted medieval date.
+                    return None
                 nd, nmo, ny = dt.day, dt.month, dt.year
 
         else:

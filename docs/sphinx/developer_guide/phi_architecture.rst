@@ -2,7 +2,7 @@ PHI Architecture
 ================
 
 The canonical developer-facing description of the full PHI-handling story — the
-four zones, the eight-action scrub catalog, the integrity chain, the
+four zones, the nine-action scrub catalog, the integrity chain, the
 log redactor, the plugin Source Truth PDF/header boundary, and the
 agent-boundary three-gate stack. For the reviewer-only IRB/Auditor
 profile, see :doc:`../irb_auditor/phi_handling`; for the architectural
@@ -73,28 +73,38 @@ Two complementary chokepoints:
   ``agent/analysis/``. Audit, telemetry, staging, snapshot-root metadata directories, and raw paths are
   hard-rejected with ``ZoneViolationError`` or ``SnapshotZoneViolation``.
 
-The Eight-Action Scrub Catalog (Step 1.6)
+The Nine-Action Scrub Catalog (Step 1.6)
 -----------------------------------------
 
 :func:`scripts.security.phi_scrub.run_scrub` is invoked between the
 parallel extraction phase and the dataset cleanup. It operates on
-``tmp/{STUDY}/datasets/*.jsonl`` in place. Eight action classes,
+``tmp/{STUDY}/datasets/*.jsonl`` in place. Nine action classes,
 evaluated in strict priority order against ~200 Indo-VAP-calibrated
 rules in ``scripts/security/phi_scrub.yaml``:
 
 1. **keep** — pass through (only for confirmed non-PHI columns)
-2. **birthdate** — replace with ``birthyear`` only (HIPAA Safe
-   Harbor §164.514(b)(2)(i))
+2. **birthdate** — posture-gated. Under the active **Safe Harbor**
+   posture the matched birthdate is **dropped unconditionally**
+   (``birthdate_drop``), never exposed to the LLM; under the opt-in
+   **Limited Dataset** posture (§164.514(e)) it is instead kept and
+   SANT date-jittered. (HIPAA Safe Harbor §164.514(b)(2)(i))
 3. **drop** — null out
-4. **cap** — clamp at a quantile (the "age > 89" rule)
+4. **cap** — replace values above a fixed threshold with a label
+   (the "age > 89" → "90+" rule, HIPAA Safe Harbor §164.514(b)(2)(i)(C));
+   not a quantile clamp
 5. **generalize** — bucket into ranges (e.g. age → 5-year bands)
-6. **suppress_small_cell** — null when the cohort cell has fewer
+6. **band** — preserve socioeconomic variables (education, occupation,
+   income, wages, work-hours) as broad categorical or numeric bands
+   instead of dropping them. Fail-closed: an unmapped value quarantines
+   the row. Ships empty (``band_fields: []``) under the active HIPAA
+   Safe Harbor + India DPDPA bundle — retained-but-inert.
+7. **suppress_small_cell** — null when the cohort cell has fewer
    than the configured threshold
-7. **date_jitter (SANT)** — per-subject deterministic shift via
+8. **date_jitter (SANT)** — per-subject deterministic shift via
    ``HMAC-SHA256(key, subject_id)[:4] mod (2*max_days+1) - max_days``.
    Within-subject visit intervals are preserved exactly; absolute
    dates are obscured.
-8. **hmac_pseudonymize** — replace IDs with
+9. **hmac_pseudonymize** — replace IDs with
    ``RID_<LABEL>_<alpha12(HMAC-SHA256(key, label + ":" + value))>``.
    Non-reversible without the key, deterministic with it, and shaped so
    generated pseudonyms do not match raw subject-ID or phone regexes.
@@ -271,7 +281,7 @@ Module Map
    * - Module
      - Role
    * - :mod:`scripts.security.phi_scrub`
-     - Eight-action scrub catalog driver. Reads
+     - Nine-action scrub catalog driver. Reads
        ``scripts/security/phi_scrub.yaml``.
    * - :mod:`scripts.security.phi_patterns`
      - Shared regex catalog (``BLOCKING_PATTERNS``, ``WARN_PATTERNS``).
@@ -319,7 +329,7 @@ The active IRB/Auditor conformance profile lives at
 Pillar mapping:
 
 * **Pillar 1 — PHI scrub catalog**: ``phi_scrub.py`` + ``phi_scrub.yaml``,
-  the 8 action classes documented above.
+  the 9 action classes documented above.
 * **Pillar 2 — Zone isolation + agent access**: ``file_access.py`` +
   ``secure_env.py`` + the three agent-output gates.
 * **Pillar 3 — Secure channel + integrity**: ``secure_staging.py`` +

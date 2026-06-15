@@ -173,8 +173,8 @@ PHI Scrub
 * **Reads/writes:** ``tmp/{STUDY}/datasets/*.jsonl`` in place
 * **Audit:** ``output/{STUDY}/audit/phi_scrub_report.json``
   (counts-only)
-* **Eight action classes:** keep / birthdate / drop / cap /
-  generalize / suppress_small_cell / date_jitter / hmac_pseudonymize.
+* **Nine action classes:** keep / birthdate / drop / cap /
+  generalize / band / suppress_small_cell / date_jitter / hmac_pseudonymize.
   Configured in ``scripts/security/phi_scrub.yaml`` (~200
   Indo-VAP-calibrated rules).
 * **HMAC key:** ``~/.config/report_ai_portal/phi_key`` (mode 0600,

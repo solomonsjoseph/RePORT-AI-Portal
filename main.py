@@ -560,7 +560,15 @@ def _cleanup_staging() -> None:
     On failure, the caller deliberately skips this to preserve residue
     for operator inspection.
     """
-    if os.environ.get("REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT") == "1":
+    # Defer destruction to the parent ONLY when the parent genuinely holds the
+    # lock (baton honored). When the baton failed validation (dead/mismatched
+    # parent PID), _acquire_pipeline_lock fell through and THIS process owns the
+    # lock — so it must destroy its own AMBER PHI staging rather than leave raw
+    # subject-ID/date residue on disk. Mirror _release_pipeline_lock's guard.
+    if (
+        os.environ.get("REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT") == "1"
+        and _PIPELINE_LOCK_FILE is None
+    ):
         log.info(
             "Parent process holds the lock; skipping staging deletion in main.py to allow parent to run destruction attestation."
         )
@@ -630,6 +638,18 @@ def _dataset_processing_input_hashes(raw_datasets_dir: Path) -> dict[str, str]:
         _hash_file_input(
             "phi_scrub_code", Path(config.BASE_DIR) / "scripts" / "security" / "phi_scrub.py"
         )
+    )
+    # The forms manifest (reject lists, date_locales) and the study privacy config
+    # (drives phi_review's per-column force_drop_headers) both materially change the
+    # published column set, so they MUST invalidate the same cache manifest —
+    # otherwise a non-`--force` re-run after tightening either silently keeps the
+    # prior looser handling. Both live beside the datasets dir; _hash_file_input
+    # returns {} when absent.
+    hashes.update(
+        _hash_file_input("forms_manifest", raw_datasets_dir.parent / "_forms_manifest.yaml")
+    )
+    hashes.update(
+        _hash_file_input("study_privacy", raw_datasets_dir.parent / "_study_privacy.yaml")
     )
     return dict(sorted(hashes.items()))
 

@@ -125,6 +125,23 @@ class TestFakeLocalRouting:
         monkeypatch.setattr(_config, "LLM_PROVIDER", "fake-local", raising=False)
         monkeypatch.setattr(_config, "LLM_MODEL", "fake-local", raising=False)
 
+        # Defensive re-pin of the secure_env zone markers to the LIVE (real)
+        # config values. This test intentionally keeps config on the real
+        # output/ tree (see docstring), but a prior test under pytest-randomly
+        # ordering may have left secure_env._OUTPUT_MARKER pointing at its own
+        # tmp_path (the conftest monkeypatch_config patches it). Re-pinning here
+        # — via monkeypatch so it still reverts cleanly — makes these routing
+        # tests robust to test-ordering pollution rather than failing with a
+        # spurious ZoneViolationError on a valid output/ path.
+        import scripts.security.secure_env as _se
+
+        _raw, _data, _clean, _output, _tmp = _se._resolve_markers()
+        monkeypatch.setattr(_se, "_RAW_MARKER", _raw)
+        monkeypatch.setattr(_se, "_DATA_MARKER", _data)
+        monkeypatch.setattr(_se, "_CLEAN_MARKER", _clean)
+        monkeypatch.setattr(_se, "_OUTPUT_MARKER", _output)
+        monkeypatch.setattr(_se, "_TMP_MARKER", _tmp)
+
         # Reset cached agent so it picks up the new provider
         from scripts.ai_assistant import agent_graph as ag
 

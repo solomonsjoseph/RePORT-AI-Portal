@@ -590,7 +590,7 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
             p = Path(clean_str)
 
             agent_out = Path(getattr(config, "AGENT_OUTPUT_DIR", "."))
-            repo_root = Path(getattr(config, "REPO_ROOT", "."))
+            repo_root = Path(config.REPO_ROOT)
             filename = p.name.lstrip(".")
 
             candidates = []
@@ -666,7 +666,7 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
                     p = Path(clean_str)
 
                     agent_out = Path(getattr(config, "AGENT_OUTPUT_DIR", "."))
-                    repo_root = Path(getattr(config, "REPO_ROOT", "."))
+                    repo_root = Path(config.REPO_ROOT)
                     filename = p.name.lstrip(".")
 
                     candidates = []

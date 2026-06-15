@@ -47,6 +47,7 @@ from langchain_core.tools import tool
 
 import config
 from scripts.ai_assistant.file_access import (
+    ZoneViolationError,
     validate_agent_read,
 )
 from scripts.ai_assistant.phi_safe import (
@@ -951,18 +952,30 @@ def get_dataset_stats(dataset_name: str | None = None) -> str:
     for f in files:
         record_count = 0
         all_columns: set[str] = set()
-        with open(validate_agent_read(f), encoding="utf-8") as fh:
-            for line in fh:
-                line = line.rstrip("\n")
-                if not line:
-                    continue
-                record_count += 1
-                if not all_columns:
-                    try:
-                        rec = json.loads(line)
-                        all_columns.update(rec.keys())
-                    except json.JSONDecodeError:
-                        pass
+        # Per-file zone validation + read guard — defense in depth against
+        # symlink escape, and so one bad/locked file does not abort stats for
+        # every other dataset (mirrors _list_available_datasets_impl).
+        try:
+            resolved = validate_agent_read(f)
+        except PermissionError:
+            logger.warning("get_dataset_stats: skipping out-of-zone file %s", f.name)
+            continue
+        try:
+            with open(resolved, encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.rstrip("\n")
+                    if not line:
+                        continue
+                    record_count += 1
+                    if not all_columns:
+                        try:
+                            rec = json.loads(line)
+                            all_columns.update(rec.keys())
+                        except json.JSONDecodeError:
+                            pass
+        except OSError:
+            logger.warning("get_dataset_stats: unreadable file %s", resolved)
+            continue
         visible_columns = all_columns - _INTERNAL_COLUMNS
         stats.append(
             {
@@ -1398,7 +1411,7 @@ def answer_catalog_question(question: str) -> str:
     if hit is not None:
         return hit
 
-    repo_root = Path(config.REPO_ROOT) if hasattr(config, "REPO_ROOT") else Path(".")
+    repo_root = Path(config.REPO_ROOT)
     query_identifiers = _catalog_query_identifier_tokens(question)
     query_tokens = _catalog_meaningful_tokens(question)
 
@@ -1555,13 +1568,19 @@ def answer_catalog_question(question: str) -> str:
         schema_path = find_dataset_schema_for_policy(source_path)
         if schema_path is not None:
             try:
+                # Defense-in-depth: gate the schema read through the agent
+                # read-zone check before build_joined_query_view opens it, so
+                # this runtime path matches the joined-view read above. An
+                # out-of-zone schema (ZoneViolationError) degrades to var_meta
+                # rather than being read — fail-closed, never exposed.
+                validate_agent_read(schema_path)
                 joined_view = build_joined_query_view(source_path, schema_path)
                 joined_variables = joined_view.get("variables")
                 if isinstance(joined_variables, Mapping):
                     joined_meta = joined_variables.get(var_id)
                     if isinstance(joined_meta, Mapping):
                         metadata = dict(joined_meta)
-            except ValueError:
+            except (ValueError, ZoneViolationError):
                 metadata = var_meta
     answer_text = json.dumps(
         {

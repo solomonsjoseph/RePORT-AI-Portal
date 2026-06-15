@@ -216,19 +216,24 @@ def _live_version() -> str:
 def _live_action_class_count() -> int:
     """Count distinct action classes in ``scripts/security/phi_scrub.yaml``.
 
-    The catalog ships eight: keep / birthdate / drop / cap / generalize /
-    suppress_small_cell / date_jitter / id_pseudonymize. Each appears as
-    a top-level YAML key (``<name>_fields:`` or ``<name>_field:``).
+    The catalog ships nine: keep / birthdate / drop / cap / generalize /
+    band / suppress_small_cell / date_jitter / id_pseudonymize. Each appears
+    as a top-level YAML key (``<name>_fields:`` or ``<name>_field:``).
+    ``band_fields`` ships empty (``[]``) under the active rule bundle but is a
+    real action class (priority rung 6, a valid ``LedgerWriter`` action), so it
+    counts — omitting it blinds this check to the eight-vs-nine drift it exists
+    to catch.
     """
     yaml_path = REPO_ROOT / "scripts" / "security" / "phi_scrub.yaml"
     if not yaml_path.is_file():
-        return 8  # fall back to documented constant
+        return 9  # fall back to documented constant
     expected = {
         "keep_fields",
         "birthdate_field",
         "drop_fields",
         "cap_fields",
         "generalize_fields",
+        "band_fields",
         "suppress_small_cell_fields",
         "date_fields",
         "id_fields",
@@ -238,7 +243,7 @@ def _live_action_class_count() -> int:
         head = line.split(":", 1)[0].strip()
         if head in expected:
             seen.add(head)
-    return len(seen) or 8
+    return len(seen) or 9
 
 
 # ---------------------------------------------------------------------------

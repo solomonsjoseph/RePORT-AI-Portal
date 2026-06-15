@@ -14,8 +14,8 @@ Orientation
 
 Privacy-first, local-first AI Assistant system for clinical research
 data. The PHI scrubber (Step 1.6) is an *honest-broker catalog* with
-eight action classes — keep / birthdate / drop / cap / generalize /
-suppress_small_cell / date / id — evaluated in strict priority order
+nine action classes — keep / birthdate / drop / cap / generalize /
+band / suppress_small_cell / date / id — evaluated in strict priority order
 against ~200 Indo-VAP-calibrated rules. See
 :mod:`scripts.security.phi_scrub` and ``scripts/security/phi_scrub.yaml``.
 The HMAC key lives at ``~/.config/report_ai_portal/phi_key`` (outside
@@ -116,7 +116,7 @@ Every extracted row gets a full ``_provenance`` dict (raw_sha256,
 pipeline_version, extraction_engine, source_file, sheet_name,
 row_index, study_name, extraction_utc).
 :func:`scripts.security.phi_scrub.run_scrub` (Step 1.6) scrubs staged
-datasets in place via the eight action classes in strict priority
+datasets in place via the nine action classes in strict priority
 order **BEFORE** any audit is written so no raw PHI lands in
 ``output/``. ``dataset_cleanup`` (Step 1.7) runs against staged
 datasets and emits ``audit/dataset_cleanup_report.json``. Published

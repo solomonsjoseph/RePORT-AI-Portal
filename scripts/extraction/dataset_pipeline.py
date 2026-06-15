@@ -295,7 +295,7 @@ def check_forms_manifest(datasets_dir: Path | str) -> ManifestCheckResult:
         if p.is_file()
         and not p.name.startswith(".")
         and not p.name.startswith("~$")
-        and p.suffix.lower() in {".xlsx", ".csv"}
+        and p.suffix.lower() in SUPPORTED_EXTENSIONS
     )
 
     # Build lookup sets for fast membership tests

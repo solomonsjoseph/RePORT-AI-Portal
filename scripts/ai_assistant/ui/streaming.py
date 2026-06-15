@@ -780,7 +780,7 @@ def _render_message_content(
             clean_seg = seg.strip().replace("\\", "/")
             p = Path(clean_seg)
             agent_out = Path(getattr(config, "AGENT_OUTPUT_DIR", "."))
-            repo_root = Path(getattr(config, "REPO_ROOT", "."))
+            repo_root = Path(config.REPO_ROOT)
             filename = p.name.lstrip(".")
 
             candidates = []

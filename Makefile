@@ -77,10 +77,10 @@ N := \033[0m
 	sot-source-pack sot-generate-all sot-verify sot-verify-output sot-validate \
 	build-llm-source rebuild-llm-source \
 	chat-deps chat-cli-deps chat-cli chat \
-	test test-all lint typecheck security ci verify release-check \
+	test test-all lint lint-legacy-dirs typecheck security ci verify release-check \
 	docs doc-freshness docs-quality docs-linkcheck docs-ci release-notes \
 	chat-smoke check-study-knowledge \
-	clean nuke
+	clean clean-legacy clean-legacy-dry-run nuke
 
 # ═══════════════════════════════════════════════════════════════════════
 # HELP

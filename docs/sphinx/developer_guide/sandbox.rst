@@ -2,9 +2,13 @@ Sandbox: Subprocess-Isolated Code Execution
 ============================================
 
 The agent's :func:`~scripts.ai_assistant.agent_tools.run_python_analysis`
-tool runs LLM-generated Python in an OS-level isolated subprocess.  This
-page documents what the sandbox protects against, what it deliberately
-does *not* protect against, and how to tune it.
+tool runs LLM-generated Python in a separate, resource-limited,
+clean-environment subprocess with in-process AST/builtins filtering.
+These are defense-in-depth layers, **not** a guaranteed containment
+boundary (see the boundary note below); true OS-level isolation is
+tracked under *Future Hardening*. This page documents what the sandbox
+protects against, what it deliberately does *not* protect against, and
+how to tune it.
 
 .. contents:: On this page
    :local:
@@ -85,8 +89,21 @@ Two layers, deliberately redundant:
    ``builtins.open`` confined to ``output_dir`` for writes and the
    pre-loaded JSONL set + ``output_dir`` for reads.
 
-Either layer alone would block the headline threat. Both together
-make a CVE-class CPython escape needed to do real damage.
+These two layers are defense-in-depth, **not** a guaranteed
+containment boundary. The in-process AST/builtins filter runs on the
+same interpreter as the executed code, and an in-process Python filter
+is `not a security boundary
+<https://doc.pypy.org/en/latest/sandbox.html>`_: Python's introspection
+(attribute walking, ``__subclasses__``, ``getattr``) can reach the real
+``builtins`` and bypass the filter from **ordinary Python — no CVE
+required**. The subprocess provides a clean environment and OS resource
+limits, but runs as the **same OS user** with no filesystem or network
+namespace. Treat the in-process filter as risk-reduction, not
+containment: for untrusted or prompt-injectable input the load-bearing
+control is true OS-level isolation (unprivileged user + ``seccomp`` +
+no network namespace + read-only filesystem except a bind-mounted
+``output_dir``), tracked under *Future Hardening* below and **required
+before this tool is exposed to injectable input**.
 
 The macOS Asymmetry
 -------------------
@@ -210,8 +227,12 @@ Out of scope for the current runtime; tracked for later:
   per-call overhead).
 - Add ``seccomp-bpf`` syscall filtering on Linux for stronger
   network-egress denial than the import allow-list alone.
-- Add an opt-in ``nsjail``/``Docker`` profile for high-assurance
-  deployments where even a CVE-class CPython escape is in scope.
+- Add an opt-in ``nsjail``/``Docker`` profile providing true OS-level
+  isolation (unprivileged user, ``seccomp``, no network namespace,
+  read-only FS except ``output_dir``) — the control that actually
+  *contains* an in-process interpreter escape, not just exotic
+  CVE-class gadgets. Required before ``run_python_analysis`` is exposed
+  to untrusted/injectable input (see the Threat Model boundary note).
 - Add code-retention auto-cleanup based on
   ``SANDBOX_CODE_RETENTION_DAYS`` (currently kept indefinitely).
 

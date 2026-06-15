@@ -1587,7 +1587,11 @@ def _cmd_run(args: argparse.Namespace) -> int:
         return code
 
     # ── Step 1a.1: fail closed on disabled-scrub bypass ────────────────────
-    if os.environ.get("REPORTALIN_ALLOW_DISABLED_SCRUB"):
+    # Key on PRESENCE, not truthiness: the variable's mere presence signals a
+    # weakened scrub invocation, so even REPORTALIN_ALLOW_DISABLED_SCRUB="" (an
+    # empty but present value) must hard-fail here. (The value-gated, test-context
+    # floor lives separately in phi_scrub.run_scrub.)
+    if "REPORTALIN_ALLOW_DISABLED_SCRUB" in os.environ:
         msg = "REPORTALIN_ALLOW_DISABLED_SCRUB is forbidden for extract_to_llm_source"
         print(msg, file=sys.stderr)
         return _finish(

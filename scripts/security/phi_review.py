@@ -690,7 +690,13 @@ def load_sot_variable_signals(sot_root: Path, form_name: str) -> dict[str, dict[
                 "sot_phi": sot_phi_str,
                 "is_phi": sot_phi_str in _SOT_PHI_ACTIONS,
             }
-        return signals
+        # Only accept a candidate that actually yielded signals. A present-but-empty
+        # joined view (``variables:`` empty, or every entry non-dict) must NOT
+        # short-circuit the policy-YAML fallback — otherwise the SoT cross-check
+        # silently degrades to a no-op, which (combined with the name-only review's
+        # blind spots) can leave a direct-identifier column with no SoT protection.
+        if signals:
+            return signals
     return {}
 
 

@@ -149,6 +149,11 @@ AGENT_MODEL_ID: str = os.environ.get("REPORTAL_AGENT_MODEL", "claude-opus-4-7")
 # ----------------------------------------------------------------------------
 
 BASE_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
+# Repo root alias — config.py lives at the repository root, so BASE_DIR *is* the
+# repo root. Several UI/agent artifact-path resolvers reference ``config.REPO_ROOT``;
+# expose it explicitly so those callers resolve against the repo root rather than
+# silently falling back to the process CWD via ``getattr(config, "REPO_ROOT", ".")``.
+REPO_ROOT = BASE_DIR
 DATA_DIR = BASE_DIR / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
 

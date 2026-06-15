@@ -285,16 +285,9 @@ _KEY_HEX_LEN = 64  # 32 bytes = 64 hex chars
 
 _LIMITED_DATASET_AUTHORITY = "authorities/phi_limited_dataset.md"
 
-# Action priority (first match wins when walking a row's fields).
+# Action priority (first match wins when walking a row's fields):
 # keep > birthdate > drop > cap > generalize > band > suppress_small_cell > date > id
-_ACTION_KEEP = "keep"
-_ACTION_DROP = "drop"
-_ACTION_CAP = "cap"
-_ACTION_GENERALIZE = "generalize"
-_ACTION_SUPPRESS = "suppress_small_cell"
-_ACTION_DATE = "date"
-_ACTION_ID = "id"
-_ACTION_BIRTHDATE_DROP = "birthdate-drop"
+# The scrub loop emits these action strings inline via ``_bump(...)``.
 
 
 # ── Exceptions ───────────────────────────────────────────────────────────────
@@ -408,8 +401,10 @@ class GeneralizeRule:
     Each ``generalize_fields`` entry pairs a field-name pattern with the
     name of a value-to-value mapping under ``generalization_maps``. At
     scrub time the value is lower-cased, looked up in the mapping, and
-    replaced; missing values fall through unchanged (audit event still
-    recorded with count=0 for that row).
+    replaced. As of T2.2 the rule is **fail-closed**: an unmapped non-empty
+    value quarantines the row and raises :class:`PHIGeneralizeUnmappedError`
+    (see :func:`generalize_value` / :func:`_scrub_row` rung 5) rather than
+    falling through unchanged.
     """
 
     __slots__ = ("mapping", "mapping_name", "pattern")

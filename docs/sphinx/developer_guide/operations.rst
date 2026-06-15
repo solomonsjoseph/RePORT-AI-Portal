@@ -104,7 +104,7 @@ Lower-Level Host Publish Path
    make pipeline
 
 Runs the host raw-data steps in order: dictionary -> dataset extraction ->
-AMBER scrub (eight-action catalog, rule + allowlist) -> publish scrubbed
+AMBER scrub (nine-action catalog, rule + allowlist) -> publish scrubbed
 dataset files into the ``llm_source/`` GREEN zone -> audit lineage. This is
 the lower-level path used by the dataset child skill; it is not the complete
 plugin workflow because duplicate preflight and Source Truth worker
@@ -152,7 +152,7 @@ Individual Steps
      - Publish the dictionary mapping leg into ``llm_source/`` without
        running dataset extraction
    * - ``make extract-datasets``
-     - Dataset extraction into AMBER staging, run through the eight-action
+     - Dataset extraction into AMBER staging, run through the nine-action
        PHI scrub, then atomically promoted into the GREEN ``llm_source/``
    * - ``make build-llm-source``
      - Generate verified SoT policy/schema/joined sets, then publish
@@ -189,7 +189,7 @@ Quickstart
 Artifact Rebuild
 ----------------
 
-When schemas, SoT policies, the data dictionary, or the eight-action PHI scrub catalog
+When schemas, SoT policies, the data dictionary, or the nine-action PHI scrub catalog
 (``scripts/security/phi_scrub.yaml``) change:
 
 .. code-block:: bash

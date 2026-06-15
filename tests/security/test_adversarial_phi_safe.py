@@ -17,8 +17,10 @@ sandbox) and PR #3 (keys out of ``os.environ``):
   input gate itself doesn't block these (PHI-only by design); the
   defense is the layers behind it.
 
-Each test that documents a known limitation is marked ``xfail`` with a
-``reason`` so the gap stays visible in the test output.
+Where a test documents a known design boundary (e.g. the input gate is
+PHI-only and does not block key-disclosure prompts), the docstring states
+that boundary explicitly so the contract stays visible — these assert the
+*current* behavior rather than being marked ``xfail``.
 """
 
 from __future__ import annotations

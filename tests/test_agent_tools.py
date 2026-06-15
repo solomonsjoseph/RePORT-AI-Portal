@@ -185,6 +185,9 @@ variables:
         dataset_dir.mkdir(parents=True)
         agent_dir.mkdir(parents=True)
         monkeypatch.setattr(config, "REPO_ROOT", tmp_path, raising=False)
+        monkeypatch.setattr(
+            config, "STUDY_LLM_SOURCE_DIR", tmp_path / "output" / "Indo-VAP" / "llm_source"
+        )
         monkeypatch.setattr(config, "AGENT_STATE_DIR", agent_dir)
 
         (policy_dir / "6_HIV_policy.yaml").write_text(
