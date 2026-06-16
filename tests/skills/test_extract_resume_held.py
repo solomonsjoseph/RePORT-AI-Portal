@@ -85,6 +85,12 @@ def _patch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         tmp_path / "scripts" / "security" / "phi_scrub.yaml",
         raising=False,
     )
+    # Task A7: effective_scrub_config_hash() resolves its defaults base from
+    # CONFIG_DEFAULTS_DIR; point it at the tmp phi_scrub.yaml's dir so the
+    # verifier hashes the same single tmp file the test seeds into the ledger.
+    monkeypatch.setattr(
+        config, "CONFIG_DEFAULTS_DIR", tmp_path / "scripts" / "security", raising=False
+    )
     # write_snapshot uses config.STUDY_LLM_SOURCE_DIR (not config.OUTPUT_DIR / study)
     # so we also patch that.
     monkeypatch.setattr(

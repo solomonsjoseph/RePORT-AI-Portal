@@ -58,7 +58,7 @@ from tests.skills.fixtures.build_fixture import (
 # ---------------------------------------------------------------------------
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_PHI_SCRUB_YAML = _REPO_ROOT / "scripts" / "security" / "phi_scrub.yaml"
+_PHI_SCRUB_YAML = _REPO_ROOT / "config" / "_defaults" / "phi_scrub.yaml"
 
 
 # ---------------------------------------------------------------------------

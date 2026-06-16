@@ -187,6 +187,11 @@ class TestVerifyStub:
         scrub_config.parent.mkdir(parents=True, exist_ok=True)
         scrub_config.write_text("subject_id_fields: [SUBJID]\n", encoding="utf-8")
         monkeypatch.setattr(config, "PHI_SCRUB_CONFIG_PATH", scrub_config, raising=False)
+        # Task A7: assertion 5 hashes the EFFECTIVE config via
+        # effective_scrub_config_hash(), which resolves the defaults base from
+        # CONFIG_DEFAULTS_DIR — point it at this tmp config's dir so the verifier
+        # hashes the same single file the ledger seeds.
+        monkeypatch.setattr(config, "CONFIG_DEFAULTS_DIR", scrub_config.parent, raising=False)
 
         run_id = "run_dataset_scope"
         study_output = tmp_path / "output" / STUDY

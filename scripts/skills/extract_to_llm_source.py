@@ -70,7 +70,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import hashlib
 import json
 import os
 import re
@@ -293,7 +292,7 @@ extract_to_llm_source — skill scope and contract
 Scope: trusted host dataset publish into PHI-clean llm_source/ (one study)
 Dictionary: host dictionary leg is preserved when raw dictionary files exist
 
-PHI coverage: HIPAA Safe Harbor identifiers per scripts/security/phi_scrub.yaml
+PHI coverage: HIPAA Safe Harbor identifiers per config/_defaults/phi_scrub.yaml
               + project-specific patterns in scripts/security/phi_patterns.py
 Out of scope (operator responsibility): DPDPA §16 cross-border egress,
                                         §12 right-to-erase, §8(6) breach
@@ -484,9 +483,17 @@ def _verify_assertion_5_ledger_hashes(
             f"no per-dataset phi_handling_ledger.as_written.json files under {audit_dir / 'datasets'}",
         )
 
-    if not phi_scrub_config_path.exists():
-        return "fail", f"phi_scrub.yaml not found at {phi_scrub_config_path}; cannot verify hash"
-    actual_hash = hashlib.sha256(phi_scrub_config_path.read_bytes()).hexdigest()
+    # Hash the MERGED EFFECTIVE scrub config (defaults + per-study override) via
+    # the shared helper, NOT a single file — this MUST match the hash the ledger
+    # writer (phi_scrub.run_scrub) sealed in, which uses the same helper.
+    import scripts.security.phi_scrub as _phi_scrub
+
+    actual_hash = _phi_scrub.effective_scrub_config_hash()
+    if not actual_hash:
+        return (
+            "fail",
+            f"phi_scrub config not resolvable (checked {phi_scrub_config_path}); cannot verify hash",
+        )
 
     for ledger_path in ledger_paths:
         try:
@@ -757,6 +764,12 @@ def _verify_assertion_decided_vs_applied(
     try:
         import scripts.security.phi_scrub as _phi_scrub
 
+        # Single-file load of the EFFECTIVE config path. Correct while no study
+        # has a per-study config/<study>/phi_scrub.yaml override (effective path
+        # == defaults == merged). FOLLOW-UP (per-study overrides, Wave 3/4): switch
+        # to the merged loader (load_scrub_config(study=...)) so decided-vs-applied
+        # evaluates the SAME merged config run_scrub applied; that also requires
+        # tests to monkeypatch CONFIG_DEFAULTS_DIR.
         cfg = _phi_scrub.load_scrub_config(scrub_config_path)
     except Exception:  # config load failure → conservative keep fallback
         cfg = None
@@ -894,6 +907,10 @@ def _verify_assertion_14_audit_coverage(
     try:
         import scripts.security.phi_scrub as _phi_scrub
 
+        # Single-file load of the EFFECTIVE config path — see the matching
+        # FOLLOW-UP note in _verify_assertion_decided_vs_applied: switch to the
+        # merged loader (load_scrub_config(study=...)) once per-study phi_scrub
+        # overrides exist, so coverage is checked against the applied merge.
         cfg = _phi_scrub.load_scrub_config(scrub_config_path)
     except Exception:  # config load failure → conservative (keep) classification
         cfg = None
@@ -1304,6 +1321,8 @@ def _run_form_approval_gate(
     # deliberate human keep decisions. Both let review_form_headers clear
     # false-positive coverage holds and catch SoT/name-rule disagreements.
     sot_root = Path(config.OUTPUT_DIR) / study / "llm_source" / "SoT"
+    # Effective-path single-file load (defaults == merged today). FOLLOW-UP: use
+    # the merged loader once per-study phi_scrub overrides exist (Wave 3/4).
     _scrub_cfg = load_scrub_config(Path(config.PHI_SCRUB_CONFIG_PATH))
 
     approvals: list[Any] = []

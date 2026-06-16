@@ -116,7 +116,7 @@ host_repo_contract:
     - scripts/skills/extract_to_llm_source.py
     - scripts/source_truth/study_intake.py
     - scripts/source_truth/generate_lean_outputs.py
-    - scripts/security/phi_scrub.yaml
+    - config/_defaults/phi_scrub.yaml
   expected_outputs:
     - output/<STUDY>/llm_source/SoT/<PAIR>/pdf/<FORM>_policy.yaml
     - output/<STUDY>/llm_source/dataset_schema/files/<FORM>.jsonl

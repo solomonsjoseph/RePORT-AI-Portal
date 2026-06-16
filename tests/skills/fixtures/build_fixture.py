@@ -190,7 +190,17 @@ def build_golden_output_tree(
     llm_source_dir = study_output_dir / "llm_source"
 
     # ── a. phi_scrub.yaml hash ───────────────────────────────────────────────
-    scrub_config_hash = hashlib.sha256(phi_scrub_yaml_path.read_bytes()).hexdigest()
+    # Task A7: the ledger seals the MERGED-EFFECTIVE scrub-config hash (defaults +
+    # per-study override) via phi_scrub.effective_scrub_config_hash(); verifier
+    # assertion 5 recomputes the SAME helper, so the fixture must use it too (a
+    # raw single-file SHA-256 would no longer match). Fall back to the single-file
+    # hash only if no config resolves (helper returns None).
+    import scripts.security.phi_scrub as _phi_scrub
+
+    scrub_config_hash = (
+        _phi_scrub.effective_scrub_config_hash()
+        or hashlib.sha256(phi_scrub_yaml_path.read_bytes()).hexdigest()
+    )
 
     # ── b. Manifest + stub datasets dir ─────────────────────────────────────
     # The manifest now lives under config/<study>/ (Note 11). The verifier

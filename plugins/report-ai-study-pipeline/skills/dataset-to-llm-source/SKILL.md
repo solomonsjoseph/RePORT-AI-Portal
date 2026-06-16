@@ -62,7 +62,7 @@ uv run --all-groups python scripts/skills/extract_to_llm_source.py status
    - `data/raw/{STUDY}/_forms_manifest.yaml`
    - `data/raw/{STUDY}/_study_privacy.yaml`
    - `data/raw/{STUDY}/datasets/`
-   - `scripts/security/phi_scrub.yaml`
+   - `config/_defaults/phi_scrub.yaml` (per-study override: `config/{STUDY}/phi_scrub.yaml`)
 
 Do not set `REPORTALIN_ALLOW_DISABLED_SCRUB`. The CLI fails closed when that variable is present.
 

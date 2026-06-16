@@ -214,7 +214,7 @@ def _live_version() -> str:
 
 
 def _live_action_class_count() -> int:
-    """Count distinct action classes in ``scripts/security/phi_scrub.yaml``.
+    """Count distinct action classes in ``config/_defaults/phi_scrub.yaml``.
 
     The catalog ships nine: keep / birthdate / drop / cap / generalize /
     band / suppress_small_cell / date_jitter / id_pseudonymize. Each appears
@@ -224,7 +224,7 @@ def _live_action_class_count() -> int:
     counts — omitting it blinds this check to the eight-vs-nine drift it exists
     to catch.
     """
-    yaml_path = REPO_ROOT / "scripts" / "security" / "phi_scrub.yaml"
+    yaml_path = REPO_ROOT / "config" / "_defaults" / "phi_scrub.yaml"
     if not yaml_path.is_file():
         return 9  # fall back to documented constant
     expected = {
@@ -440,7 +440,7 @@ FORBIDDEN: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     # :func:`_check_file` skips correct-number matches.
     (
         r"\b\d+[-\s]+action\s+(?:catalog|catalogue|classes?|set)\b",
-        "stale action-class count — canonical is {action_count} classes (see scripts/security/phi_scrub.yaml)",
+        "stale action-class count — canonical is {action_count} classes (see config/_defaults/phi_scrub.yaml)",
         (),
     ),
 )

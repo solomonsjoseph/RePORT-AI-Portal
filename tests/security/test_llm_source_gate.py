@@ -3,9 +3,34 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 
 from scripts.security.llm_source_gate import scan_tree_for_phi
+
+
+@pytest.fixture(autouse=True)
+def _gate_scrub_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Reset the gate's session-global scrub-config cache per test and point its
+    resolution at a per-test minimal config (only ``HIVDAT`` approved as a date
+    field).
+
+    Task A7: ``load_scrub_config()`` now deep-merges
+    ``config/_defaults/phi_scrub.yaml`` (base) with the per-study override, so
+    the gate's ``load_scrub_config()`` reads ``CONFIG_DEFAULTS_DIR``. Without
+    this, the gate would cache the REAL default config (broad date approvals)
+    and stop blocking unapproved ISO dates. Pointing CONFIG_DEFAULTS_DIR at a
+    minimal HIVDAT-only config restores the per-test intent."""
+    import config
+    import scripts.security.llm_source_gate as gate
+
+    defaults_dir = tmp_path / "_scrub_defaults"
+    defaults_dir.mkdir(parents=True, exist_ok=True)
+    _write_scrub_config(defaults_dir / "phi_scrub.yaml")
+    monkeypatch.setattr(config, "CONFIG_DEFAULTS_DIR", defaults_dir)
+    # Reset the gate's module-global config cache so this test re-resolves.
+    monkeypatch.setattr(gate, "_cached_scrub_cfg", None, raising=False)
+    monkeypatch.setattr(gate, "_scrub_cfg_loaded", False, raising=False)
 
 
 def _write_scrub_config(path: Path) -> None:

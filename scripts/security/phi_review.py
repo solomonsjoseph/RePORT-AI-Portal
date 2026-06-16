@@ -12,6 +12,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
+from datetime import date
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,10 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 import yaml
+
+from scripts.utils.logging_system import get_logger
+
+logger = get_logger(__name__)
 
 __all__ = [
     "Action",
@@ -79,6 +84,11 @@ class StudyPrivacyConfig:
     max_synthetic_attempts: int
     approval_mode: str
     parallelism_mode: str
+    # ISO date (YYYY-MM-DD) the maintainer asserts the study data is current as
+    # of (Note 15). OPTIONAL — existing studies lack it; absent => ``None`` with
+    # a logged warning. A maintainer must set it in ``_study_privacy.yaml``; it
+    # is a factual data-recency claim and is never fabricated by the loader.
+    data_as_of: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -762,6 +772,33 @@ def load_study_privacy_config(study_dir: str | Path) -> StudyPrivacyConfig:
     if not isinstance(parallelism, dict):
         raise ValueError("parallelism must be a mapping")
 
+    # data_as_of (Note 15): OPTIONAL ISO date. Absent => None + warning (existing
+    # studies lack it; do NOT hard-fail). A present value must be a valid
+    # YYYY-MM-DD calendar date — a malformed value is a maintainer error and
+    # raises.
+    data_as_of_raw = raw.get("data_as_of")
+    data_as_of: str | None
+    if data_as_of_raw is None:
+        logger.warning(
+            "_study_privacy.yaml for %s has no 'data_as_of' field; data-recency "
+            "claim is unset. A maintainer should set it (YYYY-MM-DD).",
+            study_path.name,
+        )
+        data_as_of = None
+    else:
+        data_as_of = str(data_as_of_raw)
+        # Strict YYYY-MM-DD: the regex pins the dashed shape (Python 3.11's
+        # date.fromisoformat also accepts basic '20240101'); fromisoformat then
+        # validates it is a real calendar date.
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", data_as_of):
+            raise ValueError(f"data_as_of must be an ISO date (YYYY-MM-DD); got {data_as_of!r}")
+        try:
+            date.fromisoformat(data_as_of)
+        except ValueError as exc:
+            raise ValueError(
+                f"data_as_of must be an ISO date (YYYY-MM-DD); got {data_as_of!r}"
+            ) from exc
+
     return StudyPrivacyConfig(
         study_dir=study_path,
         jurisdictions=jurisdictions,
@@ -770,6 +807,7 @@ def load_study_privacy_config(study_dir: str | Path) -> StudyPrivacyConfig:
         max_synthetic_attempts=max_attempts,
         approval_mode=str(approval.get("mode", "hybrid")),
         parallelism_mode=str(parallelism.get("mode", "auto")),
+        data_as_of=data_as_of,
     )
 
 

@@ -76,6 +76,59 @@ def test_study_privacy_config_parses_supported_jurisdictions(tmp_path: Path) -> 
     assert cfg.conflict_policy == "strictest_wins"
 
 
+def test_study_privacy_config_parses_present_data_as_of(tmp_path: Path) -> None:
+    """A present ISO ``data_as_of`` is parsed onto the dataclass (Task A8)."""
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    path = _write_privacy_config(study_dir)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["data_as_of"] = "2025-03-14"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    cfg = load_study_privacy_config(study_dir)
+
+    assert cfg.data_as_of == "2025-03-14"
+
+
+def test_study_privacy_config_absent_data_as_of_is_none_and_warns(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An absent ``data_as_of`` => None and a warning, never a hard failure."""
+    import logging
+
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    _write_privacy_config(study_dir)
+
+    with caplog.at_level(logging.WARNING):
+        cfg = load_study_privacy_config(study_dir)
+
+    assert cfg.data_as_of is None
+    assert any("data_as_of" in rec.message for rec in caplog.records)
+
+
+def test_study_privacy_config_rejects_malformed_data_as_of(tmp_path: Path) -> None:
+    """A malformed ``data_as_of`` raises a clear error (Task A8)."""
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    path = _write_privacy_config(study_dir)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["data_as_of"] = "March 14, 2025"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="data_as_of must be an ISO date"):
+        load_study_privacy_config(study_dir)
+
+
+def test_study_privacy_config_rejects_impossible_data_as_of(tmp_path: Path) -> None:
+    """A dashed-but-invalid calendar date (2025-02-30) is rejected (Task A8)."""
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    path = _write_privacy_config(study_dir)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["data_as_of"] = "2025-02-30"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="data_as_of must be an ISO date"):
+        load_study_privacy_config(study_dir)
+
+
 def test_study_privacy_config_rejects_unknown_jurisdiction(tmp_path: Path) -> None:
     study_dir = tmp_path / "data" / "raw" / "Study"
     path = _write_privacy_config(study_dir)

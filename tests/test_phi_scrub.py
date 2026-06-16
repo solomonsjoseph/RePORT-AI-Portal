@@ -363,6 +363,96 @@ class TestLoadScrubConfig:
         assert cfg.field_is_date("DOB") is False
         assert cfg.field_is_birthdate("DOB") is True
 
+
+# ── Task A7: per-study config merge + merged-effective hash ──────────────────
+
+
+class TestPerStudyScrubConfigMerge:
+    """Defaults base + per-study override deep-merge and merged hash (Task A7)."""
+
+    def _setup(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]:
+        """Patch config so defaults live at <tmp>/config/_defaults and per-study
+        at <tmp>/config/<STUDY>. Returns (default_path, per_study_path)."""
+        defaults_dir = tmp_path / "config" / "_defaults"
+        defaults_dir.mkdir(parents=True)
+        study_dir = tmp_path / "config" / config.STUDY_NAME
+        study_dir.mkdir(parents=True)
+        monkeypatch.setattr(config, "CONFIG_DIR", tmp_path / "config")
+        monkeypatch.setattr(config, "CONFIG_DEFAULTS_DIR", defaults_dir)
+        return defaults_dir / "phi_scrub.yaml", study_dir / "phi_scrub.yaml"
+
+    def test_defaults_only_when_no_per_study(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        default_path, _ = self._setup(tmp_path, monkeypatch)
+        _write_config(default_path, max_jitter_days=30)
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        assert cfg.max_jitter_days == 30
+
+    def test_no_config_at_all_returns_none(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._setup(tmp_path, monkeypatch)  # neither file written
+        assert phi_scrub.load_scrub_config() is None
+        assert phi_scrub.effective_scrub_config_hash() is None
+
+    def test_per_study_override_wins(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        default_path, per_study_path = self._setup(tmp_path, monkeypatch)
+        _write_config(default_path, max_jitter_days=30, small_cell_threshold=5)
+        # Per-study overrides a scalar; an unspecified scalar (small_cell) is
+        # inherited from the defaults base.
+        _write_config(per_study_path, max_jitter_days=7)
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        assert cfg.max_jitter_days == 7  # per-study scalar wins
+        assert cfg.small_cell_threshold == 5  # inherited from defaults
+
+    def test_per_study_list_replaces(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        default_path, per_study_path = self._setup(tmp_path, monkeypatch)
+        _write_config(default_path, date_fields=["^VISDAT$", "_DAT$"])
+        _write_config(per_study_path, date_fields=["^ONLYTHIS$"])
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        # List value REPLACES (not merges): VISDAT no longer a date field.
+        assert cfg.field_is_date("ONLYTHIS")
+        assert cfg.field_is_date("VISDAT") is False
+
+    def test_merged_hash_is_deterministic(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        default_path, per_study_path = self._setup(tmp_path, monkeypatch)
+        _write_config(default_path, max_jitter_days=30)
+        _write_config(per_study_path, max_jitter_days=7)
+        h1 = phi_scrub.effective_scrub_config_hash()
+        h2 = phi_scrub.effective_scrub_config_hash()
+        assert h1 is not None and h1 == h2
+
+    def test_merged_hash_discriminates_overrides(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        default_path, per_study_path = self._setup(tmp_path, monkeypatch)
+        _write_config(default_path, max_jitter_days=30)
+        # No override → hash A.
+        hash_defaults_only = phi_scrub.effective_scrub_config_hash()
+        # Different per-study overrides → different hashes (no collision).
+        _write_config(per_study_path, max_jitter_days=7)
+        hash_override_a = phi_scrub.effective_scrub_config_hash()
+        _write_config(per_study_path, max_jitter_days=14)
+        hash_override_b = phi_scrub.effective_scrub_config_hash()
+        assert len({hash_defaults_only, hash_override_a, hash_override_b}) == 3
+
+    def test_single_file_hash_matches_sha256_of_bytes(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Back-compat: a defaults-only resolution hashes to sha256(file_bytes)."""
+        import hashlib
+
+        default_path, _ = self._setup(tmp_path, monkeypatch)
+        _write_config(default_path, max_jitter_days=30)
+        expected = hashlib.sha256(default_path.read_bytes()).hexdigest()
+        assert phi_scrub.effective_scrub_config_hash() == expected
+
     def test_non_list_date_null_tokens_raises(self, scrub_config_path: Path) -> None:
         """L4: a date_null_tokens value that is not a list must raise PHIScrubError.
 

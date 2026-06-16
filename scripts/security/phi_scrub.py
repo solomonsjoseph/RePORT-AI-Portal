@@ -129,7 +129,7 @@ from scripts.audit.ledger import (
 from scripts.extraction.io import atomic_write_json, atomic_write_jsonl, parse_date
 from scripts.security.phi_patterns import mask_date_shape as _mask_date_shape
 from scripts.security.secure_env import assert_output_zone, assert_write_zone
-from scripts.utils.integrity import hash_file
+from scripts.utils.integrity import hash_bytes, hash_file
 from scripts.utils.logging_system import get_logger
 
 logger = get_logger(__name__)
@@ -154,6 +154,7 @@ __all__ = [
     "bootstrap_key",
     "cap_numeric",
     "date_offset_days",
+    "effective_scrub_config_hash",
     "generalize_value",
     "load_key",
     "load_scrub_config",
@@ -676,12 +677,119 @@ class PHIScrubConfig:
         return value.strip().upper() in self.date_null_tokens
 
 
-def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
-    """Load + compile the scrub config. Returns ``None`` if file is absent.
+def _deep_merge_scrub(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    """Deep-merge *override* on top of *base* for scrub-config dicts.
 
-    An absent config is NOT an error — it means phi_scrub is a no-op for this
-    study, and the pipeline continues. This lets users opt in per-study by
-    dropping a YAML file in place.
+    MERGE SEMANTICS (deliberate, per Task A7):
+    - Nested DICT values recurse (so a per-study override of one sub-key under
+      e.g. ``band_ranges`` does not wipe its siblings).
+    - LIST values and SCALARS from *override* REPLACE the base value wholesale.
+      Rule keys (``keep_fields``, ``date_fields``, ``id_fields``, …) are lists,
+      so a per-study file REPLACES that rule list rather than appending — the
+      per-study config is the authoritative full list for any rule it declares.
+    """
+    result = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(result.get(key), dict):
+            result[key] = _deep_merge_scrub(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def _resolve_scrub_config_files(path: Path | None, study: str | None) -> list[Path]:
+    """Return the ordered scrub-config files to merge (base first).
+
+    Explicit *path* → single-file mode (back-compat for tests and explicit
+    callers): exactly that file, no defaults merge. ``path is None`` → per-study
+    resolution: the packaged defaults (``config/_defaults/phi_scrub.yaml``) as
+    the base, with the per-study override (``config/<study>/phi_scrub.yaml``)
+    deep-merged on top when present.
+    """
+    if path is not None:
+        return [Path(path)]
+    files: list[Path] = []
+    default_path = Path(config.CONFIG_DEFAULTS_DIR) / config.PHI_SCRUB_CONFIG_FILENAME
+    if default_path.is_file():
+        files.append(default_path)
+    study_path = Path(config.study_config_path(config.PHI_SCRUB_CONFIG_FILENAME, study=study))
+    if study_path.is_file() and study_path != default_path:
+        files.append(study_path)
+    return files
+
+
+def _load_merged_scrub_raw(path: Path | None, study: str | None) -> dict[str, Any] | None:
+    """Load + deep-merge the effective scrub config as a raw dict.
+
+    Returns ``None`` when NO config resolves at all (absent defaults AND absent
+    per-study override) — the caller (``run_scrub``) treats that fail-closed.
+    """
+    merged: dict[str, Any] | None = None
+    for cfg_file in _resolve_scrub_config_files(path, study):
+        if not cfg_file.is_file():
+            continue
+        with cfg_file.open("r", encoding="utf-8") as fh:
+            raw = yaml.safe_load(fh) or {}
+        if not isinstance(raw, dict):
+            raise PHIScrubError(
+                f"phi_scrub config at {cfg_file} must be a mapping at the top level"
+            )
+        merged = raw if merged is None else _deep_merge_scrub(merged, raw)
+    return merged
+
+
+# Separator placed BETWEEN multiple merged config files so a two-file
+# concatenation can never collide with a single file whose bytes happen to span
+# the join point. A single-file resolution emits NO separator, so its hash
+# equals ``sha256(file_bytes)`` (== ``hash_file(file)``) — preserving the prior
+# single-file hash for the common defaults-only study.
+_SCRUB_HASH_SEPARATOR = b"\x00--phi-scrub-merge--\x00"
+
+
+def effective_scrub_config_hash(
+    study: str | None = None, *, path: Path | None = None
+) -> str | None:
+    """SHA-256 of the EFFECTIVE scrub config (defaults + per-study override).
+
+    HASH INVARIANT: both the ledger envelope (``run_scrub``) and verifier
+    assertion 5 (``extract_to_llm_source``) call THIS helper so they hash the
+    SAME effective config and can never drift. The hash is taken over the raw
+    bytes of every resolved config file in merge order, joined by a fixed
+    separator. Properties:
+
+    - DISCRIMINATION: two studies with different per-study overrides hash
+      differently (the per-study bytes differ), so they cannot collide.
+    - DETERMINISM: byte-identical inputs hash identically (reproducibility).
+    - BACK-COMPAT: a single resolved file (the defaults-only common case, or an
+      explicit ``path``) hashes to ``sha256(file_bytes)`` — identical to the
+      prior ``hash_file`` behaviour.
+
+    Returns ``None`` when no config resolves at all.
+    """
+    files = [f for f in _resolve_scrub_config_files(path, study) if f.is_file()]
+    if not files:
+        return None
+    chunks: list[bytes] = []
+    for index, cfg_file in enumerate(files):
+        if index:
+            chunks.append(_SCRUB_HASH_SEPARATOR)
+        chunks.append(cfg_file.read_bytes())
+    return hash_bytes(b"".join(chunks))
+
+
+def load_scrub_config(
+    path: Path | None = None, *, study: str | None = None
+) -> PHIScrubConfig | None:
+    """Load + compile the scrub config. Returns ``None`` if no config resolves.
+
+    An absent config is NOT an error here — it means phi_scrub is a no-op for
+    this study, and the pipeline continues (``run_scrub`` then fail-closes on
+    real data). With ``path is None`` the packaged defaults
+    (``config/_defaults/phi_scrub.yaml``) are loaded as the BASE and a per-study
+    override (``config/<study>/phi_scrub.yaml``) is deep-merged on top when
+    present (per-study keys win; per-study list values REPLACE — see
+    ``_deep_merge_scrub``). Passing an explicit ``path`` loads just that single
+    file (back-compat).
 
     When ``compliance_posture: limited_dataset`` is set, the function also
     verifies the authority note exists at :data:`_LIMITED_DATASET_AUTHORITY`.
@@ -690,15 +798,9 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
     date / id patterns plus generalization_maps, age_cap, and
     small_cell_threshold constants.
     """
-    path = path or config.PHI_SCRUB_CONFIG_PATH
-    if not path.is_file():
+    raw = _load_merged_scrub_raw(path, study)
+    if raw is None:
         return None
-
-    with path.open("r", encoding="utf-8") as fh:
-        raw = yaml.safe_load(fh) or {}
-
-    if not isinstance(raw, dict):
-        raise PHIScrubError(f"phi_scrub config at {path} must be a mapping at the top level")
 
     posture = str(raw.get("compliance_posture", _POSTURE_SAFE_HARBOR))
     if posture == _POSTURE_LIMITED_DATASET:
@@ -2310,8 +2412,15 @@ def run_scrub(
         )
         return
 
-    # Config is present — seal its hash into every subsequent ledger write.
-    scrub_config_hash: str = hash_file(Path(config.PHI_SCRUB_CONFIG_PATH))
+    # Config is present — seal the MERGED EFFECTIVE config hash (defaults +
+    # per-study override) into every subsequent ledger write. Hashing the merged
+    # dict (not a single file) keeps the hash collision-free across studies with
+    # different overrides and matches verifier assertion 5, which calls the same
+    # ``effective_scrub_config_hash`` helper.
+    _eff_hash = effective_scrub_config_hash()
+    scrub_config_hash: str = (
+        _eff_hash if _eff_hash is not None else hash_file(Path(config.PHI_SCRUB_CONFIG_PATH))
+    )
 
     # Load approval classifications (no-op when run_id/runs_dir absent or file missing).
     approval_lookup, sot_force_drop_by_stem, rule_bundle_sha256_val = (

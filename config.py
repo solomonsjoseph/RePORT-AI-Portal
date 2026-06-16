@@ -399,15 +399,50 @@ STUDY_STAGING_DIR: Path = TMP_DIR / STUDY_NAME
 STAGING_DATASETS_DIR: Path = STUDY_STAGING_DIR / "datasets"
 STAGING_DICTIONARY_DIR: Path = STUDY_STAGING_DIR / "dictionary"
 
+# Note-16 pre-creation tree leaves (Break 5). Staging legs under TMP_DIR and the
+# audit / llm_source legs under STUDY_OUTPUT_DIR. These mirror the per-run tree
+# created by ``ensure_run_directories()`` below.
+STAGING_HEADERS_DIR: Path = STUDY_STAGING_DIR / "headers"
+STAGING_QUARANTINE_DIR: Path = STAGING_DATASETS_DIR / "quarantine"
+STAGING_SOT_DIR: Path = STUDY_STAGING_DIR / "SoT"
+AUDIT_HUMAN_REVIEW_DIR: Path = STUDY_AUDIT_DIR / "human_review"
+AUDIT_DATASETS_DIR: Path = STUDY_AUDIT_DIR / "datasets"
+AUDIT_SCRUBBING_CODE_DIR: Path = STUDY_AUDIT_DIR / "scrubbing_code"
+LLM_SOURCE_DATASETS_DIR: Path = STUDY_LLM_SOURCE_DIR / "datasets"
+
 # ----------------------------------------------------------------------------
 # PHI SCRUB
 # ----------------------------------------------------------------------------
 # Narrow PHI handling: per-subject deterministic date jitter (SANT method) +
 # HMAC-SHA256 ID pseudonymization. See scripts/security/phi_scrub.py.
 #
-# Config file lives alongside the module so study-specific regex patterns can
-# be edited without touching code.
-PHI_SCRUB_CONFIG_PATH: Path = BASE_DIR / "scripts" / "security" / "phi_scrub.yaml"
+# The scrub config is resolved per-study: a per-study override at
+# ``config/<study>/phi_scrub.yaml`` wins over the packaged defaults at
+# ``config/_defaults/phi_scrub.yaml``. ``phi_scrub.load_scrub_config()`` deep-
+# merges the per-study file ON TOP of the defaults (the EFFECTIVE config); this
+# resolver returns the single most-specific *existing* file so the ~24
+# ``config.PHI_SCRUB_CONFIG_PATH`` consumers (existence checks, friendly
+# messaging) keep working. The reproducibility-critical scrub_config_hash hashes
+# the MERGED effective config, not this single path — see
+# ``phi_scrub.effective_scrub_config_hash()``.
+PHI_SCRUB_CONFIG_FILENAME = "phi_scrub.yaml"
+
+
+def phi_scrub_config_path(study: str | None = None) -> Path:
+    """Resolve the active scrub-config path for *study*.
+
+    Returns ``config/<study>/phi_scrub.yaml`` when that per-study override
+    exists, otherwise ``config/_defaults/phi_scrub.yaml``. The deep-merge of the
+    two (when both exist) happens in ``phi_scrub.load_scrub_config()``; this
+    helper only picks the most-specific existing file.
+    """
+    per_study = CONFIG_DIR / (study or STUDY_NAME) / PHI_SCRUB_CONFIG_FILENAME
+    if per_study.is_file():
+        return per_study
+    return CONFIG_DEFAULTS_DIR / PHI_SCRUB_CONFIG_FILENAME
+
+
+PHI_SCRUB_CONFIG_PATH: Path = phi_scrub_config_path()
 
 
 def _phi_key_path() -> Path:
@@ -618,6 +653,67 @@ def ensure_directories() -> None:
     for path in sensitive_paths:
         # Best-effort: a chmod failure (e.g., not the file owner) is not a
         # fatal startup error.
+        with contextlib.suppress(OSError):
+            path.chmod(0o700)
+
+
+def ensure_run_directories(study: str | None = None, run_id: str | None = None) -> None:
+    """Pre-create the full Note-16 per-study (and per-run) directory tree.
+
+    Builds the complete tree a publish run expects so downstream legs never have
+    to ``mkdir(parents=True)`` ad hoc:
+
+        config/<study>/
+        tmp/<study>/{headers, datasets, datasets/quarantine, SoT}
+        output/<study>/{audit, audit/human_review, audit/datasets,
+                        audit/scrubbing_code, runs/<run_id>, llm_source,
+                        llm_source/datasets, llm_source/SoT, snapshots}
+
+    Sensitive leaves (anything that may carry PHI-scrubbed data, staging PHI, or
+    audit evidence) are hardened to 0o700 after creation, mirroring
+    ``ensure_directories()``. This does NOT replace ``ensure_directories()`` —
+    it is the per-run superset used by the publish pipeline. ``study`` defaults
+    to ``STUDY_NAME``; ``run_id`` adds ``runs/<run_id>`` when supplied.
+
+    Pre-creating empty ``tmp/<study>/`` leaves is safe: secure_staging purges /
+    re-creates the staging workspace explicitly before reuse, so an empty
+    pre-created dir is indistinguishable from a fresh one.
+    """
+    import contextlib
+
+    active_study = study or STUDY_NAME
+    study_config_dir = CONFIG_DIR / active_study
+    staging_root = TMP_DIR / active_study
+    staging_datasets = staging_root / "datasets"
+    output_dir = OUTPUT_DIR / active_study
+    audit_dir = output_dir / "audit"
+    llm_source = output_dir / "llm_source"
+
+    # Non-sensitive parents created first.
+    for path in (OUTPUT_DIR, TMP_DIR, CONFIG_DIR, study_config_dir, staging_root):
+        path.mkdir(parents=True, exist_ok=True)
+
+    sensitive_paths = [
+        staging_root / "headers",
+        staging_datasets,
+        staging_datasets / "quarantine",
+        staging_root / "SoT",
+        output_dir,
+        audit_dir,
+        audit_dir / "human_review",
+        audit_dir / "datasets",
+        audit_dir / "scrubbing_code",
+        llm_source,
+        llm_source / "datasets",
+        llm_source / "SoT",
+        output_dir / "snapshots",
+    ]
+    if run_id:
+        sensitive_paths.append(output_dir / "runs" / run_id)
+
+    for path in sensitive_paths:
+        path.mkdir(parents=True, exist_ok=True)
+    for path in sensitive_paths:
         with contextlib.suppress(OSError):
             path.chmod(0o700)
 
