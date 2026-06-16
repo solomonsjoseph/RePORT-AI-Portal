@@ -119,6 +119,7 @@ from typing import Any
 import yaml
 
 import config
+from scripts.audit import is_llm_agent
 from scripts.audit.ledger import (
     PHI_LEDGER_FILENAME,
     LedgerWriter,
@@ -143,6 +144,7 @@ __all__ = [
     "PHIBandUnmappedError",
     "PHIDateUnshiftableError",
     "PHIGeneralizeUnmappedError",
+    "PHIKeyAccessDeniedError",
     "PHIKeyMissingError",
     "PHIKeyPermissionError",
     "PHIPartialThresholdExceededError",
@@ -304,6 +306,16 @@ class PHIKeyMissingError(PHIScrubError):
 
 class PHIKeyPermissionError(PHIScrubError):
     """Raised when the sidecar key file has unsafe permissions."""
+
+
+class PHIKeyAccessDeniedError(PHIScrubError):
+    """Raised when an ``llm-agent``-role process attempts to read the HMAC key.
+
+    The HMAC key lets its holder forge the deterministic form-scoped pseudonyms
+    (``pseudo_id``) and therefore re-link or de-anonymize subjects. An LLM-agent
+    process must never obtain it — this is the key-access analogue of the
+    ledger-write role gate in :mod:`scripts.audit.ledger`.
+    """
 
 
 class PHIQuarantineOverflowError(PHIScrubError):
@@ -1124,9 +1136,21 @@ def load_scrub_config(
 def load_key(path: Path | None = None) -> bytes:
     """Load the HMAC key from the sidecar file.
 
-    Raises :class:`PHIKeyMissingError` if the file is absent and
+    Raises :class:`PHIKeyAccessDeniedError` if the calling process is in the
+    ``llm-agent`` role (the key would let it forge pseudonyms / de-anonymize),
+    :class:`PHIKeyMissingError` if the file is absent, and
     :class:`PHIKeyPermissionError` if the file mode is not ``0600``.
+
+    This is the authoritative low-level reader; :class:`PHIKeyStore`
+    (``scripts.security.phi_keystore``) wraps it for caching, fingerprinting,
+    and zeroizable storage. The role gate lives here at the lowest level so a
+    direct ``load_key()`` call cannot bypass it.
     """
+    if is_llm_agent():
+        raise PHIKeyAccessDeniedError(
+            "PHI HMAC key access refused: REPORTAL_PROCESS_ROLE=llm-agent. "
+            "The key is restricted to the trusted publish/scrub path."
+        )
     path = path or config.PHI_KEY_PATH
     if not path.is_file():
         raise PHIKeyMissingError(

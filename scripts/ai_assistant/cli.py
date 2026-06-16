@@ -325,12 +325,12 @@ def run_repl() -> None:
 
 def main() -> None:
     """Entry point for the CLI."""
+    from scripts.security.phi_keystore import get_phi_key as _load_phi_key
     from scripts.security.phi_scrub import (
         PHIKeyMissingError,
         PHIKeyPermissionError,
         PHIScrubError,
     )
-    from scripts.security.phi_scrub import load_key as _load_phi_key
     from scripts.utils.log_hygiene import install_phi_redactor
     from scripts.utils.logging_system import setup_logging
 

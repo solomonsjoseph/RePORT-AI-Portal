@@ -29,14 +29,16 @@ from scripts.extraction.cleanup_propagation import run_propagation
 from scripts.extraction.dataset_cleanup import clean_trio_datasets
 from scripts.extraction.dataset_pipeline import process_datasets
 from scripts.extraction.load_dictionary import load_study_dictionary
+from scripts.security.key_rotation import check_and_record as _check_key_rotation
 from scripts.security.llm_source_gate import scan_tree_for_phi
+from scripts.security.phi_keystore import get_phi_key as _load_phi_key
+from scripts.security.phi_keystore import phi_key_fingerprint as _phi_key_fingerprint
 from scripts.security.phi_scrub import (
     PHI_SCRUB_SENTINEL_NAME,
     PHIKeyMissingError,
     PHIKeyPermissionError,
     PHIScrubError,
 )
-from scripts.security.phi_scrub import load_key as _load_phi_key
 from scripts.security.phi_scrub import run_scrub as run_phi_scrub
 from scripts.utils import logging_system as log
 from scripts.utils.errors import format_for_log, wrap
@@ -1288,8 +1290,6 @@ For detailed documentation, see the Sphinx docs or README.md
         # single artifact an IRB/IEC reviewer inspects to verify the full
         # raw → scrub → publish chain without reading any row contents.
         def run_lineage() -> None:
-            import hashlib as _hashlib
-
             try:
                 from scripts.security.phi_scrub import load_scrub_config
 
@@ -1299,15 +1299,27 @@ For detailed documentation, see the Sphinx docs or README.md
                 posture = "unknown"
 
             # PHI key fingerprint — gives IRB reviewers a verifiable handle
-            # without exposing the key itself. SHA-256 of the raw HMAC key.
+            # without exposing the key itself. Routed through PHIKeyStore so the
+            # value is byte-identical to the historical sha256(load_key())
+            # fingerprint while sharing the singleton's role-gate + cache.
             phi_key_fp: str | None = None
             try:
-                phi_key_fp = _hashlib.sha256(_load_phi_key()).hexdigest()
+                phi_key_fp = _phi_key_fingerprint()
             except (PHIKeyMissingError, PHIKeyPermissionError, PHIScrubError):
                 phi_key_fp = None  # leave manifest free of the field
 
             audit_dir = Path(config.STUDY_AUDIT_DIR)
             audit_dir.mkdir(parents=True, exist_ok=True)
+
+            # Key-rotation detection (C1.3): warn + record if the HMAC key
+            # changed since this study was last published. First run / no prior
+            # record is never a rotation. Skipped when no key is available.
+            if phi_key_fp is not None:
+                try:
+                    _check_key_rotation(audit_dir, phi_key_fp, run_id=resolve_run_id())
+                except Exception:  # pragma: no cover - detection must never block publish
+                    log.warning("key-rotation detection skipped (non-fatal)")
+
             emit_lineage_manifest(
                 study_name=config.STUDY_NAME,
                 raw_datasets_dir=Path(config.DATASETS_DIR),

@@ -23,8 +23,11 @@ visible.
 from __future__ import annotations
 
 from .kanon_gate import KAnonResult, kanon_check, mask_small_cell, suppress_small_cells
+from .key_rotation import RotationStatus, check_and_record, detect_rotation
 from .phi_gate import PHIGateConfigError, PHIGateResult, phi_gate_check
+from .phi_keystore import PHIKeyStore, clear_phi_key, get_phi_key, phi_key_fingerprint
 from .phi_scrub import (
+    PHIKeyAccessDeniedError,
     PHIScrubConfig,
     PHIScrubError,
     bootstrap_key,
@@ -52,12 +55,21 @@ __all__ = [  # noqa: RUF022 — grouped by concept for readability, not alphabet
     "assert_write_zone",
     "validate_paths",
     # PHI scrub (8-action catalog)
+    "PHIKeyAccessDeniedError",
     "PHIScrubConfig",
     "PHIScrubError",
     "bootstrap_key",
     "load_key",
     "load_scrub_config",
     "run_scrub",
+    # PHI key store + rotation (Wave 3 C1)
+    "PHIKeyStore",
+    "RotationStatus",
+    "check_and_record",
+    "clear_phi_key",
+    "detect_rotation",
+    "get_phi_key",
+    "phi_key_fingerprint",
     # Agent-boundary gates
     "KAnonResult",
     "PHIGateConfigError",

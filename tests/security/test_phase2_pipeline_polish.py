@@ -85,14 +85,20 @@ def test_lineage_manifest_omits_fingerprint_when_not_provided() -> None:
 
 
 def test_main_emits_phi_key_fingerprint_to_lineage() -> None:
-    """``main.py``'s ``run_lineage`` must compute SHA-256 of the PHI key
-    and pass it to ``emit_lineage_manifest``."""
+    """``main.py``'s ``run_lineage`` must compute the PHI key fingerprint and
+    pass it to ``emit_lineage_manifest``.
+
+    Wave 3 C1 routed the computation through ``PHIKeyStore`` — ``main.py`` now
+    calls ``phi_key_fingerprint()`` (imported as ``_phi_key_fingerprint``), which
+    returns the byte-identical ``sha256(<raw key bytes>).hexdigest()`` value the
+    inline ``_hashlib.sha256(_load_phi_key()).hexdigest()`` used to compute.
+    """
     src = Path("main.py").read_text(encoding="utf-8")
     assert "phi_key_fingerprint=phi_key_fp" in src, (
         "main.py must pass the fingerprint into emit_lineage_manifest"
     )
-    assert "_hashlib.sha256(_load_phi_key()).hexdigest()" in src, (
-        "main.py must compute the fingerprint as SHA-256 of the loaded key"
+    assert "_phi_key_fingerprint()" in src, (
+        "main.py must compute the fingerprint via the PHIKeyStore funnel"
     )
 
 
