@@ -16,9 +16,7 @@ from scripts.utils.skill_protocol import (
 
 
 def test_emit_then_parse_roundtrip(capsys: pytest.CaptureFixture[str]) -> None:
-    emit_skill_result(
-        SkillResult(skill="phi-scrubbing", ok=True, summary="done", data={"n": 3})
-    )
+    emit_skill_result(SkillResult(skill="phi-scrubbing", ok=True, summary="done", data={"n": 3}))
     out = capsys.readouterr().out
     assert out.startswith(SKILL_RESULT_PREFIX)
     result = parse_skill_result(out, skill="phi-scrubbing", exit_code=0)

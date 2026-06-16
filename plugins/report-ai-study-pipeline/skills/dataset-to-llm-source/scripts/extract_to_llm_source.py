@@ -740,7 +740,7 @@ def _verify_assertion_decided_vs_applied(
     audit_dir: Path,
     run_dir: Path,
     dataset_files_dir: Path,
-    scrub_config_path: Path,
+    study: str,
 ) -> _AssertionResult:
     """Each approved form's APPLIED protection must be ≥ phi_review's DECIDED protection.
 
@@ -770,13 +770,12 @@ def _verify_assertion_decided_vs_applied(
     try:
         import scripts.security.phi_scrub as _phi_scrub
 
-        # Single-file load of the EFFECTIVE config path. Correct while no study
-        # has a per-study config/<study>/phi_scrub.yaml override (effective path
-        # == defaults == merged). FOLLOW-UP (per-study overrides, Wave 3/4): switch
-        # to the merged loader (load_scrub_config(study=...)) so decided-vs-applied
-        # evaluates the SAME merged config run_scrub applied; that also requires
-        # tests to monkeypatch CONFIG_DEFAULTS_DIR.
-        cfg = _phi_scrub.load_scrub_config(scrub_config_path)
+        # Merged-config load (risk #8): deep-merge config/_defaults/phi_scrub.yaml
+        # with the per-study config/<study>/phi_scrub.yaml override, so this
+        # decided-vs-applied check evaluates the SAME effective config run_scrub
+        # actually applied. (When no per-study override exists the merged config ==
+        # defaults, identical to the prior single-file behaviour.)
+        cfg = _phi_scrub.load_scrub_config(study=study)
     except Exception:  # config load failure → conservative keep fallback
         cfg = None
 
@@ -884,7 +883,7 @@ def _ledger_accounted_headers(ledger_path: Path) -> set[str]:
 
 
 def _verify_assertion_14_audit_coverage(
-    audit_dir: Path, dataset_files_dir: Path, run_dir: Path, scrub_config_path: Path
+    audit_dir: Path, dataset_files_dir: Path, run_dir: Path, study: str
 ) -> _AssertionResult:
     """Every PUBLISHED dataset column has a per-variable audit accounting.
 
@@ -913,11 +912,10 @@ def _verify_assertion_14_audit_coverage(
     try:
         import scripts.security.phi_scrub as _phi_scrub
 
-        # Single-file load of the EFFECTIVE config path — see the matching
-        # FOLLOW-UP note in _verify_assertion_decided_vs_applied: switch to the
-        # merged loader (load_scrub_config(study=...)) once per-study phi_scrub
-        # overrides exist, so coverage is checked against the applied merge.
-        cfg = _phi_scrub.load_scrub_config(scrub_config_path)
+        # Merged-config load (risk #8): coverage is checked against the SAME
+        # deep-merged defaults+per-study config run_scrub applied — see the
+        # matching note in _verify_assertion_decided_vs_applied.
+        cfg = _phi_scrub.load_scrub_config(study=study)
     except Exception:  # config load failure → conservative (keep) classification
         cfg = None
 
@@ -1082,7 +1080,7 @@ def _cmd_verify(args: argparse.Namespace) -> int:
             12,
             "decided_action_matches_applied",
             lambda: _verify_assertion_decided_vs_applied(
-                audit_dir, run_dir, dataset_files_dir, phi_scrub_config_path
+                audit_dir, run_dir, dataset_files_dir, study
             ),
             EXIT_DECISION_MISMATCH,
         ),
@@ -1092,7 +1090,7 @@ def _cmd_verify(args: argparse.Namespace) -> int:
             14,
             "ledger_covers_all_columns",
             lambda: _verify_assertion_14_audit_coverage(
-                audit_dir, dataset_files_dir, run_dir, phi_scrub_config_path
+                audit_dir, dataset_files_dir, run_dir, study
             ),
             EXIT_AUDIT_COVERAGE_INCOMPLETE,
         ),
@@ -1327,9 +1325,10 @@ def _run_form_approval_gate(
     # deliberate human keep decisions. Both let review_form_headers clear
     # false-positive coverage holds and catch SoT/name-rule disagreements.
     sot_root = Path(config.OUTPUT_DIR) / study / "llm_source" / "SoT"
-    # Effective-path single-file load (defaults == merged today). FOLLOW-UP: use
-    # the merged loader once per-study phi_scrub overrides exist (Wave 3/4).
-    _scrub_cfg = load_scrub_config(Path(config.PHI_SCRUB_CONFIG_PATH))
+    # Merged-config load (risk #8): the approval gate's published-raw / keep
+    # determination must reflect the SAME deep-merged defaults+per-study config
+    # the scrub applies (defaults == merged when no per-study override exists).
+    _scrub_cfg = load_scrub_config(study=study)
 
     approvals: list[Any] = []
 
