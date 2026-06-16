@@ -1,0 +1,10 @@
+jurisdictions:
+  - USA
+  - INDIA
+rule_refresh: online_preferred
+conflict_policy: strictest_wins
+approval:
+  mode: hybrid
+  max_synthetic_attempts: 5
+parallelism:
+  mode: auto

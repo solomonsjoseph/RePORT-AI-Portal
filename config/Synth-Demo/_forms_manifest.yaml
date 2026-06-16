@@ -1,0 +1,10 @@
+# Synthetic demo study — generalization proof for the publish pipeline.
+# All data is fabricated; no real subjects, no PHI.
+required:
+- 1_Enrollment.xlsx
+- 2_Lab.xlsx
+optional: []
+reject: []
+date_locales:
+  EN_VISDAT: MDY
+  LB_VISDAT: MDY

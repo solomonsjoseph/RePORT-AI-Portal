@@ -406,7 +406,9 @@ def _verify_assertion_1_manifest_exists_parses(
     study_raw_dir: Path,
 ) -> _AssertionResult:
     """Assertion 1: _forms_manifest.yaml exists and parses as a dict."""
-    manifest_path = study_raw_dir / "_forms_manifest.yaml"
+    import config
+
+    manifest_path = config.study_config_path("_forms_manifest.yaml", study=study_raw_dir.name)
     if not manifest_path.exists():
         return "fail", f"_forms_manifest.yaml not found at {manifest_path}"
     try:
@@ -978,7 +980,7 @@ def _cmd_verify(args: argparse.Namespace) -> int:
     llm_source_dir = study_output_dir / "llm_source"
     dataset_files_dir = llm_source_dir / "dataset_schema" / "files"
     audit_dir = study_output_dir / "audit"
-    manifest_path = study_raw_dir / "_forms_manifest.yaml"
+    manifest_path = config.study_config_path("_forms_manifest.yaml", study=study_raw_dir.name)
 
     checked_utc = datetime.now(UTC).isoformat()
 
@@ -1291,7 +1293,7 @@ def _run_form_approval_gate(
     )
     datasets_dir = study_raw_dir / "datasets"
     review_forms = _manifest_review_forms(
-        study_raw_dir / "_forms_manifest.yaml",
+        config.study_config_path("_forms_manifest.yaml", study=study_raw_dir.name),
         datasets_dir=datasets_dir,
         selected_forms=selected_forms,
     )

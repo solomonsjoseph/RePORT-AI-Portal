@@ -179,6 +179,16 @@ def monkeypatch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     raw_datasets.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(config, "DATASETS_DIR", raw_datasets)
 
+    # Study config now lives under config/<study>/ (Note 11). Patch the config
+    # chokepoint to a tmp location so check_forms_manifest / load_study_privacy
+    # resolve there (no manifest present = backward-compatible empty dict).
+    config_dir = tmp_path / "config"
+    study_config_dir = config_dir / config.STUDY_NAME
+    monkeypatch.setattr(config, "CONFIG_DIR", config_dir)
+    monkeypatch.setattr(config, "STUDY_CONFIG_DIR", study_config_dir)
+    monkeypatch.setattr(config, "FORMS_MANIFEST_PATH", study_config_dir / "_forms_manifest.yaml")
+    monkeypatch.setattr(config, "STUDY_PRIVACY_PATH", study_config_dir / "_study_privacy.yaml")
+
     # Also patch secure_env markers so zone guards accept tmp_path-based paths
     import scripts.security.secure_env as _se
 

@@ -224,6 +224,21 @@ DATASETS_DIR = STUDY_DATA_DIR / "datasets"
 ANNOTATED_PDFS_DIR = STUDY_DATA_DIR / "annotated_pdfs"
 DATA_DICTIONARY_DIR = STUDY_DATA_DIR / "data_dictionary"
 
+# Study config lives in config/<study>/ (underscore-prefixed YAML), separate
+# from raw data (Excel/CSV in data/raw/<study>/datasets/). Note 11.
+CONFIG_DIR = BASE_DIR / "config"
+CONFIG_DEFAULTS_DIR = CONFIG_DIR / "_defaults"
+STUDY_CONFIG_DIR = CONFIG_DIR / STUDY_NAME
+
+
+def study_config_path(filename: str, *, study: str | None = None) -> Path:
+    """Resolve a per-study config file under config/<study>/ (single chokepoint)."""
+    return CONFIG_DIR / (study or STUDY_NAME) / filename
+
+
+FORMS_MANIFEST_PATH = STUDY_CONFIG_DIR / "_forms_manifest.yaml"
+STUDY_PRIVACY_PATH = STUDY_CONFIG_DIR / "_study_privacy.yaml"
+
 # Legacy constant retained for rollback/back-compat checks. The active
 # LLM-visible clean tree is STUDY_LLM_SOURCE_DIR; this directory is not created
 # by default.

@@ -1009,9 +1009,11 @@ class TestRunScrub:
         """
         import yaml
 
-        # Write a forms manifest with a date_locales entry for IC_VISDAT_v2 → DMY
-        datasets_dir = config.DATASETS_DIR
-        manifest_path = datasets_dir.parent / "_forms_manifest.yaml"
+        # Write a forms manifest with a date_locales entry for IC_VISDAT_v2 → DMY.
+        # The manifest now lives under config/<study>/ (Note 11); monkeypatch_config
+        # patches FORMS_MANIFEST_PATH to a tmp config location.
+        manifest_path = config.FORMS_MANIFEST_PATH
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
         manifest_path.write_text(
             yaml.safe_dump(
                 {

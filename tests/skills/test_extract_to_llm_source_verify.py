@@ -75,6 +75,10 @@ def _patch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output", raising=False)
     monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp", raising=False)
     monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False)
+    # Study config now lives under config/<study>/ (Note 11). Point CONFIG_DIR at
+    # tmp/data/raw so study_config_path resolves the manifest where the test
+    # helpers write it (study_dir / _forms_manifest.yaml).
+    monkeypatch.setattr(config, "CONFIG_DIR", tmp_path / "data" / "raw", raising=False)
     monkeypatch.setattr(
         config,
         "PHI_SCRUB_CONFIG_PATH",

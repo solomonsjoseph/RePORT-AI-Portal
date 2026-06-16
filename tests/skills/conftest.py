@@ -64,6 +64,16 @@ def patch_config(monkeypatch: Any, tmp_path: Path, study: str = SKILLS_TEST_STUD
         tmp_path / "data" / "raw",
         raising=False,
     )
+    # Study config now lives under config/<study>/ (Note 11). Point CONFIG_DIR at
+    # the same tmp/data/raw root so study_config_path("_forms_manifest.yaml",
+    # study=<study>) resolves to tmp/data/raw/<study>/_forms_manifest.yaml —
+    # where the skills tests already write their manifests.
+    monkeypatch.setattr(
+        config,
+        "CONFIG_DIR",
+        tmp_path / "data" / "raw",
+        raising=False,
+    )
 
 
 def write_valid_ledger(

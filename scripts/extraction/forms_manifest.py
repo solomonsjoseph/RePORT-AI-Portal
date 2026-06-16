@@ -81,8 +81,10 @@ class ManifestCheckResult(NamedTuple):
 def check_forms_manifest(datasets_dir: Path | str) -> ManifestCheckResult:
     """Validate the contents of *datasets_dir* against its study's forms manifest.
 
-    The manifest is expected at ``{datasets_dir.parent}/_forms_manifest.yaml``
-    (one level above the datasets directory, i.e. the study root).
+    The manifest is expected at ``config/<study>/_forms_manifest.yaml`` (Note 11),
+    where ``<study>`` is derived from the folder one level above the datasets
+    directory (i.e. ``data/raw/<study>/datasets``) and resolved through
+    :func:`config.study_config_path`.
 
     Manifest format (YAML, all keys optional but ``required``/``optional``/
     ``reject`` are the only recognised keys; ``date_locales`` is also loaded
@@ -130,8 +132,15 @@ def check_forms_manifest(datasets_dir: Path | str) -> ManifestCheckResult:
         files by ``rejected_files`` before extraction — the gate only
         records the skip; it does not remove the files from disk.
     """
+    import config
+
     datasets_dir = Path(datasets_dir)
-    manifest_path = datasets_dir.parent / "_forms_manifest.yaml"
+    # The manifest now lives under config/<study>/ (Note 11), separate from the
+    # raw data tree. Derive the study name from the {STUDY} folder one level
+    # above datasets/ (i.e. data/raw/{STUDY}/datasets) and resolve through the
+    # single config chokepoint.
+    study_name = datasets_dir.parent.name
+    manifest_path = config.study_config_path("_forms_manifest.yaml", study=study_name)
 
     # --- Manifest absent: warn + continue ---
     if not manifest_path.exists():

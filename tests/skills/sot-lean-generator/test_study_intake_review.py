@@ -2,8 +2,24 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from scripts.source_truth import study_intake
 from scripts.source_truth.study_intake import _find_dataset
+
+
+@pytest.fixture(autouse=True)
+def _config_dir_to_raw(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Point config.CONFIG_DIR so _forms_manifest.yaml resolves under study_dir.
+
+    ``_find_dataset`` → ``_rejected_dataset_names`` → ``check_forms_manifest``
+    now reads the manifest from ``config.study_config_path(...)`` =
+    ``CONFIG_DIR/<study>/_forms_manifest.yaml`` (Note 11). Tests use
+    ``study_dir = tmp_path / "data" / "raw" / <name>``, so pointing CONFIG_DIR at
+    ``tmp_path / "data" / "raw"`` makes the manifest resolve where the tests
+    write it (study_dir / _forms_manifest.yaml).
+    """
+    monkeypatch.setattr("config.CONFIG_DIR", tmp_path / "data" / "raw", raising=False)
 
 
 def test_missing_pdf_is_routed_to_sot_review(tmp_path: Path, capsys) -> None:

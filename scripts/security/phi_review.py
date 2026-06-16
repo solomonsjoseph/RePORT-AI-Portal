@@ -725,8 +725,12 @@ def _fetch_source_hash(url: str, *, timeout: float = 2.0) -> str | None:
 
 def load_study_privacy_config(study_dir: str | Path) -> StudyPrivacyConfig:
     """Load and validate ``_study_privacy.yaml`` from a raw study directory."""
+    import config
+
     study_path = Path(study_dir)
-    config_path = study_path / "_study_privacy.yaml"
+    # _study_privacy.yaml now lives under config/<study>/ (Note 11), derived from
+    # the raw study directory's name and resolved via the config chokepoint.
+    config_path = config.study_config_path("_study_privacy.yaml", study=study_path.name)
     raw = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     if not isinstance(raw, dict):
         raise ValueError("_study_privacy.yaml must contain a mapping")

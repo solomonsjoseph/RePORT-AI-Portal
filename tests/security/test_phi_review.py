@@ -25,6 +25,23 @@ from scripts.security.phi_review import (
 PHI_COVERAGE_HOLD_PREFIX = "phi_coverage_hold"
 
 
+@pytest.fixture(autouse=True)
+def _config_dir_to_raw(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Point config.CONFIG_DIR so _study_privacy.yaml resolves under study_dir.
+
+    ``load_study_privacy_config`` now reads from
+    ``config.study_config_path("_study_privacy.yaml", study=study_dir.name)`` =
+    ``CONFIG_DIR/<study>/_study_privacy.yaml`` (Note 11). Every test uses
+    ``study_dir = tmp_path / "data" / "raw" / "Study"``, so pointing CONFIG_DIR
+    at ``tmp_path / "data" / "raw"`` makes ``study_config_path("Study")``
+    resolve to ``study_dir / _study_privacy.yaml`` — where
+    ``_write_privacy_config`` writes it.
+    """
+    import config
+
+    monkeypatch.setattr(config, "CONFIG_DIR", tmp_path / "data" / "raw", raising=False)
+
+
 def _write_privacy_config(study_dir: Path) -> Path:
     path = study_dir / "_study_privacy.yaml"
     path.parent.mkdir(parents=True, exist_ok=True)

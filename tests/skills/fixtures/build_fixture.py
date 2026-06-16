@@ -193,6 +193,10 @@ def build_golden_output_tree(
     scrub_config_hash = hashlib.sha256(phi_scrub_yaml_path.read_bytes()).hexdigest()
 
     # ── b. Manifest + stub datasets dir ─────────────────────────────────────
+    # The manifest now lives under config/<study>/ (Note 11). The verifier
+    # resolves it via config.study_config_path() → config.CONFIG_DIR/<study>/.
+    # The CI fixture tests point config.CONFIG_DIR at raw_root, so writing here
+    # (raw_root/<study>/_forms_manifest.yaml) is the location the verifier reads.
     manifest_data = {"required": forms, "optional": [], "reject": []}
     study_raw_dir.mkdir(parents=True, exist_ok=True)
     (study_raw_dir / "_forms_manifest.yaml").write_text(

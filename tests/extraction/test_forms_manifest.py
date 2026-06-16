@@ -35,6 +35,23 @@ from scripts.extraction.forms_manifest import (
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture(autouse=True)
+def _config_dir_to_tmp(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Point config.CONFIG_DIR so the manifest resolves beside datasets/.
+
+    The gate now reads the manifest from ``config.study_config_path(...)`` =
+    ``CONFIG_DIR/<study>/_forms_manifest.yaml`` where ``<study>`` is
+    ``datasets_dir.parent.name``. Every test uses ``datasets_dir = tmp_path /
+    "datasets"`` (study = ``tmp_path.name``), so pointing CONFIG_DIR at
+    ``tmp_path.parent`` makes ``study_config_path(tmp_path.name)`` resolve to
+    ``tmp_path / _forms_manifest.yaml`` — exactly where ``_write_manifest``
+    writes it (one level above datasets/).
+    """
+    import config
+
+    monkeypatch.setattr(config, "CONFIG_DIR", tmp_path.parent, raising=False)
+
+
 def _write_manifest(datasets_dir: Path, content: str) -> None:
     """Write a _forms_manifest.yaml one level above datasets_dir."""
     study_dir = datasets_dir.parent
