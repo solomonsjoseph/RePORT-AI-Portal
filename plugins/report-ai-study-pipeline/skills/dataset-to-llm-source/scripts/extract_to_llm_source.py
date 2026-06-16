@@ -645,11 +645,17 @@ def _verify_assertion_11_no_pipeline_lock(tmp_dir: Path, study: str) -> _Asserti
     if lock_path.exists():
         # The lock implementation lives in scripts.utils.pipeline_lock (Wave 4);
         # ask it whether THIS process holds the very lock file we found.
-        from scripts.utils.pipeline_lock import held_lock_path
+        from scripts.utils.pipeline_lock import baton_is_valid, held_lock_path
 
         held = held_lock_path()
         if held is not None and held.resolve() == lock_path.resolve():
             return "pass", "lock held by this process (inline verify during run)"
+        # Risk #7: under the orchestrator the lock is held by the PARENT and the
+        # baton was handed to this skill subprocess. A valid baton means the
+        # present lock is the evidence of the in-progress orchestrated run, not a
+        # stale leftover from a dead process.
+        if baton_is_valid():
+            return "pass", "lock held by parent orchestrator (valid baton, run in progress)"
         return "fail", f"pipeline lock file still present: {lock_path}"
     return "pass", ""
 
@@ -1739,7 +1745,13 @@ def _cmd_run(args: argparse.Namespace) -> int:
         # an unrelated direct `python main.py` run (GAP-3).
         env["REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT"] = "1"
         env["REPORTAL_PIPELINE_LOCK_PARENT_PID"] = str(os.getpid())
-        repo_root = Path(__file__).parent.parent.parent
+        # main.py lives at the repo root. After the Wave-2 consolidation move this
+        # module sits 5 levels deep under plugins/.../skills/.../scripts/, so the
+        # old relative parent math resolved to skills/main.py (nonexistent). Use
+        # the canonical config.BASE_DIR instead of brittle parent counting.
+        import config as _config
+
+        repo_root = Path(_config.BASE_DIR)
         # stdout/stderr are not captured here; main.py installs its own PHI log
         # redactor at startup. If that install fails non-fatally (non-production
         # mode), raw log lines bypass this process's redactor and go directly to

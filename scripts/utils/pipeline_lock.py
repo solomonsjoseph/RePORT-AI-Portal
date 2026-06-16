@@ -37,6 +37,7 @@ from scripts.utils.logging_system import get_logger
 
 __all__ = [
     "acquire_pipeline_lock",
+    "baton_is_valid",
     "held_lock_path",
     "is_locally_held",
     "lock_path_for",
@@ -82,8 +83,14 @@ def held_lock_path() -> Path | None:
     return Path(str(fh.name))
 
 
-def _baton_is_valid() -> bool:
-    """Validate the parent lock-baton (GAP-3): live parent PID == ``getppid()``."""
+def baton_is_valid() -> bool:
+    """Validate the parent lock-baton (GAP-3): live parent PID == ``getppid()``.
+
+    Public so the verifier's assertion 11 can recognise that a present lock file
+    is the evidence of an in-progress *orchestrated* run (the parent holds it),
+    not a stale leftover (risk #7 — the baton moved from wrapper→main to
+    orchestrator→skill subprocess).
+    """
     if os.environ.get(_BATON_HELD) != "1":
         return False
     pid_str = os.environ.get(_BATON_PID, "").strip()
@@ -109,7 +116,7 @@ def acquire_pipeline_lock(study: str | None = None) -> None:
     global _PIPELINE_LOCK_FILE
 
     if os.environ.get(_BATON_HELD) == "1":
-        if _baton_is_valid():
+        if baton_is_valid():
             # Parent already holds the lock — skip acquisition.
             return
         _logger.debug(
