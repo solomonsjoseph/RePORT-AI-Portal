@@ -27,6 +27,7 @@ from .key_rotation import RotationStatus, check_and_record, detect_rotation
 from .phi_gate import PHIGateConfigError, PHIGateResult, phi_gate_check
 from .phi_guard_gate import PHIGuardResult, run_phi_guard_gate
 from .phi_keystore import PHIKeyStore, clear_phi_key, get_phi_key, phi_key_fingerprint
+from .phi_rulebook import RulebookResolution, resolve_rulebook
 from .phi_scrub import (
     PHIKeyAccessDeniedError,
     PHIScrubConfig,
@@ -85,4 +86,7 @@ __all__ = [  # noqa: RUF022 — grouped by concept for readability, not alphabet
     "PyCanonGateResult",
     "check_publish_anonymity",
     "run_phi_guard_gate",
+    # PHI rulebook engine (Wave 3 C2)
+    "RulebookResolution",
+    "resolve_rulebook",
 ]

@@ -1,0 +1,57 @@
+{
+  "cache_version": 1,
+  "jurisdictions": [
+    "INDIA"
+  ],
+  "rules": [
+    {
+      "action": "drop",
+      "id": "india_dpdpa_contact_identifiers",
+      "jurisdiction": "INDIA",
+      "reason": "India personal-data direct contact identifier header."
+    },
+    {
+      "action": "drop",
+      "id": "india_aadhaar_identifier",
+      "jurisdiction": "INDIA",
+      "reason": "Aadhaar identity number header."
+    },
+    {
+      "action": "jitter_date",
+      "id": "india_date_identifier",
+      "jurisdiction": "INDIA",
+      "reason": "Date-like personal-data header."
+    },
+    {
+      "action": "suppress",
+      "id": "india_free_text_suppression",
+      "jurisdiction": "INDIA",
+      "reason": "Free-text personal-data header needs suppression review."
+    },
+    {
+      "action": "pseudonymize",
+      "id": "india_unique_person_identifier",
+      "jurisdiction": "INDIA",
+      "reason": "Unique person or study identifier header."
+    }
+  ],
+  "rules_sha256": "260275ad7dbc2f8a87810a8abc8db8b0956d14547f1d2d31ed1be18163aa397a",
+  "source_mode": "pinned",
+  "sources": [
+    {
+      "jurisdiction": "INDIA",
+      "title": "Digital Personal Data Protection Act, 2023",
+      "url": "https://www.indiacode.nic.in/indiacode/handle/123456789/22037"
+    },
+    {
+      "jurisdiction": "INDIA",
+      "title": "ICMR official guidelines index",
+      "url": "https://www.icmr.gov.in/guidelines"
+    },
+    {
+      "jurisdiction": "INDIA",
+      "title": "Aadhaar Act and UIDAI legal framework",
+      "url": "https://uidai.gov.in/en/about-uidai/legal-framework/2033-aadhaar-targeted-delivery-of-financial-and-other-subsidies%2C-benefits-and-services-act%2C-2016.html"
+    }
+  ]
+}
