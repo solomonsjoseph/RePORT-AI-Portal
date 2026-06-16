@@ -1,4 +1,9 @@
-"""Tests for the per-study forms manifest gate in dataset_pipeline.
+"""Tests for the per-study forms manifest gate.
+
+The gate now lives in the shared ``scripts.extraction.forms_manifest`` module
+(Note 20 Gap B) and is re-exported from ``scripts.extraction.dataset_pipeline``
+for backward compatibility; this suite imports from the canonical shared module
+and additionally asserts the re-export is the SAME object (no duplication).
 
 Each test materialises a minimal fake study layout under tmp_path so the
 real Indo-VAP raw data is never touched.  Covers every gate branch:
@@ -20,7 +25,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.extraction.dataset_pipeline import (
+from scripts.extraction.forms_manifest import (
     ManifestMismatchError,
     check_forms_manifest,
 )
@@ -236,3 +241,40 @@ class TestRequiredRejectConflict:
 
         assert "6_HIV.xlsx" in str(exc_info.value)
         assert "conflict" in str(exc_info.value).lower()
+
+
+# ---------------------------------------------------------------------------
+# Re-export integrity: dataset_pipeline must re-export the SAME objects
+# ---------------------------------------------------------------------------
+
+
+class TestReExportIdentity:
+    """The forms-manifest gate moved to scripts.extraction.forms_manifest.
+
+    ``scripts.extraction.dataset_pipeline`` re-exports the three symbols so
+    existing imports keep working.  These tests prove the re-export binds to
+    the *same* object (``is`` identity), not a duplicated copy — so a single
+    monkeypatch/side-effect on one import path is seen by every caller.
+    """
+
+    def test_check_forms_manifest_is_same_object(self) -> None:
+        from scripts.extraction.dataset_pipeline import (
+            check_forms_manifest as pipeline_fn,
+        )
+        from scripts.extraction.forms_manifest import (
+            check_forms_manifest as canonical_fn,
+        )
+
+        assert pipeline_fn is canonical_fn
+
+    def test_manifest_mismatch_error_is_same_object(self) -> None:
+        import scripts.extraction.dataset_pipeline as pipeline
+        import scripts.extraction.forms_manifest as canonical
+
+        assert pipeline.ManifestMismatchError is canonical.ManifestMismatchError
+
+    def test_manifest_check_result_is_same_object(self) -> None:
+        import scripts.extraction.dataset_pipeline as pipeline
+        import scripts.extraction.forms_manifest as canonical
+
+        assert pipeline.ManifestCheckResult is canonical.ManifestCheckResult

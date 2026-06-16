@@ -39,6 +39,10 @@ Example usage::
     )
 """
 
+# SHARED UTILITY (Note 20 Gap C / Note 19): stays in scripts/, imported
+# read-only by plugin skills; never moved into a skill, never imports from
+# plugins/.
+
 from __future__ import annotations
 
 from scripts.extraction.io.clinical_dates import (

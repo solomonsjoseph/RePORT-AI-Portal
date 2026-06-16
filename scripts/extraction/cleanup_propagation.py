@@ -35,24 +35,8 @@ from scripts.extraction.io import (
     atomic_write_jsonl,
     load_json_object_line,
 )
-from scripts.utils.logging_system import get_logger
-
-# Import the canonical internal-column set from agent_tools so PROVENANCE_FIELDS
-# stays in sync without re-listing.  agent_tools._INTERNAL_COLUMNS covers
-# source_file, _provenance, _source_row, _ingestion_ts.  We also add the
-# PHI scrub marker (_phi_scrubbed, imported by name from phi_scrub constants)
-# so the marker never leaks into the 'surviving' variable set and is never
-# mistakenly treated as a schema variable subject to dictionary pruning.
-try:
-    from scripts.ai_assistant.agent_tools import _INTERNAL_COLUMNS as _AGENT_INTERNAL_COLUMNS
-except ImportError:
-    # Fallback when the AI-assistant deps are not installed (e.g. test environments
-    # that deliberately exclude the 'ai_assistant' group).
-    _AGENT_INTERNAL_COLUMNS = frozenset(  # type: ignore[no-redef]
-        {"source_file", "_provenance", "_source_row", "_ingestion_ts"}
-    )
-
 from scripts.security.secure_env import assert_write_zone
+from scripts.utils.logging_system import get_logger
 
 logger = get_logger(__name__)
 
@@ -70,16 +54,22 @@ __all__ = [
 # from the "surviving dataset vars" set so propagation doesn't treat them as
 # schema members.
 #
-# This set is the union of:
-#   • _AGENT_INTERNAL_COLUMNS (canonical pipeline-internal columns shared with
-#     agent_tools — source_file, _provenance, _source_row, _ingestion_ts)
-#   • "_metadata" (extraction-leg provenance blob)
-#   • "_phi_scrubbed" (PHI scrub version marker — never a study variable)
-#
-# If agent_tools._INTERNAL_COLUMNS gains new internal columns, they are
-# automatically included here — no secondary update required.
-PROVENANCE_FIELDS: frozenset[str] = _AGENT_INTERNAL_COLUMNS | frozenset(
-    {"_metadata", "_phi_scrubbed"}
+# Self-contained local literal. Per Note 18 ("ONE DEPENDENCY TO BREAK
+# IMMEDIATELY"), the host publish pipeline MUST NOT import the AI agent tools
+# module. This set mirrors agent_tools._INTERNAL_COLUMNS (source_file,
+# _provenance, _source_row, _ingestion_ts) plus the extraction-leg provenance
+# blob (_metadata) and the PHI scrub version marker (_phi_scrubbed) — but the
+# two lists now evolve independently while carrying identical content; there is
+# deliberately no cross-import between them.
+PROVENANCE_FIELDS: frozenset[str] = frozenset(
+    {
+        "source_file",
+        "_provenance",
+        "_source_row",
+        "_ingestion_ts",
+        "_metadata",
+        "_phi_scrubbed",
+    }
 )
 
 _DICT_VAR_KEY: str = "Question Short Name (Databank Fieldname)"

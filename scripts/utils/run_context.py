@@ -22,8 +22,17 @@ scan_for_in_progress_scrubs(study_runs_dir)
     ``study_runs_dir/*/``.  Used by the wrapper CLI (P3.1) to refuse with
     exit 6 when a prior run left staging partially scrubbed.
 
-SCRUB_RECOVERY_MESSAGE
-    Human-readable message template (``{path}`` placeholder) for the wrapper
+write_cleanup_token(run_dir) / delete_cleanup_token(run_dir)
+    Write / delete a ``cleanup.in_progress`` token in *run_dir*, mirroring the
+    ``scrub.in_progress`` mechanism for the dataset-cleanup leg (Note 13 Gap 7).
+
+scan_for_in_progress_cleanups(study_runs_dir)
+    Return a list of ``cleanup.in_progress`` token paths found under
+    ``study_runs_dir/*/``.  Used to refuse when a prior run left the cleanup
+    leg partially applied.
+
+SCRUB_RECOVERY_MESSAGE / CLEANUP_RECOVERY_MESSAGE
+    Human-readable message templates (``{path}`` placeholder) for the wrapper
     to surface when it detects an in-progress token.
 """
 
@@ -37,15 +46,24 @@ from uuid import uuid4
 from scripts.extraction.io import atomic_write_json
 
 __all__ = [
+    "CLEANUP_RECOVERY_MESSAGE",
     "SCRUB_RECOVERY_MESSAGE",
+    "delete_cleanup_token",
     "resolve_run_id",
+    "scan_for_in_progress_cleanups",
     "scan_for_in_progress_scrubs",
+    "write_cleanup_token",
     "write_extraction_timing_sidecar",
     "write_lineage_timing_sidecar",
 ]
 
 SCRUB_RECOVERY_MESSAGE = (
     "Previous run left staging partially scrubbed (in-progress token found: {path}). "
+    "Run `make rebuild-llm-source` to clean the runs/ directory, then retry."
+)
+
+CLEANUP_RECOVERY_MESSAGE = (
+    "Previous run left dataset cleanup partially applied (in-progress token found: {path}). "
     "Run `make rebuild-llm-source` to clean the runs/ directory, then retry."
 )
 
@@ -182,3 +200,74 @@ def scan_for_in_progress_scrubs(study_runs_dir: Path) -> list[Path]:
     if not study_runs_dir.is_dir():
         return []
     return sorted(p for p in study_runs_dir.glob(f"*/{_IN_PROGRESS_TOKEN_NAME}") if p.is_file())
+
+
+_CLEANUP_IN_PROGRESS_TOKEN_NAME = "cleanup.in_progress"  # noqa: S105
+
+
+def write_cleanup_token(run_dir: Path) -> Path:
+    """Atomically write a ``cleanup.in_progress`` token in *run_dir*.
+
+    Mirrors the ``scrub.in_progress`` mechanism for the dataset-cleanup leg
+    (Note 13 Gap 7).  The token is written before the cleanup loop and deleted
+    on completion (:func:`delete_cleanup_token`); a surviving token signals a
+    prior run that aborted mid-cleanup, so the staged datasets may be partially
+    rewritten and must not be promoted.
+
+    Parameters
+    ----------
+    run_dir:
+        The per-run directory the token is written into
+        (e.g. ``output/{STUDY}/runs/{run_id}``).  Created if absent.
+
+    Returns
+    -------
+    Path
+        Absolute path to the written token file.
+    """
+    token_path = run_dir / _CLEANUP_IN_PROGRESS_TOKEN_NAME
+    token_path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_json(token_path, {})
+    return token_path
+
+
+def delete_cleanup_token(run_dir: Path) -> None:
+    """Delete the ``cleanup.in_progress`` token in *run_dir* if present.
+
+    Idempotent: a missing token is not an error, matching the
+    ``in_progress_token.unlink(missing_ok=True)`` semantics of the
+    ``scrub.in_progress`` mechanism.
+
+    Parameters
+    ----------
+    run_dir:
+        The per-run directory the token lives in
+        (e.g. ``output/{STUDY}/runs/{run_id}``).
+    """
+    (run_dir / _CLEANUP_IN_PROGRESS_TOKEN_NAME).unlink(missing_ok=True)
+
+
+def scan_for_in_progress_cleanups(study_runs_dir: Path) -> list[Path]:
+    """Return ``cleanup.in_progress`` token paths found under *study_runs_dir*.
+
+    Scans one level deep (``study_runs_dir/*/cleanup.in_progress``).  A
+    non-existent *study_runs_dir* returns an empty list so callers do not need
+    to guard for the directory's existence.
+
+    Parameters
+    ----------
+    study_runs_dir:
+        The ``runs/`` directory under the study output root
+        (e.g. ``output/{STUDY}/runs``).
+
+    Returns
+    -------
+    list[Path]
+        Absolute paths to every ``cleanup.in_progress`` file found, one per
+        partially-cleaned run.  Empty list when none are found.
+    """
+    if not study_runs_dir.is_dir():
+        return []
+    return sorted(
+        p for p in study_runs_dir.glob(f"*/{_CLEANUP_IN_PROGRESS_TOKEN_NAME}") if p.is_file()
+    )
