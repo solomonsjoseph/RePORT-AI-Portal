@@ -10,7 +10,6 @@ level publish primitive used by the plugin's dataset child skill.
 from __future__ import annotations
 
 import argparse
-import contextlib
 import logging
 import os
 import shutil
@@ -44,7 +43,9 @@ from scripts.utils import logging_system as log
 from scripts.utils.errors import format_for_log, wrap
 from scripts.utils.lineage import emit_lineage_manifest
 from scripts.utils.log_hygiene import install_phi_redactor
-from scripts.utils.logging_system import get_logger
+from scripts.utils.pipeline_lock import acquire_pipeline_lock as _acquire_pipeline_lock
+from scripts.utils.pipeline_lock import is_locally_held as _lock_locally_held
+from scripts.utils.pipeline_lock import release_pipeline_lock as _release_pipeline_lock
 from scripts.utils.run_context import resolve_run_id
 from scripts.utils.secure_staging import (
     prepare_staging,
@@ -58,138 +59,9 @@ __all__ = [
     "run_step",
 ]
 
-_PIPELINE_LOCK_FILE: Any | None = None
 _STREAMLIT_DEFAULT_PORT = 8501
 _STREAMLIT_MAX_LOCAL_PORT = 8599
 
-
-def _acquire_pipeline_lock(study: str | None = None) -> None:
-    """Hold an exclusive per-study process lock for the lifetime of this run.
-
-    Args:
-        study: Study name to use for the lock-file name.  When ``None`` (the
-            default, used by all existing callers inside main.py), falls back
-            to ``config.STUDY_NAME`` so behaviour is unchanged.  Pass an
-            explicit value when the caller controls the study name
-            independently of the config (e.g. the skill wrapper with
-            ``--study``).
-    """
-    global _PIPELINE_LOCK_FILE
-
-    # Lock-baton handoff: the skill wrapper (scripts/skills/extract_to_llm_source.py)
-    # acquires the study fcntl flock BEFORE spawning main.py --pipeline as a
-    # subprocess.  Re-acquiring here would deadlock (POSIX: same lock file,
-    # different fd). We honour the baton ONLY when:
-    #   1. REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT == "1", AND
-    #   2. REPORTAL_PIPELINE_LOCK_PARENT_PID names a live process that equals
-    #      os.getppid() (our actual parent).
-    #
-    # If (2) fails — missing PID var, stale PID, or a spoofed env — we fall
-    # through and acquire for real so nothing breaks if the wrapper hasn't been
-    # updated yet.
-    #
-    # NOTE FOR WRAPPER MAINTAINERS: scripts/skills/extract_to_llm_source.py
-    # must also export:
-    #   env["REPORTAL_PIPELINE_LOCK_PARENT_PID"] = str(os.getpid())
-    # alongside REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT=1, so this validation
-    # can confirm the baton is authentic.
-    if os.environ.get("REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT") == "1":
-        pid_str = os.environ.get("REPORTAL_PIPELINE_LOCK_PARENT_PID", "").strip()
-        try:
-            claimed_pid = int(pid_str)
-        except (ValueError, TypeError):
-            claimed_pid = None
-
-        if claimed_pid is not None and claimed_pid == os.getppid():
-            # Validate that the claimed PID is still alive.
-            try:
-                os.kill(claimed_pid, 0)
-                parent_alive = True
-            except OSError:
-                parent_alive = False
-
-            if parent_alive:
-                # Baton is valid — skip acquisition (parent already holds the lock).
-                return
-
-        # Baton could not be validated (missing PID var, PID mismatch, dead
-        # process, or non-POSIX platform). Fall through to real acquisition.
-        # NOTE: main.py has no module-level `logger`; use logging.getLogger here.
-        get_logger(__name__).debug(
-            "REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT=1 but PID validation failed "
-            "(claimed_pid=%s, getppid=%s) — acquiring lock normally.",
-            pid_str,
-            os.getppid(),
-        )
-
-    study_name = study if study is not None else config.STUDY_NAME
-    lock_dir = Path(config.TMP_DIR)
-    lock_dir.mkdir(parents=True, exist_ok=True)
-    with contextlib.suppress(OSError):
-        lock_dir.chmod(0o700)
-    lock_path = lock_dir / f".{study_name}.pipeline.lock"
-    if _PIPELINE_LOCK_FILE is not None:
-        if Path(str(_PIPELINE_LOCK_FILE.name)) == lock_path:
-            return
-        _PIPELINE_LOCK_FILE.close()
-        _PIPELINE_LOCK_FILE = None
-
-    fh = lock_path.open("a+", encoding="utf-8")
-    with contextlib.suppress(OSError):
-        lock_path.chmod(0o600)
-
-    try:
-        fh.seek(0)
-        if os.name == "posix":
-            import fcntl
-
-            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        elif os.name == "nt":
-            import msvcrt
-
-            fh.write("\0")
-            fh.flush()
-            fh.seek(0)
-            msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)  # type: ignore[attr-defined]
-        fh.seek(0)
-        fh.truncate()
-        fh.write(f"pid={os.getpid()}\nstudy={study_name}\n")
-        fh.flush()
-        os.fsync(fh.fileno())
-    except OSError as exc:
-        fh.close()
-        raise RuntimeError(
-            f"Another host publish run already holds the study lock: {lock_path}"
-        ) from exc
-
-    _PIPELINE_LOCK_FILE = fh
-
-
-def _release_pipeline_lock(study: str | None = None) -> None:
-    """Release the process-local pipeline lock handle.
-
-    Args:
-        study: Accepted for API symmetry with ``_acquire_pipeline_lock`` but
-            not used — the lock handle is a module-level singleton regardless
-            of which study it was acquired for.
-    """
-    global _PIPELINE_LOCK_FILE
-    # Symmetric to the acquire-side guard: skip release only when the baton
-    # was validated on acquire — i.e. parent is alive with matching PID.
-    # If the module-level handle is None, we never acquired (baton was accepted
-    # or acquire never ran), so there is nothing to close regardless.
-    if (
-        os.environ.get("REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT") == "1"
-        and _PIPELINE_LOCK_FILE is None
-    ):
-        return
-    if _PIPELINE_LOCK_FILE is None:
-        return
-    lock_path = Path(str(_PIPELINE_LOCK_FILE.name))
-    with contextlib.suppress(OSError):
-        lock_path.unlink()
-    _PIPELINE_LOCK_FILE.close()
-    _PIPELINE_LOCK_FILE = None
 
 
 def _prune_empty_staged_forms(staging_dir: Path) -> list[str]:
@@ -567,10 +439,7 @@ def _cleanup_staging() -> None:
     # parent PID), _acquire_pipeline_lock fell through and THIS process owns the
     # lock — so it must destroy its own AMBER PHI staging rather than leave raw
     # subject-ID/date residue on disk. Mirror _release_pipeline_lock's guard.
-    if (
-        os.environ.get("REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT") == "1"
-        and _PIPELINE_LOCK_FILE is None
-    ):
+    if os.environ.get("REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT") == "1" and not _lock_locally_held():
         log.info(
             "Parent process holds the lock; skipping staging deletion in main.py to allow parent to run destruction attestation."
         )

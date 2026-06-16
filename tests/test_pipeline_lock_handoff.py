@@ -29,12 +29,21 @@ import pytest
 
 @pytest.fixture()
 def fresh_main(monkeypatch: pytest.MonkeyPatch):
-    """Import main.py with module-state reset so each test starts clean."""
-    import main as _main
+    """Return the canonical pipeline_lock module with its singleton reset.
 
-    importlib.reload(_main)
-    monkeypatch.setattr(_main, "_PIPELINE_LOCK_FILE", None, raising=False)
-    return _main
+    The lock implementation was extracted from main.py into
+    ``scripts.utils.pipeline_lock`` (Wave 4); main.py now delegates to it. The
+    public functions are ``acquire_pipeline_lock`` / ``release_pipeline_lock``;
+    this fixture exposes them under the historical ``_acquire``/``_release``
+    names so the behavioural assertions below read unchanged.
+    """
+    import scripts.utils.pipeline_lock as _lock
+
+    importlib.reload(_lock)
+    monkeypatch.setattr(_lock, "_PIPELINE_LOCK_FILE", None, raising=False)
+    monkeypatch.setattr(_lock, "_acquire_pipeline_lock", _lock.acquire_pipeline_lock, raising=False)
+    monkeypatch.setattr(_lock, "_release_pipeline_lock", _lock.release_pipeline_lock, raising=False)
+    return _lock
 
 
 class TestLockSkipOnParentHeld:

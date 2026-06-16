@@ -643,14 +643,12 @@ def _verify_assertion_11_no_pipeline_lock(tmp_dir: Path, study: str) -> _Asserti
     """
     lock_path = tmp_dir / f".{study}.pipeline.lock"
     if lock_path.exists():
-        import main as _main  # local import, matching the lock acquire/release helpers
+        # The lock implementation lives in scripts.utils.pipeline_lock (Wave 4);
+        # ask it whether THIS process holds the very lock file we found.
+        from scripts.utils.pipeline_lock import held_lock_path
 
-        lock_fh = getattr(_main, "_PIPELINE_LOCK_FILE", None)
-        if (
-            lock_fh is not None
-            and not lock_fh.closed
-            and Path(str(lock_fh.name)).resolve() == lock_path.resolve()
-        ):
+        held = held_lock_path()
+        if held is not None and held.resolve() == lock_path.resolve():
             return "pass", "lock held by this process (inline verify during run)"
         return "fail", f"pipeline lock file still present: {lock_path}"
     return "pass", ""

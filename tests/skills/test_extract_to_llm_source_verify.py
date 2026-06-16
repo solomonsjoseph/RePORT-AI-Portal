@@ -886,7 +886,7 @@ class TestVerifyFailures:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Inline Step 7 verify: the wrapper's own lock must not fail the run."""
-        import main as main_module
+        import scripts.utils.pipeline_lock as lock_module
 
         _patch_config(monkeypatch, tmp_path)
         _build_happy_study(tmp_path)
@@ -894,7 +894,7 @@ class TestVerifyFailures:
         tmp_dir.mkdir(parents=True, exist_ok=True)
         lock_file = tmp_dir / f".{STUDY}.pipeline.lock"
         with lock_file.open("a+", encoding="utf-8") as fh:
-            monkeypatch.setattr(main_module, "_PIPELINE_LOCK_FILE", fh)
+            monkeypatch.setattr(lock_module, "_PIPELINE_LOCK_FILE", fh)
             rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
         assert rc == EXIT_OK
 
