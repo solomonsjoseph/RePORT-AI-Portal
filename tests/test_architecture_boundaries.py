@@ -14,6 +14,19 @@ imported read-only by plugin skills.  They must never import from ``plugins/``,
 or the dependency would become circular and the utilities could no longer be a
 stable shared base.  This test makes that invariant executable so a future wave
 cannot silently introduce a ``scripts/`` -> ``plugins/`` import.
+
+Documented exception — the Note-19 migration bridge
+---------------------------------------------------
+``scripts/__init__.py`` installs a ``sys.meta_path`` finder that loads the
+handful of pipeline modules now physically living under
+``plugins/.../skills/<skill>/scripts/`` (e.g. ``phi_scrub``, ``phi_review``,
+``dataset_pipeline``) under their original ``scripts.*`` canonical names. That
+bridge realises the edge through a *file-path spec string*, never a literal
+``import plugins`` / ``from plugins import`` statement, so it is intentionally
+invisible to this AST guard. This is the ONLY sanctioned ``scripts/`` ->
+``plugins/`` edge and is a deliberate migration mechanism (the one-way rule
+remains the goal); the guard below still forbids every *literal* such import,
+which is what would actually create a hard, non-removable circular dependency.
 """
 
 from __future__ import annotations
@@ -53,11 +66,7 @@ def _imports_from_plugins(tree: ast.AST) -> list[str]:
                 if name == "plugins" or name.startswith("plugins."):
                     offenders.append(name)
         # node.level > 0 is a relative import (cannot target plugins/).
-        elif (
-            isinstance(node, ast.ImportFrom)
-            and node.level == 0
-            and node.module is not None
-        ):
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module is not None:
             module = node.module
             if module == "plugins" or module.startswith("plugins."):
                 offenders.append(module)

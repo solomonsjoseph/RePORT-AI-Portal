@@ -290,7 +290,15 @@ def run_pipeline() -> dict[str, Any]:
             "dataset-to-llm-source run",
             [
                 sys.executable,
-                str(config.BASE_DIR / "scripts" / "skills" / "extract_to_llm_source.py"),
+                str(
+                    config.BASE_DIR
+                    / "plugins"
+                    / "report-ai-study-pipeline"
+                    / "skills"
+                    / "dataset-to-llm-source"
+                    / "scripts"
+                    / "extract_to_llm_source.py"
+                ),
                 "run",
                 "--study",
                 study,
@@ -300,7 +308,15 @@ def run_pipeline() -> dict[str, Any]:
             "dataset-to-llm-source verify",
             [
                 sys.executable,
-                str(config.BASE_DIR / "scripts" / "skills" / "extract_to_llm_source.py"),
+                str(
+                    config.BASE_DIR
+                    / "plugins"
+                    / "report-ai-study-pipeline"
+                    / "skills"
+                    / "dataset-to-llm-source"
+                    / "scripts"
+                    / "extract_to_llm_source.py"
+                ),
                 "verify",
                 "--study",
                 study,

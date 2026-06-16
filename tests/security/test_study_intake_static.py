@@ -9,11 +9,23 @@ class TestDataIsolationStaticGuards:
 
     @staticmethod
     def _read_source() -> str:
-        """Read scripts/source_truth/study_intake.py as text."""
+        """Read study_intake.py as text from its consolidated plugin location.
+
+        Note 19 moved this module into the sot-lean-generator skill; it remains
+        importable as ``scripts.source_truth.study_intake`` via the migration
+        bridge in ``scripts/__init__.py``. The static guards below read the real
+        source file, so they resolve the plugin path directly.
+        """
         # __file__ is tests/security/test_study_intake_static.py
         # parents[0] = tests/security, [1] = tests/, [2] = repo_root (RePORT-AI-Portal)
         module_path = (
-            Path(__file__).resolve().parents[2] / "scripts" / "source_truth" / "study_intake.py"
+            Path(__file__).resolve().parents[2]
+            / "plugins"
+            / "report-ai-study-pipeline"
+            / "skills"
+            / "sot-lean-generator"
+            / "scripts"
+            / "study_intake.py"
         )
         return module_path.read_text(encoding="utf-8")
 

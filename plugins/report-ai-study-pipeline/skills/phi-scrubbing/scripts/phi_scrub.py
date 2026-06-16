@@ -2441,9 +2441,11 @@ def run_scrub(
     # Backward-compatible: returns {} when the manifest is absent or has no
     # date_locales section.  The manifest lives next to the *raw* datasets dir,
     # not the staging dir, so we read it from config.DATASETS_DIR.
-    # Lazy import to avoid the circular:
-    #   phi_scrub → dataset_pipeline → extraction.io → utils → security → phi_scrub
-    from scripts.extraction.dataset_pipeline import check_forms_manifest
+    # Import from the shared forms_manifest module (stays in scripts/) rather
+    # than dataset_pipeline: after Note-19 consolidation the latter lives in the
+    # dataset-to-llm-source skill, so importing it here would be a forbidden
+    # skill→skill edge. forms_manifest is the canonical shared gate.
+    from scripts.extraction.forms_manifest import check_forms_manifest
 
     # Reject-listed files are auto-skipped by the extraction leg, so the
     # scrub leg only needs the date_locales mapping here.

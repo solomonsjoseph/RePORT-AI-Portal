@@ -113,9 +113,9 @@ host_repo_contract:
   required_paths:
     - data/raw/<STUDY>/
     - data/raw/<STUDY>/data_dictionary/
-    - scripts/skills/extract_to_llm_source.py
-    - scripts/source_truth/study_intake.py
-    - scripts/source_truth/generate_lean_outputs.py
+    - plugins/report-ai-study-pipeline/skills/dataset-to-llm-source/scripts/extract_to_llm_source.py
+    - plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/study_intake.py
+    - plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/generate_lean_outputs.py
     - config/_defaults/phi_scrub.yaml
   expected_outputs:
     - output/<STUDY>/llm_source/SoT/<PAIR>/pdf/<FORM>_policy.yaml

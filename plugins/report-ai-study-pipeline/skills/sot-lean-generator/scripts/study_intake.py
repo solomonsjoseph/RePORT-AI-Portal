@@ -109,7 +109,10 @@ def _rejected_dataset_names(study_dir: Path) -> frozenset[str]:
     intentionally fail-open so that a manifest problem never blocks SoT intake.
     """
     try:
-        from scripts.extraction.dataset_pipeline import check_forms_manifest
+        # Shared forms_manifest module (stays in scripts/); importing
+        # dataset_pipeline here would be a skill→skill edge (sot-lean-generator →
+        # dataset-to-llm-source), forbidden by Note 19.
+        from scripts.extraction.forms_manifest import check_forms_manifest
 
         return check_forms_manifest(study_dir / "datasets").rejected_files
     except Exception:
