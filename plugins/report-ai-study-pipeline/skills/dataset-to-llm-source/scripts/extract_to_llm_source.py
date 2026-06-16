@@ -90,7 +90,7 @@ from scripts.extraction.dataset_pipeline import (
     ManifestMismatchError,
     check_forms_manifest,
 )
-from scripts.security.llm_source_gate import scan_tree_for_phi
+from scripts.security.phi_guard_gate import run_phi_guard_gate
 from scripts.security.phi_patterns import SUBJECT_ID_PATTERNS
 from scripts.security.phi_review import _normalize_header as _normalize_hdr
 from scripts.utils.secure_staging import secure_remove_tree
@@ -541,10 +541,12 @@ def _verify_assertion_7_no_quarantine(
 def _verify_assertion_8_phi_absence(dataset_files_dir: Path) -> _AssertionResult:
     """Assertion 8: no published dataset JSONL matches PHI patterns (blocking).
 
-    Streams files line-by-line to avoid large memory allocation.
-    Detail string names file path + line number + pattern — never the matched text.
+    D2: routed through the OR-combined PHI guard gate (Presidio primary +
+    study-calibrated ``scan_tree_for_phi`` secondary) — fails if either scanner
+    finds PHI. Detail names file path + line number + entity/pattern, never the
+    matched text.
     """
-    result = scan_tree_for_phi(dataset_files_dir)
+    result = run_phi_guard_gate(dataset_files_dir)
     if not result.ok:
         return "fail", result.detail
     return "pass", ""

@@ -313,18 +313,16 @@ def _run_phi_rescan() -> None:
         _phi_rescan_passed = True
         return
 
-    from scripts.security.llm_source_gate import scan_tree_for_phi
+    from scripts.security.phi_guard_gate import run_phi_guard_gate
 
     llm_source_dir = config.STUDY_LLM_SOURCE_DIR
     logger.info("UP7: scanning llm_source tree for PHI residuals: %s", llm_source_dir)
-    scan_result = scan_tree_for_phi(llm_source_dir)
+    scan_result = run_phi_guard_gate(llm_source_dir)
     if not scan_result.ok:
-        finding = scan_result.findings[0]
         raise RuntimeError(
             f"PHI residual detected in llm_source tree — agent start blocked. "
-            f"Pattern: {finding.pattern_name}, "
-            f"File: {finding.relative_path}, "
-            f"Line: {finding.line_number}. "
+            f"Triggered by: {', '.join(scan_result.triggered_by)}. "
+            f"{scan_result.detail}. "
             "Re-run the PHI scrub pipeline and resolve the finding before "
             "starting an agent session. (Matched value deliberately omitted.)"
         )

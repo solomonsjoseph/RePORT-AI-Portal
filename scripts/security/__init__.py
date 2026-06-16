@@ -25,6 +25,7 @@ from __future__ import annotations
 from .kanon_gate import KAnonResult, kanon_check, mask_small_cell, suppress_small_cells
 from .key_rotation import RotationStatus, check_and_record, detect_rotation
 from .phi_gate import PHIGateConfigError, PHIGateResult, phi_gate_check
+from .phi_guard_gate import PHIGuardResult, run_phi_guard_gate
 from .phi_keystore import PHIKeyStore, clear_phi_key, get_phi_key, phi_key_fingerprint
 from .phi_scrub import (
     PHIKeyAccessDeniedError,
@@ -35,6 +36,7 @@ from .phi_scrub import (
     load_scrub_config,
     run_scrub,
 )
+from .pycanon_gate import PyCanonGateResult, check_publish_anonymity
 from .secure_env import (
     ZoneViolationError,
     assert_clean_zone,
@@ -78,4 +80,9 @@ __all__ = [  # noqa: RUF022 — grouped by concept for readability, not alphabet
     "mask_small_cell",
     "phi_gate_check",
     "suppress_small_cells",
+    # PHI guard gate (Wave 3 C3 — OR-combined Presidio + legacy) + pyCANON
+    "PHIGuardResult",
+    "PyCanonGateResult",
+    "check_publish_anonymity",
+    "run_phi_guard_gate",
 ]

@@ -29,6 +29,8 @@ __all__ = [
     "BLOCKING_PATTERNS",
     "SUBJECT_ID_PATTERNS",
     "WARN_PATTERNS",
+    "IndianPhonePattern",
+    "VerhoeffPattern",
 ]
 
 
@@ -94,6 +96,15 @@ class VerhoeffPattern:
     def groupindex(self) -> dict[str, int]:
         return dict(self._pattern.groupindex)
 
+    def validate(self, matched_text: str) -> bool:
+        """Return True iff *matched_text* is a Verhoeff-valid 12-digit Aadhaar.
+
+        Shared by the Presidio recognizer (``presidio_gate``) so the regex
+        framework and this wrapper apply identical validation — no drift.
+        """
+        candidate = "".join(c for c in matched_text if c.isdigit())
+        return len(candidate) == 12 and _verhoeff_validate(candidate)
+
     def search(self, string: str, pos: int = 0, endpos: int = 2**31 - 1) -> re.Match[str] | None:
         for match in self._pattern.finditer(string, pos, endpos):
             candidate = "".join(c for c in match.group(0) if c.isdigit())
@@ -155,6 +166,17 @@ class IndianPhonePattern:
     @property
     def groupindex(self) -> dict[str, int]:
         return dict(self._pattern.groupindex)
+
+    def validate(self, matched_text: str) -> bool:
+        """Return True iff *matched_text* is a valid (non-placeholder) Indian phone.
+
+        Shared by the Presidio recognizer (``presidio_gate``) so the regex
+        framework and this wrapper apply identical validation — no drift.
+        """
+        candidate = "".join(c for c in matched_text if c.isdigit())
+        if candidate.startswith("91") and len(candidate) == 12:
+            candidate = candidate[2:]
+        return len(candidate) == 10 and _is_valid_indian_phone(candidate)
 
     def search(self, string: str, pos: int = 0, endpos: int = 2**31 - 1) -> re.Match[str] | None:
         for match in self._pattern.finditer(string, pos, endpos):

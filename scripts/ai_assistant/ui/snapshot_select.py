@@ -39,7 +39,7 @@ from pathlib import Path
 from typing import Any
 
 import config
-from scripts.security.llm_source_gate import scan_tree_for_phi
+from scripts.security.phi_guard_gate import run_phi_guard_gate
 from scripts.utils import snapshot
 
 __all__ = [
@@ -138,8 +138,9 @@ def activate_snapshot(study: str | None, snapshot_id: str) -> Path:
     except snapshot.SnapshotError as exc:
         raise SnapshotActivationError(f"cannot activate snapshot {snapshot_id!r}: {exc}") from exc
 
-    # 2. Re-gate the selected subtree for PHI residuals BEFORE exposing it.
-    result = scan_tree_for_phi(llm_source)
+    # 2. Re-gate the selected subtree for PHI residuals BEFORE exposing it
+    #    (OR-combined Presidio + legacy scanner — fails if either finds PHI).
+    result = run_phi_guard_gate(llm_source)
     if not result.ok:
         raise SnapshotActivationError(
             f"snapshot {snapshot_id!r} failed the PHI residual gate; refusing to "
