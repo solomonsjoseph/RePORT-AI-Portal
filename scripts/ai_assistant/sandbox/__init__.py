@@ -60,6 +60,16 @@ def _build_clean_env(tmpdir: Path, project_root: Path) -> dict[str, str]:
     env["MPLBACKEND"] = "Agg"
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     env.setdefault("LC_ALL", "C.UTF-8")
+    # Cap BLAS/OpenMP thread pools to 1. Each OpenBLAS worker thread reserves a
+    # large virtual-memory arena; on a many-core host that reserved address
+    # space exceeds the child's RLIMIT_AS cap and OpenBLAS aborts with
+    # "Memory allocation still failed after 10 retries". Single-threaded BLAS
+    # fits comfortably under the cap (the sandbox is for small analyses, not
+    # throughput) and keeps numpy/pandas/scipy usable inside the rlimit.
+    env["OPENBLAS_NUM_THREADS"] = "1"
+    env["OMP_NUM_THREADS"] = "1"
+    env["MKL_NUM_THREADS"] = "1"
+    env["NUMEXPR_NUM_THREADS"] = "1"
     # Final defensive sweep: drop anything that could leak credentials,
     # in case the allowlist above is ever extended carelessly.
     for k in list(env):
