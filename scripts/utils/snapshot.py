@@ -14,11 +14,17 @@ Snapshots are **immutable**: writing a snapshot whose directory already exists
 raises :class:`SnapshotExistsError`. A new clean pass mints a new snapshot id;
 it never overwrites a prior one.
 
-Snapshot ids are **deterministic** — minted as a SHA-256 content hash of the
-copied ``llm_source/`` manifest combined with the source ``run_id``. There is
-no timestamp or randomness in the id, so an identical clean pass on identical
-input yields an identical id (which then trips the immutability guard rather
-than silently re-writing).
+Snapshot ids are **timestamp-based** (Note 14) — ``snap_<YYYYMMDDTHHMMSSZ>`` of
+the UTC creation instant, with a ``-N`` disambiguator on the rare same-second
+collision. The id is the human-readable label the UI shows ("2026-06-15 14:32 —
+28 forms"); no hash id is surfaced to users. Redundant-run prevention no longer
+relies on id collision — it is the **preflight input-fingerprint check** (see
+:mod:`scripts.utils.input_fingerprint`): if a clean snapshot already exists for
+the current input fingerprint the pipeline activates it instead of re-running,
+and ``--force`` explicitly mints a fresh time-stamped snapshot on identical
+inputs. The deterministic content hash of the ``llm_source/`` tree is retained
+as the manifest ``content_hash`` field — it powers the snapshot diff and the
+fingerprint match — but it is no longer the directory name.
 
 SECURITY
 --------
@@ -36,9 +42,12 @@ Fail-closed: every error condition raises; nothing is silently skipped.
 
 from __future__ import annotations
 
+import enum
 import hashlib
 import json
 import shutil
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 import config
@@ -46,25 +55,46 @@ from scripts.audit.ledger import ensure_no_llm_sentinel
 from scripts.extraction.io import atomic_write_json
 
 __all__ = [
+    "CURRENT_POINTER_FILENAME",
     "MANIFEST_FILENAME",
+    "MANIFEST_SCHEMA",
     "SnapshotError",
     "SnapshotExistsError",
     "SnapshotNotFoundError",
+    "SnapshotTamperedError",
+    "StalenessFinding",
+    "StalenessSeverity",
+    "check_snapshot_staleness",
+    "current_pointer_path",
+    "diff_snapshots",
+    "evaluate_snapshot_staleness",
+    "find_snapshot_by_fingerprint",
+    "get_current_snapshot",
+    "latest_snapshot",
     "list_snapshots",
     "load_snapshot",
     "select_snapshot_llm_source",
+    "set_current_snapshot",
+    "snapshot_diff_path",
     "snapshot_llm_source_path",
     "snapshot_path",
     "snapshots_root",
+    "verify_snapshot_integrity",
     "write_snapshot",
 ]
 
 MANIFEST_FILENAME = "snapshot_manifest.json"
 APPROVAL_FILENAME = "phi_handling_approval.json"
 VERIFIER_REPORT_FILENAME = "verifier_report.json"
+CURRENT_POINTER_FILENAME = "current.json"
 LLM_SOURCE_DIRNAME = "llm_source"
 _SNAPSHOT_ID_PREFIX = "snap_"
-_SNAPSHOT_ID_HASH_LEN = 32  # hex chars of the sha256 digest kept in the id
+#: Manifest schema version. Bumped from the implicit v1 (9 fields, content-hash
+#: id) to v2 (timestamp id + config capture + staleness/provenance fields).
+MANIFEST_SCHEMA = 2
+#: Config files copied verbatim into every snapshot (Note 14 C5.2). Non-PHI
+#: study metadata; captured so a snapshot is independently auditable/reproducible.
+_CONFIG_FILES = ("_study_privacy.yaml", "_forms_manifest.yaml")
 
 
 class SnapshotError(Exception):
@@ -80,6 +110,30 @@ class SnapshotExistsError(SnapshotError):
 
 class SnapshotNotFoundError(SnapshotError):
     """Raised when a requested snapshot id does not exist on disk."""
+
+
+class SnapshotTamperedError(SnapshotError):
+    """Raised when a snapshot's on-disk ``llm_source/`` no longer matches the
+    content hashes recorded in its manifest (filesystem tampering, C5.7).
+
+    Fail-closed: a tampered snapshot is NEVER activated under any circumstance.
+    """
+
+
+class StalenessSeverity(enum.Enum):
+    """Severity of a snapshot-staleness finding (C5.4)."""
+
+    WARN = "warn"  # surface a warning; activation may proceed (human decides)
+    BLOCK = "block"  # hard-block activation (pseudonyms irrecoverable)
+
+
+@dataclass(frozen=True)
+class StalenessFinding:
+    """One reason a committed snapshot may no longer be authoritative (C5.4)."""
+
+    trigger: str  # rulebook_update | key_rotation | source_data_correction | config_change
+    severity: StalenessSeverity
+    detail: str  # human-readable, value-free explanation
 
 
 # ---------------------------------------------------------------------------
@@ -186,23 +240,58 @@ def _assert_no_escaping_symlinks(root: Path) -> None:
             )
 
 
-def _mint_snapshot_id(llm_source_manifest: dict[str, str], run_id: str) -> str:
-    """Mint a deterministic ``snap_<hash>`` id from the llm_source manifest + run_id.
+def _content_hash(llm_source_manifest: dict[str, str], run_id: str) -> str:
+    """Return the deterministic SHA-256 content hash of the llm_source manifest
+    + ``run_id`` (the old snapshot-id seed, retained as a manifest field).
 
-    The hash input is a canonical JSON encoding of the manifest (sorted keys)
-    plus the source ``run_id``. No timestamp, no randomness — identical content
-    + run_id always yields the same id.
+    Identical ``llm_source/`` content + run_id always yields the same hash, so it
+    powers the snapshot diff and the input-fingerprint match — but it is no
+    longer the directory name (see module docstring).
     """
-    if not run_id:
-        raise SnapshotError("run_id must not be empty")
     canonical = json.dumps(
         {"run_id": run_id, "llm_source_manifest": llm_source_manifest},
         sort_keys=True,
         ensure_ascii=True,
         separators=(",", ":"),
     )
-    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-    return f"{_SNAPSHOT_ID_PREFIX}{digest[:_SNAPSHOT_ID_HASH_LEN]}"
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _now_utc_iso() -> str:
+    """Return the current UTC instant as ``YYYY-MM-DDTHH:MM:SSZ`` (second precision)."""
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _id_from_timestamp(created_utc: str) -> str:
+    """Map an ISO ``YYYY-MM-DDTHH:MM:SSZ`` instant to a ``snap_<compact>`` id stem.
+
+    The id is the human-readable label (``snap_20260615T143200Z``); a same-second
+    collision disambiguator (``-N``) is appended by the caller.
+    """
+    try:
+        parsed = datetime.strptime(created_utc, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError as exc:
+        raise SnapshotError(
+            f"created_utc must be ISO8601 'YYYY-MM-DDTHH:MM:SSZ', got: {created_utc!r}"
+        ) from exc
+    return f"{_SNAPSHOT_ID_PREFIX}{parsed.strftime('%Y%m%dT%H%M%SZ')}"
+
+
+def _mint_unique_snapshot_id(study: str, created_utc: str) -> str:
+    """Mint a collision-free timestamp snapshot id for *study*.
+
+    The base id is ``snap_<compact-timestamp>``; if that directory already exists
+    (a forced re-run within the same UTC second), append ``-2``, ``-3``, … until
+    a free name is found. The human label is still the timestamp.
+    """
+    base = _id_from_timestamp(created_utc)
+    root = snapshots_root(study)
+    candidate = base
+    suffix = 1
+    while (root / candidate).exists():
+        suffix += 1
+        candidate = f"{base}-{suffix}"
+    return candidate
 
 
 # ---------------------------------------------------------------------------
@@ -223,23 +312,135 @@ def _read_json(path: Path) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Provenance gathering (C5.2) — every gatherer is FAIL-SOFT (returns None / {}).
+# A missing rulebook / unloaded key / absent config must never block a snapshot
+# commit, which happens AFTER a fully-clean publish. The captured provenance is
+# for staleness detection + audit; its absence degrades those features, it does
+# not corrupt the snapshot.
+# ---------------------------------------------------------------------------
+
+
+def _gather_rulebook_version() -> int | None:
+    try:
+        from scripts.security.phi_rulebook import RULEBOOK_CACHE_VERSION
+
+        return int(RULEBOOK_CACHE_VERSION)
+    except Exception:
+        return None
+
+
+def _gather_key_fingerprint() -> str | None:
+    try:
+        from scripts.security.phi_keystore import phi_key_fingerprint
+
+        return phi_key_fingerprint()
+    except Exception:
+        return None
+
+
+def _gather_input_fingerprint(study: str) -> tuple[str | None, dict | None]:
+    """Return (fingerprint, components) from the run's recorded fingerprint file.
+
+    Reads the JSON record directly (it carries both ``fingerprint`` and
+    ``components``; the ``read_recorded_fingerprint`` helper returns only the
+    combined hash). Fail-soft to ``(None, None)``.
+    """
+    try:
+        from scripts.utils.input_fingerprint import fingerprint_record_path
+
+        audit_dir = Path(config.OUTPUT_DIR) / study / "audit"
+        path = fingerprint_record_path(audit_dir)
+        if not path.is_file():
+            return None, None
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return None, None
+        fp = data.get("fingerprint")
+        components = data.get("components")
+        return (
+            fp if isinstance(fp, str) else None,
+            dict(components) if isinstance(components, dict) else None,
+        )
+    except Exception:
+        return None, None
+
+
+def _gather_compliance_posture() -> str | None:
+    try:
+        from scripts.security.phi_scrub import load_scrub_config
+
+        cfg = load_scrub_config()
+        return getattr(cfg, "compliance_posture", None)
+    except Exception:
+        return None
+
+
+def _copy_config_files(study: str, dest_dir: Path) -> dict[str, str | None]:
+    """Copy the study's config files into *dest_dir*, returning ``{name: sha256|None}``.
+
+    A config file that does not resolve / is absent records ``None`` (fail-soft):
+    a partial study may legitimately lack one, and the snapshot must still commit.
+    """
+    captured: dict[str, str | None] = {}
+    for name in _CONFIG_FILES:
+        captured[name] = None
+        try:
+            src = config.study_config_path(name, study=study)
+        except Exception:  # noqa: S112 — fail-soft: a config file is optional metadata
+            continue
+        if src and Path(src).is_file():
+            shutil.copy2(src, dest_dir / name)
+            captured[name] = _file_sha256(dest_dir / name)
+    return captured
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
 
-def write_snapshot(study: str, run_id: str, *, snapshot_id: str | None = None) -> Path:
+def write_snapshot(
+    study: str,
+    run_id: str,
+    *,
+    snapshot_id: str | None = None,
+    created_utc: str | None = None,
+    snapshot_type: int = 1,
+    human_review_records: list | None = None,
+    partial: bool = False,
+    absent_forms: list[str] | None = None,
+    cleanup_verifier_passed: bool | None = None,
+    write_diff: bool = True,
+) -> Path:
     """Write an immutable snapshot of the run's clean publish pass.
 
     Copies the study's ``llm_source/`` tree, the run's
-    ``phi_handling_approval.json`` and ``verifier_report.json`` into
-    ``snapshots/{snapshot_id}/`` and writes ``snapshot_manifest.json`` plus a
-    ``.NO_LLM_ZONE`` sentinel at the snapshot root.
+    ``phi_handling_approval.json`` and ``verifier_report.json``, and the study's
+    config files (``_study_privacy.yaml`` / ``_forms_manifest.yaml``) into
+    ``snapshots/{snapshot_id}/`` and writes ``snapshot_manifest.json`` (schema v2)
+    plus a ``.NO_LLM_ZONE`` sentinel at the snapshot root.
 
-    The *snapshot_id* is minted deterministically (content hash of the
-    llm_source manifest + *run_id*) unless supplied explicitly.
+    The *snapshot_id* is a timestamp label (``snap_<compact-utc>``) minted from
+    *created_utc* (defaults to now); a same-second collision appends ``-N``. Pass
+    *snapshot_id* explicitly to override (used by tests / fixed-id callers).
+
+    Args:
+        snapshot_type: ``1`` (clean first run, no human review) or ``2``
+            (human-verified run — something was held, a human resolved it, the
+            re-run is now clean). An IRB auditor distinguishes the two from the
+            manifest alone (Note 14).
+        human_review_records: Type-2 evidence (what was reviewed / decided /
+            when). Stored verbatim in the manifest — must be value-free.
+        partial: this snapshot covers only the explicitly approved forms; some
+            forms are permanently absent (lost PDF, unresolvable dedup, …).
+        absent_forms: the form NAMES omitted from a *partial* snapshot.
+        cleanup_verifier_passed: proof the workspace was clean at commit.
+        write_diff: emit a diff against the prior snapshot into the audit folder
+            (C5.6). Fail-soft — a diff error never fails the commit.
 
     Raises:
-        SnapshotError: a required source artifact is missing/unreadable.
+        SnapshotError: a required source artifact is missing/unreadable, or an
+            invalid *snapshot_type*.
         SnapshotExistsError: the target snapshot directory already exists
             (immutability — a clean pass never overwrites a prior snapshot).
     """
@@ -247,6 +448,8 @@ def write_snapshot(study: str, run_id: str, *, snapshot_id: str | None = None) -
         raise SnapshotError("study must not be empty")
     if not run_id:
         raise SnapshotError("run_id must not be empty")
+    if snapshot_type not in (1, 2):
+        raise SnapshotError(f"snapshot_type must be 1 or 2, got {snapshot_type!r}")
 
     # Derive the source tree from the explicit *study* arg via config.OUTPUT_DIR
     # — NOT from the module-global config.STUDY_LLM_SOURCE_DIR. That global is
@@ -272,11 +475,13 @@ def write_snapshot(study: str, run_id: str, *, snapshot_id: str | None = None) -
     if not verifier_src.is_file():
         raise SnapshotError(f"verifier report not found at {verifier_src}; cannot snapshot")
 
-    # Content manifest of the source llm_source tree — also the id seed.
+    # Content manifest of the source llm_source tree — the diff/fingerprint seed.
     llm_source_manifest = _tree_manifest(llm_source_src)
 
+    if created_utc is None:
+        created_utc = _now_utc_iso()
     if snapshot_id is None:
-        snapshot_id = _mint_snapshot_id(llm_source_manifest, run_id)
+        snapshot_id = _mint_unique_snapshot_id(study, created_utc)
     else:
         _validate_snapshot_id(snapshot_id)
 
@@ -324,13 +529,33 @@ def write_snapshot(study: str, run_id: str, *, snapshot_id: str | None = None) -
                 "llm_source tree changed during snapshot copy; aborting (fail-closed)"
             )
 
+        # Capture config files (C5.2) into the snapshot root (no-LLM zone).
+        config_files = _copy_config_files(study, staging)
+
+        # Provenance for staleness detection + audit (all fail-soft).
+        input_fingerprint, input_fingerprint_components = _gather_input_fingerprint(study)
+
         manifest = {
+            "manifest_schema": MANIFEST_SCHEMA,
             "snapshot_id": snapshot_id,
             "study": study,
             "source_run_id": run_id,
+            "created_utc": created_utc,
+            "snapshot_type": snapshot_type,
             "verifier_passed": verifier_passed,
+            "cleanup_verifier_passed": cleanup_verifier_passed,
+            "partial": bool(partial),
+            "absent_forms": [str(f) for f in (absent_forms or [])],
             "approved_forms": approved_forms,
             "held_forms": held_forms,
+            "human_review_records": list(human_review_records or []),
+            "phi_rulebook_version": _gather_rulebook_version(),
+            "phi_key_fingerprint": _gather_key_fingerprint(),
+            "compliance_posture": _gather_compliance_posture(),
+            "input_fingerprint": input_fingerprint,
+            "input_fingerprint_components": input_fingerprint_components,
+            "config_files": config_files,
+            "content_hash": _content_hash(copied_manifest, run_id),
             "llm_source_manifest": copied_manifest,
             "approval_sha256": _file_sha256(staging / APPROVAL_FILENAME),
             "verifier_report_sha256": _file_sha256(staging / VERIFIER_REPORT_FILENAME),
@@ -352,6 +577,17 @@ def write_snapshot(study: str, run_id: str, *, snapshot_id: str | None = None) -
     finally:
         if staging.exists():
             shutil.rmtree(staging, ignore_errors=True)
+
+    # Diff against the prior snapshot (C5.6) — written to the AUDIT folder, not
+    # the snapshot. Fail-soft: a diff error must never undo a committed snapshot.
+    if write_diff:
+        try:
+            prior = _prior_snapshot_id(study, exclude=snapshot_id)
+            if prior is not None:
+                diff = diff_snapshots(study, prior, snapshot_id)
+                write_snapshot_diff(study, prior, snapshot_id, diff)
+        except Exception:  # noqa: S110 — diff is advisory; never undo a committed snapshot
+            pass
 
     return dest
 
@@ -413,6 +649,8 @@ def select_snapshot_llm_source(study: str, snapshot_id: str) -> Path:
 
     Raises:
         SnapshotNotFoundError: snapshot or its ``llm_source/`` is absent.
+        SnapshotTamperedError: the on-disk ``llm_source/`` no longer matches the
+            manifest content hashes (C5.7) — fail-closed, never exposed.
     """
     _validate_snapshot_id(snapshot_id)
     dest = snapshot_path(study, snapshot_id)
@@ -423,4 +661,359 @@ def select_snapshot_llm_source(study: str, snapshot_id: str) -> Path:
         raise SnapshotNotFoundError(
             f"snapshot {snapshot_id!r} has no llm_source tree at {llm_source}"
         )
+    # C5.7: re-hash on every selection — a tampered snapshot is never exposed.
+    verify_snapshot_integrity(study, snapshot_id)
     return llm_source
+
+
+# ---------------------------------------------------------------------------
+# C5.7 — tampering detection (re-hash on activation)
+# ---------------------------------------------------------------------------
+
+
+def verify_snapshot_integrity(study: str, snapshot_id: str) -> bool:
+    """Re-hash the snapshot's ``llm_source/`` tree and compare to its manifest.
+
+    Returns ``True`` when the on-disk content matches the recorded hashes.
+
+    Raises:
+        SnapshotNotFoundError: the snapshot / manifest / llm_source is absent.
+        SnapshotTamperedError: the tree was modified after it was written — the
+            file set or any content hash differs from the manifest. Hard stop;
+            the caller must NOT activate a tampered snapshot (C5.7).
+    """
+    manifest = load_snapshot(study, snapshot_id)
+    recorded = manifest.get("llm_source_manifest")
+    if not isinstance(recorded, dict):
+        raise SnapshotTamperedError(
+            f"snapshot {snapshot_id!r} manifest has no llm_source_manifest to verify against"
+        )
+    llm_source = snapshot_llm_source_path(study, snapshot_id)
+    if not llm_source.is_dir():
+        raise SnapshotNotFoundError(
+            f"snapshot {snapshot_id!r} has no llm_source tree at {llm_source}"
+        )
+    current = _tree_manifest(llm_source)
+    if current != recorded:
+        added = sorted(set(current) - set(recorded))
+        removed = sorted(set(recorded) - set(current))
+        changed = sorted(k for k in current.keys() & recorded.keys() if current[k] != recorded[k])
+        # Value-free: report only relative file PATHS + counts, never content.
+        raise SnapshotTamperedError(
+            f"snapshot {snapshot_id!r} llm_source was modified after write "
+            f"(added={len(added)} removed={len(removed)} changed={len(changed)}); "
+            f"refusing to activate. paths_added={added} paths_removed={removed} "
+            f"paths_changed={changed}"
+        )
+    return True
+
+
+# ---------------------------------------------------------------------------
+# C5.3 — per-study "current" snapshot pointer
+# ---------------------------------------------------------------------------
+
+
+def current_pointer_path(study: str) -> Path:
+    """Return ``snapshots/current.json`` for *study* (a no-LLM-zone file)."""
+    return snapshots_root(study) / CURRENT_POINTER_FILENAME
+
+
+def set_current_snapshot(study: str, snapshot_id: str, *, updated_utc: str | None = None) -> Path:
+    """Point *study*'s ``current`` pointer at *snapshot_id* (C5.3).
+
+    The snapshot must exist (have a readable manifest). Activating a snapshot
+    writes this pointer; the UI shows the current snapshot first.
+
+    Raises:
+        SnapshotNotFoundError: *snapshot_id* has no manifest on disk.
+    """
+    load_snapshot(study, snapshot_id)  # validates existence + manifest
+    if updated_utc is None:
+        updated_utc = _now_utc_iso()
+    pointer = current_pointer_path(study)
+    pointer.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_json(pointer, {"snapshot_id": snapshot_id, "updated_utc": updated_utc})
+    return pointer
+
+
+def get_current_snapshot(study: str) -> str | None:
+    """Return *study*'s current snapshot id, or ``None`` if no pointer is set.
+
+    Fail-soft: a missing / corrupt pointer yields ``None`` rather than raising.
+    """
+    pointer = current_pointer_path(study)
+    if not pointer.is_file():
+        return None
+    try:
+        data = _read_json(pointer)
+    except (json.JSONDecodeError, OSError, SnapshotError):
+        return None
+    sid = data.get("snapshot_id")
+    return str(sid) if sid else None
+
+
+# ---------------------------------------------------------------------------
+# Snapshot ordering helpers
+# ---------------------------------------------------------------------------
+
+
+def _created_utc_of(study: str, snapshot_id: str) -> str:
+    """Return a snapshot's recorded ``created_utc`` (fallback to id for ordering)."""
+    try:
+        return str(load_snapshot(study, snapshot_id).get("created_utc") or snapshot_id)
+    except SnapshotError:
+        return snapshot_id
+
+
+def latest_snapshot(study: str) -> str | None:
+    """Return the most-recent snapshot id (by ``created_utc``), or ``None``."""
+    ids = list_snapshots(study)
+    if not ids:
+        return None
+    return max(ids, key=lambda sid: (_created_utc_of(study, sid), sid))
+
+
+def _prior_snapshot_id(study: str, *, exclude: str) -> str | None:
+    """Return the most-recent snapshot id other than *exclude*, or ``None``."""
+    ids = [sid for sid in list_snapshots(study) if sid != exclude]
+    if not ids:
+        return None
+    return max(ids, key=lambda sid: (_created_utc_of(study, sid), sid))
+
+
+# ---------------------------------------------------------------------------
+# C5.5 — redundant-run: find an existing clean snapshot for an input fingerprint
+# ---------------------------------------------------------------------------
+
+
+def find_snapshot_by_fingerprint(study: str, fingerprint: str) -> str | None:
+    """Return the most-recent clean snapshot whose recorded ``input_fingerprint``
+    equals *fingerprint* (C5.5), or ``None`` if no such snapshot exists.
+
+    Only snapshots that passed the verifier are considered — an unverified
+    snapshot must never satisfy a redundant-run short-circuit. A snapshot with
+    no recorded fingerprint (legacy v1) never matches.
+    """
+    if not fingerprint:
+        return None
+    matches: list[str] = []
+    for sid in list_snapshots(study):
+        try:
+            manifest = load_snapshot(study, sid)
+        except SnapshotError:
+            continue
+        if manifest.get("input_fingerprint") == fingerprint and manifest.get("verifier_passed"):
+            matches.append(sid)
+    if not matches:
+        return None
+    return max(matches, key=lambda sid: (_created_utc_of(study, sid), sid))
+
+
+# ---------------------------------------------------------------------------
+# C5.4 — snapshot staleness (four triggers)
+# ---------------------------------------------------------------------------
+
+
+def check_snapshot_staleness(
+    manifest: dict,
+    *,
+    current_rulebook_version: int | None,
+    current_key_fingerprint: str | None,
+    current_input_components: dict | None = None,
+) -> list[StalenessFinding]:
+    """Classify why a committed snapshot may no longer be authoritative (C5.4).
+
+    Pure function — no I/O. Compares the snapshot *manifest*'s recorded state
+    against the supplied *current* values and returns zero or more
+    :class:`StalenessFinding`. The four triggers (Note 14):
+
+    1. **rulebook_update** (WARN) — recorded rulebook version != current.
+    2. **key_rotation** (BLOCK) — recorded key fingerprint != current; every
+       pseudonym in the snapshot is now irrecoverable without a re-scrub.
+    3. **source_data_correction** (WARN) — the ``raw_datasets`` input-fingerprint
+       component changed (raw data corrected after the snapshot).
+    4. **config_change** (WARN) — a ``forms_manifest`` / ``study_privacy``
+       input-fingerprint component changed (jurisdictions / form statuses).
+
+    A comparison is skipped (no false positive) when either side is unknown
+    (``None`` / missing), so a legacy v1 snapshot with no provenance yields no
+    findings rather than a spurious staleness alarm.
+    """
+    findings: list[StalenessFinding] = []
+
+    rec_rulebook = manifest.get("phi_rulebook_version")
+    if (
+        rec_rulebook is not None
+        and current_rulebook_version is not None
+        and rec_rulebook != current_rulebook_version
+    ):
+        findings.append(
+            StalenessFinding(
+                trigger="rulebook_update",
+                severity=StalenessSeverity.WARN,
+                detail=(
+                    f"built with PHI rulebook version {rec_rulebook}, current is "
+                    f"{current_rulebook_version} — regulatory compliance may have changed."
+                ),
+            )
+        )
+
+    rec_key = manifest.get("phi_key_fingerprint")
+    if rec_key and current_key_fingerprint and rec_key != current_key_fingerprint:
+        findings.append(
+            StalenessFinding(
+                trigger="key_rotation",
+                severity=StalenessSeverity.BLOCK,
+                detail=(
+                    "PHI key was rotated after this snapshot — its pseudonyms are "
+                    "irrecoverable without a re-scrub. Activation hard-blocked."
+                ),
+            )
+        )
+
+    rec_components = manifest.get("input_fingerprint_components")
+    if isinstance(rec_components, dict) and isinstance(current_input_components, dict):
+        if _component_changed(rec_components, current_input_components, "raw_datasets"):
+            findings.append(
+                StalenessFinding(
+                    trigger="source_data_correction",
+                    severity=StalenessSeverity.WARN,
+                    detail=(
+                        "raw dataset content changed after this snapshot — it may "
+                        "reflect superseded source data."
+                    ),
+                )
+            )
+        if _component_changed(
+            rec_components, current_input_components, "forms_manifest"
+        ) or _component_changed(rec_components, current_input_components, "study_privacy"):
+            findings.append(
+                StalenessFinding(
+                    trigger="config_change",
+                    severity=StalenessSeverity.WARN,
+                    detail=(
+                        "study config (forms manifest / privacy jurisdictions) changed "
+                        "after this snapshot — it may not reflect the current study definition."
+                    ),
+                )
+            )
+
+    return findings
+
+
+def _component_changed(recorded: dict, current: dict, key: str) -> bool:
+    """True iff *key* is present in BOTH dicts with differing values."""
+    return key in recorded and key in current and recorded[key] != current[key]
+
+
+def evaluate_snapshot_staleness(study: str, snapshot_id: str) -> list[StalenessFinding]:
+    """I/O wrapper around :func:`check_snapshot_staleness` (C5.4).
+
+    Gathers the *current* rulebook version, key fingerprint, and live input
+    fingerprint components, then classifies the snapshot. Fail-soft on the
+    gathering side (an unknown current value simply skips its trigger).
+    """
+    manifest = load_snapshot(study, snapshot_id)
+    current_components: dict | None = None
+    try:
+        from scripts.utils.input_fingerprint import compute_input_fingerprint
+
+        current_components = dict(compute_input_fingerprint(study=study).components)
+    except Exception:
+        current_components = None
+    return check_snapshot_staleness(
+        manifest,
+        current_rulebook_version=_gather_rulebook_version(),
+        current_key_fingerprint=_gather_key_fingerprint(),
+        current_input_components=current_components,
+    )
+
+
+# ---------------------------------------------------------------------------
+# C5.6 — snapshot diff (written to the AUDIT folder, not the snapshot)
+# ---------------------------------------------------------------------------
+
+_DATASET_FILES_PREFIX = "dataset_schema/files/"
+
+
+def _jsonl_header_keys(path: Path) -> list[str]:
+    """Return the row-1 JSON object KEYS (column names) of a JSONL file — NEVER
+    values. Returns ``[]`` on any read/parse error (metadata-only, fail-soft)."""
+    try:
+        with path.open(encoding="utf-8") as fh:
+            first = fh.readline()
+        if not first.strip():
+            return []
+        obj = json.loads(first)
+        return list(obj.keys()) if isinstance(obj, dict) else []
+    except (OSError, json.JSONDecodeError):
+        return []
+
+
+def _form_stem(rel_path: str) -> str | None:
+    """Map a published dataset relpath to its form stem, or ``None`` if not one."""
+    if not rel_path.startswith(_DATASET_FILES_PREFIX) or not rel_path.endswith(".jsonl"):
+        return None
+    return rel_path[len(_DATASET_FILES_PREFIX) : -len(".jsonl")]
+
+
+def diff_snapshots(study: str, old_id: str, new_id: str) -> dict:
+    """Diff two snapshots' published content (C5.6) — METADATA ONLY.
+
+    Compares the two manifests' ``llm_source_manifest`` maps. Returns a dict:
+
+    * ``forms_added`` / ``forms_removed`` — dataset form stems present in only
+      one snapshot.
+    * ``files_changed`` — any file (form or otherwise) whose content hash
+      differs between the two.
+    * ``variables_changed`` — for each changed dataset form present in both,
+      ``{stem: {"added": [...], "removed": [...]}}`` of row-1 column NAMES
+      (never values).
+
+    Reads only file hashes + row-1 header keys; no row values are read.
+    """
+    old_m = load_snapshot(study, old_id).get("llm_source_manifest") or {}
+    new_m = load_snapshot(study, new_id).get("llm_source_manifest") or {}
+
+    old_forms = {s for s in (_form_stem(p) for p in old_m) if s}
+    new_forms = {s for s in (_form_stem(p) for p in new_m) if s}
+    forms_added = sorted(new_forms - old_forms)
+    forms_removed = sorted(old_forms - new_forms)
+
+    files_changed = sorted(p for p in old_m.keys() & new_m.keys() if old_m[p] != new_m[p])
+
+    variables_changed: dict[str, dict[str, list[str]]] = {}
+    for rel in files_changed:
+        stem = _form_stem(rel)
+        if stem is None:
+            continue
+        old_keys = set(_jsonl_header_keys(snapshot_path(study, old_id) / LLM_SOURCE_DIRNAME / rel))
+        new_keys = set(_jsonl_header_keys(snapshot_path(study, new_id) / LLM_SOURCE_DIRNAME / rel))
+        added = sorted(new_keys - old_keys)
+        removed = sorted(old_keys - new_keys)
+        if added or removed:
+            variables_changed[stem] = {"added": added, "removed": removed}
+
+    return {
+        "study": study,
+        "old_snapshot_id": old_id,
+        "new_snapshot_id": new_id,
+        "forms_added": forms_added,
+        "forms_removed": forms_removed,
+        "files_changed": files_changed,
+        "variables_changed": variables_changed,
+    }
+
+
+def snapshot_diff_path(study: str, old_id: str, new_id: str) -> Path:
+    """Return the audit-zone path a snapshot diff is written to (C5.6)."""
+    audit_dir = Path(config.OUTPUT_DIR) / study / "audit" / "snapshot_diffs"
+    return audit_dir / f"{old_id}__{new_id}.json"
+
+
+def write_snapshot_diff(study: str, old_id: str, new_id: str, diff: dict) -> Path:
+    """Write a snapshot *diff* to the audit folder (C5.6), NOT into the snapshot."""
+    path = snapshot_diff_path(study, old_id, new_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_json(path, diff)
+    return path

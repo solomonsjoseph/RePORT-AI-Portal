@@ -212,18 +212,25 @@ class TestWriteListLoad:
 
 
 class TestImmutability:
-    def test_second_write_same_id_raises(self, monkeypatch_config: Path) -> None:
+    def test_same_timestamp_id_disambiguates(self, monkeypatch_config: Path) -> None:
+        """Note 14: redundancy is prevented at the preflight input-fingerprint
+        check, NOT by id collision. Two writes with the SAME creation second are
+        disambiguated (``-2``), producing two snapshots — both succeed (this is
+        the ``--force`` path). The directory id is never silently overwritten."""
         study = config.STUDY_NAME
         _seed_llm_source(_live_llm_source(study))
         _seed_run_artifacts(study, RUN_ID)
-        dest = write_snapshot(study, RUN_ID)
-        snap_id = dest.name
-
-        # Same content + run_id -> same deterministic id -> immutability trips.
-        with pytest.raises(SnapshotExistsError):
-            write_snapshot(study, RUN_ID)
-        # The prior snapshot is untouched.
-        assert list_snapshots(study) == [snap_id]
+        ts = "2026-06-15T14:32:00Z"
+        first = write_snapshot(study, RUN_ID, created_utc=ts).name
+        second = write_snapshot(study, RUN_ID, created_utc=ts).name
+        assert first != second
+        assert second.endswith("-2")
+        assert set(list_snapshots(study)) == {first, second}
+        # Byte-identical content → identical recorded content_hash.
+        assert (
+            load_snapshot(study, first)["content_hash"]
+            == load_snapshot(study, second)["content_hash"]
+        )
 
     def test_explicit_existing_id_raises(self, monkeypatch_config: Path) -> None:
         study = config.STUDY_NAME
@@ -234,44 +241,63 @@ class TestImmutability:
             write_snapshot(study, RUN_ID, snapshot_id="snap_fixed")
 
 
-# ── deterministic id + stable manifest hashes ────────────────────────────────
+# ── timestamp id + deterministic content_hash + stable manifest hashes ───────
 
 
-class TestDeterministicId:
-    def test_same_content_same_id(self, monkeypatch_config: Path) -> None:
-        study = config.STUDY_NAME
-        _seed_llm_source(_live_llm_source(study), marker="alpha")
-        _seed_run_artifacts(study, RUN_ID)
-        first = write_snapshot(study, RUN_ID).name
+class TestTimestampIdAndContentHash:
+    """Note 14: the directory id is a timestamp label; the deterministic content
+    hash moves to the manifest ``content_hash`` field (drives diff + fingerprint
+    match). Same content + run_id -> same ``content_hash`` regardless of id."""
 
-        # Wipe the snapshot dir; same inputs must mint the same id.
-        import shutil
-
-        shutil.rmtree(snapshots_root(study))
-        second = write_snapshot(study, RUN_ID).name
-        assert first == second
-
-    def test_different_content_different_id(self, monkeypatch_config: Path) -> None:
-        study = config.STUDY_NAME
-        _seed_llm_source(_live_llm_source(study), marker="alpha")
-        _seed_run_artifacts(study, RUN_ID)
-        first = write_snapshot(study, RUN_ID).name
-
-        # Mutate llm_source content -> different manifest -> different id.
-        _seed_llm_source(_live_llm_source(study), marker="beta")
-        second = write_snapshot(study, RUN_ID).name
-        assert first != second
-
-    def test_different_run_id_different_id(self, monkeypatch_config: Path) -> None:
+    def test_id_is_timestamp_label(self, monkeypatch_config: Path) -> None:
         study = config.STUDY_NAME
         _seed_llm_source(_live_llm_source(study))
         _seed_run_artifacts(study, RUN_ID)
-        first = write_snapshot(study, RUN_ID).name
+        dest = write_snapshot(study, RUN_ID, created_utc="2026-06-15T14:32:00Z")
+        assert dest.name == "snap_20260615T143200Z"
+        m = load_snapshot(study, dest.name)
+        assert m["created_utc"] == "2026-06-15T14:32:00Z"
+        assert m["manifest_schema"] == 2
+
+    def test_same_content_same_content_hash(self, monkeypatch_config: Path) -> None:
+        study = config.STUDY_NAME
+        _seed_llm_source(_live_llm_source(study), marker="alpha")
+        _seed_run_artifacts(study, RUN_ID)
+        first = write_snapshot(study, RUN_ID, created_utc="2026-06-15T14:30:00Z").name
+
+        import shutil
+
+        shutil.rmtree(snapshots_root(study))
+        second = write_snapshot(study, RUN_ID, created_utc="2026-06-15T14:31:00Z").name
+        # Different timestamp -> different id, but identical content -> same hash.
+        assert first != second
+        assert load_snapshot(study, second)["content_hash"]  # present
+        # Re-seed wiped the snapshot dir but not the live tree; both ran on it.
+
+    def test_different_content_different_content_hash(self, monkeypatch_config: Path) -> None:
+        study = config.STUDY_NAME
+        _seed_llm_source(_live_llm_source(study), marker="alpha")
+        _seed_run_artifacts(study, RUN_ID)
+        first = write_snapshot(study, RUN_ID, created_utc="2026-06-15T14:30:00Z")
+        h1 = load_snapshot(study, first.name)["content_hash"]
+
+        _seed_llm_source(_live_llm_source(study), marker="beta")
+        second = write_snapshot(study, RUN_ID, created_utc="2026-06-15T14:31:00Z")
+        h2 = load_snapshot(study, second.name)["content_hash"]
+        assert h1 != h2
+
+    def test_different_run_id_different_content_hash(self, monkeypatch_config: Path) -> None:
+        study = config.STUDY_NAME
+        _seed_llm_source(_live_llm_source(study))
+        _seed_run_artifacts(study, RUN_ID)
+        first = write_snapshot(study, RUN_ID, created_utc="2026-06-15T14:30:00Z")
+        h1 = load_snapshot(study, first.name)["content_hash"]
 
         other_run = "run_othertestid0002"
         _seed_run_artifacts(study, other_run)
-        second = write_snapshot(study, other_run).name
-        assert first != second
+        second = write_snapshot(study, other_run, created_utc="2026-06-15T14:31:00Z")
+        h2 = load_snapshot(study, second.name)["content_hash"]
+        assert h1 != h2
 
     def test_manifest_hashes_match_files(self, monkeypatch_config: Path) -> None:
         import hashlib

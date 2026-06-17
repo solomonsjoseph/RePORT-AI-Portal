@@ -1420,6 +1420,8 @@ def _try_commit_snapshot(
     study: str,
     run_id: str,
     run_dir: Path,
+    resume_held: bool = False,
+    human_review_records: list | None = None,
 ) -> str | None:
     """Attempt to commit an immutable snapshot of the current clean pass.
 
@@ -1428,13 +1430,23 @@ def _try_commit_snapshot(
     if the snapshot could not be written (e.g. the same content was already
     snapshotted — immutability guard).
 
+    A ``--resume-held`` run is committed as a **Type 2** (human-verified)
+    snapshot — something was previously held, a human resolved it, and the
+    re-run is now clean — so an IRB auditor can distinguish it from a Type-1
+    clean-first-run snapshot from the manifest alone (Note 14 C5.2).
+
     Writes ``snapshot_id`` into the run's ``status.json`` on success.  Never
     raises: snapshot failures are non-fatal (the publish already succeeded).
     """
     try:
         from scripts.utils.snapshot import SnapshotExistsError, write_snapshot
 
-        snap_dest = write_snapshot(study, run_id)
+        snap_dest = write_snapshot(
+            study,
+            run_id,
+            snapshot_type=2 if resume_held else 1,
+            human_review_records=human_review_records,
+        )
         snapshot_id = snap_dest.name
         # Record the snapshot_id in status.json.
         status_path = run_dir / "status.json"
@@ -1938,7 +1950,9 @@ def _cmd_run(args: argparse.Namespace) -> int:
             verify_exit = _cmd_verify(verify_args)
             if verify_exit == EXIT_OK:
                 # Verifier passed — commit snapshot.
-                _try_commit_snapshot(study=study, run_id=run_id, run_dir=run_dir)
+                _try_commit_snapshot(
+                    study=study, run_id=run_id, run_dir=run_dir, resume_held=resume_held
+                )
             else:
                 print(
                     f"Inline verifier exited {verify_exit}; snapshot not committed.",

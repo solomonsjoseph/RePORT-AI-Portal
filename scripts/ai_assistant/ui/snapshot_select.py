@@ -41,12 +41,16 @@ from typing import Any
 import config
 from scripts.security.phi_guard_gate import run_phi_guard_gate
 from scripts.utils import snapshot
+from scripts.utils.logging_system import get_logger
 
 __all__ = [
     "SnapshotActivationError",
     "activate_snapshot",
     "available_snapshots",
+    "snapshot_staleness_notices",
 ]
+
+_logger = get_logger(__name__)
 
 
 class SnapshotActivationError(Exception):
@@ -132,13 +136,37 @@ def activate_snapshot(study: str | None, snapshot_id: str) -> Path:
     if not snapshot_id:
         raise SnapshotActivationError("snapshot_id must not be empty")
 
-    # 1. Resolve + fail-closed validate (rejects unknown / path-bearing ids).
+    # 1. Resolve + fail-closed validate (rejects unknown / path-bearing ids) AND
+    #    re-hash the snapshot's llm_source against its manifest (C5.7 tampering
+    #    check happens inside select_snapshot_llm_source). A tampered snapshot
+    #    raises SnapshotTamperedError here and is NEVER exposed.
     try:
         llm_source = snapshot.select_snapshot_llm_source(study, snapshot_id)
     except snapshot.SnapshotError as exc:
         raise SnapshotActivationError(f"cannot activate snapshot {snapshot_id!r}: {exc}") from exc
 
-    # 2. Re-gate the selected subtree for PHI residuals BEFORE exposing it
+    # 2. Staleness (C5.4): a BLOCK-severity trigger (PHI key rotation → the
+    #    snapshot's pseudonyms are irrecoverable) hard-blocks activation. WARN
+    #    triggers (rulebook / source-data / config drift) are logged and surfaced
+    #    to the UI via snapshot_staleness_notices — a human decides, not a block.
+    try:
+        findings = snapshot.evaluate_snapshot_staleness(study, snapshot_id)
+    except snapshot.SnapshotError as exc:
+        raise SnapshotActivationError(
+            f"cannot evaluate staleness for snapshot {snapshot_id!r}: {exc}"
+        ) from exc
+    blocking = [f for f in findings if f.severity is snapshot.StalenessSeverity.BLOCK]
+    if blocking:
+        raise SnapshotActivationError(
+            f"snapshot {snapshot_id!r} is stale and cannot be activated: "
+            + "; ".join(f.detail for f in blocking)
+        )
+    for finding in findings:
+        _logger.warning(
+            "snapshot %s staleness [%s]: %s", snapshot_id, finding.trigger, finding.detail
+        )
+
+    # 3. Re-gate the selected subtree for PHI residuals BEFORE exposing it
     #    (OR-combined Presidio + legacy scanner — fails if either finds PHI).
     result = run_phi_guard_gate(llm_source)
     if not result.ok:
@@ -147,9 +175,39 @@ def activate_snapshot(study: str | None, snapshot_id: str) -> Path:
             f"expose it: {result.detail}"
         )
 
-    # 3. Atomically repoint the assistant read zone AND every llm_source-derived
+    # 4. Atomically repoint the assistant read zone AND every llm_source-derived
     #    constant at the snapshot's llm_source. A single setattr on
     #    STUDY_LLM_SOURCE_DIR would leave dataset-query / SoT-citation tools
     #    reading the LIVE tree; repoint_llm_source_base rebases all of them.
     config.repoint_llm_source_base(llm_source)
+
+    # 5. Record the current-snapshot pointer (C5.3) — activating a snapshot makes
+    #    it the study's designated active one. Fail-soft: a pointer-write failure
+    #    must not undo a successful activation (the read zone is already moved).
+    try:
+        snapshot.set_current_snapshot(study, snapshot_id)
+    except snapshot.SnapshotError as exc:
+        _logger.warning(
+            "snapshot %s activated but current-pointer write failed: %s", snapshot_id, exc
+        )
+
     return llm_source
+
+
+def snapshot_staleness_notices(study: str | None, snapshot_id: str) -> list[dict[str, str]]:
+    """Return value-free staleness notices for a snapshot (C5.4), for the UI.
+
+    Each notice is ``{"trigger": ..., "severity": "warn"|"block", "detail": ...}``.
+    Fail-soft: returns ``[]`` on any error so the selector never crashes.
+    """
+    if study is None:
+        study = getattr(config, "STUDY_NAME", "") or ""
+    if not study or not snapshot_id:
+        return []
+    try:
+        findings = snapshot.evaluate_snapshot_staleness(study, snapshot_id)
+    except Exception:
+        return []
+    return [
+        {"trigger": f.trigger, "severity": f.severity.value, "detail": f.detail} for f in findings
+    ]

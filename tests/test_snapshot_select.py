@@ -283,3 +283,85 @@ class TestActivateSnapshot:
             activate_snapshot(study, dest.name)
         # Read zone NOT repointed because the gate failed.
         assert before == config.STUDY_LLM_SOURCE_DIR
+
+    # ── Wave-5 wiring: current pointer (C5.3) + staleness (C5.4) ──────────────
+
+    def test_activation_sets_current_pointer(
+        self, monkeypatch_config: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        study = config.STUDY_NAME
+        dest = _make_snapshot(study)
+        assert snapshot.get_current_snapshot(study) is None
+        activate_snapshot(study, dest.name)
+        assert snapshot.get_current_snapshot(study) == dest.name
+
+    def test_blocking_staleness_refuses_activation(
+        self, monkeypatch_config: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A BLOCK-severity staleness finding (PHI key rotation) hard-blocks
+        activation before the read zone moves (C5.4)."""
+        from scripts.ai_assistant.ui import snapshot_select as ss
+
+        study = config.STUDY_NAME
+        dest = _make_snapshot(study)
+        before = config.STUDY_LLM_SOURCE_DIR
+
+        monkeypatch.setattr(
+            ss.snapshot,
+            "evaluate_snapshot_staleness",
+            lambda *_a, **_k: [
+                snapshot.StalenessFinding(
+                    trigger="key_rotation",
+                    severity=snapshot.StalenessSeverity.BLOCK,
+                    detail="key rotated",
+                )
+            ],
+        )
+        with pytest.raises(SnapshotActivationError):
+            activate_snapshot(study, dest.name)
+        assert before == config.STUDY_LLM_SOURCE_DIR  # read zone untouched
+        assert snapshot.get_current_snapshot(study) is None  # no pointer written
+
+    def test_warn_staleness_allows_activation(
+        self, monkeypatch_config: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from scripts.ai_assistant.ui import snapshot_select as ss
+
+        study = config.STUDY_NAME
+        dest = _make_snapshot(study)
+        monkeypatch.setattr(
+            ss.snapshot,
+            "evaluate_snapshot_staleness",
+            lambda *_a, **_k: [
+                snapshot.StalenessFinding(
+                    trigger="rulebook_update",
+                    severity=snapshot.StalenessSeverity.WARN,
+                    detail="rulebook moved",
+                )
+            ],
+        )
+        exposed = activate_snapshot(study, dest.name)  # WARN does not block
+        assert exposed == config.STUDY_LLM_SOURCE_DIR
+
+    def test_staleness_notices_helper(
+        self, monkeypatch_config: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from scripts.ai_assistant.ui.snapshot_select import snapshot_staleness_notices
+
+        study = config.STUDY_NAME
+        dest = _make_snapshot(study)
+        monkeypatch.setattr(
+            snapshot,
+            "evaluate_snapshot_staleness",
+            lambda *_a, **_k: [
+                snapshot.StalenessFinding(
+                    trigger="config_change",
+                    severity=snapshot.StalenessSeverity.WARN,
+                    detail="config moved",
+                )
+            ],
+        )
+        notices = snapshot_staleness_notices(study, dest.name)
+        assert notices == [
+            {"trigger": "config_change", "severity": "warn", "detail": "config moved"}
+        ]

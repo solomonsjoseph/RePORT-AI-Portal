@@ -186,6 +186,38 @@ def test_assertions_and_gate_use_merged_scrub_config_loader() -> None:
     assert "load_scrub_config(Path(config.PHI_SCRUB_CONFIG_PATH))" not in src
 
 
+def test_preflight_redundant_activates_existing_snapshot(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """C5.5: on a redundant run, preflight points `current` at the existing clean
+    snapshot for the fingerprint and records its id on the run state."""
+    audit = _patch_config_for_preflight(monkeypatch, tmp_path, study="S", inputs_present=True)
+    from scripts.utils import snapshot as snap_mod
+    from scripts.utils.input_fingerprint import (
+        compute_input_fingerprint,
+        fingerprint_record_path,
+        write_fingerprint_record,
+    )
+
+    write_fingerprint_record(fingerprint_record_path(audit), compute_input_fingerprint(study="S"))
+
+    activated: dict[str, str] = {}
+    monkeypatch.setattr(snap_mod, "find_snapshot_by_fingerprint", lambda *_a, **_k: "snap_existing")
+    monkeypatch.setattr(
+        snap_mod,
+        "set_current_snapshot",
+        lambda study, sid, **_k: activated.update(study=study, sid=sid),
+    )
+
+    state = ORCH._RunState(study="S", run_id="run_e")
+    state.path = tmp_path / "run_state.json"
+    rc = ORCH._preflight(state, study="S", run_id="run_e", resume_held=False, force=False)
+    assert rc == -1
+    assert state.status == "skipped_redundant"
+    assert state.snapshot_id == "snap_existing"
+    assert activated == {"study": "S", "sid": "snap_existing"}
+
+
 def test_preflight_force_overrides_redundancy(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

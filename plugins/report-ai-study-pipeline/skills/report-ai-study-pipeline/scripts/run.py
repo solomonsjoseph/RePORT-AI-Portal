@@ -171,8 +171,22 @@ def _preflight(state: _RunState, *, study: str, run_id: str, resume_held: bool, 
     if not resume_held and not force:
         recorded = read_recorded_fingerprint(fingerprint_record_path(Path(config.STUDY_AUDIT_DIR)))
         if is_redundant_run(fp, recorded):
+            # C5.5: identical inputs → activate the existing clean snapshot for
+            # this fingerprint (point `current` at it) instead of re-running.
+            detail = "inputs unchanged since last clean run (use --force to re-run)"
+            try:
+                from scripts.utils import snapshot as _snapshot
+
+                existing = _snapshot.find_snapshot_by_fingerprint(study, fp.fingerprint)
+                if existing is not None:
+                    _snapshot.set_current_snapshot(study, existing)
+                    state.snapshot_id = existing
+                    detail = f"identical inputs detected, activating snapshot {existing}"
+                    print(f"P0:preflight — {detail}", file=sys.stderr)
+            except Exception as exc:  # advisory — short-circuit either way
+                print(f"redundant-run snapshot activation skipped: {exc}", file=sys.stderr)
             rec.status = "skipped"
-            rec.detail = "inputs unchanged since last clean run (use --force to re-run)"
+            rec.detail = detail
             rec.exit_code = 0
             state.status = "skipped_redundant"
             state.flush()
@@ -357,6 +371,16 @@ def main(argv: list[str] | None = None) -> int:
         write_fingerprint_record(fingerprint_record_path(Path(config.STUDY_AUDIT_DIR)), fp)
         state.input_fingerprint = fp.fingerprint
         _absorb_status(state, run_dir)  # pick up snapshot_id committed by publish Step 7
+        # C5.3: phase-10 points `current` at the freshly committed snapshot so a
+        # clean publish becomes the study's designated active one. Fail-soft — a
+        # pointer-write hiccup must not fail an otherwise-complete run.
+        if state.snapshot_id:
+            try:
+                from scripts.utils import snapshot as _snapshot
+
+                _snapshot.set_current_snapshot(study, state.snapshot_id)
+            except Exception as exc:  # advisory: never fail a complete run
+                print(f"P10:finalize — current-pointer write skipped: {exc}", file=sys.stderr)
         frec.status, frec.exit_code = "complete", 0
         state.status = "complete"
         state.flush()
