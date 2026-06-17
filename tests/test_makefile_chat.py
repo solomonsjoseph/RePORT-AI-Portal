@@ -19,11 +19,21 @@ def test_chat_targets_use_locked_uv_run() -> None:
     assert "@$(UV_RUN_LOCKED) $(CHAT_GROUPS) python main.py --web" in makefile
 
 
-def test_quickstart_and_dictionary_targets_match_plugin_flow() -> None:
-    """Quickstart should enter the Load Study UI, while dictionary stays narrow."""
+def test_quickstart_and_study_targets_match_plugin_flow() -> None:
+    """Quickstart enters the Load Study UI; `make study` is the publish entry.
+
+    The publish path is now the orchestrator: `make study STUDY=<name>` exports
+    STUDY_NAME and runs the 10-phase orchestrator. The old `main.py`-flag targets
+    (pipeline/build-bundle/dictionary/extract-datasets/bundle) are gone.
+    """
 
     makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
 
     assert "quickstart: sync chat" in makefile
     assert "Sync → web UI → Load Study plugin" in makefile
-    assert "@$(PYTHON) main.py --build-bundle --skip-datasets" in makefile
+    # The study build delegates to the orchestrator with STUDY_NAME exported.
+    assert "study:" in makefile
+    assert "STUDY_NAME=$(STUDY) $(UV) run --all-groups python $(ORCHESTRATOR)" in makefile
+    # The removed legacy targets must not reappear.
+    assert "main.py --build-bundle" not in makefile
+    assert "main.py --pipeline" not in makefile

@@ -14,7 +14,9 @@ def test_pipeline_help_names_host_publish_path() -> None:
         text=True,
     )
 
-    assert "Clinical data host publish path" in result.stdout
-    assert "Run host publish path: Dict" in result.stdout
-    assert "Clinical data processing pipeline" not in result.stdout
-    assert "Full pipeline: Extract" not in result.stdout
+    assert "AI Assistant launcher" in result.stdout
+    assert "make study STUDY=<name>" in result.stdout
+    assert "--chat" in result.stdout
+    assert "--web" in result.stdout
+    # The publish path moved to the orchestrator; it is no longer a launcher flag.
+    assert "--pipeline" not in result.stdout

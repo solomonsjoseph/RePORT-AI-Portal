@@ -283,7 +283,7 @@ def _default_junk_patterns() -> frozenset[str]:
     try:
         from scripts.extraction.dataset_cleanup import JUNK_PATTERNS
 
-        return JUNK_PATTERNS
+        return frozenset(JUNK_PATTERNS)
     except Exception:  # pragma: no cover - defensive: cleanup module always present
         return frozenset()
 

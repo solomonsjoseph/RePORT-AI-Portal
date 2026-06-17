@@ -160,14 +160,30 @@ def test_ensure_directories_hardens_sensitive_dirs_to_0700(
 
 
 def test_install_phi_redactor_callers_pass_subject_id_patterns() -> None:
-    """Both production callers of ``install_phi_redactor`` must pass the
-    canonical ``SUBJECT_ID_PATTERNS`` so the per-subject HMAC redaction
-    pass actually fires (not just the generic catalog pass)."""
-    main_src = Path("main.py").read_text(encoding="utf-8")
+    """The production log-redactor path must seed the per-subject HMAC pass with
+    the canonical ``SUBJECT_ID_PATTERNS`` (not just the generic catalog pass).
+
+    Wave 6 consolidated the best-effort installer into
+    ``scripts/utils/log_hygiene.py:install_phi_redactor_best_effort`` — that helper
+    passes ``subject_id_patterns=list(SUBJECT_ID_PATTERNS)``, and the publish
+    engine + the thin launcher call it at startup. The chat CLI still installs the
+    redactor directly with the patterns.
+    """
+    hygiene_src = Path("scripts/utils/log_hygiene.py").read_text(encoding="utf-8")
     cli_src = Path("scripts/ai_assistant/cli.py").read_text(encoding="utf-8")
-    for label, src in (("main.py", main_src), ("cli.py", cli_src)):
+    for label, src in (("log_hygiene.py", hygiene_src), ("cli.py", cli_src)):
         assert "subject_id_patterns=" in src and "SUBJECT_ID_PATTERNS" in src, (
             f"{label} must pass subject_id_patterns=list(SUBJECT_ID_PATTERNS) "
             "to install_phi_redactor — otherwise SUBJ_* identifiers in logs "
             "are not HMAC-tagged."
+        )
+
+    # The two host entry points must install the best-effort redactor at startup.
+    for label, path in (
+        ("main.py", "main.py"),
+        ("host_pipeline.py", "scripts/pipeline/host_pipeline.py"),
+    ):
+        src = Path(path).read_text(encoding="utf-8")
+        assert "install_phi_redactor_best_effort()" in src, (
+            f"{label} must call install_phi_redactor_best_effort() at startup"
         )

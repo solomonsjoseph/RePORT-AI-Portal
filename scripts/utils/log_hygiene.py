@@ -47,6 +47,7 @@ __all__ = [
     "PHIRedactingFilter",
     "attach_to_logger",
     "install_phi_redactor",
+    "install_phi_redactor_best_effort",
 ]
 
 # The log redactor shares its regex catalog with the agent-boundary PHI gate
@@ -191,6 +192,59 @@ def install_phi_redactor(
     for handler in logging.getLogger("report_ai_portal").handlers:
         handler.addFilter(flt)
     return flt
+
+
+def install_phi_redactor_best_effort() -> None:
+    """Attach the PHI log-redaction filter, failing closed in production.
+
+    **What.** Loads the sidecar HMAC key and installs the filter. Local/dev
+    runs warn and continue when the key is absent; production runs stop.
+
+    **Why.** The redactor needs the same 32-byte secret that keys pseudonym
+    generation, so subject-id HMAC tags in logs stay joinable with the
+    on-disk pseudonyms for operators who hold the key. Entry points that
+    run before the PHI key exists (fresh checkout / first chat session)
+    should still produce logs rather than hard-fail on a missing key.
+    Production services must not run with PHI-capable logging unredacted.
+
+    **How.** Calls :func:`scripts.security.phi_keystore.get_phi_key`; on
+    :class:`PHIKeyMissingError` / :class:`PHIKeyPermissionError` /
+    :class:`PHIScrubError`, logs a one-line warning and returns without
+    installing unless production controls are enabled. Successful installs are
+    idempotent (the install helper no-ops when a filter is already present).
+
+    Imports are deferred so importing this hygiene module never pulls in the
+    heavy ``phi_keystore``/``phi_scrub`` chain at module load time.
+    """
+    import config
+    from scripts.security.phi_keystore import get_phi_key
+    from scripts.security.phi_scrub import (
+        PHIKeyMissingError,
+        PHIKeyPermissionError,
+        PHIScrubError,
+    )
+    from scripts.utils import logging_system as log
+
+    try:
+        key = get_phi_key()
+    except (PHIKeyMissingError, PHIKeyPermissionError, PHIScrubError) as exc:
+        if config.production_mode_enabled():
+            raise RuntimeError(
+                "Production startup refused: PHI log redactor could not be installed."
+            ) from exc
+        log.warning(
+            "PHI log redactor NOT installed (%s). "
+            "Use the web UI Load Study flow, or ask a developer/operator "
+            "to provision the sidecar PHI key.",
+            type(exc).__name__,
+        )
+        return
+    # Seed the per-subject HMAC pass with the canonical SUBJECT_ID_PATTERNS
+    # so SUBJ_*, SC_*, FID_* identifiers in log messages get tagged
+    # ``<SUBJ_*>``. Without this, only the generic catalog redactions run.
+    from scripts.security.phi_patterns import SUBJECT_ID_PATTERNS
+
+    install_phi_redactor(hmac_key=key, subject_id_patterns=list(SUBJECT_ID_PATTERNS))
 
 
 def attach_to_logger(logger: logging.Logger, filter_instance: PHIRedactingFilter) -> None:

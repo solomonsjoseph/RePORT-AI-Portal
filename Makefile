@@ -50,6 +50,20 @@ else
 FFLAG :=
 endif
 
+RESUME ?=
+ifdef RESUME
+RESUMEFLAG := --resume-held
+else
+RESUMEFLAG :=
+endif
+
+STRICT ?=
+ifdef STRICT
+STRICTFLAG := --strict-abort
+else
+STRICTFLAG :=
+endif
+
 ifdef PROVIDER
 PROVIDERFLAG := --provider $(PROVIDER)
 else
@@ -73,11 +87,10 @@ N := \033[0m
 .DEFAULT_GOAL := help
 .PHONY: \
 	help quickstart debug sync version \
-	pipeline dictionary extract-datasets bundle \
+	study rebuild-llm-source \
 	sot-source-pack sot-generate-all sot-verify sot-verify-output sot-validate \
-	build-llm-source rebuild-llm-source \
 	chat-deps chat-cli-deps chat-cli chat \
-	test test-all lint lint-legacy-dirs typecheck security ci verify release-check \
+	test test-all lint lint-legacy-dirs typecheck typecheck-skills security ci verify release-check \
 	docs doc-freshness docs-quality docs-linkcheck docs-ci release-notes \
 	chat-smoke check-study-knowledge \
 	clean clean-legacy clean-legacy-dry-run nuke
@@ -100,15 +113,10 @@ help:
 	@printf "  $(C)make sync$(N)             Install / restore all dependencies (uv sync)\n"
 	@printf "  $(C)make version$(N)          Show version + environment info\n"
 	@printf "\n"
-	@printf "$(B)$(G)  Host publish path$(N)\n"
-	@printf "  $(C)make pipeline$(N)         Host publish path used by dataset-to-llm-source\n"
-	@printf "  $(C)make build-llm-source$(N) STUDY=… — SoT plugin outputs → Dict → Datasets → PHI scrub → llm_source\n"
-	@printf "  $(C)make rebuild-llm-source$(N) STUDY=… — Remove generated llm_source/staging, preserve audit/agent, then rebuild\n"
-	@printf "\n"
-	@printf "$(B)$(G)  Lower-level publish helpers$(N)\n"
-	@printf "  $(C)make dictionary$(N)       Dictionary publish leg → llm_source\n"
-	@printf "  $(C)make extract-datasets$(N) Step 1+3 — Extract → promote datasets\n"
-	@printf "  $(C)make bundle$(N)           Legacy alias — prepare llm_source dictionary leg\n"
+	@printf "$(B)$(G)  Study build (the plugin IS the pipeline)$(N)\n"
+	@printf "  $(C)make study$(N) STUDY=…    Build/publish a study via the 10-phase orchestrator\n"
+	@printf "                          (modifiers: FORCE=1, RESUME=1 maintainer resume, STRICT=1)\n"
+	@printf "  $(C)make rebuild-llm-source$(N) STUDY=… — Remove generated llm_source/staging, preserve audit/agent, then re-run\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Source-of-Truth (SoT)$(N)\n"
 	@printf "  $(C)make sot-source-pack$(N)  STUDY=… FORM=… — Stage 0: resolve PDF+dataset → source pack + page renders\n"
@@ -177,38 +185,33 @@ debug:
 	@$(MAKE) quickstart VERBOSE=1
 
 # ═══════════════════════════════════════════════════════════════════════
-# HOST PUBLISH PATH
+# STUDY BUILD — the plugin IS the pipeline (10-phase orchestrator)
 # ═══════════════════════════════════════════════════════════════════════
+#
+# `make study STUDY=<name>` is the single entry point for building/publishing a
+# study. It exports STUDY_NAME (so config resolves the same study the
+# orchestrator was asked to run) and delegates to the 10-phase orchestrator,
+# which holds the per-study lock for the whole run. Modifiers:
+#   FORCE=1   — run even if inputs are unchanged (skip the redundant-run check)
+#   RESUME=1  — maintainer human-review resume (re-publish the full surviving set)
+#   STRICT=1  — abort the whole study on the first un-scrubbable row
+ORCHESTRATOR := plugins/report-ai-study-pipeline/skills/report-ai-study-pipeline/scripts/run.py
 
-pipeline:
-	@printf "$(C)Running host publish path: Dict → Datasets → PHI scrub → llm_source$(N)\n"
-	@$(PYTHON) main.py --pipeline $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG) $(FFLAG)
-	@printf "$(G)✓ Host publish complete$(N)\n"
+study: ## Build/publish a study via the 10-phase orchestrator (the pipeline)
+	@printf "$(C)Running 10-phase study pipeline for STUDY=$(STUDY)...$(N)\n"
+	@STUDY_NAME=$(STUDY) $(UV) run --all-groups python $(ORCHESTRATOR) \
+		--study $(STUDY) $(FFLAG) $(RESUMEFLAG) $(STRICTFLAG)
+	@printf "$(G)✓ Study pipeline complete for $(STUDY)$(N)\n"
 
-build-llm-source: sot-generate-all
-	@printf "$(C)Building llm_source: Dict → Datasets → PHI scrub → Publish → Audit$(N)\n"
-	@$(PYTHON) main.py --pipeline $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG) $(FFLAG)
-	@printf "$(G)✓ llm_source built$(N)\n"
-
-rebuild-llm-source:
+rebuild-llm-source: ## Remove generated llm_source/staging, preserve audit/agent, then re-run the orchestrator
 	@printf "$(Y)Removing generated llm_source/staging for STUDY=$(STUDY); preserving audit manifest, agent state, and raw inputs.$(N)\n"
-	@$(UV) run --all-groups python -m scripts.utils.pre_delete_cleanup
+	@STUDY_NAME=$(STUDY) $(UV) run --all-groups python -m scripts.utils.pre_delete_cleanup
 	@rm -rf "output/$(STUDY)/llm_source" "tmp/$(STUDY)" 2>/dev/null || true
-	@$(MAKE) build-llm-source STUDY=$(STUDY) FORCE=1
+	@$(MAKE) study STUDY=$(STUDY) FORCE=1
 
 # ═══════════════════════════════════════════════════════════════════════
-# PIPELINE — INDIVIDUAL STEPS
+# SOURCE TRUTH — INDIVIDUAL STEPS
 # ═══════════════════════════════════════════════════════════════════════
-
-dictionary:
-	@printf "$(C)Publishing dictionary leg to llm_source...$(N)\n"
-	@$(PYTHON) main.py --build-bundle --skip-datasets $(VFLAG) $(FFLAG)
-	@printf "$(G)✓ Dictionary publish complete$(N)\n"
-
-extract-datasets:
-	@printf "$(C)Step 1+3: Extract → promote datasets...$(N)\n"
-	@$(PYTHON) main.py --skip-dictionary --process-datasets $(VFLAG) $(FFLAG)
-	@printf "$(G)✓ Dataset processing complete$(N)\n"
 
 sot-source-pack: ## Stage 0: resolve PDF+dataset and write source pack JSON + per-page render PNGs
 	$(UV) run --all-groups python -m scripts.source_truth.study_intake \
@@ -254,11 +257,6 @@ sot-validate: ## All-gates check: verifier + property validator + diff-against-g
 		--study $(STUDY) --form $(FORM) \
 		--candidate $(CANDIDATE)
 	@printf "$(G)✓ sot-validate STUDY=$(STUDY) FORM=$(FORM) — all gates green$(N)\n"
-
-bundle:
-	@printf "$(C)Preparing llm_source dictionary leg...$(N)\n"
-	@$(PYTHON) main.py --build-bundle $(VFLAG) $(FFLAG)
-	@printf "$(G)✓ llm_source dictionary leg prepared$(N)\n"
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -324,6 +322,15 @@ lint-legacy-dirs: ## Phase 5b: fail on legacy output directory name strings in s
 typecheck:
 	@$(MYPY) scripts/ main.py config.py --ignore-missing-imports
 	@printf "$(G)✓ Typecheck passed$(N)\n"
+
+typecheck-skills: ## Informational mypy over the plugin skill scripts (non-blocking)
+	@printf "$(C)Type-checking plugin skill scripts (informational)…$(N)\n"
+	@# The skill scripts are imported as scripts.* via the meta_path shim at
+	@# runtime; mypy cannot follow that bridge, so they are type-checked here by
+	@# their on-disk path. Non-blocking (piped) — the blocking gate is `typecheck`.
+	@$(MYPY) plugins/report-ai-study-pipeline/skills/*/scripts/*.py \
+		--ignore-missing-imports --no-error-summary 2>&1 | tail -20 || true
+	@printf "$(G)✓ Skill typecheck (informational) done$(N)\n"
 
 security:
 	@$(UV) run pip-audit

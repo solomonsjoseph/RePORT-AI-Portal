@@ -240,6 +240,7 @@ def main(argv: list[str] | None = None) -> int:
 
     import config
     from scripts.skills.extract_to_llm_source import (
+        EXIT_NEEDS_ADVICE,
         EXIT_OK,
         EXIT_PARTIAL_REVIEW,
     )
@@ -253,6 +254,24 @@ def main(argv: list[str] | None = None) -> int:
 
     study = args.study
     os.environ.setdefault("STUDY_NAME", study)
+    # ``config`` resolves all study-scoped paths (STUDY_OUTPUT_DIR, STUDY_AUDIT_DIR,
+    # …) from STUDY_NAME at *import* time. If the ambient STUDY_NAME differs from
+    # the ``--study`` we were asked to run, the orchestrator would write its
+    # run_state.json / fingerprint / current-pointer under the wrong study tree
+    # while the publish skill (which honours ``--study``) writes status.json under
+    # the right one — so ``_absorb_status`` would silently read a non-existent
+    # status.json and the snapshot/current-pointer wiring would no-op. Fail closed
+    # with an actionable message rather than diverging silently. The production
+    # entry point (`make study STUDY=<name>`) exports STUDY_NAME, so this passes.
+    if study != config.STUDY_NAME:
+        print(
+            f"Refusing to run: --study is '{study}' but config resolved study "
+            f"'{config.STUDY_NAME}' (from the STUDY_NAME env at import time). "
+            f"Re-run with STUDY_NAME={study} set in the environment "
+            f"(e.g. `make study STUDY={study}`).",
+            file=sys.stderr,
+        )
+        return EXIT_NEEDS_ADVICE
     run_id = args.run_id or resolve_run_id()
     run_dir = Path(config.STUDY_OUTPUT_DIR) / "runs" / run_id
 

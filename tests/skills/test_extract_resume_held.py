@@ -398,9 +398,7 @@ class TestResumeHeldHappyPath:
         snapshot_calls: list[dict] = []
 
         def _fake_snapshot(*, study, run_id, run_dir, resume_held=False, **_kwargs):
-            snapshot_calls.append(
-                {"study": study, "run_id": run_id, "resume_held": resume_held}
-            )
+            snapshot_calls.append({"study": study, "run_id": run_id, "resume_held": resume_held})
             return "snap_abc123"
 
         import hashlib

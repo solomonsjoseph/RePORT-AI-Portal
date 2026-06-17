@@ -1,4 +1,9 @@
-"""Unit tests for the staging helpers added to main.py in Task 5.
+"""Unit tests for the host publish staging helpers.
+
+These helpers were moved verbatim from the repo-root ``main.py`` into
+``scripts.pipeline.host_pipeline`` in the Wave 6 "thin main.py" cutover; the
+tests import the engine module under the local alias ``main`` so the assertions
+read unchanged.
 
 Covers:
 
@@ -18,7 +23,7 @@ from typing import Any
 
 import pytest
 
-import main
+from scripts.pipeline import host_pipeline as main
 
 # ── _prepare_staging ────────────────────────────────────────────────────────
 

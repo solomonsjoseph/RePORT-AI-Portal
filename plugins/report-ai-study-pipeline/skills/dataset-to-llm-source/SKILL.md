@@ -40,7 +40,7 @@ data/raw/{STUDY}/datasets/*.{xlsx,csv}
   -> verifier report and staging destruction attestation
 ```
 
-Prefer this CLI over lower-level `make extract-datasets` for operator runs because it includes the manifest gate, privacy approval, pipeline lock, verifier, and destruction attestation.
+For a full study build this skill runs under the `report-ai-study-pipeline` orchestrator (`make study STUDY=<name>`), which holds the pipeline lock and drives every phase. This CLI is the publish supervisor the orchestrator invokes; prefer it (or `make study`) over invoking the host publish engine (`scripts.pipeline.host_pipeline`) directly, because it includes the manifest gate, privacy approval, pipeline lock, verifier, and destruction attestation.
 
 ## Key Boundary
 

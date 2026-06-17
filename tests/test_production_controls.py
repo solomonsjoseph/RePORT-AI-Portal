@@ -7,7 +7,9 @@ import pytest
 import config
 import main
 from scripts.ai_assistant.ui.chat import _rate_limit_status
+from scripts.security import phi_keystore
 from scripts.security.phi_scrub import PHIKeyMissingError
+from scripts.utils import log_hygiene
 
 
 def test_phi_log_redactor_missing_key_fails_closed_in_production(
@@ -18,10 +20,12 @@ def test_phi_log_redactor_missing_key_fails_closed_in_production(
     def _missing_key() -> bytes:
         raise PHIKeyMissingError("missing")
 
-    monkeypatch.setattr(main, "_load_phi_key", _missing_key)
+    # The best-effort redactor installer moved to scripts.utils.log_hygiene in the
+    # Wave 6 thin-main cutover; it loads the key via phi_keystore.get_phi_key.
+    monkeypatch.setattr(phi_keystore, "get_phi_key", _missing_key)
 
     with pytest.raises(RuntimeError, match="Production startup refused"):
-        main._install_log_redactor_best_effort()
+        log_hygiene.install_phi_redactor_best_effort()
 
 
 def test_production_mode_is_enabled_by_proxy_auth(

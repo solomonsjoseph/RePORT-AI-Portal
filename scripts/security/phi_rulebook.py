@@ -98,7 +98,7 @@ def default_seed_dir() -> Path:
 
 def _cache_payload(bundle: RuleBundle, jurisdictions: tuple[str, ...]) -> dict:
     """Build the value-free cache JSON for a resolved bundle."""
-    payload = bundle.to_json()
+    payload: dict = bundle.to_json()
     payload["cache_version"] = RULEBOOK_CACHE_VERSION
     payload["jurisdictions"] = sorted({j.upper() for j in jurisdictions})
     return payload

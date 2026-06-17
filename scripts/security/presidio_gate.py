@@ -94,7 +94,7 @@ _VALIDATORS: dict[str, Callable[[str], bool]] = {}
 
 def _regex_string(obj: Any) -> str:
     """Return the underlying regex source for a plain pattern or a wrapper."""
-    return obj.pattern if hasattr(obj, "pattern") else obj
+    return str(obj.pattern if hasattr(obj, "pattern") else obj)
 
 
 def _build_analyzer() -> Any:
@@ -115,7 +115,7 @@ def _build_analyzer() -> Any:
         """spacy.blank('en') tokenizer — no NER model, no download."""
 
         def __init__(self) -> None:
-            self.nlp = {"en": spacy.blank("en")}
+            self.nlp = {"en": spacy.blank("en")}  # type: ignore[assignment]
             # presidio 2.2.x reads these during registry wiring; a tokenizer-only
             # engine recognizes no NER entities, which is exactly what we want.
             from presidio_analyzer.nlp_engine import NerModelConfiguration

@@ -128,12 +128,13 @@ def parse_skill_result(stdout: str, *, skill: str, exit_code: int) -> SkillResul
             exit_code=exit_code,
             summary="no skill-result marker emitted; synthesised from exit code",
         )
+    _data = found.get("data")
     return SkillResult(
         skill=str(found.get("skill", skill)),
         ok=bool(found.get("ok", exit_code == 0)),
         exit_code=exit_code,
         summary=str(found.get("summary", "")),
-        data=found.get("data") if isinstance(found.get("data"), dict) else {},
+        data=_data if isinstance(_data, dict) else {},
     )
 
 

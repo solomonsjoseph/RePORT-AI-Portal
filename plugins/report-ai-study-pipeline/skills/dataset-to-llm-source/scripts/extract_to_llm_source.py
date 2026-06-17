@@ -16,8 +16,9 @@ This module serves two roles:
 Atomicity dependency
 --------------------
 ``destroy_staging_and_attest`` is only called after the publish step has
-completed.  The publish step relies on :func:`main._publish_leg`
-(``main.py:_publish_leg``) being atomic: that function uses a sibling temp
+completed.  The publish step relies on
+:func:`scripts.pipeline.host_pipeline._publish_leg`
+being atomic: that function uses a sibling temp
 directory under ``trio_dir.parent / ".llm_source.publishing"`` and a single
 ``os.rename`` syscall to promote the populated tree to its final
 ``llm_source/`` location, ensuring that ``llm_source/`` is either absent or
@@ -1390,29 +1391,32 @@ def _run_form_approval_gate(
 
 
 def _acquire_pipeline_lock_for_skill(study: str) -> None:
-    """Acquire the pipeline lock by delegating to main._acquire_pipeline_lock.
+    """Acquire the pipeline lock via the canonical ``scripts.utils.pipeline_lock``.
 
-    Imports main lazily to avoid circular imports and to allow the test suite
-    to mock ``main._acquire_pipeline_lock``.
+    Imports the lock module lazily so the test suite can mock this wrapper.
 
     Passes *study* explicitly so the lock-file name is keyed on the study
     supplied via ``--study``, not on ``config.STUDY_NAME`` (which may differ
     when the caller runs against a different study than the one auto-detected
     at import time).
 
-    Raises RuntimeError (from main._acquire_pipeline_lock) if the lock is
+    Raises RuntimeError (from ``acquire_pipeline_lock``) if the lock is
     already held by another process.
-    """
-    import main as _main
 
-    _main._acquire_pipeline_lock(study)
+    Wave 6 note: this previously delegated to ``main._acquire_pipeline_lock``;
+    after the thin-main cutover the lock primitives live only in
+    ``scripts.utils.pipeline_lock`` (which the engine and this wrapper share).
+    """
+    from scripts.utils.pipeline_lock import acquire_pipeline_lock
+
+    acquire_pipeline_lock(study)
 
 
 def _release_pipeline_lock_for_skill() -> None:
-    """Release the pipeline lock via main._release_pipeline_lock."""
-    import main as _main
+    """Release the pipeline lock via ``scripts.utils.pipeline_lock``."""
+    from scripts.utils.pipeline_lock import release_pipeline_lock
 
-    _main._release_pipeline_lock()
+    release_pipeline_lock()
 
 
 def _try_commit_snapshot(
@@ -1736,7 +1740,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 },
             )
 
-        # ── Step 3: subprocess invocation of main.py --pipeline ───────────
+        # ── Step 3: subprocess invocation of the host publish engine ──────
         env = dict(os.environ)
         # Defensive: the bypass env var was already refused above.
         env.pop("REPORTALIN_ALLOW_DISABLED_SCRUB", None)
@@ -1745,31 +1749,33 @@ def _cmd_run(args: argparse.Namespace) -> int:
         if form_gate.approved_forms or form_gate.held_forms:
             env["REPORTAL_ALLOWED_DATASET_FORMS"] = ",".join(form_gate.approved_forms)
 
-        # main.py resolves study from STUDY_NAME env var (it has no --study flag).
+        # The engine resolves study from STUDY_NAME env var (it has no --study flag).
         env["STUDY_NAME"] = study
         # The wrapper already holds the pipeline lock (acquired above); signal
-        # the subprocess so main.py's _acquire_pipeline_lock skips re-acquisition
+        # the subprocess so the engine's _acquire_pipeline_lock skips re-acquisition
         # rather than racing itself on the same fcntl flock. We pass our PID so
-        # main.py can VALIDATE the baton (live parent == os.getppid()) instead of
+        # the engine can VALIDATE the baton (live parent == os.getppid()) instead of
         # honoring an inherited/stale env var unconditionally — otherwise a leaked
         # REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT would silently disable the lock for
-        # an unrelated direct `python main.py` run (GAP-3).
+        # an unrelated direct engine run (GAP-3).
         env["REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT"] = "1"
         env["REPORTAL_PIPELINE_LOCK_PARENT_PID"] = str(os.getpid())
-        # main.py lives at the repo root. After the Wave-2 consolidation move this
-        # module sits 5 levels deep under plugins/.../skills/.../scripts/, so the
-        # old relative parent math resolved to skills/main.py (nonexistent). Use
-        # the canonical config.BASE_DIR instead of brittle parent counting.
+        # Wave 6 cutover: the host publish path moved out of the repo-root main.py
+        # into scripts.pipeline.host_pipeline. Invoke it as a module
+        # (``python -m scripts.pipeline.host_pipeline --pipeline``) from the repo
+        # root so the scripts.* meta_path shim and config resolution work exactly
+        # as they did for the old ``main.py --pipeline`` subprocess.
         import config as _config
 
         repo_root = Path(_config.BASE_DIR)
-        # stdout/stderr are not captured here; main.py installs its own PHI log
+        # stdout/stderr are not captured here; the engine installs its own PHI log
         # redactor at startup. If that install fails non-fatally (non-production
         # mode), raw log lines bypass this process's redactor and go directly to
-        # the terminal/log. In production mode, main.py exits non-zero on redactor
+        # the terminal/log. In production mode, the engine exits non-zero on redactor
         # failure, which is caught below.
-        result = subprocess.run(  # noqa: S603
-            [sys.executable, str(repo_root / "main.py"), "--pipeline"],
+        result = subprocess.run(
+            [sys.executable, "-m", "scripts.pipeline.host_pipeline", "--pipeline"],
+            cwd=str(repo_root),
             env=env,
             check=False,
         )
@@ -1787,7 +1793,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
             )
 
         # ── Step 3.5: read scrub_outcome.json (best-effort) ──────────────────
-        # main.py writes output/{STUDY}/runs/{run_id}/scrub_outcome.json when
+        # the engine writes output/{STUDY}/runs/{run_id}/scrub_outcome.json when
         # partial_on_review=True.  If the sidecar reports partial=True we surface
         # EXIT_PARTIAL_REVIEW (8) — the rows themselves were still published, but
         # some were quarantined inside the form's published JSONL.  The sidecar

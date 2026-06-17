@@ -49,12 +49,12 @@ def test_publish_leg_uses_secure_remove_tree_for_old_bundle() -> None:
     # lines. Avoids catastrophic regex backtracking on the 1000+ line file.
     # Window widened from 50 to 100 to accommodate the expanded atomicity-
     # contract docstring added in P0.7.
-    lines = Path("main.py").read_text(encoding="utf-8").splitlines()
+    lines = Path("scripts/pipeline/host_pipeline.py").read_text(encoding="utf-8").splitlines()
     start = next(
         (i for i, line in enumerate(lines) if line.startswith("def _publish_leg(")),
         None,
     )
-    assert start is not None, "_publish_leg definition not found in main.py"
+    assert start is not None, "_publish_leg definition not found in host_pipeline.py"
     body = "\n".join(lines[start : start + 100])
     assert "if trio_dir.exists():" in body, "trio_dir.exists() block not found"
     assert "secure_remove_tree(trio_dir)" in body, (
@@ -85,20 +85,23 @@ def test_lineage_manifest_omits_fingerprint_when_not_provided() -> None:
 
 
 def test_main_emits_phi_key_fingerprint_to_lineage() -> None:
-    """``main.py``'s ``run_lineage`` must compute the PHI key fingerprint and
-    pass it to ``emit_lineage_manifest``.
+    """The host publish engine's ``run_lineage`` must compute the PHI key
+    fingerprint and pass it to ``emit_lineage_manifest``.
 
-    Wave 3 C1 routed the computation through ``PHIKeyStore`` — ``main.py`` now
+    Wave 3 C1 routed the computation through ``PHIKeyStore`` — the engine now
     calls ``phi_key_fingerprint()`` (imported as ``_phi_key_fingerprint``), which
     returns the byte-identical ``sha256(<raw key bytes>).hexdigest()`` value the
     inline ``_hashlib.sha256(_load_phi_key()).hexdigest()`` used to compute.
+
+    The engine moved from the repo-root ``main.py`` to
+    ``scripts/pipeline/host_pipeline.py`` in the Wave 6 thin-main cutover.
     """
-    src = Path("main.py").read_text(encoding="utf-8")
+    src = Path("scripts/pipeline/host_pipeline.py").read_text(encoding="utf-8")
     assert "phi_key_fingerprint=phi_key_fp" in src, (
-        "main.py must pass the fingerprint into emit_lineage_manifest"
+        "host_pipeline.py must pass the fingerprint into emit_lineage_manifest"
     )
     assert "_phi_key_fingerprint()" in src, (
-        "main.py must compute the fingerprint via the PHIKeyStore funnel"
+        "host_pipeline.py must compute the fingerprint via the PHIKeyStore funnel"
     )
 
 
