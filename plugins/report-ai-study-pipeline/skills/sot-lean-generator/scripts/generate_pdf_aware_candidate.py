@@ -667,6 +667,108 @@ def _is_expected_repeated_annotation(label: str) -> bool:
     return stripped.lower() in {"yes", "no", "unknown", "not done", "allowed", "never allowed"}
 
 
+def _bindable_headers(headers: list[str]) -> set[str]:
+    return {name for name in headers if not _is_system(name)}
+
+
+def _resolve_annotation_header(
+    label: str,
+    *,
+    header_set: set[str],
+    lower_to_header: dict[str, str],
+    annotation_aliases: dict[str, str],
+) -> str | None:
+    if label in header_set:
+        return label
+    if label.lower() in lower_to_header:
+        return lower_to_header[label.lower()]
+    target = annotation_aliases.get(label)
+    if isinstance(target, str) and target in header_set:
+        return target
+    return None
+
+
+def _bound_headers_from_annotations(
+    annotation_labels: list[str],
+    *,
+    header_set: set[str],
+    lower_to_header: dict[str, str],
+    annotation_aliases: dict[str, str],
+    non_variable_annotations: set[str],
+    true_missing_annotations: set[str],
+) -> set[str]:
+    bound: set[str] = set()
+    for label in set(annotation_labels):
+        if label in non_variable_annotations or label in true_missing_annotations:
+            continue
+        target = _resolve_annotation_header(
+            label,
+            header_set=header_set,
+            lower_to_header=lower_to_header,
+            annotation_aliases=annotation_aliases,
+        )
+        if target is not None:
+            bound.add(target)
+    return bound
+
+
+def _pdf_field_count_mismatch_discrepancy(
+    *,
+    headers: list[str],
+    missing_headers: list[str],
+    annotation_labels: list[str],
+    header_set: set[str],
+    lower_to_header: dict[str, str],
+    annotation_aliases: dict[str, str],
+    non_variable_annotations: set[str],
+    true_missing_annotations: set[str],
+) -> dict[str, Any] | None:
+    """Return a hold discrepancy when PDF-bound headers do not reconcile bindable columns."""
+    bindable = _bindable_headers(headers)
+    bound = _bound_headers_from_annotations(
+        annotation_labels,
+        header_set=header_set,
+        lower_to_header=lower_to_header,
+        annotation_aliases=annotation_aliases,
+        non_variable_annotations=non_variable_annotations,
+        true_missing_annotations=true_missing_annotations,
+    )
+    accounted = bound | set(missing_headers)
+    if accounted == bindable:
+        return None
+    return {
+        "kind": PDF_FIELD_COUNT_MISMATCH_KIND,
+        "where": "PDF annotations vs dataset row-1 headers",
+        "pdf_annotation_says": {
+            "bound_header_count": len(bound),
+            "binding_like_label_count": len(
+                {
+                    label
+                    for label in set(annotation_labels)
+                    if label not in non_variable_annotations
+                    and label not in true_missing_annotations
+                    and _resolve_annotation_header(
+                        label,
+                        header_set=header_set,
+                        lower_to_header=lower_to_header,
+                        annotation_aliases=annotation_aliases,
+                    )
+                    is not None
+                }
+            ),
+        },
+        "printed_form_truth": (
+            "PDF-bound header keys plus headers without visible widgets do not "
+            "account for every bindable dataset column"
+        ),
+        "dataset_column_binding": {
+            "bindable_column_count": len(bindable),
+            "unaccounted_headers": sorted(bindable - accounted),
+        },
+        "resolution": "Held for human review before policy auto-publish",
+    }
+
+
 def _annotation_aliases_for(form: str, header_set: set[str]) -> dict[str, str]:
     aliases = dict(ANNOTATION_ALIASES.get(form, {}))
     # Case-only mismatches are aliases, not missing variables.
@@ -852,26 +954,18 @@ def build_candidate(repo_root: Path, form: str, pack_path: Path) -> dict[str, An
     true_missing_annotations = set(TRUE_PDF_VARIABLES_WITHOUT_DATASET_HEADER.get(form, set()))
     alias_labels = set(annotation_aliases)
     if not header_duplicates:
-        binding_like_labels = {
-            label
-            for label in set(annotation_labels)
-            if label not in non_variable_annotations
-            and label not in true_missing_annotations
-            and (label in header_set or label.lower() in lower_to_header or label in alias_labels)
-        }
-        if len(binding_like_labels) != len(headers):
-            discrepancies.append(
-                {
-                    "kind": PDF_FIELD_COUNT_MISMATCH_KIND,
-                    "where": "PDF annotations vs dataset row-1 headers",
-                    "pdf_annotation_says": {"binding_like_count": len(binding_like_labels)},
-                    "printed_form_truth": (
-                        "Binding-like PDF annotation count does not match dataset column count"
-                    ),
-                    "dataset_column_binding": {"column_count": len(headers)},
-                    "resolution": "Held for human review before policy auto-publish",
-                }
-            )
+        mismatch = _pdf_field_count_mismatch_discrepancy(
+            headers=headers,
+            missing_headers=missing_headers,
+            annotation_labels=annotation_labels,
+            header_set=header_set,
+            lower_to_header=lower_to_header,
+            annotation_aliases=annotation_aliases,
+            non_variable_annotations=non_variable_annotations,
+            true_missing_annotations=true_missing_annotations,
+        )
+        if mismatch is not None:
+            discrepancies.append(mismatch)
     extra_for_generic_discrepancy = [
         label
         for label in extra_annotations
@@ -899,12 +993,17 @@ def build_candidate(repo_root: Path, form: str, pack_path: Path) -> dict[str, An
         and (label in header_set or not _is_expected_repeated_annotation(label))
     }
     if annotation_aliases:
+        curated_aliases = ANNOTATION_ALIASES.get(form, {})
         discrepancies.append(
             {
                 "kind": "pdf_annotation_alias_to_dataset_header",
                 "where": "PDF annotations",
                 "pdf_annotation_says": [
-                    {"label": label, "dataset_column": target}
+                    {
+                        "label": label,
+                        "dataset_column": target,
+                        "curated": label in curated_aliases and curated_aliases[label] == target,
+                    }
                     for label, target in sorted(annotation_aliases.items())
                 ],
                 "printed_form_truth": "PDF annotation label differs from the dataset row-1 binding name, but points to the same printed field",
