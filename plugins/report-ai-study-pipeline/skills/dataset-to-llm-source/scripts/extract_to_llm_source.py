@@ -1760,6 +1760,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 extra={
                     "publish_status": "held",
                     "approved_forms_count": 0,
+                    "held_forms": sorted(form_gate.held_forms),
                     "held_forms_count": len(form_gate.held_forms),
                     "approval_report_path": str(form_gate.approval_report_path)
                     if form_gate.approval_report_path
@@ -1974,6 +1975,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
             "destruction_attestation_path": str(attest_path),
             "publish_status": "partial" if _is_partial_run else "complete",
             "approved_forms_count": len(form_gate.approved_forms),
+            "held_forms": _all_held_forms,
             "held_forms_count": len(_all_held_forms),
             "approval_report_path": str(form_gate.approval_report_path)
             if form_gate.approval_report_path

@@ -855,6 +855,7 @@ class TestPartialPublish:
         status = json.loads(status_path.read_text(encoding="utf-8"))
         assert status["publish_status"] == "partial"
         assert status["held_forms_count"] == 1
+        assert status["held_forms"] == ["95_SAE.xlsx"]
 
 
 class TestFormSelection:

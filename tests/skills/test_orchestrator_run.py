@@ -77,6 +77,29 @@ def test_absorb_status_reads_held_and_snapshot(tmp_path: Path) -> None:
     assert state.snapshot_id == "snap_abc"
 
 
+def test_absorb_status_falls_back_to_sot_joined_gate_outcome(tmp_path: Path) -> None:
+    """Count-only status.json + sot_joined_gate_outcome populates held_forms."""
+    (tmp_path / "status.json").write_text(
+        json.dumps({"held_forms_count": 2, "exit_code": 8}),
+        encoding="utf-8",
+    )
+    (tmp_path / "sot_joined_gate_outcome.json").write_text(
+        json.dumps(
+            {
+                "run_id": "run_z",
+                "study": "S",
+                "held": True,
+                "held_forms": ["15_Feces.xlsx", "20_CoEnroll.xlsx"],
+                "held_count": 2,
+            }
+        ),
+        encoding="utf-8",
+    )
+    state = ORCH._RunState(study="S", run_id="run_z")
+    ORCH._absorb_status(state, tmp_path)
+    assert state.held_forms == ["15_Feces.xlsx", "20_CoEnroll.xlsx"]
+
+
 def _patch_config_for_preflight(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *, study: str, inputs_present: bool
 ) -> Path:

@@ -418,13 +418,26 @@ def _absorb_status(state: _RunState, run_dir: Path) -> None:
         status = json.loads(status_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return
-    if isinstance(status, dict):
-        held = status.get("held_forms")
-        if isinstance(held, list):
-            state.held_forms = [str(h) for h in held]
-        snap = status.get("snapshot_id")
-        if isinstance(snap, str):
-            state.snapshot_id = snap
+    if not isinstance(status, dict):
+        return
+    held = status.get("held_forms")
+    if isinstance(held, list) and held:
+        state.held_forms = [str(h) for h in held]
+    elif int(status.get("held_forms_count") or 0) > 0:
+        # Older runs wrote counts only; merge SoT joined-view holds when present.
+        sot_path = run_dir / "sot_joined_gate_outcome.json"
+        try:
+            if sot_path.is_file():
+                sot_raw = json.loads(sot_path.read_text(encoding="utf-8"))
+                if isinstance(sot_raw, dict) and sot_raw.get("run_id") == state.run_id:
+                    sot_held = sot_raw.get("held_forms")
+                    if isinstance(sot_held, list):
+                        state.held_forms = sorted({str(h) for h in sot_held})
+        except (OSError, ValueError):
+            pass
+    snap = status.get("snapshot_id")
+    if isinstance(snap, str):
+        state.snapshot_id = snap
 
 
 if __name__ == "__main__":
