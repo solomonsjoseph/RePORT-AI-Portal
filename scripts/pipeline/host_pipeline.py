@@ -90,6 +90,8 @@ def _prune_empty_staged_forms(staging_dir: Path) -> list[str]:
 def _hold_forms_missing_sot_joined_view(
     staging_dir: Path,
     sot_root: Path,
+    *,
+    required_stems: frozenset[str] | None = None,
 ) -> list[str]:
     """Remove staged forms that lack a published SoT joined query view.
 
@@ -97,15 +99,23 @@ def _hold_forms_missing_sot_joined_view(
     are held (never promoted). Zero-byte staged JSONLs are skipped — they were
     already pruned in Step 1.9.
 
+    Dataset-only forms (no PDF-backed SoT pair) are skipped.
+
     Returns workbook filenames (``{stem}.xlsx``) for count-only logging.
     """
     if not staging_dir.is_dir():
         return []
+    if required_stems is None:
+        from scripts.source_truth.generate_lean_outputs import pdf_backed_dataset_stems
+
+        required_stems = pdf_backed_dataset_stems(config.STUDY_NAME, Path(config.BASE_DIR))
     held: list[str] = []
     for jsonl_path in sorted(staging_dir.glob("*.jsonl")):
         if jsonl_path.stat().st_size == 0:
             continue
         stem = jsonl_path.stem
+        if stem not in required_stems:
+            continue
         joined = resolve_sot_joined_view_path(sot_root, stem)
         if joined.is_file():
             continue

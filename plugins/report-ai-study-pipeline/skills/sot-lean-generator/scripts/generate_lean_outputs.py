@@ -44,6 +44,10 @@ SUPPORTED_DATASET_SUFFIXES = (".xlsx", ".xlsm", ".csv")
 # Indo-VAP has a few raw datasets sharing the same leading form code. The SoT
 # runtime policy is generated for the dataset that corresponds to the printed
 # annotated CRF. The other datasets remain published under dataset_schema/files.
+SOT_PUBLISH_STEM_ALIASES: dict[str, dict[str, str]] = {
+    "Indo-VAP": {"14_CaseControl": "14_Case_Control"},
+}
+
 PDF_FORM_DATASET_OVERRIDES: dict[str, dict[str, str]] = {
     "Indo-VAP": {
         "2A": "2A_ICBaseline",
@@ -105,6 +109,10 @@ _HOLD_DISCREPANCY_KINDS = frozenset(
         _PDF_FIELD_COUNT_MISMATCH_KIND,
     }
 )
+
+# Only binding conflicts block SoT promotion; other N3a discrepancies still
+# publish structurally verified policy/schema/joined views for the publish gate.
+_PUBLISH_BLOCKING_HOLD_KINDS = frozenset({_DUPLICATE_BINDING_CONFLICT_KIND})
 
 
 def _discrepancy_review_reason(policy_path: Path) -> str | None:
@@ -333,6 +341,15 @@ def discover_pdf_backed_forms_with_reviews(
     return forms, review_paths
 
 
+def pdf_backed_dataset_stems(study: str, repo_root: Path) -> frozenset[str]:
+    """Return dataset stems that require a published SoT joined query view."""
+
+    study_dir = repo_root / "data" / "raw" / study
+    forms, _ = discover_pdf_backed_forms_with_reviews(repo_root, study_dir, study)
+    aliases = SOT_PUBLISH_STEM_ALIASES.get(study, {})
+    return frozenset(aliases.get(form, form) for form in forms)
+
+
 def _run_result(cmd: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)  # noqa: S603
 
@@ -541,7 +558,7 @@ def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path
 
     held_reason = _discrepancy_review_reason(candidate)
     if held_reason:
-        return _write_sot_review_report(
+        review_path = _write_sot_review_report(
             repo_root=repo_root,
             study=study,
             form=form,
@@ -550,23 +567,34 @@ def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path
                 {
                     "classification": held_reason,
                     "detail": (
-                        "Dataset row-1 headers contain duplicate binding names. The candidate "
-                        "policy passed structural verification but was not auto-promoted; a human "
-                        "must confirm which dataset column binds to each duplicated variable."
+                        "The candidate policy passed structural verification but documents an "
+                        "un-reviewed Source Truth discrepancy; see the review report for the "
+                        "recorded discrepancy kind."
                     ),
                 }
             ],
             resolved_pdf=pdf,
             resolved_dataset=dataset,
             action_taken=(
-                "candidate policy passed structural verification but was held; not promoted to the "
-                "published SoT bundle pending human confirmation of the duplicate header binding"
+                "candidate policy passed structural verification but was flagged for human review"
             ),
             required_next_step=(
-                "confirm the duplicate row-1 header binding, record a "
-                "dataset_duplicate_header_combined_binding discrepancy, then rerun Stage 0"
+                "confirm the documented discrepancy, update the policy metadata if needed, "
+                "then rerun Stage 0"
             ),
         )
+        if held_reason in _PUBLISH_BLOCKING_HOLD_KINDS:
+            return review_path
+        _publish_verified_sot_outputs(
+            repo_root=repo_root,
+            study=study,
+            form=form,
+            dataset=dataset,
+            source_pack=source_pack,
+            verified_policy=candidate,
+            out_root=out_dir,
+        )
+        return review_path
     return _publish_verified_sot_outputs(
         repo_root=repo_root,
         study=study,

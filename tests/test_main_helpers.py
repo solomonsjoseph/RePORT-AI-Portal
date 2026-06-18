@@ -499,7 +499,9 @@ class TestHoldFormsMissingSotJoinedView:
         missing = staging / "7_Culture.jsonl"
         missing.write_text('{"SUBJID":"y"}\n', encoding="utf-8")
 
-        held = main._hold_forms_missing_sot_joined_view(staging, sot_root)
+        held = main._hold_forms_missing_sot_joined_view(
+            staging, sot_root, required_stems=frozenset({"6_HIV", "7_Culture"})
+        )
 
         assert held == ["7_Culture.xlsx"]
         assert (staging / "6_HIV.jsonl").is_file()
@@ -511,7 +513,9 @@ class TestHoldFormsMissingSotJoinedView:
         empty = staging / "7_Culture.jsonl"
         empty.write_text("", encoding="utf-8")
 
-        held = main._hold_forms_missing_sot_joined_view(staging, tmp_path / "SoT")
+        held = main._hold_forms_missing_sot_joined_view(
+            staging, tmp_path / "SoT", required_stems=frozenset({"7_Culture"})
+        )
 
         assert held == []
         assert empty.exists()

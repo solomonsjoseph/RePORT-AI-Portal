@@ -886,6 +886,9 @@ def _ledger_accounted_headers(ledger_path: Path) -> set[str]:
 def _verify_assertion_15_sot_joined_view_present(
     llm_source_dir: Path,
     dataset_files_dir: Path,
+    *,
+    study: str,
+    repo_root: Path,
 ) -> _AssertionResult:
     """Every published dataset form has a SoT joined query view under llm_source/SoT/."""
     from scripts.ai_assistant.sot_joined_view import resolve_sot_joined_view_path
@@ -893,9 +896,14 @@ def _verify_assertion_15_sot_joined_view_present(
     sot_root = llm_source_dir / "SoT"
     if not dataset_files_dir.is_dir():
         return "pass", ""
+    from scripts.source_truth.generate_lean_outputs import pdf_backed_dataset_stems
+
+    required = pdf_backed_dataset_stems(study, repo_root)
     missing: list[str] = []
     for jsonl_path in sorted(dataset_files_dir.glob("*.jsonl")):
         stem = jsonl_path.stem
+        if stem not in required:
+            continue
         joined = resolve_sot_joined_view_path(sot_root, stem)
         if not joined.is_file():
             missing.append(stem)
@@ -1119,7 +1127,9 @@ def _cmd_verify(args: argparse.Namespace) -> int:
         (
             15,
             "sot_joined_view_present",
-            lambda: _verify_assertion_15_sot_joined_view_present(llm_source_dir, dataset_files_dir),
+            lambda: _verify_assertion_15_sot_joined_view_present(
+                llm_source_dir, dataset_files_dir, study=study, repo_root=Path(config.BASE_DIR)
+            ),
             EXIT_VERIFIER_FAIL,
         ),
         (
