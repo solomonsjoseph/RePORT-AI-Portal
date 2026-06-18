@@ -58,6 +58,8 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from scripts.audit.review_paths import sot_review_report_path
+
 # ---------------------------------------------------------------------------
 # Helper functions also importable by extract_sources.py
 # ---------------------------------------------------------------------------
@@ -158,24 +160,9 @@ def _find_dataset(study_dir: Path, form: str) -> Path | None:
     return None
 
 
-SOT_REVIEW_DIR = "Sot_review"
-
-
-def _safe_report_slug(value: str) -> str:
-    slug = re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("._-")
-    return slug or "unknown_form"
-
-
 def _sot_review_report_path(repo_root: Path, study: str, form: str) -> Path:
-    return (
-        repo_root
-        / "output"
-        / study
-        / "audit"
-        / SOT_REVIEW_DIR
-        / _safe_report_slug(form)
-        / "review_report.md"
-    )
+    audit_dir = repo_root / "output" / study / "audit"
+    return sot_review_report_path(audit_dir, form)
 
 
 def _rel_or_str(path: Path | None, root: Path) -> str:

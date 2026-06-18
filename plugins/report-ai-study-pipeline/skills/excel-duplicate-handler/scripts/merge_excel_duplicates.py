@@ -263,15 +263,10 @@ def _prepare_project_dataset_dirs(
 
 
 def _human_review_path(artifact_root: Path, study: str, dataset: str) -> Path:
-    return (
-        artifact_root
-        / "output"
-        / study
-        / "audit"
-        / "human_review"
-        / dataset
-        / "duplicate_review_report.md"
-    )
+    from scripts.audit.review_paths import excel_duplicate_review_path
+
+    audit_dir = artifact_root / "output" / study / "audit"
+    return excel_duplicate_review_path(audit_dir, dataset)
 
 
 def _header_relationship(
@@ -472,11 +467,11 @@ def merge_workbooks(
     safety_reason = _merge_safety_reason(stats)
     if safety_reason is not None:
         if review_path is None:
-            review_path = (
-                report_path.parent.parent.parent
-                / "human_review"
-                / report_path.parent.name
-                / "duplicate_review_report.md"
+            from scripts.audit.review_paths import excel_duplicate_review_path
+
+            review_path = excel_duplicate_review_path(
+                report_path.parent.parent.parent,
+                report_path.parent.name,
             )
         _write_human_review_report(review_path, stats, safety_reason)
         raise MergeNotSafeError(safety_reason, review_path, stats)

@@ -186,7 +186,16 @@ def test_generate_form_routes_missing_pdf_to_sot_review(tmp_path: Path) -> None:
 
     result = generate_form(repo_root, study, form, out_dir)
 
-    expected = repo_root / "output" / study / "audit" / "Sot_review" / form / "review_report.md"
+    expected = (
+        repo_root
+        / "output"
+        / study
+        / "audit"
+        / "human_review"
+        / "sot"
+        / form
+        / "review_report.md"
+    )
     assert result == expected
     assert expected.is_file()
     text = expected.read_text(encoding="utf-8")
@@ -205,7 +214,16 @@ def test_batch_main_routes_ambiguous_discovery_to_sot_review(tmp_path: Path) -> 
 
     rc = generate_lean_outputs.main(["--study", study, "--repo-root", str(repo_root)])
 
-    report = repo_root / "output" / study / "audit" / "Sot_review" / "1" / "review_report.md"
+    report = (
+        repo_root
+        / "output"
+        / study
+        / "audit"
+        / "human_review"
+        / "sot"
+        / "1"
+        / "review_report.md"
+    )
     assert rc == 0
     assert report.is_file()
     text = report.read_text(encoding="utf-8")
@@ -414,7 +432,14 @@ sections:
 
     # Assert form is routed to SoT review (not published)
     expected_review_path = (
-        repo_root / "output" / study / "audit" / "Sot_review" / form / "review_report.md"
+        repo_root
+        / "output"
+        / study
+        / "audit"
+        / "human_review"
+        / "sot"
+        / form
+        / "review_report.md"
     )
     assert result == expected_review_path, (
         f"Expected review path {expected_review_path}, got {result}"
@@ -462,5 +487,6 @@ def test_generate_form_publishes_field_count_mismatch_with_review(
 
     result = generate_form(repo_root, study, form, out_dir)
 
-    assert "Sot_review" in result.parts
+    assert "human_review" in result.parts
+    assert "sot" in result.parts
     assert len(published) == 1

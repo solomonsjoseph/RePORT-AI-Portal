@@ -21,7 +21,7 @@ over the staging tree (`tmp/<study>/datasets/`):
 - removes known junk files (`JUNK_PATTERNS`),
 - structurally compares suspected duplicate pairs and merges the provably-safe
   ones (subset → keep larger),
-- routes divergent pairs to `audit/human_review/<stem>/` (count-only note),
+- routes divergent pairs to `audit/human_review/datasets/<stem>/` (count-only note),
 - emits the unified `dataset_cleanup_ledger.as_written.json` per dataset.
 
 **Fail-closed scrub-first:** a pre-flight guard refuses to proceed unless every

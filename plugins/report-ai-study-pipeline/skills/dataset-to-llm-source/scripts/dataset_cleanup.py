@@ -178,13 +178,15 @@ def _write_jsonl_union_review_note(
 ) -> None:
     """Write a COUNT-ONLY human-review note for a value-divergent duplicate pair.
 
-    The note goes to ``output/{STUDY}/audit/human_review/{stem_a}/jsonl_union_review.md``
+    The note goes to ``output/{STUDY}/audit/human_review/datasets/{stem_a}/jsonl_union_review.md``
     — inside the audit (no-LLM) zone, using config.STUDY_AUDIT_DIR so the path
     is always correct regardless of staging layout.  NEVER writes row values.
     """
-    note_dir = Path(config.STUDY_AUDIT_DIR) / "human_review" / stem_a
-    note_dir.mkdir(parents=True, exist_ok=True)
-    assert_output_zone(note_dir)
+    from scripts.audit.review_paths import dataset_jsonl_union_review_path
+
+    note_path = dataset_jsonl_union_review_path(Path(config.STUDY_AUDIT_DIR), stem_a)
+    note_path.parent.mkdir(parents=True, exist_ok=True)
+    assert_output_zone(note_path.parent)
 
     cols_a = sorted(df_a.columns.tolist())
     note = (
@@ -218,12 +220,12 @@ def _write_jsonl_union_review_note(
         f"*Note: this file contains column NAMES and row COUNTS only — "
         f"no row values are recorded here.*\n"
     )
-    (note_dir / "jsonl_union_review.md").write_text(note, encoding="utf-8")
+    note_path.write_text(note, encoding="utf-8")
     logger.info(
         "Human-review note written for value-divergent pair (%s, %s): %s",
         stem_a,
         stem_b,
-        note_dir / "jsonl_union_review.md",
+        note_path,
     )
 
 

@@ -131,18 +131,53 @@ def _write_sot_joined_gate_outcome(
     held_forms: list[str],
 ) -> None:
     """Record publish-time SoT joined-view holds (form names + counts only)."""
+    from scripts.audit.review_paths import publish_sot_joined_gate_md_path
+
     runs_dir = Path(config.STUDY_OUTPUT_DIR) / "runs" / run_id
     runs_dir.mkdir(parents=True, exist_ok=True)
-    atomic_write_json(
-        runs_dir / "sot_joined_gate_outcome.json",
-        {
-            "run_id": run_id,
-            "study": study,
-            "held": bool(held_forms),
-            "held_forms": held_forms,
-            "held_count": len(held_forms),
-        },
+    payload = {
+        "run_id": run_id,
+        "study": study,
+        "held": bool(held_forms),
+        "held_forms": held_forms,
+        "held_count": len(held_forms),
+    }
+    atomic_write_json(runs_dir / "sot_joined_gate_outcome.json", payload)
+
+    md_path = publish_sot_joined_gate_md_path(Path(config.STUDY_AUDIT_DIR), run_id)
+    md_path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [
+        "# Publish Hold: Missing SoT Joined Query View",
+        "",
+        "Boundary: form names and counts only — no dataset row values.",
+        "",
+        "## Decision",
+        "",
+        f"- status: `{'held' if held_forms else 'clear'}`",
+        f"- run_id: `{run_id}`",
+        f"- study: `{study}`",
+        f"- held_count: {len(held_forms)}",
+        "",
+        "## Held Forms",
+        "",
+    ]
+    if held_forms:
+        lines.extend(f"- `{form}`" for form in held_forms)
+    else:
+        lines.append("- (none)")
+    lines.extend(
+        [
+            "",
+            "## Required Next Step",
+            "",
+            "Resolve missing SoT joined views (add annotated PDF and/or fix Source "
+            "Truth policy), then re-run the study pipeline or `make sot-generate-all`.",
+            "",
+            f"*Machine-readable sidecar: `runs/{run_id}/sot_joined_gate_outcome.json`*",
+            "",
+        ]
     )
+    md_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 _OUTPUT_SIGNPOST_TEMPLATE = """\

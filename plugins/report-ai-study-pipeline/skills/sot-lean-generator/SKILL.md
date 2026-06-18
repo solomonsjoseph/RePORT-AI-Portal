@@ -68,12 +68,12 @@ When both sources are available, the wrapper prints `source_pack=/tmp/sot_source
 When the PDF is missing, the dataset is missing, or the dataset match is ambiguous, do not author YAML and do not invent a partial SoT. The wrapper writes a human-review audit file and prints its path:
 
 ```text
-output/<study>/audit/Sot_review/<form>/review_report.md
+output/<study>/audit/human_review/sot/<form>/review_report.md
 ```
 
 The review report title must be `Sot_review: Source Truth Human Review`. It records file/path availability, the missing/ambiguous source classification, and the required next step. It must not contain dataset row values.
 
-Batch generation follows the same rule. If `scripts.source_truth.generate_lean_outputs` discovers a PDF-backed form with a missing or ambiguous dataset, or a selected form is missing its PDF/dataset pair, it writes the same `Sot_review` report and continues with forms that have complete source pairs. A `Sot_review` report is a handled audit outcome, not a policy file and not a partial source pack.
+Batch generation follows the same rule. If `scripts.source_truth.generate_lean_outputs` discovers a PDF-backed form with a missing or ambiguous dataset, or a selected form is missing its PDF/dataset pair, it writes the same human-review report under `audit/human_review/sot/` and continues with forms that have complete source pairs. A SoT review report is a handled audit outcome, not a policy file and not a partial source pack.
 
 Use the lower-level extractor only when the exact PDF and exact dataset path are already known:
 

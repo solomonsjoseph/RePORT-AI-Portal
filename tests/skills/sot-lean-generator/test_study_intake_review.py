@@ -29,7 +29,16 @@ def test_missing_pdf_is_routed_to_sot_review(tmp_path: Path, capsys) -> None:
 
     rc = study_intake.main(["--study", "Study", "--form", "1_Form", "--repo-root", str(tmp_path)])
 
-    report = tmp_path / "output" / "Study" / "audit" / "Sot_review" / "1_Form" / "review_report.md"
+    report = (
+        tmp_path
+        / "output"
+        / "Study"
+        / "audit"
+        / "human_review"
+        / "sot"
+        / "1_Form"
+        / "review_report.md"
+    )
     assert rc == 0
     assert report.is_file()
     text = report.read_text(encoding="utf-8")
@@ -48,7 +57,16 @@ def test_missing_dataset_is_routed_to_sot_review(tmp_path: Path) -> None:
 
     rc = study_intake.main(["--study", "Study", "--form", "1_Form", "--repo-root", str(tmp_path)])
 
-    report = tmp_path / "output" / "Study" / "audit" / "Sot_review" / "1_Form" / "review_report.md"
+    report = (
+        tmp_path
+        / "output"
+        / "Study"
+        / "audit"
+        / "human_review"
+        / "sot"
+        / "1_Form"
+        / "review_report.md"
+    )
     assert rc == 0
     assert report.is_file()
     text = report.read_text(encoding="utf-8")
@@ -66,7 +84,16 @@ def test_ambiguous_dataset_is_routed_to_sot_review(tmp_path: Path) -> None:
 
     rc = study_intake.main(["--study", "Study", "--form", "1_Form", "--repo-root", str(tmp_path)])
 
-    report = tmp_path / "output" / "Study" / "audit" / "Sot_review" / "1_Form" / "review_report.md"
+    report = (
+        tmp_path
+        / "output"
+        / "Study"
+        / "audit"
+        / "human_review"
+        / "sot"
+        / "1_Form"
+        / "review_report.md"
+    )
     assert rc == 0
     assert report.is_file()
     text = report.read_text(encoding="utf-8")

@@ -31,8 +31,8 @@ from scripts.ai_assistant.sot_joined_view import (
     build_joined_query_view,
     write_joined_query_view_yaml,
 )
+from scripts.audit.review_paths import is_sot_review_report_path
 from scripts.source_truth.study_intake import (
-    SOT_REVIEW_DIR,
     _find_dataset,
     _find_pdf,
     _form_code,
@@ -648,7 +648,7 @@ def main(argv: list[str] | None = None) -> int:
             failures.append((form, str(exc)))
             print(f"  FAIL {exc}", flush=True)
         else:
-            if SOT_REVIEW_DIR in result.parts:
+            if is_sot_review_report_path(result):
                 reviewed.append(result)
                 print(f"  REVIEW {result}", flush=True)
             else:

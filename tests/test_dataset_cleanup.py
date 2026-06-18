@@ -616,7 +616,11 @@ class TestValueDivergentPairRoutedToHumanReview:
         clean_trio_datasets(ds, study_name="TestStudy")
 
         review_note = (
-            config.STUDY_AUDIT_DIR / "human_review" / "14_CaseControl" / "jsonl_union_review.md"
+            config.STUDY_AUDIT_DIR
+            / "human_review"
+            / "datasets"
+            / "14_CaseControl"
+            / "jsonl_union_review.md"
         )
         assert review_note.exists(), (
             f"Human-review note not found at {review_note}; "
