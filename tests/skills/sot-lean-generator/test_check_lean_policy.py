@@ -44,6 +44,13 @@ class TestDuplicateHeaderDiscrepancyKindsConstant:
         )
 
 
+class TestPdfFieldCountMismatchKind:
+    def test_constant_exists(self) -> None:
+        assert check_lean_policy.PDF_FIELD_COUNT_MISMATCH_KIND == (
+            "pdf_field_count_column_count_mismatch"
+        )
+
+
 class TestDuplicateHeaderErrorsHelper:
     """Test the new _duplicate_header_errors(variables, headers, policy) helper."""
 

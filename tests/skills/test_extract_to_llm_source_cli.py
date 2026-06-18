@@ -259,6 +259,18 @@ class TestVerifyStub:
             json.dumps({"SUBJID": "RID_SUBJ_abcdefghijkl"}) + "\n",
             encoding="utf-8",
         )
+        joined = (
+            study_output
+            / "llm_source"
+            / "SoT"
+            / "approved"
+            / "joined"
+            / "approved_joined_query_view.yaml"
+        )
+        joined.parent.mkdir(parents=True, exist_ok=True)
+        joined.write_text(
+            "form: approved\nvariables:\n  SUBJID:\n    dataset: {}\n", encoding="utf-8"
+        )
         dictionary_out = study_output / "llm_source" / "dictionary_mapping" / "jsonl"
         dictionary_out.mkdir(parents=True)
         (dictionary_out / "codelist.jsonl").write_text(

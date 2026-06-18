@@ -198,6 +198,16 @@ def build_joined_query_view(policy_path: Path, schema_path: Path) -> dict[str, A
     }
 
 
+def resolve_sot_joined_view_path(sot_root: Path, form_name: str) -> Path:
+    """Return the canonical joined-query-view path for a dataset form.
+
+    Layout: ``{sot_root}/{stem}/joined/{stem}_joined_query_view.yaml``.
+    *form_name* may be a workbook filename (``6_HIV.xlsx``) or a bare stem.
+    """
+    stem = Path(form_name).stem
+    return sot_root / stem / "joined" / f"{stem}_joined_query_view.yaml"
+
+
 def write_joined_query_view_yaml(path: Path, view: Mapping[str, Any]) -> None:
     """Write a joined query view as readable YAML for LLM consumption."""
 

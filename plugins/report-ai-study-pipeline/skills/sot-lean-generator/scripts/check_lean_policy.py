@@ -55,6 +55,8 @@ ALIAS_ANNOTATION_KIND = "pdf_annotation_alias_to_dataset_header"
 
 HARD_PDF_MISSING_KIND = "printed_widget_without_dataset_header"
 
+PDF_FIELD_COUNT_MISMATCH_KIND = "pdf_field_count_column_count_mismatch"
+
 # Duplicate row-1 header names may be documented two ways. Either is valid documentation
 # of the duplicate; the checker accepts both, and the orchestrator (generate_lean_outputs)
 # decides whether to publish or hold for review based on which kind is present:

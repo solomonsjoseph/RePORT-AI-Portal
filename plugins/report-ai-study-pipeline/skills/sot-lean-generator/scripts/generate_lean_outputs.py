@@ -94,17 +94,26 @@ def _policy_phi_actions(policy_path: Path) -> dict[str, str]:
 
 
 _DUPLICATE_BINDING_CONFLICT_KIND = "dataset_duplicate_header_binding_conflict"
+_HARD_PDF_MISSING_KIND = "printed_widget_without_dataset_header"
+_PDF_FIELD_COUNT_MISMATCH_KIND = "pdf_field_count_column_count_mismatch"
+_ALIAS_ANNOTATION_KIND = "pdf_annotation_alias_to_dataset_header"
+
+_HOLD_DISCREPANCY_KINDS = frozenset(
+    {
+        _DUPLICATE_BINDING_CONFLICT_KIND,
+        _HARD_PDF_MISSING_KIND,
+        _PDF_FIELD_COUNT_MISMATCH_KIND,
+    }
+)
 
 
-def _duplicate_binding_review_reason(policy_path: Path) -> str | None:
-    """Return a held-for-review reason when a verified candidate documents an un-reviewed
-    duplicate header binding conflict.
+def _discrepancy_review_reason(policy_path: Path) -> str | None:
+    """Return a held-for-review reason when policy documents an un-reviewed discrepancy.
 
-    Reads SoT policy metadata only (discrepancy kinds) — never dataset row values. A
-    binding_conflict means the generator detected duplicate row-1 header names and did NOT
-    auto-collapse them, so the form must be held for a human to confirm which physical
-    dataset column binds to the variable (fail-closed: unsure -> human review). A
-    combined_binding (human-approved) or absent discrepancy returns None (publish).
+    Reads SoT policy metadata only (discrepancy kinds) — never dataset row values.
+    Holds on binding conflicts, printed widgets without dataset headers, PDF-field-count
+    vs column-count mismatches, and annotation aliases whose label differs from the
+    dataset column (case-insensitive). Combined bindings and clean policies return None.
     """
     try:
         policy = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
@@ -116,8 +125,22 @@ def _duplicate_binding_review_reason(policy_path: Path) -> str | None:
     if not isinstance(discrepancies, list):
         return None
     for entry in discrepancies:
-        if isinstance(entry, dict) and entry.get("kind") == _DUPLICATE_BINDING_CONFLICT_KIND:
-            return _DUPLICATE_BINDING_CONFLICT_KIND
+        if not isinstance(entry, dict):
+            continue
+        kind = entry.get("kind")
+        if kind in _HOLD_DISCREPANCY_KINDS:
+            return str(kind)
+        if kind == _ALIAS_ANNOTATION_KIND:
+            says = entry.get("pdf_annotation_says")
+            if not isinstance(says, list):
+                continue
+            for item in says:
+                if not isinstance(item, dict):
+                    continue
+                label = item.get("label")
+                col = item.get("dataset_column")
+                if isinstance(label, str) and isinstance(col, str) and label.lower() != col.lower():
+                    return str(kind)
     return None
 
 
@@ -514,7 +537,7 @@ def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path
     else:
         print(f"  gold diff skipped for {study}/{form}: no anchored gold at {gold}", flush=True)
 
-    held_reason = _duplicate_binding_review_reason(candidate)
+    held_reason = _discrepancy_review_reason(candidate)
     if held_reason:
         return _write_sot_review_report(
             repo_root=repo_root,

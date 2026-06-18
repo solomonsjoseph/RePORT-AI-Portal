@@ -30,9 +30,11 @@ from typing import Any, cast
 
 import config
 from __version__ import __version__
+from scripts.ai_assistant.sot_joined_view import resolve_sot_joined_view_path
 from scripts.extraction.cleanup_propagation import run_propagation
 from scripts.extraction.dataset_cleanup import clean_trio_datasets
 from scripts.extraction.dataset_pipeline import process_datasets
+from scripts.extraction.io import atomic_write_json
 from scripts.extraction.load_dictionary import load_study_dictionary
 from scripts.security.key_rotation import check_and_record as _check_key_rotation
 from scripts.security.llm_source_gate import scan_tree_for_phi
@@ -83,6 +85,54 @@ def _prune_empty_staged_forms(staging_dir: Path) -> list[str]:
     for f in removed:
         f.unlink()
     return [f.stem for f in removed]
+
+
+def _hold_forms_missing_sot_joined_view(
+    staging_dir: Path,
+    sot_root: Path,
+) -> list[str]:
+    """Remove staged forms that lack a published SoT joined query view.
+
+    Forms without ``llm_source/SoT/<pair>/joined/<form>_joined_query_view.yaml``
+    are held (never promoted). Zero-byte staged JSONLs are skipped — they were
+    already pruned in Step 1.9.
+
+    Returns workbook filenames (``{stem}.xlsx``) for count-only logging.
+    """
+    if not staging_dir.is_dir():
+        return []
+    held: list[str] = []
+    for jsonl_path in sorted(staging_dir.glob("*.jsonl")):
+        if jsonl_path.stat().st_size == 0:
+            continue
+        stem = jsonl_path.stem
+        joined = resolve_sot_joined_view_path(sot_root, stem)
+        if joined.is_file():
+            continue
+        jsonl_path.unlink()
+        held.append(f"{stem}.xlsx")
+    return held
+
+
+def _write_sot_joined_gate_outcome(
+    *,
+    run_id: str,
+    study: str,
+    held_forms: list[str],
+) -> None:
+    """Record publish-time SoT joined-view holds (form names + counts only)."""
+    runs_dir = Path(config.STUDY_OUTPUT_DIR) / "runs" / run_id
+    runs_dir.mkdir(parents=True, exist_ok=True)
+    atomic_write_json(
+        runs_dir / "sot_joined_gate_outcome.json",
+        {
+            "run_id": run_id,
+            "study": study,
+            "held": bool(held_forms),
+            "held_forms": held_forms,
+            "held_count": len(held_forms),
+        },
+    )
 
 
 _OUTPUT_SIGNPOST_TEMPLATE = """\
@@ -893,6 +943,26 @@ not directly. For the full study build run `make study STUDY=<name>`.
                     len(_pruned_forms),
                     _pruned_forms,
                 )
+
+        # ── Step 1.9b: Hold forms missing SoT joined query view ──
+        # A dataset form without ``llm_source/SoT/<pair>/joined/<form>_joined_query_view.yaml``
+        # is held (never promoted). Count-only audit via sot_joined_gate_outcome.json.
+        if args.process_datasets and not args.skip_datasets:
+            _sot_held_forms = _hold_forms_missing_sot_joined_view(
+                Path(config.STAGING_DATASETS_DIR),
+                Path(config.LLM_SOURCE_SOT_DIR),
+            )
+            if _sot_held_forms:
+                log.info(
+                    "Held %d form(s) missing SoT joined query view before publish: %s",
+                    len(_sot_held_forms),
+                    _sot_held_forms,
+                )
+            _write_sot_joined_gate_outcome(
+                run_id=resolve_run_id(),
+                study=config.STUDY_NAME,
+                held_forms=_sot_held_forms,
+            )
 
         # ── Step 2: Publish Staging → llm_source/ ──
         # Atomic-rename each staging leg into llm_source/; empty legs leave

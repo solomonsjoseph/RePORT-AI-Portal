@@ -4,7 +4,7 @@ This script generates:
   - Three minimal .xlsx files under tests/skills/fixtures/datasets/
   - A _forms_manifest.yaml listing them as required
   - A golden output tree under tests/skills/fixtures/golden_output/ that
-    satisfies all 14 verifier assertions (except the phi_scrub.yaml hash,
+    satisfies all 15 verifier assertions (except the phi_scrub.yaml hash,
     which is computed dynamically at build time from the real file).
 
 Usage
@@ -148,6 +148,19 @@ def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
         raise
 
 
+def _write_minimal_sot_joined_views(llm_source_dir: Path, forms: list[str]) -> None:
+    """Stub SoT joined query views so verifier assertion 15 passes."""
+    sot_root = llm_source_dir / "SoT"
+    for form in forms:
+        stem = Path(form).stem
+        joined = sot_root / stem / "joined" / f"{stem}_joined_query_view.yaml"
+        joined.parent.mkdir(parents=True, exist_ok=True)
+        joined.write_text(
+            f"form: {stem}\nvariables:\n  col_a:\n    dataset: {{}}\n",
+            encoding="utf-8",
+        )
+
+
 def build_golden_output_tree(
     output_root: Path,
     raw_root: Path,
@@ -158,7 +171,7 @@ def build_golden_output_tree(
     study: str = FIXTURE_STUDY,
     forms: list[str] | None = None,
 ) -> dict[str, Path]:
-    """Construct a complete golden output tree that satisfies all 14 verifier assertions.
+    """Construct a complete golden output tree that satisfies all 15 verifier assertions.
 
     Populates:
       - output_root/{study}/runs/{run_id}/destruction_attestation.json
@@ -281,6 +294,8 @@ def build_golden_output_tree(
         with jsonl_path.open("w", encoding="utf-8") as fh:
             for row in jsonl_rows:
                 fh.write(json.dumps(row) + "\n")
+
+    _write_minimal_sot_joined_views(llm_source_dir, forms)
 
     # ── f. phi_handling_approval.json — approves all forms ──────────────────
     # Required for assertions 12 (decided_action_matches_applied) and 14

@@ -883,6 +883,27 @@ def _ledger_accounted_headers(ledger_path: Path) -> set[str]:
     return accounted
 
 
+def _verify_assertion_15_sot_joined_view_present(
+    llm_source_dir: Path,
+    dataset_files_dir: Path,
+) -> _AssertionResult:
+    """Every published dataset form has a SoT joined query view under llm_source/SoT/."""
+    from scripts.ai_assistant.sot_joined_view import resolve_sot_joined_view_path
+
+    sot_root = llm_source_dir / "SoT"
+    if not dataset_files_dir.is_dir():
+        return "pass", ""
+    missing: list[str] = []
+    for jsonl_path in sorted(dataset_files_dir.glob("*.jsonl")):
+        stem = jsonl_path.stem
+        joined = resolve_sot_joined_view_path(sot_root, stem)
+        if not joined.is_file():
+            missing.append(stem)
+    if missing:
+        return "fail", f"published form(s) missing SoT joined view: {', '.join(missing)}"
+    return "pass", ""
+
+
 def _verify_assertion_14_audit_coverage(
     audit_dir: Path, dataset_files_dir: Path, run_dir: Path, study: str
 ) -> _AssertionResult:
@@ -1094,6 +1115,12 @@ def _cmd_verify(args: argparse.Namespace) -> int:
                 audit_dir, dataset_files_dir, run_dir, study
             ),
             EXIT_AUDIT_COVERAGE_INCOMPLETE,
+        ),
+        (
+            15,
+            "sot_joined_view_present",
+            lambda: _verify_assertion_15_sot_joined_view_present(llm_source_dir, dataset_files_dir),
+            EXIT_VERIFIER_FAIL,
         ),
         (
             13,
@@ -1830,6 +1857,26 @@ def _cmd_run(args: argparse.Namespace) -> int:
             _scrub_partial = False
             _scrub_partial_forms = []
 
+        # ── Step 3.55: read sot_joined_gate_outcome.json (best-effort) ─────
+        # The engine holds forms lacking a SoT joined query view before publish
+        # and records the held form NAMES here (counts only — never row values).
+        _sot_joined_held: list[str] = []
+        _sot_joined_path = study_output_dir / "runs" / run_id / "sot_joined_gate_outcome.json"
+        try:
+            if _sot_joined_path.is_file():
+                _sot_raw = json.loads(_sot_joined_path.read_text(encoding="utf-8"))
+                if (
+                    isinstance(_sot_raw, dict)
+                    and _sot_raw.get("run_id") == run_id
+                    and _sot_raw.get("study") == study
+                    and _sot_raw.get("held") is True
+                ):
+                    _sot_joined_held = [str(f) for f in (_sot_raw.get("held_forms") or [])]
+        except (json.JSONDecodeError, OSError, TypeError, ValueError):
+            _sot_joined_held = []
+        if _sot_joined_held:
+            _hold_run_for_review(run_dir, _sot_joined_held)
+
         # ── Step 4a: assert per-dataset PHI ledger hashes are non-null ───────
         ledger_paths = iter_dataset_phi_ledger_paths(study_output_dir / "audit")
         if not ledger_paths:
@@ -1913,20 +1960,21 @@ def _cmd_run(args: argparse.Namespace) -> int:
         # sets EXIT_PARTIAL_REVIEW.  Scrub-leg partial (some rows quarantined
         # inside a published form) also sets EXIT_PARTIAL_REVIEW — but only when
         # the current code is still EXIT_OK, so we never DOWNGRADE a worse code.
-        final_code = EXIT_PARTIAL_REVIEW if form_gate.partial else EXIT_OK
+        final_code = EXIT_PARTIAL_REVIEW if (form_gate.partial or _sot_joined_held) else EXIT_OK
         if _scrub_partial and final_code == EXIT_OK:
             final_code = EXIT_PARTIAL_REVIEW
 
         # publish_status: "complete" when everything is clean; "partial" when
         # either the form gate held forms OR the scrub leg quarantined rows.
-        _is_partial_run = form_gate.partial or _scrub_partial
+        _is_partial_run = form_gate.partial or _scrub_partial or bool(_sot_joined_held)
+        _all_held_forms = sorted(set(form_gate.held_forms) | set(_sot_joined_held))
         _status_extra: dict[str, Any] = {
             "scope": "HIPAA Safe Harbor + configured study jurisdictions",
             "ledger_hash_present": True,
             "destruction_attestation_path": str(attest_path),
             "publish_status": "partial" if _is_partial_run else "complete",
             "approved_forms_count": len(form_gate.approved_forms),
-            "held_forms_count": len(form_gate.held_forms),
+            "held_forms_count": len(_all_held_forms),
             "approval_report_path": str(form_gate.approval_report_path)
             if form_gate.approval_report_path
             else None,

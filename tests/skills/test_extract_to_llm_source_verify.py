@@ -197,6 +197,19 @@ def _make_llm_source_dir(
         (datasets_out / jsonl_name).write_text(json.dumps(row) + "\n", encoding="utf-8")
 
 
+def _make_sot_joined_views(llm_source_dir: Path, forms: list[str]) -> None:
+    """Create minimal SoT joined query views for each published form stem."""
+    sot_root = llm_source_dir / "SoT"
+    for form in forms:
+        stem = Path(form).stem
+        joined = sot_root / stem / "joined" / f"{stem}_joined_query_view.yaml"
+        joined.parent.mkdir(parents=True, exist_ok=True)
+        joined.write_text(
+            f"form: {stem}\nvariables:\n  col_a:\n    dataset: {{}}\n",
+            encoding="utf-8",
+        )
+
+
 def _make_valid_status_json(run_dir: Path, run_id: str = RUN_ID) -> None:
     """Write a minimal status.json (verifier_passed = None initially)."""
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -251,6 +264,7 @@ def _build_happy_study(
 
     # e. llm_source/dataset_schema/files/ JSONL files (one per required form)
     _make_llm_source_dir(llm_source_dir, forms)
+    _make_sot_joined_views(llm_source_dir, forms)
 
     # f. status.json
     _make_valid_status_json(run_dir, run_id=run_id)
@@ -287,7 +301,7 @@ class TestVerifyHappyPath:
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         assert report_path.exists()
 
-    def test_report_has_14_assertions(
+    def test_report_has_15_assertions(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_config(monkeypatch, tmp_path)
@@ -295,7 +309,7 @@ class TestVerifyHappyPath:
         main(["verify", "--study", STUDY, "--run", RUN_ID])
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
-        assert len(report["assertions"]) == 14
+        assert len(report["assertions"]) == 15
 
     def test_all_assertions_pass(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_config(monkeypatch, tmp_path)
@@ -382,7 +396,7 @@ class TestVerifyHappyPath:
         assert rc == EXIT_OK
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
-        assert len(report["assertions"]) == 14
+        assert len(report["assertions"]) == 15
         assert all(a["result"] == "pass" for a in report["assertions"])
         assert report["overall"] == "pass"
 
@@ -424,6 +438,23 @@ class TestVerifyHappyPath:
         report = json.loads((paths["run_dir"] / "verifier_report.json").read_text(encoding="utf-8"))
         cov = next(a for a in report["assertions"] if a["name"] == "ledger_covers_all_columns")
         assert cov["result"] == "pass"
+
+    def test_sot_joined_view_missing_fails_assertion_15(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Published form without SoT joined view → assertion 15 fails."""
+        _patch_config(monkeypatch, tmp_path)
+        paths = _build_happy_study(tmp_path)
+        joined = (
+            paths["llm_source_dir"] / "SoT" / "form_a" / "joined" / "form_a_joined_query_view.yaml"
+        )
+        joined.unlink()
+        rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
+        assert rc == EXIT_VERIFIER_FAIL
+        report = json.loads((paths["run_dir"] / "verifier_report.json").read_text(encoding="utf-8"))
+        a15 = next(a for a in report["assertions"] if a["name"] == "sot_joined_view_present")
+        assert a15["result"] == "fail"
+        assert "form_a" in a15["detail"]
 
     def test_audit_coverage_incomplete_holds_run(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

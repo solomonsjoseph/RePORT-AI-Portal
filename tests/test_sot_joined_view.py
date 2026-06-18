@@ -13,6 +13,7 @@ import pytest
 from scripts.ai_assistant.sot_joined_view import (
     build_joined_query_view,
     find_dataset_schema_for_policy,
+    resolve_sot_joined_view_path,
     write_joined_query_view_yaml,
 )
 
@@ -230,3 +231,13 @@ def test_schema_discovery_supports_sot_pair_layout(tmp_path: Path) -> None:
     _write_schema(schema, [{"name": "HIV_CD4DAT", "source_order": 12}])
 
     assert find_dataset_schema_for_policy(policy) == schema
+
+
+def test_resolve_sot_joined_view_path_uses_pair_layout(tmp_path: Path) -> None:
+    sot_root = tmp_path / "SoT"
+    joined = sot_root / "6_HIV" / "joined" / "6_HIV_joined_query_view.yaml"
+    joined.parent.mkdir(parents=True)
+    joined.write_text("form: 6_HIV\n", encoding="utf-8")
+
+    assert resolve_sot_joined_view_path(sot_root, "6_HIV.xlsx") == joined
+    assert resolve_sot_joined_view_path(sot_root, "6_HIV").is_file()

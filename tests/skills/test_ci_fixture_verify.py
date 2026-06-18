@@ -7,7 +7,7 @@ delegates to pytest).
 
 Happy path
 ----------
-One test builds a complete golden output tree (satisfying all 14 assertions)
+One test builds a complete golden output tree (satisfying all 15 assertions)
 and asserts verify exits 0 with overall="pass".
 
 Fail-injection matrix
@@ -115,9 +115,11 @@ class TestFixtureVerifyHappyPath:
         data = json.loads(report.read_text())
         assert data["overall"] == "pass"
         assert data["exit_code"] == EXIT_OK
-        assert len(data["assertions"]) == 14
+        assert len(data["assertions"]) == 15
 
-    def test_all_14_assertions_pass(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_all_verifier_assertions_pass(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         _patch_config(monkeypatch, tmp_path)
         build_golden_output_tree(
             output_root=tmp_path / "output",

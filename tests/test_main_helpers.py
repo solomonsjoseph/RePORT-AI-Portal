@@ -481,3 +481,37 @@ class TestPruneEmptyStagedForms:
 
     def test_missing_dir_returns_empty(self, tmp_path: Path) -> None:
         assert main._prune_empty_staged_forms(tmp_path / "nope") == []
+
+
+# ── _hold_forms_missing_sot_joined_view (N2a) ───────────────────────────────
+
+
+class TestHoldFormsMissingSotJoinedView:
+    def test_holds_forms_without_joined_view(self, tmp_path: Path) -> None:
+        staging = tmp_path / "datasets"
+        staging.mkdir()
+        sot_root = tmp_path / "SoT"
+        pair = sot_root / "6_HIV" / "joined"
+        pair.mkdir(parents=True)
+        (pair / "6_HIV_joined_query_view.yaml").write_text("form: 6_HIV\n", encoding="utf-8")
+
+        (staging / "6_HIV.jsonl").write_text('{"SUBJID":"x"}\n', encoding="utf-8")
+        missing = staging / "7_Culture.jsonl"
+        missing.write_text('{"SUBJID":"y"}\n', encoding="utf-8")
+
+        held = main._hold_forms_missing_sot_joined_view(staging, sot_root)
+
+        assert held == ["7_Culture.xlsx"]
+        assert (staging / "6_HIV.jsonl").is_file()
+        assert not missing.exists()
+
+    def test_skips_zero_byte_staged_forms(self, tmp_path: Path) -> None:
+        staging = tmp_path / "datasets"
+        staging.mkdir()
+        empty = staging / "7_Culture.jsonl"
+        empty.write_text("", encoding="utf-8")
+
+        held = main._hold_forms_missing_sot_joined_view(staging, tmp_path / "SoT")
+
+        assert held == []
+        assert empty.exists()

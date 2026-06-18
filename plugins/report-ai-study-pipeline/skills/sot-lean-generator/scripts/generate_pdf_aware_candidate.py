@@ -21,6 +21,8 @@ from typing import Any
 import pdfplumber
 import yaml
 
+PDF_FIELD_COUNT_MISMATCH_KIND = "pdf_field_count_column_count_mismatch"
+
 STUDY_NAME = "Indo-US VAP Biomarkers for Risk of Tuberculosis and for Tuberculosis Treatment Failure and Relapse"
 
 FORM_10_TST_ROW_RE = re.compile(r"^TST_.*?(\d)$")
@@ -849,6 +851,27 @@ def build_candidate(repo_root: Path, form: str, pack_path: Path) -> dict[str, An
     non_variable_annotations = set(NON_VARIABLE_ANNOTATIONS.get(form, set()))
     true_missing_annotations = set(TRUE_PDF_VARIABLES_WITHOUT_DATASET_HEADER.get(form, set()))
     alias_labels = set(annotation_aliases)
+    if not header_duplicates:
+        binding_like_labels = {
+            label
+            for label in set(annotation_labels)
+            if label not in non_variable_annotations
+            and label not in true_missing_annotations
+            and (label in header_set or label.lower() in lower_to_header or label in alias_labels)
+        }
+        if len(binding_like_labels) != len(headers):
+            discrepancies.append(
+                {
+                    "kind": PDF_FIELD_COUNT_MISMATCH_KIND,
+                    "where": "PDF annotations vs dataset row-1 headers",
+                    "pdf_annotation_says": {"binding_like_count": len(binding_like_labels)},
+                    "printed_form_truth": (
+                        "Binding-like PDF annotation count does not match dataset column count"
+                    ),
+                    "dataset_column_binding": {"column_count": len(headers)},
+                    "resolution": "Held for human review before policy auto-publish",
+                }
+            )
     extra_for_generic_discrepancy = [
         label
         for label in extra_annotations

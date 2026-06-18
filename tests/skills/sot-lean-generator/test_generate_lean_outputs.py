@@ -214,9 +214,8 @@ def test_batch_main_routes_ambiguous_discovery_to_sot_review(tmp_path: Path) -> 
     assert "1_B.xlsx" in text
 
 
-def test_duplicate_binding_review_reason_detects_conflict(tmp_path: Path) -> None:
-    """Test that _duplicate_binding_review_reason detects binding_conflict discrepancy."""
-    # Test case 1: policy has binding_conflict discrepancy
+def test_discrepancy_review_reason_detects_binding_conflict(tmp_path: Path) -> None:
+    """_discrepancy_review_reason detects binding_conflict discrepancy."""
     policy_path = tmp_path / "policy_conflict.yaml"
     policy_path.write_text(
         """
@@ -233,10 +232,9 @@ variables:
         encoding="utf-8",
     )
 
-    result = generate_lean_outputs._duplicate_binding_review_reason(policy_path)
+    result = generate_lean_outputs._discrepancy_review_reason(policy_path)
     assert result == "dataset_duplicate_header_binding_conflict"
 
-    # Test case 2: policy has combined_binding discrepancy (should return None)
     policy_path_combined = tmp_path / "policy_combined.yaml"
     policy_path_combined.write_text(
         """
@@ -253,10 +251,9 @@ variables:
         encoding="utf-8",
     )
 
-    result = generate_lean_outputs._duplicate_binding_review_reason(policy_path_combined)
+    result = generate_lean_outputs._discrepancy_review_reason(policy_path_combined)
     assert result is None, "Should return None for combined_binding discrepancy"
 
-    # Test case 3: policy has no discrepancies (should return None)
     policy_path_none = tmp_path / "policy_none.yaml"
     policy_path_none.write_text(
         """
@@ -270,20 +267,79 @@ variables:
         encoding="utf-8",
     )
 
-    result = generate_lean_outputs._duplicate_binding_review_reason(policy_path_none)
+    result = generate_lean_outputs._discrepancy_review_reason(policy_path_none)
     assert result is None, "Should return None when no discrepancies exist"
 
-    # Test case 4: policy is malformed YAML (should return None)
     policy_path_malformed = tmp_path / "policy_malformed.yaml"
     policy_path_malformed.write_text("{ invalid: yaml content [", encoding="utf-8")
 
-    result = generate_lean_outputs._duplicate_binding_review_reason(policy_path_malformed)
+    result = generate_lean_outputs._discrepancy_review_reason(policy_path_malformed)
     assert result is None, "Should return None for malformed YAML"
 
-    # Test case 5: policy file doesn't exist (should return None)
     nonexistent = tmp_path / "nonexistent.yaml"
-    result = generate_lean_outputs._duplicate_binding_review_reason(nonexistent)
+    result = generate_lean_outputs._discrepancy_review_reason(nonexistent)
     assert result is None, "Should return None for nonexistent file"
+
+
+def test_discrepancy_review_reason_holds_pdf_missing_and_field_count(tmp_path: Path) -> None:
+    for kind in (
+        "printed_widget_without_dataset_header",
+        "pdf_field_count_column_count_mismatch",
+    ):
+        policy_path = tmp_path / f"policy_{kind}.yaml"
+        policy_path.write_text(
+            f"""
+study: Test-Study
+discrepancies:
+  - kind: {kind}
+variables:
+  A: {{}}
+""".lstrip(),
+            encoding="utf-8",
+        )
+        assert generate_lean_outputs._discrepancy_review_reason(policy_path) == kind
+
+
+def test_discrepancy_review_reason_holds_alias_when_names_differ(tmp_path: Path) -> None:
+    policy_path = tmp_path / "policy_alias.yaml"
+    policy_path.write_text(
+        """
+study: Test-Study
+discrepancies:
+  - kind: pdf_annotation_alias_to_dataset_header
+    pdf_annotation_says:
+      - label: PDF_LABEL
+        dataset_column: DATA_COL
+variables:
+  DATA_COL: {}
+""".lstrip(),
+        encoding="utf-8",
+    )
+    assert (
+        generate_lean_outputs._discrepancy_review_reason(policy_path)
+        == "pdf_annotation_alias_to_dataset_header"
+    )
+
+    policy_path_case_only = tmp_path / "policy_alias_case.yaml"
+    policy_path_case_only.write_text(
+        """
+study: Test-Study
+discrepancies:
+  - kind: pdf_annotation_alias_to_dataset_header
+    pdf_annotation_says:
+      - label: hiv_cd4
+        dataset_column: HIV_CD4
+variables:
+  HIV_CD4: {}
+""".lstrip(),
+        encoding="utf-8",
+    )
+    assert generate_lean_outputs._discrepancy_review_reason(policy_path_case_only) is None
+
+
+def test_duplicate_binding_review_reason_detects_conflict(tmp_path: Path) -> None:
+    """Backward-compat alias: test renamed to _discrepancy_review_reason."""
+    test_discrepancy_review_reason_detects_binding_conflict(tmp_path)
 
 
 def test_generate_form_holds_duplicate_binding_conflict_for_review(
