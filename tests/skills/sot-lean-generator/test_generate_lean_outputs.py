@@ -336,6 +336,23 @@ variables:
     )
     assert generate_lean_outputs._discrepancy_review_reason(policy_path_case_only) is None
 
+    policy_path_curated = tmp_path / "policy_alias_curated.yaml"
+    policy_path_curated.write_text(
+        """
+study: Test-Study
+discrepancies:
+  - kind: pdf_annotation_alias_to_dataset_header
+    pdf_annotation_says:
+      - label: FC_PARAS3_4
+        dataset_column: FC_PARAS4_4
+        curated: true
+variables:
+  FC_PARAS4_4: {}
+""".lstrip(),
+        encoding="utf-8",
+    )
+    assert generate_lean_outputs._discrepancy_review_reason(policy_path_curated) is None
+
 
 def test_duplicate_binding_review_reason_detects_conflict(tmp_path: Path) -> None:
     """Backward-compat alias: test renamed to _discrepancy_review_reason."""

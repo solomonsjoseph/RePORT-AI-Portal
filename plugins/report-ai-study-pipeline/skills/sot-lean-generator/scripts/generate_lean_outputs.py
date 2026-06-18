@@ -137,6 +137,8 @@ def _discrepancy_review_reason(policy_path: Path) -> str | None:
             for item in says:
                 if not isinstance(item, dict):
                     continue
+                if item.get("curated") is True:
+                    continue
                 label = item.get("label")
                 col = item.get("dataset_column")
                 if isinstance(label, str) and isinstance(col, str) and label.lower() != col.lower():
