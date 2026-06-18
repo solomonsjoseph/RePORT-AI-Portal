@@ -13,6 +13,7 @@ proven ``dataset-to-llm-source`` publish supervisor in one locked subprocess):
     P0  preflight   — config validation, rulebook resolve + drift, input-
                       fingerprint redundant-run check, dir pre-creation, lock
     P1  headers     — header-extraction skill (column NAMES only; gates classify)
+    P1b SoT         — generate_lean_outputs (policy/schema/joined under llm_source/SoT/)
     P2  publish     — dataset-to-llm-source `run` (classify → extract → scrub →
                       dedup → PHI guard gate → promote → destroy → inline verify
                       → snapshot), under the lock baton
@@ -317,6 +318,19 @@ def main(argv: list[str] | None = None) -> int:
                 hrec.detail = hdr.summary
                 state.flush()
                 return hdr.exit_code or 1
+
+        # ── P1b SoT lean outputs (joined views before publish gate) ─────────
+        from scripts.source_truth.generate_lean_outputs import main as generate_lean_outputs_main
+
+        sot_rec = state.phase("P1b:sot-lean-generate")
+        sot_rc = generate_lean_outputs_main(["--study", study, "--repo-root", str(config.BASE_DIR)])
+        sot_rec.exit_code = sot_rc
+        if sot_rc != 0:
+            sot_rec.status = "failed"
+            state.status = "failed"
+            state.flush()
+            return sot_rc or 1
+        sot_rec.status = "complete"
 
         # ── P2 publish (delegated supervisor under the baton) ────────────────
         publish_args = ["run", "--study", study]
