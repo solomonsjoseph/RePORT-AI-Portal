@@ -528,3 +528,75 @@ def summarize_policy(data: dict[str, Any]) -> dict[str, Any]:
         if passthrough in data:
             summary[passthrough] = data[passthrough]
     return summary
+
+
+def find_joined_query_view_paths(
+    study: str,
+    form: str | None,
+    repo_root: Path,
+) -> list[Path]:
+    """Return published SoT joined query view paths — the only LLM-facing SoT files (Note 3)."""
+
+    from scripts.ai_assistant.sot_joined_view import resolve_sot_joined_view_path
+
+    sot_root = repo_root / "output" / study / "llm_source" / "SoT"
+    if not sot_root.is_dir():
+        return []
+
+    if form is not None:
+        path = resolve_sot_joined_view_path(sot_root, form)
+        return [path] if path.is_file() else []
+
+    paths: list[Path] = []
+    for pair_dir in sorted(path for path in sot_root.iterdir() if path.is_dir()):
+        joined_dir = pair_dir / "joined"
+        if joined_dir.is_dir():
+            paths.extend(
+                sorted(joined_dir.glob("*_joined_query_view.yaml"), key=lambda p: p.name)
+            )
+    return list(dict.fromkeys(paths))
+
+
+def load_joined_query_view(path: Path) -> dict[str, Any]:
+    """Load a joined query view YAML (LLM read zone)."""
+
+    if not path.exists():
+        raise ValueError(f"Joined query view not found: {path}")
+    validate_agent_read(path)
+    try:
+        data: Any = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise ValueError(f"YAML parse error in {path}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ValueError(f"Expected a mapping at root of {path}, got {type(data).__name__}")
+    if "variables" not in data:
+        raise ValueError(f"Required key 'variables' missing in {path}")
+    return data  # type: ignore[return-value]
+
+
+def summarize_joined_view(data: dict[str, Any]) -> dict[str, Any]:
+    """Compact summary of a joined query view for catalog search (metadata only)."""
+
+    form_val = data.get("form")
+    if isinstance(form_val, dict):
+        form_summary = {
+            "number": form_val.get("number"),
+            "title": form_val.get("title"),
+        }
+    else:
+        form_summary = {"number": None, "title": str(form_val) if form_val else ""}
+
+    raw_variables = data.get("variables", {})
+    variables: dict[str, Any] = (
+        {var_name: var_meta for var_name, var_meta in raw_variables.items() if isinstance(var_meta, dict)}
+        if isinstance(raw_variables, dict)
+        else {}
+    )
+
+    return {
+        "study": data.get("study", ""),
+        "form": form_summary,
+        "section_count": 0,
+        "variable_count": len(variables),
+        "variables": variables,
+    }

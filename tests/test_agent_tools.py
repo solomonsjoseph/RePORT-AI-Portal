@@ -93,71 +93,52 @@ class TestAnswerCatalogQuestion:
         from scripts.ai_assistant.agent_tools import answer_catalog_question
 
         llm_source = tmp_path / "output" / "Indo-VAP" / "llm_source"
-        source_truth = llm_source / "source_truth"
-        dataset_schema = llm_source / "dataset_schema"
         agent_dir = tmp_path / "output" / "Indo-VAP" / "agent"
-        source_truth.mkdir(parents=True)
-        dataset_schema.mkdir(parents=True)
         agent_dir.mkdir(parents=True)
         monkeypatch.setattr(config, "REPO_ROOT", tmp_path, raising=False)
         monkeypatch.setattr(config, "STUDY_LLM_SOURCE_DIR", llm_source)
         monkeypatch.setattr(config, "TRIO_BUNDLE_DIR", llm_source)
         monkeypatch.setattr(config, "AGENT_STATE_DIR", agent_dir)
 
-        (source_truth / "14_CaseControl_policy.lean.yaml").write_text(
-            """
-study: Indo-VAP
-form:
-  number: "14"
-  title: Case Control
-sections:
-  main: Main
-variables:
-  CC_WTRSRC:
-    section: main
-    pdf_question: What is the main source of water?
-    widget: text
-    type: text
-""".lstrip(),
-            encoding="utf-8",
+        hiv_joined = (
+            llm_source
+            / "SoT"
+            / "6_HIV"
+            / "joined"
+            / "6_HIV_joined_query_view.yaml"
         )
-        (source_truth / "6_HIV_policy.lean.yaml").write_text(
+        hiv_joined.parent.mkdir(parents=True)
+        hiv_joined.write_text(
             """
 study: Indo-VAP
-form:
-  number: "6"
-  title: HIV
-sections:
-  main: Main
+form: 6_HIV
 variables:
   HIV_HIV:
-    section: main
-    pdf_question: HIV test result
-    type: code
-    description: HIV test result code
-    options: [Positive, Negative]
+    pdf:
+      question: HIV test result
+    dataset:
+      phi_action: retain
 """.lstrip(),
             encoding="utf-8",
         )
-        (dataset_schema / "6_HIV_schema.json").write_text(
-            json.dumps(
-                {
-                    "study": "Indo-VAP",
-                    "form": "6_HIV",
-                    "source_dataset": "data/raw/Indo-VAP/datasets/6_HIV.xlsx",
-                    "jsonl_file": "tmp/6_HIV.jsonl",
-                    "record_count": 1401,
-                    "columns": [
-                        {
-                            "name": "HIV_HIV",
-                            "source_order": 6,
-                            "phi_action": "retain",
-                            "published_in_jsonl": True,
-                            "llm_status": "available",
-                        }
-                    ],
-                }
-            ),
+        cc_joined = (
+            llm_source
+            / "SoT"
+            / "14_CaseControl"
+            / "joined"
+            / "14_CaseControl_joined_query_view.yaml"
+        )
+        cc_joined.parent.mkdir(parents=True)
+        cc_joined.write_text(
+            """
+study: Indo-VAP
+form: 14_CaseControl
+variables:
+  CC_WTRSRC:
+    pdf:
+      question: What is the main source of water?
+    dataset: {}
+""".lstrip(),
             encoding="utf-8",
         )
 
@@ -178,11 +159,9 @@ variables:
         from scripts.ai_assistant.agent_tools import answer_catalog_question
 
         pair_dir = tmp_path / "output" / "Indo-VAP" / "llm_source" / "SoT" / "6_HIV"
-        policy_dir = pair_dir / "pdf"
-        dataset_dir = pair_dir / "dataset"
+        joined = pair_dir / "joined" / "6_HIV_joined_query_view.yaml"
         agent_dir = tmp_path / "output" / "Indo-VAP" / "agent"
-        policy_dir.mkdir(parents=True)
-        dataset_dir.mkdir(parents=True)
+        joined.parent.mkdir(parents=True)
         agent_dir.mkdir(parents=True)
         monkeypatch.setattr(config, "REPO_ROOT", tmp_path, raising=False)
         monkeypatch.setattr(
@@ -190,39 +169,17 @@ variables:
         )
         monkeypatch.setattr(config, "AGENT_STATE_DIR", agent_dir)
 
-        (policy_dir / "6_HIV_policy.yaml").write_text(
+        joined.write_text(
             """
 study: Indo-VAP
-form:
-  number: "6"
-  title: HIV
-sections:
-  main: Main
+form: 6_HIV
 variables:
   HIV_CD4DAT:
-    section: main
-    pdf_question: 3a. CD4 Test Date
-    type: date
-    description: CD4 test date
+    pdf:
+      question: 3a. CD4 Test Date
+    dataset:
+      phi_action: jitter_date
 """.lstrip(),
-            encoding="utf-8",
-        )
-        (dataset_dir / "6_HIV_schema.json").write_text(
-            json.dumps(
-                {
-                    "study": "Indo-VAP",
-                    "form": "6_HIV",
-                    "source_dataset": "data/raw/Indo-VAP/datasets/6_HIV.xlsx",
-                    "record_count": 1401,
-                    "columns": [
-                        {
-                            "name": "HIV_CD4DAT",
-                            "source_order": 12,
-                            "phi_action": "jitter_date",
-                        }
-                    ],
-                }
-            ),
             encoding="utf-8",
         )
 

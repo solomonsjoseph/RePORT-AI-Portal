@@ -47,7 +47,6 @@ from langchain_core.tools import tool
 
 import config
 from scripts.ai_assistant.file_access import (
-    ZoneViolationError,
     validate_agent_read,
 )
 from scripts.ai_assistant.phi_safe import (
@@ -1343,8 +1342,32 @@ def _load_catalog_artifact() -> Mapping[str, Any] | None:
     return None
 
 
-# Thread-safe in-memory cache for policy summaries to avoid repeated disk reads and safe_load parsing
-_POLICY_SUMMARIES_CACHE: dict[Path, dict[str, Any]] = {}
+# Thread-safe in-memory cache for joined-view summaries (Note 3: LLM reads joined views only)
+_JOINED_VIEW_SUMMARIES_CACHE: dict[Path, dict[str, Any]] = {}
+
+
+def _catalog_pdf_question(var_meta: Any) -> str:
+    """Extract printable question text from policy-flat or joined-view variable metadata."""
+
+    if not isinstance(var_meta, dict):
+        return ""
+    if var_meta.get("pdf_question"):
+        return str(var_meta["pdf_question"])
+    pdf = var_meta.get("pdf")
+    if isinstance(pdf, dict) and pdf.get("question"):
+        return str(pdf["question"])
+    return ""
+
+
+def _catalog_phi_flag(var_meta: Any) -> Any:
+    if not isinstance(var_meta, dict):
+        return None
+    if "phi" in var_meta:
+        return var_meta.get("phi")
+    pdf = var_meta.get("pdf")
+    if isinstance(pdf, dict):
+        return pdf.get("phi")
+    return None
 
 
 @tool
@@ -1393,15 +1416,11 @@ def answer_catalog_question(question: str) -> str:
         (bool). The ``answer`` is already boundary-aware; the LLM should
         normally pass it through verbatim.
     """
-    """Answer a study-variable metadata question by searching policy SoT YAMLs."""
-    from scripts.ai_assistant.sot_joined_view import (
-        build_joined_query_view,
-        find_dataset_schema_for_policy,
-    )
+    """Answer a study-variable metadata question by searching SoT joined query views (Note 3)."""
     from scripts.ai_assistant.sot_loader import (
-        find_policy_yaml,
-        load_policy_yaml,
-        summarize_policy,
+        find_joined_query_view_paths,
+        load_joined_query_view,
+        summarize_joined_view,
     )
 
     if _query_looks_conversational(question):
@@ -1422,20 +1441,16 @@ def answer_catalog_question(question: str) -> str:
 
     matches: list[dict[str, Any]] = []
     for study_dir in study_dirs:
-        all_paths = find_policy_yaml(study_dir.name, None, repo_root)
+        all_paths = find_joined_query_view_paths(study_dir.name, None, repo_root)
         for path in all_paths:
-            # Check the in-memory cache for policy summaries first
-            summary = _POLICY_SUMMARIES_CACHE.get(path)
+            summary = _JOINED_VIEW_SUMMARIES_CACHE.get(path)
             if summary is None:
                 try:
-                    data = load_policy_yaml(path)
-                    summary = summarize_policy(data)
-                    _POLICY_SUMMARIES_CACHE[path] = summary
+                    data = load_joined_query_view(path)
+                    summary = summarize_joined_view(data)
+                    _JOINED_VIEW_SUMMARIES_CACHE[path] = summary
                 except ValueError:
                     continue
-            # Prefer exact variable-id matches, then require meaningful token
-            # overlap. A single generic question word like "what" must never
-            # decide the catalog answer.
             for var_name, var_meta in summary["variables"].items():
                 if var_name.upper() in query_identifiers:
                     matches.append(
@@ -1449,7 +1464,7 @@ def answer_catalog_question(question: str) -> str:
                     )
                     continue
                 if isinstance(var_meta, dict):
-                    question_text = str(var_meta.get("pdf_question") or "")
+                    question_text = _catalog_pdf_question(var_meta)
                     question_overlap = query_tokens & _catalog_meaningful_tokens(question_text)
                     name_overlap = query_tokens & _catalog_meaningful_tokens(
                         var_name.replace("_", " ")
@@ -1471,16 +1486,15 @@ def answer_catalog_question(question: str) -> str:
                         )
 
     if not matches:
-        # Return all available SoT metadata across studies as a catalog dump.
         all_summaries = []
         for study_dir in study_dirs:
-            for path in find_policy_yaml(study_dir.name, None, repo_root):
-                summary = _POLICY_SUMMARIES_CACHE.get(path)
+            for path in find_joined_query_view_paths(study_dir.name, None, repo_root):
+                summary = _JOINED_VIEW_SUMMARIES_CACHE.get(path)
                 if summary is None:
                     try:
-                        data = load_policy_yaml(path)
-                        summary = summarize_policy(data)
-                        _POLICY_SUMMARIES_CACHE[path] = summary
+                        data = load_joined_query_view(path)
+                        summary = summarize_joined_view(data)
+                        _JOINED_VIEW_SUMMARIES_CACHE[path] = summary
                     except ValueError:
                         continue
                 all_summaries.append(summary)
@@ -1489,10 +1503,9 @@ def answer_catalog_question(question: str) -> str:
                 {
                     "question": question,
                     "answer": (
-                        "No policy SoT YAMLs found. Run Load Study to activate "
-                        "the report-ai-study-pipeline plugin, or run the "
-                        "`sot-lean-generator` phase for the affected form and publish "
-                        "the result under `llm_source/SoT/<pair>/pdf/`."
+                        "No SoT joined query views found. Run Load Study to activate "
+                        "a clean snapshot, or run the `sot-lean-generator` phase and "
+                        "publish under `llm_source/SoT/<pair>/joined/`."
                     ),
                     "variable_ids": [],
                     "audit_only": False,
@@ -1530,58 +1543,29 @@ def answer_catalog_question(question: str) -> str:
     summary = best["summary"]
     var_id = best["variable_id"]
     var_meta = summary["variables"].get(var_id, {})
-    phi_flag = var_meta.get("phi") if isinstance(var_meta, dict) else None
+    phi_flag = _catalog_phi_flag(var_meta)
     analysis_queryable = phi_flag not in ("drop",)
     metadata: Any = var_meta
     source_path = Path(str(best["source"]))
 
-    # Try loading pre-compiled joined query view from file first to save dynamic parsing and join CPU/IO
-    form_id = source_path.name
-    for suffix in ("_policy.yaml", "_policy.lean.yaml", ".lean.yaml", ".yaml"):
-        if form_id.endswith(suffix):
-            form_id = form_id[: -len(suffix)]
-            break
-    joined_view_path = source_path.parent.parent / "joined" / f"{form_id}_joined_query_view.yaml"
-
-    loaded_from_file = False
-    if joined_view_path.is_file():
+    if source_path.is_file() and source_path.name.endswith("_joined_query_view.yaml"):
         try:
-            validate_agent_read(joined_view_path)
+            validate_agent_read(source_path)
             import yaml
 
-            with open(joined_view_path, encoding="utf-8") as fh:
+            with open(source_path, encoding="utf-8") as fh:
                 joined_view = yaml.safe_load(fh)
-            joined_variables = joined_view.get("variables")
+            joined_variables = joined_view.get("variables") if isinstance(joined_view, dict) else None
             if isinstance(joined_variables, Mapping):
                 joined_meta = joined_variables.get(var_id)
                 if isinstance(joined_meta, Mapping):
                     metadata = dict(joined_meta)
-                    loaded_from_file = True
         except Exception:
             logger.debug(
-                "joined-view metadata load failed for %s; falling back to schema",
+                "joined-view metadata load failed for %s",
                 var_id,
                 exc_info=True,
             )
-
-    if not loaded_from_file:
-        schema_path = find_dataset_schema_for_policy(source_path)
-        if schema_path is not None:
-            try:
-                # Defense-in-depth: gate the schema read through the agent
-                # read-zone check before build_joined_query_view opens it, so
-                # this runtime path matches the joined-view read above. An
-                # out-of-zone schema (ZoneViolationError) degrades to var_meta
-                # rather than being read — fail-closed, never exposed.
-                validate_agent_read(schema_path)
-                joined_view = build_joined_query_view(source_path, schema_path)
-                joined_variables = joined_view.get("variables")
-                if isinstance(joined_variables, Mapping):
-                    joined_meta = joined_variables.get(var_id)
-                    if isinstance(joined_meta, Mapping):
-                        metadata = dict(joined_meta)
-            except (ValueError, ZoneViolationError):
-                metadata = var_meta
     answer_text = json.dumps(
         {
             "variable_id": var_id,
