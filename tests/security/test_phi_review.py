@@ -856,3 +856,42 @@ def test_non_keep_classification_jurisdiction_unchanged(tmp_path: Path) -> None:
     # (aadhaar is India-specific; the only USA hit would require a USA aadhaar rule)
     # The safe assertion: jurisdictions is non-empty and the set is a subset of configured.
     assert set(cl.jurisdictions) <= {"USA", "INDIA"}
+
+
+def test_study_privacy_config_kanon_gate_absent_is_empty(tmp_path: Path) -> None:
+    """Absent kanon_publish_gate => empty dict (gate disabled), no failure (Note 5)."""
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    _write_privacy_config(study_dir)
+    cfg = load_study_privacy_config(study_dir)
+    assert cfg.kanon_publish_gate == {}
+
+
+def test_study_privacy_config_parses_kanon_gate(tmp_path: Path) -> None:
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    path = _write_privacy_config(study_dir)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["kanon_publish_gate"] = {
+        "enabled": True,
+        "quasi_identifiers": ["SEX", "AGE_BAND"],
+        "k_threshold": 10,
+    }
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    cfg = load_study_privacy_config(study_dir)
+
+    assert cfg.kanon_publish_gate == {
+        "enabled": True,
+        "quasi_identifiers": ["SEX", "AGE_BAND"],
+        "k_threshold": 10,
+    }
+
+
+def test_study_privacy_config_rejects_malformed_kanon_gate(tmp_path: Path) -> None:
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    path = _write_privacy_config(study_dir)
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["kanon_publish_gate"] = {"enabled": "yes", "quasi_identifiers": ["SEX"]}
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="enabled must be a boolean"):
+        load_study_privacy_config(study_dir)

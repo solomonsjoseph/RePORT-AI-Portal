@@ -38,13 +38,14 @@ are not fully gone today, so they are annotated here rather than misrepresented:
   in `plugins/report-ai-study-pipeline/plugin.yaml` (maintainer-only merge
   helper). Orchestrator phase 2 **`dataset-deduplication`** (`raw_file_dedup.py`)
   replaced it in the active publish path (Note 18).
-- **`SUSPECTED_DUPLICATE_PAIRS` still exists** as a constant in
-  `dataset_cleanup.py` (now at
-  `plugins/report-ai-study-pipeline/skills/dataset-to-llm-source/scripts/dataset_cleanup.py`,
-  consumed by `dataset-deduplication` and `scripts/utils/cleanup_verifier.py`).
-  The "dynamic dedup" intent describes the structural subset/divergence
-  comparison that gates merges; the hardcoded pair list was not removed in the
-  waves recorded here.
+- **`SUSPECTED_DUPLICATE_PAIRS`, `JUNK_PATTERNS`, and the `clean_trio_datasets`
+  JSONL-level dedup/junk passes were removed** (Note 18 remediation). Raw-file
+  dedup (`raw_file_dedup.py`, orchestrator phase 2) plus the manifest `reject:`
+  gate handle duplicate/junk FILES before extraction, so the post-extraction
+  `dataset_cleanup.py` is now an audit-envelope writer only (it emits the dataset
+  audit + `as_written` cleanup ledgers from extraction column-drop events). The
+  `UnscrubbedDatasetError` class is retained for backwards-compatible imports but
+  is no longer raised.
 
 ## Old module paths (now removed or relocated)
 

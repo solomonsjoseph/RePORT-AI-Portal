@@ -564,6 +564,18 @@ def preferred_or_installed_downgrade(model: str) -> list[str]:
 TELEMETRY_DIR = STUDY_AUDIT_DIR / "telemetry"
 TELEMETRY_SINK = TELEMETRY_DIR / "events.jsonl"
 
+# ── PHI AI-assist (Notes 7 + 9) — default OFF; opt-in via env / orchestrator ──
+# Gate the LLM-assisted PHI subsystem. When OFF (default) the publish path is
+# byte-identical to the deterministic pinned-rules behavior and NO LLM is ever
+# constructed. When ON, the LLM reads ONLY public regulation text (N7 rulebook)
+# and column NAMES (N9 alignment) — never a dataset row value (GR-1). All AI
+# output is deterministically verified, version-stamped, frozen, and the pinned
+# rules remain the protection floor.
+PHI_ALIGNMENT_ENABLED: bool = _get_env_bool("REPORTAL_PHI_ALIGNMENT_ENABLED", False)
+RULEBOOK_AI_EXTRACT: bool = _get_env_bool("REPORTAL_RULEBOOK_AI_EXTRACT", False)
+RULEBOOK_REQUIRE_LIVE: bool = _get_env_bool("REPORTAL_RULEBOOK_REQUIRE_LIVE", False)
+PHI_SCRUB_GENERATED_FILENAME: str = "phi_scrub.generated.yaml"
+
 # Chat / agent
 AGENT_MAX_TOKENS: int = _get_env_int("AGENT_MAX_TOKENS", 16384)
 AGENT_TIMEOUT: int = _get_env_int("AGENT_TIMEOUT", 300)

@@ -26,15 +26,20 @@ from __future__ import annotations
 
 import enum
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 from scripts.utils.logging_system import get_logger
 
 __all__ = [
+    "KEY_ROTATION_EVENTS_DIRNAME",
+    "KeyRotationRequiresConfirmationError",
     "RotationStatus",
     "check_and_record",
     "detect_rotation",
+    "emit_rotation_audit_entry",
     "key_state_path",
+    "preflight_rotation_gate",
     "read_recorded_fingerprint",
     "record_fingerprint",
 ]
@@ -43,6 +48,20 @@ _logger = get_logger(__name__)
 
 #: Filename of the per-study key-state record under the audit directory.
 KEY_STATE_FILENAME = "phi_key_state.json"
+
+#: Directory (under the audit zone) holding per-event rotation audit entries.
+KEY_ROTATION_EVENTS_DIRNAME = "key_rotation_events"
+
+
+class KeyRotationRequiresConfirmationError(RuntimeError):
+    """Raised pre-scrub when the PHI key fingerprint changed and the operator has
+    not explicitly confirmed the (destructive) rotation.
+
+    Rotation breaks cross-run pseudonym linkage and invalidates every prior
+    snapshot, so it must be an explicit, named operation — never silent. The
+    message is value-free: fingerprints are one-way SHA-256 hashes and no raw key
+    bytes ever appear in it.
+    """
 
 
 class RotationStatus(enum.Enum):
@@ -120,6 +139,85 @@ def record_fingerprint(
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def emit_rotation_audit_entry(
+    audit_dir: Path,
+    *,
+    previous_fingerprint: str,
+    new_fingerprint: str,
+    run_id: str | None,
+    confirmed: bool,
+) -> Path:
+    """Write a value-free key-rotation audit entry; return its path (fail-soft).
+
+    Records only one-way SHA-256 fingerprints, the UTC date, the run-id, whether
+    the operator confirmed, and the standing effect statement. Never raw key
+    bytes. An audit-write failure is logged but never swallows the caller's
+    hard-stop decision.
+    """
+    events_dir = Path(audit_dir) / KEY_ROTATION_EVENTS_DIRNAME
+    now = datetime.now(UTC)
+    path = events_dir / f"rotation_{now.strftime('%Y%m%dT%H%M%SZ')}.json"
+    record = {
+        "previous_fingerprint": previous_fingerprint,
+        "new_fingerprint": new_fingerprint,
+        "date_utc": now.isoformat(),
+        "run_id": run_id,
+        "confirmed": confirmed,
+        "effect": "all existing snapshots invalidated — re-scrub required",
+    }
+    try:
+        events_dir.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(path.name + ".partial")
+        tmp.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        tmp.replace(path)
+    except OSError:
+        _logger.warning("could not write key-rotation audit entry to %s", path)
+    return path
+
+
+def preflight_rotation_gate(
+    audit_dir: Path,
+    current_fingerprint: str,
+    *,
+    run_id: str | None = None,
+    confirmed: bool = False,
+) -> RotationStatus:
+    """Pre-scrub key-rotation hard-stop (Note 12).
+
+    Detect a key fingerprint change BEFORE any row is scrubbed. On ``ROTATED``:
+    emit a value-free rotation audit entry, then HARD STOP (raise
+    :class:`KeyRotationRequiresConfirmationError`) unless *confirmed* — the
+    operator must pass ``--confirm-rotation`` / ``REPORTAL_CONFIRM_KEY_ROTATION=1``
+    because rotation invalidates all prior snapshots and forces a full re-scrub.
+
+    This function does NOT persist the new fingerprint; recording stays in
+    :func:`check_and_record` after a successful scrub so an aborted run never
+    advances the recorded state. First run / unchanged are clean no-ops.
+    """
+    recorded = read_recorded_fingerprint(audit_dir)
+    status = detect_rotation(recorded, current_fingerprint)
+    if status is RotationStatus.ROTATED:
+        emit_rotation_audit_entry(
+            audit_dir,
+            previous_fingerprint=recorded or "",
+            new_fingerprint=current_fingerprint,
+            run_id=run_id,
+            confirmed=confirmed,
+        )
+        if not confirmed:
+            raise KeyRotationRequiresConfirmationError(
+                "PHI HMAC key fingerprint changed since the last publish — rotation "
+                "is a destructive re-key that invalidates ALL prior snapshots and "
+                "breaks cross-run pseudonym linkage. Re-run with --confirm-rotation "
+                "(or REPORTAL_CONFIRM_KEY_ROTATION=1) to proceed with a full re-scrub."
+            )
+        _logger.warning(
+            "PHI HMAC key rotation CONFIRMED by operator; proceeding with a full "
+            "re-scrub. All prior snapshots for this study are invalidated."
+        )
+    return status
 
 
 def check_and_record(

@@ -27,12 +27,14 @@ from scripts.security.phi_rulebook import (
     cache_filename,
     default_seed_dir,
     read_cache_entry,
+    resolve_live_rulebook,
     resolve_rulebook,
 )
 
 EXIT_OK = 0
 EXIT_USAGE = 2
 EXIT_DRIFT = 3
+EXIT_WEAKENING = 4  # live extraction flagged a protection-weakening rule (review)
 
 
 def _cmd_resolve(args: argparse.Namespace) -> int:
@@ -72,6 +74,33 @@ def _cmd_show(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _cmd_refresh(args: argparse.Namespace) -> int:
+    try:
+        cfg = load_study_privacy_config(args.study)
+    except (OSError, ValueError) as exc:
+        print(f"error: cannot load privacy config for {args.study!r}: {exc}", file=sys.stderr)
+        return EXIT_USAGE
+    res = resolve_live_rulebook(cfg, allow_network=args.allow_network)
+    print(
+        json.dumps(
+            {
+                "jurisdictions": list(res.jurisdictions),
+                "rules_sha256": res.bundle.rules_sha256,
+                "source_mode": res.bundle.source_mode,
+                "cache_status": res.cache_status,
+                "drift_detected": res.drift_detected,
+                "protection_weakened": res.protection_weakened,
+                "offline_warning": res.offline_warning,
+                "n_rules": len(res.bundle.rules),
+            },
+            indent=2,
+        )
+    )
+    if res.protection_weakened:
+        return EXIT_WEAKENING
+    return EXIT_DRIFT if res.drift_detected else EXIT_OK
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="PHI jurisdiction rulebook tool")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -88,6 +117,18 @@ def main(argv: list[str] | None = None) -> int:
     p_show = sub.add_parser("show", help="dump a committed seed rulebook for a jurisdiction set")
     p_show.add_argument("--jurisdictions", required=True, help="comma list, e.g. INDIA,USA")
     p_show.set_defaults(func=_cmd_show)
+
+    p_refresh = sub.add_parser(
+        "refresh",
+        help="fetch latest official regulations + AI-extract rules (opt-in, N7)",
+    )
+    p_refresh.add_argument("--study", required=True, help="study name (config/<study>/)")
+    p_refresh.add_argument(
+        "--allow-network",
+        action="store_true",
+        help="permit the live official-source fetch (required for AI extraction)",
+    )
+    p_refresh.set_defaults(func=_cmd_refresh)
 
     args = parser.parse_args(argv)
     return int(args.func(args))

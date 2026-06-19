@@ -143,6 +143,25 @@ def _preflight(state: _RunState, *, study: str, run_id: str, resume_held: bool, 
 
     config.ensure_run_directories(study=study, run_id=run_id)
 
+    # Accumulation guard (Note 13): a surviving cleanup.in_progress token from a
+    # prior run means a previous cleanup was interrupted mid-way — halt rather
+    # than build on an unknown workspace state. --force overrides for operator
+    # recovery (after `make rebuild-llm-source` clears the runs/ dir).
+    if not force:
+        from scripts.utils.run_context import (
+            CLEANUP_RECOVERY_MESSAGE,
+            scan_for_in_progress_cleanups,
+        )
+
+        stale = scan_for_in_progress_cleanups(Path(config.STUDY_OUTPUT_DIR) / "runs")
+        if stale:
+            print(CLEANUP_RECOVERY_MESSAGE.format(path=stale[0]), file=sys.stderr)
+            rec.status = "failed"
+            rec.detail = "interrupted cleanup token present"
+            rec.exit_code = 6
+            state.flush()
+            return 6
+
     # Rulebook drift (advisory — never blocks).
     try:
         from scripts.security.phi_review import load_study_privacy_config
@@ -319,6 +338,21 @@ def main(argv: list[str] | None = None) -> int:
                 state.flush()
                 return hdr.exit_code or 1
 
+        # ── P1c dictionary extraction (Note 1 — the orchestrator invokes the
+        # dictionary-to-llm-source skill; its publish leg runs in-lock at Step 2
+        # after cleanup-propagation prunes dropped columns) ───────────────────
+        dict_ext = invoke_skill(
+            "dictionary-to-llm-source",
+            ["--study", study, "--run-id", run_id, "--run-dir", str(run_dir), "--leg", "extract"],
+            env=child_env,
+        )
+        derec = _record_skill_phase(state, "P1c:dictionary-extract", dict_ext)
+        if not dict_ext.ok:
+            state.status = "failed"
+            derec.detail = dict_ext.summary
+            state.flush()
+            return dict_ext.exit_code or 1
+
         # ── P2 raw-file deduplication (Note 4 — before SoT / extraction) ───
         dedup = invoke_skill(
             "dataset-deduplication",
@@ -356,11 +390,25 @@ def main(argv: list[str] | None = None) -> int:
         if args.strict_abort:
             child_env = dict(child_env, REPORTAL_SCRUB_STRICT_ABORT="1")
 
-        publish = invoke_skill("dataset-to-llm-source", publish_args, env=child_env)
+        # Note 13: defer the supervisor's Step-7 snapshot commit so the orchestrator
+        # commits at P10, only after the cleanup (P8) + audit (P9) verifiers pass.
+        # (A scrub-only-partial publish still commits inline — see Step 7.)
+        publish_env = dict(child_env, REPORTAL_DEFER_SNAPSHOT_COMMIT="1")
+        publish = invoke_skill("dataset-to-llm-source", publish_args, env=publish_env)
         prec = _record_skill_phase(state, "P2:publish", publish)
 
         # Surface held/partial state from the run's status.json (form names only).
         _absorb_status(state, run_dir)
+
+        # Note 6: the header-extraction shared store has now been consumed by the
+        # dedup (P2) and PHI-classification (inside the publish supervisor) legs.
+        # Destroy it so the workspace ends in the two-list clean state (Note 13).
+        try:
+            from scripts.extraction.header_store import destroy_header_store
+
+            destroy_header_store(run_dir)
+        except Exception as exc:  # best-effort cleanup, never blocks the run
+            print(f"P7: header-store destroy skipped: {exc}", file=sys.stderr)
 
         if publish.exit_code not in {EXIT_OK, EXIT_PARTIAL_REVIEW}:
             state.status = "failed"
@@ -381,22 +429,53 @@ def main(argv: list[str] | None = None) -> int:
             )
             return EXIT_PARTIAL_REVIEW
 
-        # ── P8 cleanup verifier (native) ─────────────────────────────────────
-        crec = state.phase("P8:cleanup-verifier")
-        from scripts.utils.cleanup_verifier import verify_cleanup
+        # ── P8 cleanup verifier (native): ledger consistency + two-list purge ──
+        from dataclasses import asdict
 
-        # Published dataset JSONL lives under llm_source/dataset_schema/files/
-        # (config.TRIO_DATASETS_DIR) — the same location assertion 10 checks, NOT
-        # the legacy llm_source/datasets/ path.
-        report = verify_cleanup(Path(config.STUDY_AUDIT_DIR), Path(config.TRIO_DATASETS_DIR))
-        crec.status = "complete" if report.ok else "failed"
-        crec.detail = "clean" if report.ok else f"{len(report.findings)} cleanup finding(s)"
-        crec.exit_code = 0 if report.ok else 1
+        from scripts.extraction.io import atomic_write_json
+        from scripts.utils.cleanup_verifier import verify_cleanup, verify_workspace_cleanup
+        from scripts.utils.run_context import delete_cleanup_token, write_cleanup_token
+
+        # Gap 7 token: written before the verifier, deleted only on a clean pass;
+        # a surviving token on the next run signals an interrupted cleanup.
+        write_cleanup_token(run_dir)
+        crec = state.phase("P8:cleanup-verifier")
+        # Ledger consistency: published JSONL lives under llm_source/dataset_schema/
+        # files/ (config.TRIO_DATASETS_DIR), the same location assertion 10 checks.
+        ledger_report = verify_cleanup(Path(config.STUDY_AUDIT_DIR), Path(config.TRIO_DATASETS_DIR))
+        # Two-list workspace purge (Note 13): must-be-gone temporaries absent +
+        # must-remain permanents present. The live cleanup token is held during the
+        # walk, so it is excluded from the must-be-gone set.
+        ws_report = verify_workspace_cleanup(
+            study=study, run_dir=run_dir, expect_cleanup_token_present=True
+        )
+        ok = ledger_report.ok and ws_report.ok
+        # Persist the names-only combined record to the audit zone (permanent).
+        try:
+            atomic_write_json(
+                Path(config.STUDY_AUDIT_DIR) / "cleanup_verification_report.json",
+                {
+                    "run_id": run_id,
+                    "ledger_ok": ledger_report.ok,
+                    "ledger_findings": [asdict(f) for f in ledger_report.findings],
+                    "workspace_ok": ws_report.ok,
+                    "workspace_findings": [asdict(f) for f in ws_report.findings],
+                    "checked_must_gone": ws_report.checked_must_gone,
+                    "checked_must_remain": ws_report.checked_must_remain,
+                },
+            )
+        except Exception as exc:  # advisory record; never fail the run on a write hiccup
+            print(f"P8: cleanup_verification_report write skipped: {exc}", file=sys.stderr)
+        n_find = len(ledger_report.findings) + len(ws_report.findings)
+        crec.status = "complete" if ok else "failed"
+        crec.detail = "clean" if ok else f"{n_find} cleanup finding(s)"
+        crec.exit_code = 0 if ok else 1
         state.flush()
-        if not report.ok:
+        if not ok:
             state.status = "failed"
             state.flush()
-            return 5  # EXIT_VERIFIER_FAIL family
+            return 5  # EXIT_VERIFIER_FAIL family — token LEFT in place (interrupted cleanup)
+        delete_cleanup_token(run_dir)  # only after BOTH verifiers pass
 
         # ── P9 full verifier (idempotent re-verify under the baton) ──────────
         verify = invoke_skill(
@@ -416,7 +495,25 @@ def main(argv: list[str] | None = None) -> int:
         fp = compute_input_fingerprint(study=study)
         write_fingerprint_record(fingerprint_record_path(Path(config.STUDY_AUDIT_DIR)), fp)
         state.input_fingerprint = fp.fingerprint
-        _absorb_status(state, run_dir)  # pick up snapshot_id committed by publish Step 7
+        # Commit the snapshot NOW (Note 13) — only after P8 (cleanup) + P9 (audit)
+        # both passed. The supervisor deferred its Step-7 commit via
+        # REPORTAL_DEFER_SNAPSHOT_COMMIT, so the snapshot is created only on a
+        # fully-verified clean pass. cleanup_verifier_passed=True records the proof
+        # in the manifest (Note 14). Fail-soft — a commit hiccup must not fail an
+        # otherwise-complete run.
+        try:
+            from scripts.utils.snapshot import commit_run_snapshot
+
+            commit_run_snapshot(
+                study=study,
+                run_id=run_id,
+                run_dir=run_dir,
+                resume_held=args.resume_held,
+                cleanup_verifier_passed=True,
+            )
+        except Exception as exc:  # advisory: never fail a complete run on commit hiccup
+            print(f"P10:finalize — snapshot commit skipped: {exc}", file=sys.stderr)
+        _absorb_status(state, run_dir)  # pick up snapshot_id committed at P10
         # C5.3: phase-10 points `current` at the freshly committed snapshot so a
         # clean publish becomes the study's designated active one. Fail-soft — a
         # pointer-write hiccup must not fail an otherwise-complete run.

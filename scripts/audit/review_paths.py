@@ -19,7 +19,9 @@ __all__ = [
     "human_review_root",
     "is_sot_review_report_path",
     "legacy_sot_review_report_path",
+    "presidio_failure_md_path",
     "publish_sot_joined_gate_md_path",
+    "pycanon_report_md_path",
     "resolve_sot_review_report_path",
     "safe_review_slug",
     "sot_review_report_path",
@@ -39,21 +41,11 @@ def human_review_root(audit_dir: Path) -> Path:
 
 
 def sot_review_report_path(audit_dir: Path, form: str) -> Path:
-    return (
-        human_review_root(audit_dir)
-        / "sot"
-        / safe_review_slug(form)
-        / "review_report.md"
-    )
+    return human_review_root(audit_dir) / "sot" / safe_review_slug(form) / "review_report.md"
 
 
 def legacy_sot_review_report_path(audit_dir: Path, form: str) -> Path:
-    return (
-        Path(audit_dir)
-        / LEGACY_SOT_REVIEW_DIR
-        / safe_review_slug(form)
-        / "review_report.md"
-    )
+    return Path(audit_dir) / LEGACY_SOT_REVIEW_DIR / safe_review_slug(form) / "review_report.md"
 
 
 def resolve_sot_review_report_path(audit_dir: Path, form: str) -> Path:
@@ -74,20 +66,13 @@ def is_sot_review_report_path(path: Path) -> bool:
             idx = parts.index("human_review")
         except ValueError:
             return False
-        return (
-            idx + 3 < len(parts)
-            and parts[idx + 1] == "sot"
-            and path.name == "review_report.md"
-        )
+        return idx + 3 < len(parts) and parts[idx + 1] == "sot" and path.name == "review_report.md"
     return LEGACY_SOT_REVIEW_DIR in parts and path.name == "review_report.md"
 
 
 def dataset_jsonl_union_review_path(audit_dir: Path, stem: str) -> Path:
     return (
-        human_review_root(audit_dir)
-        / "datasets"
-        / safe_review_slug(stem)
-        / "jsonl_union_review.md"
+        human_review_root(audit_dir) / "datasets" / safe_review_slug(stem) / "jsonl_union_review.md"
     )
 
 
@@ -102,8 +87,17 @@ def excel_duplicate_review_path(audit_dir: Path, group: str) -> Path:
 
 def publish_sot_joined_gate_md_path(audit_dir: Path, run_id: str) -> Path:
     return (
-        human_review_root(audit_dir)
-        / "publish"
-        / safe_review_slug(run_id)
-        / "sot_joined_gate.md"
+        human_review_root(audit_dir) / "publish" / safe_review_slug(run_id) / "sot_joined_gate.md"
     )
+
+
+def presidio_failure_md_path(audit_dir: Path, form: str) -> Path:
+    """Pre-promotion PHI guard-gate failure report (pattern + column + count only)."""
+    return (
+        human_review_root(audit_dir) / "presidio" / safe_review_slug(form) / "presidio_failure.md"
+    )
+
+
+def pycanon_report_md_path(audit_dir: Path, form: str) -> Path:
+    """Publish-time pyCANON k-anonymity report (k, threshold, QI names, counts only)."""
+    return human_review_root(audit_dir) / "pycanon" / safe_review_slug(form) / "pycanon_report.md"

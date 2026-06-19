@@ -15,8 +15,12 @@ from pathlib import Path
 
 from scripts.audit.review_paths import excel_duplicate_review_path, human_review_root
 from scripts.extraction.forms_manifest import check_forms_manifest
+from scripts.extraction.header_store import (
+    load_header_store,
+    resolve_headers,
+    resolve_row_count,
+)
 from scripts.extraction.io.file_discovery import SUPPORTED_TABULAR_EXTENSIONS, discover_files
-from scripts.source_truth.study_intake import read_headers_only
 
 __all__ = [
     "RawDedupReport",
@@ -72,8 +76,13 @@ class RawDedupReport:
     errors: list[str] = field(default_factory=list)
 
 
-def _file_fingerprint(path: Path) -> tuple[list[str], int]:
-    return (read_headers_only(path), count_data_rows_only(path))
+def _file_fingerprint(path: Path, store: dict | None = None) -> tuple[list[str], int]:
+    # Note 6: read headers + row count from the shared header-extraction store
+    # when available; fall back to a direct row-1 / count-only read otherwise.
+    return (
+        resolve_headers(store, path.stem, path),
+        resolve_row_count(store, path.stem, path),
+    )
 
 
 def _headers_superset(larger: list[str], smaller: list[str]) -> bool:
@@ -116,13 +125,21 @@ def dedup_raw_datasets(
     datasets_dir: Path,
     audit_dir: Path,
     archive_dir: Path | None = None,
+    run_dir: Path | None = None,
 ) -> RawDedupReport:
-    """Deduplicate raw dataset files in *datasets_dir* (Note 4)."""
+    """Deduplicate raw dataset files in *datasets_dir* (Note 4).
+
+    When *run_dir* is given, headers/row-counts are read from the shared
+    header-extraction store (Note 6) instead of re-opening each file, with a
+    fail-soft fallback to a direct read.
+    """
 
     report = RawDedupReport(study=study)
     if not datasets_dir.is_dir():
         report.errors.append(f"missing datasets dir: {datasets_dir}")
         return report
+
+    store = load_header_store(run_dir)
 
     rejected = {name.lower() for name in check_forms_manifest(datasets_dir).rejected_files}
     archive_root = archive_dir or (audit_dir.parent / "tmp_dedup_archive")
@@ -137,10 +154,7 @@ def dedup_raw_datasets(
         return report
 
     candidates = [
-        p
-        for p in paths
-        if not p.name.startswith(_LOCK_PREFIXES)
-        and p.name.lower() not in rejected
+        p for p in paths if not p.name.startswith(_LOCK_PREFIXES) and p.name.lower() not in rejected
     ]
 
     groups: dict[str, list[Path]] = {}
@@ -157,7 +171,7 @@ def dedup_raw_datasets(
         fingerprints: dict[Path, tuple[list[str], int]] = {}
         for path in members:
             try:
-                fingerprints[path] = _file_fingerprint(path)
+                fingerprints[path] = _file_fingerprint(path, store)
             except (OSError, ValueError, StopIteration) as exc:
                 report.errors.append(f"{path.name}: {type(exc).__name__}")
                 fingerprints[path] = ([], -1)
@@ -200,9 +214,7 @@ def dedup_raw_datasets(
         by_size = sorted(valid.keys(), key=lambda p: len(valid[p][0]), reverse=True)
         largest = by_size[0]
         largest_headers = valid[largest][0]
-        if all(
-            p is largest or _headers_superset(largest_headers, valid[p][0]) for p in by_size
-        ):
+        if all(p is largest or _headers_superset(largest_headers, valid[p][0]) for p in by_size):
             for path in by_size[1:]:
                 archived = _archive_duplicate(path, archive_dir=archive_root / norm_key)
                 report.removed_paths.append(str(archived))

@@ -32,6 +32,35 @@ The rulebook engine lives in the host repo at
   cached/seed baseline; a mismatch is surfaced so a rule-set change (code update
   or live-source update) is never silent.
 
+## Live rule extraction (opt-in, N7)
+
+When `REPORTAL_RULEBOOK_AI_EXTRACT=1` **and** `--allow-network` **and** the
+study's `rule_refresh: online_preferred`, the engine fetches the **latest**
+official regulation text per jurisdiction (allowlisted gov HTTPS hosts only —
+HHS/eCFR/India Code/ICMR/UIDAI/MeitY), has the AI **extract structured rules from
+that PUBLIC text** (never any study data — GR-1), and **merges them OVER the
+pinned floor**. Default off → the deterministic pinned path is unchanged.
+
+Guarantees (AI proposes, determinism disposes):
+
+- **Verified** (`verify_extracted_rules`): each rule's id is namespaced
+  `live_<juris>_*` (cannot shadow a pinned rule), its action is in the Action
+  enum, its source is official, and its patterns compile, are word-anchored, and
+  do not match a benign-clinical probe set (rejects over-broad regexes).
+- **Floor preserved** — additive merge + strictest-wins means an extracted rule
+  can only *add or strengthen* protection; `detect_protection_weakening` asserts
+  the merged bundle never lowers a pinned decision (flagged prominently if it
+  somehow did).
+- **Reuse-if-unchanged** — the v2 live cache records per-source freshness hashes;
+  when every fetched source is unchanged, the cached verified rules are reused
+  with **no LLM call** (and no cost). A changed/new source is re-extracted.
+- **Offline / unverifiable** → falls back to the pinned floor with an
+  `offline_warning`. `REPORTAL_RULEBOOK_REQUIRE_LIVE=1` makes that a fail-closed
+  error instead (for environments that must use live rules).
+- **Reproducible** — the run records the rule-set `rules_sha256`; the snapshot
+  captures it, and a content change surfaces as a `rulebook_update` staleness
+  finding.
+
 ## CLI
 
 ```bash
@@ -44,10 +73,17 @@ uv run --all-groups python -m \
 uv run --all-groups python -m \
   plugins.report-ai-study-pipeline.skills.phi-rulebook.scripts.rulebook_cli \
   show --jurisdictions INDIA,USA
+
+# Fetch latest official regs + AI-extract rules (opt-in; needs --allow-network
+# and REPORTAL_RULEBOOK_AI_EXTRACT=1).
+uv run --all-groups python -m \
+  plugins.report-ai-study-pipeline.skills.phi-rulebook.scripts.rulebook_cli \
+  refresh --study Indo-VAP --allow-network
 ```
 
 Exit codes: `0` resolved (no drift) · `3` resolved but DRIFT detected (confirm
-the rule-set change) · `2` usage/config error.
+the rule-set change) · `4` (`refresh`) live extraction flagged a
+protection-weakening rule (review) · `2` usage/config error.
 
 ## Portability
 

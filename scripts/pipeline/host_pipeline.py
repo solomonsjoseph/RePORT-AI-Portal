@@ -37,7 +37,7 @@ from scripts.extraction.dataset_pipeline import process_datasets
 from scripts.extraction.io import atomic_write_json
 from scripts.extraction.load_dictionary import load_study_dictionary
 from scripts.security.key_rotation import check_and_record as _check_key_rotation
-from scripts.security.llm_source_gate import scan_tree_for_phi
+from scripts.security.key_rotation import preflight_rotation_gate as _preflight_key_rotation
 from scripts.security.phi_keystore import phi_key_fingerprint as _phi_key_fingerprint
 from scripts.security.phi_scrub import (
     PHI_SCRUB_SENTINEL_NAME,
@@ -62,6 +62,7 @@ from scripts.utils.secure_staging import (
 from scripts.utils.step_cache import hash_directory, hash_file, is_step_fresh, save_step_manifest
 
 __all__ = [
+    "publish_dictionary_leg",
     "run_pipeline",
     "run_step",
 ]
@@ -178,6 +179,137 @@ def _write_sot_joined_gate_outcome(
         ]
     )
     md_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _write_presidio_failure_md(audit_dir: Path, guard: Any) -> None:
+    """Write a value-free pre-promotion PHI guard-gate failure report (Note 5).
+
+    Contains ONLY pattern name + column NAME + file + count — never a matched
+    value. The operator fixes the corresponding scrub rule and re-runs. Findings
+    come from both the Presidio and legacy scanners (OR-combined gate).
+    """
+    from collections import Counter
+
+    from scripts.audit.review_paths import presidio_failure_md_path
+
+    findings = list(guard.presidio.findings) + list(guard.legacy.findings)
+    if not findings:
+        return
+    form = Path(getattr(findings[0], "relative_path", "") or "unknown").stem or "unknown"
+    md_path = presidio_failure_md_path(audit_dir, form)
+    md_path.parent.mkdir(parents=True, exist_ok=True)
+    # Scanners early-return on the first hit, so count is per-detection (>=1),
+    # not a per-column total — the operator's fix is identical either way.
+    agg = Counter(
+        (
+            f.pattern_name,
+            getattr(f, "column", "") or "(n/a)",
+            Path(f.relative_path).name,
+        )
+        for f in findings
+    )
+    lines = [
+        "# Pre-promotion PHI Guard Gate Failure",
+        "",
+        "Boundary: pattern name + column name + count only — never a matched value.",
+        "",
+        f"- triggered_by: {', '.join(guard.triggered_by) or '(unknown)'}",
+        "",
+        "| pattern | column | file | count |",
+        "|---|---|---|---|",
+    ]
+    lines += [
+        f"| `{pat}` | `{col}` | `{fname}` | {n} |" for (pat, col, fname), n in sorted(agg.items())
+    ]
+    lines += [
+        "",
+        "## Required Next Step",
+        "",
+        "Fix the scrub rule in `phi_scrub.yaml` for the named pattern + column, then re-run.",
+        "",
+    ]
+    md_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _write_pycanon_report_md(audit_dir: Path, form: str, result: Any) -> None:
+    """Write a value-free pyCANON k-anonymity report (k, threshold, QI names, n)."""
+    from scripts.audit.review_paths import pycanon_report_md_path
+
+    md_path = pycanon_report_md_path(audit_dir, form)
+    md_path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [
+        "# pyCANON k-Anonymity Report",
+        "",
+        "Boundary: k, threshold, quasi-identifier NAMES, and record counts only — "
+        "never a row value or a re-identifying class key.",
+        "",
+        f"- form: `{form}`",
+        f"- status: `{'pass' if result.ok else 'FAIL'}`",
+        f"- k: {result.k}",
+        f"- k_threshold: {result.k_threshold}",
+        f"- n_records: {result.n_records}",
+        f"- quasi_identifiers: {list(result.quasi_identifiers)}",
+        f"- reason: {result.reason or '(n/a)'}",
+        "",
+    ]
+    md_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _run_pycanon_publish_gate(staging_ds: Path) -> None:
+    """Config-gated pyCANON k-anonymity check over staged rows (Note 5, Layer 2).
+
+    Maintainer-declared via ``_study_privacy.yaml: kanon_publish_gate``. Default
+    disabled => the check RUNS and writes a value-free report but does NOT block
+    (small research cohorts are not falsely held). When enabled, a k<threshold
+    failure BLOCKS the publish. Staging is the trusted AMBER zone (not the LLM
+    read zone), so reading rows here produces value-free output only — k /
+    threshold / QI NAMES / counts are all that is ever written or raised.
+    """
+    try:
+        from scripts.security.phi_review import load_study_privacy_config
+
+        cfg = load_study_privacy_config(Path(config.DATASETS_DIR).parent)
+    except Exception as exc:  # pragma: no cover - config errors handled upstream
+        log.warning("pyCANON gate: privacy config unavailable (%s); skipping", type(exc).__name__)
+        return
+    gate = cfg.kanon_publish_gate or {}
+    qis = gate.get("quasi_identifiers", [])
+    enabled = bool(gate.get("enabled", False))
+    k_threshold = int(gate.get("k_threshold", 5))
+    if not qis:
+        log.info("pyCANON gate: no quasi_identifiers declared — skipping k-anonymity check")
+        return
+    try:
+        import json as _json
+
+        from scripts.security.pycanon_gate import check_publish_anonymity
+    except Exception as exc:
+        log.warning("pyCANON gate: dependency unavailable (%s); skipping", type(exc).__name__)
+        return
+
+    audit_dir = Path(config.STUDY_AUDIT_DIR)
+    for jsonl in sorted(staging_ds.glob("*.jsonl")):
+        if jsonl.stat().st_size == 0:
+            continue
+        rows: list[dict[str, Any]] = []
+        with jsonl.open(encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if line:
+                    rows.append(_json.loads(line))
+        if not rows:
+            continue
+        present = [q for q in qis if any(q in r for r in rows)]
+        if not present:
+            continue
+        result = check_publish_anonymity(rows, quasi_identifiers=present, k_threshold=k_threshold)
+        _write_pycanon_report_md(audit_dir, jsonl.stem, result)
+        if enabled and not result.ok:
+            raise RuntimeError(
+                f"pyCANON k-anonymity gate FAILED for {jsonl.stem}: k={result.k} < "
+                f"threshold {k_threshold} over QIs {present} — route to human review "
+                "(see audit/human_review/pycanon/)."
+            )
 
 
 _OUTPUT_SIGNPOST_TEMPLATE = """\
@@ -385,6 +517,23 @@ def _publish_leg(staging_dir: Path, trio_dir: Path, leg_name: str) -> bool:
     return True
 
 
+def publish_dictionary_leg(staging_dir: Path | None = None, trio_dir: Path | None = None) -> bool:
+    """Promote the dictionary staging tree → ``llm_source/dictionary_mapping/jsonl/``.
+
+    The single shared publish primitive for the dictionary leg (Note 1): consumed
+    BOTH by :func:`_publish_staging` (in-lock Step 2, after cleanup-propagation has
+    pruned dropped/force-dropped columns) AND by the ``dictionary-to-llm-source``
+    skill's ``--leg publish``. It MUST run only after propagation pruning, else
+    dropped-column references would reach the LLM read zone. Returns True if
+    published, False if skipped (empty staging).
+    """
+    return _publish_leg(
+        Path(staging_dir) if staging_dir is not None else Path(config.STAGING_DICTIONARY_DIR),
+        Path(trio_dir) if trio_dir is not None else Path(config.DICTIONARY_JSON_OUTPUT_DIR),
+        "dictionary",
+    )
+
+
 def _publish_staging() -> dict[str, bool]:
     """Publish staging legs into their ``llm_source/`` destinations.
 
@@ -402,11 +551,7 @@ def _publish_staging() -> dict[str, bool]:
             Path(config.TRIO_DATASETS_DIR),
             "datasets",
         ),
-        "dictionary": _publish_leg(
-            Path(config.STAGING_DICTIONARY_DIR),
-            Path(config.DICTIONARY_JSON_OUTPUT_DIR),
-            "dictionary",
-        ),
+        "dictionary": publish_dictionary_leg(),
     }
 
 
@@ -757,6 +902,13 @@ not directly. For the full study build run `make study STUDY=<name>`.
         action="store_true",
         help="Run host publish path: Dict → Datasets → PHI scrub → llm_source",
     )
+    parser.add_argument(
+        "--confirm-rotation",
+        action="store_true",
+        help="Confirm a deliberate PHI HMAC key rotation. Required to proceed when "
+        "the key fingerprint changed since the last publish (rotation invalidates "
+        "ALL prior snapshots and forces a full re-scrub).",
+    )
 
     args = parser.parse_args(argv)
 
@@ -884,6 +1036,36 @@ not directly. For the full study build run `make study STUDY=<name>`.
                 print(f"\n❌ Extraction leg [{leg}] failed: {err}")
             sys.exit(1)
 
+        # ── Step 1.55: Key-rotation pre-scrub HARD STOP (Note 12) ──
+        # BEFORE any row is scrubbed, detect a PHI HMAC key fingerprint change
+        # since the last publish. A change is a destructive re-key (it invalidates
+        # every prior snapshot and breaks cross-run pseudonym linkage), so abort
+        # unless the operator explicitly confirmed via --confirm-rotation /
+        # REPORTAL_CONFIRM_KEY_ROTATION=1. The KeyRotationRequiresConfirmationError
+        # is intentionally NOT caught here — it must abort the locked run before a
+        # single value is scrubbed. Recording the new fingerprint stays in Step 4
+        # (post-success) so an aborted run never advances the recorded state.
+        if args.process_datasets and not args.skip_datasets:
+            _staging_ds = Path(config.STAGING_DATASETS_DIR)
+            if _staging_ds.is_dir() and any(_staging_ds.glob("*.jsonl")):
+                _confirm_rotation = bool(getattr(args, "confirm_rotation", False)) or (
+                    os.environ.get("REPORTAL_CONFIRM_KEY_ROTATION", "").strip().lower()
+                    in ("1", "true", "yes", "on")
+                )
+                try:
+                    _rot_key_fp = _phi_key_fingerprint()
+                except (PHIKeyMissingError, PHIKeyPermissionError, PHIScrubError):
+                    _rot_key_fp = None  # no key available → nothing to compare
+                if _rot_key_fp is not None:
+                    _rot_audit_dir = Path(config.STUDY_AUDIT_DIR)
+                    _rot_audit_dir.mkdir(parents=True, exist_ok=True)
+                    _preflight_key_rotation(
+                        _rot_audit_dir,
+                        _rot_key_fp,
+                        run_id=resolve_run_id(),
+                        confirmed=_confirm_rotation,
+                    )
+
         # ── Step 1.6: PHI Scrub (date jitter + ID pseudonymization) ──
         # Operates on the STAGING datasets tree BEFORE Step 1.7 cleanup. Running
         # scrub first keeps the dataset audit + propagation events free of raw
@@ -914,10 +1096,12 @@ not directly. For the full study build run `make study STUDY=<name>`.
                     ),
                 )
 
-        # ── Step 1.7: Dataset Cleanup (remove junk, merge duplicates) ──
-        # Runs against the STAGING datasets tree before publish. The staging
-        # layout ensures the audit envelope + propagation inputs are complete
-        # before llm_source/dataset_schema/files/ is re-materialised.
+        # ── Step 1.7: Dataset Audit Envelope ──
+        # Runs against the STAGING datasets tree before publish. Audit-only since
+        # Note 18 (file-level junk/duplicate handling moved to raw-file dedup
+        # before extraction); this writes the dataset audit envelope + as_written
+        # ledgers so the audit + propagation inputs are complete before
+        # llm_source/dataset_schema/files/ is re-materialised.
         if args.process_datasets and not args.skip_datasets:
             cleanup_dir = Path(config.STAGING_DATASETS_DIR)
             # Require at least one non-empty JSONL — an all-rows-quarantined form
@@ -925,10 +1109,11 @@ not directly. For the full study build run `make study STUDY=<name>`.
             if cleanup_dir.is_dir() and any(
                 f for f in cleanup_dir.glob("*.jsonl") if f.stat().st_size > 0
             ):
-                # ── Defense-in-depth sentinel check ─────────────────────────
-                # Verify that Step 1.6 (phi_scrub) completed before allowing
-                # Step 1.7 (dataset_cleanup) to read row values. The sentinel
-                # is written by run_scrub to the staging root on success.
+                # ── Defense-in-depth ordering sentinel ─────────────────────────
+                # The audit envelope must reflect scrubbed staging, so confirm
+                # Step 1.6 (phi_scrub) completed first. The sentinel is written by
+                # run_scrub to the staging root on success. (Cleanup no longer
+                # reads row values; this only enforces step ordering.)
                 _sentinel = Path(config.STUDY_STAGING_DIR) / PHI_SCRUB_SENTINEL_NAME
                 if not _sentinel.is_file():
                     log.error(
@@ -941,21 +1126,21 @@ not directly. For the full study build run `make study STUDY=<name>`.
                 events_for_cleanup = dropped_events
 
                 def run_cleanup() -> None:
-                    report = clean_trio_datasets(
+                    # Audit-only since Note 18: file-level junk/duplicate handling
+                    # moved to raw-file dedup before extraction. This emits the
+                    # dataset audit envelope + as_written ledgers from the
+                    # extraction column-drop events (Step 1.8 propagation depends
+                    # on them). No row values are read here.
+                    clean_trio_datasets(
                         cleanup_dir,
                         extracted_drop_events=events_for_cleanup,
                         study_name=config.STUDY_NAME,
                     )
-                    if report.total_actions or events_for_cleanup:
-                        log.info(
-                            "Dataset cleanup: removed %d junk, merged %d duplicates, "
-                            "passed-through %d extraction drops",
-                            len(report.junk_removed),
-                            len(report.duplicates_merged),
-                            len(events_for_cleanup),
-                        )
-                    else:
-                        log.info("Dataset cleanup: no actions needed")
+                    log.info(
+                        "Dataset audit envelope written (passed-through %d "
+                        "extraction column drops)",
+                        len(events_for_cleanup),
+                    )
 
                 run_step("Step 1.7: Dataset Cleanup", run_cleanup)
 
@@ -1021,9 +1206,21 @@ not directly. For the full study build run `make study STUDY=<name>`.
             if staging_ds.is_dir() and any(
                 f for f in staging_ds.glob("*.jsonl") if f.stat().st_size > 0
             ):
-                scan = scan_tree_for_phi(staging_ds)
-                if not scan.ok:
-                    raise RuntimeError(f"Pre-publication PHI leak scan failed: {scan.detail}")
+                # Step 1.95 — config-gated pyCANON k-anonymity (Note 5, Layer 2):
+                # runs over the staged rows; blocks only when the maintainer
+                # enabled kanon_publish_gate, else writes a value-free report.
+                _run_pycanon_publish_gate(staging_ds)
+
+                # PHI guard gate (Note 5): Presidio + the legacy Verhoeff/contact
+                # scanner — BOTH must pass BEFORE the atomic promote. On a hit,
+                # write a value-free presidio_failure.md and fail closed (nothing
+                # is promoted; the staging tree is left intact for re-scrub).
+                from scripts.security.phi_guard_gate import run_phi_guard_gate
+
+                guard = run_phi_guard_gate(staging_ds)
+                if not guard.ok:
+                    _write_presidio_failure_md(Path(config.STUDY_AUDIT_DIR), guard)
+                    raise RuntimeError(f"Pre-publication PHI guard gate failed: {guard.detail}")
 
         def run_publish() -> None:
             published = _publish_staging()
@@ -1103,14 +1300,16 @@ not directly. For the full study build run `make study STUDY=<name>`.
             audit_dir = Path(config.STUDY_AUDIT_DIR)
             audit_dir.mkdir(parents=True, exist_ok=True)
 
-            # Key-rotation detection (C1.3): warn + record if the HMAC key
-            # changed since this study was last published. First run / no prior
-            # record is never a rotation. Skipped when no key is available.
+            # Key-rotation RECORDER (C1.3): the pre-scrub HARD STOP now lives in
+            # Step 1.55 (preflight_rotation_gate). This post-success call only
+            # advances phi_key_state.json to the now-current fingerprint after a
+            # clean publish, so an aborted/unconfirmed rotation never updates the
+            # recorded state. First run / no prior record is never a rotation.
             if phi_key_fp is not None:
                 try:
                     _check_key_rotation(audit_dir, phi_key_fp, run_id=resolve_run_id())
-                except Exception:  # pragma: no cover - detection must never block publish
-                    log.warning("key-rotation detection skipped (non-fatal)")
+                except Exception:  # pragma: no cover - recording must never block publish
+                    log.warning("key-rotation recording skipped (non-fatal)")
 
             emit_lineage_manifest(
                 study_name=config.STUDY_NAME,

@@ -8,8 +8,13 @@ the raw datasets dir, and the PHI HMAC key). With ``--bootstrap-key`` it creates
 a fresh 0600 HMAC key when none exists (refusing to overwrite an existing key,
 which would invalidate every prior pseudonym). Emits a value-free SkillResult.
 
-This run.py is the non-interactive scaffold; the rich interactive wizard lives
-in the host UI (``scripts/ai_assistant/ui/wizard.py``).
+With ``--interactive`` it runs the guided config-authoring wizard (Note 11), and
+``--write-config`` is the equivalent non-interactive flag form; both accept the
+study's jurisdictions, compliance posture, ``data_as_of``, and per-file
+Required/Optional/Reject classification and WRITE the two config YAMLs (the
+pipeline still re-validates at phase 0, so the wizard is a guardrail, not a
+gatekeeper). A separate Streamlit UI wizard lives at
+``scripts/ai_assistant/ui/wizard.py``.
 """
 
 from __future__ import annotations
@@ -22,11 +27,77 @@ _REPO_ROOT = Path(__file__).resolve().parents[5]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
 from scripts.utils.skill_protocol import (  # noqa: E402
     SkillResult,
     add_common_skill_args,
     emit_skill_result,
 )
+
+
+def _run_config_wizard(args: argparse.Namespace) -> int:
+    """Author config/<study>/ via the interactive Q&A or the flag form (Note 11)."""
+    import wizard
+
+    try:
+        if args.interactive:
+            privacy_path, manifest_path = wizard.run_interactive(args.study, force=args.force)
+        else:
+            jurisdictions = [j.strip() for j in (args.jurisdictions or "").split(",") if j.strip()]
+            posture = args.compliance_posture or wizard.available_postures()[0]
+            errors = wizard.validate_privacy_inputs(
+                jurisdictions=jurisdictions, posture=posture, data_as_of=args.data_as_of
+            ) + wizard.validate_manifest_inputs(
+                args.study, required=args.required, optional=args.optional, reject=args.reject
+            )
+            if errors:
+                emit_skill_result(
+                    SkillResult(
+                        skill="study-setup",
+                        ok=False,
+                        exit_code=2,
+                        summary="config invalid: " + "; ".join(errors),
+                        data={"study": args.study, "errors": errors},
+                    )
+                )
+                return 2
+            privacy = wizard.build_privacy_config(
+                jurisdictions=jurisdictions, posture=posture, data_as_of=args.data_as_of
+            )
+            manifest = wizard.build_forms_manifest(
+                required=args.required, optional=args.optional, reject=args.reject
+            )
+            privacy_path, manifest_path = wizard.write_configs(
+                args.study, privacy, manifest, force=args.force
+            )
+    except (ValueError, FileExistsError) as exc:
+        emit_skill_result(
+            SkillResult(
+                skill="study-setup",
+                ok=False,
+                exit_code=2,
+                summary=f"config authoring failed: {exc}",
+                data={"study": args.study},
+            )
+        )
+        return 2
+    emit_skill_result(
+        SkillResult(
+            skill="study-setup",
+            ok=True,
+            exit_code=0,
+            summary="config written",
+            data={
+                "study": args.study,
+                "privacy": str(privacy_path),
+                "manifest": str(manifest_path),
+            },
+        )
+    )
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -37,9 +108,35 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Create a fresh 0600 PHI HMAC key when none exists (never overwrites).",
     )
+    # Note 11 — guided config authoring (optional; default behavior is the
+    # readiness scaffold below).
+    parser.add_argument(
+        "--interactive", action="store_true", help="Run the guided Q&A config wizard."
+    )
+    parser.add_argument(
+        "--write-config",
+        action="store_true",
+        help="Non-interactive flag form: write config from the flags below.",
+    )
+    parser.add_argument("--jurisdictions", help="comma list, e.g. USA,INDIA (with --write-config)")
+    parser.add_argument("--compliance-posture", help="safe_harbor | limited_dataset")
+    parser.add_argument("--data-as-of", help="ISO YYYY-MM-DD source-data recency date")
+    parser.add_argument(
+        "--required", action="append", default=[], help="required dataset file (repeatable)"
+    )
+    parser.add_argument(
+        "--optional", action="append", default=[], help="optional dataset file (repeatable)"
+    )
+    parser.add_argument(
+        "--reject", action="append", default=[], help="rejected dataset file (repeatable)"
+    )
+    parser.add_argument("--force", action="store_true", help="overwrite existing config files")
     args = parser.parse_args(argv)
 
     import config
+
+    if args.interactive or args.write_config:
+        return _run_config_wizard(args)
 
     config.ensure_directories()
     config.ensure_run_directories(study=args.study, run_id=args.run_id)

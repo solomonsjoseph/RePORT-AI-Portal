@@ -704,6 +704,41 @@ class TestRunScrub:
             assert set(event.keys()) == {"scope", "field", "file", "count"}
             assert isinstance(event["count"], int) and event["count"] >= 1
 
+    def test_run_scrub_acquires_and_zeroizes_key_via_keystore(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Note 12: run_scrub acquires the key via the zeroizable PHIKeyStore and
+        wipes it (clear_phi_key) when scrub completes — never load_key() directly."""
+        import scripts.security.phi_keystore as keystore
+
+        _write_config(scrub_config_path)
+        _seed_staging(monkeypatch_config, [{"SUBJID": "S1", "VISDAT": "2014-07-15"}])
+
+        calls = {"get": 0, "clear": 0}
+        real_get, real_clear = keystore.get_phi_key, keystore.clear_phi_key
+
+        def _spy_get(*a: Any, **k: Any) -> bytes:
+            calls["get"] += 1
+            return real_get(*a, **k)
+
+        def _spy_clear(*a: Any, **k: Any) -> None:
+            calls["clear"] += 1
+            return real_clear(*a, **k)
+
+        # run_scrub does a local `from ...phi_keystore import get_phi_key, clear_phi_key`
+        # resolved at call time, so patching the module attributes takes effect.
+        monkeypatch.setattr(keystore, "get_phi_key", _spy_get)
+        monkeypatch.setattr(keystore, "clear_phi_key", _spy_clear)
+
+        phi_scrub.run_scrub(study_name="TEST")
+
+        assert calls["get"] >= 1, "run_scrub must acquire the key via PHIKeyStore.get_phi_key"
+        assert calls["clear"] >= 1, "run_scrub must zeroize the key via clear_phi_key (try/finally)"
+
     def test_scrub_report_no_timestamp_in_primary_timing_sidecar_written(
         self,
         monkeypatch_config: Path,

@@ -42,7 +42,10 @@ from scripts.utils.logging_system import get_logger
 __all__ = [
     "CleanupFinding",
     "CleanupVerifyReport",
+    "WorkspaceCleanupReport",
+    "WorkspacePathFinding",
     "verify_cleanup",
+    "verify_workspace_cleanup",
 ]
 
 _logger = get_logger(__name__)
@@ -273,26 +276,121 @@ def verify_cleanup(
     )
 
 
-def _default_junk_patterns() -> frozenset[str]:
-    """Lazy import the canonical junk set from the dataset-cleanup skill module.
+# ── Note 13: two-list workspace purge verifier ───────────────────────────────
+# Distinct concern from verify_cleanup (which checks dataset-cleanup ledger
+# consistency). This walks the note's two lists: every "must be gone" temporary
+# path must be absent, and every "must remain" permanent path must be present.
+# Names only — never a row value.
 
-    Imported by canonical name (``scripts.extraction.dataset_cleanup``, resolved
-    through the Note-19 migration bridge) and lazily so this shared utility has no
-    import-time dependency on the plugin module; falls back to an empty set.
-    """
+
+@dataclass(frozen=True)
+class WorkspacePathFinding:
+    """A single two-list violation (names only)."""
+
+    phase: str  # 'must_gone' | 'must_remain'
+    target: str  # path string, relative to BASE_DIR when possible
+    detail: str
+
+
+@dataclass(frozen=True)
+class WorkspaceCleanupReport:
+    ok: bool
+    findings: tuple[WorkspacePathFinding, ...]
+    checked_must_gone: int
+    checked_must_remain: int
+
+
+def _safe_rel(p: Path) -> str:
+    """Path relative to BASE_DIR when possible (names only, never a value)."""
+    import config
+
     try:
-        from scripts.extraction.dataset_cleanup import JUNK_PATTERNS
+        return str(Path(p).resolve().relative_to(Path(config.BASE_DIR).resolve()))
+    except (ValueError, OSError):
+        return Path(p).name
 
-        return frozenset(JUNK_PATTERNS)
-    except Exception:  # pragma: no cover - defensive: cleanup module always present
-        return frozenset()
+
+def verify_workspace_cleanup(
+    *, study: str, run_dir: Path, expect_cleanup_token_present: bool = False
+) -> WorkspaceCleanupReport:
+    """Two-list workspace purge check (Note 13 Phase 1 + Phase 2).
+
+    Phase 1 (must-be-gone): every temporary artifact — tmp/{STUDY} staging, SoT
+    intermediates, the header-extraction store, and the scrub/cleanup in-progress
+    tokens — must be absent. Phase 2 (must-remain): every permanent path —
+    llm_source/, audit/, snapshots/, config/{STUDY}/, data/raw/{STUDY}/ — must be
+    present (a missing one is a possible data-loss event).
+
+    ``expect_cleanup_token_present`` lets the orchestrator hold the live
+    cleanup.in_progress token during the walk (it deletes it only after a pass),
+    so that token is not flagged while legitimately held.
+    """
+    import config
+    from scripts.extraction.header_store import header_store_path
+
+    findings: list[WorkspacePathFinding] = []
+
+    must_gone: list[Path] = [
+        Path(config.STUDY_STAGING_DIR),
+        Path(config.STAGING_DATASETS_DIR),
+        Path(config.STAGING_SOT_DIR),
+        Path(config.STAGING_HEADERS_DIR),
+        run_dir / "scrub.in_progress",
+    ]
+    hs = header_store_path(run_dir)
+    if hs is not None:
+        must_gone.append(hs)
+    if not expect_cleanup_token_present:
+        must_gone.append(run_dir / "cleanup.in_progress")
+    findings.extend(
+        WorkspacePathFinding(
+            phase=_PHASE_MUST_GONE,
+            target=_safe_rel(p),
+            detail="temporary artifact still present after cleanup",
+        )
+        for p in must_gone
+        if p.exists()
+    )
+
+    must_remain: list[Path] = [
+        Path(config.STUDY_LLM_SOURCE_DIR),
+        Path(config.STUDY_AUDIT_DIR),
+        Path(config.STUDY_SNAPSHOTS_OUTPUT_DIR),
+        Path(config.STUDY_CONFIG_DIR),
+        Path(config.STUDY_DATA_DIR),
+    ]
+    findings.extend(
+        WorkspacePathFinding(
+            phase=_PHASE_MUST_REMAIN,
+            target=_safe_rel(p),
+            detail="permanent path missing — possible data-loss event",
+        )
+        for p in must_remain
+        if not p.exists()
+    )
+
+    return WorkspaceCleanupReport(
+        ok=not findings,
+        findings=tuple(findings),
+        checked_must_gone=len(must_gone),
+        checked_must_remain=len(must_remain),
+    )
+
+
+def _default_junk_patterns() -> frozenset[str]:
+    """No hardcoded junk-file list any more (Note 18).
+
+    Junk/test files are excluded by the ``_forms_manifest.yaml`` ``reject:`` gate
+    (Note 11) and the dataset-deduplication skill's ``~$`` lock-file rule (Note 4)
+    BEFORE extraction, so no file-level junk anomaly list is needed here.
+    """
+    return frozenset()
 
 
 def _default_duplicate_pairs() -> list[tuple[str, str]]:
-    """Lazy import the canonical suspected-duplicate pairs (see above)."""
-    try:
-        from scripts.extraction.dataset_cleanup import SUSPECTED_DUPLICATE_PAIRS
+    """No hardcoded suspected-duplicate list any more (Note 18).
 
-        return list(SUSPECTED_DUPLICATE_PAIRS)
-    except Exception:  # pragma: no cover - defensive
-        return []
+    File-level duplicates are resolved by the dataset-deduplication skill at
+    orchestrator phase 2 (raw-file filename normalization) before extraction.
+    """
+    return []

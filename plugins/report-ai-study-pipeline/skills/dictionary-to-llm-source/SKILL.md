@@ -7,6 +7,8 @@ description: Extract the study data dictionary into staging JSONL so a later pub
 
 ## Core Rule
 
+**GR-1: no LLM — including Claude — may read dataset row values at any time.**
+Column headers (row 1) and dictionary metadata are the only permitted inputs.
 This skill handles the study **data dictionary**, not dataset row values. The
 dictionary is variable/codelist metadata (column definitions, code lists,
 help-text) — it carries no PHI row values. Reference URLs in staff-authored
@@ -15,11 +17,24 @@ gate stays maximally broad.
 
 ## What This Skill Does
 
-The data-dictionary extraction leg (Phase 1, no PHI). It wraps
-`scripts.extraction.load_dictionary.load_study_dictionary`, which loads the
-study's data dictionary into staging JSONL (`tmp/<study>/dictionary/`); a later
-publish step promotes it into `llm_source/dictionary_mapping/jsonl/` so the LLM
-sees variable definitions aligned with the published datasets.
+The dictionary leg covers **both** steps the pipeline needs (Note 1), selected
+with `--leg`:
+
+- **`--leg extract`** (default, orchestrator phase P1c): wraps
+  `scripts.extraction.load_dictionary.load_study_dictionary`, loading the study's
+  data dictionary into staging JSONL (`tmp/<study>/dictionary/`).
+- **`--leg publish`**: promotes the staging tree into
+  `llm_source/dictionary_mapping/jsonl/` via the shared `scripts/` primitive
+  `scripts.pipeline.host_pipeline.publish_dictionary_leg` (the single source of
+  truth, also consumed in-lock by the dataset publish supervisor at Step 2).
+
+**Hard ordering rule:** `--leg publish` must run **only after** dataset
+cleanup-propagation has pruned dropped/force-dropped columns from staging —
+otherwise dropped-column references would leak into
+`llm_source/dictionary_mapping/`. In the orchestrated run the publish therefore
+happens in-lock inside the dataset publish supervisor (after propagation), via
+that shared primitive; `--leg publish` as a standalone phase is a maintainer/test
+surface only.
 
 By default missing-data NA tokens are **preserved** (a documented codelist value
 such as a defined "not applicable" entry is meaningful metadata); pass
@@ -30,13 +45,15 @@ such as a defined "not applicable" entry is meaningful metadata); pass
 ```bash
 uv run --all-groups python \
   plugins/report-ai-study-pipeline/skills/dictionary-to-llm-source/scripts/run.py \
-  --study <STUDY> --run-id <RUN_ID> --run-dir <output/<STUDY>/runs/<RUN_ID>>
+  --study <STUDY> --run-id <RUN_ID> --run-dir <output/<STUDY>/runs/<RUN_ID>> \
+  --leg extract
 ```
 
-Flags: `--no-preserve-na` (drop NA tokens instead of preserving them).
+Flags: `--leg {extract,publish}` (default `extract`); `--no-preserve-na` (drop NA
+tokens instead of preserving them).
 
-Exit `0` when the dictionary was extracted to staging; `1` on extraction
-failure.
+Exit `0` on success (`extract` → staging written; `publish` → promoted, or
+skipped when staging is empty); `1` on extraction failure.
 
 ## Result Contract
 

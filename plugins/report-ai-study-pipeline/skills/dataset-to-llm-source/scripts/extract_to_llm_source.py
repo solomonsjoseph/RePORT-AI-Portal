@@ -1325,6 +1325,76 @@ def _manifest_review_forms(
     return list(dict.fromkeys(review_forms))
 
 
+def _apply_cross_form_consistency(
+    approvals: list[Any],
+) -> tuple[list[Any], dict[str, Any]]:
+    """Cross-form PHI-classification consistency barrier (Note 8, Break 3).
+
+    A column NAME kept raw in one form but pseudonymized/dropped in another lets
+    an attacker de-anonymize the protected form by cross-referencing the raw one.
+    Require each column to carry the SAME protection LEVEL across every form it
+    appears in; on an under-protection conflict HOLD ONLY the weaker forms (never
+    weaken protection) so the consistent majority still proceeds — the SUBJID
+    27-vs-1 example. Comparison is by protection RANK (``_PROTECTION_RANK``), not
+    raw action name, so equally-protective but differently named actions (cap vs
+    generalize) are not false conflicts. Column NAMES + counts only — no row
+    values ever touch this barrier.
+
+    Returns the (possibly rebuilt) approvals list and a value-free audit record
+    ``{"conflicts": {form: [columns]}, "checked_columns": n}``.
+    """
+    from collections import defaultdict
+
+    per_col: dict[str, dict[str, str]] = defaultdict(dict)
+    for ap in approvals:
+        for col, act in ap.actions.items():
+            per_col[col.upper()][ap.form_name] = act
+    conflicts: dict[str, list[str]] = defaultdict(list)  # form -> [columns]
+    for col, byform in per_col.items():
+        ranks = {_PROTECTION_RANK.get(a, 0) for a in byform.values()}
+        if len(ranks) <= 1:
+            continue  # identical protection level across forms — not a leak risk
+        max_rank = max(ranks)
+        for form, act in byform.items():
+            if _PROTECTION_RANK.get(act, 0) < max_rank:
+                conflicts[form].append(col)
+    info = {
+        "conflicts": {f: sorted(c) for f, c in conflicts.items()},
+        "checked_columns": len(per_col),
+    }
+    if not conflicts:
+        return approvals, info
+
+    from dataclasses import replace as dc_replace
+
+    from scripts.security.phi_review import HeldReason
+
+    rebuilt: list[Any] = []
+    for ap in approvals:
+        cols = sorted(conflicts.get(ap.form_name, ()))
+        if cols and ap.status == "approved":
+            reason = f"cross_form_action_conflict: columns={cols}"
+            held = ap.held_reason or HeldReason(
+                what_was_tried="cross-form PHI action consistency check across all forms",
+                what_was_ambiguous=(
+                    f"{len(cols)} column name(s) classified less protectively here than "
+                    "the strictest action peer forms apply to the same column"
+                ),
+                what_would_resolve=(
+                    "reconcile the per-form PHI action for these column names so every "
+                    "form applies the same (strictest) protection (header names only)"
+                ),
+            )
+            ap = dc_replace(
+                ap,
+                status="held",
+                reasons=tuple(dict.fromkeys((*ap.reasons, reason))),
+                held_reason=held,
+            )
+        rebuilt.append(ap)
+    return rebuilt, info
+
+
 def _run_form_approval_gate(
     *,
     study: str,
@@ -1335,6 +1405,7 @@ def _run_form_approval_gate(
 ) -> FormGateResult:
     """Run header-only PHI handling review before any row values are opened."""
     import config
+    from scripts.extraction.header_store import load_header_store, resolve_headers
     from scripts.security.phi_review import (
         load_sot_variable_signals,
         load_study_privacy_config,
@@ -1343,9 +1414,11 @@ def _run_form_approval_gate(
         verify_approval_payload,
     )
     from scripts.security.phi_scrub import load_scrub_config
-    from scripts.source_truth.study_intake import read_headers_only
 
     privacy_config = load_study_privacy_config(study_raw_dir)
+    # Note 6: read column headers from the shared header-extraction store (Phase 1)
+    # when present; resolve_headers falls back to a direct row-1 read on a miss.
+    _header_store = load_header_store(run_dir)
     rule_bundle = refresh_jurisdiction_rules(
         privacy_config,
         allow_network=privacy_config.rule_refresh == "online_preferred",
@@ -1368,10 +1441,18 @@ def _run_form_approval_gate(
     # the scrub applies (defaults == merged when no per-study override exists).
     _scrub_cfg = load_scrub_config(study=study)
 
+    # N9: AI header→rule alignment for uncovered headers — opt-in (default off →
+    # _aligner is None → deterministic behavior, byte-identical to before).
+    _aligner = None
+    if config.PHI_ALIGNMENT_ENABLED:
+        from scripts.security.phi_alignment import LLMHeaderAligner
+
+        _aligner = LLMHeaderAligner()
+
     approvals: list[Any] = []
 
     def _review_one(form_name: str) -> Any:
-        headers = read_headers_only(datasets_dir / form_name)
+        headers = resolve_headers(_header_store, Path(form_name).stem, datasets_dir / form_name)
         # published_raw: the scrub's configured action is keep → the column reaches
         # llm_source unchanged (a coverage/disagreement hold only matters for these;
         # a dropped/scrubbed column is never leaked). confirmed_keeps: a deliberate
@@ -1391,6 +1472,7 @@ def _run_form_approval_gate(
             sot_signals=load_sot_variable_signals(sot_root, form_name),
             published_raw_headers=published_raw,
             confirmed_keep_headers=confirmed_keeps,
+            aligner=_aligner,
         )
 
     if review_forms:
@@ -1399,6 +1481,11 @@ def _run_form_approval_gate(
             approvals.extend(future.result() for future in as_completed(futures))
 
     approvals = sorted(approvals, key=lambda item: item.form_name)
+
+    # Cross-form PHI-classification consistency barrier (Note 8, Break 3): hold
+    # only forms that under-protect a column relative to its strictest peer.
+    approvals, cross_form_info = _apply_cross_form_consistency(approvals)
+
     approved_forms = tuple(item.form_name for item in approvals if item.status == "approved")
     held_forms = tuple(item.form_name for item in approvals if item.status != "approved")
 
@@ -1413,11 +1500,22 @@ def _run_form_approval_gate(
         "forms": [item.to_json() for item in approvals],
         "approved_forms": list(approved_forms),
         "held_forms": list(held_forms),
+        "cross_form_consistency": cross_form_info,
         "status": "partial" if held_forms else "approved",
     }
     verify_approval_payload(payload)
     report_path = run_dir / "phi_handling_approval.json"
     _atomic_write_json(report_path, payload)
+
+    # N9: freeze the AI-aligned rules into the run-scoped scrub overlay so the
+    # deterministic run_scrub engine applies them and the snapshot captures them.
+    aligned_all: list[dict[str, Any]] = []
+    for item in approvals:
+        aligned_all.extend(getattr(item, "aligned_rules", ()) or ())
+    if aligned_all:
+        from scripts.security.phi_scrub import write_generated_scrub_overlay
+
+        write_generated_scrub_overlay(aligned_all, run_dir=run_dir, study=study)
 
     return FormGateResult(
         approved_forms=approved_forms,
@@ -1464,72 +1562,22 @@ def _try_commit_snapshot(
     resume_held: bool = False,
     human_review_records: list | None = None,
 ) -> str | None:
-    """Attempt to commit an immutable snapshot of the current clean pass.
+    """Thin wrapper around the shared committer (Note 13).
 
-    Called when the terminal state is fully clean (held_forms == [] AND
-    verifier_passed is True).  Returns the snapshot_id on success, or None
-    if the snapshot could not be written (e.g. the same content was already
-    snapshotted — immutability guard).
-
-    A ``--resume-held`` run is committed as a **Type 2** (human-verified)
-    snapshot — something was previously held, a human resolved it, and the
-    re-run is now clean — so an IRB auditor can distinguish it from a Type-1
-    clean-first-run snapshot from the manifest alone (Note 14 C5.2).
-
-    Writes ``snapshot_id`` into the run's ``status.json`` on success.  Never
-    raises: snapshot failures are non-fatal (the publish already succeeded).
+    Retained as the supervisor's Step-7 call site so existing tests that patch
+    this symbol keep working; the orchestrator P10 calls
+    ``scripts.utils.snapshot.commit_run_snapshot`` directly. A standalone run
+    (defer flag unset) commits here exactly as before.
     """
-    try:
-        from scripts.utils.snapshot import SnapshotExistsError, write_snapshot
+    from scripts.utils.snapshot import commit_run_snapshot
 
-        snap_dest = write_snapshot(
-            study,
-            run_id,
-            snapshot_type=2 if resume_held else 1,
-            human_review_records=human_review_records,
-        )
-        snapshot_id = snap_dest.name
-        # Record the snapshot_id in status.json.
-        status_path = run_dir / "status.json"
-        if status_path.is_file():
-            try:
-                status = json.loads(status_path.read_text(encoding="utf-8"))
-                status["snapshot_id"] = snapshot_id
-                _atomic_write_json(status_path, status)
-            except (json.JSONDecodeError, OSError) as exc:
-                print(
-                    f"Warning: snapshot written but status.json update failed: {exc}",
-                    file=sys.stderr,
-                )
-        print(f"Snapshot committed: {snapshot_id} → {snap_dest}")
-        return snapshot_id
-    except SnapshotExistsError as exc:
-        print(f"Snapshot already exists (immutability guard): {exc}", file=sys.stderr)
-        return None
-    except Exception as exc:
-        # Non-fatal: the publish already succeeded. But a real snapshot failure
-        # (e.g. a SnapshotError from a symlink-escape check) must leave an
-        # auditable trace rather than being swallowed to stderr only. Record a
-        # "snapshot_failed" entry in the run's status.json so the failure is
-        # discoverable after the fact. SnapshotExistsError (immutability) is
-        # handled above and stays benign — it is NOT recorded here.
-        reason = f"{type(exc).__name__}: {exc}"
-        print(
-            f"Warning: snapshot commit failed (publish still succeeded): {reason}",
-            file=sys.stderr,
-        )
-        status_path = run_dir / "status.json"
-        if status_path.is_file():
-            try:
-                status = json.loads(status_path.read_text(encoding="utf-8"))
-                status["snapshot_failed"] = reason
-                _atomic_write_json(status_path, status)
-            except (json.JSONDecodeError, OSError) as upd_exc:
-                print(
-                    f"Warning: could not record snapshot_failed in status.json: {upd_exc}",
-                    file=sys.stderr,
-                )
-        return None
+    return commit_run_snapshot(
+        study=study,
+        run_id=run_id,
+        run_dir=run_dir,
+        resume_held=resume_held,
+        human_review_records=human_review_records,
+    )
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
@@ -2017,10 +2065,22 @@ def _cmd_run(args: argparse.Namespace) -> int:
             verify_args = argparse.Namespace(study=study, run_id=run_id)
             verify_exit = _cmd_verify(verify_args)
             if verify_exit == EXIT_OK:
-                # Verifier passed — commit snapshot.
-                _try_commit_snapshot(
-                    study=study, run_id=run_id, run_dir=run_dir, resume_held=resume_held
+                # Verifier passed. On a pure-clean run under the orchestrator the
+                # commit is DEFERRED to orchestrator P10 (Note 13) so it happens
+                # only after the cleanup + audit verifiers pass. A standalone run
+                # (flag unset) commits here as before; a scrub-only-partial run
+                # always commits here because the orchestrator returns at
+                # EXIT_PARTIAL_REVIEW before reaching P10.
+                _defer = (
+                    final_code == EXIT_OK
+                    and os.environ.get("REPORTAL_DEFER_SNAPSHOT_COMMIT") == "1"
                 )
+                if _defer:
+                    print("Snapshot commit deferred to orchestrator P10.", file=sys.stderr)
+                else:
+                    _try_commit_snapshot(
+                        study=study, run_id=run_id, run_dir=run_dir, resume_held=resume_held
+                    )
             else:
                 print(
                     f"Inline verifier exited {verify_exit}; snapshot not committed.",

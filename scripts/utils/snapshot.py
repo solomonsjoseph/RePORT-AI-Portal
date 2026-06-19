@@ -65,6 +65,7 @@ __all__ = [
     "StalenessFinding",
     "StalenessSeverity",
     "check_snapshot_staleness",
+    "commit_run_snapshot",
     "current_pointer_path",
     "diff_snapshots",
     "evaluate_snapshot_staleness",
@@ -375,6 +376,20 @@ def _gather_compliance_posture() -> str | None:
         return None
 
 
+def _gather_data_as_of(study: str) -> str | None:
+    """Maintainer-declared data-recency date from _study_privacy.yaml (Note 14).
+
+    The LLM cannot infer "data current through X" from row values (GR-1), so it is
+    declared in config and copied into the manifest. Fail-soft → None when absent.
+    """
+    try:
+        from scripts.security.phi_review import load_study_privacy_config
+
+        return load_study_privacy_config(study).data_as_of
+    except Exception:
+        return None
+
+
 def _copy_config_files(study: str, dest_dir: Path) -> dict[str, str | None]:
     """Copy the study's config files into *dest_dir*, returning ``{name: sha256|None}``.
 
@@ -521,6 +536,14 @@ def write_snapshot(
         shutil.copy2(approval_src, staging / APPROVAL_FILENAME)
         shutil.copy2(verifier_src, staging / VERIFIER_REPORT_FILENAME)
 
+        # N9: capture the run-scoped AI-aligned scrub overlay when present, so the
+        # exact aligned rules a published study used are reproducible from the
+        # snapshot alone (no re-call to the LLM).
+        overlay_src = run_dir / config.PHI_SCRUB_GENERATED_FILENAME
+        overlay_captured = overlay_src.is_file()
+        if overlay_captured:
+            shutil.copy2(overlay_src, staging / config.PHI_SCRUB_GENERATED_FILENAME)
+
         # Re-hash the COPIED llm_source so the manifest reflects exactly what
         # landed in the snapshot (defence against a mid-copy mutation).
         copied_manifest = _tree_manifest(staging / LLM_SOURCE_DIRNAME)
@@ -550,8 +573,17 @@ def write_snapshot(
             "held_forms": held_forms,
             "human_review_records": list(human_review_records or []),
             "phi_rulebook_version": _gather_rulebook_version(),
+            # N7: durable record of the EXACT rule-set CONTENT this run used (the
+            # version int alone can't distinguish two live-extracted rule sets).
+            # Sourced from the approval payload's rule_bundle (value-free sha).
+            "phi_rulebook_rules_sha256": (
+                approval_payload.get("rule_bundle", {}).get("rules_sha256")
+                if isinstance(approval_payload.get("rule_bundle"), dict)
+                else None
+            ),
             "phi_key_fingerprint": _gather_key_fingerprint(),
             "compliance_posture": _gather_compliance_posture(),
+            "data_as_of": _gather_data_as_of(study),
             "input_fingerprint": input_fingerprint,
             "input_fingerprint_components": input_fingerprint_components,
             "config_files": config_files,
@@ -559,6 +591,11 @@ def write_snapshot(
             "llm_source_manifest": copied_manifest,
             "approval_sha256": _file_sha256(staging / APPROVAL_FILENAME),
             "verifier_report_sha256": _file_sha256(staging / VERIFIER_REPORT_FILENAME),
+            "phi_scrub_generated_sha256": (
+                _file_sha256(staging / config.PHI_SCRUB_GENERATED_FILENAME)
+                if overlay_captured
+                else None
+            ),
         }
         atomic_write_json(staging / MANIFEST_FILENAME, manifest)
 
@@ -590,6 +627,100 @@ def write_snapshot(
             pass
 
     return dest
+
+
+def commit_run_snapshot(
+    *,
+    study: str,
+    run_id: str,
+    run_dir: Path,
+    resume_held: bool = False,
+    human_review_records: list | None = None,
+    cleanup_verifier_passed: bool | None = None,
+) -> str | None:
+    """Commit a run's clean-pass snapshot and record ``snapshot_id`` in status.json.
+
+    Shared committer for both the publish supervisor (standalone runs) and the
+    orchestrator P10 (after the cleanup + audit verifiers pass), so the snapshot
+    is created only once and the status.json wiring is identical either way. A
+    ``--resume-held`` run commits a Type-2 (human-verified) snapshot. Passing
+    ``cleanup_verifier_passed=True`` records that proof in the manifest (Note 14).
+
+    Never raises: a snapshot failure is non-fatal (the publish already
+    succeeded). Returns the snapshot_id, or None on the immutability guard /
+    failure (the failure reason is recorded in status.json).
+    """
+    import json as _json
+    import sys as _sys
+
+    status_path = Path(run_dir) / "status.json"
+
+    def _update_status(key: str, value: str) -> None:
+        if not status_path.is_file():
+            return
+        try:
+            status = _json.loads(status_path.read_text(encoding="utf-8"))
+            status[key] = value
+            atomic_write_json(status_path, status)
+        except (ValueError, OSError) as exc:
+            print(f"Warning: status.json {key} update failed: {exc}", file=_sys.stderr)
+
+    # N14: assemble the Type-2 human-review trail. Prefer an explicit
+    # human_review_records.json the maintainer/resume flow placed in the run dir;
+    # otherwise synthesize a minimal record for a --resume-held (Type-2) commit so
+    # the snapshot is never an empty-trail Type-2 (an IRB auditor must be able to
+    # see that something WAS human-reviewed). A clean Type-1 run carries none.
+    records = list(human_review_records or [])
+    review_file = Path(run_dir) / "human_review_records.json"
+    if review_file.is_file():
+        try:
+            loaded = _json.loads(review_file.read_text(encoding="utf-8"))
+            if isinstance(loaded, list):
+                records.extend(loaded)
+        except (ValueError, OSError) as exc:
+            print(f"Warning: human_review_records.json unreadable: {exc}", file=_sys.stderr)
+    if resume_held and not records:
+        import getpass
+        from datetime import UTC, datetime
+
+        try:
+            who = getpass.getuser()
+        except Exception:
+            who = "unknown"
+        records = [
+            {
+                "type": "resume_held_republish",
+                "note": (
+                    "Type-2 human-verified resume: previously-held forms were "
+                    "resolved out-of-band and re-published cleanly."
+                ),
+                "committed_by": who,
+                "committed_utc": datetime.now(UTC).isoformat(),
+            }
+        ]
+
+    try:
+        snap_dest = write_snapshot(
+            study,
+            run_id,
+            snapshot_type=2 if resume_held else 1,
+            human_review_records=records,
+            cleanup_verifier_passed=cleanup_verifier_passed,
+        )
+        snapshot_id = snap_dest.name
+        _update_status("snapshot_id", snapshot_id)
+        print(f"Snapshot committed: {snapshot_id} → {snap_dest}")
+        return snapshot_id
+    except SnapshotExistsError as exc:
+        print(f"Snapshot already exists (immutability guard): {exc}", file=_sys.stderr)
+        return None
+    except Exception as exc:  # non-fatal: publish already succeeded
+        reason = f"{type(exc).__name__}: {exc}"
+        print(
+            f"Warning: snapshot commit failed (publish still succeeded): {reason}", file=_sys.stderr
+        )
+        _update_status("snapshot_failed", reason)
+        return None
 
 
 def list_snapshots(study: str) -> list[str]:
@@ -820,6 +951,7 @@ def check_snapshot_staleness(
     current_rulebook_version: int | None,
     current_key_fingerprint: str | None,
     current_input_components: dict | None = None,
+    current_rulebook_rules_sha256: str | None = None,
 ) -> list[StalenessFinding]:
     """Classify why a committed snapshot may no longer be authoritative (C5.4).
 
@@ -854,6 +986,25 @@ def check_snapshot_staleness(
                 detail=(
                     f"built with PHI rulebook version {rec_rulebook}, current is "
                     f"{current_rulebook_version} — regulatory compliance may have changed."
+                ),
+            )
+        )
+
+    # N7: a rule-CONTENT change (same version int, different rules_sha256 — e.g.
+    # a live AI-extracted rule set) also makes the snapshot stale.
+    rec_rules_sha = manifest.get("phi_rulebook_rules_sha256")
+    if (
+        rec_rules_sha
+        and current_rulebook_rules_sha256
+        and rec_rules_sha != current_rulebook_rules_sha256
+    ):
+        findings.append(
+            StalenessFinding(
+                trigger="rulebook_update",
+                severity=StalenessSeverity.WARN,
+                detail=(
+                    f"built with rule-set content {rec_rules_sha[:12]}, current is "
+                    f"{current_rulebook_rules_sha256[:12]} — the effective PHI rules changed."
                 ),
             )
         )

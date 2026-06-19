@@ -11,7 +11,7 @@ import ast
 import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from enum import StrEnum
 from pathlib import Path
@@ -72,6 +72,21 @@ _ACTION_RANK: dict[Action, int] = {
     Action.DROP: 6,
 }
 
+# Best-practice METHOD per action (Note 8): the classification record names the
+# technique the scrub will apply (e.g. SANT for date jitter) so the IRB ledger
+# shows WHICH method protects each column. Header/metadata only — never config
+# parameters (that would couple classification to scrub config / row values).
+# Keep these NAMES in sync with phi_scrub._method_for_action.
+_ACTION_METHOD: dict[Action, str | None] = {
+    Action.KEEP: None,
+    Action.SUPPRESS: "small_cell_clamp",
+    Action.CAP: "threshold_cap",
+    Action.GENERALIZE: "generalization_map",
+    Action.JITTER_DATE: "SANT_date_jitter",
+    Action.PSEUDONYMIZE: "HMAC_SHA256",
+    Action.DROP: "field_removal",
+}
+
 
 @dataclass(frozen=True, slots=True)
 class StudyPrivacyConfig:
@@ -89,6 +104,12 @@ class StudyPrivacyConfig:
     # a logged warning. A maintainer must set it in ``_study_privacy.yaml``; it
     # is a factual data-recency claim and is never fabricated by the loader.
     data_as_of: str | None = None
+    # Publish-time pyCANON k-anonymity gate (Note 5). Maintainer-declared,
+    # value-free: {enabled: bool, quasi_identifiers: list[str] (column NAMES),
+    # k_threshold: int}. Default {} => disabled (the gate RUNS and writes a
+    # value-free report but does not block — small research cohorts are not
+    # falsely held). When enabled, a k<threshold failure BLOCKS the publish.
+    kanon_publish_gate: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,6 +158,9 @@ class HeaderClassification:
     matched_rules: tuple[str, ...]
     jurisdictions: tuple[str, ...]
     reasons: tuple[str, ...]
+    # Note 8: the best-practice method that will protect this column (e.g.
+    # SANT_date_jitter), or None for KEEP. Populated from _ACTION_METHOD.
+    method: str | None = None
 
     def to_json(self) -> dict[str, Any]:
         """Return audit-safe JSON with header metadata only, never values."""
@@ -146,6 +170,7 @@ class HeaderClassification:
             "matched_rules": list(self.matched_rules),
             "jurisdictions": list(self.jurisdictions),
             "reasons": list(self.reasons),
+            "method": self.method,
         }
 
 
@@ -207,6 +232,10 @@ class FormReviewApproval:
     # and any column the PDF-aware SoT flags PHI. The scrub force-drops these
     # (see phi_scrub _scrub_row priority-0). Column NAMES only — never values.
     force_drop_headers: tuple[str, ...] = ()
+    # Note 9: value-free records of AI header→rule alignments applied to this
+    # form's uncovered headers (each already a verified AlignedRule.to_json()).
+    # Empty unless the AI-alignment opt-in is enabled.
+    aligned_rules: tuple[dict[str, Any], ...] = ()
 
     def to_json(self) -> dict[str, Any]:
         """Return a payload with headers/actions only; no row or fake values."""
@@ -221,6 +250,11 @@ class FormReviewApproval:
             "source_mode": self.source_mode,
             "force_drop_headers": list(self.force_drop_headers),
         }
+        # Emit aligned_rules ONLY when present, so a default-off run (no AI
+        # alignment) produces a byte-identical approval payload to the pre-feature
+        # pipeline (Note 9 re-audit finding: avoid an always-empty key).
+        if self.aligned_rules:
+            payload["aligned_rules"] = [dict(r) for r in self.aligned_rules]
         if self.held_reason is not None:
             payload["held_reason"] = self.held_reason.to_json()
         return payload
@@ -799,6 +833,29 @@ def load_study_privacy_config(study_dir: str | Path) -> StudyPrivacyConfig:
                 f"data_as_of must be an ISO date (YYYY-MM-DD); got {data_as_of!r}"
             ) from exc
 
+    # kanon_publish_gate (Note 5): OPTIONAL, maintainer-declared. Default {} =>
+    # disabled. A present mapping must be value-free + well-shaped (a malformed
+    # shape is a maintainer error and raises).
+    kanon_raw = raw.get("kanon_publish_gate", {})
+    if not isinstance(kanon_raw, dict):
+        raise ValueError("kanon_publish_gate must be a mapping")
+    kanon_publish_gate: dict[str, Any] = {}
+    if kanon_raw:
+        enabled = kanon_raw.get("enabled", False)
+        if not isinstance(enabled, bool):
+            raise ValueError("kanon_publish_gate.enabled must be a boolean")
+        qis_raw = kanon_raw.get("quasi_identifiers", [])
+        if not isinstance(qis_raw, list) or not all(isinstance(q, str) for q in qis_raw):
+            raise ValueError("kanon_publish_gate.quasi_identifiers must be a list of column names")
+        k_threshold = kanon_raw.get("k_threshold", 5)
+        if not isinstance(k_threshold, int) or isinstance(k_threshold, bool) or k_threshold < 1:
+            raise ValueError("kanon_publish_gate.k_threshold must be an int >= 1")
+        kanon_publish_gate = {
+            "enabled": enabled,
+            "quasi_identifiers": [str(q) for q in qis_raw],
+            "k_threshold": k_threshold,
+        }
+
     return StudyPrivacyConfig(
         study_dir=study_path,
         jurisdictions=jurisdictions,
@@ -808,6 +865,7 @@ def load_study_privacy_config(study_dir: str | Path) -> StudyPrivacyConfig:
         approval_mode=str(approval.get("mode", "hybrid")),
         parallelism_mode=str(parallelism.get("mode", "auto")),
         data_as_of=data_as_of,
+        kanon_publish_gate=kanon_publish_gate,
     )
 
 
@@ -908,6 +966,7 @@ def classify_headers(
             matched_rules=tuple(matched_rules),
             jurisdictions=effective_jurisdictions,
             reasons=tuple(dict.fromkeys(reasons)),
+            method=_ACTION_METHOD.get(action),
         )
     return result
 
@@ -1097,6 +1156,7 @@ def review_form_headers(
     sot_signals: dict[str, dict[str, object]] | None = None,
     published_raw_headers: frozenset[str] | None = None,
     confirmed_keep_headers: frozenset[str] = frozenset(),
+    aligner: Any = None,
 ) -> FormReviewApproval:
     """Review one form's headers before any row-value extraction is allowed.
 
@@ -1118,6 +1178,45 @@ def review_form_headers(
     # Step 1: Classify the real form headers (deterministic, done once).
     # ------------------------------------------------------------------
     classifications_by_header = classify_headers(headers, privacy_config, rule_bundle)
+
+    # ── N9: AI header→rule alignment for the UNCOVERED set (opt-in) ──
+    # Only when an aligner is injected (default None → deterministic behavior,
+    # byte-identical to before). For each KEEP header that matched NO pinned rule,
+    # the AI proposes a rule binding from the column NAME only; a deterministically
+    # verified proposal UPGRADES the KEEP classification to the aligned (stronger)
+    # action. This can only ADD protection — KEEP is the weakest action — and any
+    # header it cannot align stays KEEP, still covered by the force-drop/hold net.
+    aligned_rule_records: tuple[dict[str, Any], ...] = ()
+    if aligner is not None:
+        from dataclasses import replace as _dc_replace
+
+        from scripts.security.phi_alignment import align_uncovered_headers
+
+        uncovered = [
+            h
+            for h, c in classifications_by_header.items()
+            if c.action == Action.KEEP and not c.matched_rules
+        ]
+        if uncovered:
+            aligned, _held = align_uncovered_headers(
+                uncovered,
+                rule_bundle.to_json(),
+                tuple(privacy_config.jurisdictions),
+                aligner=aligner,
+            )
+            for ar in aligned:
+                act = Action(ar.action)
+                prev = classifications_by_header[ar.header]
+                classifications_by_header[ar.header] = _dc_replace(
+                    prev,
+                    action=act,
+                    matched_rules=(f"ai_aligned:{ar.matched_rule_id}",),
+                    jurisdictions=tuple(ar.jurisdictions) or prev.jurisdictions,
+                    reasons=(ar.reason or ar.rule_citation,),
+                    method=_ACTION_METHOD.get(act),
+                )
+            aligned_rule_records = tuple(ar.to_json() for ar in aligned)
+
     classifications = tuple(classifications_by_header[header] for header in headers)
     actions = {header: item.action.value for header, item in classifications_by_header.items()}
 
@@ -1245,6 +1344,7 @@ def review_form_headers(
         source_mode=rule_bundle.source_mode,
         held_reason=held_reason,
         force_drop_headers=force_drop_headers,
+        aligned_rules=aligned_rule_records,
     )
 
 

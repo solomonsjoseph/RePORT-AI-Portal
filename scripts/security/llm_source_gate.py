@@ -27,6 +27,9 @@ class LeakScanFinding:
     relative_path: str
     line_number: int
     pattern_name: str
+    # Value-free: the offending JSON leaf KEY (dataset column NAME) only — never
+    # the matched value. Empty for non-jsonl line scans (no column context).
+    column: str = ""
 
 
 @dataclass(frozen=True)
@@ -133,6 +136,7 @@ def _scan_json_line(
                     relative_path=relative_path,
                     line_number=line_number,
                     pattern_name=pattern_name,
+                    column=prefix.rsplit(".", 1)[-1].split("[")[0],
                 )
         return None
 

@@ -69,6 +69,9 @@ class PresidioFinding:
     start: int
     end: int
     score: float
+    # Value-free: the offending JSON leaf KEY (dataset column NAME) only — never
+    # the matched value. Empty for non-jsonl line scans (no column context).
+    column: str = ""
 
 
 @dataclass(frozen=True)
@@ -210,6 +213,7 @@ def _scan_json_line_presidio(
                     start=f.start,
                     end=f.end,
                     score=f.score,
+                    column=prefix.rsplit(".", 1)[-1].split("[")[0],
                 )
         return None
 

@@ -57,6 +57,35 @@ Emits one `RPLN_SKILL_RESULT:` marker line (`scripts/utils/skill_protocol.py`):
 value-free — study name, mode, run id, and on failure the `PHIScrubError`
 subclass NAME only, never a row value.
 
+## Key Rotation & KMS/HSM Upgrade Path
+
+The PHI HMAC key is the most sensitive non-PHI artifact: it deterministically
+produces every `RID_<LABEL>_<alpha12>` pseudonym and every per-subject date-jitter
+offset, so changing it (rotation) breaks cross-run linkage and invalidates every
+prior snapshot. Rotation is therefore a **gated, explicit operation, never
+silent**.
+
+- **Pre-scrub hard stop.** Before any row is scrubbed, the publish path compares
+  the current key fingerprint (SHA-256 of the 32 raw bytes) against the one
+  recorded for the study. On a change it writes a value-free rotation audit entry
+  under `output/{STUDY}/audit/key_rotation_events/` (previous fingerprint, new
+  fingerprint, UTC date, run id, effect) and **aborts** with
+  `KeyRotationRequiresConfirmationError` unless the operator explicitly confirms
+  via `--confirm-rotation` or `REPORTAL_CONFIRM_KEY_ROTATION=1`. Confirming forces
+  a full re-scrub; all prior snapshots are deprecated.
+- **First run / unchanged** are clean no-ops. The recorded fingerprint only
+  advances after a successful publish, so an aborted rotation never updates state.
+- **Value-free.** Only one-way fingerprints ever appear in audit/lineage — raw
+  key bytes are never logged, never a CLI argument, and never exposed to any LLM.
+
+**Production upgrade path (KMS/HSM).** The file-based key at
+`$XDG_CONFIG_HOME/report_ai_portal/phi_key` (`0600`) is the correct research
+baseline. For production, escalate to a managed service — **AWS KMS, Azure Key
+Vault, GCP Cloud KMS, or an HSM**. `phi_scrub.load_key()` (funneled through the
+role-gated `PHIKeyStore`) is the single loader to re-point at a KMS-backed fetch;
+the fingerprint semantics (`sha256` of the 32-byte key) stay identical, so all
+rotation/staleness comparisons and audit evidence remain unchanged.
+
 ## Portability
 
 Pure host-side Python; fail-closed, no LLM call, no network. Invoked by the

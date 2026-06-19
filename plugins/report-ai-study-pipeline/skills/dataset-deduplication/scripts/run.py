@@ -44,6 +44,7 @@ def main(argv: list[str] | None = None) -> int:
             datasets_dir=datasets_dir,
             audit_dir=audit_dir,
             archive_dir=archive_dir,
+            run_dir=Path(args.run_dir) if args.run_dir else None,
         )
     except Exception as exc:
         emit_skill_result(

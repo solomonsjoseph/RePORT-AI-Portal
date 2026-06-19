@@ -34,6 +34,26 @@ The adversarial classification probe runs **once** against a frozen rule bundle
 (deterministic; re-running cannot change the result), so a held form is a
 rule-pattern gap to fix, not a transient condition to retry.
 
+## AI header→rule alignment (opt-in, Note 9)
+
+When `REPORTAL_PHI_ALIGNMENT_ENABLED=1` (default **off**), the classifier adds an
+AI alignment pass for the **uncovered set** — headers classified `keep` that
+matched no deterministic pinned rule. For each, the AI reads the **column NAME
+only** (GR-1 — never a row value) plus the value-free rulebook, infers the
+variable's nature (e.g. `b_dat`/`birdat` → birth date), and proposes a binding to
+one rulebook rule's **action** + a recognizing regex. The rulebook defines the
+policy; the AI only decides which rule a fuzzy-named column maps to.
+
+Every proposal is **deterministically verified** (`scripts/security/phi_alignment.py`):
+the action must be a real existing one (`drop`/`jitter_date`/`pseudonymize`/`suppress`),
+the regex must compile, match its own header, and not be a catch-all, the action
+must agree with the cited rulebook rule, and the citation must be an official
+source. Up to **3 attempts**, then the header goes to human review. A verified
+alignment can only **upgrade** `keep` to a stronger action (it never weakens —
+pinned rules remain the floor), and the aligned rules are frozen into
+`runs/<RUN_ID>/phi_scrub.generated.yaml` (captured in the snapshot) so the
+deterministic `run_scrub` engine applies them and re-runs are reproducible.
+
 ## CLI
 
 ```bash
@@ -57,6 +77,9 @@ never a row value.
 
 ## Portability
 
-Pure host-side Python; deterministic, no LLM call, no network. Invoked by the
+Pure host-side Python; deterministic by default (no LLM call, no network).
+**Only** when AI alignment is opted in (`REPORTAL_PHI_ALIGNMENT_ENABLED=1`) does
+it call an LLM — header NAMES + the value-free rulebook only, never a row value,
+and every proposal is deterministically verified before use. Invoked by the
 orchestrator as a file-path subprocess and runnable from any LLM host the same
 way.

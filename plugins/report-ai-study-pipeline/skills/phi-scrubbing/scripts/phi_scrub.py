@@ -727,7 +727,72 @@ def _resolve_scrub_config_files(path: Path | None, study: str | None) -> list[Pa
     study_path = Path(config.study_config_path(config.PHI_SCRUB_CONFIG_FILENAME, study=study))
     if study_path.is_file() and study_path != default_path:
         files.append(study_path)
+    # Note 9: a run-scoped AI-aligned overlay (if present) merges LAST and is
+    # therefore covered by BOTH _load_merged_scrub_raw and
+    # effective_scrub_config_hash automatically — keeping scrub, hash, and
+    # assertion 5 consistent. Only present when AI alignment is enabled + wrote it.
+    overlay = _generated_overlay_path()
+    if overlay is not None:
+        files.append(overlay)
     return files
+
+
+def _generated_overlay_path() -> Path | None:
+    """Run-scoped AI-aligned scrub overlay path (Note 9), or None when absent."""
+    run_id = os.environ.get("REPORTAL_RUN_ID")
+    if not run_id:
+        return None
+    overlay = Path(config.STUDY_OUTPUT_DIR) / "runs" / run_id / config.PHI_SCRUB_GENERATED_FILENAME
+    return overlay if overlay.is_file() else None
+
+
+def write_generated_scrub_overlay(
+    aligned_rules: list[dict[str, Any]],
+    *,
+    run_dir: Path,
+    study: str | None = None,
+) -> Path | None:
+    """Write the run-scoped AI-aligned scrub overlay (Note 9) — or None if empty.
+
+    The overlay carries COMPLETE lists for any rule key it touches (the merge
+    REPLACES lists), so it reads the merged BASE config and appends each aligned
+    rule's regex to the matching list: ``date_fields`` (jitter_date),
+    ``drop_fields`` (drop), ``suppress_small_cell_fields`` (suppress), and
+    ``id_fields`` (pseudonymize → ``{pattern, label}``). The deterministic engine
+    then applies them; the overlay is captured in the snapshot for reproducibility.
+    """
+    from scripts.security.phi_alignment import RULE_FIELD_FOR_ACTION
+
+    if not aligned_rules:
+        return None
+    base = _load_merged_scrub_raw(None, study) or {}
+    out: dict[str, Any] = {}
+    for rule in aligned_rules:
+        field = RULE_FIELD_FOR_ACTION.get(str(rule.get("action")))
+        pattern = rule.get("regex_pattern")
+        if not field or not pattern:
+            continue  # non-realizable action (rejected pre-overlay) or no pattern
+        current = out.get(field)
+        if current is None:
+            current = list(base.get(field, []))
+            out[field] = current
+        if field == "id_fields":
+            # Sanitize the LLM-derived label to alphanumeric so the visible
+            # RID_<LABEL>_ pseudonym prefix is always well-formed (the alpha12
+            # HMAC tail does the de-identification regardless).
+            raw_label = str(rule.get("inferred_variable_type") or "ID")
+            label = re.sub(r"[^A-Za-z0-9]", "", raw_label).upper()[:16] or "ID"
+            current.append({"pattern": pattern, "label": label})
+        else:
+            current.append(pattern)
+    if not out:
+        return None
+    run_dir = Path(run_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    overlay_path = run_dir / config.PHI_SCRUB_GENERATED_FILENAME
+    with overlay_path.open("w", encoding="utf-8") as fh:
+        yaml.safe_dump(out, fh, sort_keys=True)
+    return overlay_path
 
 
 def _load_merged_scrub_raw(path: Path | None, study: str | None) -> dict[str, Any] | None:
@@ -2459,315 +2524,329 @@ def run_scrub(
         )
         return
 
-    key = load_key()
+    from scripts.security.phi_keystore import clear_phi_key, get_phi_key
 
-    # Load per-column date locale overrides from the study's forms manifest.
-    # Backward-compatible: returns {} when the manifest is absent or has no
-    # date_locales section.  The manifest lives next to the *raw* datasets dir,
-    # not the staging dir, so we read it from config.DATASETS_DIR.
-    # Import from the shared forms_manifest module (stays in scripts/) rather
-    # than dataset_pipeline: after Note-19 consolidation the latter lives in the
-    # dataset-to-llm-source skill, so importing it here would be a forbidden
-    # skill→skill edge. forms_manifest is the canonical shared gate.
-    from scripts.extraction.forms_manifest import check_forms_manifest
+    # Note 12: the HMAC key must live in zeroizable storage and be wiped after
+    # the scrub completes. PHIKeyStore wraps load_key() (same reader -> same key
+    # bytes -> identical pseudonyms/date offsets) but holds the master in a
+    # bytearray that clear_phi_key() overwrites in place; get_phi_key() returns an
+    # immutable bytes COPY for the scrub primitives. The llm-agent role gate and
+    # missing/perm/length fail-closed checks run unchanged inside the store.
+    key = get_phi_key()
+    try:
+        # Load per-column date locale overrides from the study's forms manifest.
+        # Backward-compatible: returns {} when the manifest is absent or has no
+        # date_locales section.  The manifest lives next to the *raw* datasets dir,
+        # not the staging dir, so we read it from config.DATASETS_DIR.
+        # Import from the shared forms_manifest module (stays in scripts/) rather
+        # than dataset_pipeline: after Note-19 consolidation the latter lives in the
+        # dataset-to-llm-source skill, so importing it here would be a forbidden
+        # skill→skill edge. forms_manifest is the canonical shared gate.
+        from scripts.extraction.forms_manifest import check_forms_manifest
 
-    # Reject-listed files are auto-skipped by the extraction leg, so the
-    # scrub leg only needs the date_locales mapping here.
-    date_locales: dict[str, str] = check_forms_manifest(config.DATASETS_DIR).date_locales
+        # Reject-listed files are auto-skipped by the extraction leg, so the
+        # scrub leg only needs the date_locales mapping here.
+        date_locales: dict[str, str] = check_forms_manifest(config.DATASETS_DIR).date_locales
 
-    if not staging_datasets.is_dir():
-        logger.info(
-            "phi_scrub: staging datasets dir missing (%s) — emitting empty audit",
-            staging_datasets,
-        )
+        if not staging_datasets.is_dir():
+            logger.info(
+                "phi_scrub: staging datasets dir missing (%s) — emitting empty audit",
+                staging_datasets,
+            )
+            _emit_audit(
+                study_name=study_name,
+                posture=cfg.compliance_posture,
+                events=[],
+                orphans={},
+                audit_path=audit_path,
+            )
+            # No input directory → cannot produce an input hash.
+            _emit_as_written_ledger(
+                events=[],
+                audit_path=audit_path,
+                study_name=study_name,
+                compliance_posture=cfg.compliance_posture,
+                dataset_files=[],
+                scrub_config_hash=scrub_config_hash,
+                approval_lookup={},
+                rule_bundle_sha256=None,
+                cfg=cfg,
+            )
+            return
+
+        # Snapshot the raw input manifest BEFORE any in-place scrub rewrites so
+        # the hash reflects the pre-scrub state, not the post-scrub state.
+        dataset_files = sorted(p.name for p in staging_datasets.glob("*.jsonl"))
+        input_dataset_hash: str = _compute_input_dataset_hash(staging_datasets)
+
+        assert_write_zone(staging_datasets)
+
+        # Write the in-progress token before any row mutation so a mid-loop crash
+        # leaves the token on disk.  The wrapper CLI (P3.1) checks for this token
+        # at startup and refuses with exit 6 if one is present.
+        in_progress_token: Path | None = None
+        if run_id is not None and runs_dir is not None:
+            in_progress_token = runs_dir / run_id / "scrub.in_progress"
+            in_progress_token.parent.mkdir(parents=True, exist_ok=True)
+            atomic_write_json(
+                in_progress_token,
+                {
+                    "run_id": run_id,
+                    "study": study_name if study_name is not None else config.STUDY_NAME,
+                    "started_utc": datetime.now(UTC).isoformat(),
+                    "scrub_yaml_sha256": scrub_config_hash,
+                },
+            )
+
+        quarantine_dir = staging_root / "quarantine"
+        counts_by_file: dict[str, dict[str, int]] = {}
+        orphan_totals: dict[str, int] = {}
+        # Per-form review-quarantine tally (only populated in partial_on_review mode).
+        partial_forms: dict[str, dict[str, Any]] = {}
+
+        # Per-form set of headers the scrub must FORCE-DROP at priority-0 (overriding
+        # any keep), pre-normalized to match _scrub_row's comparison. Two sources, both
+        # the honor-the-stricter-decision direction (only ever ADD protection):
+        #   1. phi_review SUPPRESS decisions (free-text comment/other), and
+        #   2. force_drop_headers from phi_review's SoT cross-verification — DIRECT
+        #      IDENTIFIERS (signatures, initials, names, free-text notes, SoT-flagged
+        #      PHI) that a broad form-prefix keep would otherwise publish raw.
+        force_drop_by_stem: dict[str, frozenset[str]] = {
+            stem: frozenset(
+                h for h, c in per_header.items() if (c or {}).get("action") == "suppress"
+            )
+            | sot_force_drop_by_stem.get(stem, frozenset())
+            for stem, per_header in (approval_lookup or {}).items()
+        }
+
+        for jsonl_file in sorted(staging_datasets.glob("*.jsonl")):
+            kept, orphans, band_failed, generalize_failed, date_failed, counts = _scrub_file(
+                jsonl_file,
+                cfg=cfg,
+                key=key,
+                date_locales=date_locales,
+                suppress_headers=force_drop_by_stem.get(jsonl_file.stem, frozenset()),
+            )
+
+            if orphans:
+                orphan_totals[jsonl_file.name] = len(orphans)
+                quarantine_dir.mkdir(parents=True, exist_ok=True)
+                assert_write_zone(quarantine_dir)
+                orphan_counts: dict[str, int] = {}
+                # Partial-scrub before write: drop_fields + birthdate + force-drop set
+                # (Fix A-1/A-2: suppress_headers ensures direct identifiers flagged by
+                # phi_review's SoT cross-verification are stripped from orphan/amber rows
+                # just as they are from the main published rows).
+                _stem_suppress = force_drop_by_stem.get(jsonl_file.stem, frozenset())
+                for _orphan in orphans:
+                    for scope_k, n in _apply_field_only_rules(
+                        _orphan, cfg=cfg, suppress_headers=_stem_suppress
+                    ).items():
+                        orphan_counts[scope_k] = orphan_counts.get(scope_k, 0) + n
+                if orphan_counts:
+                    q_key = f"quarantine/{jsonl_file.name}"
+                    counts_by_file[q_key] = orphan_counts
+                atomic_write_jsonl(quarantine_dir / jsonl_file.name, orphans)
+                if len(orphans) > cfg.orphan_quarantine_threshold and not partial_on_review:
+                    # Strict mode only: an orphan-row count over the threshold signals a
+                    # likely subject_id_fields misconfiguration → fail-closed-stop.
+                    # Partial mode does NOT abort here (that would block every clean form
+                    # too); instead the orphan rows are held in quarantine and the
+                    # correctly-jittered non-orphan rows are published, with the form
+                    # flagged ``elevated`` for review in the unified tally below.
+                    raise PHIQuarantineOverflowError(
+                        f"{jsonl_file.name}: {len(orphans)} orphan rows exceeds "
+                        f"threshold {cfg.orphan_quarantine_threshold}. "
+                        f"Check subject_id_fields config."
+                    )
+
+            if generalize_failed:
+                _quarantine_or_raise(
+                    generalize_failed,
+                    Path(f"generalize_unmapped_{jsonl_file.name}"),
+                    PHIGeneralizeUnmappedError,
+                    f"{jsonl_file.name}: {len(generalize_failed)} row(s) hold values not covered "
+                    f"by the configured generalization map for their field. generalize is "
+                    f"fail-closed — curate the generalize map in phi_scrub.yaml to cover every "
+                    f"valid value before these fields can be emitted. Quarantined rows: "
+                    f"quarantine/generalize_unmapped_{jsonl_file.name}.",
+                    quarantine_dir=quarantine_dir,
+                    cfg=cfg,
+                    partial_on_review=partial_on_review,
+                    suppress_headers=force_drop_by_stem.get(jsonl_file.stem, frozenset()),
+                )
+
+            if band_failed:
+                _quarantine_or_raise(
+                    band_failed,
+                    Path(f"band_unmapped_{jsonl_file.name}"),
+                    PHIBandUnmappedError,
+                    f"{jsonl_file.name}: {len(band_failed)} row(s) hold socioeconomic "
+                    f"values not coverable by the configured band_maps/band_ranges. The "
+                    f"band scaffold is fail-closed — fill the deferred TEMPLATE values in "
+                    f"phi_scrub.yaml before these fields can be emitted. Quarantined rows: "
+                    f"quarantine/band_unmapped_{jsonl_file.name}.",
+                    quarantine_dir=quarantine_dir,
+                    cfg=cfg,
+                    partial_on_review=partial_on_review,
+                    suppress_headers=force_drop_by_stem.get(jsonl_file.stem, frozenset()),
+                )
+
+            if date_failed:
+                _quarantine_or_raise(
+                    date_failed,
+                    Path(f"date_unshiftable_{jsonl_file.name}"),
+                    PHIDateUnshiftableError,
+                    f"{jsonl_file.name}: {len(date_failed)} row(s) hold date values that cannot be "
+                    f"safely jittered (unparseable, or an ambiguous slash-date with no date_locales "
+                    f"entry). Date jitter is fail-closed — fix the source value or add a date_locales "
+                    f"entry in the study's _forms_manifest.yaml before these fields can be emitted. "
+                    f"Quarantined rows: quarantine/date_unshiftable_{jsonl_file.name}.",
+                    quarantine_dir=quarantine_dir,
+                    cfg=cfg,
+                    partial_on_review=partial_on_review,
+                    suppress_headers=force_drop_by_stem.get(jsonl_file.stem, frozenset()),
+                )
+
+            # Partial-publish mode: publish the form's correctly-scrubbed rows (``kept``)
+            # and HOLD every un-scrubbable / un-jitterable / orphan row in the no-LLM
+            # quarantine zone, recording a per-form tally so the wrapper can surface a
+            # non-blocking partial-run notice.  Each PUBLISHED row is individually
+            # correct: date jitter and locale resolution are fail-closed at the row
+            # level (an ambiguous date is quarantined, never resolved under a guessed
+            # locale), so a row only reaches ``kept`` when it scrubbed cleanly.
+            #
+            # A held-fraction over ``partial_max_quarantine_fraction`` or an orphan
+            # count over ``orphan_quarantine_threshold`` no longer ABORTS the run — that
+            # would deny the operator every clean form's usable data.  Instead the form
+            # is flagged ``elevated`` ("published, but review recommended — likely a
+            # systemic data/config issue") so the UI can distinguish a small tail of
+            # bad rows from a systemic failure while keeping both queryable.  The PHI
+            # security invariant is unchanged: a held row is NEVER promoted.  Strict
+            # mode (``partial_on_review=False``) still aborts on the first failed row.
+            review_q = len(date_failed) + len(band_failed) + len(generalize_failed)
+            held_count = len(orphans) + review_q
+            if partial_on_review and held_count:
+                # PS3-M3: The held-fraction denominator counts only the reviewable-quarantine
+                # rows (date/band/generalize failures), not orphans.  Orphans are governed by
+                # their own orphan_quarantine_threshold guard; mixing them into the fraction
+                # denominator inflated the total and could mask a high review-quarantine rate.
+                total_for_frac = len(kept) + review_q
+                held_frac = review_q / max(total_for_frac, 1)
+                elevated = (
+                    len(orphans) > cfg.orphan_quarantine_threshold
+                    or held_frac > cfg.partial_max_quarantine_fraction
+                )
+                reasons = [
+                    label
+                    for label in (
+                        f"orphan_no_subject_id:{len(orphans)}" if orphans else None,
+                        f"date_unshiftable:{len(date_failed)}" if date_failed else None,
+                        f"band_unmapped:{len(band_failed)}" if band_failed else None,
+                        f"generalize_unmapped:{len(generalize_failed)}"
+                        if generalize_failed
+                        else None,
+                    )
+                    if label
+                ]
+                if elevated:
+                    reasons.append(f"elevated_review:{held_frac:.0%}_held")
+                partial_forms[jsonl_file.name] = {
+                    "kept": len(kept),
+                    "quarantined": held_count,
+                    "reasons": reasons,
+                    "elevated": elevated,
+                }
+                log_fn = logger.warning if elevated else logger.info
+                log_fn(
+                    "phi_scrub %s: PARTIAL publish — kept=%d, held-for-review=%d (%s)%s",
+                    jsonl_file.name,
+                    len(kept),
+                    held_count,
+                    ", ".join(reasons),
+                    " [ELEVATED — review recommended]" if elevated else "",
+                )
+
+            atomic_write_jsonl(jsonl_file, kept)
+            if counts:
+                counts_by_file[jsonl_file.name] = counts
+            logger.info(
+                "phi_scrub %s: kept=%d orphaned=%d scopes=%d",
+                jsonl_file.name,
+                len(kept),
+                len(orphans),
+                len(counts),
+            )
+
+        events = _events_from_counts(counts_by_file)
         _emit_audit(
             study_name=study_name,
             posture=cfg.compliance_posture,
-            events=[],
-            orphans={},
+            events=events,
+            orphans=orphan_totals,
             audit_path=audit_path,
         )
-        # No input directory → cannot produce an input hash.
+        # Fix B-5: Build a fail-soft per-stem → SoT policy YAML path map for the
+        # ``where.pdf_source`` ledger field.  The SoT policy YAML is the nearest
+        # available provenance artifact (it encodes the printed-PDF question text +
+        # annotation geometry); if the file doesn't exist for a given form the stem
+        # is simply absent from the map and the ledger falls back to pdf_source=None.
+        # This is metadata-only (path existence check, no file reads or value access).
+        _sot_root = Path(config.STUDY_LLM_SOURCE_DIR) / "SoT"
+        pdf_source_by_stem: dict[str, str | None] = {}
+        for _stem in sorted({Path(f).stem for f in (dataset_files or [])}):
+            _candidate = _sot_root / _stem / "pdf" / f"{_stem}_policy.yaml"
+            if _candidate.is_file():
+                pdf_source_by_stem[_stem] = str(_candidate)
         _emit_as_written_ledger(
-            events=[],
+            events=events,
             audit_path=audit_path,
             study_name=study_name,
             compliance_posture=cfg.compliance_posture,
-            dataset_files=[],
+            dataset_files=dataset_files,
             scrub_config_hash=scrub_config_hash,
-            approval_lookup={},
-            rule_bundle_sha256=None,
+            input_dataset_hash=input_dataset_hash,
+            approval_lookup=approval_lookup,
+            rule_bundle_sha256=rule_bundle_sha256_val,
             cfg=cfg,
-        )
-        return
-
-    # Snapshot the raw input manifest BEFORE any in-place scrub rewrites so
-    # the hash reflects the pre-scrub state, not the post-scrub state.
-    dataset_files = sorted(p.name for p in staging_datasets.glob("*.jsonl"))
-    input_dataset_hash: str = _compute_input_dataset_hash(staging_datasets)
-
-    assert_write_zone(staging_datasets)
-
-    # Write the in-progress token before any row mutation so a mid-loop crash
-    # leaves the token on disk.  The wrapper CLI (P3.1) checks for this token
-    # at startup and refuses with exit 6 if one is present.
-    in_progress_token: Path | None = None
-    if run_id is not None and runs_dir is not None:
-        in_progress_token = runs_dir / run_id / "scrub.in_progress"
-        in_progress_token.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_json(
-            in_progress_token,
-            {
-                "run_id": run_id,
-                "study": study_name if study_name is not None else config.STUDY_NAME,
-                "started_utc": datetime.now(UTC).isoformat(),
-                "scrub_yaml_sha256": scrub_config_hash,
-            },
+            force_drop_by_stem=force_drop_by_stem,
+            pdf_source_by_stem=pdf_source_by_stem if pdf_source_by_stem else None,
         )
 
-    quarantine_dir = staging_root / "quarantine"
-    counts_by_file: dict[str, dict[str, int]] = {}
-    orphan_totals: dict[str, int] = {}
-    # Per-form review-quarantine tally (only populated in partial_on_review mode).
-    partial_forms: dict[str, dict[str, Any]] = {}
-
-    # Per-form set of headers the scrub must FORCE-DROP at priority-0 (overriding
-    # any keep), pre-normalized to match _scrub_row's comparison. Two sources, both
-    # the honor-the-stricter-decision direction (only ever ADD protection):
-    #   1. phi_review SUPPRESS decisions (free-text comment/other), and
-    #   2. force_drop_headers from phi_review's SoT cross-verification — DIRECT
-    #      IDENTIFIERS (signatures, initials, names, free-text notes, SoT-flagged
-    #      PHI) that a broad form-prefix keep would otherwise publish raw.
-    force_drop_by_stem: dict[str, frozenset[str]] = {
-        stem: frozenset(h for h, c in per_header.items() if (c or {}).get("action") == "suppress")
-        | sot_force_drop_by_stem.get(stem, frozenset())
-        for stem, per_header in (approval_lookup or {}).items()
-    }
-
-    for jsonl_file in sorted(staging_datasets.glob("*.jsonl")):
-        kept, orphans, band_failed, generalize_failed, date_failed, counts = _scrub_file(
-            jsonl_file,
-            cfg=cfg,
-            key=key,
-            date_locales=date_locales,
-            suppress_headers=force_drop_by_stem.get(jsonl_file.stem, frozenset()),
-        )
-
-        if orphans:
-            orphan_totals[jsonl_file.name] = len(orphans)
-            quarantine_dir.mkdir(parents=True, exist_ok=True)
-            assert_write_zone(quarantine_dir)
-            orphan_counts: dict[str, int] = {}
-            # Partial-scrub before write: drop_fields + birthdate + force-drop set
-            # (Fix A-1/A-2: suppress_headers ensures direct identifiers flagged by
-            # phi_review's SoT cross-verification are stripped from orphan/amber rows
-            # just as they are from the main published rows).
-            _stem_suppress = force_drop_by_stem.get(jsonl_file.stem, frozenset())
-            for _orphan in orphans:
-                for scope_k, n in _apply_field_only_rules(
-                    _orphan, cfg=cfg, suppress_headers=_stem_suppress
-                ).items():
-                    orphan_counts[scope_k] = orphan_counts.get(scope_k, 0) + n
-            if orphan_counts:
-                q_key = f"quarantine/{jsonl_file.name}"
-                counts_by_file[q_key] = orphan_counts
-            atomic_write_jsonl(quarantine_dir / jsonl_file.name, orphans)
-            if len(orphans) > cfg.orphan_quarantine_threshold and not partial_on_review:
-                # Strict mode only: an orphan-row count over the threshold signals a
-                # likely subject_id_fields misconfiguration → fail-closed-stop.
-                # Partial mode does NOT abort here (that would block every clean form
-                # too); instead the orphan rows are held in quarantine and the
-                # correctly-jittered non-orphan rows are published, with the form
-                # flagged ``elevated`` for review in the unified tally below.
-                raise PHIQuarantineOverflowError(
-                    f"{jsonl_file.name}: {len(orphans)} orphan rows exceeds "
-                    f"threshold {cfg.orphan_quarantine_threshold}. "
-                    f"Check subject_id_fields config."
-                )
-
-        if generalize_failed:
-            _quarantine_or_raise(
-                generalize_failed,
-                Path(f"generalize_unmapped_{jsonl_file.name}"),
-                PHIGeneralizeUnmappedError,
-                f"{jsonl_file.name}: {len(generalize_failed)} row(s) hold values not covered "
-                f"by the configured generalization map for their field. generalize is "
-                f"fail-closed — curate the generalize map in phi_scrub.yaml to cover every "
-                f"valid value before these fields can be emitted. Quarantined rows: "
-                f"quarantine/generalize_unmapped_{jsonl_file.name}.",
-                quarantine_dir=quarantine_dir,
-                cfg=cfg,
-                partial_on_review=partial_on_review,
-                suppress_headers=force_drop_by_stem.get(jsonl_file.stem, frozenset()),
+        # Partial-run sidecar: record which forms had rows quarantined for review so
+        # the wrapper CLI can mark the run partial and the Load Study UI can show a
+        # non-blocking notice. Contains form NAMES + COUNTS only — never row values —
+        # and lives under runs/ (outside the LLM read zone). Written whenever a run id
+        # is available, even with an empty tally, so the wrapper can distinguish
+        # "clean run" from "no sidecar / legacy run".
+        if run_id is not None and runs_dir is not None:
+            outcome_path = runs_dir / run_id / "scrub_outcome.json"
+            outcome_path.parent.mkdir(parents=True, exist_ok=True)
+            assert_write_zone(outcome_path.parent)  # N1: consistent with every other write site
+            atomic_write_json(
+                outcome_path,
+                {
+                    "run_id": run_id,
+                    "study": study_name if study_name is not None else config.STUDY_NAME,
+                    "partial": bool(partial_forms),
+                    "partial_forms": partial_forms,
+                },
             )
 
-        if band_failed:
-            _quarantine_or_raise(
-                band_failed,
-                Path(f"band_unmapped_{jsonl_file.name}"),
-                PHIBandUnmappedError,
-                f"{jsonl_file.name}: {len(band_failed)} row(s) hold socioeconomic "
-                f"values not coverable by the configured band_maps/band_ranges. The "
-                f"band scaffold is fail-closed — fill the deferred TEMPLATE values in "
-                f"phi_scrub.yaml before these fields can be emitted. Quarantined rows: "
-                f"quarantine/band_unmapped_{jsonl_file.name}.",
-                quarantine_dir=quarantine_dir,
-                cfg=cfg,
-                partial_on_review=partial_on_review,
-                suppress_headers=force_drop_by_stem.get(jsonl_file.stem, frozenset()),
-            )
+        with sentinel.open("w", encoding="utf-8") as _sf:
+            _sf.write(_SCRUB_VERSION)
+            _sf.flush()
+            os.fsync(_sf.fileno())
 
-        if date_failed:
-            _quarantine_or_raise(
-                date_failed,
-                Path(f"date_unshiftable_{jsonl_file.name}"),
-                PHIDateUnshiftableError,
-                f"{jsonl_file.name}: {len(date_failed)} row(s) hold date values that cannot be "
-                f"safely jittered (unparseable, or an ambiguous slash-date with no date_locales "
-                f"entry). Date jitter is fail-closed — fix the source value or add a date_locales "
-                f"entry in the study's _forms_manifest.yaml before these fields can be emitted. "
-                f"Quarantined rows: quarantine/date_unshiftable_{jsonl_file.name}.",
-                quarantine_dir=quarantine_dir,
-                cfg=cfg,
-                partial_on_review=partial_on_review,
-                suppress_headers=force_drop_by_stem.get(jsonl_file.stem, frozenset()),
-            )
-
-        # Partial-publish mode: publish the form's correctly-scrubbed rows (``kept``)
-        # and HOLD every un-scrubbable / un-jitterable / orphan row in the no-LLM
-        # quarantine zone, recording a per-form tally so the wrapper can surface a
-        # non-blocking partial-run notice.  Each PUBLISHED row is individually
-        # correct: date jitter and locale resolution are fail-closed at the row
-        # level (an ambiguous date is quarantined, never resolved under a guessed
-        # locale), so a row only reaches ``kept`` when it scrubbed cleanly.
-        #
-        # A held-fraction over ``partial_max_quarantine_fraction`` or an orphan
-        # count over ``orphan_quarantine_threshold`` no longer ABORTS the run — that
-        # would deny the operator every clean form's usable data.  Instead the form
-        # is flagged ``elevated`` ("published, but review recommended — likely a
-        # systemic data/config issue") so the UI can distinguish a small tail of
-        # bad rows from a systemic failure while keeping both queryable.  The PHI
-        # security invariant is unchanged: a held row is NEVER promoted.  Strict
-        # mode (``partial_on_review=False``) still aborts on the first failed row.
-        review_q = len(date_failed) + len(band_failed) + len(generalize_failed)
-        held_count = len(orphans) + review_q
-        if partial_on_review and held_count:
-            # PS3-M3: The held-fraction denominator counts only the reviewable-quarantine
-            # rows (date/band/generalize failures), not orphans.  Orphans are governed by
-            # their own orphan_quarantine_threshold guard; mixing them into the fraction
-            # denominator inflated the total and could mask a high review-quarantine rate.
-            total_for_frac = len(kept) + review_q
-            held_frac = review_q / max(total_for_frac, 1)
-            elevated = (
-                len(orphans) > cfg.orphan_quarantine_threshold
-                or held_frac > cfg.partial_max_quarantine_fraction
-            )
-            reasons = [
-                label
-                for label in (
-                    f"orphan_no_subject_id:{len(orphans)}" if orphans else None,
-                    f"date_unshiftable:{len(date_failed)}" if date_failed else None,
-                    f"band_unmapped:{len(band_failed)}" if band_failed else None,
-                    f"generalize_unmapped:{len(generalize_failed)}" if generalize_failed else None,
-                )
-                if label
-            ]
-            if elevated:
-                reasons.append(f"elevated_review:{held_frac:.0%}_held")
-            partial_forms[jsonl_file.name] = {
-                "kept": len(kept),
-                "quarantined": held_count,
-                "reasons": reasons,
-                "elevated": elevated,
-            }
-            log_fn = logger.warning if elevated else logger.info
-            log_fn(
-                "phi_scrub %s: PARTIAL publish — kept=%d, held-for-review=%d (%s)%s",
-                jsonl_file.name,
-                len(kept),
-                held_count,
-                ", ".join(reasons),
-                " [ELEVATED — review recommended]" if elevated else "",
-            )
-
-        atomic_write_jsonl(jsonl_file, kept)
-        if counts:
-            counts_by_file[jsonl_file.name] = counts
-        logger.info(
-            "phi_scrub %s: kept=%d orphaned=%d scopes=%d",
-            jsonl_file.name,
-            len(kept),
-            len(orphans),
-            len(counts),
-        )
-
-    events = _events_from_counts(counts_by_file)
-    _emit_audit(
-        study_name=study_name,
-        posture=cfg.compliance_posture,
-        events=events,
-        orphans=orphan_totals,
-        audit_path=audit_path,
-    )
-    # Fix B-5: Build a fail-soft per-stem → SoT policy YAML path map for the
-    # ``where.pdf_source`` ledger field.  The SoT policy YAML is the nearest
-    # available provenance artifact (it encodes the printed-PDF question text +
-    # annotation geometry); if the file doesn't exist for a given form the stem
-    # is simply absent from the map and the ledger falls back to pdf_source=None.
-    # This is metadata-only (path existence check, no file reads or value access).
-    _sot_root = Path(config.STUDY_LLM_SOURCE_DIR) / "SoT"
-    pdf_source_by_stem: dict[str, str | None] = {}
-    for _stem in sorted({Path(f).stem for f in (dataset_files or [])}):
-        _candidate = _sot_root / _stem / "pdf" / f"{_stem}_policy.yaml"
-        if _candidate.is_file():
-            pdf_source_by_stem[_stem] = str(_candidate)
-    _emit_as_written_ledger(
-        events=events,
-        audit_path=audit_path,
-        study_name=study_name,
-        compliance_posture=cfg.compliance_posture,
-        dataset_files=dataset_files,
-        scrub_config_hash=scrub_config_hash,
-        input_dataset_hash=input_dataset_hash,
-        approval_lookup=approval_lookup,
-        rule_bundle_sha256=rule_bundle_sha256_val,
-        cfg=cfg,
-        force_drop_by_stem=force_drop_by_stem,
-        pdf_source_by_stem=pdf_source_by_stem if pdf_source_by_stem else None,
-    )
-
-    # Partial-run sidecar: record which forms had rows quarantined for review so
-    # the wrapper CLI can mark the run partial and the Load Study UI can show a
-    # non-blocking notice. Contains form NAMES + COUNTS only — never row values —
-    # and lives under runs/ (outside the LLM read zone). Written whenever a run id
-    # is available, even with an empty tally, so the wrapper can distinguish
-    # "clean run" from "no sidecar / legacy run".
-    if run_id is not None and runs_dir is not None:
-        outcome_path = runs_dir / run_id / "scrub_outcome.json"
-        outcome_path.parent.mkdir(parents=True, exist_ok=True)
-        assert_write_zone(outcome_path.parent)  # N1: consistent with every other write site
-        atomic_write_json(
-            outcome_path,
-            {
-                "run_id": run_id,
-                "study": study_name if study_name is not None else config.STUDY_NAME,
-                "partial": bool(partial_forms),
-                "partial_forms": partial_forms,
-            },
-        )
-
-    with sentinel.open("w", encoding="utf-8") as _sf:
-        _sf.write(_SCRUB_VERSION)
-        _sf.flush()
-        os.fsync(_sf.fileno())
-
-    # Sentinel is written — scrub completed successfully.  Remove the
-    # in-progress token so the wrapper does not see a false-positive on the
-    # next invocation.  This must happen AFTER the sentinel write so that a
-    # crash between the two leaves the token intact (safer direction: the
-    # wrapper will still refuse, and the sentinel guarantees re-run is a no-op).
-    if in_progress_token is not None:
-        in_progress_token.unlink(missing_ok=True)
+        # Sentinel is written — scrub completed successfully.  Remove the
+        # in-progress token so the wrapper does not see a false-positive on the
+        # next invocation.  This must happen AFTER the sentinel write so that a
+        # crash between the two leaves the token intact (safer direction: the
+        # wrapper will still refuse, and the sentinel guarantees re-run is a no-op).
+        if in_progress_token is not None:
+            in_progress_token.unlink(missing_ok=True)
+    finally:
+        clear_phi_key()
 
 
 # ── CLI ─────────────────────────────────────────────────────────────────────

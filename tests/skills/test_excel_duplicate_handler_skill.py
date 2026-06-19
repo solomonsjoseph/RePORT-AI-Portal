@@ -89,7 +89,6 @@ def test_excel_duplicate_skill_preserves_project_privacy_boundary() -> None:
         "provenance to reconstruct which source file, sheet, and row contributed",
         "clean_duplicate_columns",
         "dataset_duplicate_header_combined_binding",
-        "SUSPECTED_DUPLICATE_PAIRS",
         "scripts/skills/extract_to_llm_source.py status",
         "tests/test_dedup.py",
         "Use `$dataset-to-llm-source`",

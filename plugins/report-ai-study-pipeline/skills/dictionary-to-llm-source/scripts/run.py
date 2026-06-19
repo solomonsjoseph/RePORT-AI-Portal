@@ -26,14 +26,48 @@ from scripts.utils.skill_protocol import (  # noqa: E402
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Extract the study data dictionary to staging.")
+    parser = argparse.ArgumentParser(
+        description="Extract or publish the study data dictionary leg."
+    )
     add_common_skill_args(parser)
+    parser.add_argument(
+        "--leg",
+        choices=["extract", "publish"],
+        default="extract",
+        help=(
+            "extract -> load the dictionary into staging JSONL; "
+            "publish -> promote the (propagation-pruned) staging tree into "
+            "llm_source/dictionary_mapping/jsonl/. Run --leg publish ONLY after "
+            "dataset cleanup-propagation has pruned dropped columns from staging."
+        ),
+    )
     parser.add_argument(
         "--no-preserve-na",
         action="store_true",
         help="Drop NA tokens instead of preserving them (default: preserve).",
     )
     args = parser.parse_args(argv)
+
+    if args.leg == "publish":
+        # Shared publish primitive lives in scripts/ (plugins -> scripts is the
+        # only sanctioned dependency direction); the skill consumes it.
+        from scripts.pipeline.host_pipeline import publish_dictionary_leg
+
+        published = publish_dictionary_leg()
+        emit_skill_result(
+            SkillResult(
+                skill="dictionary-to-llm-source",
+                ok=True,
+                exit_code=0,
+                summary=(
+                    "dictionary published to llm_source"
+                    if published
+                    else "dictionary publish skipped (empty staging)"
+                ),
+                data={"study": args.study, "leg": "publish", "published": bool(published)},
+            )
+        )
+        return 0
 
     from scripts.extraction.load_dictionary import load_study_dictionary
 
@@ -44,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
             ok=bool(ok),
             exit_code=0 if ok else 1,
             summary="dictionary extracted to staging" if ok else "dictionary extraction failed",
-            data={"study": args.study},
+            data={"study": args.study, "leg": "extract"},
         )
     )
     return 0 if ok else 1
