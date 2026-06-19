@@ -20,6 +20,20 @@ from scripts.ai_assistant.citations import (
 )
 
 
+def _write_joined_view(form_dir: Path, form_name: str, variables: list[str]) -> None:
+    joined = form_dir / "joined"
+    joined.mkdir(parents=True, exist_ok=True)
+    lines = ["study: TestStudy", f"form: {form_name}", "variables:"]
+    for var in variables:
+        lines.append(f"  {var}:")
+        lines.append("    pdf:")
+        lines.append("      question: synthetic")
+    (joined / f"{form_name}_joined_query_view.yaml").write_text(
+        "\n".join(lines) + "\n",
+        encoding="utf-8",
+    )
+
+
 @pytest.fixture
 def llm_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Create a minimal llm_source tree and repoint config at it."""
@@ -30,34 +44,17 @@ def llm_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     for d in (sot, files, meta):
         d.mkdir(parents=True, exist_ok=True)
 
-    # Form 95_SAE: policy + schema + jsonl (header-only)
+    # Form 95_SAE: joined view + jsonl (header-only)
     sae = sot / "95_SAE"
-    (sae / "pdf").mkdir(parents=True)
-    (sae / "dataset").mkdir(parents=True)
-    (sae / "pdf" / "95_SAE_policy.yaml").write_text(
-        "variables:\n"
-        "  SUBJID:\n    type: identifier\n"
-        "  AE_AGE:\n    pdf_question: 'Age at time of event:'\n",
-        encoding="utf-8",
-    )
-    (sae / "dataset" / "95_SAE_schema.json").write_text(
-        json.dumps(
-            {"columns": [{"name": "SUBJID"}, {"name": "AE_AGE"}, {"name": "AE_EVENT"}]}, indent=2
-        ),
-        encoding="utf-8",
-    )
+    _write_joined_view(sae, "95_SAE", ["SUBJID", "AE_AGE"])
     (files / "95_SAE.jsonl").write_text(
         json.dumps({"SUBJID": None, "AE_AGE": None, "AE_ONLYINJSONL": None}) + "\n",
         encoding="utf-8",
     )
 
-    # Form 98A_FOA: schema only (no policy) — exercises prefix resolution "98A"
+    # Form 98A_FOA: joined view only — exercises prefix resolution "98A"
     foa = sot / "98A_FOA"
-    (foa / "dataset").mkdir(parents=True)
-    (foa / "dataset" / "98A_FOA_schema.json").write_text(
-        json.dumps({"columns": [{"name": "FOA_COHAOUT"}]}, indent=2),
-        encoding="utf-8",
-    )
+    _write_joined_view(foa, "98A_FOA", ["FOA_COHAOUT"])
 
     (meta / "study_variable_map.yaml").write_text(
         'cohorts:\n  cohort_a:\n    demographics:\n      sex:\n        column: "IS_SEX"\n',
@@ -71,21 +68,21 @@ def llm_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return root
 
 
-def test_form_policy_wins_precedence(llm_source: Path) -> None:
-    """A field defined in the policy YAML cites form_policy, not schema/jsonl."""
+def test_joined_view_wins_precedence(llm_source: Path) -> None:
+    """A field in the joined query view cites joined_query_view, not jsonl."""
     c = cite_variable("95_SAE", "AE_AGE")
     assert isinstance(c, Citation)
-    assert c.source_kind == "form_policy"
-    assert c.file.endswith("95_SAE_policy.yaml")
-    assert c.line == 4  # 'AE_AGE:' line in the synthetic policy
+    assert c.source_kind == "joined_query_view"
+    assert c.file.endswith("95_SAE_joined_query_view.yaml")
+    assert c.line == 7  # 'AE_AGE:' line in the synthetic joined view
     assert c.matched_term == "AE_AGE"
 
 
-def test_falls_back_to_schema_when_no_policy(llm_source: Path) -> None:
-    """Prefix form_id '98A' resolves to 98A_FOA; field cites dataset_schema."""
+def test_prefix_form_resolves_joined_view(llm_source: Path) -> None:
+    """Prefix form_id '98A' resolves to 98A_FOA; field cites joined_query_view."""
     c = cite_variable("98A", "FOA_COHAOUT")
-    assert c.source_kind == "dataset_schema"
-    assert c.file.endswith("98A_FOA_schema.json")
+    assert c.source_kind == "joined_query_view"
+    assert c.file.endswith("98A_FOA_joined_query_view.yaml")
 
 
 def test_jsonl_fallback_does_not_echo_values(llm_source: Path) -> None:
@@ -133,18 +130,8 @@ def variable_map_llm_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     for d in (sot, files, meta):
         d.mkdir(parents=True, exist_ok=True)
 
-    # A form with a CAGE column (deliberately contains 'AGE' as substring)
     form_dir = sot / "99_Test"
-    (form_dir / "pdf").mkdir(parents=True)
-    (form_dir / "dataset").mkdir(parents=True)
-    (form_dir / "pdf" / "99_Test_policy.yaml").write_text(
-        "variables:\n  CAGE:\n    pdf_question: CAGE alcohol screening\n",
-        encoding="utf-8",
-    )
-    (form_dir / "dataset" / "99_Test_schema.json").write_text(
-        json.dumps({"columns": [{"name": "CAGE"}]}),
-        encoding="utf-8",
-    )
+    _write_joined_view(form_dir, "99_Test", ["CAGE"])
 
     (meta / "study_variable_map.yaml").write_text(
         "cohorts:\n"

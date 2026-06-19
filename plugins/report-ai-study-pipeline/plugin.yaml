@@ -154,10 +154,13 @@ skills:
     purpose: Run the 14-assertion verifier; idempotent re-verify in phase 9.
   - skill: excel-duplicate-handler
     path: skills/excel-duplicate-handler/SKILL.md
-    role: preflight
+    role: legacy_preflight
     scope: study
     parallel: false
-    purpose: Resolve duplicate workbooks/lock-temp siblings before Source Truth/publishing (lossless, count-only audit).
+    purpose: >
+      Legacy workbook merge helper (superseded by dataset-deduplication at orchestrator
+      phase 2 — Note 18). Retained for manual maintainer preflight only; not invoked
+      by the 10-phase orchestrator.
   - skill: phi-rulebook
     path: skills/phi-rulebook/SKILL.md
     role: shared_module
@@ -217,7 +220,7 @@ host_repo_contract:
     - plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/generate_lean_outputs.py
     - scripts/pipeline/host_pipeline.py
   expected_outputs:
-    - output/<STUDY>/llm_source/SoT/<PAIR>/pdf/<FORM>_policy.yaml
+    - output/<STUDY>/llm_source/SoT/<PAIR>/joined/<FORM>_joined_query_view.yaml
     - output/<STUDY>/llm_source/dataset_schema/files/<FORM>.jsonl
     - output/<STUDY>/llm_source/dictionary_mapping/jsonl/**/*.jsonl when raw dictionary files exist
     - output/<STUDY>/snapshots/<SNAPSHOT_ID>/ (immutable clean-pass snapshot)

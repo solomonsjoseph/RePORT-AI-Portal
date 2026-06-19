@@ -412,12 +412,11 @@ def find_policy_yaml(
     form: str | None,
     repo_root: Path,
 ) -> list[Path]:
-    """Return policy YAML paths for one study.
+    """Return policy YAML paths for one study (construction-time artifacts only).
 
-    New SoT outputs live under ``output/<study>/llm_source/SoT/<pair>/pdf``.
-    Older ``output/<study>/llm_source/source_truth`` and
-    ``output/<study>/SoT`` layouts, plus ``<form>_policy.lean.yaml`` names,
-    are still accepted for compatibility.
+    .. deprecated::
+        Not for agent/LLM use. Published SoT for the assistant is joined query
+        views only (Note 3). Use :func:`find_joined_query_view_paths` instead.
     """
     study_output = repo_root / "output" / study
     llm_source_dir = study_output / "llm_source"

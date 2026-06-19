@@ -1597,9 +1597,9 @@ def cite_source(form_id: str, field_id: str) -> str:
     """Return a deterministic (file, line, snippet) citation for a study variable.
 
     Use this whenever you need to back a variable claim with a verifiable
-    provenance reference. The citation is looked up in the indexed corpus of
-    form-policy YAMLs, LLM source JSONL schemas, and study-config YAMLs — so
-    the result is a real file location, never a fabricated string.
+    provenance reference. The citation is looked up in published joined query
+    views, LLM source JSONL schemas, and study-config YAMLs — so the result is
+    a real file location, never a fabricated string.
 
     Typical usage: when answering a question about a form field
     (e.g. ``FOA_COHAOUT``, ``FA_RLPSDAT``), call ``cite_source(form_id="98A",
@@ -1609,15 +1609,15 @@ def cite_source(form_id: str, field_id: str) -> str:
     Args:
         form_id: The form identifier (e.g. ``"98A"``, ``"99A"``, ``"10"``).
             Short prefixes are accepted; the tool resolves to the matching
-            policy YAML.
-        field_id: The exact field name as it appears in the policy YAML
+            joined query view.
+        field_id: The exact field name as it appears in the joined query view
             (e.g. ``"FOA_COHAOUT"``, ``"FA_RLPSDAT"``).
 
     Returns:
         A JSON string with ``file`` (repo-relative path), ``line`` (1-indexed),
         ``snippet`` (~200 chars), ``matched_term`` (what the lookup matched),
-        and ``source_kind`` (``form_policy`` | ``llm_jsonl`` | ``study_config``
-        | ``dataset_schema``). If no citation is found, returns a JSON object
+        and ``source_kind`` (``joined_query_view`` | ``llm_jsonl`` |
+        ``study_config``). If no citation is found, returns a JSON object
         with ``error: "no citation"`` — never a guessed location.
     """
     from scripts.ai_assistant.citations import (

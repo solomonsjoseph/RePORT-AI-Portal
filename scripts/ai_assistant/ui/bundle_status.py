@@ -41,21 +41,11 @@ def _has_dictionary_mapping_jsonl() -> bool:
     return mapping_dir.is_dir() and any(mapping_dir.rglob("*.jsonl"))
 
 
-def _has_policy_sot() -> bool:
+def _has_joined_sot() -> bool:
+    """True when at least one published joined query view exists (Note 3)."""
     sot_dir = getattr(config, "LLM_SOURCE_SOT_DIR", config.STUDY_LLM_SOURCE_DIR / "SoT")
     sot_path = Path(sot_dir)
-    if sot_path.is_dir() and any(sot_path.glob("*/pdf/*_policy.yaml")):
-        return True
-
-    legacy_dir = getattr(
-        config,
-        "LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR",
-        config.STUDY_LLM_SOURCE_DIR / "source_truth",
-    )
-    legacy_path = Path(legacy_dir)
-    return legacy_path.is_dir() and (
-        any(legacy_path.glob("*_policy.yaml")) or any(legacy_path.glob("*_policy.lean.yaml"))
-    )
+    return sot_path.is_dir() and any(sot_path.glob("*/joined/*_joined_query_view.yaml"))
 
 
 def bundle_readiness_issues() -> list[str]:
@@ -66,8 +56,10 @@ def bundle_readiness_issues() -> list[str]:
         issues.append(f"missing llm_source directory: {config.STUDY_LLM_SOURCE_DIR}")
     if not _has_dataset_jsonl():
         issues.append(f"missing scrubbed dataset JSONL under {config.TRIO_DATASETS_DIR}")
-    if not _has_policy_sot():
-        issues.append("missing Source Truth policy output under llm_source/SoT/<pair>/pdf/")
+    if not _has_joined_sot():
+        issues.append(
+            "missing Source Truth joined query views under llm_source/SoT/<pair>/joined/"
+        )
     if _dictionary_source_expected() and not _has_dictionary_mapping_jsonl():
         issues.append(f"missing dictionary mapping JSONL under {config.DICTIONARY_JSON_OUTPUT_DIR}")
     return issues

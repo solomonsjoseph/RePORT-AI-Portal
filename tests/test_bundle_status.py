@@ -33,18 +33,25 @@ def _point_bundle_config(monkeypatch: pytest.MonkeyPatch, llm_source: Path) -> N
     )
 
 
-def test_published_bundle_requires_dataset_jsonl_and_plugin_sot(
+def _seed_joined_sot(form: str = "6_HIV") -> None:
+    joined_dir = config.LLM_SOURCE_SOT_DIR / form / "joined"
+    joined_dir.mkdir(parents=True, exist_ok=True)
+    (joined_dir / f"{form}_joined_query_view.yaml").write_text(
+        f"study: Study\nform: {form}\nvariables: {{}}\n",
+        encoding="utf-8",
+    )
+
+
+def test_published_bundle_requires_dataset_jsonl_and_joined_sot(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     llm_source = tmp_path / "output" / "Study" / "llm_source"
     _point_bundle_config(monkeypatch, llm_source)
 
     datasets = config.TRIO_DATASETS_DIR
-    policy_dir = config.LLM_SOURCE_SOT_DIR / "6_HIV" / "pdf"
     datasets.mkdir(parents=True)
-    policy_dir.mkdir(parents=True)
     (datasets / "6_HIV.jsonl").write_text('{"_metadata": true}\n', encoding="utf-8")
-    (policy_dir / "6_HIV_policy.yaml").write_text("variables: {}\n", encoding="utf-8")
+    _seed_joined_sot()
 
     assert published_bundle_exists() is True
 
@@ -56,14 +63,12 @@ def test_published_bundle_requires_dictionary_mapping_when_raw_dictionary_exists
     _point_bundle_config(monkeypatch, llm_source)
 
     config.TRIO_DATASETS_DIR.mkdir(parents=True)
-    policy_dir = config.LLM_SOURCE_SOT_DIR / "6_HIV" / "pdf"
-    policy_dir.mkdir(parents=True)
     config.DATA_DICTIONARY_DIR.mkdir(parents=True)
     (config.TRIO_DATASETS_DIR / "6_HIV.jsonl").write_text(
         '{"_metadata": true}\n',
         encoding="utf-8",
     )
-    (policy_dir / "6_HIV_policy.yaml").write_text("variables: {}\n", encoding="utf-8")
+    _seed_joined_sot()
     (config.DATA_DICTIONARY_DIR / "dictionary.csv").write_text(
         "variable,label\nHIV_HIV,HIV result\n",
         encoding="utf-8",
@@ -80,15 +85,13 @@ def test_published_bundle_accepts_dictionary_mapping_when_raw_dictionary_exists(
     _point_bundle_config(monkeypatch, llm_source)
 
     config.TRIO_DATASETS_DIR.mkdir(parents=True)
-    policy_dir = config.LLM_SOURCE_SOT_DIR / "6_HIV" / "pdf"
-    policy_dir.mkdir(parents=True)
     config.DATA_DICTIONARY_DIR.mkdir(parents=True)
     config.DICTIONARY_JSON_OUTPUT_DIR.mkdir(parents=True)
     (config.TRIO_DATASETS_DIR / "6_HIV.jsonl").write_text(
         '{"_metadata": true}\n',
         encoding="utf-8",
     )
-    (policy_dir / "6_HIV_policy.yaml").write_text("variables: {}\n", encoding="utf-8")
+    _seed_joined_sot()
     (config.DATA_DICTIONARY_DIR / "dictionary.csv").write_text(
         "variable,label\nHIV_HIV,HIV result\n",
         encoding="utf-8",
@@ -116,22 +119,24 @@ def test_published_bundle_rejects_dataset_only(
     assert published_bundle_exists() is False
 
 
-def test_published_bundle_accepts_legacy_source_truth_compatibility(
+def test_published_bundle_rejects_policy_yaml_without_joined_view(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Policy YAML alone does not satisfy bundle readiness (Note 3)."""
     llm_source = tmp_path / "output" / "Study" / "llm_source"
     _point_bundle_config(monkeypatch, llm_source)
 
     config.TRIO_DATASETS_DIR.mkdir(parents=True)
-    legacy_dir = config.LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR
-    legacy_dir.mkdir(parents=True)
+    policy_dir = config.LLM_SOURCE_SOT_DIR / "6_HIV" / "pdf"
+    policy_dir.mkdir(parents=True)
     (config.TRIO_DATASETS_DIR / "6_HIV.jsonl").write_text(
         '{"_metadata": true}\n',
         encoding="utf-8",
     )
-    (legacy_dir / "6_HIV_policy.lean.yaml").write_text("variables: {}\n", encoding="utf-8")
+    (policy_dir / "6_HIV_policy.yaml").write_text("variables: {}\n", encoding="utf-8")
 
-    assert published_bundle_exists() is True
+    assert published_bundle_exists() is False
+    assert any("joined query views" in issue for issue in bundle_readiness_issues())
 
 
 # ── held_set_notice (W2): advisory, non-blocking, never raises ───────────────
