@@ -15,8 +15,10 @@ review with a count-only note. What must be preserved is preserved exactly.
 
 ## What This Skill Does
 
-Phase 2 of the publish pipeline. Wraps `dataset_cleanup.clean_trio_datasets`
-over the staging tree (`tmp/<study>/datasets/`):
+Phase 2 of the publish pipeline. Deduplicates **raw** dataset files under
+``data/raw/<study>/datasets/`` via filename normalization and header/row-count
+tiers (Note 4). Never reads cell values. JSONL-level duplicate merging is
+retired from the active path (legacy tests only).
 
 - removes known junk files (`JUNK_PATTERNS`),
 - structurally compares suspected duplicate pairs and merges the provably-safe

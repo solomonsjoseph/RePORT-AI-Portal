@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 """Skill entrypoint: dataset-deduplication (Phase 2).
 
-Cleans the staging datasets tree: removes known junk files and merges only
-*provably-safe* duplicate file pairs (keeping the larger when one is a strict
-subset of the other); value-divergent pairs are routed to human review rather
-than union-merged. **Fail-closed scrub-first** — ``clean_trio_datasets`` refuses
-to run unless every staging row carries the ``_phi_scrubbed`` marker, so this
-skill can never touch unscrubbed PHI. Invoked by the orchestrator as a file-path
-subprocess (D3). Emits a value-free SkillResult (counts/names only).
+Deduplicates **raw** dataset files under ``data/raw/{STUDY}/datasets/`` using
+filename normalization and header/row-count-only tiers (Note 4). Never reads
+cell values. Ambiguous groups route to ``audit/human_review/excel/``. Invoked
+by the orchestrator before SoT generation and extraction.
 """
 
 from __future__ import annotations
@@ -28,41 +25,55 @@ from scripts.utils.skill_protocol import (  # noqa: E402
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Deduplicate staging dataset files (scrub-first).")
+    parser = argparse.ArgumentParser(
+        description="Deduplicate raw dataset files (headers + row counts only)."
+    )
     add_common_skill_args(parser)
     args = parser.parse_args(argv)
 
-    from scripts.extraction.dataset_cleanup import clean_trio_datasets
+    import config
+    from scripts.extraction.raw_file_dedup import dedup_raw_datasets
+
+    datasets_dir = Path(config.RAW_DATA_DIR) / args.study / "datasets"
+    audit_dir = Path(config.STUDY_AUDIT_DIR)
+    archive_dir = Path(config.TMP_DIR) / args.study / "dedup_archive"
 
     try:
-        report = clean_trio_datasets(study_name=args.study)
-    except Exception as exc:  # UnscrubbedDatasetError + I/O — fail-closed
+        report = dedup_raw_datasets(
+            args.study,
+            datasets_dir=datasets_dir,
+            audit_dir=audit_dir,
+            archive_dir=archive_dir,
+        )
+    except Exception as exc:
         emit_skill_result(
             SkillResult(
                 skill="dataset-deduplication",
                 ok=False,
                 exit_code=1,
-                summary=f"dedup refused/failed: {type(exc).__name__}",
+                summary=f"dedup failed: {type(exc).__name__}",
                 data={"study": args.study},
             )
         )
         print(f"dataset-deduplication failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
 
-    held = len(report.duplicates_skipped)
+    held = len(report.held_for_review)
     emit_skill_result(
         SkillResult(
             skill="dataset-deduplication",
-            ok=True,  # routing a divergent pair to review is a normal outcome
+            ok=True,
+            exit_code=0,
             summary=(
-                f"{len(report.junk_removed)} junk, {len(report.duplicates_merged)} merged, "
-                f"{held} held for review"
+                f"{len(report.auto_resolved)} auto-resolved, "
+                f"{held} held for review, {len(report.removed_paths)} archived"
             ),
             data={
                 "study": args.study,
-                "junk_removed": len(report.junk_removed),
-                "duplicates_merged": len(report.duplicates_merged),
-                "duplicates_skipped": held,
+                "groups_scanned": report.groups_scanned,
+                "auto_resolved": len(report.auto_resolved),
+                "held_for_review": held,
+                "archived": len(report.removed_paths),
                 "errors": len(report.errors),
             },
         )

@@ -592,6 +592,7 @@ def clean_trio_datasets(
     extracted_drop_events: list[dict[str, Any]] | None = None,
     study_name: str | None = None,
     audit_path: Path | None = None,
+    enable_legacy_jsonl_pair_merge: bool = False,
 ) -> CleanupReport:
     """Clean the staging datasets directory and emit a unified audit report.
 
@@ -651,9 +652,11 @@ def clean_trio_datasets(
         # Phase 1: Remove junk
         _remove_junk(datasets_dir, report)
 
-        # Phase 2: Merge duplicates
-        for stem_a, stem_b in SUSPECTED_DUPLICATE_PAIRS:
-            _merge_duplicate_pair(datasets_dir, stem_a, stem_b, report)
+        # Phase 2 (legacy JSONL pair merge) — disabled in production; raw-file
+        # dedup runs via dataset-deduplication skill before extraction (Note 4/18).
+        if enable_legacy_jsonl_pair_merge:
+            for stem_a, stem_b in SUSPECTED_DUPLICATE_PAIRS:
+                _merge_duplicate_pair(datasets_dir, stem_a, stem_b, report)
 
         # Summary
         remaining = sorted(f.stem for f in datasets_dir.glob("*.jsonl"))

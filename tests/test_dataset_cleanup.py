@@ -24,7 +24,7 @@ class TestRemoveJunk:
         _write_jsonl(ds / "Paste Errors.jsonl", scrubbed_records([{"a": 1}]))
         _write_jsonl(ds / "real_data.jsonl", scrubbed_records([{"b": 2}]))
 
-        report = clean_trio_datasets(ds)
+        report = clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True)
         assert "Paste Errors.jsonl" in report.junk_removed
         assert not (ds / "Paste Errors.jsonl").exists()
         assert (ds / "real_data.jsonl").exists()
@@ -36,7 +36,7 @@ class TestRemoveJunk:
         ds.mkdir(parents=True, exist_ok=True)
         _write_jsonl(ds / "TEST1EK.jsonl", scrubbed_records([{"a": 1}]))
 
-        report = clean_trio_datasets(ds)
+        report = clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True)
         assert "TEST1EK.jsonl" in report.junk_removed
 
     def test_no_junk_present(self, monkeypatch_config: Path) -> None:
@@ -46,7 +46,7 @@ class TestRemoveJunk:
         ds.mkdir(parents=True, exist_ok=True)
         _write_jsonl(ds / "good_data.jsonl", scrubbed_records([{"a": 1}]))
 
-        report = clean_trio_datasets(ds)
+        report = clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True)
         assert report.junk_removed == []
 
 
@@ -60,7 +60,7 @@ class TestMergeDuplicates:
         _write_jsonl(ds / "14_CaseControl.jsonl", records)
         _write_jsonl(ds / "14_Case_Control.jsonl", records)
 
-        report = clean_trio_datasets(ds)
+        report = clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True)
         assert len(report.duplicates_merged) == 1
         # One file removed, one remains
         remaining = list(ds.glob("14_*.jsonl"))
@@ -76,7 +76,7 @@ class TestMergeDuplicates:
         _write_jsonl(ds / "2A_ICBaseline.jsonl", large)
         _write_jsonl(ds / "2A_ICBaseline_1.jsonl", small)
 
-        report = clean_trio_datasets(ds)
+        report = clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True)
         assert len(report.duplicates_merged) == 1
         assert (ds / "2A_ICBaseline.jsonl").exists()
         assert not (ds / "2A_ICBaseline_1.jsonl").exists()
@@ -89,7 +89,7 @@ class TestMergeDuplicates:
         _write_jsonl(ds / "21_DSTISO.jsonl", scrubbed_records([{"COL_A": 1}]))
         _write_jsonl(ds / "21_DSTIsolate.jsonl", scrubbed_records([{"COL_B": 2}]))
 
-        report = clean_trio_datasets(ds)
+        report = clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True)
         assert len(report.duplicates_merged) == 0
         assert len(report.duplicates_skipped) == 1
 
@@ -101,7 +101,7 @@ class TestMergeDuplicates:
         _write_jsonl(ds / "14_CaseControl.jsonl", scrubbed_records([{"A": 1}]))
         # 14_Case_Control.jsonl does NOT exist
 
-        report = clean_trio_datasets(ds)
+        report = clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True)
         assert report.duplicates_merged == []
         assert report.duplicates_skipped == []
 
@@ -125,7 +125,7 @@ class TestEdgeCases:
 
         ds = config.TRIO_DATASETS_DIR
         # No files at all
-        report = clean_trio_datasets(ds)
+        report = clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True)
         assert report.total_actions == 0
 
     def test_nonexistent_directory(self, tmp_path: Path, monkeypatch_config: Path) -> None:
@@ -147,6 +147,7 @@ class TestAuditSerialization:
 
         clean_trio_datasets(
             ds,
+            enable_legacy_jsonl_pair_merge=True,
             extracted_drop_events=[],
             study_name="TestStudy",
         )
@@ -185,6 +186,7 @@ class TestAuditSerialization:
 
         clean_trio_datasets(
             ds,
+            enable_legacy_jsonl_pair_merge=True,
             extracted_drop_events=[],
             study_name="TestStudy",
         )
@@ -222,6 +224,7 @@ class TestAuditSerialization:
 
         clean_trio_datasets(
             ds,
+            enable_legacy_jsonl_pair_merge=True,
             extracted_drop_events=[drop_event],
             study_name="TestStudy",
         )
@@ -254,6 +257,7 @@ class TestAuditSerialization:
 
         clean_trio_datasets(
             ds,
+            enable_legacy_jsonl_pair_merge=True,
             extracted_drop_events=[drop_event],
             study_name="TestStudy",
         )
@@ -278,6 +282,7 @@ class TestAuditSerialization:
         # Parent should auto-create
         clean_trio_datasets(
             ds,
+            enable_legacy_jsonl_pair_merge=True,
             extracted_drop_events=[],
             study_name="TestStudy",
         )
@@ -297,6 +302,7 @@ class TestAuditSerialization:
 
         clean_trio_datasets(
             ds,
+            enable_legacy_jsonl_pair_merge=True,
             extracted_drop_events=[],
             study_name="TestStudy",
         )
@@ -342,6 +348,7 @@ class TestAuditSerialization:
 
         clean_trio_datasets(
             ds,
+            enable_legacy_jsonl_pair_merge=True,
             extracted_drop_events=[],
             study_name="TestStudy",
         )
@@ -370,6 +377,7 @@ class TestAuditSerialization:
 
         clean_trio_datasets(
             ds,
+            enable_legacy_jsonl_pair_merge=True,
             extracted_drop_events=[],
             study_name="TestStudy",
         )
@@ -396,6 +404,7 @@ class TestAsWrittenLedger:
 
         clean_trio_datasets(
             ds,
+            enable_legacy_jsonl_pair_merge=True,
             extracted_drop_events=[],
             study_name="TestStudy",
         )
@@ -431,6 +440,7 @@ class TestAsWrittenLedger:
 
         clean_trio_datasets(
             ds,
+            enable_legacy_jsonl_pair_merge=True,
             extracted_drop_events=[drop_event],
             study_name="TestStudy",
         )
@@ -454,6 +464,7 @@ class TestAsWrittenLedger:
 
         clean_trio_datasets(
             ds,
+            enable_legacy_jsonl_pair_merge=True,
             extracted_drop_events=[],
             study_name="TestStudy",
         )
@@ -488,6 +499,7 @@ class TestAsWrittenLedger:
 
         clean_trio_datasets(
             ds,
+            enable_legacy_jsonl_pair_merge=True,
             extracted_drop_events=[non_column_event],
             study_name="TestStudy",
         )
@@ -511,7 +523,7 @@ class TestScrubFirstGuard:
         _write_jsonl(ds / "unscrubbed.jsonl", [{"SUBJID": "S1", "AGE": 30}])
 
         with pytest.raises(UnscrubbedDatasetError, match=r"_phi_scrubbed.*marker absent"):
-            clean_trio_datasets(ds)
+            clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True)
 
     def test_old_marker_raises(self, monkeypatch_config: Path) -> None:
         """A file with an old marker version (v1) must raise UnscrubbedDatasetError."""
@@ -524,7 +536,7 @@ class TestScrubFirstGuard:
         _write_jsonl(ds / "old_marker.jsonl", [{"SUBJID": "S1", "_phi_scrubbed": "v1"}])
 
         with pytest.raises(UnscrubbedDatasetError, match=r"1 row.*not scrubbed to v3"):
-            clean_trio_datasets(ds)
+            clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True)
 
     def test_mixed_rows_raises(self, monkeypatch_config: Path) -> None:
         """A file where only some rows carry v3 must raise UnscrubbedDatasetError."""
@@ -543,7 +555,7 @@ class TestScrubFirstGuard:
         )
 
         with pytest.raises(UnscrubbedDatasetError, match=r"1 row.*not scrubbed to v3"):
-            clean_trio_datasets(ds)
+            clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True)
 
     def test_fully_scrubbed_file_passes(self, monkeypatch_config: Path) -> None:
         """A file where every row carries _phi_scrubbed == 'v3' must not raise."""
@@ -554,7 +566,7 @@ class TestScrubFirstGuard:
         _write_jsonl(ds / "scrubbed.jsonl", scrubbed_records([{"SUBJID": "S1", "AGE": 30}]))
 
         # Must not raise — the guard should pass cleanly
-        report = clean_trio_datasets(ds, study_name="TestStudy")
+        report = clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True, study_name="TestStudy")
         assert report.total_actions == 0
 
 
@@ -592,7 +604,7 @@ class TestValueDivergentPairRoutedToHumanReview:
         _write_jsonl(ds / "14_CaseControl.jsonl", file_a_rows)
         _write_jsonl(ds / "14_Case_Control.jsonl", file_b_rows)
 
-        clean_trio_datasets(ds, study_name="TestStudy")
+        clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True, study_name="TestStudy")
 
         assert (ds / "14_CaseControl.jsonl").exists(), "File A must not be deleted"
         assert (ds / "14_Case_Control.jsonl").exists(), "File B must not be deleted"
@@ -613,7 +625,7 @@ class TestValueDivergentPairRoutedToHumanReview:
         _write_jsonl(ds / "14_CaseControl.jsonl", file_a_rows)
         _write_jsonl(ds / "14_Case_Control.jsonl", file_b_rows)
 
-        clean_trio_datasets(ds, study_name="TestStudy")
+        clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True, study_name="TestStudy")
 
         review_note = (
             config.STUDY_AUDIT_DIR
@@ -648,7 +660,7 @@ class TestValueDivergentPairRoutedToHumanReview:
         _write_jsonl(ds / "14_CaseControl.jsonl", file_a_rows)
         _write_jsonl(ds / "14_Case_Control.jsonl", file_b_rows)
 
-        report = clean_trio_datasets(ds, study_name="TestStudy")
+        report = clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True, study_name="TestStudy")
 
         # duplicates_merged must NOT contain the value-divergent pair
         merged_files = {e.get("kept", "") for e in report.duplicates_merged} | {
@@ -687,7 +699,7 @@ class TestValueDivergentPairRoutedToHumanReview:
         _write_jsonl(ds / "14_CaseControl.jsonl", file_a_rows)
         _write_jsonl(ds / "14_Case_Control.jsonl", file_b_rows)
 
-        report = clean_trio_datasets(ds, study_name="TestStudy")
+        report = clean_trio_datasets(ds, enable_legacy_jsonl_pair_merge=True, study_name="TestStudy")
 
         # Neither file should be deleted
         assert (ds / "14_CaseControl.jsonl").exists(), "file_a must not be deleted"

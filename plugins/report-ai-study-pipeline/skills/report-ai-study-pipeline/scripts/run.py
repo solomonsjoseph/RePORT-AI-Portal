@@ -319,6 +319,19 @@ def main(argv: list[str] | None = None) -> int:
                 state.flush()
                 return hdr.exit_code or 1
 
+        # ── P2 raw-file deduplication (Note 4 — before SoT / extraction) ───
+        dedup = invoke_skill(
+            "dataset-deduplication",
+            ["--study", study, "--run-id", run_id, "--run-dir", str(run_dir)],
+            env=child_env,
+        )
+        drec = _record_skill_phase(state, "P2:dataset-deduplication", dedup)
+        if not dedup.ok:
+            state.status = "failed"
+            drec.detail = dedup.summary
+            state.flush()
+            return dedup.exit_code or 1
+
         # ── P1b SoT lean outputs (joined views before publish gate) ─────────
         from scripts.source_truth.generate_lean_outputs import main as generate_lean_outputs_main
 
