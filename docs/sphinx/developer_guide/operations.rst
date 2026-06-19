@@ -36,11 +36,13 @@ Plugin Study Preparation
 ------------------------
 
 The active full workflow is the portable plugin bundle at
-``plugins/report-ai-study-pipeline/``. Its phase order is fixed:
+``plugins/report-ai-study-pipeline/``. Launch via ``make study STUDY=<name>``
+(the 10-phase orchestrator): config preflight → header ∥ dictionary extraction
+→ **dataset-deduplication** (raw-file tiers, Note 4) → SoT ∥ PHI classify ∥
+extract → scrub → verify → PHI guard gate → promote → snapshot.
 
-1. ``excel-duplicate-handler`` once per study.
-2. ``sot-lean-generator`` per ready raw-file set.
-3. ``dataset-to-llm-source`` through the host repo's lock-aware publish path.
+Legacy ``excel-duplicate-handler`` is not invoked by the orchestrator
+(superseded by ``dataset-deduplication`` at phase 2).
 
 The plugin does not own the data dictionary. Dictionary extraction stays in
 ``main.py`` and ``scripts.extraction.load_dictionary``.
@@ -69,11 +71,10 @@ binding. Anchored calibration gold, when present, stays under
 ``data/raw/{STUDY}/annotated_pdfs/*.pdf`` and
 ``data/raw/{STUDY}/datasets/*.{xlsx,csv}``
 
-**Outputs:**
-``output/{STUDY}/llm_source/SoT/{pair}/pdf/{form}_policy.yaml``,
-``output/{STUDY}/llm_source/SoT/{pair}/dataset/{form}_schema.json``, and
+**Outputs (LLM-facing):**
 ``output/{STUDY}/llm_source/SoT/{pair}/joined/{form}_joined_query_view.yaml``
-for each PDF-backed form that passes the checker.
+for each PDF-backed form that passes the checker. Intermediate policy/schema
+files under ``pdf/`` and ``dataset/`` are construction artifacts only.
 
 **Re-run policy:** ``make sot-generate-all`` is idempotent and overwrites only
 after the generated candidate passes verification.

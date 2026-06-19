@@ -1,49 +1,49 @@
 ---
 name: dataset-deduplication
-description: Clean the staging datasets tree — remove known junk files and merge only provably-safe duplicate file pairs (keeping the larger when one is a strict subset); route value-divergent pairs to human review instead of union-merging. Fail-closed scrub-first — refuses to run on unscrubbed rows. Counts/names only, never row values.
+description: Raw-file dataset deduplication (Note 4) — filename normalization, header/row-count tiers, no cell reads. Orchestrator phase 2, before SoT and extraction.
 ---
 
 # Dataset Deduplication
 
-## Core Rule
+## Core Rule (GR-1 + Note 4)
 
-**Accuracy with no middle ground.** A duplicate pair is merged only when one
-member is *provably* a strict subset of the other. A value-divergent pair
-(neither is a subset) is NEVER union-merged — auto-union could drop real
-clinical rows or fabricate duplicate subject records — it is routed to human
-review with a count-only note. What must be preserved is preserved exactly.
+**No LLM and no dedup logic may read dataset row values.** Column headers
+(row 1) and row **counts** only. Lock/temp files (``~$*.xlsx``) are ignored
+automatically.
 
 ## What This Skill Does
 
-Phase 2 of the publish pipeline. Deduplicates **raw** dataset files under
-``data/raw/<study>/datasets/`` via filename normalization and header/row-count
-tiers (Note 4). Never reads cell values. JSONL-level duplicate merging is
-retired from the active path (legacy tests only).
+Orchestrator **phase 2**. Deduplicates **raw** Excel/CSV files under
+``data/raw/<study>/datasets/`` via ``scripts/extraction/raw_file_dedup.py``:
 
-- removes known junk files (`JUNK_PATTERNS`),
-- structurally compares suspected duplicate pairs and merges the provably-safe
-  ones (subset → keep larger),
-- routes divergent pairs to `audit/human_review/datasets/<stem>/` (count-only note),
-- emits the unified `dataset_cleanup_ledger.as_written.json` per dataset.
+1. **Normalize** filenames (strip underscores, numeric suffixes, case).
+2. **Group** files sharing the same normalized base (2+ = duplicate candidate set).
+3. **Tier 1 — perfect column match:** identical header name/count/order;
+   row counts equal → auto-resolve (archive duplicates); row counts differ →
+   human review.
+4. **Tier 2 — header superset:** one file's columns are a strict superset of
+   another's → keep the file with the maximum column count; archive others.
+5. **All other cases** → human review (count-only note under
+   ``audit/human_review/``).
 
-**Fail-closed scrub-first:** a pre-flight guard refuses to proceed unless every
-staging row carries the `_phi_scrubbed` marker, so file-level merge can never
-touch unscrubbed PHI.
+JSONL-level duplicate merging (``clean_trio_datasets`` pair merge) is **retired**
+from the production path (legacy unit tests only).
 
 ## CLI
 
 ```bash
-python plugins/report-ai-study-pipeline/skills/dataset-deduplication/scripts/run.py \
+uv run --all-groups python \
+  plugins/report-ai-study-pipeline/skills/dataset-deduplication/scripts/run.py \
   --study <STUDY> --run-id <RUN_ID>
 ```
 
-Exit `0` on success (including divergent-pair-held, a normal outcome); `1` when
-the scrub-first guard refuses or an I/O error occurs.
+Exit ``0`` on success (including held-for-review groups); ``1`` on I/O or
+manifest errors.
 
 ## Result Contract
 
-Emits one `RPLN_SKILL_RESULT:` marker line: junk-removed / merged /
-held-for-review / error COUNTS only — never a row value.
+Emits one ``RPLN_SKILL_RESULT:`` marker: auto-resolved / held / archived /
+error **counts** only — never a row value.
 
 ## Portability
 

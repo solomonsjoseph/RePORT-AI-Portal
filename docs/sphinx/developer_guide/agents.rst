@@ -93,11 +93,11 @@ Architecture (two-world)
 **World 1 — Plugin-orchestrated study preparation**
 (``plugins/report-ai-study-pipeline/`` plus trusted host CLIs):
 
-**Full study preparation:** use the ``report-ai-study-pipeline`` plugin.
-It runs ``excel-duplicate-handler`` once per study, then
-``sot-lean-generator`` per ready raw-file set, then
-``dataset-to-llm-source`` through the host repo's lock-aware publish path.
-The plugin may delegate independent raw-file sets to subagents.
+**Full study preparation:** use ``make study STUDY=<name>`` (the
+``report-ai-study-pipeline`` orchestrator). Phase 2 runs
+``dataset-deduplication`` on raw files; phases 3–10 cover SoT generation,
+PHI classify/scrub, audit verification, PHI guard gate, promotion, cleanup,
+and snapshot commit.
 
 **SoT creation:** ``make sot-generate-all STUDY=<study>`` is the repo-local
 wrapper around the sot-lean-generator scripts. It pairs annotated PDFs with

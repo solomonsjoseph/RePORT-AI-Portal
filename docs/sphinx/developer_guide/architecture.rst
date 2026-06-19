@@ -119,13 +119,13 @@ source-truth build steps run.
 Pipeline Modules
 ----------------
 
-The plugin workflow is the active study-preparation coordinator:
+The plugin workflow is the active study-preparation coordinator
+(``make study STUDY=<name>`` — 10 phases):
 
-1. ``excel-duplicate-handler`` runs once per study.
-2. ``sot-lean-generator`` runs per raw-file set and may fan out across
-   independent sets.
-3. ``dataset-to-llm-source`` publishes PHI-safe dataset JSONL through the
-   host repo's lock-aware CLI and verifier.
+1. ``dataset-deduplication`` (phase 2 — raw-file tiers, Note 4).
+2. ``sot-lean-generator`` ∥ ``phi-classification`` ∥ extraction (phase 3).
+3. ``phi-scrubbing`` → audit verification → PHI guard gate → promote →
+   snapshot (phases 4–10 via the publish supervisor and orchestrator).
 
 The data dictionary is intentionally outside the plugin. It stays in
 ``main.py`` / ``scripts.extraction.load_dictionary`` and publishes dictionary
@@ -220,12 +220,10 @@ Source-Truth Set Creation (sot-lean-generator skill)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SoT production is the plugin's PDF/header phase. It produces one
-Source Truth set per raw-file set:
-``llm_source/SoT/<pair>/pdf/<form>_policy.yaml``,
-``llm_source/SoT/<pair>/dataset/<form>_schema.json``, and
-``llm_source/SoT/<pair>/joined/<form>_joined_query_view.yaml``. The phase
-mixes deterministic helpers with LLM reasoning and can run in parallel
-across independent ready raw-file sets.
+Source Truth set per raw-file set. The **LLM-facing** artifact is
+``llm_source/SoT/<pair>/joined/<form>_joined_query_view.yaml`` (Note 3).
+Intermediate ``pdf/*_policy.yaml`` and ``dataset/*_schema.json`` files are
+construction materials used to build the joined view.
 
 **Stage 0 — Source pack (deterministic)**
 
@@ -414,18 +412,19 @@ End-to-End Runtime Flow
 
 .. code-block:: text
 
-   report-ai-study-pipeline plugin
+   report-ai-study-pipeline orchestrator (make study)
       |
-      +-- excel-duplicate-handler (once per study)
+      +-- P2 dataset-deduplication (raw files; headers + row counts only)
       |
-      +-- sot-lean-generator (per ready raw-file set; PDF + row-1 headers only)
-      |      -> output/{STUDY_NAME}/llm_source/SoT/<pair>/{pdf,dataset,joined}/
+      +-- P3 sot-lean-generator ∥ phi-classification ∥ extraction
+      |      -> joined views under output/{STUDY}/llm_source/SoT/<pair>/joined/
       |
-      +-- dataset-to-llm-source (trusted host publish path)
-             data/raw/{STUDY_NAME}/datasets/ -> tmp/{STUDY_NAME}/datasets/
-             -> phi_scrub.run_scrub -> dataset_cleanup
-             -> output/{STUDY_NAME}/llm_source/dataset_schema/files/
-             -> output/{STUDY_NAME}/audit/{lineage,ledgers,reports}
+      +-- P4–P10 publish supervisor (dataset-to-llm-source + host_pipeline)
+             data/raw/{STUDY}/datasets/ -> tmp/{STUDY}/datasets/
+             -> phi_scrub.run_scrub -> promote
+             -> output/{STUDY}/llm_source/dataset_schema/files/
+             -> output/{STUDY}/audit/{lineage,ledgers,reports}
+             -> snapshot under output/{STUDY}/snapshots/
       |
       +-- host dictionary loader (outside the plugin)
              data/raw/{STUDY_NAME}/data_dictionary/
@@ -460,9 +459,8 @@ Expected processed tree:
    │   ├── dataset_schema/files/*.jsonl  # PHI-scrubbed
    │   ├── dictionary_mapping/jsonl/**/*.jsonl
    │   └── SoT/<pair>/
-   │       ├── pdf/*_policy.yaml
-   │       ├── dataset/*_schema.json
-   │       └── joined/*_joined_query_view.yaml
+   │       └── joined/*_joined_query_view.yaml   # LLM read zone (Note 3)
+   │       # pdf/ and dataset/ may exist as intermediate construction artifacts
    ├── audit/                        # AUDIT — counts only; LLM hard-rejected
    │   ├── lineage_manifest.json
    │   ├── phi_scrub_report.json
