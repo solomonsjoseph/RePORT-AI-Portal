@@ -52,8 +52,9 @@ than being re-decomposed into separate subprocesses.
 
 `$phi-rulebook` is a shared-module skill consumed in phase 0 and by
 `$phi-classification` (not a DAG node). `$study-setup` is interactive scaffolding
-and is **not** an orchestrator phase. `$excel-duplicate-handler` is a study-level
-preflight run before the orchestrated phases when duplicate workbooks exist.
+and is **not** an orchestrator phase. `$excel-duplicate-handler` is retained as
+a **legacy** maintainer-only helper (superseded by `$dataset-deduplication` at
+orchestrator phase 2 — Note 18).
 
 ## Execution Unit
 
@@ -93,7 +94,9 @@ never triggered from the Load Study UI.
 
 ## When To Use Only One Child Skill
 
-If the user asks only about duplicate files, use `$excel-duplicate-handler`.
+If the user asks only about duplicate files, use `$dataset-deduplication`
+(orchestrator phase 2). The legacy `$excel-duplicate-handler` merge helper is
+not invoked by the publish path.
 If the user asks only about PDF/header Source Truth policy YAML, use
 `$sot-lean-generator`. If the user asks only to run or verify PHI-safe dataset
 publishing, use `$dataset-to-llm-source`. Use this orchestrator when the request

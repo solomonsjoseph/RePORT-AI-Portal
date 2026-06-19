@@ -226,7 +226,7 @@ def run_pipeline() -> dict[str, Any]:
     parts = [
         "[report-ai-study-pipeline plugin]",
         f"manifest={plugin_manifest}",
-        "phase_order=excel-duplicate-handler -> sot-lean-generator -> dataset-to-llm-source",
+        "phase_order=make study (10-phase orchestrator: dataset-deduplication @ P2 -> sot/phi/extract @ P3 -> publish @ P6-10)",
     ]
     if not plugin_manifest.is_file():
         combined = "\n".join(
@@ -241,36 +241,21 @@ def run_pipeline() -> dict[str, Any]:
     dataset_dir = config.BASE_DIR / "data" / "raw" / study / "datasets"
     lock_temp_files = sorted(dataset_dir.glob("~$*.xls*")) if dataset_dir.is_dir() else []
     if lock_temp_files:
-        ok, logs = _run_plugin_subprocess(
-            "excel-duplicate-handler",
+        parts.extend(
             [
-                sys.executable,
-                str(
-                    config.BASE_DIR
-                    / "plugins"
-                    / "report-ai-study-pipeline"
-                    / "skills"
-                    / "excel-duplicate-handler"
-                    / "scripts"
-                    / "merge_excel_duplicates.py"
+                "[dataset-deduplication]",
+                (
+                    f"Found {len(lock_temp_files)} Excel lock/temp artifact(s); "
+                    "these are ignored automatically by raw-file dedup in "
+                    "`make study` phase 2 (Note 4). No legacy merge run invoked."
                 ),
-                "--study",
-                study,
-                "--dataset-dir",
-                str(dataset_dir),
-                "--artifact-root",
-                str(config.BASE_DIR),
-            ],
-            subprocess_env=subprocess_env,
+            ]
         )
-        parts.extend(logs)
-        if not ok:
-            return {"success": False, "output": "\n".join(parts).strip()}
     else:
         parts.extend(
             [
-                "[excel-duplicate-handler]",
-                "No Excel lock/temp dataset artifacts found; duplicate preflight did not need a merge run.",
+                "[dataset-deduplication]",
+                "No Excel lock/temp dataset artifacts found; dedup runs in orchestrator phase 2.",
             ]
         )
 

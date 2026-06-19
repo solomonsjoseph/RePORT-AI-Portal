@@ -150,7 +150,7 @@ def _cite_in_study_config(field: str) -> Citation | None:
     GAP-9: anchored to structural positions where a column name is a value
     of a ``column:`` / ``backing_column:`` key, or a mapping key of a
     concept block — mirroring the anchored patterns in
-    :func:`_cite_in_form_policy` and :func:`_cite_in_dataset_schema`.
+    :func:`_cite_in_joined_view`.
     A free word-boundary substring match would return coincidental wrong
     citations (e.g. a field named "AGE" hitting a line containing "CAGE").
     We prefer returning no citation over a wrong one.

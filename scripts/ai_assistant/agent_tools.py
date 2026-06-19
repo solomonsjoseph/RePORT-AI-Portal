@@ -1902,12 +1902,12 @@ def read_llm_source_file(relative_path: str, max_bytes: int = 24000) -> str:
     """Read a single file from the PHI-scrubbed ``llm_source/`` tree.
 
     Use after ``list_llm_source`` / ``search_llm_source`` to read a specific
-    SoT policy YAML or dictionary file in full. For large ``.jsonl`` datasets,
+    SoT joined query view or dictionary file in full. For large ``.jsonl`` datasets,
     prefer ``run_python_analysis`` — this returns only the first ``max_bytes``.
 
     Args:
         relative_path: Path relative to ``llm_source/`` (e.g.
-            ``"SoT/6_HIV/6_HIV_policy.yaml"``).
+            ``"SoT/6_HIV/joined/6_HIV_joined_query_view.yaml"``).
         max_bytes: Maximum bytes to return (default 24000; capped at 100000).
 
     Returns:

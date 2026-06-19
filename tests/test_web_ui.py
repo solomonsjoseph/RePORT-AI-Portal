@@ -165,14 +165,14 @@ def test_load_study_activates_report_ai_study_plugin(
 
     assert result["success"] is True
     assert "[report-ai-study-pipeline plugin]" in result["output"]
+    assert "[dataset-deduplication]" in result["output"]
     assert [Path(call[1]).name for call in calls] == [
-        "merge_excel_duplicates.py",
         "generate_lean_outputs.py",
         "extract_to_llm_source.py",
         "extract_to_llm_source.py",
     ]
-    assert calls[2][-3:] == ["run", "--study", "Study"]
-    assert calls[3][-3:] == ["verify", "--study", "Study"]
+    assert calls[1][-3:] == ["run", "--study", "Study"]
+    assert calls[2][-3:] == ["verify", "--study", "Study"]
 
 
 def test_load_study_reports_missing_dictionary_mapping_when_source_exists(
@@ -193,11 +193,14 @@ def test_load_study_reports_missing_dictionary_mapping_when_source_exists(
     data_dictionary.mkdir(parents=True)
     (data_dictionary / "dictionary.csv").write_text("variable,label\nAGE,Age\n", encoding="utf-8")
     datasets_out = llm_source / "dataset_schema" / "files"
-    sot_policy = llm_source / "SoT" / "6_HIV" / "pdf"
+    joined_dir = llm_source / "SoT" / "6_HIV" / "joined"
     datasets_out.mkdir(parents=True)
-    sot_policy.mkdir(parents=True)
+    joined_dir.mkdir(parents=True)
     (datasets_out / "6_HIV.jsonl").write_text('{"_metadata": true}\n', encoding="utf-8")
-    (sot_policy / "6_HIV_policy.yaml").write_text("variables: {}\n", encoding="utf-8")
+    (joined_dir / "6_HIV_joined_query_view.yaml").write_text(
+        "study: Study\nform: 6_HIV\nvariables: {}\n",
+        encoding="utf-8",
+    )
 
     def fake_run(_cmd: list[str], **_kwargs: object) -> SimpleNamespace:
         return SimpleNamespace(returncode=0, stdout="ok", stderr="")

@@ -105,6 +105,13 @@ def test_plugin_defines_raw_file_set_contract() -> None:
     assert any("config/<STUDY>/_forms_manifest.yaml" in i for i in raw_file_set["inputs"])
 
 
+def test_host_repo_contract_expected_outputs_include_joined_view() -> None:
+    manifest = _manifest()
+    outputs = manifest["host_repo_contract"]["expected_outputs"]
+    assert any("joined" in o and "joined_query_view" in o for o in outputs)
+    assert not any("/pdf/" in o and "_policy.yaml" in o for o in outputs)
+
+
 def test_host_repo_contract_points_at_new_entrypoints() -> None:
     manifest = _manifest()
     required = manifest["host_repo_contract"]["required_paths"]
