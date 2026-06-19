@@ -200,7 +200,6 @@ def test_generate_form_routes_missing_pdf_to_sot_review(tmp_path: Path) -> None:
         / study
         / "audit"
         / "human_review"
-        / "sot"
         / form
         / "review_report.md"
     )
@@ -228,7 +227,6 @@ def test_batch_main_routes_ambiguous_discovery_to_sot_review(tmp_path: Path) -> 
         / study
         / "audit"
         / "human_review"
-        / "sot"
         / "1"
         / "review_report.md"
     )
@@ -445,7 +443,6 @@ sections:
         / study
         / "audit"
         / "human_review"
-        / "sot"
         / form
         / "review_report.md"
     )
@@ -496,5 +493,5 @@ def test_generate_form_publishes_field_count_mismatch_with_review(
     result = generate_form(repo_root, study, form, out_dir)
 
     assert "human_review" in result.parts
-    assert "sot" in result.parts
+    assert form in result.parts  # Note 22: form-first review dir
     assert len(published) == 1

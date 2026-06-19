@@ -16,13 +16,14 @@ from scripts.security.llm_source_gate import LeakScanFinding, scan_tree_for_phi
 
 
 def test_review_path_helpers_are_form_scoped(tmp_path: Path) -> None:
+    # Note 22: form-first — human_review/{form}/{producer}.md (no category dir).
     p = presidio_failure_md_path(tmp_path, "1_Enrollment")
     assert p.name == "presidio_failure.md"
     assert p.parent.name == "1_Enrollment"
-    assert "human_review" in p.parts and "presidio" in p.parts
+    assert "human_review" in p.parts
     q = pycanon_report_md_path(tmp_path, "1_Enrollment")
     assert q.name == "pycanon_report.md"
-    assert "pycanon" in q.parts
+    assert q.parent.name == "1_Enrollment"
 
 
 def test_leak_finding_captures_column_name(tmp_path: Path) -> None:

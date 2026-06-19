@@ -15,34 +15,56 @@ from scripts.audit.review_paths import (
 )
 
 
-def test_sot_review_report_path_under_human_review_sot(tmp_path: Path) -> None:
+def test_sot_review_report_path_form_first(tmp_path: Path) -> None:
     audit_dir = tmp_path / "output" / "Indo-VAP" / "audit"
     path = sot_review_report_path(audit_dir, "15_Feces")
-    assert path == audit_dir / "human_review" / "sot" / "15_Feces" / "review_report.md"
+    # Note 22: form-first — human_review/{form}/review_report.md
+    assert path == audit_dir / "human_review" / "15_Feces" / "review_report.md"
 
 
 def test_dataset_jsonl_union_review_path(tmp_path: Path) -> None:
     audit_dir = tmp_path / "audit"
     path = dataset_jsonl_union_review_path(audit_dir, "14_CaseControl")
-    assert path == audit_dir / "human_review" / "datasets" / "14_CaseControl" / "jsonl_union_review.md"
+    assert path == audit_dir / "human_review" / "14_CaseControl" / "jsonl_union_review.md"
 
 
 def test_excel_duplicate_review_path(tmp_path: Path) -> None:
     audit_dir = tmp_path / "audit"
     path = excel_duplicate_review_path(audit_dir, "18_TargConcom")
-    assert path == audit_dir / "human_review" / "excel" / "18_TargConcom" / "duplicate_review_report.md"
+    assert path == audit_dir / "human_review" / "18_TargConcom" / "duplicate_review_report.md"
 
 
 def test_publish_sot_joined_gate_md_path(tmp_path: Path) -> None:
     audit_dir = tmp_path / "audit"
     path = publish_sot_joined_gate_md_path(audit_dir, "run_abc123")
-    assert path == audit_dir / "human_review" / "publish" / "run_abc123" / "sot_joined_gate.md"
+    assert path == audit_dir / "human_review" / "run_abc123" / "sot_joined_gate.md"
+
+
+def test_form_first_colocation(tmp_path: Path) -> None:
+    """All of a form's holding-producer notes share one human_review/{form}/ dir."""
+    from scripts.audit.review_paths import (
+        classification_review_path,
+        presidio_failure_md_path,
+        scrub_quarantine_review_path,
+        verifier_review_path,
+    )
+
+    audit_dir = tmp_path / "audit"
+    form = "15_Feces"
+    parents = {
+        sot_review_report_path(audit_dir, form).parent,
+        presidio_failure_md_path(audit_dir, form).parent,
+        classification_review_path(audit_dir, form).parent,
+        scrub_quarantine_review_path(audit_dir, form).parent,
+        verifier_review_path(audit_dir, form).parent,
+    }
+    assert parents == {audit_dir / "human_review" / form}
 
 
 def test_is_sot_review_report_path_canonical_and_legacy() -> None:
-    canonical = Path("output/X/audit/human_review/sot/1/review_report.md")
+    canonical = Path("output/X/audit/human_review/15_Feces/review_report.md")
     legacy = Path("output/X/audit/Sot_review/1/review_report.md")
-    other = Path("output/X/audit/human_review/datasets/1/jsonl_union_review.md")
+    other = Path("output/X/audit/human_review/1/jsonl_union_review.md")
     assert is_sot_review_report_path(canonical)
     assert is_sot_review_report_path(legacy)
     assert not is_sot_review_report_path(other)

@@ -1395,6 +1395,59 @@ def _apply_cross_form_consistency(
     return rebuilt, info
 
 
+def _write_scrub_quarantine_note(path: Path, pf: dict[str, Any]) -> None:
+    """Write a value-free PHI-scrub quarantine/elevated note (Note 22).
+
+    Counts + reason codes only — never a row value.
+    """
+    elevated = "  ⚠ ELEVATED" if pf.get("elevated") else ""
+    lines = [
+        "# PHI scrub — quarantine / review",
+        "",
+        f"**Form:** {pf['form']}",
+        f"**Kept rows:** {pf.get('kept', 0)} · **Quarantined rows:** {pf.get('quarantined', 0)}{elevated}",
+        "",
+        "## Quarantine reason codes (counts only — no row values)",
+        *[f"- {reason}" for reason in pf.get("reasons", [])],
+        "",
+        "Fix the source data or scrub config for the quarantined rows, then re-run "
+        "with `--resume-held`.",
+    ]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _write_classification_hold_note(path: Path, item: Any) -> None:
+    """Write a value-free PHI-classification hold note (Note 22).
+
+    Header NAMES, reason codes, and counts only — never a row value.
+    """
+    lines = [
+        "# PHI classification — human review required",
+        "",
+        f"**Form:** {item.form_name}",
+        f"**Status:** {item.status}",
+        "",
+        "## Why held (reason codes / header names only — no row values)",
+        *[f"- {reason}" for reason in item.reasons],
+    ]
+    held = getattr(item, "held_reason", None)
+    if held is not None:
+        lines += [
+            "",
+            "## Reviewer guidance",
+            f"- tried: {held.what_was_tried}",
+            f"- ambiguous: {held.what_was_ambiguous}",
+            f"- to resolve: {held.what_would_resolve}",
+        ]
+    force_drop = getattr(item, "force_drop_headers", ())
+    if force_drop:
+        lines += ["", f"## Force-dropped direct-identifier columns: {len(force_drop)}"]
+    lines += ["", "Resolve via config/policy, then re-run with `--resume-held`."]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def _run_form_approval_gate(
     *,
     study: str,
@@ -1516,6 +1569,19 @@ def _run_form_approval_gate(
         from scripts.security.phi_scrub import write_generated_scrub_overlay
 
         write_generated_scrub_overlay(aligned_all, run_dir=run_dir, study=study)
+
+    # N22: a PHI-classification hold deposits a count-only note into the per-form
+    # human_review queue (not only into phi_handling_approval.json) so a reviewer
+    # finds it in the single consolidated human_review/{form}/ location.
+    if held_forms:
+        from scripts.audit.review_paths import classification_review_path
+
+        audit_dir = run_dir.parents[1] / "audit"
+        for item in approvals:
+            if item.status != "approved":
+                _write_classification_hold_note(
+                    classification_review_path(audit_dir, item.form_name), item
+                )
 
     return FormGateResult(
         approved_forms=approved_forms,
@@ -1915,6 +1981,18 @@ def _cmd_run(args: argparse.Namespace) -> int:
             # Best-effort: a corrupt or missing sidecar is treated as clean.
             _scrub_partial = False
             _scrub_partial_forms = []
+
+        # N22: every form with quarantined rows (or flagged 'elevated') gets a
+        # count-only note in the per-form human_review queue, so the scrub hold is
+        # found in human_review/{form}/ — not only in scrub_outcome.json.
+        if _scrub_partial_forms:
+            from scripts.audit.review_paths import scrub_quarantine_review_path
+
+            _scrub_audit_dir = study_output_dir / "audit"
+            for _pf in _scrub_partial_forms:
+                _write_scrub_quarantine_note(
+                    scrub_quarantine_review_path(_scrub_audit_dir, _pf["form"]), _pf
+                )
 
         # ── Step 3.55: read sot_joined_gate_outcome.json (best-effort) ─────
         # The engine holds forms lacking a SoT joined query view before publish
