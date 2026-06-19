@@ -2003,14 +2003,16 @@ def _cmd_run(args: argparse.Namespace) -> int:
             extra=_status_extra,
         )
 
-        # ── Step 7: run verifier + commit snapshot on any fully-clean pass ──
-        # When any run (plain or --resume-held) produces a fully-clean pass
-        # (final_code == EXIT_OK: no form-gate holds AND no scrub-leg
-        # quarantine), the verifier is called inline and — if it passes — the
-        # resolved state is committed as an immutable snapshot.  This ensures
-        # that a study which never hits a form-hold can still produce a
-        # snapshot, not only the --resume-held path.
-        if final_code == EXIT_OK:
+        # ── Step 7: run verifier + commit snapshot on verifier-eligible passes ──
+        # EXIT_OK: no form-gate holds and no scrub-leg quarantine.
+        # Scrub-only partial (EXIT_PARTIAL_REVIEW with zero held forms): every
+        # approved form is published; only some rows were quarantined. Still
+        # snapshot after the inline verifier passes (Note 14 — published tree is
+        # complete; quarantine counts live in scrub_outcome / partial_forms).
+        _scrub_only_partial = (
+            final_code == EXIT_PARTIAL_REVIEW and not _all_held_forms and _scrub_partial
+        )
+        if final_code == EXIT_OK or _scrub_only_partial:
             # Build a minimal Namespace that _cmd_verify accepts.
             verify_args = argparse.Namespace(study=study, run_id=run_id)
             verify_exit = _cmd_verify(verify_args)

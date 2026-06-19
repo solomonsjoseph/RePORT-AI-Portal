@@ -649,6 +649,8 @@ def _run_cmd_with_quarantine(
     with (
         patch("scripts.utils.run_context.scan_for_in_progress_scrubs", return_value=[]),
         patch.object(skill_mod, "destroy_staging_and_attest", fake_destroy),
+        patch.object(skill_mod, "_cmd_verify", return_value=skill_mod.EXIT_OK),
+        patch.object(skill_mod, "_try_commit_snapshot", return_value="snap_test"),
         patch("subprocess.run", return_value=SimpleNamespace(returncode=0)),
     ):
         rc = main(["run", "--study", STUDY])
