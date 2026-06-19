@@ -600,7 +600,7 @@ scripts and rule files.
 
 **How.** ``scripts/source_truth/study_intake.py`` resolves one PDF/dataset
 pair and delegates Stage 0 extraction to the skill script. It reads only
-dataset row 1 for SoT binding. ``scripts/source_truth/generate_lean_outputs.py``
+dataset row 1 for SoT binding. ``python -m scripts.source_truth.generate_lean_outputs``
 runs the batch runtime loop: source pack -> candidate under ``/tmp`` -> verifier
 -> promote to ``output/{STUDY}/llm_source/SoT/<pair>/``. The web UI's
 **Load Study** action activates the plugin; the dataset publish phase still

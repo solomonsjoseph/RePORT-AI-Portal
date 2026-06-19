@@ -166,13 +166,11 @@ def test_load_study_activates_report_ai_study_plugin(
     assert result["success"] is True
     assert "[report-ai-study-pipeline plugin]" in result["output"]
     assert "[dataset-deduplication]" in result["output"]
-    assert [Path(call[1]).name for call in calls] == [
-        "generate_lean_outputs.py",
-        "extract_to_llm_source.py",
-        "extract_to_llm_source.py",
-    ]
-    assert calls[1][-3:] == ["run", "--study", "Study"]
-    assert calls[2][-3:] == ["verify", "--study", "Study"]
+    assert calls[0][1:3] == ["-m", "scripts.source_truth.generate_lean_outputs"]
+    publish_calls = [c for c in calls[1:] if any("extract_to_llm_source.py" in str(part) for part in c)]
+    assert len(publish_calls) == 2
+    assert publish_calls[0][-3:] == ["run", "--study", "Study"]
+    assert publish_calls[1][-3:] == ["verify", "--study", "Study"]
 
 
 def test_load_study_reports_missing_dictionary_mapping_when_source_exists(

@@ -1,9 +1,14 @@
 ---
 name: excel-duplicate-handler
-description: Handle duplicate RePORT-AI Excel or CSV dataset files using filename normalization, header-only comparison, and lossless main/branch merge rules. Use for same ordered headers, duplicate-numbered filenames, case/style filename variants, header supersets/subsets, append/union merges, duplicate rows, duplicate columns, duplicate headers, and PHI-safe dedup audits.
+description: "LEGACY (Note 18): superseded by dataset-deduplication at orchestrator phase 2. Maintainer-only merge helper — not invoked by make study."
 ---
 
-# Excel Duplicate Handler
+# Excel Duplicate Handler (Legacy)
+
+> **Superseded by `dataset-deduplication`** (orchestrator phase 2, `raw_file_dedup.py`).
+> Retained for manual maintainer preflight only. The publish path uses raw-file
+> dedup tiers (Note 4); do not invoke this skill from the Load Study wizard or
+> `make study`.
 
 ## Core Rule
 

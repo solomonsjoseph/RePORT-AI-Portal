@@ -34,12 +34,10 @@ These two rows reflect the design intent recorded in the spec (Note 21). The
 *in-DAG* duplicate handling was indeed replaced, but two artifacts named above
 are not fully gone today, so they are annotated here rather than misrepresented:
 
-- **`excel-duplicate-handler` is retained as a `role: preflight` skill** in
-  `plugins/report-ai-study-pipeline/plugin.yaml` (workbook / lock-temp sibling
-  resolution before Source Truth and publishing). The NEW Phase-2 DAG skill
-  `dataset-deduplication` (scrub-first, provably-safe subset merges only, with
-  divergent pairs routed to human review) is what replaced the old in-pipeline
-  duplicate-file handling. The preflight handler was not deleted.
+- **`excel-duplicate-handler` is retained as a `role: legacy_preflight` skill**
+  in `plugins/report-ai-study-pipeline/plugin.yaml` (maintainer-only merge
+  helper). Orchestrator phase 2 **`dataset-deduplication`** (`raw_file_dedup.py`)
+  replaced it in the active publish path (Note 18).
 - **`SUSPECTED_DUPLICATE_PAIRS` still exists** as a constant in
   `dataset_cleanup.py` (now at
   `plugins/report-ai-study-pipeline/skills/dataset-to-llm-source/scripts/dataset_cleanup.py`,

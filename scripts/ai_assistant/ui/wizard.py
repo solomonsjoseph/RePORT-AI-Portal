@@ -264,7 +264,8 @@ def run_pipeline() -> dict[str, Any]:
             "sot-lean-generator",
             [
                 sys.executable,
-                str(config.BASE_DIR / "scripts" / "source_truth" / "generate_lean_outputs.py"),
+                "-m",
+                "scripts.source_truth.generate_lean_outputs",
                 "--study",
                 study,
                 "--repo-root",

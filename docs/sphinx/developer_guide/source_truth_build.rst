@@ -169,9 +169,9 @@ they are never silently copied over anchored gold.
 Stage 5: promote
 ~~~~~~~~~~~~~~~~
 
-Promote only after all validation gates pass. The plugin-owned layout keeps
-the PDF policy, per-form dataset schema, and derived joined query view
-together:
+Promote only after all validation gates pass. Intermediate policy YAML and
+dataset schema JSON are construction artifacts; the **LLM-facing** runtime
+output is the joined query view (Note 3):
 
 .. code-block:: bash
 
@@ -179,18 +179,24 @@ together:
      output/Indo-VAP/llm_source/SoT/6_HIV/pdf/6_HIV_policy.yaml
    cp tmp/SoT/6_HIV/dataset/6_HIV_schema.json \
      output/Indo-VAP/llm_source/SoT/6_HIV/dataset/6_HIV_schema.json
-   uv run --all-groups python skills/sot-lean-generator/scripts/generate_joined_query_view.py \
+   uv run --all-groups python \
+     plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/generate_joined_query_view.py \
      --policy output/Indo-VAP/llm_source/SoT/6_HIV/pdf/6_HIV_policy.yaml \
      --schema output/Indo-VAP/llm_source/SoT/6_HIV/dataset/6_HIV_schema.json \
      --out output/Indo-VAP/llm_source/SoT/6_HIV/joined/6_HIV_joined_query_view.yaml
 
-The canonical runtime output paths are:
+Canonical **LLM-published** path:
+
+.. code-block:: text
+
+   output/{STUDY}/llm_source/SoT/{PAIR}/joined/{FORM}_joined_query_view.yaml
+
+Intermediate paths (construction only, not agent-facing):
 
 .. code-block:: text
 
    output/{STUDY}/llm_source/SoT/{PAIR}/pdf/{FORM}_policy.yaml
    output/{STUDY}/llm_source/SoT/{PAIR}/dataset/{FORM}_schema.json
-   output/{STUDY}/llm_source/SoT/{PAIR}/joined/{FORM}_joined_query_view.yaml
 
 Escalation Rules
 ----------------

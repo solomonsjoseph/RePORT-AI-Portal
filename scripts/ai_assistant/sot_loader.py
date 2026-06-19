@@ -407,52 +407,6 @@ def validate(data: dict[str, Any]) -> ValidationReport:
     return ValidationReport(passed=len(errors) == 0, errors=errors)
 
 
-def find_policy_yaml(
-    study: str,
-    form: str | None,
-    repo_root: Path,
-) -> list[Path]:
-    """Return policy YAML paths for one study (construction-time artifacts only).
-
-    .. deprecated::
-        Not for agent/LLM use. Published SoT for the assistant is joined query
-        views only (Note 3). Use :func:`find_joined_query_view_paths` instead.
-    """
-    study_output = repo_root / "output" / study
-    llm_source_dir = study_output / "llm_source"
-    legacy_dir = llm_source_dir / "source_truth"
-    sot_roots = [
-        llm_source_dir / "SoT",
-        study_output / "SoT",
-    ]
-
-    paths: list[Path] = []
-    if form is not None:
-        if legacy_dir.is_dir():
-            paths.extend(
-                candidate
-                for candidate in [
-                    legacy_dir / f"{form}_policy.yaml",
-                    legacy_dir / f"{form}_policy.lean.yaml",
-                ]
-                if candidate.exists()
-            )
-        for sot_root in sot_roots:
-            if sot_root.is_dir():
-                paths.extend(sorted(sot_root.glob(f"*/pdf/{form}_policy.yaml")))
-                paths.extend(sorted(sot_root.glob(f"*/pdf/{form}_policy.lean.yaml")))
-    else:
-        if legacy_dir.is_dir():
-            paths.extend(legacy_dir.glob("*_policy.yaml"))
-            paths.extend(legacy_dir.glob("*_policy.lean.yaml"))
-        for sot_root in sot_roots:
-            if sot_root.is_dir():
-                paths.extend(sot_root.glob("*/pdf/*_policy.yaml"))
-                paths.extend(sot_root.glob("*/pdf/*_policy.lean.yaml"))
-
-    return list(dict.fromkeys(paths))
-
-
 def load_policy_yaml(path: Path) -> dict[str, Any]:
     """Load a policy YAML file and return its contents as a dict.
 

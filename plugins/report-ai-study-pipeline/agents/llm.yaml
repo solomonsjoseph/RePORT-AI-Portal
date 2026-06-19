@@ -5,12 +5,14 @@
 # plugin as a whole for adapters that load at the plugin (not skill) level.
 interface:
   display_name: "RePORT-AI Study Pipeline"
-  short_description: "PHI-safe study preparation pipeline (duplicate handling, SoT, publish)"
+  short_description: "PHI-safe study preparation pipeline (dedup, SoT, publish)"
   default_prompt: >
     Use $report-ai-study-pipeline to run the full PHI-safe study preparation
-    pipeline: duplicate dataset triage, Source Truth policy generation from
-    PDFs and row-1 headers, and dataset-to-llm-source publishing.
+    pipeline via `make study STUDY=<name>`: raw-file deduplication (phase 2),
+    Source Truth joined views from PDFs and row-1 headers, PHI classify/scrub,
+    and dataset-to-llm-source publishing with snapshot commit.
   skills:
-    - excel-duplicate-handler
+    - report-ai-study-pipeline
+    - dataset-deduplication
     - sot-lean-generator
     - dataset-to-llm-source

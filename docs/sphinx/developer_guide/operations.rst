@@ -32,6 +32,10 @@ Prerequisites
        ``data_dictionary/`` and ``annotated_pdfs/`` when Source Truth is
        required
 
+Authoritative session-notes spec (Notes 1–22, GR-1): the Q&A session notes file
+``now-we-are-going-playful-dove.md`` (maintainer copy under ``~/.claude/plans/``).
+Implementation tracker: ``docs/plans/pipeline_redesign_implementation_plan.md``.
+
 Plugin Study Preparation
 ------------------------
 

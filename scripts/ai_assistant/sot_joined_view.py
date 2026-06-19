@@ -250,7 +250,7 @@ def _resolve_sot_pair_dir(sot_root: Path, stem: str) -> Path | None:
     if _joined_views_in_pair(direct):
         return direct
 
-    # Same glob shapes as sot_loader.find_policy_yaml for an explicit form id.
+    # Resolve policy/schema paths for an explicit form id (construction-time only).
     for suffix in _SOT_POLICY_SUFFIXES:
         for policy_path in sorted(sot_root.glob(f"*/pdf/{stem}{suffix}")):
             pair_dir = policy_path.parent.parent

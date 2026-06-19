@@ -411,9 +411,9 @@ Key files
    * - Pipeline
      - ``scripts/extraction/dataset_pipeline.py``
    * - SoT creation CLI
-     - ``scripts/source_truth/study_intake.py``,
-       ``scripts/source_truth/generate_lean_outputs.py``,
-       ``skills/sot-lean-generator/scripts/generate_pdf_aware_candidate.py``
+     - ``python -m scripts.source_truth.study_intake``,
+       ``python -m scripts.source_truth.generate_lean_outputs``,
+       ``plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/generate_pdf_aware_candidate.py``
    * - PHI scrub + catalog
      - ``scripts/security/phi_scrub.py``,
        ``scripts/security/phi_scrub.yaml``

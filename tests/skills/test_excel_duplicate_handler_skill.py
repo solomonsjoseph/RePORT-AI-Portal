@@ -22,20 +22,15 @@ def _frontmatter_and_body() -> tuple[dict[str, str], str]:
 
 
 def test_excel_duplicate_skill_metadata_triggers_for_duplicate_work() -> None:
-    frontmatter, _body = _frontmatter_and_body()
+    frontmatter, body = _frontmatter_and_body()
 
     assert frontmatter["name"] == "excel-duplicate-handler"
     description = frontmatter["description"]
-    assert "duplicate RePORT-AI Excel or CSV dataset files" in description
-    assert "lossless main/branch merge rules" in description
-    assert "same ordered headers" in description
-    assert "case/style filename variants" in description
-    assert "header supersets/subsets" in description
-    assert "append/union merges" in description
-    assert "duplicate rows" in description
-    assert "duplicate columns" in description
-    assert "duplicate headers" in description
-    assert "PHI-safe" in description
+    assert "LEGACY" in description
+    assert "dataset-deduplication" in description
+    assert "make study" in description
+    assert "PHI" in body
+    assert "Core Rule" in body
 
 
 def test_excel_duplicate_skill_preserves_project_privacy_boundary() -> None:

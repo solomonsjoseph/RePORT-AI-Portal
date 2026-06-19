@@ -30,9 +30,10 @@ commits an immutable snapshot and points `current.json` at it.
 
 ## Execution Model
 
-Duplicate handling is a study-level preflight (`excel-duplicate-handler`) run
-before the orchestrated phases when duplicate workbooks exist. After that, work
-is organized by **raw-file set** — one canonical form/work unit containing the
+Duplicate handling runs in orchestrator **phase 2** via
+``dataset-deduplication`` (raw-file tiers, Note 4). Legacy
+``excel-duplicate-handler`` is maintainer-only and not invoked by ``make study``.
+After dedup, work is organized by **raw-file set** — one canonical form/work unit containing the
 associated raw dataset workbook or CSV, matching printed PDF when Source Truth is
 required, manifest/privacy context, duplicate variants already resolved or held
 for review, and the per-set output/audit status.
@@ -60,13 +61,13 @@ held/partial sets as non-blocking notices and never triggers the retry loop.
 - `skills/report-ai-study-pipeline/SKILL.md` — the 10-phase orchestrator entrypoint.
 - `skills/header-extraction/SKILL.md` — row-1 column NAMES only.
 - `skills/dictionary-to-llm-source/SKILL.md` — data dictionary mapping leg.
-- `skills/dataset-deduplication/SKILL.md` — scrub-first duplicate-file handling.
-- `skills/sot-lean-generator/SKILL.md` — Source Truth policy YAML from PDFs + headers.
+- `skills/dataset-deduplication/SKILL.md` — raw-file dedup (orchestrator phase 2, Note 4).
+- `skills/sot-lean-generator/SKILL.md` — Source Truth from PDFs + row-1 headers → joined views.
 - `skills/phi-classification/SKILL.md` — deterministic jurisdiction PHI classification.
 - `skills/phi-scrubbing/SKILL.md` — fail-closed per-form PHI scrub.
 - `skills/dataset-to-llm-source/SKILL.md` — publish supervisor (gate → promote → snapshot).
 - `skills/audit-verification/SKILL.md` — the 14-assertion verifier.
-- `skills/excel-duplicate-handler/SKILL.md` — duplicate workbook/lock-temp handling.
+- `skills/excel-duplicate-handler/SKILL.md` — **legacy** maintainer merge helper (superseded by dataset-deduplication).
 - `skills/phi-rulebook/SKILL.md` — versioned offline PHI rulebook + drift detection.
 - `skills/study-setup/SKILL.md` — interactive study scaffolding (not an orchestrator phase).
 
@@ -83,7 +84,7 @@ platform adapter should map those commands to local equivalents.
 The host repo must preserve these execution semantics:
 
 - the orchestrator holds one per-study lock for the whole run;
-- duplicate handling runs once per study before set-level fan-out;
+- duplicate handling runs in orchestrator phase 2 (`dataset-deduplication`) before set-level fan-out;
 - Source Truth may run one set at a time or in parallel across independent sets;
 - dataset publishing must use the lock-aware host publish engine;
 - the data-dictionary leg still publishes
