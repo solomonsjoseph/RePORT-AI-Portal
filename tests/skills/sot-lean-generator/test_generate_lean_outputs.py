@@ -168,10 +168,18 @@ variables:
     )
 
     pair_dir = out_root / form
-    assert result == pair_dir / "pdf" / f"{form}_policy.yaml"
-    assert (pair_dir / "dataset" / f"{form}_schema.json").is_file()
+    # N2/N3/N17: the joined view is the SOLE LLM-facing SoT file; it is the return.
     joined = pair_dir / "joined" / f"{form}_joined_query_view.yaml"
+    assert result == joined
     assert joined.is_file()
+    # Construction material (policy YAML + dataset schema) is fenced into the AUDIT
+    # zone, NOT published into llm_source.
+    construction = out_root.parents[1] / "audit" / "SoT_construction" / form
+    assert (construction / "pdf" / f"{form}_policy.yaml").is_file()
+    assert (construction / "dataset" / f"{form}_schema.json").is_file()
+    # llm_source/SoT/<pair>/ holds ONLY joined/ — no pdf/ or dataset/ subdirs.
+    assert not (pair_dir / "pdf").exists()
+    assert not (pair_dir / "dataset").exists()
     joined_text = joined.read_text(encoding="utf-8")
     assert "CD4 Test Date" in joined_text
     assert "source_order" not in joined_text

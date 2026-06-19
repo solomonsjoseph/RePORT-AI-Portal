@@ -407,80 +407,10 @@ def validate(data: dict[str, Any]) -> ValidationReport:
     return ValidationReport(passed=len(errors) == 0, errors=errors)
 
 
-def load_policy_yaml(path: Path) -> dict[str, Any]:
-    """Load a policy YAML file and return its contents as a dict.
-
-    Raises ``ValueError`` when the file is missing, unreadable, or structurally
-    invalid (root not a dict, or missing the required *variables* key).
-    """
-    if not path.exists():
-        raise ValueError(f"Policy YAML not found: {path}")
-    validate_agent_read(path)
-    try:
-        data: Any = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except yaml.YAMLError as exc:
-        raise ValueError(f"YAML parse error in {path}: {exc}") from exc
-    if not isinstance(data, dict):
-        raise ValueError(f"Expected a mapping at root of {path}, got {type(data).__name__}")
-    if "variables" not in data:
-        raise ValueError(f"Required key 'variables' missing in {path}")
-    return data  # type: ignore[return-value]
-
-
-def summarize_policy(data: dict[str, Any]) -> dict[str, Any]:
-    """Return a compact summary view of a loaded policy YAML.
-
-    Includes top-level metadata, section/variable counts, per-variable metadata
-    (no dataset row values), and pass-through of instructions/arrows/discrepancies.
-    """
-    form_block = data.get("form", {})
-    if isinstance(form_block, dict):
-        form_summary = {
-            "number": form_block.get("number"),
-            "title": form_block.get("title"),
-        }
-    else:
-        form_summary = {"number": None, "title": str(form_block)}
-
-    sections = data.get("sections", {})
-    raw_variables = data.get("variables", {})
-
-    keep_fields = {
-        "section",
-        "pdf_question",
-        "description",
-        "widget",
-        "type",
-        "options",
-        "relationships",
-        "skip_logic",
-        "phi",
-        "pdf_label",
-        "pdf_subsection",
-        "format",
-        "units",
-        "precision",
-        "notes",
-    }
-
-    variables: dict[str, Any] = {}
-    for var_name, var_data in raw_variables.items():
-        if not isinstance(var_data, dict):
-            variables[var_name] = var_data
-            continue
-        variables[var_name] = {k: v for k, v in var_data.items() if k in keep_fields}
-
-    summary: dict[str, Any] = {
-        "study": data.get("study", ""),
-        "form": form_summary,
-        "section_count": len(sections) if isinstance(sections, dict) else 0,
-        "variable_count": len(variables),
-        "variables": variables,
-    }
-    for passthrough in ("instructions", "arrows", "discrepancies"):
-        if passthrough in data:
-            summary[passthrough] = data[passthrough]
-    return summary
+# N3: load_policy_yaml + summarize_policy removed — the agent reads ONLY the
+# joined query view (find_joined_query_view_paths / load_joined_query_view /
+# summarize_joined_view). The SoT policy YAML is construction material fenced into
+# the audit zone and is never an LLM-facing read surface.
 
 
 def find_joined_query_view_paths(

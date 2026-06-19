@@ -196,10 +196,17 @@ def _publish_verified_sot_outputs(
     verified_policy: Path,
     out_root: Path,
 ) -> Path:
-    pair_dir = out_root / _sot_pair_name(form)
-    policy_path = pair_dir / "pdf" / f"{form}_policy.yaml"
-    schema_path = pair_dir / "dataset" / f"{form}_schema.json"
-    joined_path = pair_dir / "joined" / f"{form}_joined_query_view.yaml"
+    pair = _sot_pair_name(form)
+    # N2/N3/N17: the joined query view is the SOLE LLM-facing SoT file. The
+    # construction material (policy YAML + dataset schema) is written into the
+    # AUDIT zone (output/<study>/audit/SoT_construction/<pair>/), which is fenced
+    # from the LLM by deny_if_audit_zone — never into llm_source. Only joined/ is
+    # promoted into the LLM read zone. (out_root = output/<study>/llm_source/SoT,
+    # so out_root.parents[1] = output/<study>.)
+    construction_dir = out_root.parents[1] / "audit" / "SoT_construction" / pair
+    policy_path = construction_dir / "pdf" / f"{form}_policy.yaml"
+    schema_path = construction_dir / "dataset" / f"{form}_schema.json"
+    joined_path = out_root / pair / "joined" / f"{form}_joined_query_view.yaml"
 
     policy_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(verified_policy, policy_path)
@@ -212,8 +219,9 @@ def _publish_verified_sot_outputs(
         source_pack=source_pack,
         policy_path=policy_path,
     )
+    joined_path.parent.mkdir(parents=True, exist_ok=True)
     write_joined_query_view_yaml(joined_path, build_joined_query_view(policy_path, schema_path))
-    return policy_path
+    return joined_path
 
 
 def _natural_code_key(code: str) -> tuple[int, str]:
@@ -373,6 +381,18 @@ def _print_result_output(result: subprocess.CompletedProcess[str]) -> None:
         print(result.stdout.strip())
     if result.stderr.strip():
         print(result.stderr.strip(), file=sys.stderr)
+
+
+def _cleanup_sot_temps(form: str) -> None:
+    """Destroy the per-form /tmp SoT intermediates after publish (Note 2).
+
+    Mirrors the temp paths generate_form uses (source pack, 600-DPI render dir,
+    candidate). Best-effort: the joined view is already promoted, so a cleanup
+    hiccup must not fail the run.
+    """
+    Path(f"/tmp/sot_source_pack_{form}.json").unlink(missing_ok=True)
+    Path(f"/tmp/{form}_lean.yaml").unlink(missing_ok=True)
+    shutil.rmtree(Path(f"/tmp/sot_render_{form}"), ignore_errors=True)
 
 
 def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path:
@@ -654,6 +674,8 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 generated.append(result)
                 print("  OK", flush=True)
+        finally:
+            _cleanup_sot_temps(form)  # N2: destroy intermediates after the form
 
     print(
         f"SUMMARY generated={len(generated)} review={len(reviewed)} "

@@ -113,11 +113,11 @@ class TestFakeLocalRouting:
         STUDY_LLM_SOURCE_DIR intentionally stays at the real output/ tree.
         Tools like get_dataset_stats and list_available_datasets call
         assert_output_zone(), which is hardcoded against the project's real
-        output/ directory. answer_catalog_question reads SoT YAMLs via
-        load_policy_yaml(), which now calls validate_agent_read() — that
-        gate checks the path against STUDY_LLM_SOURCE_DIR, so the real
+        output/ directory. answer_catalog_question reads the SoT joined query
+        view via load_joined_query_view(), which calls validate_agent_read() —
+        that gate checks the path against STUDY_LLM_SOURCE_DIR, so the real
         output/ path must remain the zone root (a tmp redirect would cause
-        zone violations on valid SoT YAML reads).
+        zone violations on valid SoT joined-view reads).
         """
         import config as _config
 
