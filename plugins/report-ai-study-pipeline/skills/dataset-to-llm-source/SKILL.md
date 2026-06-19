@@ -5,6 +5,8 @@ description: Run, verify, or audit the PHI-safe RePORT-AI dataset extraction ski
 
 # Dataset to LLM Source
 
+> **Global Rule (GR-1):** No LLM — including Claude — may read dataset row values at any time, under any circumstance. Column headers (row 1) are the only permitted LLM dataset input. Failure reports carry pattern + column + count only, never a value.
+
 ## Core Rule
 
 Do not read raw or staged dataset values into the agent context.

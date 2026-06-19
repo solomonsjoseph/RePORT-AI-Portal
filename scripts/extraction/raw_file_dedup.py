@@ -74,6 +74,10 @@ class RawDedupReport:
     held_for_review: list[str] = field(default_factory=list)
     removed_paths: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    # Note 4: one structured, value-free record per AUTO-resolved merge decision
+    # (what files / what action / why / counts) — written to the audit dir so
+    # every dedup decision, not just held ones, leaves an audit trail.
+    merge_decisions: list[dict] = field(default_factory=list)
 
 
 def _file_fingerprint(path: Path, store: dict | None = None) -> tuple[list[str], int]:
@@ -188,12 +192,26 @@ def dedup_raw_datasets(
             row_counts = {p: valid[p][1] for p in valid}
             if len(set(row_counts.values())) == 1:
                 keep = sorted(valid.keys(), key=lambda p: p.name)[0]
+                archived_names: list[str] = []
                 for path in sorted(valid.keys(), key=lambda p: p.name)[1:]:
                     archived = _archive_duplicate(path, archive_dir=archive_root / norm_key)
                     report.removed_paths.append(str(archived))
+                    archived_names.append(path.name)
                 report.auto_resolved.append(
                     f"{norm_key}: tier1 perfect duplicate — kept {keep.name}, "
                     f"archived {len(valid) - 1} file(s)"
+                )
+                report.merge_decisions.append(
+                    {
+                        "group": norm_key,
+                        "tier": "tier1_perfect_duplicate",
+                        "action": "dataset_duplicate_file",
+                        "kept": keep.name,
+                        "archived": archived_names,
+                        "reason": "identical headers (name+count+order) and identical data-row count",
+                        "headers_count": len(header_sets[keep]),
+                        "data_rows": valid[keep][1],
+                    }
                 )
                 continue
 
@@ -215,12 +233,26 @@ def dedup_raw_datasets(
         largest = by_size[0]
         largest_headers = valid[largest][0]
         if all(p is largest or _headers_superset(largest_headers, valid[p][0]) for p in by_size):
+            archived_names = []
             for path in by_size[1:]:
                 archived = _archive_duplicate(path, archive_dir=archive_root / norm_key)
                 report.removed_paths.append(str(archived))
+                archived_names.append(path.name)
             report.auto_resolved.append(
                 f"{norm_key}: tier2 superset — kept {largest.name}, "
                 f"archived {len(by_size) - 1} file(s)"
+            )
+            report.merge_decisions.append(
+                {
+                    "group": norm_key,
+                    "tier": "tier2_superset",
+                    "action": "dataset_duplicate_file",
+                    "kept": largest.name,
+                    "archived": archived_names,
+                    "reason": "kept file's headers are a strict superset of every other file in the group",
+                    "headers_count": len(largest_headers),
+                    "data_rows": valid[largest][1],
+                }
             )
             continue
 
@@ -237,4 +269,46 @@ def dedup_raw_datasets(
         report.held_for_review.append(norm_key)
 
     human_review_root(audit_dir).mkdir(parents=True, exist_ok=True)
+    if report.merge_decisions:
+        _write_merge_report(audit_dir, study, report.merge_decisions)
     return report
+
+
+def _write_merge_report(audit_dir: Path, study: str, decisions: list[dict]) -> Path:
+    """Write the value-free auto-resolved dedup audit record (Note 4 + Note 17).
+
+    Every AUTO-resolved merge — not just held cases — leaves an on-disk audit
+    trail (what files, what action, why, counts) in the audit zone. Counts and
+    file names only; never a row value.
+    """
+    import json
+
+    out_dir = audit_dir / "dataset_dedup"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    json_path = out_dir / "merge_report.json"
+    json_path.write_text(
+        json.dumps({"study": study, "auto_resolved_merges": decisions}, indent=2, sort_keys=True)
+        + "\n",
+        encoding="utf-8",
+    )
+    lines = [
+        "# Dataset duplicate merge report (auto-resolved)",
+        "",
+        f"study: {study}",
+        f"auto-resolved decisions: {len(decisions)}",
+        "",
+    ]
+    for d in decisions:
+        archived = ", ".join(f"`{a}`" for a in d["archived"]) or "(none)"
+        lines += [
+            f"## {d['group']} — {d['tier']}",
+            f"- kept: `{d['kept']}`",
+            f"- archived: {archived}",
+            f"- reason: {d['reason']}",
+            f"- headers: {d['headers_count']} · data_rows: {d['data_rows']}",
+            "",
+        ]
+    (out_dir / "dataset_duplicate_merge_report.md").write_text(
+        "\n".join(lines) + "\n", encoding="utf-8"
+    )
+    return json_path

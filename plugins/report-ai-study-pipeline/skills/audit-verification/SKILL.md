@@ -5,6 +5,8 @@ description: Run the 14-assertion post-publish verifier for a completed run — 
 
 # Audit Verification
 
+> **Global Rule (GR-1):** No LLM — including Claude — may read dataset row values at any time, under any circumstance. Column headers (row 1) are the only permitted LLM dataset input. Failure reports carry pattern + column + count only, never a value.
+
 ## Core Rule
 
 The verifier is **fail-closed**: any failed assertion holds the run (writes

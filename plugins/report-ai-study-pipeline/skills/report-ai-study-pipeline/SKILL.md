@@ -5,6 +5,8 @@ description: Use when a user wants the full RePORT-AI study preparation workflow
 
 # RePORT-AI Study Pipeline (Orchestrator)
 
+> **Global Rule (GR-1):** No LLM — including Claude — may read dataset row values at any time, under any circumstance. Column headers (row 1) are the only permitted LLM dataset input. Failure reports carry pattern + column + count only, never a value.
+
 ## Core Rule
 
 This is the platform-neutral **orchestrator** for the bundled RePORT-AI skills.

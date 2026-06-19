@@ -5,6 +5,8 @@ description: Read the first-row column headers (NAMES only — metadata, never r
 
 # Header Extraction
 
+> **Global Rule (GR-1):** No LLM — including Claude — may read dataset row values at any time, under any circumstance. Column headers (row 1) are the only permitted LLM dataset input. Failure reports carry pattern + column + count only, never a value.
+
 ## Core Rule
 
 This skill reads **only the first row** of each dataset — the column NAMES. Row

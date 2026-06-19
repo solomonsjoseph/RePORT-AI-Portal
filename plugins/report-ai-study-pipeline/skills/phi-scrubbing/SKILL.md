@@ -5,6 +5,8 @@ description: Run the fail-closed per-form PHI scrub over the staged dataset JSON
 
 # PHI Scrubbing
 
+> **Global Rule (GR-1):** No LLM — including Claude — may read dataset row values at any time, under any circumstance. Column headers (row 1) are the only permitted LLM dataset input. Failure reports carry pattern + column + count only, never a value.
+
 ## Core Rule
 
 This is the **trusted scrub code path** — it does read and rewrite dataset row
@@ -13,6 +15,13 @@ exposes those values: rows are rewritten in place in staging (never the LLM read
 zone), and every artifact it emits (audit ledgers, scrub-outcome sidecar) is
 **counts / field-names / reason-codes only**. The scrub is **fail-closed** — an
 un-scrubbable row is never promoted.
+
+**Caller, not re-implementer (Note 15, Conflict 1).** The scrub orchestration may
+only **call existing `scripts.security.phi_scrub` functions** — it must never
+re-implement the HMAC, receive raw key bytes, or access the `PHIKeyStore`
+directly. The key is loaded by the single role-gated loader
+(`phi_scrub.load_key()` / `get_phi_key()`), used inside the trusted engine, and
+zeroized (`clear_phi_key()`) after the scrub; no caller ever holds the raw key.
 
 ## What This Skill Does
 

@@ -5,6 +5,8 @@ description: Prepare a study for a publish run OUTSIDE the 10-phase DAG — pre-
 
 # Study Setup
 
+> **Global Rule (GR-1):** No LLM — including Claude — may read dataset row values at any time, under any circumstance. Column headers (row 1) are the only permitted LLM dataset input. Failure reports carry pattern + column + count only, never a value.
+
 ## Core Rule
 
 Setup is **not** a publish phase (Gap 4) — it never reads dataset rows and never

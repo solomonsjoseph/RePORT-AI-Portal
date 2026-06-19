@@ -5,6 +5,8 @@ description: Run the header-only PHI handling review before any row value is ope
 
 # PHI Classification
 
+> **Global Rule (GR-1):** No LLM — including Claude — may read dataset row values at any time, under any circumstance. Column headers (row 1) are the only permitted LLM dataset input. Failure reports carry pattern + column + count only, never a value.
+
 ## Core Rule
 
 This skill runs **before any dataset row value is opened**. It classifies on

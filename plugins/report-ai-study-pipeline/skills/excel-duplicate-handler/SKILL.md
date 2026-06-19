@@ -5,6 +5,8 @@ description: "LEGACY (Note 18): superseded by dataset-deduplication at orchestra
 
 # Excel Duplicate Handler (Legacy)
 
+> **Global Rule (GR-1):** No LLM — including Claude — may read dataset row values at any time, under any circumstance. Column headers (row 1) are the only permitted LLM dataset input. Failure reports carry pattern + column + count only, never a value.
+
 > **Superseded by `dataset-deduplication`** (orchestrator phase 2, `raw_file_dedup.py`).
 > Retained for manual maintainer preflight only. The publish path uses raw-file
 > dedup tiers (Note 4); do not invoke this skill from the Load Study wizard or
