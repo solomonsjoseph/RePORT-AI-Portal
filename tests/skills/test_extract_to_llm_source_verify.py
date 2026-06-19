@@ -72,6 +72,7 @@ def _patch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Redirect config path constants to tmp_path so tests are hermetic."""
     import config
 
+    monkeypatch.setattr(config, "BASE_DIR", tmp_path, raising=False)
     monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output", raising=False)
     monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp", raising=False)
     monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False)
@@ -197,6 +198,15 @@ def _make_llm_source_dir(
         (datasets_out / jsonl_name).write_text(json.dumps(row) + "\n", encoding="utf-8")
 
 
+def _make_annotated_pdfs(study_dir: Path, forms: list[str]) -> None:
+    """Stub annotated PDFs so assertion 15 treats forms as PDF-backed (Note 3)."""
+    pdf_dir = study_dir / "annotated_pdfs"
+    pdf_dir.mkdir(parents=True, exist_ok=True)
+    for form in forms:
+        stem = Path(form).stem
+        (pdf_dir / f"{stem}.pdf").write_bytes(b"%PDF-1.4 stub")
+
+
 def _make_sot_joined_views(llm_source_dir: Path, forms: list[str]) -> None:
     """Create minimal SoT joined query views for each published form stem."""
     sot_root = llm_source_dir / "SoT"
@@ -251,9 +261,10 @@ def _build_happy_study(
     _make_phi_scrub_yaml(phi_scrub_path)
     scrub_hash = _compute_sha256(phi_scrub_path)
 
-    # b. _forms_manifest.yaml + datasets dir
+    # b. _forms_manifest.yaml + datasets dir + annotated PDFs (assertion 15 scope)
     _make_valid_manifest(study_dir, forms)
     _make_datasets_dir(datasets_dir, forms)
+    _make_annotated_pdfs(study_dir, forms)
 
     # c. ledger + sentinel
     _make_valid_ledger(audit_dir, scrub_hash, run_id=run_id, forms=forms)
