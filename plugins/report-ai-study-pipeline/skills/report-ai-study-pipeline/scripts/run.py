@@ -27,8 +27,29 @@ hands a validated baton (``REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT`` +
 they skip re-acquisition rather than racing the same flock. Assertion 11 was
 taught to accept a valid parent baton.
 
+**Per-form state machine + crash-recovery readback (Note 16).** Beyond the
+phase records, ``run_state.json`` carries a per-form state map — every form is
+in exactly one of ``not_started → running → complete`` /
+``held_for_review`` / ``re_running`` / ``failed_pipeline_level`` — written on
+every transition the orchestrator can observe (init after P1; ``running`` before
+the publish leg; authoritative ``complete``/``held_for_review`` absorbed from the
+run's ``phi_handling_approval.json`` after). Each form record also carries a
+per-form input fingerprint (:func:`compute_per_form_fingerprint`). On restart the
+preflight reads any prior ``run_state.json`` left ``in_progress`` (the per-study
+lock guarantees such a run is dead, not live) and APPLIES the readback rules to
+the new run's state: ``running`` forms reset to ``not_started`` (re-run);
+``held_for_review`` forms remain held; prior ``complete`` forms are re-validated
+by per-form fingerprint (cache-valid → kept ``complete``; inputs changed → reset
+to ``not_started``). It also writes a value-free ``run_recovery.json`` and
+atomically marks the crashed run recovered. This is broader than the
+``cleanup.in_progress``/``scrub.in_progress`` tokens (which only catch crashes in
+those sub-phases). Per-form fingerprints drive this readback classification +
+observability — they do NOT drive a work-skip: the new run still re-publishes the
+full surviving set, because promotion is a whole-leg atomic replace that always
+re-scrubs from raw (fail-closed) (accepted deviation D4, CLAUDE.md §4).
+
 Value-free: ``run_state.json`` carries phase names, statuses, exit codes, form
-NAMES, and counts — never a row value.
+NAMES, per-form states, fingerprints (hashes), and counts — never a row value.
 """
 
 from __future__ import annotations
@@ -46,7 +67,36 @@ if str(_REPO_ROOT) not in sys.path:
 
 from scripts.utils.skill_protocol import SkillResult, invoke_skill  # noqa: E402
 
-RUN_STATE_SCHEMA = 1
+# Schema 2 adds the per-form state machine (``forms``) — Note 16.
+RUN_STATE_SCHEMA = 2
+
+# ── Per-form lifecycle states (Note 16 state machine) ─────────────────────────
+# Every tracked form is always in exactly one of these states.
+FORM_NOT_STARTED = "not_started"
+FORM_RUNNING = "running"
+FORM_RE_RUNNING = "re_running"  # a held form being re-run after operator resolution
+FORM_COMPLETE = "complete"
+FORM_HELD = "held_for_review"
+FORM_FAILED = "failed_pipeline_level"
+
+_NON_TERMINAL_FORM_STATES = frozenset({FORM_NOT_STARTED, FORM_RUNNING, FORM_RE_RUNNING})
+
+#: Recognized raw dataset extensions, stripped to normalize a form NAME to its stem.
+_DATASET_SUFFIXES = (".xlsx", ".xls", ".csv")
+
+
+def _form_stem(name: str) -> str:
+    """Normalize a form NAME or filename to its bare canonical stem (Note 22).
+
+    Strips only a recognized dataset extension, so a stem that legitimately
+    contains a dot is preserved: ``9_EEval.xlsx`` and ``9_EEval`` both → ``9_EEval``.
+    """
+    s = str(name)
+    low = s.lower()
+    for ext in _DATASET_SUFFIXES:
+        if low.endswith(ext):
+            return s[: -len(ext)]
+    return s
 
 
 @dataclass
@@ -66,6 +116,24 @@ class _PhaseRecord:
 
 
 @dataclass
+class _FormRecord:
+    """Per-form state machine record (Note 16). Value-free: name + state + hashes."""
+
+    name: str  # bare form stem (canonical key, Note 22)
+    state: str = FORM_NOT_STARTED
+    fingerprint: str | None = None  # per-form input fingerprint (hash, never a value)
+    detail: str = ""
+
+    def to_json(self) -> dict:
+        return {
+            "name": self.name,
+            "state": self.state,
+            "fingerprint": self.fingerprint,
+            "detail": self.detail,
+        }
+
+
+@dataclass
 class _RunState:
     study: str
     run_id: str
@@ -75,6 +143,7 @@ class _RunState:
     snapshot_id: str | None = None
     held_forms: list[str] = field(default_factory=list)
     partial: bool = False
+    forms: dict[str, _FormRecord] = field(default_factory=dict)  # Note 16 per-form state
     path: Path | None = None
 
     def to_json(self) -> dict:
@@ -88,6 +157,7 @@ class _RunState:
             "snapshot_id": self.snapshot_id,
             "held_forms": sorted(self.held_forms),
             "partial": self.partial,
+            "forms": {name: self.forms[name].to_json() for name in sorted(self.forms)},
         }
 
     def flush(self) -> None:
@@ -105,6 +175,32 @@ class _RunState:
         self.phases.append(rec)
         self.flush()
         return rec
+
+    # ── Per-form state machine (Note 16) ─────────────────────────────────────
+    def init_forms(self, names, fingerprints=None) -> None:
+        """Register the form set as ``not_started`` (idempotent), recording each
+        form's per-form input fingerprint. Existing records keep their state but
+        have their fingerprint refreshed. Written immediately (crash-safe)."""
+        fps = fingerprints or {}
+        for raw in names:
+            stem = _form_stem(raw)
+            rec = self.forms.get(stem)
+            if rec is None:
+                self.forms[stem] = _FormRecord(name=stem, fingerprint=fps.get(stem))
+            elif stem in fps:
+                rec.fingerprint = fps[stem]
+        self.flush()
+
+    def advance_forms(self, new_state: str, *, from_states) -> None:
+        """Transition every form currently in *from_states* to *new_state*,
+        flushing once if anything changed (written on every transition)."""
+        changed = False
+        for rec in self.forms.values():
+            if rec.state in from_states:
+                rec.state = new_state
+                changed = True
+        if changed:
+            self.flush()
 
 
 def _baton_env(*, run_id: str, study: str) -> dict[str, str]:
@@ -169,6 +265,17 @@ def _preflight(state: _RunState, *, study: str, run_id: str, resume_held: bool, 
             rec.exit_code = 6
             state.flush()
             return 6
+
+    # Crash-recovery readback (Note 16): detect a prior run left in_progress (a
+    # crash in ANY phase) and record a value-free recovery note + per-form
+    # readback. Broader than the cleanup/scrub tokens above (which only catch
+    # crashes in those sub-phases). The lock we hold guarantees any in_progress
+    # run is dead, not live. Advisory — never blocks a run.
+    try:
+        run_dir = Path(config.STUDY_OUTPUT_DIR) / "runs" / run_id
+        _recover_interrupted_run(state, study=study, run_dir=run_dir)
+    except Exception as exc:
+        print(f"P0:preflight — crash-recovery readback skipped: {exc}", file=sys.stderr)
 
     # Rulebook drift (advisory — never blocks).
     try:
@@ -266,6 +373,250 @@ def _record_skill_phase(state: _RunState, name: str, result: SkillResult) -> _Ph
     state.phases.append(rec)
     state.flush()
     return rec
+
+
+# ── Per-form state machine helpers (Note 16) ─────────────────────────────────
+
+
+def _enumerate_form_stems(study: str, run_dir: Path) -> list[str]:
+    """Value-free list of form stems for per-form state init (Note 16).
+
+    Prefers the Phase-1 header store; falls back to enumerating the raw datasets
+    dir when header extraction was skipped. Names/counts only — never reads rows.
+    """
+    import config
+
+    try:
+        from scripts.extraction.header_store import load_header_store
+
+        store = load_header_store(run_dir)
+    except Exception:  # header store optional — fall back to datasets-dir listing
+        store = None
+    if store:
+        stems = list((store.get("forms") or {}).keys())
+        if stems:
+            return sorted({_form_stem(s) for s in stems})
+    try:
+        datasets = Path(config.DATASETS_DIR)
+        return sorted(
+            {
+                _form_stem(p.name)
+                for p in datasets.iterdir()
+                if p.is_file() and p.suffix.lower() in _DATASET_SUFFIXES
+            }
+        )
+    except (OSError, FileNotFoundError):
+        return []
+
+
+def _compute_form_fingerprints(study: str, stems: list[str]) -> dict[str, str]:
+    """Per-form input fingerprints for *stems* (Note 16). Fail-soft per form."""
+    out: dict[str, str] = {}
+    try:
+        from scripts.utils.input_fingerprint import compute_per_form_fingerprint
+    except Exception:
+        return out
+    for stem in stems:
+        try:
+            out[stem] = compute_per_form_fingerprint(stem, study=study)
+        except Exception:
+            out[stem] = ""
+    return out
+
+
+def _init_per_form_state(state: _RunState, *, study: str, run_dir: Path) -> None:
+    """Initialize the per-form state machine after header extraction (Note 16).
+
+    Every discovered form starts ``not_started`` with its per-form input
+    fingerprint recorded. Fail-soft: a discovery hiccup leaves the map empty
+    rather than failing the run.
+    """
+    stems = _enumerate_form_stems(study, run_dir)
+    if not stems:
+        return
+    state.init_forms(stems, _compute_form_fingerprints(study, stems))
+
+
+def _absorb_form_outcomes(state: _RunState, run_dir: Path, *, pipeline_failed: bool) -> None:
+    """Set authoritative per-form terminal states after the publish leg (Note 16).
+
+    On a pipeline-level failure, every non-terminal form becomes
+    ``failed_pipeline_level``. Otherwise the run's ``phi_handling_approval.json``
+    is the source of truth: ``approved_forms → complete``,
+    ``held_forms → held_for_review``. Forms removed before the publish leg (dedup
+    or manifest rejection) are absent from the report and drop out of the map, so
+    it reflects exactly the publish set. Per-form fingerprints are preserved.
+    """
+    if pipeline_failed:
+        changed = False
+        for rec in state.forms.values():
+            if rec.state in _NON_TERMINAL_FORM_STATES:
+                rec.state = FORM_FAILED
+                changed = True
+        if changed:
+            state.flush()
+        return
+
+    approved: list[str] = []
+    held: list[str] = []
+    try:
+        data = json.loads((run_dir / "phi_handling_approval.json").read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            approved = [_form_stem(f) for f in data.get("approved_forms") or []]
+            held = [_form_stem(f) for f in data.get("held_forms") or []]
+    except (OSError, ValueError):
+        held = [_form_stem(h) for h in state.held_forms]  # coarse fallback
+
+    if not approved and not held:
+        return  # nothing authoritative — leave running states for crash visibility
+
+    fps = {name: rec.fingerprint for name, rec in state.forms.items()}
+    new_forms: dict[str, _FormRecord] = {}
+    for stem in held:
+        new_forms[stem] = _FormRecord(name=stem, state=FORM_HELD, fingerprint=fps.get(stem))
+    for stem in approved:
+        if stem not in new_forms:  # held wins if a form appears in both (defensive)
+            new_forms[stem] = _FormRecord(name=stem, state=FORM_COMPLETE, fingerprint=fps.get(stem))
+    state.forms = new_forms
+    state.flush()
+
+
+def _scan_for_interrupted_run(study_runs_dir: Path, *, exclude_run_id: str) -> Path | None:
+    """Newest prior ``run_state.json`` still marked ``in_progress`` (a crash).
+
+    The per-study lock guarantees no live concurrent run, so any ``in_progress``
+    run_state is from a process that died before writing a terminal status.
+    Returns the most-recently-modified such file, or ``None``. Value-free.
+    """
+    if not study_runs_dir.is_dir():
+        return None
+    candidates: list[tuple[float, Path]] = []
+    for p in study_runs_dir.glob("*/run_state.json"):
+        if p.parent.name == exclude_run_id or not p.is_file():
+            continue
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(data, dict) and data.get("status") == "in_progress":
+            try:
+                candidates.append((p.stat().st_mtime, p))
+            except OSError:
+                continue
+    if not candidates:
+        return None
+    candidates.sort()
+    return candidates[-1][1]
+
+
+def _recover_interrupted_run(state: _RunState, *, study: str, run_dir: Path) -> dict | None:
+    """Crash-recovery readback (Note 16): detect a prior run left ``in_progress``
+    and APPLY the per-form readback rules to the new run's state.
+
+    Reads the crashed run's ``run_state.json`` and, per spec, applies each rule to
+    ``state.forms`` (so ``run_state.json`` reflects the recovery immediately and
+    held state survives repeated crashes):
+    - ``running``/``re_running`` → reset to ``not_started`` (re-run);
+    - ``held_for_review`` → carried forward (remains held, awaits resolution);
+    - ``complete`` → re-validated by per-form fingerprint: cache-valid → kept
+      ``complete``; inputs changed → reset to ``not_started`` (re-run).
+
+    Then writes a value-free ``run_recovery.json`` into *run_dir* and atomically
+    marks the crashed run ``failed`` (recovered) so it is unambiguous and not
+    re-detected. Returns the recovery summary, or ``None`` when no crash is found.
+
+    The publish leg still re-publishes the full surviving set (whole-leg atomic
+    promotion); per-form fingerprints drive the readback's state classification +
+    observability, NOT a work-skip (accepted deviation D4). Fail-soft throughout.
+    """
+    import config
+
+    runs_dir = Path(config.STUDY_OUTPUT_DIR) / "runs"
+    prior_path = _scan_for_interrupted_run(runs_dir, exclude_run_id=state.run_id)
+    if prior_path is None:
+        return None
+    try:
+        prior = json.loads(prior_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(prior, dict):
+        return None
+    prior_forms = prior.get("forms")
+    if not isinstance(prior_forms, dict):
+        prior_forms = {}
+
+    reset_running: list[str] = []
+    carried_held: list[str] = []
+    revalidated: list[dict] = []
+    for name, rec in prior_forms.items():
+        if not isinstance(rec, dict):
+            continue
+        stem = _form_stem(name)
+        st = rec.get("state")
+        if st in (FORM_RUNNING, FORM_RE_RUNNING):
+            # Spec: running at crash time → reset to not_started, re-run.
+            reset_running.append(stem)
+            state.forms[stem] = _FormRecord(
+                name=stem, state=FORM_NOT_STARTED, detail="reset after crash"
+            )
+        elif st == FORM_HELD:
+            # Spec: held_for_review → remain held, await operator resolution.
+            carried_held.append(stem)
+            state.forms[stem] = _FormRecord(
+                name=stem, state=FORM_HELD, detail="carried from interrupted run"
+            )
+        elif st == FORM_COMPLETE:
+            # Spec: complete → check per-form fingerprint; unchanged = cache hit.
+            prior_fp = rec.get("fingerprint")
+            try:
+                from scripts.utils.input_fingerprint import compute_per_form_fingerprint
+
+                cur_fp = compute_per_form_fingerprint(stem, study=study)
+            except Exception:
+                cur_fp = None
+            cache_valid = bool(prior_fp) and prior_fp == cur_fp
+            revalidated.append({"form": stem, "cache_valid": cache_valid})
+            state.forms[stem] = (
+                _FormRecord(
+                    name=stem,
+                    state=FORM_COMPLETE,
+                    fingerprint=cur_fp,
+                    detail="cache-valid carried from interrupted run",
+                )
+                if cache_valid
+                else _FormRecord(
+                    name=stem, state=FORM_NOT_STARTED, detail="inputs changed since interrupted run"
+                )
+            )
+    if reset_running or carried_held or revalidated:
+        state.flush()
+
+    summary = {
+        "recovered_from_run": prior.get("run_id") or prior_path.parent.name,
+        "recovered_by_run": state.run_id,
+        "reset_running": sorted(reset_running),
+        "carried_held": sorted(carried_held),
+        "revalidated_complete": sorted(revalidated, key=lambda r: r["form"]),
+    }
+    try:
+        from scripts.extraction.io import atomic_write_json
+
+        atomic_write_json(run_dir / "run_recovery.json", summary)
+        # Mark the crashed run recovered atomically so a crash mid-mark cannot
+        # corrupt its run_state.json and hide it from future recovery.
+        prior["status"] = "failed"
+        prior["recovered_by_run"] = state.run_id
+        atomic_write_json(prior_path, prior)
+    except Exception as exc:  # advisory record only — never blocks the run
+        print(f"P0:preflight — run-recovery bookkeeping skipped: {exc}", file=sys.stderr)
+
+    print(
+        f"P0:preflight — recovered interrupted run {summary['recovered_from_run']}: "
+        f"{len(reset_running)} running→re-run, {len(carried_held)} held carried forward, "
+        f"{len(revalidated)} complete re-validated.",
+        file=sys.stderr,
+    )
+    return summary
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -377,6 +728,12 @@ def main(argv: list[str] | None = None) -> int:
                 state.flush()
                 return hdr.exit_code or 1
 
+        # Note 16: initialize the per-form state machine now that the form set is
+        # known (header store, or datasets-dir fallback). Each form starts
+        # `not_started` with its per-form input fingerprint recorded. Must run
+        # before the header store is destroyed later in the publish leg.
+        _init_per_form_state(state, study=study, run_dir=run_dir)
+
         # ── P1c dictionary extraction (Note 1 — the orchestrator invokes the
         # dictionary-to-llm-source skill; its publish leg runs in-lock at Step 2
         # after cleanup-propagation prunes dropped columns) ───────────────────
@@ -433,11 +790,25 @@ def main(argv: list[str] | None = None) -> int:
         # commits at P10, only after the cleanup (P8) + audit (P9) verifiers pass.
         # (A scrub-only-partial publish still commits inline — see Step 7.)
         publish_env = dict(child_env, REPORTAL_DEFER_SNAPSHOT_COMMIT="1")
+        # Note 16: mark all pending forms running (re_running on a resume) before
+        # the publish leg — written on the transition so a crash here is visible.
+        state.advance_forms(
+            FORM_RE_RUNNING if args.resume_held else FORM_RUNNING,
+            from_states={FORM_NOT_STARTED},
+        )
         publish = invoke_skill("dataset-to-llm-source", publish_args, env=publish_env)
         prec = _record_skill_phase(state, "P2:publish", publish)
 
         # Surface held/partial state from the run's status.json (form names only).
         _absorb_status(state, run_dir)
+        # Note 16: set authoritative per-form terminal states from the approval
+        # report (approved → complete, held → held_for_review); a pipeline-level
+        # failure marks every non-terminal form failed_pipeline_level.
+        _absorb_form_outcomes(
+            state,
+            run_dir,
+            pipeline_failed=publish.exit_code not in {EXIT_OK, EXIT_PARTIAL_REVIEW},
+        )
 
         # Note 6: the header-extraction shared store has now been consumed by the
         # dedup (P2) and PHI-classification (inside the publish supervisor) legs.

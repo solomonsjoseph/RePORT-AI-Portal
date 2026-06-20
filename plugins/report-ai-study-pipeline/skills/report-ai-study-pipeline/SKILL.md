@@ -94,6 +94,20 @@ commits an immutable snapshot under `output/<STUDY>/snapshots/<id>/` and points
 `current.json` at it. The retry loop is a CLI/maintainer workflow only and is
 never triggered from the Load Study UI.
 
+## Per-Form State Machine & Crash Recovery (Note 16)
+
+`run_state.json` (schema 2) records a value-free per-form `forms` map — every
+form in exactly one of `not_started → running → complete | held_for_review |
+re_running | failed_pipeline_level`, written on every transition. Each form
+carries a per-form input fingerprint. On restart, preflight reads any prior
+`run_state.json` left `in_progress` (the per-study lock proves it is dead),
+classifies its forms (running→re-run, held→carried, complete→re-validated by
+fingerprint), writes a value-free `output/<STUDY>/runs/<RUN_ID>/run_recovery.json`,
+and marks the crashed run recovered. This is detection + observability: the
+re-run still re-publishes the full surviving set (whole-leg atomic promotion).
+Per-form fingerprints do **not** drive partial promotion — an accepted deviation
+(always re-scrub from raw, fail-closed).
+
 ## When To Use Only One Child Skill
 
 If the user asks only about duplicate files, use `$dataset-deduplication`

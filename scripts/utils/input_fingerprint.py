@@ -34,6 +34,7 @@ from scripts.utils.step_cache import hash_directory
 __all__ = [
     "InputFingerprint",
     "compute_input_fingerprint",
+    "compute_per_form_fingerprint",
     "fingerprint_record_path",
     "is_redundant_run",
     "read_recorded_fingerprint",
@@ -45,7 +46,11 @@ _logger = get_logger(__name__)
 #: Filename of the fingerprint record under the study audit zone.
 FINGERPRINT_RECORD_FILENAME = "input_fingerprint.json"
 
-_DATA_EXTS = frozenset({".xlsx", ".xls", ".csv"})
+# Recognized raw dataset extensions. The ordered tuple is the single source of
+# truth (deterministic match order in _form_raw_file); the frozenset is the
+# content-hash filter. A new extension is added in exactly one place.
+_DATA_EXTS_ORDERED = (".xlsx", ".xls", ".csv")
+_DATA_EXTS = frozenset(_DATA_EXTS_ORDERED)
 _YAML_EXTS = frozenset({".yaml", ".yml"})
 
 # Code modules whose logic determines the published column set. Hashed by source
@@ -133,6 +138,50 @@ def _module_source_hash(module_name: str) -> str:
     return _file_component_hash(Path(spec.origin))
 
 
+def _shared_scrub_components(study_name: str) -> dict[str, str]:
+    """The scrub-affecting components SHARED across every form in a study.
+
+    These inputs are identical for all forms: the effective merged scrub config,
+    the study privacy config, the PHI key fingerprint, the rulebook version, and
+    the scrub/classification code modules. Both the whole-study fingerprint and
+    the per-form fingerprint (Note 16) build on this single helper so they can
+    never disagree about the shared inputs. Value-free, fail-soft.
+
+    Note 14: the PHI key determines pseudonyms and the rulebook version
+    determines the rules — both are scrub-affecting, so a key rotation or rulebook
+    bump MUST change any fingerprint that includes them (else the redundant-run /
+    cache-validity checks would skip a study that actually needs re-scrubbing).
+    """
+    # Effective merged scrub config hash — the SAME helper run_scrub + assertion 5
+    # use, so the fingerprint can never disagree with the applied config.
+    try:
+        from scripts.security.phi_scrub import effective_scrub_config_hash
+
+        scrub_cfg = effective_scrub_config_hash(study_name) or ""
+    except Exception:  # pragma: no cover - defensive; phi_scrub import is stable
+        _logger.warning("input_fingerprint: effective scrub-config hash unavailable", exc_info=True)
+        scrub_cfg = ""
+
+    shared: dict[str, str] = {
+        "scrub_config_effective": scrub_cfg,
+        "study_privacy": _file_component_hash(Path(config.STUDY_PRIVACY_PATH)),
+        "phi_key_fingerprint": _phi_key_fingerprint_safe(),
+        "phi_rulebook_version": _rulebook_version_safe(),
+    }
+    for module_name in _SCRUB_AFFECTING_MODULES:
+        shared[f"code:{module_name}"] = _module_source_hash(module_name)
+    return shared
+
+
+def _form_raw_file(stem: str, datasets: Path) -> Path | None:
+    """Resolve the single raw dataset file backing a form *stem*, or ``None``."""
+    for ext in _DATA_EXTS_ORDERED:
+        cand = datasets / f"{stem}{ext}"
+        if cand.is_file():
+            return cand
+    return None
+
+
 def compute_input_fingerprint(
     *,
     study: str | None = None,
@@ -148,35 +197,56 @@ def compute_input_fingerprint(
     datasets = Path(datasets_dir) if datasets_dir is not None else Path(config.DATASETS_DIR)
     sot = Path(sot_dir) if sot_dir is not None else Path(config.SOT_DIR)
 
-    # Effective merged scrub config hash — the SAME helper run_scrub + assertion 5
-    # use, so the fingerprint can never disagree with the applied config.
-    try:
-        from scripts.security.phi_scrub import effective_scrub_config_hash
-
-        scrub_cfg = effective_scrub_config_hash(study_name) or ""
-    except Exception:  # pragma: no cover - defensive; phi_scrub import is stable
-        _logger.warning("input_fingerprint: effective scrub-config hash unavailable", exc_info=True)
-        scrub_cfg = ""
-
     components: dict[str, str] = {
         "raw_datasets": _dir_component_hash(datasets, _DATA_EXTS),
         "sot": _dir_component_hash(sot, _YAML_EXTS),
-        "scrub_config_effective": scrub_cfg,
         "forms_manifest": _file_component_hash(Path(config.FORMS_MANIFEST_PATH)),
-        "study_privacy": _file_component_hash(Path(config.STUDY_PRIVACY_PATH)),
-        # Note 14: the PHI key determines pseudonyms and the rulebook version
-        # determines the rules — both are scrub-affecting inputs, so a key rotation
-        # or rulebook bump MUST change the fingerprint (else the redundant-run check
-        # would skip a study that actually needs re-scrubbing). Value-free + fail-soft.
-        "phi_key_fingerprint": _phi_key_fingerprint_safe(),
-        "phi_rulebook_version": _rulebook_version_safe(),
+        **_shared_scrub_components(study_name),
     }
-    for module_name in _SCRUB_AFFECTING_MODULES:
-        components[f"code:{module_name}"] = _module_source_hash(module_name)
 
     canonical = "\n".join(f"{name}={components[name]}" for name in sorted(components))
     combined = hash_bytes(canonical.encode("utf-8"))
     return InputFingerprint(fingerprint=combined, components=components, study=study_name)
+
+
+def compute_per_form_fingerprint(
+    form: str,
+    *,
+    study: str | None = None,
+    datasets_dir: Path | None = None,
+) -> str:
+    """Per-form scrub-affecting fingerprint (Note 16 — per-form input fingerprinting).
+
+    Combines the content hash of the single raw dataset file backing *form* (a
+    bare stem, e.g. ``9_EEval``, or a filename — a recognized dataset extension is
+    stripped) with the SHARED scrub-affecting components
+    (:func:`_shared_scrub_components`). Two runs yield the same per-form
+    fingerprint iff neither that form's raw bytes NOR any shared scrub input
+    changed — letting the crash-recovery readback classify a prior ``complete``
+    form as still cache-valid vs. changed.
+
+    Value-free: a SHA-256 over file *bytes* + shared hashes — never a row value.
+    Returns ``""`` when the form's raw file is absent (a stable, distinguishable
+    component rather than an error).
+
+    This fingerprint drives readback classification + observability; it does NOT
+    drive partial/incremental promotion — the publish leg is a whole-leg atomic
+    replace that always re-scrubs from raw (fail-closed). See CLAUDE.md §4 and the
+    orchestrator SKILL for that accepted deviation.
+    """
+    study_name = study if study is not None else config.STUDY_NAME
+    datasets = Path(datasets_dir) if datasets_dir is not None else Path(config.DATASETS_DIR)
+    stem = str(form)
+    low = stem.lower()
+    for ext in _DATA_EXTS_ORDERED:
+        if low.endswith(ext):
+            stem = stem[: -len(ext)]
+            break
+    raw = _form_raw_file(stem, datasets)
+    components: dict[str, str] = {"raw_form": _file_component_hash(raw) if raw else ""}
+    components.update(_shared_scrub_components(study_name))
+    canonical = "\n".join(f"{name}={components[name]}" for name in sorted(components))
+    return hash_bytes(canonical.encode("utf-8"))
 
 
 def fingerprint_record_path(audit_dir: Path) -> Path:

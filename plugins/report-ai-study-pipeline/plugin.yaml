@@ -40,7 +40,14 @@ entrypoint:
 orchestrator:
   skill: report-ai-study-pipeline
   lock: per_study_exclusive_whole_run
+  # run_state.json is schema 2: phase records + a value-free per-form state map
+  # (not_started -> running -> complete | held_for_review | re_running |
+  # failed_pipeline_level), each form carrying a per-form input fingerprint
+  # (Note 16). On restart, preflight reads any prior in_progress run_state and
+  # writes a value-free run_recovery.json (crash-recovery readback).
   state_file: output/<STUDY>/runs/<RUN_ID>/run_state.json
+  state_schema: 2
+  recovery_file: output/<STUDY>/runs/<RUN_ID>/run_recovery.json
   phases:
     - phase: 0
       name: preflight
