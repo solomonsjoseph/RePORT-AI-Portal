@@ -230,26 +230,28 @@ def _resolve_question(q: EvalQuestion) -> dict[str, Any]:
 
 
 def _bench_direct_read() -> dict[str, Any]:
-    """Measure direct-read cost: schema-JSON column grep + JSONL header scan.
+    """Measure direct-read cost: SoT joined-view scan + JSONL header scan.
 
     Returns p50 and p95 in seconds across _ITERS repetitions.
-    Strategy: pick a representative dataset schema and scan it N times.
-    NO row values are read — only the first JSON line (schema) or the first
-    JSONL line (header keys).
+    Strategy: scan the LLM-facing SoT artifact + a dataset JSONL N times.
+    NO row values are read — only the joined query view (the sole LLM-facing SoT
+    file, N3) or the first JSONL line (header keys).
     """
 
-    # Two operations interleaved: (1) read schema JSON and scan column names;
-    # (2) open a JSONL and read the first-line keys only.
-    schema_path = (
+    # Two operations interleaved: (1) read the SoT joined query view and scan it;
+    # (2) open a JSONL and read the first-line keys only. (Policy YAML + dataset
+    # schema are fenced to the audit zone, so the joined view is what the agent
+    # actually reads.)
+    joined_path = (
         config.STUDY_LLM_SOURCE_DIR
         / "SoT"
         / "2A_ICBaseline"
-        / "dataset"
-        / "2A_ICBaseline_schema.json"
+        / "joined"
+        / "2A_ICBaseline_joined_query_view.yaml"
     )
     jsonl_path = config.TRIO_DATASETS_DIR / "2A_ICBaseline.jsonl"
 
-    schema_ok = schema_path.exists()
+    schema_ok = joined_path.exists()
     jsonl_ok = jsonl_path.exists()
 
     if not schema_ok and not jsonl_ok:
@@ -258,12 +260,10 @@ def _bench_direct_read() -> dict[str, Any]:
     timings: list[float] = []
     for _ in range(_ITERS):
         t0 = time.perf_counter()
-        # (1) schema JSON column scan
+        # (1) joined-view scan (read-only text; no row values)
         if schema_ok:
-            validate_agent_read(schema_path)
-            data = json.loads(schema_path.read_text(encoding="utf-8"))
-            col_names = {c["name"] for c in data.get("columns", [])}
-            _ = "IC_WEIGHT" in col_names
+            validate_agent_read(joined_path)
+            _ = "IC_WEIGHT" in joined_path.read_text(encoding="utf-8")
         # (2) JSONL header-keys read (first line only)
         if jsonl_ok:
             validate_agent_read(jsonl_path)

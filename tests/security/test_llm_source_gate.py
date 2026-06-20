@@ -129,25 +129,29 @@ def test_scan_blocks_raw_subject_id_shape(tmp_path: Path) -> None:
     assert result.findings[0].pattern_name.startswith("SUBJECT_ID")
 
 
-def test_scan_allows_fid_column_names_in_sot_schema(tmp_path: Path) -> None:
+def test_scan_allows_fid_column_names_in_sot_joined_view(tmp_path: Path) -> None:
     """Regression: Family-ID COLUMN NAMES ('FID', 'FID2'..'FID5' — family-member
-    index headers) in SoT schema metadata must not trip the SUBJECT_ID heuristic.
-    Only real multi-digit FID *values* are subject PHI; header tokens are not."""
+    index headers) in SoT joined-view metadata must not trip the SUBJECT_ID
+    heuristic. Only real multi-digit FID *values* are subject PHI; header tokens
+    are not. (N3: the joined query view is the sole LLM-facing SoT file; policy
+    YAML + dataset schema are fenced to the audit zone, not under llm_source.)"""
     root = tmp_path / "llm_source"
-    sot_dir = root / "SoT" / "9_EEval" / "dataset"
-    sot_dir.mkdir(parents=True)
-    (sot_dir / "9_EEval_schema.json").write_text(
-        json.dumps(
-            {
-                "columns": [
-                    {"name": "FID", "phi_action": "pseudonymize"},
-                    {"name": "FID2", "source_order": 130},
-                    {"name": "FID3", "source_order": 131},
-                    {"name": "FID4", "source_order": 132},
-                    {"name": "FID5", "source_order": 133},
-                ]
-            }
-        ),
+    joined_dir = root / "SoT" / "9_EEval" / "joined"
+    joined_dir.mkdir(parents=True)
+    (joined_dir / "9_EEval_joined_query_view.yaml").write_text(
+        "\n".join(
+            [
+                "study: T",
+                "form: 9_EEval",
+                "variables:",
+                "  FID: {dataset: {phi_action: pseudonymize}}",
+                "  FID2: {dataset: {source_order: 130}}",
+                "  FID3: {dataset: {source_order: 131}}",
+                "  FID4: {dataset: {source_order: 132}}",
+                "  FID5: {dataset: {source_order: 133}}",
+            ]
+        )
+        + "\n",
         encoding="utf-8",
     )
 
