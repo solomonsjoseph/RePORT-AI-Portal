@@ -95,7 +95,10 @@ _SNAPSHOT_ID_PREFIX = "snap_"
 MANIFEST_SCHEMA = 2
 #: Config files copied verbatim into every snapshot (Note 14 C5.2). Non-PHI
 #: study metadata; captured so a snapshot is independently auditable/reproducible.
-_CONFIG_FILES = ("_study_privacy.yaml", "_forms_manifest.yaml")
+# Note 11: phi_scrub.yaml carries the per-study compliance_posture override the
+# wizard writes (and any rule overrides), so it must be captured for snapshot
+# reproducibility. Optional — _copy_config_files records None when absent.
+_CONFIG_FILES = ("_study_privacy.yaml", "_forms_manifest.yaml", "phi_scrub.yaml")
 
 
 class SnapshotError(Exception):
@@ -1063,16 +1066,21 @@ def check_snapshot_staleness(
                     ),
                 )
             )
-        if _component_changed(
-            rec_components, current_input_components, "forms_manifest"
-        ) or _component_changed(rec_components, current_input_components, "study_privacy"):
+        if (
+            _component_changed(rec_components, current_input_components, "forms_manifest")
+            or _component_changed(rec_components, current_input_components, "study_privacy")
+            or _component_changed(
+                rec_components, current_input_components, "scrub_config_effective"
+            )
+        ):
             findings.append(
                 StalenessFinding(
                     trigger="config_change",
                     severity=StalenessSeverity.WARN,
                     detail=(
-                        "study config (forms manifest / privacy jurisdictions) changed "
-                        "after this snapshot — it may not reflect the current study definition."
+                        "study config (forms manifest / privacy jurisdictions / scrub "
+                        "config) changed after this snapshot — it may not reflect the "
+                        "current study definition."
                     ),
                 )
             )

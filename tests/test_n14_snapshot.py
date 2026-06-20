@@ -102,6 +102,23 @@ def test_rejected_forms_and_cleanup_report_in_manifest(monkeypatch_config: Path)
     assert (dest / "cleanup_verification_report.json").is_file()
 
 
+def test_snapshot_captures_phi_scrub_override(monkeypatch_config: Path) -> None:
+    # N11: the per-study phi_scrub.yaml override (compliance_posture etc.) must be
+    # captured in the snapshot for reproducibility.
+    study = config.STUDY_NAME
+    _seed_llm_source(study)
+    _seed_run(study, RUN_ID)
+    config.STUDY_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    (config.STUDY_CONFIG_DIR / "phi_scrub.yaml").write_text(
+        yaml.safe_dump({"compliance_posture": "limited_dataset"}), encoding="utf-8"
+    )
+
+    dest = write_snapshot(study, RUN_ID)
+    manifest = load_snapshot(study, dest.name)
+    assert manifest["config_files"]["phi_scrub.yaml"]  # captured (non-null sha)
+    assert (dest / "phi_scrub.yaml").is_file()
+
+
 def test_type2_resume_synthesizes_review_record(monkeypatch_config: Path) -> None:
     study = config.STUDY_NAME
     _seed_llm_source(study)
