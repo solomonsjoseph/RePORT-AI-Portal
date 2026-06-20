@@ -137,7 +137,15 @@ def _preflight(state: _RunState, *, study: str, run_id: str, resume_held: bool, 
         if not present
     ]
     if missing:
-        rec.status, rec.detail, rec.exit_code = "failed", f"missing inputs: {missing}", 2
+        # Note 11/16: actionable guidance when the study config is absent.
+        detail = f"missing inputs: {missing}"
+        if any(m.endswith(".yaml") for m in missing):
+            detail += (
+                f" — no study config; run the study-setup wizard "
+                f"(study-setup --study {study} --interactive) or add "
+                f"config/{study}/_forms_manifest.yaml + _study_privacy.yaml"
+            )
+        rec.status, rec.detail, rec.exit_code = "failed", detail, 2
         state.flush()
         return 2
 

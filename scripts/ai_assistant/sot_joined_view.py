@@ -1,8 +1,11 @@
-"""Derived PDF Source Truth + dataset schema query views.
+"""Joined PDF Source Truth + dataset schema query view.
 
-The joined view is intentionally derived at query time. Policy Source Truth YAML
-remains the PDF-authoritative source, while per-form dataset schema JSON remains
-the dataset/runtime-binding source.
+The joined view is built at PUBLISH time and is the SOLE LLM-facing SoT file
+(N2/N3/N17): it is the only SoT artifact promoted into ``llm_source/SoT/<pair>/``.
+The construction inputs — the policy Source Truth YAML (PDF-authoritative) and the
+per-form dataset schema JSON (dataset/runtime binding) — are written to the AUDIT
+zone (``audit/SoT_construction/<pair>/``), fenced from the LLM, and are never
+published into the read zone.
 """
 
 from __future__ import annotations

@@ -3,8 +3,10 @@
 
 Deduplicates **raw** dataset files under ``data/raw/{STUDY}/datasets/`` using
 filename normalization and header/row-count-only tiers (Note 4). Never reads
-cell values. Ambiguous groups route to ``audit/human_review/excel/``. Invoked
-by the orchestrator before SoT generation and extraction.
+cell values. Ambiguous groups route to the form-first review queue
+``audit/human_review/{group}/`` (Note 22); auto-resolved merges leave a value-free
+record under ``audit/dataset_dedup/``. Invoked by the orchestrator before SoT
+generation and extraction.
 """
 
 from __future__ import annotations

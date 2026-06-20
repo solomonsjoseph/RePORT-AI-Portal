@@ -190,7 +190,7 @@ def _write_sot_review_report(
     report_path = _sot_review_report_path(repo_root, study, form)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        "# Sot_review: Source Truth Human Review",
+        "# Source Truth Human Review",
         "",
         "Boundary: this report uses file paths and source-availability metadata only. "
         "No dataset row values were read or written.",

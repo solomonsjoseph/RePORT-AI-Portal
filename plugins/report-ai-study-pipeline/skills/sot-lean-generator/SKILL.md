@@ -167,27 +167,33 @@ If the verifier fails: fix the policy YAML in place and re-run (up to 5 fix iter
 
 ### Stage 5 — Promote to output
 
-After Stage 4 passes:
+After Stage 4 passes, the **joined query view is the sole LLM-facing SoT file**
+(N2/N3/N17). The construction material (policy YAML + dataset schema) goes to the
+AUDIT zone — fenced from the LLM by `deny_if_audit_zone` — and ONLY the joined
+view is promoted into `llm_source/`:
 
 ```bash
+# construction material -> AUDIT zone (NOT llm_source)
 cp tmp/SoT/<sot-pair-name>/pdf/<form>_policy.yaml \
-  output/<study>/llm_source/SoT/<sot-pair-name>/pdf/<form>_policy.yaml
+  output/<study>/audit/SoT_construction/<sot-pair-name>/pdf/<form>_policy.yaml
 cp tmp/SoT/<sot-pair-name>/dataset/<form>_schema.json \
-  output/<study>/llm_source/SoT/<sot-pair-name>/dataset/<form>_schema.json
+  output/<study>/audit/SoT_construction/<sot-pair-name>/dataset/<form>_schema.json
 ```
 
-Do not write to `output/` before Stage 4 passes. The promote step is the only write that leaves `tmp/`, and the promoted SoT files must live under the PHI-clean LLM source surface: `output/<study>/llm_source/SoT/`.
+Do not write to `output/` before Stage 4 passes. `llm_source/SoT/<sot-pair-name>/`
+holds ONLY `joined/` — the policy YAML + dataset schema never enter the LLM read
+zone. (The automated pipeline does exactly this in
+`generate_lean_outputs._publish_verified_sot_outputs`, and the per-form `tmp/`
+intermediates are destroyed after promotion.)
 
-### Stage 6 — Generate joined query view (derived, LLM-facing)
+### Stage 6 — Generate joined query view (the sole LLM-facing SoT file)
 
-Use this only after the policy Source Truth and per-form dataset schema already exist. The joined view combines them for LLM querying without merging the authority files.
-
-For a published output pair:
+Use this only after the policy Source Truth and per-form dataset schema already exist. The joined view combines them for LLM querying without exposing the construction files. Build it FROM the audit-zone construction material, and write it INTO `llm_source/`:
 
 ```bash
 uv run --all-groups python skills/sot-lean-generator/scripts/generate_joined_query_view.py \
-  --policy output/<study>/llm_source/SoT/<sot-pair-name>/pdf/<form>_policy.yaml \
-  --schema output/<study>/llm_source/SoT/<sot-pair-name>/dataset/<form>_schema.json \
+  --policy output/<study>/audit/SoT_construction/<sot-pair-name>/pdf/<form>_policy.yaml \
+  --schema output/<study>/audit/SoT_construction/<sot-pair-name>/dataset/<form>_schema.json \
   --out output/<study>/llm_source/SoT/<sot-pair-name>/joined/<form>_joined_query_view.yaml
 ```
 

@@ -41,7 +41,7 @@ def test_missing_pdf_is_routed_to_sot_review(tmp_path: Path, capsys) -> None:
     assert rc == 0
     assert report.is_file()
     text = report.read_text(encoding="utf-8")
-    assert "# Sot_review: Source Truth Human Review" in text
+    assert "# Source Truth Human Review" in text
     assert "missing_pdf" in text
     assert (
         "no Source Truth policy, dataset schema, joined view, or source pack was generated" in text
