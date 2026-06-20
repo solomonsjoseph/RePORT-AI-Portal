@@ -206,8 +206,9 @@ ADR-006 — External-API PDF extraction refused by default
 
    Historical. The active LLM source flow no longer runs PDF extraction
    modules. The Load Study plugin's Source Truth child skill reads PDFs plus
-   dataset headers and publishes reviewed SoT policy YAMLs under
-   ``llm_source/SoT/<pair>/``.
+   dataset headers, keeps the reviewed SoT policy YAMLs in the audit zone
+   under ``audit/SoT_construction/<pair>/pdf/``, and publishes only the
+   derived joined query view under ``llm_source/SoT/<pair>/joined/``.
 
 **What.** ``scripts/extraction/extract_pdf_data._resolve_pdf_provider``
 refuses to initialise an Anthropic / Google Gemini client unless the
@@ -514,7 +515,9 @@ ADR-014 — Parallel extraction phase (3-worker ThreadPoolExecutor)
 
    Historical. The current LLM source flow starts from the Load Study
    study-preparation plugin. Its Source Truth child skill generates verified
-   lean SoT YAMLs under ``llm_source/SoT/<pair>/``, and its dataset child
+   lean SoT policy YAMLs (retained in the audit zone under
+   ``audit/SoT_construction/<pair>/``) and publishes only the derived joined
+   query view under ``llm_source/SoT/<pair>/joined/``, and its dataset child
    skill delegates to the trusted host publish path for scrubbed dataset /
    dictionary artifacts. The old PDF leg, catalog/evidence-pack builder, and
    ``variables.json`` builder are not active LLM-visible outputs.
@@ -602,7 +605,8 @@ scripts and rule files.
 pair and delegates Stage 0 extraction to the skill script. It reads only
 dataset row 1 for SoT binding. ``python -m scripts.source_truth.generate_lean_outputs``
 runs the batch runtime loop: source pack -> candidate under ``/tmp`` -> verifier
--> promote to ``output/{STUDY}/llm_source/SoT/<pair>/``. The web UI's
+-> policy/schema to ``output/{STUDY}/audit/SoT_construction/<pair>/`` and the
+derived joined view to ``output/{STUDY}/llm_source/SoT/<pair>/joined/``. The web UI's
 **Load Study** action activates the plugin; the dataset publish phase still
 uses the trusted host ``dataset-to-llm-source`` skill. The CLI is documented in
 :doc:`source_truth_build`.

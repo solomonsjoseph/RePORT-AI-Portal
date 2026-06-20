@@ -161,41 +161,43 @@ To inspect gold diffs directly:
      --study Indo-VAP --form 6_HIV \
      --candidate /tmp/6_HIV_lean.yaml
 
-Anchored calibration gold lives at ``data/SoT/{STUDY}/``. Runtime YAMLs
-under ``output/{STUDY}/llm_source/SoT/<pair>/pdf/`` are generated outputs;
-they are never silently copied over anchored gold.
+Anchored calibration gold lives at ``data/SoT/{STUDY}/``. Runtime policy
+YAMLs under ``output/{STUDY}/audit/SoT_construction/<pair>/pdf/`` are
+generated outputs; they are never silently copied over anchored gold.
 
 Stage 5: promote
 ~~~~~~~~~~~~~~~~
 
-Promote only after all validation gates pass. Intermediate policy YAML and
-dataset schema JSON are construction artifacts; the **LLM-facing** runtime
-output is the joined query view (Note 3):
+Promote only after all validation gates pass. The policy YAML and dataset
+schema JSON are construction artifacts written to the **audit** zone (fenced
+from the LLM by ``deny_if_audit_zone``); the **LLM-facing** runtime output is
+the joined query view, the sole SoT file promoted to ``llm_source/`` (Note 3):
 
 .. code-block:: bash
 
    cp tmp/SoT/6_HIV/pdf/6_HIV_policy.yaml \
-     output/Indo-VAP/llm_source/SoT/6_HIV/pdf/6_HIV_policy.yaml
+     output/Indo-VAP/audit/SoT_construction/6_HIV/pdf/6_HIV_policy.yaml
    cp tmp/SoT/6_HIV/dataset/6_HIV_schema.json \
-     output/Indo-VAP/llm_source/SoT/6_HIV/dataset/6_HIV_schema.json
+     output/Indo-VAP/audit/SoT_construction/6_HIV/dataset/6_HIV_schema.json
    uv run --all-groups python \
      plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/generate_joined_query_view.py \
-     --policy output/Indo-VAP/llm_source/SoT/6_HIV/pdf/6_HIV_policy.yaml \
-     --schema output/Indo-VAP/llm_source/SoT/6_HIV/dataset/6_HIV_schema.json \
+     --policy output/Indo-VAP/audit/SoT_construction/6_HIV/pdf/6_HIV_policy.yaml \
+     --schema output/Indo-VAP/audit/SoT_construction/6_HIV/dataset/6_HIV_schema.json \
      --out output/Indo-VAP/llm_source/SoT/6_HIV/joined/6_HIV_joined_query_view.yaml
 
-Canonical **LLM-published** path:
+Canonical **LLM-published** path (only the joined view lives in
+``llm_source/``):
 
 .. code-block:: text
 
    output/{STUDY}/llm_source/SoT/{PAIR}/joined/{FORM}_joined_query_view.yaml
 
-Intermediate paths (construction only, not agent-facing):
+Construction-artifact paths (audit zone, not agent-facing):
 
 .. code-block:: text
 
-   output/{STUDY}/llm_source/SoT/{PAIR}/pdf/{FORM}_policy.yaml
-   output/{STUDY}/llm_source/SoT/{PAIR}/dataset/{FORM}_schema.json
+   output/{STUDY}/audit/SoT_construction/{PAIR}/pdf/{FORM}_policy.yaml
+   output/{STUDY}/audit/SoT_construction/{PAIR}/dataset/{FORM}_schema.json
 
 Escalation Rules
 ----------------

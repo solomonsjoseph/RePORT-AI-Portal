@@ -1038,7 +1038,7 @@ def _verify_assertion_16_ledger_fields_complete(audit_dir: Path) -> _AssertionRe
 
 
 def _cmd_verify(args: argparse.Namespace) -> int:
-    """Run 13 verifier assertions for the given study.
+    """Run 16 verifier assertions for the given study.
 
     Exit codes mirror the assertion failure modes:
         EXIT_OK (0)                     — all assertions passed

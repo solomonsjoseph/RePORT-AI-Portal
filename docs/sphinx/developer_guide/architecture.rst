@@ -33,9 +33,12 @@ workflow description for full study preparation.
 The current LLM-visible outputs are scrubbed dataset files under
 ``llm_source/dataset_schema/files/``, dictionary mappings under
 ``llm_source/dictionary_mapping/jsonl/``, and plugin-produced Source Truth
-sets under ``llm_source/SoT/<pair>/{pdf,dataset,joined}/``. Older
-``llm_source/source_truth/`` policy files are accepted by the assistant as a
-compatibility layout only.
+joined query views under ``llm_source/SoT/<pair>/joined/`` — the only SoT
+artifact promoted to ``llm_source/`` (Note 3). The construction-stage
+``pdf/<form>_policy.yaml`` and ``dataset/<form>_schema.json`` files live in
+the audit zone under ``audit/SoT_construction/<pair>/`` (fenced from the LLM
+by ``deny_if_audit_zone``). Older ``llm_source/source_truth/`` policy files
+are accepted by the assistant as a compatibility layout only.
 
 **World 2 — AI Assistant** (``scripts/ai_assistant/``).
 
@@ -164,8 +167,10 @@ PDF Extraction (Historical)
 The ``scripts.extraction.pdf_pipeline`` and
 ``scripts.extraction.extract_pdf_data`` paths are historical. They are
 preserved in ADRs and old test context, but they are not the active LLM
-source flow. PDF-derived evidence now enters through reviewed Source
-Truth policy YAMLs under ``llm_source/SoT/<pair>/pdf/``.
+source flow. PDF-derived evidence is captured in reviewed Source Truth
+policy YAMLs under ``audit/SoT_construction/<pair>/pdf/`` (audit zone) and
+reaches the LLM only through the derived joined query view under
+``llm_source/SoT/<pair>/joined/``.
 
 PHI Scrub
 ~~~~~~~~~
@@ -226,9 +231,12 @@ Source-Truth Set Creation (sot-lean-generator skill)
 
 SoT production is the plugin's PDF/header phase. It produces one
 Source Truth set per raw-file set. The **LLM-facing** artifact is
-``llm_source/SoT/<pair>/joined/<form>_joined_query_view.yaml`` (Note 3).
-Intermediate ``pdf/*_policy.yaml`` and ``dataset/*_schema.json`` files are
-construction materials used to build the joined view.
+``llm_source/SoT/<pair>/joined/<form>_joined_query_view.yaml`` (Note 3) —
+the only SoT file promoted to ``llm_source/``. The
+``pdf/<form>_policy.yaml`` and ``dataset/<form>_schema.json`` files are
+construction materials used to build the joined view; they are written to
+the audit zone under ``audit/SoT_construction/<pair>/`` and never enter
+``llm_source/``.
 
 **Stage 0 — Source pack (deterministic)**
 
@@ -280,10 +288,11 @@ shell differs.
 
 **Stage 5 — Promote (deterministic)**
 
-* Copies the verified policy YAML and per-form dataset schema into
-  ``output/{STUDY}/llm_source/SoT/<pair>/{pdf,dataset}/``.
-* Builds the derived joined query view under
-  ``output/{STUDY}/llm_source/SoT/<pair>/joined/``.
+* Writes the verified policy YAML and per-form dataset schema into the
+  audit zone under ``output/{STUDY}/audit/SoT_construction/<pair>/{pdf,dataset}/``
+  (fenced from the LLM by ``deny_if_audit_zone``).
+* Builds the derived joined query view — the sole LLM-facing SoT artifact —
+  under ``output/{STUDY}/llm_source/SoT/<pair>/joined/``.
 * The ``SoT/<pair>/`` set is the canonical plugin output for
   variable metadata. Older ``source_truth/`` files are compatibility-only.
 

@@ -95,8 +95,10 @@ def find_dataset_schema_for_policy(policy_path: Path) -> Path | None:
     if policy_path.parent.name == "source_truth":
         llm_source_dir = policy_path.parent.parent
     candidates = [
-        # New skill layout: llm_source/SoT/<sot-pair-name>/pdf/<form>_policy.yaml
-        # with the dataset authority next to it under dataset/.
+        # Construction layout: <pair>/pdf/<form>_policy.yaml with the dataset
+        # authority next to it under dataset/ (these live in the AUDIT zone,
+        # audit/SoT_construction/<pair>/, at publish time — this resolver only
+        # builds the joined view, which is the sole LLM-facing SoT file).
         pair_dir / "dataset" / f"{form_id}_schema.json",
         pair_dir / f"{form_id}_schema.json",
         policy_path.with_name(f"{form_id}_schema.json"),

@@ -1,4 +1,4 @@
-"""Tests for the verify subcommand — 13-assertion verifier.
+"""Tests for the verify subcommand — 16-assertion verifier.
 
 Coverage
 --------

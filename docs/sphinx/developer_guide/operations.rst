@@ -77,8 +77,10 @@ binding. Anchored calibration gold, when present, stays under
 
 **Outputs (LLM-facing):**
 ``output/{STUDY}/llm_source/SoT/{pair}/joined/{form}_joined_query_view.yaml``
-for each PDF-backed form that passes the checker. Intermediate policy/schema
-files under ``pdf/`` and ``dataset/`` are construction artifacts only.
+for each PDF-backed form that passes the checker — the only SoT artifact in
+``llm_source/``. The policy/schema construction artifacts are written to the
+audit zone under ``output/{STUDY}/audit/SoT_construction/{pair}/{pdf,dataset}/``
+(fenced from the LLM by ``deny_if_audit_zone``).
 
 **Re-run policy:** ``make sot-generate-all`` is idempotent and overwrites only
 after the generated candidate passes verification.

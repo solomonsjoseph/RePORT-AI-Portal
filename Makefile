@@ -228,10 +228,10 @@ sot-verify: ## Stage 4: verify candidate lean YAML against the source pack produ
 		--source-pack /tmp/sot_source_pack_$(FORM).json \
 		--repo-root .
 
-sot-verify-output: ## Verify a promoted output policy YAML against the source pack produced by sot-source-pack
+sot-verify-output: ## Verify the construction policy YAML (audit zone) against the source pack produced by sot-source-pack
 	$(UV) run --all-groups python \
 		plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/check_lean_policy.py \
-		--policy output/$(STUDY)/llm_source/SoT/$(SOT_PAIR)/pdf/$(FORM)_policy.yaml \
+		--policy output/$(STUDY)/audit/SoT_construction/$(SOT_PAIR)/pdf/$(FORM)_policy.yaml \
 		--source-pack /tmp/sot_source_pack_$(FORM).json \
 		--repo-root .
 

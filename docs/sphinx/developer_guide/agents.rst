@@ -103,8 +103,10 @@ and snapshot commit.
 wrapper around the sot-lean-generator scripts. It pairs annotated PDFs with
 xlsx/csv datasets by form-code prefix, handles known duplicate-dataset
 exceptions, reads only row 1 of each dataset for binding, verifies each
-candidate, and promotes passing policy/schema/joined outputs into
-``output/{STUDY}/llm_source/SoT/<pair>/``. For a single manual source pack,
+candidate, writes the policy/schema construction artifacts to the audit zone
+under ``output/{STUDY}/audit/SoT_construction/<pair>/``, and promotes only the
+derived joined query view into
+``output/{STUDY}/llm_source/SoT/<pair>/joined/``. For a single manual source pack,
 use ``python -m scripts.source_truth.study_intake --study <study> --form <form>``.
 See :doc:`source_truth_build` for the full behavior reference.
 
@@ -130,8 +132,9 @@ operator inspection.
 
 **PDF extraction:** the PDF orchestrator and legacy raw-PDF API path are
 historical. Current LLM metadata comes from reviewed SoT policy YAMLs
-(produced by the plugin skill) and is published under
-``llm_source/SoT/<pair>/``.
+(produced by the plugin skill and retained in the audit zone under
+``audit/SoT_construction/<pair>/pdf/``); only the derived joined query view
+is published under ``llm_source/SoT/<pair>/joined/`` for the LLM to read.
 
 **World 2 — AI Assistant** (``scripts/ai_assistant/``):
 LangGraph ReAct agent with 11 tools for querying study data. Never
@@ -319,8 +322,8 @@ Dataset discovery and analytical posture
   evidence report.
 * The agent system prompts no longer treat canonical question IDs as a
   routing gate. Questions about the study catalog hit
-  ``answer_catalog_question`` (the primary fast path using Source Truth
-  policy YAMLs). Ad-hoc analyses and custom computation route through
+  ``answer_catalog_question`` (the primary fast path using the Source Truth
+  joined query views). Ad-hoc analyses and custom computation route through
   ``run_python_analysis``.
 * For the boundary discussion (why this is safe, which gate enforces
   it, what is filtered where), see
