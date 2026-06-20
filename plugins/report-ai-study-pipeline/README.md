@@ -66,7 +66,7 @@ held/partial sets as non-blocking notices and never triggers the retry loop.
 - `skills/phi-classification/SKILL.md` — deterministic jurisdiction PHI classification.
 - `skills/phi-scrubbing/SKILL.md` — fail-closed per-form PHI scrub.
 - `skills/dataset-to-llm-source/SKILL.md` — publish supervisor (gate → promote → snapshot).
-- `skills/audit-verification/SKILL.md` — the 14-assertion verifier.
+- `skills/audit-verification/SKILL.md` — the 16-assertion verifier.
 - `skills/excel-duplicate-handler/SKILL.md` — **legacy** maintainer merge helper (superseded by dataset-deduplication).
 - `skills/phi-rulebook/SKILL.md` — versioned offline PHI rulebook + drift detection.
 - `skills/study-setup/SKILL.md` — interactive study scaffolding (not an orchestrator phase).

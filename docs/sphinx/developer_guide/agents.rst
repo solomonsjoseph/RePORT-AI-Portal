@@ -52,7 +52,7 @@ Quick reference
    make ci            # lint → typecheck → test
    make chat          # Launch Streamlit web UI
    make chat-cli      # Launch CLI REPL
-   make pipeline      # Lower-level host publish path used by dataset-to-llm-source
+   make study STUDY=<name>   # Run the 10-phase orchestrator (publish path runs in-lock)
 
 Issue Tracker and Triage
 ------------------------

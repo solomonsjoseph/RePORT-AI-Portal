@@ -316,7 +316,7 @@ def _run_pycanon_publish_gate(staging_ds: Path) -> None:
             raise RuntimeError(
                 f"pyCANON k-anonymity gate FAILED for {jsonl.stem}: k={result.k} < "
                 f"threshold {k_threshold} over QIs {present} — route to human review "
-                "(see audit/human_review/pycanon/)."
+                f"(see audit/human_review/{jsonl.stem}/)."
             )
 
 

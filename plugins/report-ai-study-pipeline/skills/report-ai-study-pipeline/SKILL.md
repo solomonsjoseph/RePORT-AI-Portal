@@ -45,11 +45,11 @@ than being re-decomposed into separate subprocesses.
 | 3 | Source Truth ∥ PHI classification ∥ full data extraction | `$sot-lean-generator` ∥ `$phi-classification` ∥ `$dataset-to-llm-source` |
 | 3b | Cross-form PHI-classification consistency barrier | `$phi-classification` |
 | 4 | Per-form PHI scrub (fail-closed) | `$phi-scrubbing` |
-| 5 | 14-assertion audit verification | `$audit-verification` |
+| 5 | 16-assertion audit verification | `$audit-verification` |
 | 6 | PHI guard gate (Presidio + pyCANON, OR-combined) → atomic promotion | `$dataset-to-llm-source` |
 | 7 | Cleanup propagation ∥ staging destruction + attestation ∥ key zero | `$dataset-to-llm-source` + orchestrator |
 | 8 | Cleanup verifier over published tree + cleanup ledgers | orchestrator module |
-| 9 | Idempotent 14-assertion re-verify | `$audit-verification` |
+| 9 | Idempotent 16-assertion re-verify | `$audit-verification` |
 | 10 | Snapshot → current pointer → status.json → lock release | orchestrator module |
 
 `$phi-rulebook` is a shared-module skill consumed in phase 0 and by

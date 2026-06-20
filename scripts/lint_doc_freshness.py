@@ -327,6 +327,18 @@ FORBIDDEN: tuple[tuple[str, str, tuple[str, ...]], ...] = (
         "stale Make target — use `make sot-source-pack` and `make sot-generate-all`",
         (),
     ),
+    (
+        r"\bmake\s+(pipeline|build-llm-source)\b",
+        "stale Make target — use `make study STUDY=<name>` "
+        "(or `make rebuild-llm-source STUDY=<name>` to force a rebuild)",
+        (),
+    ),
+    (
+        r"\bmain\.py\s+--pipeline\b",
+        "dead entry point — main.py is --chat/--web/--version only; "
+        "publish runs inside `make study` (host_pipeline.py in-lock)",
+        (),
+    ),
     # Pre-scrubbed wording (operators don't pre-scrub; pipeline does at Step 1.6)
     (
         r"datasets?\s+must\s+be\s+pre-?scrubbed",

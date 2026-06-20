@@ -128,8 +128,10 @@ Run Flow
     ``phi_handling_approval.json``.
 10. Pass approved forms, including any ``--form`` subset, to the main pipeline through
     ``REPORTAL_ALLOWED_DATASET_FORMS``.
-11. Run ``main.py --pipeline`` in a subprocess. The PHI scrub step loads
-    the key internally; the wrapper does not inspect key material.
+11. Run the host publish engine (``scripts/pipeline/host_pipeline.py``) in-lock.
+    The PHI scrub step loads the key internally; the wrapper does not inspect
+    key material. (``main.py`` has no pipeline flag — it is the AI-assistant
+    launcher only; publish runs inside ``make study``.)
 12. Assert required per-dataset PHI ledger hashes and empty quarantine.
 13. Destroy ``tmp/{STUDY}/`` after successful publish and write
     ``destruction_attestation.json``.
@@ -208,7 +210,7 @@ Verifier Assertions
 
 ``verify`` writes
 ``output/{STUDY}/runs/{run_id}/verifier_report.json`` on pass or fail.
-It checks 14 assertions; execution order is 1→12, then 14, then 13
+It checks 16 assertions; execution order is 1→12, then 14, 15, 16, then 13
 (13 always runs last as the terminal status update):
 
 1. manifest exists and parses;
@@ -229,7 +231,12 @@ It checks 14 assertions; execution order is 1→12, then 14, then 13
 13. ledger covers all columns (assertion 14) — every published dataset
     column is accounted for by a PHI ledger entry or a non-keep
     configured scrub rule; exits 10;
-14. ``status.json`` exists and is updated (assertion 13) with
+14. SoT joined view present (assertion 15) — when SoT pairs exist, the
+    joined query view is published and is the sole LLM-facing SoT file;
+15. ledger entry fields complete (assertion 16) — every PHI ledger event
+    carries a ``method``, ``rule.jurisdictions``, and a why
+    (``rule.taxonomy`` or ``rationale``); exits 10;
+16. ``status.json`` exists and is updated (assertion 13) with
     ``verifier_passed: true`` on full pass (always runs last).
 
 Destruction Attestation

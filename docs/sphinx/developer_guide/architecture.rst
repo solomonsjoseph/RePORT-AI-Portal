@@ -23,10 +23,12 @@ through the ``dataset-to-llm-source`` child skill. The plugin may delegate
 independent raw-file sets to subagents, but raw dataset row 2+ values stay
 inside trusted repo code paths.
 
-``main.py`` remains the host execution primitive for the data dictionary
-and the lock-aware extraction/scrub/publish path that the dataset skill
-invokes. It is no longer the top-level LLM workflow description for full
-study preparation.
+``scripts/pipeline/host_pipeline.py`` is the host execution primitive for the
+data dictionary and the lock-aware extraction/scrub/publish path that the
+``dataset-to-llm-source`` supervisor invokes inside the orchestrator's locked
+run. ``main.py`` is only the AI-assistant launcher (``--chat`` / ``--web`` /
+``--version``); it is not a pipeline entry point and not the top-level LLM
+workflow description for full study preparation.
 
 The current LLM-visible outputs are scrubbed dataset files under
 ``llm_source/dataset_schema/files/``, dictionary mappings under
@@ -127,9 +129,10 @@ The plugin workflow is the active study-preparation coordinator
 3. ``phi-scrubbing`` → audit verification → PHI guard gate → promote →
    snapshot (phases 4–10 via the publish supervisor and orchestrator).
 
-The data dictionary is intentionally outside the plugin. It stays in
-``main.py`` / ``scripts.extraction.load_dictionary`` and publishes dictionary
-mapping JSONL into ``llm_source/dictionary_mapping/jsonl/``.
+The data dictionary is intentionally outside the plugin. It is published by
+the host engine (``scripts/pipeline/host_pipeline.py:publish_dictionary_leg``
+via ``scripts.extraction.load_dictionary``) into
+``llm_source/dictionary_mapping/jsonl/``.
 
 Dictionary Loader
 ~~~~~~~~~~~~~~~~~
@@ -185,10 +188,12 @@ Dataset Cleanup
 
 * **Module:** :func:`scripts.extraction.dataset_cleanup.clean_trio_datasets`
 * **Step:** Step 1.7
-* **Reads/writes:** ``tmp/{STUDY}/datasets/*.jsonl`` in place
-* **Audit:** ``output/{STUDY}/audit/dataset_cleanup_report.json``
-* Removes junk rows, merges duplicate records, propagates
-  Step 1's drop events into the cleanup record.
+* **Audit:** ``output/{STUDY}/audit/dataset_cleanup_report.json`` plus the
+  per-dataset ``dataset_cleanup_ledger.as_written.json``
+* Audit-envelope-only (Note 18): writes the dataset audit and ``as_written``
+  cleanup ledgers from the extraction column-drop events. It no longer removes
+  rows or merges duplicate records — raw-file deduplication runs earlier at
+  orchestrator phase 2.
 
 Cleanup Propagation
 ~~~~~~~~~~~~~~~~~~~
@@ -204,7 +209,7 @@ Cleanup Propagation
 Publish
 ~~~~~~~
 
-* **Function:** ``_publish_staging`` in ``main.py``
+* **Function:** ``_publish_staging`` in ``scripts/pipeline/host_pipeline.py``
 * **Step:** Step 2
 * **Atomic per-leg rename** ``tmp/{STUDY}/{leg}/`` →
   ``output/{STUDY}/llm_source/{leg}/``. Same-filesystem rename =
@@ -530,7 +535,8 @@ Design Principles
 Modularity
 ~~~~~~~~~~
 
-Each pipeline step is a function in ``main.py`` that imports its
+Each pipeline step is a function in
+``scripts/pipeline/host_pipeline.py`` that imports its
 operative module from ``scripts/``. The step + its module are the
 unit of audit; you can verify Step 1.6 by reading
 :func:`scripts.security.phi_scrub.run_scrub` and

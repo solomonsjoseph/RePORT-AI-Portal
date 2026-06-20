@@ -414,11 +414,11 @@ time. Tested by ``tests/test_keystore.py``,
 * **Encrypted on-disk vault**. Rejected — adds a master-key bootstrap
   problem on top of the existing PHI-key bootstrap problem.
 
-**Consequences.** Operators using the CLI (``python main.py
---pipeline`` directly without the wizard) still rely on the env-var
-path. The CLI ``main.py`` reads ``LLM_PROVIDER`` / ``ANTHROPIC_API_KEY``
-from env; this is intentional for back-compat with existing
-shell-script invocations. The KeyStore posture only applies to the
+**Consequences.** Operators running the shell publish path (``make study
+STUDY=<name>`` directly without the wizard) still rely on the env-var
+path. The CLI ``main.py`` (``--chat`` launcher) reads ``LLM_PROVIDER`` /
+``ANTHROPIC_API_KEY`` from env; this is intentional for back-compat with
+existing shell-script invocations. The KeyStore posture only applies to the
 in-app (Streamlit/CLI-REPL) lifetimes.
 
 ADR-012 — Two-way PDF orchestrator (pdfplumber + redacted-text LLM merge)
@@ -633,8 +633,9 @@ uses the trusted host ``dataset-to-llm-source`` skill. The CLI is documented in
    ``scripts/ai_assistant/agent_tools.py`` have been audited and decoupled
    (Task 6a). Re-introduction of a YAML-backed retriever is tracked as
    future work if the agent needs direct SoT policy access at runtime.
-3. *Makefile targets are lower-level helpers.* ``make pipeline`` remains the
-   host publish path used by the dataset child skill. Full study preparation is
+3. *Full study preparation runs through the orchestrator.* ``make study
+   STUDY=<name>`` is the entry point; it drives the host publish path in-lock
+   via the ``dataset-to-llm-source`` child skill. Study preparation is also
    initiated through the ``report-ai-study-pipeline`` plugin, including the
    web UI **Load Study** flow.
 

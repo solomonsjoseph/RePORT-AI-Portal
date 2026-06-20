@@ -448,10 +448,18 @@ PHI_SCRUB_CONFIG_PATH: Path = phi_scrub_config_path()
 def _phi_key_path() -> Path:
     """Resolve the sidecar PHI HMAC key path.
 
-    Uses ``$XDG_CONFIG_HOME/report_ai_portal/phi_key`` when the env var is set,
-    otherwise falls back to ``~/.config/report_ai_portal/phi_key``. The key lives
-    OUTSIDE the repo tree and is never read by the agent or committed to git.
+    Resolution order (Note 12):
+    1. ``$PHI_KEY_PATH`` — explicit override (the spec's named storage env var);
+    2. ``$XDG_CONFIG_HOME/report_ai_portal/phi_key`` when XDG is set;
+    3. ``~/.config/report_ai_portal/phi_key`` fallback.
+
+    The value is a PATH (not key material), so it is not a secret. The key file
+    itself lives OUTSIDE the repo tree and is never read by the agent or committed
+    to git.
     """
+    explicit = os.getenv("PHI_KEY_PATH")
+    if explicit:
+        return Path(explicit)
     xdg = os.getenv("XDG_CONFIG_HOME")
     base = Path(xdg) if xdg else Path.home() / ".config"
     return base / "report_ai_portal" / "phi_key"

@@ -34,24 +34,23 @@ Batch Runtime Build
 -------------------
 
 The full study-preparation workflow is owned by the portable
-``report-ai-study-pipeline`` plugin. For the SoT phase only, use the batch
-command below when you need a repo-local rebuild of PDF/header Source Truth
-sets:
+``report-ai-study-pipeline`` plugin. Use the orchestrator entry point below
+to build the full study, including the SoT phase:
 
 .. code-block:: bash
 
-   make build-llm-source STUDY=Indo-VAP
+   make study STUDY=Indo-VAP
 
-That command:
+The orchestrator:
 
 1. creates source packs for PDF-backed forms,
 2. generates conservative policy YAML candidates under ``/tmp``,
 3. verifies each candidate,
 4. promotes passing policy/schema/joined outputs to
    ``output/Indo-VAP/llm_source/SoT/``, and
-5. runs the host publish path to publish dictionary mappings,
-   PHI-scrubbed dataset JSONL, audit ledgers, lineage, and the output
-   signpost.
+5. drives the in-lock host publish path (via the ``dataset-to-llm-source``
+   supervisor) to publish dictionary mappings, PHI-scrubbed dataset JSONL,
+   audit ledgers, lineage, and the output signpost.
 
 Use ``make rebuild-llm-source STUDY=Indo-VAP`` when you want to remove
 generated ``llm_source/`` and study staging first. It preserves audit

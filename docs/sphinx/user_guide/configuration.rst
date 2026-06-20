@@ -98,11 +98,12 @@ specific decision.
        Takes effect at import time via ``config.py``.
    * - ``REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT`` / ``REPORTAL_PIPELINE_LOCK_PARENT_PID``
      - **Internal pipeline use only — not for operators to set manually.**
-       The ``extract_to_llm_source`` wrapper sets these in the child
-       ``main.py --pipeline`` subprocess to pass the already-acquired
-       pipeline lock baton. ``main.py`` validates the claimed parent PID
-       is live and equals ``os.getppid()`` before honouring the baton; a
-       stale or mismatched value causes the child to acquire the lock normally.
+       The orchestrator sets these when handing the already-acquired pipeline
+       lock baton to each skill subprocess (such as the
+       ``dataset-to-llm-source`` supervisor / ``host_pipeline.py``). The child
+       validates the claimed parent PID is live and equals ``os.getppid()``
+       before honouring the baton; a stale or mismatched value causes the child
+       to acquire the lock normally.
 
 PHI Key
 -------

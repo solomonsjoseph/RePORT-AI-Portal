@@ -101,28 +101,31 @@ dictionary files are present, the bundle check also requires published
 ``llm_source/dictionary_mapping/jsonl/`` output from the host dictionary
 loader.
 
-Lower-Level Host Publish Path
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Host Publish Path (inside the orchestrator)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   make pipeline
+   make study STUDY=Indo-VAP
 
-Runs the host raw-data steps in order: dictionary -> dataset extraction ->
-AMBER scrub (nine-action catalog, rule + allowlist) -> publish scrubbed
-dataset files into the ``llm_source/`` GREEN zone -> audit lineage. This is
-the lower-level path used by the dataset child skill; it is not the complete
-plugin workflow because duplicate preflight and Source Truth worker
-delegation happen at the plugin layer.
+There is no standalone host-pipeline entry point. ``make study`` runs the
+orchestrator, which drives the raw-data publish via the
+``dataset-to-llm-source`` supervisor (``scripts/skills/extract_to_llm_source.py``)
+calling ``scripts/pipeline/host_pipeline.py`` in-lock: dictionary ->
+dataset extraction -> AMBER scrub (nine-action catalog, rule + allowlist) ->
+publish scrubbed dataset files into the ``llm_source/`` GREEN zone -> audit
+lineage. Duplicate preflight and Source Truth worker delegation are the
+surrounding orchestrator phases.
 
 For a repo-local rebuild of generated outputs, use:
 
 .. code-block:: bash
 
-   make build-llm-source STUDY=Indo-VAP
+   make rebuild-llm-source STUDY=Indo-VAP
 
-That adds the SoT generation step before the raw-data host publish path. The
-current LLM-visible outputs are ``llm_source/SoT/``,
+That removes generated ``llm_source/`` and study staging first, then re-runs
+the orchestrator (SoT generation followed by the in-lock host publish path).
+The current LLM-visible outputs are ``llm_source/SoT/``,
 ``llm_source/dataset_schema/files/``, and
 ``llm_source/dictionary_mapping/jsonl/``.
 
@@ -159,10 +162,11 @@ Individual Steps
    * - ``make extract-datasets``
      - Dataset extraction into AMBER staging, run through the nine-action
        PHI scrub, then atomically promoted into the GREEN ``llm_source/``
-   * - ``make build-llm-source``
-     - Generate verified SoT policy/schema/joined sets, then publish
-       dictionary mappings, PHI-scrubbed dataset JSONL, audit ledgers,
-       lineage, and the output signpost.
+   * - ``make study STUDY=<name>``
+     - Run the full 10-phase orchestrator: generate verified SoT
+       policy/schema/joined sets, then publish dictionary mappings,
+       PHI-scrubbed dataset JSONL, audit ledgers, lineage, and the output
+       signpost.
    * - ``make bundle``
      - Legacy compatibility alias for preparing the ``llm_source`` dictionary leg
    * - ``make chat``
@@ -200,7 +204,7 @@ When schemas, SoT policies, the data dictionary, or the nine-action PHI scrub ca
 .. code-block:: bash
 
    # Full generated-output rebuild
-   make nuke && make build-llm-source STUDY=Indo-VAP
+   make nuke && make rebuild-llm-source STUDY=Indo-VAP
 
 Cleanup
 -------
@@ -221,7 +225,7 @@ Security Verification
 Dataset Promotion Protocol
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After **Load Study**, ``make build-llm-source``, or the extraction skill
+After **Load Study**, ``make study STUDY=<name>``, or the extraction skill
 publishes clean JSONL:
 
 1. Run the deterministic verifier:
@@ -272,7 +276,7 @@ Common issues:
 - **Missing study data:** Ensure ``data/raw/{STUDY}/`` has the required
   subdirectories
 - **Dependency issues:** ``uv lock --upgrade && uv sync --all-groups``
-- **Stale artifacts:** ``make nuke && make build-llm-source STUDY={STUDY}``
+- **Stale artifacts:** ``make nuke && make rebuild-llm-source STUDY={STUDY}``
 
 Known Limitations
 -----------------

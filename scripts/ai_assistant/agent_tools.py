@@ -26,7 +26,7 @@ Tools
 6.  list_available_datasets — list available PHI-scrubbed datasets
 7.  get_dataset_stats — summary statistics for a dataset (record counts, columns)
 8.  run_python_analysis — sandboxed code execution for statistical analysis (primary)
-9.  answer_catalog_question — variable metadata lookup via policy SoT YAMLs
+9.  answer_catalog_question — variable metadata lookup via SoT joined query views
 10. cite_source — deterministic (file, line, snippet) citation for form fields
 11. get_study_variable_map — concept→column bindings with encodings, derivations, outcomes
 
@@ -1373,7 +1373,7 @@ def _catalog_phi_flag(var_meta: Any) -> Any:
 @tool
 @phi_safe_return
 def answer_catalog_question(question: str) -> str:
-    """Answer a study-variable metadata question through published policy SoT YAMLs.
+    """Answer a study-variable metadata question through published SoT joined query views.
 
     Use this for ordinary questions about retained study variables: their
     label, dataset column, form, options, and provenance. The plugin-published
@@ -1729,8 +1729,10 @@ def list_llm_source(subdir: str = "") -> str:
     Use this to discover what is available before searching or reading. The
     tree holds the canonical study content the assistant may read:
 
-    * ``SoT/<form>/`` — Source-Truth policy YAMLs: form questions, variable
-      labels, coded options, definitions, inclusion/exclusion text, schedules.
+    * ``SoT/<pair>/joined/`` — Source-Truth joined query views (the sole
+      LLM-facing SoT file; policy YAML + dataset schema are fenced to the audit
+      zone): form questions, variable labels, coded options, definitions,
+      inclusion/exclusion text, schedules.
     * ``dataset_schema/files/`` — the de-identified per-form ``.jsonl``
       datasets (use ``run_python_analysis`` to compute over these).
     * ``dataset_schema/`` and ``dictionary_mapping/`` — column dictionaries.
@@ -1801,7 +1803,7 @@ def search_llm_source(query: str, subdir: str = "", max_results: int = 40) -> st
         query: One or more search terms. Multi-word queries match lines
             containing any term; ranking favours lines matching more terms.
         subdir: Optional path relative to ``llm_source/`` to scope the search
-            (e.g. ``"SoT"`` to search only Source-Truth policy YAMLs).
+            (e.g. ``"SoT"`` to search only Source-Truth joined query views).
         max_results: Cap on returned hits (default 40, max 60).
 
     Returns:
