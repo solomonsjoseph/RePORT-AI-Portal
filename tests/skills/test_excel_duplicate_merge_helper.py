@@ -225,7 +225,6 @@ def test_partial_overlap_routes_to_human_review_without_outputs(tmp_path: Path) 
         / "Mini"
         / "audit"
         / "human_review"
-        / "excel"
         / "18_TargConcom"
         / "duplicate_review_report.md"
     )

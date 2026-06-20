@@ -35,7 +35,6 @@ def test_missing_pdf_is_routed_to_sot_review(tmp_path: Path, capsys) -> None:
         / "Study"
         / "audit"
         / "human_review"
-        / "sot"
         / "1_Form"
         / "review_report.md"
     )
@@ -63,7 +62,6 @@ def test_missing_dataset_is_routed_to_sot_review(tmp_path: Path) -> None:
         / "Study"
         / "audit"
         / "human_review"
-        / "sot"
         / "1_Form"
         / "review_report.md"
     )
@@ -90,7 +88,6 @@ def test_ambiguous_dataset_is_routed_to_sot_review(tmp_path: Path) -> None:
         / "Study"
         / "audit"
         / "human_review"
-        / "sot"
         / "1_Form"
         / "review_report.md"
     )
