@@ -390,6 +390,19 @@ def _gather_data_as_of(study: str) -> str | None:
         return None
 
 
+def _gather_rejected_forms(study: str) -> list[str]:
+    """Manifest ``reject:`` list — forms intentionally excluded (Note 14). Fail-soft []."""
+    try:
+        import yaml
+
+        manifest_path = Path(config.study_config_path("_forms_manifest.yaml", study=study))
+        data = yaml.safe_load(manifest_path.read_text(encoding="utf-8")) or {}
+        reject = data.get("reject", [])
+        return [str(f) for f in reject] if isinstance(reject, list) else []
+    except Exception:
+        return []
+
+
 def _copy_config_files(study: str, dest_dir: Path) -> dict[str, str | None]:
     """Copy the study's config files into *dest_dir*, returning ``{name: sha256|None}``.
 
@@ -544,6 +557,14 @@ def write_snapshot(
         if overlay_captured:
             shutil.copy2(overlay_src, staging / config.PHI_SCRUB_GENERATED_FILENAME)
 
+        # N14: capture the cleanup-verification REPORT itself (not just the
+        # cleanup_verifier_passed bool), so the workspace-clean proof is
+        # reproducible from the snapshot. Fail-soft (absent on a partial run).
+        cleanup_report_src = Path(config.OUTPUT_DIR) / study / "audit" / "cleanup_verification_report.json"
+        cleanup_report_captured = cleanup_report_src.is_file()
+        if cleanup_report_captured:
+            shutil.copy2(cleanup_report_src, staging / "cleanup_verification_report.json")
+
         # Re-hash the COPIED llm_source so the manifest reflects exactly what
         # landed in the snapshot (defence against a mid-copy mutation).
         copied_manifest = _tree_manifest(staging / LLM_SOURCE_DIRNAME)
@@ -569,6 +590,8 @@ def write_snapshot(
             "cleanup_verifier_passed": cleanup_verifier_passed,
             "partial": bool(partial),
             "absent_forms": [str(f) for f in (absent_forms or [])],
+            # N14: the manifest reject: list (forms intentionally excluded).
+            "rejected_forms": _gather_rejected_forms(study),
             "approved_forms": approved_forms,
             "held_forms": held_forms,
             "human_review_records": list(human_review_records or []),
@@ -594,6 +617,11 @@ def write_snapshot(
             "phi_scrub_generated_sha256": (
                 _file_sha256(staging / config.PHI_SCRUB_GENERATED_FILENAME)
                 if overlay_captured
+                else None
+            ),
+            "cleanup_verification_report_sha256": (
+                _file_sha256(staging / "cleanup_verification_report.json")
+                if cleanup_report_captured
                 else None
             ),
         }

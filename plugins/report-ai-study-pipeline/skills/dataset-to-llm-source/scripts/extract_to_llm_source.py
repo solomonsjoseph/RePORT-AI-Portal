@@ -1227,6 +1227,31 @@ def _cmd_verify(args: argparse.Namespace) -> int:
     run_dir.mkdir(parents=True, exist_ok=True)
     _atomic_write_json(run_dir / "verifier_report.json", report_payload)
 
+    # N22: a blocking verifier failure deposits a count-only note into the
+    # consolidated human-review queue (keyed by run — the verifier is a run-level
+    # gate, like the publish gate). Assertion details are already value-free
+    # (assertion id + form/column + counts, never a row value).
+    if overall == "fail":
+        try:
+            from scripts.audit.review_paths import verifier_review_path
+
+            failed = [r for r in results if r.get("result") == "fail"]
+            note_lines = [
+                "# Audit verifier — human review required",
+                "",
+                f"**Run:** {run_id}  ·  **Failed assertion(s):** {len(failed)}",
+                "",
+                "## Failed assertions (ids + value-free detail)",
+                *[f"- [{r['n']}] {r['name']}: {r['detail']}" for r in failed],
+                "",
+                "Fix the named ledger/config/column, then re-run the verifier.",
+            ]
+            note_path = verifier_review_path(audit_dir, run_id)
+            note_path.parent.mkdir(parents=True, exist_ok=True)
+            note_path.write_text("\n".join(note_lines) + "\n", encoding="utf-8")
+        except Exception as exc:  # best-effort; verifier_report.json is the record
+            print(f"verifier review note write skipped: {type(exc).__name__}", file=sys.stderr)
+
     return overall_exit_code
 
 

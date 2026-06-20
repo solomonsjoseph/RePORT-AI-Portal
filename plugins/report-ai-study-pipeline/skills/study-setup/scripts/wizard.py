@@ -238,11 +238,17 @@ def write_configs(
     *,
     force: bool = False,
 ) -> tuple[Path, Path]:
-    """Write the two config YAMLs; refuse to overwrite existing files unless *force*."""
+    """Write the two config YAMLs; refuse to overwrite existing files unless *force*.
+
+    The existence check ALSO covers the per-study phi_scrub.yaml override (written
+    separately by :func:`write_scrub_override`), so the wizard is all-or-nothing:
+    if any of the three targets exists, nothing is written (no partial config).
+    """
     privacy_path = Path(config.study_config_path("_study_privacy.yaml", study=study))
     manifest_path = Path(config.study_config_path("_forms_manifest.yaml", study=study))
+    scrub_path = Path(config.study_config_path(config.PHI_SCRUB_CONFIG_FILENAME, study=study))
     if not force:
-        existing = [p for p in (privacy_path, manifest_path) if p.is_file()]
+        existing = [p for p in (privacy_path, manifest_path, scrub_path) if p.is_file()]
         if existing:
             raise FileExistsError(
                 f"config already exists ({', '.join(str(p) for p in existing)}); "

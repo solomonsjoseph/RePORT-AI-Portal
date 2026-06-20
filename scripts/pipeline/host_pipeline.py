@@ -188,47 +188,55 @@ def _write_presidio_failure_md(audit_dir: Path, guard: Any) -> None:
     value. The operator fixes the corresponding scrub rule and re-runs. Findings
     come from both the Presidio and legacy scanners (OR-combined gate).
     """
-    from collections import Counter
+    from collections import Counter, defaultdict
 
     from scripts.audit.review_paths import presidio_failure_md_path
 
     findings = list(guard.presidio.findings) + list(guard.legacy.findings)
     if not findings:
         return
-    form = Path(getattr(findings[0], "relative_path", "") or "unknown").stem or "unknown"
-    md_path = presidio_failure_md_path(audit_dir, form)
-    md_path.parent.mkdir(parents=True, exist_ok=True)
-    # Scanners early-return on the first hit, so count is per-detection (>=1),
-    # not a per-column total — the operator's fix is identical either way.
-    agg = Counter(
-        (
-            f.pattern_name,
-            getattr(f, "column", "") or "(n/a)",
-            Path(f.relative_path).name,
+    # Group by form STEM so EVERY affected form gets a report under its own
+    # human-review dir (Note 5/22) — not just the form of findings[0].
+    by_form: dict[str, list[Any]] = defaultdict(list)
+    for finding in findings:
+        form = Path(getattr(finding, "relative_path", "") or "unknown").stem or "unknown"
+        by_form[form].append(finding)
+    triggered = ", ".join(guard.triggered_by) or "(unknown)"
+    for form, form_findings in sorted(by_form.items()):
+        md_path = presidio_failure_md_path(audit_dir, form)
+        md_path.parent.mkdir(parents=True, exist_ok=True)
+        # Scanners early-return on the first hit, so count is per-detection (>=1),
+        # not a per-column total — the operator's fix is identical either way.
+        agg = Counter(
+            (
+                f.pattern_name,
+                getattr(f, "column", "") or "(n/a)",
+                Path(f.relative_path).name,
+            )
+            for f in form_findings
         )
-        for f in findings
-    )
-    lines = [
-        "# Pre-promotion PHI Guard Gate Failure",
-        "",
-        "Boundary: pattern name + column name + count only — never a matched value.",
-        "",
-        f"- triggered_by: {', '.join(guard.triggered_by) or '(unknown)'}",
-        "",
-        "| pattern | column | file | count |",
-        "|---|---|---|---|",
-    ]
-    lines += [
-        f"| `{pat}` | `{col}` | `{fname}` | {n} |" for (pat, col, fname), n in sorted(agg.items())
-    ]
-    lines += [
-        "",
-        "## Required Next Step",
-        "",
-        "Fix the scrub rule in `phi_scrub.yaml` for the named pattern + column, then re-run.",
-        "",
-    ]
-    md_path.write_text("\n".join(lines), encoding="utf-8")
+        lines = [
+            "# Pre-promotion PHI Guard Gate Failure",
+            "",
+            "Boundary: pattern name + column name + count only — never a matched value.",
+            "",
+            f"- triggered_by: {triggered}",
+            "",
+            "| pattern | column | file | count |",
+            "|---|---|---|---|",
+        ]
+        lines += [
+            f"| `{pat}` | `{col}` | `{fname}` | {n} |"
+            for (pat, col, fname), n in sorted(agg.items())
+        ]
+        lines += [
+            "",
+            "## Required Next Step",
+            "",
+            "Fix the scrub rule in `phi_scrub.yaml` for the named pattern + column, then re-run.",
+            "",
+        ]
+        md_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def _write_pycanon_report_md(audit_dir: Path, form: str, result: Any) -> None:

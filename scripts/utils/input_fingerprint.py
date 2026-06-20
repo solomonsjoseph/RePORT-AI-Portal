@@ -50,7 +50,15 @@ _YAML_EXTS = frozenset({".yaml", ".yml"})
 
 # Code modules whose logic determines the published column set. Hashed by source
 # file so a scrub/classification code change invalidates a prior fingerprint.
-_SCRUB_AFFECTING_MODULES = ("scripts.security.phi_scrub", "scripts.security.phi_review")
+# Note 14 names the detector + date-parsing modules too: a logic change in the PHI
+# pattern set or the clinical-date parser changes scrub output, so they must be in
+# the fingerprint.
+_SCRUB_AFFECTING_MODULES = (
+    "scripts.security.phi_scrub",
+    "scripts.security.phi_review",
+    "scripts.security.phi_patterns",
+    "scripts.extraction.io.clinical_dates",
+)
 
 
 @dataclass(frozen=True)

@@ -402,7 +402,11 @@ class IdRule:
 
     def __init__(self, pattern: re.Pattern[str], label: str) -> None:
         self.pattern = pattern
-        self.label = label
+        # Sanitize to alphanumeric (uppercased, capped) so the visible
+        # RID_<LABEL>_<alpha12> token + HMAC domain-separator are ALWAYS
+        # well-formed — for config-declared labels and AI-overlay labels alike.
+        # Default config labels are already clean, so this is a no-op for them.
+        self.label = re.sub(r"[^A-Za-z0-9]", "", str(label)).upper()[:16] or "ID"
 
     def matches(self, name: str) -> bool:
         return bool(self.pattern.search(name))

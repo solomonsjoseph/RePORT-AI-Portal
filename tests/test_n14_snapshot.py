@@ -80,6 +80,28 @@ def test_data_as_of_absent_is_none(monkeypatch_config: Path) -> None:
     assert manifest["data_as_of"] is None
 
 
+def test_rejected_forms_and_cleanup_report_in_manifest(monkeypatch_config: Path) -> None:
+    study = config.STUDY_NAME
+    _seed_llm_source(study)
+    _seed_run(study, RUN_ID)
+    config.STUDY_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    (config.STUDY_CONFIG_DIR / "_forms_manifest.yaml").write_text(
+        yaml.safe_dump({"required": ["1A_form.xlsx"], "reject": ["Paste Errors.xlsx"]}),
+        encoding="utf-8",
+    )
+    audit = Path(config.OUTPUT_DIR) / study / "audit"
+    audit.mkdir(parents=True, exist_ok=True)
+    (audit / "cleanup_verification_report.json").write_text(
+        json.dumps({"passed": True}), encoding="utf-8"
+    )
+
+    dest = write_snapshot(study, RUN_ID)
+    manifest = load_snapshot(study, dest.name)
+    assert manifest["rejected_forms"] == ["Paste Errors.xlsx"]
+    assert manifest["cleanup_verification_report_sha256"]  # captured (non-null)
+    assert (dest / "cleanup_verification_report.json").is_file()
+
+
 def test_type2_resume_synthesizes_review_record(monkeypatch_config: Path) -> None:
     study = config.STUDY_NAME
     _seed_llm_source(study)
