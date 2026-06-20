@@ -61,6 +61,26 @@ _SCRUB_AFFECTING_MODULES = (
 )
 
 
+def _phi_key_fingerprint_safe() -> str:
+    """Value-free PHI key fingerprint (Note 14) — fail-soft to "" when unavailable."""
+    try:
+        from scripts.security.phi_keystore import phi_key_fingerprint
+
+        return phi_key_fingerprint() or ""
+    except Exception:
+        return ""
+
+
+def _rulebook_version_safe() -> str:
+    """PHI rulebook cache version (Note 14) — fail-soft to "" when unavailable."""
+    try:
+        from scripts.security.phi_rulebook import RULEBOOK_CACHE_VERSION
+
+        return str(RULEBOOK_CACHE_VERSION)
+    except Exception:
+        return ""
+
+
 @dataclass(frozen=True)
 class InputFingerprint:
     """A content fingerprint of all scrub-affecting inputs for a study."""
@@ -144,6 +164,12 @@ def compute_input_fingerprint(
         "scrub_config_effective": scrub_cfg,
         "forms_manifest": _file_component_hash(Path(config.FORMS_MANIFEST_PATH)),
         "study_privacy": _file_component_hash(Path(config.STUDY_PRIVACY_PATH)),
+        # Note 14: the PHI key determines pseudonyms and the rulebook version
+        # determines the rules — both are scrub-affecting inputs, so a key rotation
+        # or rulebook bump MUST change the fingerprint (else the redundant-run check
+        # would skip a study that actually needs re-scrubbing). Value-free + fail-soft.
+        "phi_key_fingerprint": _phi_key_fingerprint_safe(),
+        "phi_rulebook_version": _rulebook_version_safe(),
     }
     for module_name in _SCRUB_AFFECTING_MODULES:
         components[f"code:{module_name}"] = _module_source_hash(module_name)

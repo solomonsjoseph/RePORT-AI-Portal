@@ -34,6 +34,23 @@ def test_fingerprint_is_deterministic(tmp_path: Path) -> None:
     assert len(a.fingerprint) == 64  # sha256 hex
 
 
+def test_fingerprint_includes_key_and_rulebook_components(tmp_path: Path, monkeypatch) -> None:
+    # Note 14: the PHI key fingerprint + rulebook version are scrub-affecting inputs,
+    # so a key rotation must change the overall fingerprint (else a redundant-run
+    # check would skip a study that needs re-scrubbing with the new key).
+    datasets, sot = _seed_inputs(tmp_path)
+    import scripts.utils.input_fingerprint as ifp
+
+    monkeypatch.setattr(ifp, "_phi_key_fingerprint_safe", lambda: "KEYFP_OLD")
+    before = compute_input_fingerprint(study="S", datasets_dir=datasets, sot_dir=sot)
+    assert before.components["phi_key_fingerprint"] == "KEYFP_OLD"
+    assert "phi_rulebook_version" in before.components
+
+    monkeypatch.setattr(ifp, "_phi_key_fingerprint_safe", lambda: "KEYFP_NEW")
+    after = compute_input_fingerprint(study="S", datasets_dir=datasets, sot_dir=sot)
+    assert after.fingerprint != before.fingerprint  # key rotation forces a re-run
+
+
 def test_fingerprint_changes_when_data_changes(tmp_path: Path) -> None:
     datasets, sot = _seed_inputs(tmp_path)
     before = compute_input_fingerprint(study="S", datasets_dir=datasets, sot_dir=sot)

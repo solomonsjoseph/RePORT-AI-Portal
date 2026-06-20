@@ -202,23 +202,54 @@ def _preflight(state: _RunState, *, study: str, run_id: str, resume_held: bool, 
             # C5.5: identical inputs → activate the existing clean snapshot for
             # this fingerprint (point `current` at it) instead of re-running.
             detail = "inputs unchanged since last clean run (use --force to re-run)"
+            stale_block = None
             try:
                 from scripts.utils import snapshot as _snapshot
 
                 existing = _snapshot.find_snapshot_by_fingerprint(study, fp.fingerprint)
                 if existing is not None:
-                    _snapshot.set_current_snapshot(study, existing)
-                    state.snapshot_id = existing
-                    detail = f"identical inputs detected, activating snapshot {existing}"
-                    print(f"P0:preflight — {detail}", file=sys.stderr)
+                    # Defense-in-depth (Note 14): never silently re-activate a snapshot
+                    # whose PHI key has rotated (pseudonyms irrecoverable). The key is
+                    # now in the fingerprint, so this is a belt-and-suspenders guard.
+                    # Fail-soft: if staleness can't be determined, fall back to the
+                    # prior activate behavior (don't block on an inability to check).
+                    try:
+                        manifest = _snapshot.load_snapshot(study, existing)
+                        stale_block = next(
+                            (
+                                f
+                                for f in _snapshot.check_snapshot_staleness(
+                                    manifest,
+                                    current_rulebook_version=_snapshot._gather_rulebook_version(),
+                                    current_key_fingerprint=_snapshot._gather_key_fingerprint(),
+                                )
+                                if f.severity == _snapshot.StalenessSeverity.BLOCK
+                            ),
+                            None,
+                        )
+                    except Exception as exc:  # staleness check is best-effort
+                        print(f"redundant-run staleness check skipped: {exc}", file=sys.stderr)
+                    if stale_block is not None:
+                        print(
+                            f"P0:preflight — snapshot {existing} is stale "
+                            f"({stale_block.trigger}); forcing a full re-run",
+                            file=sys.stderr,
+                        )
+                    else:
+                        _snapshot.set_current_snapshot(study, existing)
+                        state.snapshot_id = existing
+                        detail = f"identical inputs detected, activating snapshot {existing}"
+                        print(f"P0:preflight — {detail}", file=sys.stderr)
             except Exception as exc:  # advisory — short-circuit either way
                 print(f"redundant-run snapshot activation skipped: {exc}", file=sys.stderr)
-            rec.status = "skipped"
-            rec.detail = detail
-            rec.exit_code = 0
-            state.status = "skipped_redundant"
-            state.flush()
-            return -1  # sentinel: redundant, short-circuit cleanly
+            if stale_block is None:
+                rec.status = "skipped"
+                rec.detail = detail
+                rec.exit_code = 0
+                state.status = "skipped_redundant"
+                state.flush()
+                return -1  # sentinel: redundant, short-circuit cleanly
+            # else: a BLOCK-level staleness was found → fall through to a full re-run
 
     rec.status, rec.exit_code = "complete", 0
     state.flush()
