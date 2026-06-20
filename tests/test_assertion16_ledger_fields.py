@@ -30,13 +30,30 @@ def test_assertion16_passes_complete_events(tmp_path: Path) -> None:
     assert result == "pass", detail
 
 
-def test_assertion16_fails_missing_taxonomy(tmp_path: Path) -> None:
+def test_assertion16_fails_no_taxonomy_and_no_rationale(tmp_path: Path) -> None:
+    # No rulebook taxonomy AND no rationale → the "why" is undocumented → fail.
     audit = tmp_path / "audit"
     bad = {**_COMPLETE, "rule": {"taxonomy": None, "jurisdictions": ["USA"]}}
     _write_ledger(audit, "1_Form", [bad])
     result, detail = _verify_assertion_16_ledger_fields_complete(audit)
     assert result == "fail"
-    assert "missing" in detail
+    assert "under-documented" in detail
+
+
+def test_assertion16_config_drop_with_rationale_passes(tmp_path: Path) -> None:
+    # A config-driven drop has no rulebook taxonomy but documents jurisdictions +
+    # method + rationale — that is complete documentation, so it passes.
+    audit = tmp_path / "audit"
+    config_drop = {
+        "variable_id": "RE_CLINIC",
+        "action": "drop",
+        "rule": {"taxonomy": None, "jurisdictions": ["USA", "INDIA"]},
+        "method": {"name": "field_removal"},
+        "rationale": "Applied by PHI scrubber per phi_scrub.yaml configuration",
+    }
+    _write_ledger(audit, "1_Form", [config_drop])
+    result, detail = _verify_assertion_16_ledger_fields_complete(audit)
+    assert result == "pass", detail
 
 
 def test_assertion16_fails_missing_method(tmp_path: Path) -> None:

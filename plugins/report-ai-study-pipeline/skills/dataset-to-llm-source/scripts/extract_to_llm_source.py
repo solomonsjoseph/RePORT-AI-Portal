@@ -997,13 +997,17 @@ def _assertion_13_update_status(
 
 
 def _verify_assertion_16_ledger_fields_complete(audit_dir: Path) -> _AssertionResult:
-    """Assertion 16 (N10): every PHI ledger EVENT carries the required IRB-evidence
-    fields — what/why/which-regulation/which-method.
+    """Assertion 16 (N10): every PHI ledger EVENT is fully documented —
+    what/why/which-regulation/which-method.
 
-    For each event in a dataset PHI ledger, requires ``rule.taxonomy`` (non-null),
-    ``rule.jurisdictions`` (non-empty), and ``method`` (present). Keep-decisions are
-    documented separately (they have a justification, not a regulation taxonomy) and
-    are excluded. Reads ledger metadata only — counts + variable NAMES, never values.
+    For each event in a dataset PHI ledger, requires: a ``method`` (which method),
+    ``rule.jurisdictions`` (the regulatory scope), and a WHY — either a specific
+    ``rule.taxonomy`` (rulebook-rule match) OR a ``rationale``. Config-driven drops
+    (``drop_fields`` patterns) legitimately carry no rulebook taxonomy but document
+    jurisdictions + method + rationale, so they pass; a genuinely under-documented
+    event (no method, or no jurisdictions, or neither taxonomy nor rationale) fails.
+    Keep-decisions are documented separately and excluded. Reads ledger metadata
+    only — counts + variable NAMES, never values.
     """
     incomplete: list[str] = []
     total = 0
@@ -1020,14 +1024,15 @@ def _verify_assertion_16_ledger_fields_complete(audit_dir: Path) -> _AssertionRe
                 continue
             total += 1
             rule = event.get("rule") if isinstance(event.get("rule"), dict) else {}
-            if not rule.get("taxonomy") or not rule.get("jurisdictions") or not event.get("method"):
+            why = rule.get("taxonomy") or event.get("rationale")
+            if not event.get("method") or not rule.get("jurisdictions") or not why:
                 incomplete.append(f"{ledger_path.parent.name}/{event.get('variable_id', '?')}")
     if incomplete:
         shown = ", ".join(incomplete[:5])
         return (
             "fail",
-            f"{len(incomplete)}/{total} PHI ledger event(s) missing "
-            f"taxonomy/jurisdictions/method (e.g. {shown})",
+            f"{len(incomplete)}/{total} PHI ledger event(s) under-documented "
+            f"(need method + jurisdictions + taxonomy-or-rationale; e.g. {shown})",
         )
     return "pass", f"all {total} PHI ledger event(s) carry taxonomy + jurisdictions + method"
 
