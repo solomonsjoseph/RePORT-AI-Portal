@@ -65,7 +65,7 @@ def _run_config_wizard(args: argparse.Namespace) -> int:
                 )
                 return 2
             privacy = wizard.build_privacy_config(
-                jurisdictions=jurisdictions, posture=posture, data_as_of=args.data_as_of
+                jurisdictions=jurisdictions, data_as_of=args.data_as_of
             )
             manifest = wizard.build_forms_manifest(
                 required=args.required, optional=args.optional, reject=args.reject
@@ -73,6 +73,8 @@ def _run_config_wizard(args: argparse.Namespace) -> int:
             privacy_path, manifest_path = wizard.write_configs(
                 args.study, privacy, manifest, force=args.force
             )
+            # N11 posture fix: write the posture where the scrub engine reads it.
+            wizard.write_scrub_override(args.study, posture, force=args.force)
     except (ValueError, FileExistsError) as exc:
         emit_skill_result(
             SkillResult(

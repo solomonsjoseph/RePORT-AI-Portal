@@ -107,16 +107,21 @@ def suggest_form_classification(files: list[str]) -> dict[str, str]:
 def build_privacy_config(
     *,
     jurisdictions: list[str],
-    posture: str,
     data_as_of: str | None = None,
     rule_refresh: str = "pinned_only",
     conflict_policy: str = "strictest_wins",
     kanon_publish_gate: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Compose the _study_privacy.yaml mapping (does not write)."""
+    """Compose the _study_privacy.yaml mapping (does not write).
+
+    NOTE: ``compliance_posture`` is intentionally NOT written here — the scrub
+    engine reads it from ``phi_scrub.yaml`` (``load_scrub_config``), not from
+    ``_study_privacy.yaml``. The wizard writes the posture via
+    :func:`write_scrub_override` so the maintainer's choice actually takes effect
+    (writing it here would be silently ignored — the N11 posture bug).
+    """
     cfg: dict[str, Any] = {
         "jurisdictions": [j.upper() for j in jurisdictions],
-        "compliance_posture": posture,
         "rule_refresh": rule_refresh,
         "conflict_policy": conflict_policy,
         "approval": {"mode": "hybrid", "max_synthetic_attempts": 5},
@@ -126,6 +131,36 @@ def build_privacy_config(
     if kanon_publish_gate:
         cfg["kanon_publish_gate"] = kanon_publish_gate
     return cfg
+
+
+def write_scrub_override(study: str, posture: str, *, force: bool = False) -> Path:
+    """Write config/<study>/phi_scrub.yaml pinning the chosen compliance_posture.
+
+    The scrub engine reads ``compliance_posture`` from phi_scrub.yaml (merged over
+    the defaults), so the wizard's posture choice must land HERE to take effect.
+    A per-study override carrying only ``compliance_posture`` deep-merges over the
+    default rules (it changes the posture, keeps the rules).
+    """
+    path = Path(config.study_config_path(config.PHI_SCRUB_CONFIG_FILENAME, study=study))
+    if path.is_file() and not force:
+        raise FileExistsError(f"scrub config already exists ({path}); pass force=True to overwrite")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        yaml.safe_dump({"compliance_posture": posture}, sort_keys=False), encoding="utf-8"
+    )
+    return path
+
+
+def limited_dataset_authority_missing(posture: str) -> bool:
+    """True when posture is limited_dataset but its required IRB authority note is absent.
+
+    ``limited_dataset`` keeps + jitters birthdates and REQUIRES
+    ``authorities/phi_limited_dataset.md``; ``load_scrub_config`` fail-closes
+    without it. The wizard warns so the maintainer adds the note before running.
+    """
+    if posture != "limited_dataset":
+        return False
+    return not (Path(config.BASE_DIR) / "authorities" / "phi_limited_dataset.md").is_file()
 
 
 def build_forms_manifest(
@@ -278,11 +313,17 @@ def run_interactive(
     if merr:
         raise ValueError("manifest invalid: " + "; ".join(merr))
 
-    privacy = build_privacy_config(
-        jurisdictions=jurisdictions, posture=posture, data_as_of=data_as_of
-    )
+    privacy = build_privacy_config(jurisdictions=jurisdictions, data_as_of=data_as_of)
     manifest = build_forms_manifest(required=required, optional=optional, reject=reject)
     paths = write_configs(study, privacy, manifest, force=force)
+    scrub_path = write_scrub_override(study, posture, force=force)
     p(f"✓ wrote {paths[0]}")
     p(f"✓ wrote {paths[1]}")
+    p(f"✓ wrote {scrub_path} (compliance_posture: {posture})")
+    if limited_dataset_authority_missing(posture):
+        p(
+            "⚠ compliance_posture 'limited_dataset' requires "
+            "authorities/phi_limited_dataset.md — the scrub will FAIL-CLOSE until "
+            "you add that IRB authority note."
+        )
     return paths

@@ -89,18 +89,30 @@ def test_validate_manifest_inputs_overlap_and_missing(setup_paths):
 
 def test_build_configs_shapes(setup_paths):
     w = _wizard()
-    priv = w.build_privacy_config(
-        jurisdictions=["usa"], posture="safe_harbor", data_as_of="2024-12-31"
-    )
+    priv = w.build_privacy_config(jurisdictions=["usa"], data_as_of="2024-12-31")
     assert priv["jurisdictions"] == ["USA"]
     assert priv["data_as_of"] == "2024-12-31"
+    # N11 posture fix: compliance_posture is NOT written into _study_privacy.yaml
+    # (the scrub reads it from phi_scrub.yaml).
+    assert "compliance_posture" not in priv
     man = w.build_forms_manifest(required=["b.xlsx", "a.xlsx"], optional=[], reject=["j.xlsx"])
     assert man["required"] == ["a.xlsx", "b.xlsx"]  # sorted
 
 
+def test_write_scrub_override_pins_posture(setup_paths):
+    w = _wizard()
+    path = w.write_scrub_override("S", "limited_dataset")
+    cfg = yaml.safe_load(path.read_text())
+    assert cfg["compliance_posture"] == "limited_dataset"
+    assert path.name == "phi_scrub.yaml"
+    with pytest.raises(FileExistsError):
+        w.write_scrub_override("S", "safe_harbor")
+    w.write_scrub_override("S", "safe_harbor", force=True)  # force overwrites
+
+
 def test_write_configs_refuses_overwrite_without_force(setup_paths):
     w = _wizard()
-    priv = w.build_privacy_config(jurisdictions=["USA"], posture="safe_harbor")
+    priv = w.build_privacy_config(jurisdictions=["USA"])
     man = w.build_forms_manifest(required=["a.xlsx"], optional=[], reject=[])
     p1, p2 = w.write_configs("S", priv, man)
     assert p1.is_file() and p2.is_file()
@@ -109,7 +121,7 @@ def test_write_configs_refuses_overwrite_without_force(setup_paths):
     w.write_configs("S", priv, man, force=True)  # force overwrites
 
 
-def test_run_interactive_writes_valid_config(setup_paths):
+def test_run_interactive_writes_posture_to_scrub_config(setup_paths):
     w = _wizard()
     _make_datasets(setup_paths, "S", ["1_enroll.xlsx", "2_base.xlsx"])
     answers = iter(["USA", "", "2024-12-31", "R", "R"])  # juris, posture(default), date, two files
@@ -119,8 +131,15 @@ def test_run_interactive_writes_valid_config(setup_paths):
     priv = yaml.safe_load(p1.read_text())
     man = yaml.safe_load(p2.read_text())
     assert priv["jurisdictions"] == ["USA"]
-    assert priv["compliance_posture"] == "safe_harbor"
+    assert "compliance_posture" not in priv  # NOT here anymore
     assert man["required"] == ["1_enroll.xlsx", "2_base.xlsx"]
+    # The posture is written where the scrub engine reads it (phi_scrub.yaml).
+    import config
+
+    scrub_cfg = yaml.safe_load(
+        Path(config.study_config_path("phi_scrub.yaml", study="S")).read_text()
+    )
+    assert scrub_cfg["compliance_posture"] == "safe_harbor"
 
 
 def test_run_interactive_accept_reject_default(setup_paths):
