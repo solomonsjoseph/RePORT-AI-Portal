@@ -1626,8 +1626,10 @@ def _run_form_approval_gate(
         audit_dir = run_dir.parents[1] / "audit"
         for item in approvals:
             if item.status != "approved":
+                # Key by the bare form stem so every producer's note for a form
+                # colocates in one human_review/{stem}/ dir (Note 22).
                 _write_classification_hold_note(
-                    classification_review_path(audit_dir, item.form_name), item
+                    classification_review_path(audit_dir, Path(item.form_name).stem), item
                 )
 
     return FormGateResult(
@@ -2038,8 +2040,10 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
             _scrub_audit_dir = study_output_dir / "audit"
             for _pf in _scrub_partial_forms:
+                # Key by the bare form stem (strip .jsonl) so the scrub note
+                # colocates with the form's other producer notes (Note 22).
                 _write_scrub_quarantine_note(
-                    scrub_quarantine_review_path(_scrub_audit_dir, _pf["form"]), _pf
+                    scrub_quarantine_review_path(_scrub_audit_dir, Path(_pf["form"]).stem), _pf
                 )
 
         # ── Step 3.55: read sot_joined_gate_outcome.json (best-effort) ─────
