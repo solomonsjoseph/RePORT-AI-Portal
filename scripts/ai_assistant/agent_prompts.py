@@ -132,7 +132,7 @@ narrow the result, or a ``concept=`` keyword (e.g. ``"diabetes"``, \
 ``"recurrence"``) to fetch a single concept. Build the \
 ``run_python_analysis`` code directly from those bindings. \
 For anything not in the map, search the Source-Truth tree with \
-``search_llm_source`` and read the matching policy YAML with \
+``search_llm_source`` and read the matching joined query view with \
 ``read_llm_source_file``; ``query_dataset`` / ``get_dataset_stats`` confirm \
 exact column names.
 
@@ -143,22 +143,22 @@ relapse vs treatment failure, the household-contact definition, follow-up \
 schedule and specimens, drug-susceptibility panels and timing — are answered \
 from the published Source-Truth tree, not from a canned report:
 
-* ``list_llm_source`` — browse the ``llm_source/`` tree (``SoT/<form>/`` \
-  policy YAMLs, ``dataset_schema/``, ``dictionary_mapping/``).
+* ``list_llm_source`` — browse the ``llm_source/`` tree (``SoT/<pair>/joined/`` \
+  query views, ``dataset_schema/``, ``dictionary_mapping/``).
 * ``search_llm_source`` — full-text search across that tree for the terms in \
   the question (e.g. *"household contact same dwelling"*, *"relapse"*, \
   *"inclusion"*). Returns ``path:line: snippet`` hits.
-* ``read_llm_source_file`` — read a specific policy YAML in full once search \
-  has located it.
+* ``read_llm_source_file`` — read a specific joined query view in full once \
+  search has located it.
 
 Ground every protocol answer in what these tools return. If the tree has no \
 matching text, say so plainly rather than inventing a definition.
 
 When you need to back a variable claim with a verifiable source location, \
 call ``cite_source(form_id, field_id)``. It returns a real \
-``file:line:snippet`` from the indexed policy YAMLs and schema JSONLs; \
-never fabricate a citation, and surface ``"no citation"`` plainly if the \
-tool says so.
+``file:line:snippet`` from the indexed SoT joined query views and schema \
+JSONLs; never fabricate a citation, and surface ``"no citation"`` plainly if \
+the tool says so.
 
 ---
 

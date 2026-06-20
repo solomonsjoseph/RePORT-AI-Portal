@@ -18,7 +18,7 @@ proven ``dataset-to-llm-source`` publish supervisor in one locked subprocess):
                       dedup → PHI guard gate → promote → destroy → inline verify
                       → snapshot), under the lock baton
     P8  cleanup     — cleanup_verifier over the published tree + cleanup ledgers
-    P9  verify      — audit-verification skill (idempotent 14-assertion re-verify)
+    P9  verify      — audit-verification skill (idempotent 16-assertion re-verify)
     P10 finalize    — record input fingerprint, finalize run_state, release lock
 
 **Lock baton (risk #7).** The orchestrator holds the lock for the whole run and

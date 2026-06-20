@@ -995,8 +995,9 @@ def check_snapshot_staleness(
        pseudonym in the snapshot is now irrecoverable without a re-scrub.
     3. **source_data_correction** (WARN) — the ``raw_datasets`` input-fingerprint
        component changed (raw data corrected after the snapshot).
-    4. **config_change** (WARN) — a ``forms_manifest`` / ``study_privacy``
-       input-fingerprint component changed (jurisdictions / form statuses).
+    4. **config_change** (WARN) — a ``forms_manifest`` / ``study_privacy`` /
+       ``scrub_config_effective`` input-fingerprint component changed
+       (jurisdictions / form statuses / scrub rules or posture).
 
     A comparison is skipped (no false positive) when either side is unknown
     (``None`` / missing), so a legacy v1 snapshot with no provenance yields no

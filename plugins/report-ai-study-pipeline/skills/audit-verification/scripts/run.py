@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Skill entrypoint: audit-verification (Phase 9).
 
-Runs the 14-assertion post-publish verifier for a completed run (manifest
+Runs the 16-assertion post-publish verifier for a completed run (manifest
 reconciliation, ledger hashes + no-LLM sentinel, quarantine-empty, PHI absence
 scan, decided-vs-applied protection lattice, ledger coverage completeness, …) by
 delegating to the trusted ``extract_to_llm_source verify`` path, which owns the
@@ -28,7 +28,7 @@ from scripts.utils.skill_protocol import (  # noqa: E402
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run the 14-assertion publish verifier.")
+    parser = argparse.ArgumentParser(description="Run the 16-assertion publish verifier.")
     add_common_skill_args(parser)
     args = parser.parse_args(argv)
 

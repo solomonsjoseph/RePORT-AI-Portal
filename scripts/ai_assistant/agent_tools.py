@@ -20,7 +20,7 @@ Tools
 -----
 1.  list_llm_source — browse the PHI-scrubbed ``llm_source/`` tree
 2.  search_llm_source — full-text search across ``llm_source/`` (protocol/definitions)
-3.  read_llm_source_file — read a specific ``llm_source/`` file (e.g. a policy YAML)
+3.  read_llm_source_file — read a specific ``llm_source/`` file (e.g. a SoT joined query view)
 4.  search_variables — dataset column search (dictionary fallback)
 5.  query_dataset — structural query on a JSONL dataset
 6.  list_available_datasets — list available PHI-scrubbed datasets

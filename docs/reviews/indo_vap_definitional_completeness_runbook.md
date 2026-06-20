@@ -66,7 +66,7 @@ The same pattern applies: place the raw source at
 `_study_privacy.yaml`, which are the canonical raw study inputs for this study)
 and add a publish step in `main.py` that copies it into
 `config.LLM_SOURCE_STUDY_METADATA_DIR`. Until that step is added, a one-time
-manual copy after `make pipeline` is sufficient for the current bundle.
+manual copy after `make study STUDY=Indo-VAP` is sufficient for the current bundle.
 
 ### Questions capped by this gap
 
@@ -197,7 +197,7 @@ config/study_knowledge.yaml   (tracked: git ls-files config/)
 src = Path(__file__).resolve().parent / "config" / "study_knowledge.yaml"
 ```
 
-`make rebuild-llm-source` (or `make pipeline`) copies this source into
+`make rebuild-llm-source` (or `make study`) copies this source into
 `output/.../study_metadata/study_variable_map.yaml` on every run. As long as
 edits are made to `config/study_knowledge.yaml` and committed, the published
 copy is always reproducible.
@@ -221,7 +221,7 @@ output differs from the source.
 1. Always edit `config/study_knowledge.yaml` (git-tracked), never the
    published copy.
 2. To add new concept-to-column mappings, edit `config/study_knowledge.yaml`,
-   commit, and re-run `make pipeline STUDY=Indo-VAP` to republish.
+   commit, and re-run `make study STUDY=Indo-VAP` to republish.
 3. Optionally: add a `make check-study-knowledge` target that diffs the
    published copy against the source and exits non-zero on divergence, as a
    pre-publish guard.

@@ -68,7 +68,7 @@ orchestrator:
       skills: [phi-scrubbing]
     - phase: 5
       name: audit-verification
-      action: 14-assertion audit verification
+      action: 16-assertion audit verification
       skills: [audit-verification]
     - phase: 6
       name: guard-gate-promote
@@ -84,7 +84,7 @@ orchestrator:
       skills: []
     - phase: 9
       name: full-verifier
-      action: Idempotent 14-assertion re-verify
+      action: Idempotent 16-assertion re-verify
       skills: [audit-verification]
     - phase: 10
       name: finalize
@@ -151,7 +151,7 @@ skills:
     role: dag
     scope: study
     parallel: false
-    purpose: Run the 14-assertion verifier; idempotent re-verify in phase 9.
+    purpose: Run the 16-assertion verifier; idempotent re-verify in phase 9.
   - skill: excel-duplicate-handler
     path: skills/excel-duplicate-handler/SKILL.md
     role: legacy_preflight
