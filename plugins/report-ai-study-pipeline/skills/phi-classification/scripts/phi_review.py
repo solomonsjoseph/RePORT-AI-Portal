@@ -696,7 +696,8 @@ def load_sot_variable_signals(sot_root: Path, form_name: str) -> dict[str, dict[
     an independent source of each variable's MEANING and a PHI recommendation. We
     read the per-form joined query view at
     ``{sot_root}/{stem}/joined/{stem}_joined_query_view.yaml`` (falling back to the
-    policy YAML) and return ``{VAR_UPPER: {"has_pdf_question": bool, "sot_phi":
+    policy YAML in the audit construction zone) and return
+    ``{VAR_UPPER: {"has_pdf_question": bool, "sot_phi":
     str|None, "is_phi": bool}}``. Any missing/unreadable SoT yields ``{}`` so the
     name-only review proceeds unchanged (the SoT is an enhancer, never a hard dep).
 
@@ -704,9 +705,14 @@ def load_sot_variable_signals(sot_root: Path, form_name: str) -> dict[str, dict[
     never dataset row values.
     """
     stem = Path(form_name).stem
+    # Primary: the LLM-facing joined query view in llm_source. Fallback: the policy
+    # YAML, which (N3) lives in the AUDIT construction zone, not llm_source — this
+    # is trusted pipeline code reading metadata, never an LLM read.
+    # sot_root = output/<study>/llm_source/SoT → parents[1] = output/<study>.
+    construction_root = sot_root.parents[1] / "audit" / "SoT_construction"
     candidates = (
         sot_root / stem / "joined" / f"{stem}_joined_query_view.yaml",
-        sot_root / stem / "pdf" / f"{stem}_policy.yaml",
+        construction_root / stem / "pdf" / f"{stem}_policy.yaml",
     )
     for path in candidates:
         try:

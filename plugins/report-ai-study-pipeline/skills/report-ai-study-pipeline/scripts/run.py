@@ -13,7 +13,7 @@ proven ``dataset-to-llm-source`` publish supervisor in one locked subprocess):
     P0  preflight   — config validation, rulebook resolve + drift, input-
                       fingerprint redundant-run check, dir pre-creation, lock
     P1  headers     — header-extraction skill (column NAMES only; gates classify)
-    P1b SoT         — generate_lean_outputs (policy/schema/joined under llm_source/SoT/)
+    P1b SoT         — generate_lean_outputs (policy/schema → audit/SoT_construction/; only joined view → llm_source/SoT/)
     P2  publish     — dataset-to-llm-source `run` (classify → extract → scrub →
                       dedup → PHI guard gate → promote → destroy → inline verify
                       → snapshot), under the lock baton

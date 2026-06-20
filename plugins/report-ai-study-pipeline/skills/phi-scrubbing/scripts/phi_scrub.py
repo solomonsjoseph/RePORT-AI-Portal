@@ -2796,7 +2796,9 @@ def run_scrub(
         # annotation geometry); if the file doesn't exist for a given form the stem
         # is simply absent from the map and the ledger falls back to pdf_source=None.
         # This is metadata-only (path existence check, no file reads or value access).
-        _sot_root = Path(config.STUDY_LLM_SOURCE_DIR) / "SoT"
+        # N3: the policy YAML lives in the AUDIT construction zone (fenced from the
+        # LLM), not llm_source — this is trusted pipeline code, not an LLM read.
+        _sot_root = Path(config.STUDY_AUDIT_DIR) / "SoT_construction"
         pdf_source_by_stem: dict[str, str | None] = {}
         for _stem in sorted({Path(f).stem for f in (dataset_files or [])}):
             _candidate = _sot_root / _stem / "pdf" / f"{_stem}_policy.yaml"
