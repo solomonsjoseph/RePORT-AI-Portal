@@ -2,7 +2,7 @@ name: Skill verifier guard
 
 # Runs the extract_to_llm_source verifier against the synthetic 3-form
 # fixture trio on every PR that touches the skill's surfaces.
-# Prevents regressions to the 12 verifier invariants.
+# Prevents regressions to the 16 verifier invariants.
 
 on:
   pull_request:

@@ -69,20 +69,13 @@ def _bundle_present() -> bool:
 
 
 def _schema_columns(form_stem: str) -> set[str]:
-    """Return the column-name set from SoT/<form>/dataset/<form>_schema.json.
+    """Return the column-name set from the published dataset JSONL header keys.
 
-    Falls back to reading the FIRST LINE KEYS of the dataset JSONL when no
-    schema JSON exists for the form.  Never reads row values.
+    Reads only the FIRST-LINE KEYS of the per-form JSONL (header metadata only;
+    never row values). The dataset schema JSON is a build-time construction
+    artifact fenced into the audit zone (N3), not the LLM read zone, so the
+    published JSONL header is the schema surface the agent actually sees.
     """
-    sot_schema = (
-        config.STUDY_LLM_SOURCE_DIR / "SoT" / form_stem / "dataset" / f"{form_stem}_schema.json"
-    )
-    if sot_schema.exists():
-        validate_agent_read(sot_schema)
-        data = json.loads(sot_schema.read_text(encoding="utf-8"))
-        return {col["name"] for col in data.get("columns", [])}
-
-    # Fallback: first-line KEYS of the dataset JSONL (header metadata only)
     jsonl_path = config.TRIO_DATASETS_DIR / f"{form_stem}.jsonl"
     if jsonl_path.exists():
         validate_agent_read(jsonl_path)

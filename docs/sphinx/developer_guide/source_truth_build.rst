@@ -46,8 +46,9 @@ The orchestrator:
 1. creates source packs for PDF-backed forms,
 2. generates conservative policy YAML candidates under ``/tmp``,
 3. verifies each candidate,
-4. promotes passing policy/schema/joined outputs to
-   ``output/Indo-VAP/llm_source/SoT/``, and
+4. writes the verified policy YAML + dataset schema into the audit zone
+   (``output/Indo-VAP/audit/SoT_construction/<pair>/``) and promotes ONLY the
+   joined query view to ``output/Indo-VAP/llm_source/SoT/<pair>/joined/``, and
 5. drives the in-lock host publish path (via the ``dataset-to-llm-source``
    supervisor) to publish dictionary mappings, PHI-scrubbed dataset JSONL,
    audit ledgers, lineage, and the output signpost.

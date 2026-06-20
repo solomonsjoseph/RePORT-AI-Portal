@@ -8,8 +8,12 @@ moving row-2+ dataset values into the SoT path:
 2. Build a source pack from the PDF plus dataset row-1 headers only.
 3. Generate a lean YAML candidate into ``/tmp``.
 4. Verify the candidate against the source pack.
-5. Promote only verified policy YAML plus the per-form schema and joined view
-   into ``output/<study>/llm_source/SoT/<pair>/``.
+5. After the candidate verifies, write the policy YAML + per-form schema (the
+   construction inputs) into the AUDIT zone
+   (``output/<study>/audit/SoT_construction/<pair>/``, fenced from the LLM) and
+   promote ONLY the joined query view into
+   ``output/<study>/llm_source/SoT/<pair>/joined/`` (N2/N3/N17: the joined view
+   is the sole LLM-facing SoT file).
 """
 
 # ruff: noqa: S108
@@ -396,7 +400,7 @@ def _cleanup_sot_temps(form: str) -> None:
 
 
 def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path:
-    """Generate, verify, and promote one form's SoT policy/schema/joined outputs."""
+    """Generate + verify one form's SoT; policy/schema go to the audit zone, only the joined view is promoted to llm_source."""
 
     study_dir = repo_root / "data" / "raw" / study
     pdf = _find_pdf(study_dir, form)

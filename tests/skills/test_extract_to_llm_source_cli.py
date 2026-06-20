@@ -125,7 +125,7 @@ class TestVerifyStub:
     """Smoke tests for the verify subcommand.
 
     P3.1 tested a one-assertion scaffold.  P4.1 replaced the scaffold with the
-    full 12-assertion verifier.  These tests are updated to reflect that:
+    full 16-assertion verifier.  These tests are updated to reflect that:
       - verify without --run and without any runs/ directory exits EXIT_NEEDS_ADVICE.
       - staging-present is caught by assertion 3, but only AFTER run_id is resolved.
     """

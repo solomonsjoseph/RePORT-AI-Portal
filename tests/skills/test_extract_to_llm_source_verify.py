@@ -2,8 +2,8 @@
 
 Coverage
 --------
-A. Happy path: synthetic study setup with all 13 conditions satisfied → exit 0,
-   verifier_report.json has all 13 "pass", status.json updated with
+A. Happy path: synthetic study setup with all 16 conditions satisfied → exit 0,
+   verifier_report.json has all 16 "pass", status.json updated with
    verifier_passed: true.
 
 B. Failure-injection fixtures — one test per failure mode:
@@ -241,7 +241,7 @@ def _build_happy_study(
     forms: list[str] | None = None,
     run_id: str = RUN_ID,
 ) -> dict[str, Path]:
-    """Build a complete synthetic study hierarchy that satisfies all 12 assertions.
+    """Build a complete synthetic study hierarchy that satisfies all 16 assertions.
 
     Returns a dict of named paths for easy mutation in failure-injection tests.
     """
@@ -312,7 +312,7 @@ class TestVerifyHappyPath:
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         assert report_path.exists()
 
-    def test_report_has_15_assertions(
+    def test_report_has_16_assertions(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_config(monkeypatch, tmp_path)

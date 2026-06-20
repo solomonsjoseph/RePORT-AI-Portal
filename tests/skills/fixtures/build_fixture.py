@@ -4,7 +4,7 @@ This script generates:
   - Three minimal .xlsx files under tests/skills/fixtures/datasets/
   - A _forms_manifest.yaml listing them as required
   - A golden output tree under tests/skills/fixtures/golden_output/ that
-    satisfies all 15 verifier assertions (except the phi_scrub.yaml hash,
+    satisfies all 16 verifier assertions (except the phi_scrub.yaml hash,
     which is computed dynamically at build time from the real file).
 
 Usage
@@ -171,7 +171,7 @@ def build_golden_output_tree(
     study: str = FIXTURE_STUDY,
     forms: list[str] | None = None,
 ) -> dict[str, Path]:
-    """Construct a complete golden output tree that satisfies all 15 verifier assertions.
+    """Construct a complete golden output tree that satisfies all 16 verifier assertions.
 
     Populates:
       - output_root/{study}/runs/{run_id}/destruction_attestation.json

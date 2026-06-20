@@ -255,21 +255,25 @@ class TestFakeLocalProvider:
         from scripts.ai_assistant import agent_graph as ag
 
         repo_root = monkeypatch_config
-        policy_dir = repo_root / "output" / "Indo-VAP" / "llm_source" / "SoT" / "6_HIV" / "pdf"
-        policy_dir.mkdir(parents=True)
-        (policy_dir / "6_HIV_policy.yaml").write_text(
+        # N3: the agent reads ONLY the SoT joined query view (policy YAML + schema
+        # are fenced to the audit zone), so the fixture writes a joined view into
+        # the actual LLM read zone (config.STUDY_LLM_SOURCE_DIR) so validate_agent_read
+        # permits it regardless of the study name.
+        joined_dir = _config.STUDY_LLM_SOURCE_DIR / "SoT" / "6_HIV" / "joined"
+        joined_dir.mkdir(parents=True)
+        (joined_dir / "6_HIV_joined_query_view.yaml").write_text(
             """
 study: Indo-VAP
-form:
-  number: "6"
-  title: HIV
-sections:
-  main: Main
+form: 6_HIV
+dataset:
+  source_dataset: data/raw/Indo-VAP/datasets/6_HIV.xlsx
 variables:
   HIV_HIV:
-    section: main
-    pdf_question: HIV test result
-    type: code
+    pdf:
+      section: main
+      question: HIV test result
+      type: code
+    dataset: {}
 """.lstrip(),
             encoding="utf-8",
         )
