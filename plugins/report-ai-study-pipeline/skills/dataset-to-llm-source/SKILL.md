@@ -44,6 +44,19 @@ data/raw/{STUDY}/datasets/*.{xlsx,csv}
 
 For a full study build this skill runs under the `report-ai-study-pipeline` orchestrator (`make study STUDY=<name>`), which holds the pipeline lock and drives every phase. This CLI is the publish supervisor the orchestrator invokes; prefer it (or `make study`) over invoking the host publish engine (`scripts.pipeline.host_pipeline`) directly, because it includes the manifest gate, privacy approval, pipeline lock, verifier, and destruction attestation.
 
+## PHI guard gate (pre-promotion)
+
+Before any scrubbed file is promoted into `llm_source/`, the supervisor runs the
+**OR-combined PHI guard gate** (Note 5) — it fails closed if *either* layer finds
+PHI: **Presidio** (model-free PatternRecognizers) **and** `scan_tree_for_phi`
+(the shared residual-pattern scanner). It also runs **pyCANON** k/l-anonymity at
+publish time when `kanon_publish_gate` is enabled in `_study_privacy.yaml`. A gate
+failure writes a value-free report to the per-form human-review queue
+(`presidio_failure.md` / `pycanon_report.md` — pattern + column + counts only) and
+blocks promotion. Post-consolidation, this supervisor (not a standalone CLI) is
+the single owner of the classify → extract → scrub → guard-gate → promote → verify
+sequence.
+
 ## Key Boundary
 
 Do not read, print, hash, stat, permission-check, or existence-check PHI HMAC keys or encryption keys from an agent workflow. The key is operator-managed secret material outside the repo. The only code path allowed to load it is the trusted PHI scrubber at the point where it rewrites staged values.

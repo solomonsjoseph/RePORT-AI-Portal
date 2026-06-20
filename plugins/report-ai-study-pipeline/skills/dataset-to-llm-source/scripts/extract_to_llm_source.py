@@ -996,6 +996,42 @@ def _assertion_13_update_status(
 # ── dispatcher ───────────────────────────────────────────────────────────────
 
 
+def _verify_assertion_16_ledger_fields_complete(audit_dir: Path) -> _AssertionResult:
+    """Assertion 16 (N10): every PHI ledger EVENT carries the required IRB-evidence
+    fields — what/why/which-regulation/which-method.
+
+    For each event in a dataset PHI ledger, requires ``rule.taxonomy`` (non-null),
+    ``rule.jurisdictions`` (non-empty), and ``method`` (present). Keep-decisions are
+    documented separately (they have a justification, not a regulation taxonomy) and
+    are excluded. Reads ledger metadata only — counts + variable NAMES, never values.
+    """
+    incomplete: list[str] = []
+    total = 0
+    for ledger_path in iter_dataset_phi_ledger_paths(audit_dir):
+        try:
+            data = json.loads(ledger_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        events = data.get("events")
+        if not isinstance(events, list):
+            continue
+        for event in events:
+            if not isinstance(event, dict):
+                continue
+            total += 1
+            rule = event.get("rule") if isinstance(event.get("rule"), dict) else {}
+            if not rule.get("taxonomy") or not rule.get("jurisdictions") or not event.get("method"):
+                incomplete.append(f"{ledger_path.parent.name}/{event.get('variable_id', '?')}")
+    if incomplete:
+        shown = ", ".join(incomplete[:5])
+        return (
+            "fail",
+            f"{len(incomplete)}/{total} PHI ledger event(s) missing "
+            f"taxonomy/jurisdictions/method (e.g. {shown})",
+        )
+    return "pass", f"all {total} PHI ledger event(s) carry taxonomy + jurisdictions + method"
+
+
 def _cmd_verify(args: argparse.Namespace) -> int:
     """Run 13 verifier assertions for the given study.
 
@@ -1131,6 +1167,12 @@ def _cmd_verify(args: argparse.Namespace) -> int:
                 llm_source_dir, dataset_files_dir, study=study, repo_root=Path(config.BASE_DIR)
             ),
             EXIT_VERIFIER_FAIL,
+        ),
+        (
+            16,
+            "ledger_entry_fields_complete",
+            lambda: _verify_assertion_16_ledger_fields_complete(audit_dir),
+            EXIT_AUDIT_COVERAGE_INCOMPLETE,
         ),
         (
             13,
@@ -1653,7 +1695,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
     -----
     1. Pre-flight checks (run_id, in-progress token, lock, manifest).
     2. Install SIGINT/SIGTERM handlers.
-    3. Invoke ``main.py --pipeline`` in a subprocess with ``STUDY_NAME`` set.
+    3. Invoke ``python -m scripts.pipeline.host_pipeline --pipeline`` in a
+       subprocess with ``STUDY_NAME`` set.
     4. Post-run gates (ledger hashes, quarantine).
     5. Destruction (destroy_staging_and_attest).
     6. Write status.json.
@@ -1665,7 +1708,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     ``--resume-held`` resumes after a maintainer has resolved the held forms of
     a prior partial run.  It re-processes the FULL surviving form set (prior
     ``approved_forms`` | ``held_forms``) — NOT only the held forms — because
-    promotion (``main.py`` ``_publish_leg``) is a whole-leg atomic replace:
+    promotion (``host_pipeline._publish_leg``) is a whole-leg atomic replace:
     publishing only the held subset would securely delete every previously
     approved form from ``llm_source/``.  Re-processing the union reproduces every
     surviving form; the now-resolved held forms are re-reviewed and, on a fully
@@ -1743,7 +1786,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
             return EXIT_NEEDS_ADVICE
         prior_approved: list[str] = [str(f) for f in prior_approval.get("approved_forms", [])]
         # Re-process the FULL surviving set (prior approved | held), NOT only the
-        # held forms. Promotion (main.py _publish_leg) is a whole-leg atomic
+        # held forms. Promotion (host_pipeline._publish_leg) is a whole-leg atomic
         # replace, so publishing only the held subset would securely DELETE every
         # previously-approved form from llm_source/. Passing the union lets the
         # whole-leg rebuild reproduce every surviving form; the gate re-reviews

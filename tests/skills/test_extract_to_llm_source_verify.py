@@ -320,7 +320,7 @@ class TestVerifyHappyPath:
         main(["verify", "--study", STUDY, "--run", RUN_ID])
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
-        assert len(report["assertions"]) == 15
+        assert len(report["assertions"]) == 16
 
     def test_all_assertions_pass(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_config(monkeypatch, tmp_path)
@@ -407,7 +407,7 @@ class TestVerifyHappyPath:
         assert rc == EXIT_OK
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
-        assert len(report["assertions"]) == 15
+        assert len(report["assertions"]) == 16
         assert all(a["result"] == "pass" for a in report["assertions"])
         assert report["overall"] == "pass"
 
@@ -601,7 +601,14 @@ class TestVerifyHappyPath:
         # Scrub pseudonymized col_a (MORE protective than the keep decision).
         ledger_path = dataset_phi_ledger_path(paths["audit_dir"], "form_a.xlsx")
         led = json.loads(ledger_path.read_text(encoding="utf-8"))
-        led["events"] = [{"variable_id": "col_a", "action": "pseudonymize"}]
+        led["events"] = [
+            {
+                "variable_id": "col_a",
+                "action": "pseudonymize",
+                "rule": {"taxonomy": "hipaa_safe_harbor:18_unique_id", "jurisdictions": ["USA"]},
+                "method": {"name": "RID_pseudonymize"},
+            }
+        ]
         led["keep_decisions"] = [kd for kd in led["keep_decisions"] if kd["variable_id"] != "col_a"]
         ledger_path.write_text(json.dumps(led), encoding="utf-8")
 
