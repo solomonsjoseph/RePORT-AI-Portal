@@ -32,6 +32,7 @@ from scripts.ai_assistant.ui.snapshot_select import (
     SnapshotActivationError,
     activate_snapshot,
     available_snapshots,
+    current_snapshot_id,
 )
 from scripts.utils.logging_system import get_logger
 
@@ -407,25 +408,36 @@ def _render_snapshot_selector() -> None:
 
     _placeholder = "Use live pipeline output"
 
+    # N14: surface the CURRENT snapshot first and default to it ("UI shows current
+    # first"), keeping live pipeline output as an explicit escape hatch.
+    current_id = current_snapshot_id(config.STUDY_NAME)
+
     def _label(entry: dict[str, Any]) -> str:
         passed = "verified" if entry.get("verifier_passed") else "unverified"
+        tag = " — current" if entry["id"] == current_id else ""
         return (
-            f"{entry['id']} — {entry.get('approved_count', 0)} approved, "
+            f"{entry['id']}{tag} — {entry.get('approved_count', 0)} approved, "
             f"{entry.get('held_count', 0)} held ({passed})"
         )
 
-    options = [_placeholder] + [entry["id"] for entry in snapshots]
+    snapshot_ids = [entry["id"] for entry in snapshots]
+    if current_id in snapshot_ids:
+        snapshot_ids = [current_id] + [s for s in snapshot_ids if s != current_id]
+    options = [*snapshot_ids, _placeholder]
     labels = {entry["id"]: _label(entry) for entry in snapshots}
+    # Default to the current snapshot when one exists; else live pipeline output.
+    default_index = 0 if current_id in snapshot_ids else len(options) - 1
 
     selected = st.selectbox(
         "Existing study data (snapshot)",
         options,
-        index=0,
+        index=default_index,
         format_func=lambda opt: opt if opt == _placeholder else labels.get(opt, opt),
         help=(
-            "Load a previously reviewed, immutable clean-pass snapshot instead of "
-            "the live pipeline output. Only the snapshot's PHI-scrubbed data is "
-            "exposed; its approval/manifest stay private."
+            "Defaults to the current (most-recent clean-pass) snapshot. Choose "
+            "another immutable snapshot, or 'Use live pipeline output' for the "
+            "freshly-published tree. Only PHI-scrubbed data is exposed; the "
+            "approval/manifest stay private."
         ),
     )
 

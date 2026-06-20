@@ -72,3 +72,18 @@ map and a `key_created` flag — no secrets, no row values.
 ## Portability
 
 Pure host-side Python; no LLM call, no network.
+
+## Exit Codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Ready — all required inputs present (readiness scaffold), or config written (`--interactive` / `--write-config`). |
+| `1` | One or more required inputs missing (named in the result's `readiness` map). |
+| `2` | Config-authoring validation error (invalid jurisdictions/posture/`data_as_of` or manifest inputs, or a refusal to overwrite without `--force`); also argparse usage error. |
+
+## What This Skill Does NOT Do
+
+- **Does not read dataset row values** — touches file NAMES, config YAML, and directory presence only (GR-1).
+- **Does not run the pipeline** — only authors config and pre-creates the run-directory tree; it is not an orchestrator phase (Gap 4).
+- **Does not overwrite the PHI HMAC key** — `--bootstrap-key` creates one only when none exists, because overwriting would invalidate every prior pseudonym.
+- **Does not gatekeep config** — the wizard is a guardrail; the pipeline still re-validates the written config at phase 0.

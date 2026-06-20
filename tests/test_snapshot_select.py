@@ -27,6 +27,7 @@ from scripts.ai_assistant.ui.snapshot_select import (
     SnapshotActivationError,
     activate_snapshot,
     available_snapshots,
+    current_snapshot_id,
 )
 from scripts.audit.zone_guards import SnapshotZoneViolation
 from scripts.utils import snapshot
@@ -122,6 +123,17 @@ class TestAvailableSnapshots:
         assert entry["approved_count"] == 1
         assert entry["held_count"] == 1
         assert entry["verifier_passed"] is True
+
+    def test_current_snapshot_id_none_when_unset(self, monkeypatch_config: Path) -> None:
+        assert current_snapshot_id(config.STUDY_NAME) is None
+
+    def test_current_snapshot_id_returns_pointer(self, monkeypatch_config: Path) -> None:
+        # N14: current_snapshot_id gives get_current_snapshot a production reader so
+        # the UI can default to the current snapshot.
+        study = config.STUDY_NAME
+        dest = _make_snapshot(study)
+        snapshot.set_current_snapshot(study, dest.name)
+        assert current_snapshot_id(study) == dest.name
 
     def test_skips_corrupt_manifest(self, monkeypatch_config: Path) -> None:
         study = config.STUDY_NAME

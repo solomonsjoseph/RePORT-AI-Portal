@@ -65,3 +65,18 @@ outcome only, never a dictionary value or a dataset row value.
 
 Pure host-side Python; no LLM call, no network. Invoked by the orchestrator as a
 file-path subprocess and runnable from any LLM host the same way.
+
+## Exit Codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success — `--leg extract` wrote staging, or `--leg publish` promoted the tree (or skipped when staging was empty). |
+| `1` | Dictionary extraction failed (`--leg extract`). |
+| `2` | Argparse usage error (e.g. missing `--study`, or an invalid `--leg` value). |
+
+## What This Skill Does NOT Do
+
+- **Does not read dataset rows** — handles only the data-dictionary metadata (variable/codelist definitions, help-text), never dataset row values (GR-1).
+- **Masks reference URLs at publish** — codelist help-text URLs are rewritten to `<URL_REMOVED>` so the leak gate stays maximally broad; it does not emit raw URLs.
+- **Does not publish out of order** — `--leg publish` must run only after dataset cleanup-propagation has pruned dropped columns from staging; otherwise dropped-column references would leak.
+- **Does not scrub or classify PHI** — those are separate phases; the dictionary leg carries no PHI to scrub.

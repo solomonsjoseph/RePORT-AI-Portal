@@ -85,3 +85,17 @@ it call an LLM — header NAMES + the value-free rulebook only, never a row valu
 and every proposal is deterministically verified before use. Invoked by the
 orchestrator as a file-path subprocess and runnable from any LLM host the same
 way.
+
+## Exit Codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Classification gate completed — including when some forms are held (partial publish is a normal outcome, reported `ok`). |
+| `2` | `--run-dir` was not supplied (the approval file is written there); also argparse usage error. |
+
+## What This Skill Does NOT Do
+
+- **Does not read row values or scrub** — it classifies on column NAMES and SoT (printed-PDF) signals only and emits header-only decisions (GR-1).
+- **Does not apply the decisions** — it writes the authoritative `phi_handling_approval.json`; the phi-scrubbing skill consumes and applies it.
+- **Does not weaken protection** — even with AI alignment opted in, a verified alignment can only upgrade `keep` to a stronger action; pinned rules remain the floor.
+- **Does not retry held forms** — the deterministic probe runs once against a frozen rule bundle; a held form is a rule-pattern gap to fix, not a transient condition.

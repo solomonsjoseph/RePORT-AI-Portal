@@ -287,7 +287,7 @@ def verify_cleanup(
 class WorkspacePathFinding:
     """A single two-list violation (names only)."""
 
-    phase: str  # 'must_gone' | 'must_remain'
+    phase: str  # 'must_gone' | 'must_remain' | 'anomaly'
     target: str  # path string, relative to BASE_DIR when possible
     detail: str
 
@@ -298,6 +298,7 @@ class WorkspaceCleanupReport:
     findings: tuple[WorkspacePathFinding, ...]
     checked_must_gone: int
     checked_must_remain: int
+    checked_anomaly: int = 0
 
 
 def _safe_rel(p: Path) -> str:
@@ -313,13 +314,16 @@ def _safe_rel(p: Path) -> str:
 def verify_workspace_cleanup(
     *, study: str, run_dir: Path, expect_cleanup_token_present: bool = False
 ) -> WorkspaceCleanupReport:
-    """Two-list workspace purge check (Note 13 Phase 1 + Phase 2).
+    """Workspace purge check (Note 13 Phase 1 + Phase 2 + Phase 3).
 
     Phase 1 (must-be-gone): every temporary artifact — tmp/{STUDY} staging, SoT
     intermediates, the header-extraction store, and the scrub/cleanup in-progress
     tokens — must be absent. Phase 2 (must-remain): every permanent path —
     llm_source/, audit/, snapshots/, config/{STUDY}/, data/raw/{STUDY}/ — must be
-    present (a missing one is a possible data-loss event).
+    present (a missing one is a possible data-loss event). Phase 3 (anomaly scan):
+    any UNEXPECTED entry surviving under the ephemeral staging root (not a known
+    staging subdir) is flagged for human review — never deleted; an anomaly fails
+    the check so the snapshot is not committed.
 
     ``expect_cleanup_token_present`` lets the orchestrator hold the live
     cleanup.in_progress token during the walk (it deletes it only after a pass),
@@ -369,11 +373,43 @@ def verify_workspace_cleanup(
         if not p.exists()
     )
 
+    # Phase 3 — anomaly scan (Note 13): unexpected leftovers in the EPHEMERAL
+    # staging root. After a clean run tmp/{STUDY} is gone entirely, so any entry
+    # surviving there that is NOT a known staging subdir (those are already
+    # covered by Phase 1) is garbage from a failed run, an artifact from a prior
+    # pipeline version, or something an external process placed. Scoped to the
+    # ephemeral root ONLY — the permanent output trees (llm_source/audit/
+    # snapshots) legitimately hold many files and are never anomaly-scanned.
+    # Flag-only: never deletes; an anomaly halts the run (snapshot not committed).
+    staging_root = Path(config.STUDY_STAGING_DIR)
+    known_ephemeral = {
+        Path(config.STAGING_DATASETS_DIR).resolve(),
+        Path(config.STAGING_SOT_DIR).resolve(),
+        Path(config.STAGING_HEADERS_DIR).resolve(),
+    }
+    checked_anomaly = 0
+    if staging_root.is_dir():
+        for child in sorted(staging_root.iterdir()):
+            checked_anomaly += 1
+            if child.resolve() in known_ephemeral:
+                continue  # known staging dir — already a Phase 1 must_gone finding
+            findings.append(
+                WorkspacePathFinding(
+                    phase=_PHASE_ANOMALY,
+                    target=_safe_rel(child),
+                    detail=(
+                        "unexpected path present after cleanup — "
+                        "review before proceeding"
+                    ),
+                )
+            )
+
     return WorkspaceCleanupReport(
         ok=not findings,
         findings=tuple(findings),
         checked_must_gone=len(must_gone),
         checked_must_remain=len(must_remain),
+        checked_anomaly=checked_anomaly,
     )
 
 

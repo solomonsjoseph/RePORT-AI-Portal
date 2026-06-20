@@ -44,3 +44,18 @@ value-free — form NAMES and per-form column COUNTS only, never a row value.
 
 Pure host-side Python (openpyxl/csv); no LLM call, no network. Runnable from any
 LLM host as a file-path subprocess.
+
+## Exit Codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Every manifest-kept dataset's first-row headers were read. |
+| `1` | One or more datasets were unreadable (named in the result's `errored_forms`). |
+| `2` | The datasets directory was not found; also argparse usage error. |
+
+## What This Skill Does NOT Do
+
+- **Does not read dataset row values** — reads only the first row (column NAMES); row 2+ bytes are never opened (GR-1).
+- **Does not classify PHI** — it only emits the header lists; the phi-classification phase consumes them.
+- **Does not open reject-listed or control files** — `reject:`-listed datasets, Excel lock/temp siblings (`~$*`), and underscore-prefixed files are skipped.
+- **Does not deduplicate or extract** — those are separate downstream phases.

@@ -100,3 +100,18 @@ rotation/staleness comparisons and audit evidence remain unchanged.
 Pure host-side Python; fail-closed, no LLM call, no network. Invoked by the
 orchestrator as a file-path subprocess and runnable from any LLM host the same
 way.
+
+## Exit Codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Scrub completed — including partial-publish-on-review (failing rows quarantined, the rest published). |
+| `1` | Scrub fail-closed (`PHIScrubError` subclass — e.g. an unmappable band/generalize value, an unshiftable date, a missing scrub config, or a strict-mode abort); the subclass NAME only is reported. |
+| `2` | Argparse usage error (e.g. missing `--study`). |
+
+## What This Skill Does NOT Do
+
+- **Does not decide policy** — it consumes `phi_handling_approval.json` and the scrub config; classification decisions are made upstream.
+- **Does not promote to `llm_source/`** — it rewrites staged JSONL in place; the publish supervisor promotes the scrubbed tree.
+- **Does not re-implement the HMAC or hold the raw key** — it only calls the role-gated `phi_scrub` loader, and the key is zeroized after the scrub (Note 15).
+- **Never publishes an un-scrubbable row** — fail-closed: such rows are quarantined to the no-LLM zone, never the read zone.

@@ -48,3 +48,18 @@ error **counts** only — never a row value.
 ## Portability
 
 Pure host-side Python; no LLM call, no network.
+
+## Exit Codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Dedup completed — including groups routed to held-for-review (a held group is a normal, non-error outcome). |
+| `1` | Dedup failed on an I/O or manifest error (the exception type NAME only is reported). |
+| `2` | Argparse usage error (e.g. missing `--study`). |
+
+## What This Skill Does NOT Do
+
+- **Never reads dataset cell values** — uses filename normalization, header NAMES, and row **counts** only (GR-1 + Note 4).
+- **Does not auto-resolve ambiguous groups** — anything beyond the Tier 1 (exact-header) / Tier 2 (superset) cases routes to count-only human review.
+- **Does not delete originals destructively** — removed duplicates are archived, not erased.
+- **Does not merge at the JSONL row level** — the legacy `clean_trio_datasets` pair merge is retired from the production path.

@@ -47,6 +47,7 @@ __all__ = [
     "SnapshotActivationError",
     "activate_snapshot",
     "available_snapshots",
+    "current_snapshot_id",
     "snapshot_staleness_notices",
 ]
 
@@ -98,6 +99,25 @@ def available_snapshots(study: str | None = None) -> list[dict[str, Any]]:
             }
         )
     return entries
+
+
+def current_snapshot_id(study: str | None = None) -> str | None:
+    """Return the study's *current* snapshot id (the phase-10 ``current`` pointer).
+
+    Gives :func:`scripts.utils.snapshot.get_current_snapshot` a production reader so
+    the Load Study UI can surface + default to the current snapshot (Note 14:
+    "UI shows current first"). Fail-soft: any error → None and the UI falls back
+    to the live-pipeline-output option.
+    """
+    if study is None:
+        study = getattr(config, "STUDY_NAME", "") or ""
+    if not study:
+        return None
+    try:
+        return snapshot.get_current_snapshot(study)
+    except Exception:  # pragma: no cover - advisory path must never crash chat
+        _logger.debug("get_current_snapshot raised; suppressing for the UI", exc_info=True)
+        return None
 
 
 def activate_snapshot(study: str | None, snapshot_id: str) -> Path:

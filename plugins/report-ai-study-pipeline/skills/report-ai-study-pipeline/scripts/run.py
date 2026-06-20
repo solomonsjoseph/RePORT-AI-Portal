@@ -501,6 +501,7 @@ def main(argv: list[str] | None = None) -> int:
                     "workspace_findings": [asdict(f) for f in ws_report.findings],
                     "checked_must_gone": ws_report.checked_must_gone,
                     "checked_must_remain": ws_report.checked_must_remain,
+                    "checked_anomaly": ws_report.checked_anomaly,
                 },
             )
         except Exception as exc:  # advisory record; never fail the run on a write hiccup

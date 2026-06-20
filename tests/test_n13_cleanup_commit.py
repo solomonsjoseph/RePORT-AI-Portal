@@ -71,6 +71,38 @@ def test_must_remain_missing_is_flagged(tmp_path: Path, monkeypatch: pytest.Monk
     assert any(f.phase == "must_remain" for f in rep.findings)
 
 
+def test_anomaly_unexpected_staging_leftover_is_flagged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # N13 Phase 3: an unexpected leftover under the ephemeral staging root (not a
+    # known staging subdir) is flagged as an anomaly — never deleted, halts the run.
+    paths = _setup_workspace(monkeypatch, tmp_path)
+    run_dir = tmp_path / "out" / "runs" / "r1"
+    run_dir.mkdir(parents=True)
+    paths["STUDY_STAGING_DIR"].mkdir(parents=True, exist_ok=True)
+    (paths["STUDY_STAGING_DIR"] / "garbage_from_failed_run.tmp").write_text(
+        "x", encoding="utf-8"
+    )
+    rep = verify_workspace_cleanup(study="Study", run_dir=run_dir)
+    assert not rep.ok
+    assert any(f.phase == "anomaly" for f in rep.findings)
+    assert rep.checked_anomaly >= 1
+
+
+def test_anomaly_skips_known_staging_subdirs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A known staging subdir present is a Phase-1 must_gone finding, NOT a Phase-3
+    # anomaly (no double-report / false positive).
+    paths = _setup_workspace(monkeypatch, tmp_path)
+    run_dir = tmp_path / "out" / "runs" / "r1"
+    run_dir.mkdir(parents=True)
+    paths["STAGING_DATASETS_DIR"].mkdir(parents=True, exist_ok=True)
+    rep = verify_workspace_cleanup(study="Study", run_dir=run_dir)
+    assert any(f.phase == "must_gone" for f in rep.findings)
+    assert not any(f.phase == "anomaly" for f in rep.findings)
+
+
 def test_held_cleanup_token_excluded_from_walk(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
