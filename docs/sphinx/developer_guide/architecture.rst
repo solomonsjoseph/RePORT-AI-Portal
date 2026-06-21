@@ -191,7 +191,7 @@ PHI Scrub
 Dataset Cleanup
 ~~~~~~~~~~~~~~~
 
-* **Module:** :func:`scripts.extraction.dataset_cleanup.clean_trio_datasets`
+* **Module:** :func:`scripts.extraction.dataset_cleanup.emit_dataset_cleanup_audit_envelope`
 * **Step:** Step 1.7
 * **Audit:** ``output/{STUDY}/audit/dataset_cleanup_report.json`` plus the
   per-dataset ``dataset_cleanup_ledger.as_written.json``

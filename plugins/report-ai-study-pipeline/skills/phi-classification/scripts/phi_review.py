@@ -839,9 +839,10 @@ def load_study_privacy_config(study_dir: str | Path) -> StudyPrivacyConfig:
                 f"data_as_of must be an ISO date (YYYY-MM-DD); got {data_as_of!r}"
             ) from exc
 
-    # kanon_publish_gate (Note 5): OPTIONAL, maintainer-declared. Default {} =>
-    # disabled. A present mapping must be value-free + well-shaped (a malformed
-    # shape is a maintainer error and raises).
+    # kanon_publish_gate (Note 5): maintainer-declared per study. Absent => {} at
+    # parse time; the publish gate in host_pipeline fail-closes before promotion
+    # when the block is missing, disabled, or lacks quasi_identifiers. A present
+    # mapping must be value-free + well-shaped (malformed shape raises).
     kanon_raw = raw.get("kanon_publish_gate", {})
     if not isinstance(kanon_raw, dict):
         raise ValueError("kanon_publish_gate must be a mapping")

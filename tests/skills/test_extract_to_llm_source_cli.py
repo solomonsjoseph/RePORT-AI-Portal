@@ -46,6 +46,7 @@ from scripts.skills.extract_to_llm_source import (
     EXIT_OK,
     EXIT_PARTIAL_REVIEW,
     EXIT_QUARANTINE_NON_EMPTY,
+    EXIT_VERIFIER_FAIL,
     main,
 )
 from tests.skills.conftest import (
@@ -80,6 +81,11 @@ def _bypass_expensive_phi_gate(monkeypatch: pytest.MonkeyPatch) -> None:
             approval_report_path=None,
             partial=False,
         ),
+    )
+    monkeypatch.setattr(
+        skill_mod,
+        "_verify_cleanup_before_inline_snapshot",
+        lambda **_kwargs: True,
     )
 
 
@@ -229,7 +235,7 @@ class TestVerifyStub:
         )
 
         audit_dir = study_output / "audit"
-        audit_dir.mkdir(parents=True)
+        audit_dir.mkdir(parents=True, exist_ok=True)
         (audit_dir / ".NO_LLM_ZONE").write_text("", encoding="utf-8")
         ledger_path = dataset_phi_ledger_path(audit_dir, "approved.xlsx")
         ledger_path.parent.mkdir(parents=True, exist_ok=True)
@@ -386,6 +392,66 @@ class TestRunHappyPath:
         assert status_data["study"] == STUDY
         assert status_data["verifier_passed"] is None
         assert status_data["ledger_hash_present"] is True
+
+    def test_confirm_rotation_flag_reaches_host_subprocess(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        patch_config(monkeypatch, tmp_path)
+        write_valid_ledger(tmp_path / "output")
+        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        make_staging(tmp_path / "tmp" / STUDY)
+        monkeypatch.setenv("REPORTAL_RUN_ID", "run_rotation001")
+
+        seen: dict[str, list[str]] = {}
+
+        def _fake_run(cmd, **_kwargs):
+            seen["cmd"] = list(cmd)
+            return SimpleNamespace(returncode=0)
+
+        with (
+            patch.object(skill_mod, "_acquire_pipeline_lock_for_skill", lambda _study: None),
+            patch.object(skill_mod, "_release_pipeline_lock_for_skill", lambda: None),
+            patch.object(skill_mod, "destroy_staging_and_attest", lambda **_kwargs: tmp_path / "attest.json"),
+            patch("subprocess.run", side_effect=_fake_run),
+            patch.object(skill_mod, "_cmd_verify", return_value=EXIT_OK),
+            patch.object(skill_mod, "_try_commit_snapshot", return_value=None),
+        ):
+            rc = main(["run", "--study", STUDY, "--confirm-rotation"])
+
+        assert rc == EXIT_OK
+        assert "--confirm-rotation" in seen["cmd"]
+
+    def test_inline_snapshot_skipped_when_cleanup_verifier_fails(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        patch_config(monkeypatch, tmp_path)
+        write_valid_ledger(tmp_path / "output")
+        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        make_staging(tmp_path / "tmp" / STUDY)
+        monkeypatch.setenv("REPORTAL_RUN_ID", "run_cleanup_fail")
+        monkeypatch.setattr(
+            skill_mod,
+            "_verify_cleanup_before_inline_snapshot",
+            lambda **_kwargs: False,
+        )
+
+        snapshot_calls: list[dict[str, object]] = []
+
+        def _snapshot(**kwargs):
+            snapshot_calls.append(kwargs)
+
+        with (
+            patch.object(skill_mod, "_acquire_pipeline_lock_for_skill", lambda _study: None),
+            patch.object(skill_mod, "_release_pipeline_lock_for_skill", lambda: None),
+            patch.object(skill_mod, "destroy_staging_and_attest", lambda **_kwargs: tmp_path / "attest.json"),
+            patch("subprocess.run", return_value=SimpleNamespace(returncode=0)),
+            patch.object(skill_mod, "_cmd_verify", return_value=EXIT_OK),
+            patch.object(skill_mod, "_try_commit_snapshot", side_effect=_snapshot),
+        ):
+            rc = main(["run", "--study", STUDY])
+
+        assert rc == EXIT_VERIFIER_FAIL
+        assert snapshot_calls == []
 
     def test_staging_removed_on_success(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

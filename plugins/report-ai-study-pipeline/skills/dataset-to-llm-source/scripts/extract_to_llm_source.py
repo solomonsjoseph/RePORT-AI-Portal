@@ -1701,13 +1701,14 @@ def _try_commit_snapshot(
     run_dir: Path,
     resume_held: bool = False,
     human_review_records: list | None = None,
+    cleanup_verifier_passed: bool | None = None,
 ) -> str | None:
     """Thin wrapper around the shared committer (Note 13).
 
     Retained as the supervisor's Step-7 call site so existing tests that patch
     this symbol keep working; the orchestrator P10 calls
     ``scripts.utils.snapshot.commit_run_snapshot`` directly. A standalone run
-    (defer flag unset) commits here exactly as before.
+    (defer flag unset) calls this only after its inline cleanup verifier passes.
     """
     from scripts.utils.snapshot import commit_run_snapshot
 
@@ -1717,7 +1718,37 @@ def _try_commit_snapshot(
         run_dir=run_dir,
         resume_held=resume_held,
         human_review_records=human_review_records,
+        cleanup_verifier_passed=cleanup_verifier_passed,
     )
+
+
+def _verify_cleanup_before_inline_snapshot(*, study: str, run_dir: Path) -> bool:
+    """Run the standalone cleanup verifier before an inline snapshot commit.
+
+    The orchestrator performs this as P8 before P10. Standalone
+    ``dataset-to-llm-source run`` has no orchestrator P8, so it must run the same
+    ledger + workspace checks here and persist the same names-only audit record.
+    """
+    from dataclasses import asdict
+
+    import config
+    from scripts.extraction.io import atomic_write_json
+    from scripts.utils.cleanup_verifier import verify_cleanup, verify_workspace_cleanup
+
+    ledger_report = verify_cleanup(Path(config.STUDY_AUDIT_DIR), Path(config.TRIO_DATASETS_DIR))
+    ws_report = verify_workspace_cleanup(study=study, run_dir=run_dir)
+    report = {
+        "run_id": run_dir.name,
+        "ledger_ok": ledger_report.ok,
+        "ledger_findings": [asdict(f) for f in ledger_report.findings],
+        "workspace_ok": ws_report.ok,
+        "workspace_findings": [asdict(f) for f in ws_report.findings],
+        "checked_must_gone": ws_report.checked_must_gone,
+        "checked_must_remain": ws_report.checked_must_remain,
+        "checked_anomaly": ws_report.checked_anomaly,
+    }
+    atomic_write_json(Path(config.STUDY_AUDIT_DIR) / "cleanup_verification_report.json", report)
+    return ledger_report.ok and ws_report.ok
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
@@ -2000,8 +2031,11 @@ def _cmd_run(args: argparse.Namespace) -> int:
         # mode), raw log lines bypass this process's redactor and go directly to
         # the terminal/log. In production mode, the engine exits non-zero on redactor
         # failure, which is caught below.
+        cmd = [sys.executable, "-m", "scripts.pipeline.host_pipeline", "--pipeline"]
+        if getattr(args, "confirm_rotation", False):
+            cmd.append("--confirm-rotation")
         result = subprocess.run(
-            [sys.executable, "-m", "scripts.pipeline.host_pipeline", "--pipeline"],
+            cmd,
             cwd=str(repo_root),
             env=env,
             check=False,
@@ -2233,8 +2267,26 @@ def _cmd_run(args: argparse.Namespace) -> int:
                 if _defer:
                     print("Snapshot commit deferred to orchestrator P10.", file=sys.stderr)
                 else:
+                    if not _verify_cleanup_before_inline_snapshot(study=study, run_dir=run_dir):
+                        print(
+                            "Standalone cleanup verifier failed; snapshot not committed.",
+                            file=sys.stderr,
+                        )
+                        final_code = EXIT_VERIFIER_FAIL
+                        _finish(
+                            final_code,
+                            stage="cleanup.inline",
+                            reason="cleanup verifier failed before snapshot commit",
+                            staging_preserved=False,
+                            extra=_status_extra,
+                        )
+                        return final_code
                     _try_commit_snapshot(
-                        study=study, run_id=run_id, run_dir=run_dir, resume_held=resume_held
+                        study=study,
+                        run_id=run_id,
+                        run_dir=run_dir,
+                        resume_held=resume_held,
+                        cleanup_verifier_passed=True,
                     )
             else:
                 print(
@@ -2352,6 +2404,16 @@ def _build_parser() -> argparse.ArgumentParser:
             "Refused when REPORTAL_PROCESS_ROLE=llm-agent. "
             "On a fully-clean pass (no remaining held forms, verifier passes) "
             "commits an immutable snapshot."
+        ),
+    )
+    run_p.add_argument(
+        "--confirm-rotation",
+        dest="confirm_rotation",
+        action="store_true",
+        default=False,
+        help=(
+            "Confirm deliberate PHI HMAC key rotation and pass the confirmation "
+            "through to the trusted host publish path."
         ),
     )
 

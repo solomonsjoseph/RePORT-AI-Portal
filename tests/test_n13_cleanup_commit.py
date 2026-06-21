@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -161,3 +162,42 @@ def test_commit_run_snapshot_immutability_guard(
     status = json.loads((run_dir / "status.json").read_text())
     assert "snapshot_id" not in status  # immutability guard is benign, no failure recorded
     assert "snapshot_failed" not in status
+
+
+def test_standalone_inline_snapshot_cleanup_helper_persists_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import config
+    import scripts.skills.extract_to_llm_source as skill_mod
+    from scripts.utils import cleanup_verifier
+
+    paths = _setup_workspace(monkeypatch, tmp_path)
+    monkeypatch.setattr(config, "TRIO_DATASETS_DIR", tmp_path / "out" / "llm_source" / "files")
+    run_dir = tmp_path / "out" / "runs" / "run_cleanup"
+    run_dir.mkdir(parents=True)
+
+    monkeypatch.setattr(
+        cleanup_verifier,
+        "verify_cleanup",
+        lambda *_args: SimpleNamespace(ok=True, findings=[]),
+    )
+    monkeypatch.setattr(
+        cleanup_verifier,
+        "verify_workspace_cleanup",
+        lambda **_kwargs: SimpleNamespace(
+            ok=True,
+            findings=[],
+            checked_must_gone=6,
+            checked_must_remain=5,
+            checked_anomaly=0,
+        ),
+    )
+
+    assert skill_mod._verify_cleanup_before_inline_snapshot(study="Study", run_dir=run_dir)
+
+    report = paths["STUDY_AUDIT_DIR"] / "cleanup_verification_report.json"
+    assert report.is_file()
+    data = json.loads(report.read_text(encoding="utf-8"))
+    assert data["ledger_ok"] is True
+    assert data["workspace_ok"] is True
+    assert data["checked_must_remain"] == 5

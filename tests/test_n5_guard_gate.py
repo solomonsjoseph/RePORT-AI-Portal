@@ -6,7 +6,11 @@ human-review path helpers, and the value-free presidio_failure.md writer.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
 
 from scripts.audit.review_paths import (
     presidio_failure_md_path,
@@ -72,3 +76,125 @@ def test_presidio_failure_md_is_value_free(tmp_path: Path) -> None:
     assert "CONTACT_EMAIL" in body
     assert "@example.com" not in body
     assert "person" not in body
+
+
+def test_pycanon_gate_requires_enabled_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import config
+    from scripts.pipeline.host_pipeline import _run_pycanon_publish_gate
+    from scripts.security import phi_review
+
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    monkeypatch.setattr(config, "DATASETS_DIR", tmp_path / "data" / "raw" / "Study" / "datasets")
+    monkeypatch.setattr(config, "STUDY_AUDIT_DIR", tmp_path / "audit")
+    monkeypatch.setattr(
+        phi_review,
+        "load_study_privacy_config",
+        lambda _study_dir: SimpleNamespace(kanon_publish_gate={}),
+    )
+
+    with pytest.raises(RuntimeError, match="kanon_publish_gate"):
+        _run_pycanon_publish_gate(staging)
+
+
+def test_pycanon_gate_requires_quasi_identifiers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import config
+    from scripts.pipeline.host_pipeline import _run_pycanon_publish_gate
+    from scripts.security import phi_review
+
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    monkeypatch.setattr(config, "DATASETS_DIR", tmp_path / "data" / "raw" / "Study" / "datasets")
+    monkeypatch.setattr(config, "STUDY_AUDIT_DIR", tmp_path / "audit")
+    monkeypatch.setattr(
+        phi_review,
+        "load_study_privacy_config",
+        lambda _study_dir: SimpleNamespace(kanon_publish_gate={"enabled": True}),
+    )
+
+    with pytest.raises(RuntimeError, match="quasi_identifiers"):
+        _run_pycanon_publish_gate(staging)
+
+
+def test_pycanon_gate_blocks_low_k_and_preserves_staging(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import config
+    from scripts.pipeline.host_pipeline import _run_pycanon_publish_gate
+    from scripts.security import phi_review
+
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    jsonl = staging / "1_Enrollment.jsonl"
+    rows = [
+        {"AGE": "25-34", "SEX": "F"},
+        {"AGE": "25-34", "SEX": "F"},
+        {"AGE": "65+", "SEX": "M"},
+    ]
+    jsonl.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+    monkeypatch.setattr(config, "DATASETS_DIR", tmp_path / "data" / "raw" / "Study" / "datasets")
+    monkeypatch.setattr(config, "STUDY_AUDIT_DIR", tmp_path / "audit")
+    monkeypatch.setattr(
+        phi_review,
+        "load_study_privacy_config",
+        lambda _study_dir: SimpleNamespace(
+            kanon_publish_gate={
+                "enabled": True,
+                "quasi_identifiers": ["AGE", "SEX"],
+                "k_threshold": 5,
+            }
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="pyCANON k-anonymity gate FAILED"):
+        _run_pycanon_publish_gate(staging)
+
+    assert jsonl.exists(), "pre-promotion gate failure must preserve staging"
+    report = pycanon_report_md_path(tmp_path / "audit", "1_Enrollment")
+    assert report.is_file()
+    body = report.read_text(encoding="utf-8")
+    assert "25-34" not in body
+    assert "65+" not in body
+
+
+def test_pycanon_gate_null_qi_fail_closed_not_typeerror(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Null QI values must produce a k-threshold hold, not an unhandled TypeError."""
+    import config
+    from scripts.pipeline.host_pipeline import _run_pycanon_publish_gate
+    from scripts.security import phi_review
+
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    jsonl = staging / "1_Enrollment.jsonl"
+    rows = [
+        {"IS_AGE": "25-34", "IS_SEX": "M"},
+        {"IS_AGE": None, "IS_SEX": "M"},
+        {"IS_AGE": None, "IS_SEX": "M"},
+        {"IS_AGE": "35-44", "IS_SEX": "F"},
+        {"IS_AGE": "35-44", "IS_SEX": "F"},
+    ]
+    jsonl.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+    monkeypatch.setattr(config, "DATASETS_DIR", tmp_path / "data" / "raw" / "Study" / "datasets")
+    monkeypatch.setattr(config, "STUDY_AUDIT_DIR", tmp_path / "audit")
+    monkeypatch.setattr(
+        phi_review,
+        "load_study_privacy_config",
+        lambda _study_dir: SimpleNamespace(
+            kanon_publish_gate={
+                "enabled": True,
+                "quasi_identifiers": ["IS_AGE", "IS_SEX"],
+                "k_threshold": 5,
+            }
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="pyCANON k-anonymity gate FAILED") as exc:
+        _run_pycanon_publish_gate(staging)
+    assert "TypeError" not in str(exc.value)
+
+    report = pycanon_report_md_path(tmp_path / "audit", "1_Enrollment")
+    assert report.is_file()

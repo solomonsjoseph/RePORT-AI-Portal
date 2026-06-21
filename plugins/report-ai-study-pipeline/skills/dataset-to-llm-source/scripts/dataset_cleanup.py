@@ -24,8 +24,8 @@ No raw-data access occurs — this module only touches the output zone
 (never values).
 
 Usage:
-    >>> from scripts.extraction.dataset_cleanup import clean_trio_datasets
-    >>> report = clean_trio_datasets(
+    >>> from scripts.extraction.dataset_cleanup import emit_dataset_cleanup_audit_envelope
+    >>> report = emit_dataset_cleanup_audit_envelope(
     ...     datasets_dir,
     ...     extracted_drop_events=[...],
     ...     study_name="Indo-VAP",
@@ -55,7 +55,11 @@ from scripts.utils.logging_system import get_logger
 
 logger = get_logger(__name__)
 
-__all__ = ["UnscrubbedDatasetError", "clean_trio_datasets"]
+__all__ = [
+    "UnscrubbedDatasetError",
+    "clean_trio_datasets",
+    "emit_dataset_cleanup_audit_envelope",
+]
 
 
 # ── Data model ──────────────────────────────────────────────────────────────
@@ -247,7 +251,7 @@ def _emit_as_written_ledger(
         writer.flush()
 
 
-def clean_trio_datasets(
+def emit_dataset_cleanup_audit_envelope(
     datasets_dir: Path | None = None,
     *,
     extracted_drop_events: list[dict[str, Any]] | None = None,
@@ -318,3 +322,24 @@ def clean_trio_datasets(
     )
 
     return report
+
+
+def clean_trio_datasets(
+    datasets_dir: Path | None = None,
+    *,
+    extracted_drop_events: list[dict[str, Any]] | None = None,
+    study_name: str | None = None,
+    audit_path: Path | None = None,
+) -> CleanupReport:
+    """Compatibility alias for the retired JSONL cleanup entry point.
+
+    The old row-level junk/duplicate merge behavior is gone. This alias exists
+    only for older tests/imports and delegates to the audit-envelope emitter.
+    Production code should call :func:`emit_dataset_cleanup_audit_envelope`.
+    """
+    return emit_dataset_cleanup_audit_envelope(
+        datasets_dir,
+        extracted_drop_events=extracted_drop_events,
+        study_name=study_name,
+        audit_path=audit_path,
+    )

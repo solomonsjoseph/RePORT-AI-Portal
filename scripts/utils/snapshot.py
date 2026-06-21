@@ -671,11 +671,10 @@ def commit_run_snapshot(
 ) -> str | None:
     """Commit a run's clean-pass snapshot and record ``snapshot_id`` in status.json.
 
-    Shared committer for both the publish supervisor (standalone runs) and the
-    orchestrator P10 (after the cleanup + audit verifiers pass), so the snapshot
-    is created only once and the status.json wiring is identical either way. A
-    ``--resume-held`` run commits a Type-2 (human-verified) snapshot. Passing
-    ``cleanup_verifier_passed=True`` records that proof in the manifest (Note 14).
+    Shared committer for both standalone runs and orchestrator P10. It records
+    cleanup proof when the caller passes ``cleanup_verifier_passed=True``; the
+    caller is responsible for running the cleanup verifier before invoking this
+    function. A ``--resume-held`` run commits a Type-2 (human-verified) snapshot.
 
     Never raises: a snapshot failure is non-fatal (the publish already
     succeeded). Returns the snapshot_id, or None on the immutability guard /

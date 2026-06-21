@@ -90,3 +90,52 @@ def test_rejects_bad_threshold() -> None:
 def test_rejects_missing_columns() -> None:
     with pytest.raises(ValueError, match="absent"):
         check_publish_anonymity(_RECORDS, quasi_identifiers=["nonexistent"], k_threshold=2)
+
+
+def test_null_qi_values_do_not_raise() -> None:
+    """Mixed null and string QI values must not crash pyCANON sort (Indo-VAP N5)."""
+    recs = [
+        {"IS_AGE": "25-34", "IS_SEX": "M", "outcome": "a"},
+        {"IS_AGE": None, "IS_SEX": "M", "outcome": "b"},
+        {"IS_AGE": None, "IS_SEX": "M", "outcome": "c"},
+        {"IS_AGE": "35-44", "IS_SEX": "F", "outcome": "d"},
+        {"IS_AGE": "35-44", "IS_SEX": "F", "outcome": "e"},
+    ]
+    r = check_publish_anonymity(
+        recs,
+        quasi_identifiers=["IS_AGE", "IS_SEX"],
+        k_threshold=5,
+    )
+    assert r.k == 1
+    assert not r.ok
+
+
+def test_empty_string_qi_treated_as_null_equivalence_class() -> None:
+    recs = [
+        {"AGE": "", "SEX": "M"},
+        {"AGE": None, "SEX": "M"},
+        {"AGE": "25-34", "SEX": "F"},
+        {"AGE": "25-34", "SEX": "F"},
+        {"AGE": "25-34", "SEX": "F"},
+    ]
+    r = check_publish_anonymity(recs, quasi_identifiers=["AGE", "SEX"], k_threshold=5)
+    assert r.k == 2
+    assert not r.ok
+
+
+def test_numeric_qi_with_nan_coerced_to_string() -> None:
+    """Float QI columns with NaN must not crash pyCANON (Indo-VAP IS_AGE/HHC_AGE)."""
+    recs = [
+        {"IS_AGE": 25.0, "IS_SEX": "M"},
+        {"IS_AGE": float("nan"), "IS_SEX": "M"},
+        {"IS_AGE": float("nan"), "IS_SEX": "M"},
+        {"IS_AGE": 35.0, "IS_SEX": "F"},
+        {"IS_AGE": 35.0, "IS_SEX": "F"},
+    ]
+    r = check_publish_anonymity(
+        recs,
+        quasi_identifiers=["IS_AGE", "IS_SEX"],
+        k_threshold=5,
+    )
+    assert r.k == 1
+    assert not r.ok

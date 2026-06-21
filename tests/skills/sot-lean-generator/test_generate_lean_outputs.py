@@ -462,7 +462,7 @@ sections:
     )
 
 
-def test_generate_form_publishes_field_count_mismatch_with_review(
+def test_generate_form_holds_field_count_mismatch_for_review(
     monkeypatch, tmp_path: Path
 ) -> None:
     repo_root = tmp_path
@@ -494,4 +494,39 @@ def test_generate_form_publishes_field_count_mismatch_with_review(
 
     assert "human_review" in result.parts
     assert form in result.parts  # Note 22: form-first review dir
-    assert len(published) == 1
+    assert len(published) == 0
+
+
+def test_generate_form_holds_printed_widget_without_dataset_header_for_review(
+    monkeypatch, tmp_path: Path
+) -> None:
+    repo_root = tmp_path
+    study = "Test-Study"
+    form = "10_MissingHeader"
+    out_dir = repo_root / "output" / study / "llm_source" / "SoT"
+    _touch(repo_root / "data" / "raw" / study / "annotated_pdfs" / "10 MissingHeader v1.0.pdf")
+    _touch(repo_root / "data" / "raw" / study / "datasets" / f"{form}.xlsx")
+
+    def fake_run(cmd: list[str], *, cwd: Path) -> None:
+        if "generate_pdf_aware_candidate.py" in " ".join(cmd):
+            Path(f"/tmp/{form}_lean.yaml").write_text(
+                "study: Test-Study\nform: {number: '10'}\n"
+                "discrepancies:\n  - kind: printed_widget_without_dataset_header\n"
+                "variables: {A: {}}\nsections: {main: {}}\n",
+                encoding="utf-8",
+            )
+
+    published: list[dict[str, object]] = []
+
+    def fake_publish(**kwargs: object) -> Path:
+        published.append(kwargs)
+        return Path(kwargs["out_root"]) / str(kwargs["form"]) / "joined" / f"{kwargs['form']}.yaml"
+
+    monkeypatch.setattr(generate_lean_outputs, "_run", fake_run)
+    monkeypatch.setattr(generate_lean_outputs, "_publish_verified_sot_outputs", fake_publish)
+
+    result = generate_form(repo_root, study, form, out_dir)
+
+    assert "human_review" in result.parts
+    assert form in result.parts
+    assert len(published) == 0

@@ -1,11 +1,11 @@
 """Post-cleanup consistency verifier for the dataset-cleanup leg (Wave 3 C4.2).
 
-The dataset-cleanup leg (``dataset_cleanup.clean_trio_datasets`` + the upstream
-``dedup`` column drops) removes junk files, merges provably-safe duplicate files,
-and drops provably-duplicate columns, recording every decision in the per-dataset
-``dataset_cleanup_ledger.as_written.json``. This module independently checks that
-what the ledger *says* happened matches what is actually in the published tree —
-the audit analogue of "trust, but verify".
+The dataset-cleanup leg (``emit_dataset_cleanup_audit_envelope`` + the upstream
+``dedup`` column drops) records extraction-time column drops in the per-dataset
+``dataset_cleanup_ledger.as_written.json``. Raw-file dedup runs earlier in
+orchestrator phase 2. This module independently checks that what the ledger
+*says* happened matches what is actually in the published tree — the audit
+analogue of "trust, but verify".
 
 Three phases
 ------------

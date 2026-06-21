@@ -1,7 +1,7 @@
 """Cleanup propagation — prune dictionary artifacts after dataset drops.
 
 Runs against the staging workspace (``tmp/{STUDY_NAME}/{datasets,dictionary}/``)
-after :func:`scripts.extraction.dataset_cleanup.clean_trio_datasets` completes.
+after :func:`scripts.extraction.dataset_cleanup.emit_dataset_cleanup_audit_envelope` completes.
 
 The dictionary leg carries no PHI and therefore emits no audit report — the
 prune step is side-effect-only, keeping the dictionary schema aligned with
@@ -104,7 +104,7 @@ def compute_propagation_set(
         logger.log(
             level,
             "Dataset audit not found at %s — propagation set is empty "
-            "(caller may have invoked run_propagation before clean_trio_datasets)",
+            "(caller may have invoked run_propagation before emit_dataset_cleanup_audit_envelope)",
             audit_path,
         )
         return set()

@@ -50,8 +50,9 @@ Before any scrubbed file is promoted into `llm_source/`, the supervisor runs the
 **OR-combined PHI guard gate** (Note 5) — it fails closed if *either* layer finds
 PHI: **Presidio** (model-free PatternRecognizers) **and** `scan_tree_for_phi`
 (the shared residual-pattern scanner). It also runs **pyCANON** k/l-anonymity at
-publish time when `kanon_publish_gate` is enabled in `_study_privacy.yaml`. A gate
-failure writes a value-free report to the per-form human-review queue
+publish time from the required `kanon_publish_gate` block in `_study_privacy.yaml`;
+missing/disabled pyCANON config is a fail-closed setup error. A gate failure writes
+a value-free report to the per-form human-review queue
 (`presidio_failure.md` / `pycanon_report.md` — pattern + column + counts only) and
 blocks promotion. Post-consolidation, this supervisor (not a standalone CLI) is
 the single owner of the classify → extract → scrub → guard-gate → promote → verify

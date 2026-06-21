@@ -114,9 +114,12 @@ _HOLD_DISCREPANCY_KINDS = frozenset(
     }
 )
 
-# Only binding conflicts block SoT promotion; other N3a discrepancies still
-# publish structurally verified policy/schema/joined views for the publish gate.
-_PUBLISH_BLOCKING_HOLD_KINDS = frozenset({_DUPLICATE_BINDING_CONFLICT_KIND})
+# Strict N3 handling: any unresolved discrepancy that routes to human review also
+# blocks joined-view publication. The LLM-facing SoT remains clean, resolved-only
+# information; no discrepancy-bearing candidate is promoted.
+_PUBLISH_BLOCKING_HOLD_KINDS = frozenset(
+    _HOLD_DISCREPANCY_KINDS | {_ALIAS_ANNOTATION_KIND}
+)
 
 
 def _discrepancy_review_reason(policy_path: Path) -> str | None:
@@ -606,17 +609,6 @@ def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path
                 "confirm the documented discrepancy, update the policy metadata if needed, "
                 "then rerun Stage 0"
             ),
-        )
-        if held_reason in _PUBLISH_BLOCKING_HOLD_KINDS:
-            return review_path
-        _publish_verified_sot_outputs(
-            repo_root=repo_root,
-            study=study,
-            form=form,
-            dataset=dataset,
-            source_pack=source_pack,
-            verified_policy=candidate,
-            out_root=out_dir,
         )
         return review_path
     return _publish_verified_sot_outputs(

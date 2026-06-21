@@ -1,6 +1,7 @@
 jurisdictions:
   - USA
   - INDIA
+data_as_of: "2025-12-31"
 rule_refresh: online_preferred
 conflict_policy: strictest_wins
 approval:
@@ -8,3 +9,13 @@ approval:
   max_synthetic_attempts: 5
 parallelism:
   mode: auto
+kanon_publish_gate:
+  enabled: true
+  quasi_identifiers:
+    - IS_AGE
+    - IS_SEX
+    - HHC_AGE
+    - HHC_SEX
+    - AGE
+    - SEX
+  k_threshold: 5

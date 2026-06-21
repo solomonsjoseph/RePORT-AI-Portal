@@ -72,9 +72,37 @@ def _patch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Redirect config path constants to tmp_path so tests are hermetic."""
     import config
 
+    study_output = tmp_path / "output" / STUDY
+    llm_source = study_output / "llm_source"
+    audit = study_output / "audit"
+    snapshots = study_output / "snapshots"
+    study_config = tmp_path / "data" / "raw" / STUDY
+    study_data = tmp_path / "data" / "raw" / STUDY
+    staging_root = tmp_path / "tmp" / STUDY
+
+    for d in (llm_source, audit, snapshots, study_config, study_data):
+        d.mkdir(parents=True, exist_ok=True)
+
     monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output", raising=False)
     monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp", raising=False)
     monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False)
+    monkeypatch.setattr(config, "STUDY_NAME", STUDY, raising=False)
+    monkeypatch.setattr(config, "STUDY_OUTPUT_DIR", study_output, raising=False)
+    monkeypatch.setattr(config, "STUDY_LLM_SOURCE_DIR", llm_source, raising=False)
+    monkeypatch.setattr(config, "STUDY_AUDIT_DIR", audit, raising=False)
+    monkeypatch.setattr(config, "STUDY_SNAPSHOTS_OUTPUT_DIR", snapshots, raising=False)
+    monkeypatch.setattr(config, "STUDY_CONFIG_DIR", study_config, raising=False)
+    monkeypatch.setattr(config, "STUDY_DATA_DIR", study_data, raising=False)
+    monkeypatch.setattr(
+        config,
+        "TRIO_DATASETS_DIR",
+        llm_source / "dataset_schema" / "files",
+        raising=False,
+    )
+    monkeypatch.setattr(config, "STUDY_STAGING_DIR", staging_root, raising=False)
+    monkeypatch.setattr(config, "STAGING_DATASETS_DIR", staging_root / "datasets", raising=False)
+    monkeypatch.setattr(config, "STAGING_SOT_DIR", staging_root / "SoT", raising=False)
+    monkeypatch.setattr(config, "STAGING_HEADERS_DIR", staging_root / "headers", raising=False)
     # Study config now lives under config/<study>/ (Note 11). Point CONFIG_DIR at
     # tmp/data/raw so study_config_path resolves the manifest where _make_manifest
     # writes it (study_raw_dir / _forms_manifest.yaml).
@@ -90,14 +118,6 @@ def _patch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     # verifier hashes the same single tmp file the test seeds into the ledger.
     monkeypatch.setattr(
         config, "CONFIG_DEFAULTS_DIR", tmp_path / "scripts" / "security", raising=False
-    )
-    # write_snapshot uses config.STUDY_LLM_SOURCE_DIR (not config.OUTPUT_DIR / study)
-    # so we also patch that.
-    monkeypatch.setattr(
-        config,
-        "STUDY_LLM_SOURCE_DIR",
-        tmp_path / "output" / STUDY / "llm_source",
-        raising=False,
     )
 
 

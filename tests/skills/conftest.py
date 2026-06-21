@@ -49,9 +49,40 @@ def patch_config(monkeypatch: Any, tmp_path: Path, study: str = SKILLS_TEST_STUD
     file operation in the skill under test is hermetically isolated inside
     tmp_path.  RAW_DATA_DIR was absent from the extract_to_llm_source_cli
     copy — this consolidated version ensures both files receive the patch.
+
+    Also patches the Note 13 workspace-cleanup must-remain paths so standalone
+    inline snapshot commits can run the real verifier in tests.
     """
+    study_output = tmp_path / "output" / study
+    llm_source = study_output / "llm_source"
+    audit = study_output / "audit"
+    snapshots = study_output / "snapshots"
+    study_config = tmp_path / "data" / "raw" / study
+    study_data = tmp_path / "data" / "raw" / study
+    staging_root = tmp_path / "tmp" / study
+
+    for d in (llm_source, audit, snapshots, study_config, study_data):
+        d.mkdir(parents=True, exist_ok=True)
+
     monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output", raising=False)
     monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp", raising=False)
+    monkeypatch.setattr(config, "STUDY_NAME", study, raising=False)
+    monkeypatch.setattr(config, "STUDY_OUTPUT_DIR", study_output, raising=False)
+    monkeypatch.setattr(config, "STUDY_LLM_SOURCE_DIR", llm_source, raising=False)
+    monkeypatch.setattr(config, "STUDY_AUDIT_DIR", audit, raising=False)
+    monkeypatch.setattr(config, "STUDY_SNAPSHOTS_OUTPUT_DIR", snapshots, raising=False)
+    monkeypatch.setattr(config, "STUDY_CONFIG_DIR", study_config, raising=False)
+    monkeypatch.setattr(config, "STUDY_DATA_DIR", study_data, raising=False)
+    monkeypatch.setattr(
+        config,
+        "TRIO_DATASETS_DIR",
+        llm_source / "dataset_schema" / "files",
+        raising=False,
+    )
+    monkeypatch.setattr(config, "STUDY_STAGING_DIR", staging_root, raising=False)
+    monkeypatch.setattr(config, "STAGING_DATASETS_DIR", staging_root / "datasets", raising=False)
+    monkeypatch.setattr(config, "STAGING_SOT_DIR", staging_root / "SoT", raising=False)
+    monkeypatch.setattr(config, "STAGING_HEADERS_DIR", staging_root / "headers", raising=False)
     monkeypatch.setattr(
         config,
         "DATASETS_DIR",

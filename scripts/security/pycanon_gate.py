@@ -39,6 +39,8 @@ __all__ = [
 _logger = get_logger(__name__)
 
 _DEFAULT_K = 5
+# Sentinel for missing QI values — pyCANON/pandas sort mixed str/None otherwise.
+_NULL_QI_SENTINEL = "<NULL>"
 
 
 @dataclass(frozen=True)
@@ -59,6 +61,31 @@ class PyCanonGateResult:
     l_threshold: int | None = None
     sensitive_attributes: tuple[str, ...] = ()
     reason: str = ""
+
+
+def _normalize_qi_columns(df: Any, columns: Sequence[str]) -> Any:
+    """Coerce null/empty QI values to a string sentinel so pyCANON can sort safely."""
+    import pandas as pd
+
+    out = df.copy()
+
+    def _to_qi_str(v: Any) -> str:
+        if v is None:
+            return _NULL_QI_SENTINEL
+        try:
+            if pd.isna(v):
+                return _NULL_QI_SENTINEL
+        except (TypeError, ValueError):
+            pass
+        if isinstance(v, str) and not v.strip():
+            return _NULL_QI_SENTINEL
+        return str(v)
+
+    for col in columns:
+        if col not in out.columns:
+            continue
+        out[col] = out[col].map(_to_qi_str)
+    return out
 
 
 def check_publish_anonymity(
@@ -114,6 +141,9 @@ def check_publish_anonymity(
     missing = [c for c in (*qi, *sens) if c not in df.columns]
     if missing:
         raise ValueError(f"columns absent from records: {sorted(missing)}")
+
+    qi_cols = list(dict.fromkeys((*qi, *sens)))
+    df = _normalize_qi_columns(df, qi_cols)
 
     k = int(anonymity.k_anonymity(df, list(qi)))
     l_val: int | None = None

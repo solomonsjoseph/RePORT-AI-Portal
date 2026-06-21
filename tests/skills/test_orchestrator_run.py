@@ -66,6 +66,15 @@ def test_baton_env_sets_lock_handoff(monkeypatch: pytest.MonkeyPatch) -> None:
     assert env["STUDY_NAME"] == "S"
 
 
+def test_dictionary_skill_phase_is_invoked_by_orchestrator() -> None:
+    """N1: dictionary extraction must be a real skill phase, not only host inline code."""
+    source = _ORCH_PATH.read_text(encoding="utf-8")
+
+    assert '"dictionary-to-llm-source"' in source
+    assert '"--leg", "extract"' in source
+    assert '"P1c:dictionary-extract"' in source
+
+
 def test_absorb_status_reads_held_and_snapshot(tmp_path: Path) -> None:
     (tmp_path / "status.json").write_text(
         json.dumps({"held_forms": ["2A", "14"], "snapshot_id": "snap_abc"}),
