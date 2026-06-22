@@ -160,6 +160,54 @@ def derive(study: str, oracle: dict[str, Any] | None = None) -> dict[str, Any]:
     return report
 
 
+def _norm(h: str) -> str:
+    import re
+
+    s = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", str(h).strip())
+    s = re.sub(r"[^A-Za-z0-9]+", "_", s)
+    return s.strip("_").lower()
+
+
+def check_ledger_invariant(study: str) -> dict[str, Any]:
+    """AUTHORITATIVE post-publish gate: no published column may carry BOTH a
+    ``keep_decision`` and a transform ``event`` in its PHI ledger.
+
+    Parses every ``output/{study}/audit/datasets/*/phi_handling_ledger.as_written.json``
+    and intersects the (normalized) variable_ids of its ``events`` with its
+    ``keep_decisions``. Value-free — variable NAMES + counts only. Returns a
+    report with per-form contradiction lists; ``contradictions_total == 0`` is
+    the A1 reconciliation invariant (Note 28).
+    """
+    audit_root = Path(config.OUTPUT_DIR) / study / "audit" / "datasets"
+    forms: dict[str, list[str]] = {}
+    ledgers_found = 0
+    for ledger in sorted(audit_root.glob("*/phi_handling_ledger.as_written.json")):
+        ledgers_found += 1
+        form = ledger.parent.name
+        try:
+            data = json.loads(ledger.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        ev = {
+            _norm(e.get("variable_id", "")) for e in data.get("events", []) if isinstance(e, dict)
+        }
+        kd = {
+            _norm(k.get("variable_id", ""))
+            for k in data.get("keep_decisions", [])
+            if isinstance(k, dict)
+        }
+        both = sorted(c for c in (ev & kd) if c)
+        if both:
+            forms[form] = both
+    total = sum(len(v) for v in forms.values())
+    return {
+        "study": study,
+        "ledgers_found": ledgers_found,
+        "contradictions_total": total,
+        "contradiction_forms": forms,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--study", default=None, help="Study name (default: auto-detect).")
@@ -170,6 +218,13 @@ def main(argv: list[str] | None = None) -> int:
         help="Path to a1_reconciliation_baseline.json to diff against.",
     )
     parser.add_argument("--json", action="store_true", help="Emit the full report as JSON.")
+    parser.add_argument(
+        "--check-ledgers",
+        action="store_true",
+        help="AUTHORITATIVE post-publish gate: parse the real PHI ledgers and report "
+        "any column carrying both a keep_decision and a transform event (events ∩ "
+        "keep_decisions). Requires a published output tree for the study.",
+    )
     parser.add_argument(
         "--dump-map",
         type=Path,
@@ -186,6 +241,18 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     study = args.study or config.detect_study_name()
+
+    if args.check_ledgers:
+        led = check_ledger_invariant(study)
+        if args.json:
+            print(json.dumps(led, indent=2, sort_keys=True))
+        else:
+            print(f"study={led['study']} ledgers_found={led['ledgers_found']}")
+            print(f"LEDGER INVARIANT keep+transform contradictions: {led['contradictions_total']}")
+            for form, cols in sorted(led["contradiction_forms"].items()):
+                print(f"  {form}: {', '.join(cols)}")
+        return 1 if led["contradictions_total"] else 0
+
     oracle = None
     if args.compare_oracle is not None:
         oracle = json.loads(args.compare_oracle.read_text(encoding="utf-8"))
