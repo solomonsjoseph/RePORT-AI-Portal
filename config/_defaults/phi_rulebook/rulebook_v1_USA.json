@@ -14,7 +14,7 @@
       "action": "jitter_date",
       "id": "usa_safe_harbor_dates",
       "jurisdiction": "USA",
-      "reason": "HIPAA Safe Harbor date element header."
+      "reason": "HIPAA Safe Harbor \u00a7164.514(b)(2)(i)(C) date element header."
     },
     {
       "action": "cap",
@@ -38,10 +38,10 @@
       "action": "pseudonymize",
       "id": "usa_unique_study_identifier",
       "jurisdiction": "USA",
-      "reason": "Unique study or participant identifier header."
+      "reason": "HIPAA Safe Harbor \u00a7164.514(b)(2)(i)(R) unique identifier header."
     }
   ],
-  "rules_sha256": "44bc25feeffd28fd34b4632b4fd5f0cdbd449efeb1bf1b532ebcd8225a1e9e24",
+  "rules_sha256": "4d0a07ba13bbeb92d4b1b150eff9e8399f79b344ec5ec0cf2bcb0174f4d4a6ca",
   "source_mode": "pinned",
   "sources": [
     {
