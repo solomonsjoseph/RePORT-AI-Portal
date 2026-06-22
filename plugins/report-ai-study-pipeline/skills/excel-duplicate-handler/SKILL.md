@@ -136,7 +136,7 @@ data/raw/<study>/datasets/<dataset>.xlsx
 output/<study>/audit/datasets/<dataset>/merge_report.md
 output/<study>/audit/datasets/<dataset>/merge_provenance.csv
 output/<study>/audit/dataset_duplicate_merge_report.md
-output/<study>/audit/human_review/excel/<candidate_group>/duplicate_review_report.md
+output/<study>/audit/human_review/<candidate_group>/duplicate_review_report.md
 ```
 
 The `_dataset` path is a full snapshot of the original raw `datasets/` folder. The active `datasets/` path contains the cleaned working set: unchanged non-duplicate files, safe merged main files, and no active copy of branch files that were safely merged or invalid lock/temp artifacts that were skipped. For scratch tests, use `--artifact-root tmp/excel_duplicate_handler_test/project` to create the same relative structure under a test root instead of writing to the real `data/raw/` or `output/` roots:
@@ -147,7 +147,7 @@ tmp/excel_duplicate_handler_test/project/data/raw/<study>/datasets/<dataset>.xls
 tmp/excel_duplicate_handler_test/project/output/<study>/audit/datasets/<dataset>/merge_report.md
 tmp/excel_duplicate_handler_test/project/output/<study>/audit/datasets/<dataset>/merge_provenance.csv
 tmp/excel_duplicate_handler_test/project/output/<study>/audit/dataset_duplicate_merge_report.md
-tmp/excel_duplicate_handler_test/project/output/<study>/audit/human_review/excel/<candidate_group>/duplicate_review_report.md
+tmp/excel_duplicate_handler_test/project/output/<study>/audit/human_review/<candidate_group>/duplicate_review_report.md
 ```
 
 Rules for the helper:
@@ -155,7 +155,7 @@ Rules for the helper:
 - It may copy row values internally only to create the merged workbook.
 - It must not print, log, or write raw row values to chat, markdown reports, JSON summaries, or audit text.
 - Reports and provenance must live under the audit folder, following the repo pattern `output/<study>/audit/datasets/<dataset>/`.
-- Unsafe or ambiguous candidates must write a count/header-only report under `output/<study>/audit/human_review/excel/<candidate_group>/duplicate_review_report.md`.
+- Unsafe or ambiguous candidates must write a count/header-only report under `output/<study>/audit/human_review/<candidate_group>/duplicate_review_report.md`.
 - The full original raw `datasets/` folder must be copied to `data/raw/<study>/_dataset/` before any active dataset file is replaced or removed.
 - Human-review cases must not create a raw dataset replacement, merge report, or provenance CSV; they may still rely on the run-level `_dataset/` snapshot.
 - Never overwrite an existing `_dataset/` snapshot; create a numbered backup directory when `_dataset/` already exists.
