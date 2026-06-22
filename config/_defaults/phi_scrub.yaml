@@ -133,6 +133,16 @@ keep_fields:
   - "^EE_NUMDIED$"
   # ── Marital indicator (binary flag, not status string) ──
   - "(?:EVRMARRIED)"
+  # ── A1 (maintainer 2026-06-22): bare clock TIMES + child YEARS-of-birth KEEP ──
+  # Specimen collection / log-in / log-out / reposit TIMES-of-day carry no date
+  # (the associated DATES are jittered separately) and are not Safe Harbor date
+  # elements, so they are kept as lab-process research vars rather than jittered
+  # (a bare time is unparseable by the SANT date shifter → would quarantine).
+  - "^ST_(?:COLLTIM|LINTIM|LOUTTIM|REPOSINTIM)$"
+  # Child year-of-birth — a YEAR is permitted under HIPAA Safe Harbor
+  # §164.514(b)(2)(i)(C) (only sub-year precision is removed); children, so the
+  # >89-age rule never applies. Kept (jitter is impossible on a bare year).
+  - "^CC_CHILDY\\d+$"
   # ── False-positive guards for time-of-day vs. date ──
   - "(?:_TIM\\d*$|_TIME$|_TMON$|BLDTIM|MBTIM|STTIM|RCTIM|ENTIM)"
   - "(?:TIMA$|TIMB$|TIMb$)"
@@ -227,14 +237,6 @@ keep_fields:
 date_fields:
   # ── Specific clinical-date catalog (Indo-VAP CRF-tuned) ──────────────────
   - "(?:VISDAT|ICFDT|COMPDAT|COMPDTE|TBTXDT|ENRDT|SCRDT|RANDDT|ONSDT|ENDDT|ADMDT|DISDT|RXSTDT|RXENDT|FOLDT|VISTDAT|BLDDAT|RECDAT|HIVDAT|IGRADAT|CXRDAT|PREGOUTDAT|MBDAT|STDAT|ENDAT|DSTDAT|GIVEDAT|ARTDAT|HBAND|HBADAT|HEMDAT|EVENTDAT|AWAREDAT|WOUTDAT|WITHDAT|RLPSDAT|PREGDAT|PROCD|MBRECDAT|PROCDAT|COLLDAT|LINDAT|LOUTDAT|GENOPROCDAT|GENORECDAT|PAXPROCDAT|PAXRECDAT|PBMCPROCDAT|PBMCRECDAT|PLASMAPROCDAT|PLASMARECDAT|QTFGITPROCDAT|QTFGITRECDAT|SLVPROCDAT|SLVRECDAT|URNPROCDAT|URNRECDAT|ARTSTDAT|ARTENDAT|INHSTDAT|INHENDAT|RIFSTDAT|RIFENDAT|PROPHSTDAT|PROPHENDAT|RPTSTDAT|RPTENDAT|COMPDATE|xraydat|PREGOUTDAT_2|COMPDAT_2|MBDAT2|SC_URNPROC80DAT|CAREDAT|TBDIAGDAT|ENROLLDAT|CD4DAT|LNDAT|LNDATND|GENOPROC80DAT|PAXPROC80DAT|PBMCPROC80DAT|PLASMAPROC80DAT|QTFGITPROC80DAT|SLVPROC80DAT|URNPROC80DAT|LIQENDAT|LIQSTDAT|SOLENDAT|SOLSTDAT|RECDAT2|BatchRDate)"
-  # ── Specimen tracking date-time elements (A1: moved from drop_fields) ──────
-  # ST_COLLTIM / ST_LINTIM / ST_LOUTTIM / ST_REPOSINTIM — specimen collection /
-  # log-in / log-out / reposit date-times. NOTE (runtime): if any stores a bare
-  # time-of-day rather than a full date, the fail-closed date rung quarantines
-  # the row — that is a documented data item, surfaced at the real scrub run.
-  - "(?:COLLTIM|LINTIM|LOUTTIM|REPOSINTIM)$"
-  # ── Child years-of-birth (A1: moved from drop_fields) ─────────────────────
-  - "^CC_CHILDY\\d+$"
   # NOTE: MBDATNR and MBDATNR2 were removed from the catalog above — those
   # columns (ZN_MBDATNR, ZN_MBDATNR2) store free-text "Not Done" / "Not
   # Recorded" status strings, not actual dates, and must NOT be date-scrubbed.
@@ -414,10 +416,9 @@ drop_fields:
   - "(?:query|discrepancy)[-_]?(?:status|note|comment)"
   - "(?:lock|freeze|sign[-_]?off)[-_]?(?:status|date|by)"
   - "(?:sdv|source[-_]?doc)[-_]?(?:status|date|by)"
-  # ── Specimen tracking timestamps → JITTERED as date/time elements (A1) ────
-  # ST_*TIM (COLLTIM/LINTIM/LOUTTIM/REPOSINTIM) are specimen collection/log
-  # date-time elements; routed to date_fields (SANT jitter) rather than dropped
-  # so visit-interval structure survives. (A1 maintainer resolution.)
+  # ── Specimen tracking ──
+  # ST_*TIM (COLLTIM/LINTIM/LOUTTIM/REPOSINTIM) are bare specimen log TIMES-of-day
+  # → KEPT (see keep_fields; not jitterable, not a Safe Harbor date element).
   - "^ST_RESPOSINDAT$"
   # ── Socioeconomic coded categoricals → KEEP (A1 / Note 28) ───────────────
   # Religion / caste / tribe / community / language / schooling / occupation are
@@ -486,10 +487,9 @@ drop_fields:
   - "(?:unique[-_]?id|\\buid\\b|identification[-_]?number)"
   # ── Staff-adjacent asha/anm/anganwadi worker identifiers ─────────────────
   - "(?:asha|anm|anganwadi)[-_]?(?:name|id|worker)"
-  # ── Children's birth years → JITTERED (A1) ───────────────────────────────
-  # CC_CHILDY{1..8} are child years-of-birth (date elements, HIPAA Safe Harbor
-  # §164.514(b)(2)(i)(C)); routed to date_fields (SANT jitter) rather than
-  # dropped so child-age epidemiology survives. (A1 / Note 28.)
+  # ── Children's birth years ──
+  # CC_CHILDY{1..8} are child YEARS-of-birth → KEPT (see keep_fields). A bare year
+  # is permitted under HIPAA Safe Harbor §164.514(b)(2)(i)(C) and is not jitterable.
   # ── Narrative / free-text / specify / comment fields ─────────────────────
   # Whole-field DROP rather than whole-value HMAC: hashing a free-text
   # value that contains an Aadhaar or a phone number does not remove the

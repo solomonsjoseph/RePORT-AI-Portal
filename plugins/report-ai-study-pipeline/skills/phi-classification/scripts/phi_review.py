@@ -365,13 +365,13 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
             r"(^|[_ -])dt\d*$",
             # A1 (Note 28): date tokens the generic dat-suffix rule misses —
             # index/treatment-start dates with no trailing 'dat' (ICFDT/TBTXDT),
-            # dedup-suffixed dates (…DAT_2), 'Not Done' date flags (…DATND),
-            # specimen date-times moved into date_fields, and child years-of-birth.
+            # dedup-suffixed dates (…DAT_2), 'Not Done' date flags (…DATND).
+            # (Specimen TIMES-of-day and child YEARS-of-birth are NOT here — they
+            # are kept, not jittered: a bare time/year is not a jitterable date
+            # and not a Safe Harbor date element. Maintainer A1 decision.)
             r"(?:icfdt|tbtxdt)$",
             r"(?:pregoutdat|compdat|procdat|mbrecdat|colldat|lindat|loutdat)(?:_?\d+)?$",
-            r"(?:colltim|lintim|louttim|reposintim)$",
             r"(?:datnd)\d*$",
-            r"^cc_childy\d+$",
         ),
     },
     {
