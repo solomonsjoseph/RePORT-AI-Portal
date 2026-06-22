@@ -89,3 +89,24 @@ def test_auto_resolved_merge_writes_value_free_audit_record(tmp_path: Path) -> N
     assert (audit_dir / "dataset_dedup" / "dataset_duplicate_merge_report.md").is_file()
     # value-free: cell values (3,4) never appear in the audit record
     assert "3,4" not in report_json.read_text(encoding="utf-8")
+
+
+def test_dedup_succeeds_without_header_store(tmp_path: Path) -> None:
+    """Dedup (Phase 2) runs before the store exists — resolve_* must fall back."""
+    study_dir = tmp_path / "data" / "raw" / "Demo" / "datasets"
+    study_dir.mkdir(parents=True)
+    (study_dir / "form_a.csv").write_text("H1,H2\n1,2\n3,4\n", encoding="utf-8")
+    (study_dir / "form_a1.csv").write_text("H1,H2\n1,2\n3,4\n", encoding="utf-8")
+
+    run_dir = tmp_path / "runs" / "run_no_store"
+    run_dir.mkdir(parents=True)
+    assert not (run_dir / "header_extraction.json").exists()
+
+    report = dedup_raw_datasets(
+        "Demo",
+        datasets_dir=study_dir,
+        audit_dir=tmp_path / "audit",
+        archive_dir=tmp_path / "arch",
+        run_dir=run_dir,
+    )
+    assert len(report.auto_resolved) == 1

@@ -24,8 +24,13 @@ def _add_repo_to_path(repo_root: Path) -> None:
         sys.path.insert(0, str(repo_root))
 
 
-def _headers_via_repo(repo_root: Path, dataset: Path) -> list[str]:
+def _headers_via_repo(repo_root: Path, dataset: Path, *, run_dir: Path | None = None) -> list[str]:
     _add_repo_to_path(repo_root)
+    if run_dir is not None:
+        from scripts.extraction.header_store import load_header_store, resolve_headers
+
+        store = load_header_store(run_dir)
+        return resolve_headers(store, dataset.stem, dataset)
     try:
         from scripts.source_truth.study_intake import read_headers_only
     except ImportError:
@@ -306,6 +311,11 @@ def main() -> int:
     parser.add_argument("--dataset", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--render-dir", type=Path)
+    parser.add_argument(
+        "--run-dir",
+        type=Path,
+        help="Orchestrator run dir with header_extraction.json (Note 6); optional.",
+    )
     args = parser.parse_args()
 
     repo_root = args.repo_root.resolve()
@@ -316,7 +326,7 @@ def main() -> int:
         else args.dataset.resolve()
     )
 
-    headers = _headers_via_repo(repo_root, dataset)
+    headers = _headers_via_repo(repo_root, dataset, run_dir=args.run_dir)
     pages = _pdf_pages_via_repo(repo_root, pdf)
     annotations: list[str] = []
     for page in pages:

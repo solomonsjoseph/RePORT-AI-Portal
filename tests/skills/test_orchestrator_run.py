@@ -75,6 +75,24 @@ def test_dictionary_skill_phase_is_invoked_by_orchestrator() -> None:
     assert '"P1c:dictionary-extract"' in source
 
 
+def test_orchestrator_phase_order_dictionary_dedup_headers() -> None:
+    """Regression: corrected pipeline order — P1c → P2 dedup → P1 headers (2b)."""
+    source = _ORCH_PATH.read_text(encoding="utf-8")
+    p1c = source.index('"P1c:dictionary-extract"')
+    p2 = source.index('"P2:dataset-deduplication"')
+    p1 = source.index('"P1:header-extraction"')
+    assert p1c < p2 < p1, "expected P1c → P2 → P1 (2b) source order"
+
+
+def test_init_per_form_state_after_header_extraction() -> None:
+    """Note 16: per-form init must run after dedup + shared header store."""
+    source = _ORCH_PATH.read_text(encoding="utf-8")
+    hdr_phase = source.index('"P1:header-extraction"')
+    init_call = source.index("_init_per_form_state(state", hdr_phase)
+    sot_phase = source.index('"P1b:sot-lean-generate"', hdr_phase)
+    assert hdr_phase < init_call < sot_phase
+
+
 def test_absorb_status_reads_held_and_snapshot(tmp_path: Path) -> None:
     (tmp_path / "status.json").write_text(
         json.dumps({"held_forms": ["2A", "14"], "snapshot_id": "snap_abc"}),

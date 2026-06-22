@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Skill entrypoint: header-extraction (Phase 1, gates the rest).
+"""Skill entrypoint: header-extraction (Phase 2b, after dedup).
 
 Reads ONLY the first-row headers (column NAMES — metadata, never a row value)
 from each manifest-kept dataset and writes them to ``header_extraction.json`` in
 the run dir, so the PHI-classification phase can classify headers before any row
 value is opened. Honours the forms manifest ``reject:`` list. Invoked by the
-orchestrator as a file-path subprocess (D3). Emits a value-free SkillResult.
+orchestrator after ``dataset-deduplication`` (P2) as a file-path subprocess (D3).
+Emits a value-free SkillResult.
 """
 
 from __future__ import annotations

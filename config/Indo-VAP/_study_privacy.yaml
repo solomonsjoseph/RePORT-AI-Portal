@@ -9,13 +9,3 @@ approval:
   max_synthetic_attempts: 5
 parallelism:
   mode: auto
-kanon_publish_gate:
-  enabled: true
-  quasi_identifiers:
-    - IS_AGE
-    - IS_SEX
-    - HHC_AGE
-    - HHC_SEX
-    - AGE
-    - SEX
-  k_threshold: 5

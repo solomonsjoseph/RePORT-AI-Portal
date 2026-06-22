@@ -65,16 +65,18 @@ def scrub_config_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Point the scrub config at a fresh tmp_path file (absent by default).
 
     Task A7: ``load_scrub_config()`` deep-merges ``config/_defaults/phi_scrub.yaml``
-    (base) with ``config/<study>/phi_scrub.yaml`` (override). Patch
-    ``CONFIG_DEFAULTS_DIR`` so the returned tmp file IS the defaults base the
-    merge reads (and ``PHI_SCRUB_CONFIG_PATH`` for consumers that hit it
-    directly). The per-study override is resolved via ``config.study_config_path``
-    → ``CONFIG_DIR/<study>/phi_scrub.yaml`` which does not exist here, so the
-    merge yields exactly this tmp file (or ``None`` when absent)."""
+    (base) with ``config/<study>/phi_scrub.yaml`` (override). Patch ``CONFIG_DIR``
+    and ``CONFIG_DEFAULTS_DIR`` under the same tmp ``config/`` tree that
+    ``monkeypatch_config`` uses so a real per-study ``phi_scrub.yaml`` on disk
+    is never picked up during unit tests."""
     import config
 
-    cfg_path = tmp_path / "phi_scrub.yaml"
-    monkeypatch.setattr(config, "CONFIG_DEFAULTS_DIR", tmp_path)
+    config_dir = tmp_path / "config"
+    defaults_dir = config_dir / "_defaults"
+    defaults_dir.mkdir(parents=True, exist_ok=True)
+    cfg_path = defaults_dir / "phi_scrub.yaml"
+    monkeypatch.setattr(config, "CONFIG_DIR", config_dir)
+    monkeypatch.setattr(config, "CONFIG_DEFAULTS_DIR", defaults_dir)
     monkeypatch.setattr(config, "PHI_SCRUB_CONFIG_PATH", cfg_path)
     return cfg_path
 

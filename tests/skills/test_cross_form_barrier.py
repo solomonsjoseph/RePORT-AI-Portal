@@ -44,7 +44,7 @@ def _approval(form_name: str, actions: dict[str, str], status: str = "approved")
 def test_header_classification_carries_method():
     """Note 8: classification names the method (SANT for jitter), None for keep."""
     assert _ACTION_METHOD[Action.JITTER_DATE] == "SANT_date_jitter"
-    assert _ACTION_METHOD[Action.PSEUDONYMIZE] == "HMAC_SHA256"
+    assert _ACTION_METHOD[Action.PSEUDONYMIZE] == "HMAC-SHA256"
     assert _ACTION_METHOD[Action.KEEP] is None
     hc = HeaderClassification(
         header="VISIT_DATE",

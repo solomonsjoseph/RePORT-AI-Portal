@@ -1,11 +1,12 @@
 """Shared reader for the header-extraction skill's temp store (Note 6).
 
-The ``header-extraction`` skill (orchestrator Phase 1) writes a per-form store of
-column headers, header/row counts, and source provenance to
-``<run_dir>/header_extraction.json``. Downstream skills — dataset-deduplication,
-PHI-classification, and SOT generation — read column headers + row counts from
-THIS store instead of re-opening raw dataset files. That makes the skill the
-single enforced "row-1 only" access point the note mandates.
+The ``header-extraction`` skill (orchestrator Phase **2b**, after dedup) writes a
+per-form store of column headers, header/row counts, and source provenance to
+``<run_dir>/header_extraction.json``. Downstream skills — PHI-classification (via
+the publish supervisor) and SOT generation — read column headers + row counts from
+THIS store instead of re-opening raw dataset files when the store is present.
+``dataset-deduplication`` (Phase 2) runs **before** the store exists and uses the
+same ``resolve_headers`` / ``resolve_row_count`` helpers with a direct row-1 fallback.
 
 All readers are **fail-soft**: a missing run dir, missing/malformed store, or an
 absent per-form entry returns ``None`` so the caller falls back to a direct read

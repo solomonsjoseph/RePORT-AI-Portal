@@ -83,7 +83,7 @@ _ACTION_METHOD: dict[Action, str | None] = {
     Action.CAP: "threshold_cap",
     Action.GENERALIZE: "generalization_map",
     Action.JITTER_DATE: "SANT_date_jitter",
-    Action.PSEUDONYMIZE: "HMAC_SHA256",
+    Action.PSEUDONYMIZE: "HMAC-SHA256",
     Action.DROP: "field_removal",
 }
 
@@ -104,11 +104,7 @@ class StudyPrivacyConfig:
     # a logged warning. A maintainer must set it in ``_study_privacy.yaml``; it
     # is a factual data-recency claim and is never fabricated by the loader.
     data_as_of: str | None = None
-    # Publish-time pyCANON k-anonymity gate (Note 5). Maintainer-declared,
-    # value-free: {enabled: bool, quasi_identifiers: list[str] (column NAMES),
-    # k_threshold: int}. Default {} => disabled (the gate RUNS and writes a
-    # value-free report but does not block — small research cohorts are not
-    # falsely held). When enabled, a k<threshold failure BLOCKS the publish.
+    # kanon_publish_gate: optional parsed block; publish-time pyCANON DEFERRED (2026-06).
     kanon_publish_gate: dict[str, Any] = field(default_factory=dict)
 
 
@@ -839,10 +835,8 @@ def load_study_privacy_config(study_dir: str | Path) -> StudyPrivacyConfig:
                 f"data_as_of must be an ISO date (YYYY-MM-DD); got {data_as_of!r}"
             ) from exc
 
-    # kanon_publish_gate (Note 5): maintainer-declared per study. Absent => {} at
-    # parse time; the publish gate in host_pipeline fail-closes before promotion
-    # when the block is missing, disabled, or lacks quasi_identifiers. A present
-    # mapping must be value-free + well-shaped (malformed shape raises).
+    # kanon_publish_gate: optional; publish-time pyCANON is DEFERRED (2026-06).
+    # Parsed when present for future use; absent => {}. Malformed shape raises.
     kanon_raw = raw.get("kanon_publish_gate", {})
     if not isinstance(kanon_raw, dict):
         raise ValueError("kanon_publish_gate must be a mapping")

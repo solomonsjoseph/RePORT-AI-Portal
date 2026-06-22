@@ -16,7 +16,7 @@ row). Column names are metadata, not PHI row values.
 
 ## What This Skill Does
 
-Phase 1 of the publish pipeline, and the gate for everything after it: the
+Phase **2b** of the orchestrator (after raw-file dedup, before SoT): the
 PHI-classification phase classifies headers, and it cannot run until the headers
 exist. For each dataset under `data/raw/<study>/datasets/` (skipping
 `reject:`-listed files from `_forms_manifest.yaml`, Excel lock/temp siblings, and

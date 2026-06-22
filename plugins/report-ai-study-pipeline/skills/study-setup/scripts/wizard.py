@@ -260,6 +260,66 @@ def write_configs(
     return privacy_path, manifest_path
 
 
+def scaffold_manifest_draft(study: str) -> dict[str, Any]:
+    """Propose required/optional/reject from directory listing + duplicate heuristics (N11).
+
+    Manual maintainer YAML always wins — this draft is for review at scale (10k+ forms).
+    Never consumed by ``make study``; write ``*.scaffold.yaml`` sidecars only.
+    """
+    files = discover_datasets(study)
+    suggestions = suggest_form_classification(files)
+    required = sorted(name for name, kind in suggestions.items() if kind == "required")
+    optional = sorted(name for name, kind in suggestions.items() if kind == "optional")
+    reject = sorted(name for name, kind in suggestions.items() if kind == "reject")
+    return {
+        "_scaffold_note": (
+            "Auto-generated manifest draft — review every entry; merge into "
+            "_forms_manifest.yaml manually. Pipeline never auto-edits config during make study."
+        ),
+        "required": required,
+        "optional": optional,
+        "reject": reject,
+    }
+
+
+def scaffold_date_locales_outline(study: str) -> dict[str, Any]:
+    """Return an empty ``date_locales`` sidecar template for maintainer fill-in (N11).
+
+    Full generation from a header/dictionary scan is planned; this stub documents the
+    expected shape. Keys are column NAMES only — never row values.
+    """
+    _ = study  # reserved for future header-scan generation
+    return {
+        "_scaffold_note": (
+            "Merge reviewed entries into config/<study>/_forms_manifest.yaml under "
+            "date_locales: after maintainer review. Example: COLUMN_NAME: DMY"
+        ),
+        "date_locales": {},
+    }
+
+
+def write_scaffold_sidecars(study: str, *, force: bool = False) -> tuple[Path, Path]:
+    """Write ``*.scaffold.yaml`` drafts under config/<study>/ (never overwrites live config)."""
+    cfg_dir = Path(config.CONFIG_DIR) / study
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    manifest_scaffold = cfg_dir / "_forms_manifest.scaffold.yaml"
+    locales_scaffold = cfg_dir / "date_locales.scaffold.yaml"
+    if not force:
+        existing = [p for p in (manifest_scaffold, locales_scaffold) if p.is_file()]
+        if existing:
+            raise FileExistsError(
+                f"scaffold sidecar(s) already exist ({', '.join(str(p) for p in existing)}); "
+                "pass force=True to overwrite"
+            )
+    manifest_scaffold.write_text(
+        yaml.safe_dump(scaffold_manifest_draft(study), sort_keys=False), encoding="utf-8"
+    )
+    locales_scaffold.write_text(
+        yaml.safe_dump(scaffold_date_locales_outline(study), sort_keys=False), encoding="utf-8"
+    )
+    return manifest_scaffold, locales_scaffold
+
+
 # ── interactive shell (thin wrapper over the pure functions) ────────────────
 
 

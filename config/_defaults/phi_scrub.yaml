@@ -4,7 +4,9 @@
 # (between dataset extraction and dataset cleanup). Removing this file makes
 # the module a no-op for this study.
 #
-# Scope — structural field transforms only:
+# Scope — structural field transforms only (see ``transformation_methods:`` below
+# for the IRB-grade catalog of every technique; rule sections list *which* columns
+# each technique applies to — do not repeat ``method:`` on every field line):
 #   (a) HMAC-SHA256 pseudonymization — id_fields (one-way, deterministic)
 #   (b) Per-subject deterministic date jitter (SANT) — date_fields
 #   (c) DROP — field removed entirely (drop_fields)
@@ -626,6 +628,98 @@ date_null_tokens:
   - "99999999"   # numeric sentinel for "unknown/missing" in specimen forms
   - "00000000"   # zero-date sentinel
   - "0"          # single-zero placeholder
+
+# ── Transformation method catalog (Note 9 — documentation only) ───────────
+# IRB-grade named methods. Runtime ledgers record ``method`` + ``method_parameters``
+# per column via ``phi_scrub._method_for_action``; this block is the authoritative
+# catalog — do NOT duplicate ``method:`` keys under individual rule entries.
+transformation_methods:
+  SANT_date_jitter:
+    applies_to: "date_fields; birthdate_field when compliance_posture is limited_dataset"
+    ledger_method_id: SANT_date_jitter
+    description: >-
+      Per-subject deterministic date offset (SANT) preserving visit intervals.
+    how_it_applies: >-
+      Parse the date, add a constant day offset in [-max_jitter_days, +max_jitter_days]
+      keyed by subject_id_fields, re-emit ISO YYYY-MM-DD. Null tokens and future-year
+      placeholders follow date_null_tokens / future_date_policy.
+    parameters:
+      - max_jitter_days
+      - subject_id_fields
+      - date_null_tokens
+      - "manifest date_locales (per-column locale precedence)"
+    regulatory_notes: "NIST SP 800-188 date shifting; ICMR §11 date de-identification."
+
+  field_removal:
+    applies_to: "drop_fields; birthdate_field when safe_harbor; phi_review force-drop (suppress / direct identifiers)"
+    ledger_method_id: field_removal
+    description: Column omitted from every published row.
+    how_it_applies: >-
+      Matching columns are dropped before any other rule runs on the row. Force-drop
+      from phi_review classification is priority 0 in the scrub engine.
+    parameters: []
+
+  HMAC-SHA256:
+    applies_to: id_fields
+    ledger_method_id: HMAC-SHA256
+    description: One-way deterministic pseudonym for record linkage.
+    how_it_applies: >-
+      Replace raw ID with RID_<label>_<alpha12> via HMAC-SHA256(key, label:raw_id).
+    parameters:
+      - "per-pattern label in id_fields"
+
+  threshold_cap:
+    applies_to: "cap_fields; global age_cap"
+    ledger_method_id: threshold_cap
+    description: Numeric values above a threshold collapse to a categorical label.
+    how_it_applies: >-
+      When value > threshold, replace with label (e.g. ages > 89 → 90+). Per-field
+      cap_fields override the global age_cap when both match.
+    parameters:
+      - threshold
+      - label
+
+  generalization_map:
+    applies_to: "generalize_fields + generalization_maps"
+    ledger_method_id: generalization_map
+    description: Categorical value → broad category via a named map.
+    how_it_applies: >-
+      Look up the raw value in the named generalization map; unmapped non-empty values
+      quarantine the row (fail-closed).
+    parameters:
+      - map name
+      - mapping entries
+
+  band_map:
+    applies_to: "band_fields + band_ranges / band_maps"
+    ledger_method_id: band_map
+    description: Numeric or categorical value → coded epidemiological band.
+    how_it_applies: >-
+      Map via band_ranges (numeric) or band_maps (categorical); unmapped non-empty
+      values quarantine the row (fail-closed).
+    parameters:
+      - band name
+      - kind (numeric or categorical)
+
+  small_cell_clamp:
+    applies_to: suppress_small_cell_fields
+    ledger_method_id: small_cell_clamp
+    description: ICMR-style contact-count capping (top-code above threshold).
+    how_it_applies: >-
+      Numeric values strictly greater than small_cell_threshold are clamped down to
+      the threshold before publish.
+    parameters:
+      - small_cell_threshold
+
+  keep_passthrough:
+    applies_to: keep_fields
+    ledger_method_id: keep_passthrough
+    description: Explicit retention allowlist (documented in ledger keep_decisions).
+    how_it_applies: >-
+      Column published unchanged when it matches keep_fields (priority 1). Recorded
+      as a keep_decision in the PHI ledger envelope, not as a PHI event method.
+    parameters:
+      - "matching regex/name in keep_fields"
 
 # ──────────────────────────────────────────────────────────────────────────
 # FILE EXCLUSIONS — DOCUMENTATION ONLY (not consumed by this scrubber)

@@ -62,9 +62,10 @@ def test_plugin_declares_ten_phase_orchestrator() -> None:
     assert orch["lock"] == "per_study_exclusive_whole_run"
 
     phases = orch["phases"]
-    # Conceptual phases 0..10 (with a 3b cross-form barrier) → 12 entries.
+    # Conceptual phases 0..10 (with 2b headers + 3b cross-form barrier) → 13 entries.
     numbers = [p["phase"] for p in phases]
     assert numbers[0] == 0 and numbers[-1] == 10
+    assert "2b" in [str(n) for n in numbers]
     assert "3b" in [str(n) for n in numbers]
 
     # The contiguous publish phases are executed by the dataset-to-llm-source
@@ -72,7 +73,9 @@ def test_plugin_declares_ten_phase_orchestrator() -> None:
     by_num = {str(p["phase"]): p for p in phases}
     assert "dataset-to-llm-source" in by_num["6"]["skills"]
     assert "audit-verification" in by_num["9"]["skills"]
-    assert by_num["1"]["skills"] == ["header-extraction", "dictionary-to-llm-source"]
+    assert by_num["1"]["skills"] == ["dictionary-to-llm-source"]
+    assert by_num["2"]["skills"] == ["dataset-deduplication"]
+    assert by_num["2b"]["skills"] == ["header-extraction"]
 
 
 def test_plugin_skills_inventory_is_complete_and_well_formed() -> None:

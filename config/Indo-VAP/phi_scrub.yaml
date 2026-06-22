@@ -1,0 +1,17 @@
+# Indo-VAP study-specific PHI scrub overrides (deep-merged over config/_defaults/).
+#
+# Method names and algorithm prose live in the defaults catalog:
+#   config/_defaults/phi_scrub.yaml → transformation_methods:
+#
+# This file only overrides study policy knobs. Per-column proof at runtime is in
+# the audit ledgers (method + method_parameters per phi_scrub._method_for_action).
+
+# Safe Harbor posture: birthdates dropped (field_removal), clinical ages capped
+# (threshold_cap via cap_fields + age_cap in defaults for IS_AGE / IC_AGE / …).
+compliance_posture: safe_harbor
+
+# Indo-VAP uses SUBJID on subject forms and FID on household-contact forms (10_TST).
+# Defaults already list both; repeated here so maintainers see the study intent.
+subject_id_fields:
+  - SUBJID
+  - FID

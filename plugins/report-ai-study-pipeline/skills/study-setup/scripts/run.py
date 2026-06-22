@@ -133,9 +133,45 @@ def main(argv: list[str] | None = None) -> int:
         "--reject", action="append", default=[], help="rejected dataset file (repeatable)"
     )
     parser.add_argument("--force", action="store_true", help="overwrite existing config files")
+    parser.add_argument(
+        "--scaffold",
+        action="store_true",
+        help="Write manifest + date_locales *.scaffold.yaml drafts (N11; never overwrites live config).",
+    )
     args = parser.parse_args(argv)
 
     import config
+
+    if args.scaffold:
+        import wizard
+
+        try:
+            paths = wizard.write_scaffold_sidecars(args.study, force=args.force)
+        except FileExistsError as exc:
+            emit_skill_result(
+                SkillResult(
+                    skill="study-setup",
+                    ok=False,
+                    exit_code=2,
+                    summary=str(exc),
+                    data={"study": args.study},
+                )
+            )
+            return 2
+        emit_skill_result(
+            SkillResult(
+                skill="study-setup",
+                ok=True,
+                exit_code=0,
+                summary="scaffold sidecars written",
+                data={
+                    "study": args.study,
+                    "manifest_scaffold": str(paths[0]),
+                    "date_locales_scaffold": str(paths[1]),
+                },
+            )
+        )
+        return 0
 
     if args.interactive or args.write_config:
         return _run_config_wizard(args)

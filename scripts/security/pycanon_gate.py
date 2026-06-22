@@ -1,12 +1,14 @@
-"""pyCANON publish-gate k-anonymity / l-diversity engine (Wave 3 C3).
+"""pyCANON k-anonymity / l-diversity engine (Wave 3 C3).
 
-Decision D2: pyCANON becomes the **publish-gate** anonymity engine — it measures
-the residual re-identification risk of an already-scrubbed published dataset by
-computing the true k-anonymity (and, optionally, l-diversity) over its
-quasi-identifier columns. The lightweight :mod:`scripts.security.kanon_gate`
-stays the **agent-query-time** gate (small result sets surfaced to the LLM); this
-module is the heavier, library-backed measurement run once at publish over the
-whole dataset.
+**Publish gate status (2026-06): DEFERRED.** The live publish path uses
+classification + scrub + Presidio/residual pattern scan only. This module
+remains for agent-query-time measurement and future discussion — not invoked
+at promotion in ``host_pipeline``.
+
+Decision D2 (historical): pyCANON was intended as a publish-gate engine measuring
+residual re-identification risk over quasi-identifier columns. The lightweight
+:mod:`scripts.security.kanon_gate` stays the **agent-query-time** gate;
+this module provides formal k-anonymity metrics when explicitly invoked.
 
 Why a second engine: ``kanon_gate.kanon_check`` counts equivalence classes with a
 plain dict — fine for a handful of query rows. pyCANON implements the formal

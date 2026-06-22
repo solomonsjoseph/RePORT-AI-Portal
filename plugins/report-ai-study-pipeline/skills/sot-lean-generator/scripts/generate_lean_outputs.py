@@ -402,7 +402,9 @@ def _cleanup_sot_temps(form: str) -> None:
     shutil.rmtree(Path(f"/tmp/sot_render_{form}"), ignore_errors=True)
 
 
-def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path:
+def generate_form(
+    repo_root: Path, study: str, form: str, out_dir: Path, *, run_dir: Path | None = None
+) -> Path:
     """Generate + verify one form's SoT; policy/schema go to the audit zone, only the joined view is promoted to llm_source."""
 
     study_dir = repo_root / "data" / "raw" / study
@@ -499,7 +501,8 @@ def generate_form(repo_root: Path, study: str, form: str, out_dir: Path) -> Path
             str(source_pack),
             "--render-dir",
             str(render_dir),
-        ],
+        ]
+        + (["--run-dir", str(run_dir)] if run_dir is not None else []),
         cwd=repo_root,
     )
     _run(
@@ -637,6 +640,11 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Output SoT root. Defaults to output/<study>/llm_source/SoT.",
     )
+    parser.add_argument(
+        "--run-dir",
+        type=Path,
+        help="Orchestrator run dir (header_extraction.json for Note 6 shared store).",
+    )
     return parser
 
 
@@ -659,7 +667,7 @@ def main(argv: list[str] | None = None) -> int:
     for form in forms:
         print(f"FORM {form}", flush=True)
         try:
-            result = generate_form(repo_root, args.study, form, out_dir)
+            result = generate_form(repo_root, args.study, form, out_dir, run_dir=args.run_dir)
         except Exception as exc:
             failures.append((form, str(exc)))
             print(f"  FAIL {exc}", flush=True)

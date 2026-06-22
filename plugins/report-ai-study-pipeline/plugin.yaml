@@ -4,7 +4,7 @@ kind: llm-plugin-pack
 description: >
   Platform-neutral RePORT-AI study preparation plugin pack. The plugin IS the
   pipeline: a 10-phase orchestrator skill governs the raw-to-llm_source publish
-  path end to end — header extraction, dictionary extraction, deduplication,
+  path end to end — dictionary extraction, deduplication, header extraction,
   Source Truth generation, PHI classification + scrubbing, audit verification,
   the Presidio+pyCANON PHI guard gate, promotion, staging destruction, the
   cleanup verifier, and the immutable snapshot. PHI row values never reach any
@@ -54,13 +54,17 @@ orchestrator:
       action: Config validation ∥ rulebook fetch/drift · input-fingerprint redundant-run check · dir pre-creation · acquire lock
       skills: []
     - phase: 1
-      name: headers
-      action: Header extraction ∥ dictionary extraction (column NAMES only; gates classification)
-      skills: [header-extraction, dictionary-to-llm-source]
+      name: dictionary
+      action: Dictionary extraction (column NAMES only; ∥ rulebook in P0)
+      skills: [dictionary-to-llm-source]
     - phase: 2
       name: deduplication
-      action: Per-form duplicate detection (scrub-first; provably-safe merges only)
+      action: Per-form duplicate detection (scrub-first; provably-safe merges only; internal header reads)
       skills: [dataset-deduplication]
+    - phase: 2b
+      name: headers
+      action: Shared header extraction on deduplicated file set (column NAMES only; gates classification)
+      skills: [header-extraction]
     - phase: 3
       name: sot-classify-extract
       action: Source Truth ∥ PHI classification ∥ full data extraction

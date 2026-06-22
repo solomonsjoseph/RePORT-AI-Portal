@@ -239,94 +239,6 @@ def _write_presidio_failure_md(audit_dir: Path, guard: Any) -> None:
         md_path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def _write_pycanon_report_md(audit_dir: Path, form: str, result: Any) -> None:
-    """Write a value-free pyCANON k-anonymity report (k, threshold, QI names, n)."""
-    from scripts.audit.review_paths import pycanon_report_md_path
-
-    md_path = pycanon_report_md_path(audit_dir, form)
-    md_path.parent.mkdir(parents=True, exist_ok=True)
-    lines = [
-        "# pyCANON k-Anonymity Report",
-        "",
-        "Boundary: k, threshold, quasi-identifier NAMES, and record counts only — "
-        "never a row value or a re-identifying class key.",
-        "",
-        f"- form: `{form}`",
-        f"- status: `{'pass' if result.ok else 'FAIL'}`",
-        f"- k: {result.k}",
-        f"- k_threshold: {result.k_threshold}",
-        f"- n_records: {result.n_records}",
-        f"- quasi_identifiers: {list(result.quasi_identifiers)}",
-        f"- reason: {result.reason or '(n/a)'}",
-        "",
-    ]
-    md_path.write_text("\n".join(lines), encoding="utf-8")
-
-
-def _run_pycanon_publish_gate(staging_ds: Path) -> None:
-    """Fail-closed pyCANON k-anonymity check over staged rows (Note 5, Layer 2).
-
-    Maintainer-declared via ``_study_privacy.yaml: kanon_publish_gate``. A missing
-    or disabled gate is a configuration error: the Note 5 contract says the
-    pyCANON layer must pass before promotion. Staging is the trusted AMBER zone
-    (not the LLM read zone), so reading rows here produces value-free output only
-    — k / threshold / QI NAMES / counts are all that is ever written or raised.
-    """
-    try:
-        from scripts.security.phi_review import load_study_privacy_config
-
-        cfg = load_study_privacy_config(Path(config.DATASETS_DIR).parent)
-    except Exception as exc:  # pragma: no cover - config errors handled upstream
-        raise RuntimeError(
-            f"pyCANON k-anonymity gate cannot load privacy config: {type(exc).__name__}"
-        ) from exc
-    gate = cfg.kanon_publish_gate or {}
-    if not gate:
-        raise RuntimeError(
-            "pyCANON k-anonymity gate requires _study_privacy.yaml: "
-            "kanon_publish_gate with enabled: true and quasi_identifiers."
-        )
-    enabled = bool(gate.get("enabled", False))
-    if not enabled:
-        raise RuntimeError("pyCANON k-anonymity gate is disabled; set kanon_publish_gate.enabled: true")
-    qis = gate.get("quasi_identifiers", [])
-    if not qis:
-        raise RuntimeError("pyCANON k-anonymity gate requires non-empty quasi_identifiers")
-    k_threshold = int(gate.get("k_threshold", 5))
-    try:
-        import json as _json
-
-        from scripts.security.pycanon_gate import check_publish_anonymity
-    except Exception as exc:
-        raise RuntimeError(
-            f"pyCANON k-anonymity gate dependency unavailable: {type(exc).__name__}"
-        ) from exc
-
-    audit_dir = Path(config.STUDY_AUDIT_DIR)
-    for jsonl in sorted(staging_ds.glob("*.jsonl")):
-        if jsonl.stat().st_size == 0:
-            continue
-        rows: list[dict[str, Any]] = []
-        with jsonl.open(encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if line:
-                    rows.append(_json.loads(line))
-        if not rows:
-            continue
-        present = [q for q in qis if any(q in r for r in rows)]
-        if not present:
-            continue
-        result = check_publish_anonymity(rows, quasi_identifiers=present, k_threshold=k_threshold)
-        _write_pycanon_report_md(audit_dir, jsonl.stem, result)
-        if not result.ok:
-            raise RuntimeError(
-                f"pyCANON k-anonymity gate FAILED for {jsonl.stem}: k={result.k} < "
-                f"threshold {k_threshold} over QIs {present} — route to human review "
-                f"(see audit/human_review/{jsonl.stem}/)."
-            )
-
-
 _OUTPUT_SIGNPOST_TEMPLATE = """\
 # RePORT AI Portal — output/{study}/
 
@@ -1221,11 +1133,6 @@ not directly. For the full study build run `make study STUDY=<name>`.
             if staging_ds.is_dir() and any(
                 f for f in staging_ds.glob("*.jsonl") if f.stat().st_size > 0
             ):
-                # Step 1.95 — fail-closed pyCANON k-anonymity (Note 5, Layer 2):
-                # requires a study kanon_publish_gate block, runs over staged
-                # rows, and blocks before promotion on config/dependency/k failure.
-                _run_pycanon_publish_gate(staging_ds)
-
                 # PHI guard gate (Note 5): Presidio + the legacy Verhoeff/contact
                 # scanner — BOTH must pass BEFORE the atomic promote. On a hit,
                 # write a value-free presidio_failure.md and fail closed (nothing

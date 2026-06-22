@@ -12,7 +12,9 @@ proven ``dataset-to-llm-source`` publish supervisor in one locked subprocess):
 
     P0  preflight   — config validation, rulebook resolve + drift, input-
                       fingerprint redundant-run check, dir pre-creation, lock
-    P1  headers     — header-extraction skill (column NAMES only; gates classify)
+    P1c dictionary — dictionary-to-llm-source --leg extract (∥ P0 rulebook)
+    P2  dedup        — dataset-deduplication (raw-file tiers; internal header reads)
+    P1  headers      — header-extraction skill (shared store; column NAMES only)
     P1b SoT         — generate_lean_outputs (policy/schema → audit/SoT_construction/; only joined view → llm_source/SoT/)
     P2  publish     — dataset-to-llm-source `run` (classify → extract → scrub →
                       dedup → PHI guard gate → promote → destroy → inline verify
@@ -31,7 +33,8 @@ taught to accept a valid parent baton.
 phase records, ``run_state.json`` carries a per-form state map — every form is
 in exactly one of ``not_started → running → complete`` /
 ``held_for_review`` / ``re_running`` / ``failed_pipeline_level`` — written on
-every transition the orchestrator can observe (init after P1; ``running`` before
+every transition the orchestrator can observe (init after P1 header store;
+``running`` before
 the publish leg; authoritative ``complete``/``held_for_review`` absorbed from the
 run's ``phi_handling_approval.json`` after). Each form record also carries a
 per-form input fingerprint (:func:`compute_per_form_fingerprint`). On restart the
@@ -425,7 +428,7 @@ def _compute_form_fingerprints(study: str, stems: list[str]) -> dict[str, str]:
 
 
 def _init_per_form_state(state: _RunState, *, study: str, run_dir: Path) -> None:
-    """Initialize the per-form state machine after header extraction (Note 16).
+    """Initialize the per-form state machine after dedup + header extraction (Note 16).
 
     Every discovered form starts ``not_started`` with its per-form input
     fingerprint recorded. Fail-soft: a discovery hiccup leaves the map empty
@@ -714,7 +717,33 @@ def main(argv: list[str] | None = None) -> int:
             state.flush()
             return pf
 
-        # ── P1 header extraction (gate; column NAMES only) ───────────────────
+        # ── P1c dictionary extraction (Note 1 — parallel with P0 rulebook) ───
+        dict_ext = invoke_skill(
+            "dictionary-to-llm-source",
+            ["--study", study, "--run-id", run_id, "--run-dir", str(run_dir), "--leg", "extract"],
+            env=child_env,
+        )
+        derec = _record_skill_phase(state, "P1c:dictionary-extract", dict_ext)
+        if not dict_ext.ok:
+            state.status = "failed"
+            derec.detail = dict_ext.summary
+            state.flush()
+            return dict_ext.exit_code or 1
+
+        # ── P2 raw-file deduplication (Note 4 — before shared header store / SoT) ─
+        dedup = invoke_skill(
+            "dataset-deduplication",
+            ["--study", study, "--run-id", run_id, "--run-dir", str(run_dir)],
+            env=child_env,
+        )
+        drec = _record_skill_phase(state, "P2:dataset-deduplication", dedup)
+        if not dedup.ok:
+            state.status = "failed"
+            drec.detail = dedup.summary
+            state.flush()
+            return dedup.exit_code or 1
+
+        # ── P1 header extraction (shared store; column NAMES only) ───────────
         if not args.skip_header_extraction:
             hdr = invoke_skill(
                 "header-extraction",
@@ -728,45 +757,17 @@ def main(argv: list[str] | None = None) -> int:
                 state.flush()
                 return hdr.exit_code or 1
 
-        # Note 16: initialize the per-form state machine now that the form set is
-        # known (header store, or datasets-dir fallback). Each form starts
-        # `not_started` with its per-form input fingerprint recorded. Must run
-        # before the header store is destroyed later in the publish leg.
+        # Note 16: initialize the per-form state machine after dedup + header
+        # extraction so the form set reflects the deduplicated raw file list.
         _init_per_form_state(state, study=study, run_dir=run_dir)
-
-        # ── P1c dictionary extraction (Note 1 — the orchestrator invokes the
-        # dictionary-to-llm-source skill; its publish leg runs in-lock at Step 2
-        # after cleanup-propagation prunes dropped columns) ───────────────────
-        dict_ext = invoke_skill(
-            "dictionary-to-llm-source",
-            ["--study", study, "--run-id", run_id, "--run-dir", str(run_dir), "--leg", "extract"],
-            env=child_env,
-        )
-        derec = _record_skill_phase(state, "P1c:dictionary-extract", dict_ext)
-        if not dict_ext.ok:
-            state.status = "failed"
-            derec.detail = dict_ext.summary
-            state.flush()
-            return dict_ext.exit_code or 1
-
-        # ── P2 raw-file deduplication (Note 4 — before SoT / extraction) ───
-        dedup = invoke_skill(
-            "dataset-deduplication",
-            ["--study", study, "--run-id", run_id, "--run-dir", str(run_dir)],
-            env=child_env,
-        )
-        drec = _record_skill_phase(state, "P2:dataset-deduplication", dedup)
-        if not dedup.ok:
-            state.status = "failed"
-            drec.detail = dedup.summary
-            state.flush()
-            return dedup.exit_code or 1
 
         # ── P1b SoT lean outputs (joined views before publish gate) ─────────
         from scripts.source_truth.generate_lean_outputs import main as generate_lean_outputs_main
 
         sot_rec = state.phase("P1b:sot-lean-generate")
-        sot_rc = generate_lean_outputs_main(["--study", study, "--repo-root", str(config.BASE_DIR)])
+        sot_rc = generate_lean_outputs_main(
+            ["--study", study, "--repo-root", str(config.BASE_DIR), "--run-dir", str(run_dir)]
+        )
         sot_rec.exit_code = sot_rc
         if sot_rc != 0:
             sot_rec.status = "failed"
@@ -810,9 +811,8 @@ def main(argv: list[str] | None = None) -> int:
             pipeline_failed=publish.exit_code not in {EXIT_OK, EXIT_PARTIAL_REVIEW},
         )
 
-        # Note 6: the header-extraction shared store has now been consumed by the
-        # dedup (P2) and PHI-classification (inside the publish supervisor) legs.
-        # Destroy it so the workspace ends in the two-list clean state (Note 13).
+        # Note 6: destroy the shared header store after the publish leg — it was
+        # consumed by PHI-classification (inside the publish supervisor).
         try:
             from scripts.extraction.header_store import destroy_header_store
 

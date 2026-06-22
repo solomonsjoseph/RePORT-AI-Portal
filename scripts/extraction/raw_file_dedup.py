@@ -1,9 +1,12 @@
-"""Raw dataset file deduplication (Note 4) — before extraction, headers/counts only.
+"""Raw dataset file deduplication (Note 4) — orchestrator Phase 2, before extraction.
 
-Detects duplicate candidate groups via filename normalization, applies Tier 1
-(perfect column match + row count) and Tier 2 (header superset) rules without
-reading cell values. Ambiguous groups route to ``audit/human_review/`` with
-count-only notes.
+Runs **before** the shared header store is written (Phase 2b). Detects duplicate
+candidate groups via filename normalization, applies Tier 1 (perfect column match
++ row count) and Tier 2 (header superset) rules without reading cell values.
+When ``header_extraction.json`` is not yet present, resolves headers and row
+counts via direct row-1 / count-only reads (``resolve_headers`` /
+``resolve_row_count`` fail-soft fallback). Ambiguous groups route to
+``audit/human_review/`` with count-only notes.
 """
 
 from __future__ import annotations

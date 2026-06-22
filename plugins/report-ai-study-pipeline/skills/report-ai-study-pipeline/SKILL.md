@@ -40,8 +40,9 @@ than being re-decomposed into separate subprocesses.
 | Phase | Action | Skill(s) |
 |---|---|---|
 | 0 | Config validation ∥ rulebook fetch/drift · input-fingerprint redundant-run check · dir pre-creation · acquire lock | (shared modules) |
-| 1 | Header extraction ∥ dictionary extraction (column NAMES only) | `$header-extraction` ∥ `$dictionary-to-llm-source` |
-| 2 | Per-form deduplication (scrub-first; provably-safe merges only) | `$dataset-deduplication` |
+| 1 | Dictionary extraction (column NAMES only; ∥ rulebook in P0) | `$dictionary-to-llm-source` |
+| 2 | Per-form deduplication (scrub-first; provably-safe merges only; internal row-1 header reads) | `$dataset-deduplication` |
+| 2b | Shared header extraction on deduplicated file set (column NAMES only; gates classification) | `$header-extraction` |
 | 3 | Source Truth ∥ PHI classification ∥ full data extraction | `$sot-lean-generator` ∥ `$phi-classification` ∥ `$dataset-to-llm-source` |
 | 3b | Cross-form PHI-classification consistency barrier | `$phi-classification` |
 | 4 | Per-form PHI scrub (fail-closed) | `$phi-scrubbing` |

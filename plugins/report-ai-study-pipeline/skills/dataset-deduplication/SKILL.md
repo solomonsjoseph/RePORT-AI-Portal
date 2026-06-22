@@ -1,6 +1,6 @@
 ---
 name: dataset-deduplication
-description: Raw-file dataset deduplication (Note 4) — filename normalization, header/row-count tiers, no cell reads. Orchestrator phase 2, before SoT and extraction.
+description: Raw-file dataset deduplication (Note 4) — filename normalization, header/row-count tiers, no cell reads. Orchestrator phase 2, before shared header extraction (Note 6), SoT, and extraction.
 ---
 
 # Dataset Deduplication
@@ -14,7 +14,10 @@ automatically.
 ## What This Skill Does
 
 Orchestrator **phase 2**. Deduplicates **raw** Excel/CSV files under
-``data/raw/<study>/datasets/`` via ``scripts/extraction/raw_file_dedup.py``:
+``data/raw/<study>/datasets/`` via ``scripts/extraction/raw_file_dedup.py``
+**before** the shared header-extraction store (Note 6) is built. Reads row-1
+column headers internally when comparing duplicate candidates — it does not
+consume the Note 6 temp store.
 
 1. **Normalize** filenames (strip underscores, numeric suffixes, case).
 2. **Group** files sharing the same normalized base (2+ = duplicate candidate set).

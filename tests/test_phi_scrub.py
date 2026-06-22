@@ -2374,7 +2374,8 @@ class TestCatalogCoverage:
 
     @pytest.fixture()
     def real_cfg(self) -> phi_scrub.PHIScrubConfig:
-        cfg = phi_scrub.load_scrub_config(config.PHI_SCRUB_CONFIG_PATH)
+        # Effective merged config (defaults + per-study override when present).
+        cfg = phi_scrub.load_scrub_config(study=config.STUDY_NAME)
         assert cfg is not None, "phi_scrub.yaml must be shipped with the package"
         return cfg
 
@@ -3076,13 +3077,10 @@ class TestDateFieldsExclusionNonDateColumns:
     """Columns ZN_MBDATNR, ZN_MBDATNR2, CX_PROCDAT_ND must not be date-classified."""
 
     def _load_real_cfg(self) -> phi_scrub.PHIScrubConfig | None:
-        """Load the real phi_scrub.yaml from the project."""
+        """Load the effective merged scrub config for the active study."""
         import config as _cfg
 
-        real_yaml = _cfg.PHI_SCRUB_CONFIG_PATH
-        if not real_yaml.is_file():
-            return None
-        return phi_scrub.load_scrub_config(real_yaml)
+        return phi_scrub.load_scrub_config(study=_cfg.STUDY_NAME)
 
     def test_zn_mbdatnr_is_not_date(self) -> None:
         """ZN_MBDATNR stores free-text status; field_is_date must return False."""
@@ -3154,10 +3152,7 @@ class TestBirthdateKeptAndJitteredRealConfig:
     def _load_real_cfg(self) -> phi_scrub.PHIScrubConfig | None:
         import config as _cfg
 
-        real_yaml = _cfg.PHI_SCRUB_CONFIG_PATH
-        if not real_yaml.is_file():
-            return None
-        return phi_scrub.load_scrub_config(real_yaml)
+        return phi_scrub.load_scrub_config(study=_cfg.STUDY_NAME)
 
     def test_shipped_posture_is_safe_harbor(self) -> None:
         cfg = self._load_real_cfg()
