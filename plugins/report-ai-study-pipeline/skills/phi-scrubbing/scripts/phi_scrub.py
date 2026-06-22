@@ -1669,6 +1669,27 @@ def _resolve_subject_id(
     return ""
 
 
+def _secondary_subject_id_base(field: str, candidates: tuple[str, ...]) -> str | None:
+    """If *field* is a SECONDARY subject-ID column return its canonical base, else None.
+
+    A secondary subject-ID is a canonical subject-ID name (``SUBJID`` / ``FID``,
+    from ``candidates``) followed by an Excel re-entry suffix — a digit run, an
+    ``_<digits>`` sheet-dedup tag, or both. These are the duplicate/linked
+    re-entries the A1 resolver handles (Note 28).
+
+        candidates = ("SUBJID", "FID")
+        SUBJID2 / SUBJID_2 / SUBJID2_2 / SUBJID_3  -> "SUBJID"
+        FID2 / FID5                                -> "FID"
+        SUBJID / FID  (canonical — no suffix)      -> None
+        SC_PROCID / FIDELITY / RANDID              -> None
+    """
+    name = field.strip()
+    for base in candidates:
+        if re.fullmatch(re.escape(base) + r"(?:\d+(?:_\d+)?|_\d+)", name, re.IGNORECASE):
+            return base
+    return None
+
+
 def _now_utc_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -1713,6 +1734,15 @@ def _scrub_row(
     if not subj_id:
         return None, {}
 
+    # Snapshot each canonical subject-ID's ORIGINAL value before the field loop
+    # pseudonymizes it in place — the secondary-ID resolver (rung 1.5) must
+    # compare re-entry columns against the pre-scrub canonical value, not the
+    # RID_… token the id rung writes when SUBJID/FID is processed first.
+    _orig_canonical = {
+        base: _resolve_subject_id(row, (base,), dataset_has_subject_col=dataset_has_subject_col)
+        for base in cfg.subject_id_fields
+    }
+
     offset = date_offset_days(subj_id, key=key, max_days=cfg.max_jitter_days)
     counts: dict[str, int] = {}
 
@@ -1742,6 +1772,33 @@ def _scrub_row(
 
         # 1. KEEP — allowlist short-circuits every other rule
         if cfg.field_is_keep(field):
+            continue
+
+        # 1.5 SECONDARY SUBJECT-ID RESOLVER (A1 / Note 28) — a SUBJID{n}/FID{n}
+        # Excel re-entry column. Trusted-code equality check (the scrub already
+        # reads row values): an EXACT duplicate of the row's canonical subject ID
+        # is dropped (provably-redundant re-entry); a DISTINCT value is
+        # pseudonymized in the SAME label/keyspace as the canonical ID so the
+        # case↔household link survives. "An ID is pseudonymized, never dropped" —
+        # the drop here only ever removes the proven-redundant copy. Audit is
+        # value-free: the scope records identical-drop vs distinct-pseudonymize,
+        # never the raw ID.
+        sec_base = _secondary_subject_id_base(field, cfg.subject_id_fields)
+        if sec_base is not None:
+            raw_val = row[field]
+            if raw_val is None or (isinstance(raw_val, str) and not raw_val.strip()):
+                del row[field]
+                _bump("secondary-id-drop", field)
+                continue
+            canonical = _orig_canonical.get(sec_base, "")
+            if canonical and str(raw_val).strip() == canonical:
+                del row[field]
+                _bump("secondary-id-drop", field)
+            else:
+                row[field] = pseudo_id(
+                    str(raw_val).strip(), key=key, label=(cfg.id_label_for(sec_base) or "SUBJ")
+                )
+                _bump("secondary-id-pseudonymize", field)
             continue
 
         # 2. BIRTHDATE — posture-dependent drop or jitter.
@@ -2090,6 +2147,10 @@ _SCOPE_TO_ACTION: dict[str, str] = {
     "phi-scrub-generalize": "generalize",
     "phi-scrub-suppress-small-cell": "suppress_small_cell",
     "phi-scrub-band": "band",
+    # A1 secondary-subject-ID resolver (Note 28): an exact-duplicate re-entry is
+    # dropped; a distinct linked ID is pseudonymized in the canonical keyspace.
+    "phi-scrub-secondary-id-drop": "drop",
+    "phi-scrub-secondary-id-pseudonymize": "pseudonymize",
     # Quarantine scopes are intentionally absent: rows that were quarantined
     # were never published and must not produce PHI ledger entries for any
     # published dataset. The existing guard in _emit_as_written_ledger skips

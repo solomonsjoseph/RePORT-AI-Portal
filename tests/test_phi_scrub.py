@@ -3373,3 +3373,90 @@ class TestPartialPublishThreshold:
         outcome = json.loads(outcome_path.read_text())
         assert outcome["partial"] is False
         assert outcome["partial_forms"] == {}
+
+
+class TestSecondarySubjectIdResolver:
+    """A1 / Note 28 — secondary subject-ID resolver in ``_scrub_row``.
+
+    A ``SUBJID{n}`` / ``FID{n}`` Excel re-entry column is compared (trusted-code,
+    value-level) to the row's canonical subject ID: an exact duplicate is dropped
+    as a redundant re-entry; a distinct linked value is pseudonymized in the SAME
+    keyspace as the canonical ID so case↔household linkage survives. Tokens never
+    leave the trusted boundary; the audit records scope + count only.
+    """
+
+    @staticmethod
+    def _cfg() -> phi_scrub.PHIScrubConfig:
+        # The real Indo-VAP-shaped defaults: subject_id_fields = (SUBJID, FID),
+        # canonical id_fields label SUBJID->SUBJ, FID->FAM.
+        return phi_scrub.load_scrub_config(study="Indo-VAP")
+
+    def test_base_detector(self) -> None:
+        c = self._cfg()
+        base = phi_scrub._secondary_subject_id_base
+        assert base("SUBJID2", c.subject_id_fields) == "SUBJID"
+        assert base("SUBJID_2", c.subject_id_fields) == "SUBJID"
+        assert base("SUBJID2_2", c.subject_id_fields) == "SUBJID"
+        assert base("FID3", c.subject_id_fields) == "FID"
+        # Canonical names (no numeric suffix) and lookalikes are NOT secondary.
+        assert base("SUBJID", c.subject_id_fields) is None
+        assert base("FID", c.subject_id_fields) is None
+        assert base("FIDELITY", c.subject_id_fields) is None
+        assert base("SC_PROCID", c.subject_id_fields) is None
+
+    def test_exact_duplicate_is_dropped(self, key_bytes: bytes) -> None:
+        c = self._cfg()
+        out, counts = phi_scrub._scrub_row(
+            {"SUBJID": "ABC123", "SUBJID2": "ABC123"}, cfg=c, key=key_bytes
+        )
+        assert out is not None
+        assert "SUBJID2" not in out  # redundant re-entry removed
+        assert counts.get("phi-scrub-secondary-id-drop:SUBJID2") == 1
+        # The canonical SUBJID itself is pseudonymized, not dropped.
+        assert str(out["SUBJID"]).startswith("RID_SUBJ_")
+
+    def test_distinct_value_is_pseudonymized_in_canonical_keyspace(self, key_bytes: bytes) -> None:
+        c = self._cfg()
+        out, counts = phi_scrub._scrub_row(
+            {"SUBJID": "ABC123", "SUBJID2": "XYZ789"}, cfg=c, key=key_bytes
+        )
+        assert out is not None
+        assert str(out["SUBJID2"]).startswith("RID_SUBJ_")
+        assert counts.get("phi-scrub-secondary-id-pseudonymize:SUBJID2") == 1
+        # Same keyspace: a distinct secondary value tokenizes identically to a
+        # canonical SUBJID carrying that value — cross-form linkage survives.
+        out2, _ = phi_scrub._scrub_row({"SUBJID": "XYZ789"}, cfg=c, key=key_bytes)
+        assert out["SUBJID2"] == out2["SUBJID"]
+
+    def test_dedup_suffix_variant_resolves(self, key_bytes: bytes) -> None:
+        c = self._cfg()
+        out, counts = phi_scrub._scrub_row(
+            {"SUBJID": "ABC123", "SUBJID2_2": "ABC123", "SUBJID3": "NEW001"},
+            cfg=c,
+            key=key_bytes,
+        )
+        assert out is not None
+        assert "SUBJID2_2" not in out  # identical -> drop
+        assert str(out["SUBJID3"]).startswith("RID_SUBJ_")  # distinct -> pseudonymize
+
+    def test_fid_family_uses_fam_keyspace(self, key_bytes: bytes) -> None:
+        c = self._cfg()
+        out, _ = phi_scrub._scrub_row({"FID": "F1", "FID2": "F2"}, cfg=c, key=key_bytes)
+        assert out is not None
+        assert str(out["FID2"]).startswith("RID_FAM_")
+
+    def test_empty_secondary_is_dropped(self, key_bytes: bytes) -> None:
+        c = self._cfg()
+        out, counts = phi_scrub._scrub_row(
+            {"SUBJID": "ABC123", "SUBJID2": ""}, cfg=c, key=key_bytes
+        )
+        assert out is not None
+        assert "SUBJID2" not in out
+        assert counts.get("phi-scrub-secondary-id-drop:SUBJID2") == 1
+
+    def test_resolver_scopes_map_to_ledger_actions(self) -> None:
+        # The two resolver scopes must map to real PHI ledger actions so the
+        # events flow into the dual-ledger (drop / pseudonymize), not get dropped
+        # as unrecognized scopes.
+        assert phi_scrub._SCOPE_TO_ACTION["phi-scrub-secondary-id-drop"] == "drop"
+        assert phi_scrub._SCOPE_TO_ACTION["phi-scrub-secondary-id-pseudonymize"] == "pseudonymize"
