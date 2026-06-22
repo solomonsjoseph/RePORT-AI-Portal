@@ -87,8 +87,35 @@ Exit codes: `0` resolved (no drift) · `3` resolved but DRIFT detected (confirm
 the rule-set change) · `4` (`refresh`) live extraction flagged a
 protection-weakening rule (review) · `2` usage/config error.
 
+## Result Contract
+
+Unlike the DAG-node skills, `rulebook_cli` is a shared-module operator command,
+not an orchestrator subprocess — it does **not** emit an `RPLN_SKILL_RESULT:`
+marker. It prints a JSON provenance object to stdout: `rules_sha256`, the
+resolved jurisdictions, the cache/seed `source`, and `drift_detected` (and, for
+`refresh`, the live-extraction status). The object carries rule **metadata** only
+— ids, actions, reasons, official-source URLs, and hashes — never a study dataset
+value, row, or header content. The exit code (below) is the machine-readable
+drift/weakening signal; the printed JSON is the human/IRB evidence.
+
 ## Portability
 
 The engine is platform-neutral host-repo code; this skill is the thin operator
 command surface. Any LLM host reads this `SKILL.md`; `agents/llm.yaml` carries
 the short-form adapter metadata.
+
+## Exit Codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Rulebook resolved with **no drift** (`resolve`/`refresh`), or a seed was inspected (`show`). |
+| `2` | Usage/config error — bad arguments, missing/invalid privacy config, or no committed seed for the requested jurisdiction set. |
+| `3` | Rulebook resolved but **DRIFT detected** — the freshly built `rules_sha256` differs from the cached/seed baseline; confirm the rule-set change. |
+| `4` | `refresh` live extraction flagged a **protection-weakening** rule — review before use (the deterministic pinned floor is never lowered silently). |
+
+## What This Skill Does NOT Do
+
+- **Never reads study data** — operates on rule metadata only (ids, actions, reasons, official-source URLs, SHA-256 hashes); never a dataset value, row, or header content (GR-1).
+- **Is not an orchestrator DAG node** — it is consumed as a shared module in phase 0 and by `$phi-classification`; it does not emit a SkillResult marker and is not a publish phase.
+- **Does not fetch the network by default** — live extraction is opt-in (`REPORTAL_RULEBOOK_AI_EXTRACT=1` + `--allow-network` + `rule_refresh: online_preferred`); the default path is the deterministic pinned/offline rulebook.
+- **Cannot lower protection** — AI-extracted live rules only add or strengthen decisions (additive merge, strictest-wins); a weakening is flagged (exit `4`), never applied silently.

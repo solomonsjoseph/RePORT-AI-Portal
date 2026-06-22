@@ -29,6 +29,24 @@ Source names and source-column positions are compile-time scaffolding, not final
 
 Do not use generic annotation placeholders as signal. Phrases like `"Visible printed field associated with PDF annotation X"` or `"visible printed widget associated with PDF annotation X"` are not acceptable policy `pdf_question`, `pdf_label`, or `widget` values. Either transcribe the printed PDF wording/widget shape, or use `pdf_question: null` with a discrepancy when the printed widget cannot be verified.
 
+## What This Skill Does
+
+Builds and audits Source Truth policy YAML from printed clinical PDFs plus dataset
+row-1 headers, under the authority order **printed PDF > annotation label > dataset
+header > dataset rows (forbidden)**. The end product the LLM ever reads is the
+derived **joined query view** (`llm_source/SoT/<pair>/joined/`); the policy YAML +
+dataset schema construction material is fenced into the audit zone.
+
+The orchestrator invokes this skill at conceptual phase 3 (SoT leg) as a file-path
+subprocess, once per form. The subprocess entry (`scripts/run.py`) is a thin
+passthrough to the Stage-0 per-form intake CLI (`study_intake.main`): it resolves
+the annotated PDF + dataset for one form and produces the deterministic source pack
+JSON + 600-DPI page renders, or — when sources are missing/ambiguous — a
+PHI-metadata-only human-review note under `audit/human_review/<form>/`. Stages 1–6
+(exhaustive YAML write, visual sweep, policy trim, verify, promote, joined-view
+generation) are the LLM-driven authoring loop documented below; the LLM reads only
+the joined query view and page renders — never dataset row values (GR-1).
+
 ## Pipeline (6 stages; Stage 6 is derived query output)
 
 This skill runs as a 5-stage Source Truth pipeline plus a derived Stage 6 query-view step. The temp YAMLs at every intermediate Source Truth stage live under `/tmp/`. The policy YAML is promoted only after every Source Truth stage passes. The Stage 6 joined query view is not an authority file; it is a generated LLM-facing view built from the final policy YAML plus the matching per-form dataset schema JSON.
@@ -249,3 +267,59 @@ Before claiming completion, confirm:
 - Units and date masks match the printed form exactly: do not convert plain printed unit text to Unicode notation, and include `format:` for non-routine printed masks such as `DD/MM/YY`.
 - Row-level `Not Done` columns are mutually exclusive with every same-row value/dependent field they suppress, including adjacent free-text "Other, specify" fields.
 - Property-validator policy notes are present: `free_text` variables have `phi:` or `notes: "no PHI expected"`, and `type: code` variables with `phi: pseudonymize` have `notes:` explaining the quasi-identifier reason.
+
+## CLI
+
+The orchestrator-facing subprocess entry is the per-form Stage-0 intake passthrough:
+
+```bash
+uv run --all-groups python \
+  plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/run.py \
+  --study <STUDY> --form <FORM>
+```
+
+It resolves the form's annotated PDF + dataset and either prints `source_pack=…`
+plus one `render=…` line per page, or writes a human-review note and prints
+`status=human_review_required`. The individual authoring/verification stages each
+have their own dev CLIs (see the per-stage commands above): `study_intake`
+(Stage 0 source pack), `check_lean_policy.py` (Stage 4 verify), and
+`generate_joined_query_view.py` (Stage 6 joined view).
+
+## Result Contract
+
+The subprocess entry emits one `RPLN_SKILL_RESULT:` marker line (the shared skill
+contract, `scripts/utils/skill_protocol.py`): the study + form names and the
+ok/failed outcome with the intake exit code only — never dataset row values, PDF
+content dumps, or sample values. Stage outputs are file artifacts: the source pack
+JSON + page renders (`/tmp/`), the policy YAML + dataset schema (audit zone), and
+the joined query view (`llm_source/SoT/<pair>/joined/`). A missing/ambiguous source
+pair is a handled audit outcome (human-review report), not an error.
+
+## Portability
+
+The authoring stages are LLM-driven and host-neutral — any LLM platform can run
+them by reading this `SKILL.md` and the per-stage dev CLIs. The deterministic
+Stage-0 intake + verifier + joined-view generator are pure host-side Python
+(pdfplumber + ghostscript renders; no network, no LLM call). `agents/llm.yaml`
+carries the platform-neutral adapter metadata.
+
+## Exit Codes
+
+The subprocess entry mirrors the Stage-0 intake (`study_intake.main`):
+
+| Code | Meaning |
+|---|---|
+| `0` | Source pack + renders produced, **or** a missing/ambiguous source pair handled as a human-review audit outcome (both are non-error Stage-0 results). |
+| `1` | Stage-0 intake failed (e.g. an unreadable source or an internal extraction error; the exception type NAME only is reported). |
+| `2` | Argparse usage error (e.g. missing `--study`/`--form`). |
+
+The downstream authoring stages report their own pass/fail through their dev CLIs
+(`check_lean_policy.py` non-zero on a failing policy); fix the policy YAML in place
+and re-run, up to the documented fix-iteration cap.
+
+## What This Skill Does NOT Do
+
+- **Never reads dataset row values** — uses printed PDF page renders + dataset row-1 headers only; the dataset is never the clinical authority, and row 2+ values are forbidden input (GR-1).
+- **Does not publish construction material to the LLM zone** — only the joined query view enters `llm_source/`; the policy YAML + dataset schema are fenced into the audit zone (`audit/SoT_construction/`).
+- **Does not author a partial SoT on missing/ambiguous sources** — it writes a count/path-only human-review note and continues with complete source pairs instead of inventing YAML.
+- **Does not invent printed wording** — an unmatched header is kept for binding with `pdf_question: null` and a `discrepancies` entry; it never fabricates a PDF question, options, units, or clinical meaning.

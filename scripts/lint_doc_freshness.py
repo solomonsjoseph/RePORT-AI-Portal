@@ -455,6 +455,28 @@ FORBIDDEN: tuple[tuple[str, str, tuple[str, ...]], ...] = (
         "stale action-class count — canonical is {action_count} classes (see config/_defaults/phi_scrub.yaml)",
         (),
     ),
+    # Retired JSONL-level dedup mechanisms (Note 18). ``SUSPECTED_DUPLICATE_PAIRS``,
+    # ``JUNK_PATTERNS``, and the row-reading ``clean_trio_datasets`` pair merge are
+    # removed from the production path — superseded by the dynamic raw-file dedup
+    # tiers (``raw_file_dedup.py`` / ``$dataset-deduplication``). Naming them as a
+    # CURRENT/ACTIVE mechanism is stale; the allowlist passes accurate phrasing that
+    # explicitly marks them retired/legacy/removed/superseded.
+    (
+        r"\b(?:suspected_duplicate_pairs|junk_patterns|clean_trio_datasets)\b",
+        "stale active-mechanism residue — the JSONL-level dedup/junk passes "
+        "(SUSPECTED_DUPLICATE_PAIRS / JUNK_PATTERNS / clean_trio_datasets) are "
+        "retired (Note 18); dedup uses raw_file_dedup.py ($dataset-deduplication)",
+        (
+            r"retired",
+            r"removed",
+            r"legacy",
+            r"superseded",
+            r"deprecated",
+            r"no\s+longer",
+            r"redundant",
+            r"audit[-\s]envelope[-\s]only",
+        ),
+    ),
 )
 
 

@@ -26,6 +26,19 @@ Allowed for agent reasoning:
 
 If the user explicitly provides a non-PHI workbook outside the RePORT-AI raw/staged paths, you may inspect and edit that workbook directly. Still preserve the original file, report intended destructive actions first, and prefer auditable helper columns or review reports over silent overwrite.
 
+## What This Skill Does
+
+**Legacy maintainer-only helper** (Note 18), superseded in the publish path by
+`$dataset-deduplication` (orchestrator phase 2, `raw_file_dedup.py`). It is **not**
+invoked by `make study` or the Load Study wizard. It exists for manual maintainer
+preflight: classifying a duplicate-file problem from names + headers only, and —
+when asked — producing an actual merged workbook through
+`scripts/merge_excel_duplicates.py`. The merge helper keeps the original raw
+`datasets/` folder snapshotted under `data/raw/<study>/_dataset/`, writes the
+merged workbook back to the raw dataset path (never `llm_source/`), and emits
+count/header/provenance-only reports under the audit folder; unsafe or ambiguous
+candidates route to a count/header-only human-review note instead of a merge.
+
 ## First Decision
 
 Classify the duplicate problem before acting:
@@ -50,7 +63,8 @@ Use the existing project surfaces:
 - Merge helper: `skills/excel-duplicate-handler/scripts/merge_excel_duplicates.py`
 - Dataset CLI: `scripts/skills/extract_to_llm_source.py`
 - Column dedup logic: `scripts/extraction/dedup.py`
-- Duplicate-file cleanup: `scripts/extraction/dataset_cleanup.py`
+- Raw-file deduplication (current path): `scripts/extraction/raw_file_dedup.py` (`$dataset-deduplication`, orchestrator phase 2)
+- Dataset audit envelope: `scripts/extraction/dataset_cleanup.py` (audit + `as_written` cleanup ledgers only; the legacy JSONL-level dedup/junk passes are retired — Note 18)
 - Dataset cleanup docs: `docs/sphinx/developer_guide/data_extraction_datasets.rst`
 - SoT duplicate-header rules: `skills/sot-lean-generator/SKILL.md`
 
@@ -97,14 +111,14 @@ Classify header relationships:
 
 Action rules:
 
-- Exact ordered headers plus normalized filename match: strong duplicate-file candidate. Register or verify through `SUSPECTED_DUPLICATE_PAIRS` and the trusted cleanup pipeline before removal.
+- Exact ordered headers plus normalized filename match: strong duplicate-file candidate. Resolve it through the dynamic `$dataset-deduplication` raw-file tiers (orchestrator phase 2, `raw_file_dedup.py`) before removal — the hardcoded `SUSPECTED_DUPLICATE_PAIRS` / `JUNK_PATTERNS` lists and the row-reading `clean_trio_datasets` JSONL merge are retired (Note 18).
 - Exact ordered headers but different normalized filenames: possible duplicate or reused schema. Do not remove automatically; compare manifest/PDF/form context and report for review.
 - Same header set in a different order: possible duplicate with column reordering. Do not remove automatically unless project code explicitly proves order is non-semantic for this source.
 - Header superset/subset: do not treat the smaller file as junk by header evidence alone. The superset may be a newer revision, an expanded form, or a different extract. Preserve both until manifest/PDF context or pipeline audit proves what to keep.
 - Same normalized filename but different headers: high-risk conflict. Preserve both and report as human review required.
 - Mixed signals: split into the smallest explainable groups; do not force one canonical file for the whole group unless every member has a documented reason.
 
-For RePORT-AI raw files, the agent may produce a candidate plan from names and headers only. Actual merge/drop behavior must be implemented or verified inside `scripts/extraction/dataset_cleanup.py` so any row-level comparison stays in staging and reports only counts, filenames, schemas, and audit events.
+For RePORT-AI raw files, the agent may produce a candidate plan from names and headers only. Actual raw-file dedup decisions are resolved by `scripts/extraction/raw_file_dedup.py` (`$dataset-deduplication`, the current production path), which compares row-1 headers and row counts only; `scripts/extraction/dataset_cleanup.py` now writes the dataset audit envelope (cleanup ledgers) from extraction column-drop events. Any row-level comparison must stay in staging and report only counts, filenames, schemas, and audit events.
 
 ### Actual Merge Output
 
@@ -251,6 +265,34 @@ If this is a project raw workbook, treat sheet names and schemas as safe metadat
 
 For non-PHI workbooks, create a copy and produce a review sheet or markdown report before deleting sheets/tables.
 
+## CLI
+
+This skill's own command surface is the merge helper (legacy maintainer preflight,
+**not** an orchestrator subprocess — there is no `run.py` and no
+`RPLN_SKILL_RESULT:` marker). Single main/branch pair:
+
+```bash
+uv run --all-groups python \
+  plugins/report-ai-study-pipeline/skills/excel-duplicate-handler/scripts/merge_excel_duplicates.py \
+  --study <study> --dataset <dataset> \
+  --main data/raw/<study>/datasets/<main>.xlsx \
+  --branch data/raw/<study>/datasets/<branch>.xlsx
+```
+
+Whole directory (pairs each `~$<dataset>.xlsx` lock/temp sibling with its
+`<dataset>.xlsx` main):
+
+```bash
+uv run --all-groups python \
+  plugins/report-ai-study-pipeline/skills/excel-duplicate-handler/scripts/merge_excel_duplicates.py \
+  --study <study> --dataset-dir data/raw/<study>/datasets
+```
+
+Add `--artifact-root tmp/excel_duplicate_handler_test/project` to write the same
+relative structure under a scratch root instead of the real `data/raw/` and
+`output/` trees. For a normal study build use `make study` (which routes
+deduplication through `$dataset-deduplication`), not this helper.
+
 ## Commands
 
 Preflight the dataset skill contract:
@@ -290,6 +332,18 @@ uv run --all-groups python -m pytest \
   tests/skills/test_excel_duplicate_handler_skill.py -q
 ```
 
+## Result Contract
+
+The merge helper is a legacy maintainer CLI, not an orchestrator phase, so it emits
+no `RPLN_SKILL_RESULT:` marker. On a completed merge it prints value-free
+`key=value` summary lines (e.g. `dataset_workbook=`, `raw_dataset_snapshot=`,
+`report=`, `provenance=`, `output_data_rows=`, `preserved_main_rows=`,
+`appended_rows=`, `collapsed_exact_duplicate_rows=`, `invalid_source_count=`) and
+writes the merged workbook plus count/header/provenance-only reports under the
+audit folder. An unsafe/ambiguous candidate prints a `reason=` line and writes a
+human-review note instead of a merge. No raw row values are ever printed, logged,
+or written to a report.
+
 ## Reporting Checklist
 
 When reporting duplicate handling, include:
@@ -311,3 +365,26 @@ Do not claim a duplicate was safely removed unless there is an audit event or ve
 - Use `$dataset-to-llm-source` for raw workbook to published `llm_source` runs, verification, and operational dataset cleanup.
 - Use `$sot-lean-generator` for duplicate row-1 headers in Source Truth YAML or joined query-view generation.
 - Use a general spreadsheet skill only for explicitly non-PHI workbook edits that are not part of the RePORT-AI study pipeline.
+
+## Portability
+
+The merge helper is pure host-side Python (openpyxl/pandas); no LLM call, no
+network. It is a maintainer command surface only — not driven by the orchestrator
+and not handed a lock baton. Any LLM host can read this `SKILL.md`; `agents/llm.yaml`
+carries the platform-neutral adapter metadata.
+
+## Exit Codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Merge completed (or a `--dataset-dir` batch finished), or an unsafe/ambiguous candidate was routed to a human-review note — both print value-free summary lines and exit cleanly. |
+| `1` (non-zero) | Usage or safety guard tripped — e.g. `--main` missing without `--dataset-dir`, or no valid main workbook/sheet available to merge (`raise SystemExit("<message>")`). The message text is a control string, never a row value. |
+| `2` | Argparse usage error (unrecognized/invalid arguments). |
+
+## What This Skill Does NOT Do
+
+- **Never reads raw row values into the agent context** — classification uses file names, sheet names, row-1 headers, and counts only; the helper may copy row values *internally* solely to build the merged workbook, never to print, log, or report them (GR-1).
+- **Is not part of the publish path** — superseded by `$dataset-deduplication` at orchestrator phase 2; `make study` and the Load Study wizard never invoke it.
+- **Does not write to `llm_source/`** — the merged workbook stays at the raw dataset path; only a later trusted pipeline promotes a PHI-clean derivative.
+- **Does not overwrite or auto-resolve destructively** — it snapshots the original `datasets/` folder to `_dataset/` first, never overwrites an existing `_dataset/` snapshot, and stops (human-review note) rather than guessing on conflicting non-empty values or unalignable headers.
+- **Does not use the retired hardcoded lists** — `SUSPECTED_DUPLICATE_PAIRS`, `JUNK_PATTERNS`, and the row-reading `clean_trio_datasets` JSONL merge are retired (Note 18); dedup decisions come from the dynamic raw-file tiers.

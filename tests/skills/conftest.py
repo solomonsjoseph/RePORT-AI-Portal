@@ -28,7 +28,7 @@ from scripts.audit.ledger import dataset_phi_ledger_path
 # Shared study name used by both CLI test files
 # ---------------------------------------------------------------------------
 
-SKILLS_TEST_STUDY = "Test-Study"
+SKILLS_TEST_STUDY = "Indo-VAP"
 
 
 # ---------------------------------------------------------------------------

@@ -29,6 +29,45 @@ values may only be handled inside trusted repo code paths that scrub, merge,
 clean, audit, or publish data and expose metadata-only reports. Skills read row-1
 column NAMES and metadata only.
 
+## What This Skill Does
+
+Drives the entire raw → `llm_source/` + `audit/` study build as one 10-phase
+state machine (`scripts/run.py`). It acquires the per-study pipeline lock once for
+the whole run, records a durable value-free `run_state.json` (schema 2, with the
+per-form state map), and invokes the child pipeline skills as file-path
+subprocesses under a validated lock baton — dictionary extraction, raw-file
+deduplication, shared header extraction, Source Truth, the bundled
+classify→extract→scrub→guard-gate→promote publish leg, the audit verifier, the
+cleanup verifier, and the immutable snapshot commit. It owns the redundant-run
+short-circuit (input-fingerprint match → repoint `current.json` at the existing
+clean snapshot), crash-recovery readback, and the maintainer `--resume-held`
+loop. The orchestrator refuses to run if `STUDY_NAME` resolves to a different
+study than `--study`.
+
+## CLI
+
+Normal build (the only command operators need):
+
+```bash
+make study STUDY=<name>            # build/publish a study via the orchestrator
+make study STUDY=<name> FORCE=1    # ignore the redundant-run short-circuit
+make study STUDY=<name> STRICT=1   # abort on the first un-scrubbable row
+```
+
+`make study` exports `STUDY_NAME` and delegates to the orchestrator. The
+underlying subprocess entry (used by `make` and by the maintainer resume loop) is:
+
+```bash
+uv run --all-groups python \
+  plugins/report-ai-study-pipeline/skills/report-ai-study-pipeline/scripts/run.py \
+  --study <name> [--resume-held] [--skip-header-extraction]
+```
+
+Do not run the host publish engine (`scripts.pipeline.host_pipeline`) or the
+publish supervisor directly for a normal build — the orchestrator owns lock
+acquisition, phase ordering, the redundant-run short-circuit, and the snapshot
+commit.
+
 ## The 10 Phases
 
 The conceptual 10 runtime phases map onto the supervisory steps `run.py` drives.
@@ -116,6 +155,32 @@ commits an immutable snapshot under `output/<STUDY>/snapshots/<id>/` and points
 `current.json` at it. The retry loop is a CLI/maintainer workflow only and is
 never triggered from the Load Study UI.
 
+## Result Contract
+
+The orchestrator is the marker **consumer**, not a producer: it invokes each child
+skill via `scripts/utils/skill_protocol.py:invoke_skill` and reads their
+`RPLN_SKILL_RESULT:` markers, recording per-phase status / exit code / detail into
+a durable, value-free `run_state.json` (schema 2: phase records plus the per-form
+`forms` map and per-form fingerprints). The run-level evidence is the file set —
+`run_state.json`, `run_recovery.json`, `phi_handling_approval.json`,
+`verifier_report.json`, `status.json` (with `held_forms`), the lineage manifest,
+and the committed snapshot. Every field is a phase name, status, exit code, form
+NAME, fingerprint hash, or count — never a dataset row value.
+
+## Exit Codes
+
+The orchestrator reuses the publish supervisor's exit-code contract and propagates
+a failing child code:
+
+| Code | Meaning |
+|---|---|
+| `0` | Full clean run — all forms published, verifier passed, snapshot committed (`EXIT_OK`); also the redundant-run short-circuit (`current.json` repointed at the existing clean snapshot). |
+| `1` | A child skill subprocess failed (dictionary / dedup / header / SoT / verifier leg). |
+| `2` | Preflight/config failure — e.g. `STUDY_NAME` mismatch, invalid config, or lock unavailable. |
+| `5` | Verifier-failure family — an assertion failed (the cleanup/scrub interrupt token is left in place for recovery). |
+| `6` | Needs advice — a phase paused for human input (`EXIT_NEEDS_ADVICE`). |
+| `8` | Partial review — approved forms published, held forms carried for human review (`EXIT_PARTIAL_REVIEW`); resolve and re-run with `--resume-held`. |
+
 ## Per-Form State Machine & Crash Recovery (Note 16)
 
 `run_state.json` (schema 2) records a value-free per-form `forms` map — every
@@ -153,3 +218,11 @@ surface, but the plugin should not depend on vendor-specific filenames.
 When porting to another repo, verify the host repo provides equivalent CLI paths
 before running the workflow. If a required path is missing, report the missing
 contract and do not invent a substitute that weakens the PHI boundary.
+
+## What This Skill Does NOT Do
+
+- **Never reads raw dataset row values into the agent context** — child skills read row-1 column NAMES and metadata only; row 2+ values are touched only inside trusted publish/scrub/cleanup code paths that emit metadata-only reports (GR-1).
+- **Does not partial-promote on recovery** — per-form fingerprints drive readback classification + observability + the redundant-run check, but the publish leg is a whole-leg atomic `rename()` that always re-scrubs from raw; `--resume-held` re-publishes the full surviving set (accepted deviation D4).
+- **Does not run the publish engine directly for a normal build** — `make study` is the entry point; the orchestrator owns the lock, phase ordering, the redundant-run short-circuit, and the snapshot commit.
+- **Does not let a stale lock baton disable the lock** — the handed `REPORTAL_PIPELINE_LOCK_PARENT_PID` baton is validated against `os.getppid()`, so a leftover env var cannot silently skip lock acquisition.
+- **Does not run `$study-setup` or `$excel-duplicate-handler` as phases** — `$study-setup` is interactive scaffolding, and `$excel-duplicate-handler` is a legacy maintainer-only helper superseded by `$dataset-deduplication` at phase 2.
