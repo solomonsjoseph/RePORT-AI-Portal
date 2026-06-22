@@ -317,8 +317,9 @@ def verify_workspace_cleanup(
     """Workspace purge check (Note 13 Phase 1 + Phase 2 + Phase 3).
 
     Phase 1 (must-be-gone): every temporary artifact — tmp/{STUDY} staging, SoT
-    intermediates, the header-extraction store, and the scrub/cleanup in-progress
-    tokens — must be absent. Phase 2 (must-remain): every permanent path —
+    intermediates (sot_source_pack_* and sot_render_* per-form /tmp dirs), the
+    header-extraction store, and the scrub/cleanup in-progress tokens — must be
+    absent. Phase 2 (must-remain): every permanent path —
     llm_source/, audit/, snapshots/, config/{STUDY}/, data/raw/{STUDY}/ — must be
     present (a missing one is a possible data-loss event). Phase 3 (anomaly scan):
     any UNEXPECTED entry surviving under the ephemeral staging root (not a known
@@ -355,6 +356,23 @@ def verify_workspace_cleanup(
         for p in must_gone
         if p.exists()
     )
+    # Check for ephemeral SoT per-form temp intermediates (sot_source_pack_* and
+    # sot_render_* dirs the SoT generator writes under the system temp dir and
+    # cleans via _cleanup_sot_temps in generate_form). Use gettempdir() rather
+    # than a hardcoded /tmp so the check follows TMPDIR (and satisfies S108).
+    import glob
+    import tempfile
+
+    _tmp = Path(tempfile.gettempdir())
+    for prefix in ("sot_source_pack_*", "sot_render_*"):
+        findings.extend(
+            WorkspacePathFinding(
+                phase=_PHASE_MUST_GONE,
+                target=path_str,
+                detail="SoT temp file/dir still present after cleanup",
+            )
+            for path_str in glob.glob(str(_tmp / prefix))
+        )
 
     must_remain: list[Path] = [
         Path(config.STUDY_LLM_SOURCE_DIR),
@@ -397,10 +415,7 @@ def verify_workspace_cleanup(
                 WorkspacePathFinding(
                     phase=_PHASE_ANOMALY,
                     target=_safe_rel(child),
-                    detail=(
-                        "unexpected path present after cleanup — "
-                        "review before proceeding"
-                    ),
+                    detail=("unexpected path present after cleanup — review before proceeding"),
                 )
             )
 

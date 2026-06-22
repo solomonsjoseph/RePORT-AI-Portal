@@ -27,10 +27,14 @@ def _add_repo_to_path(repo_root: Path) -> None:
 def _headers_via_repo(repo_root: Path, dataset: Path, *, run_dir: Path | None = None) -> list[str]:
     _add_repo_to_path(repo_root)
     if run_dir is not None:
+        # On the orchestrated path, unconditionally read the shared header_store
+        # (Note 6). Fallback to direct row-1 read only if the store is absent/
+        # malformed (resolve_headers is fail-soft).
         from scripts.extraction.header_store import load_header_store, resolve_headers
 
         store = load_header_store(run_dir)
         return resolve_headers(store, dataset.stem, dataset)
+    # Standalone path (no run_dir): attempt repo import, fallback to direct read.
     try:
         from scripts.source_truth.study_intake import read_headers_only
     except ImportError:

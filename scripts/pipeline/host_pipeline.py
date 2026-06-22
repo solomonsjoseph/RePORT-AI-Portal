@@ -169,6 +169,25 @@ def _write_sot_joined_gate_outcome(
     lines.extend(
         [
             "",
+            "## Review Notes (Per-Form)",
+            "",
+        ]
+    )
+    # Optional per-form pointer: link to the per-form review directories (Note 22).
+    # These are where other producers (Presidio, classification, scrub, verifier) deposit
+    # their holds for the same forms, so the maintainer can navigate to consolidated
+    # per-form review material.
+    if held_forms:
+        for form in sorted(held_forms):
+            from scripts.audit.review_paths import form_review_dir
+
+            form_review_subdir = form_review_dir(Path(config.STUDY_AUDIT_DIR), form)
+            # Markdown link using just the relative form slug (human_review/{form}/).
+            form_slug = form_review_subdir.name
+            lines.append(f"- **[{form}](../{form_slug}/)** — per-form review directory")
+        lines.append("")
+    lines.extend(
+        [
             "## Required Next Step",
             "",
             "Resolve missing SoT joined views (add annotated PDF and/or fix Source "
@@ -1143,6 +1162,22 @@ not directly. For the full study build run `make study STUDY=<name>`.
                 if not guard.ok:
                     _write_presidio_failure_md(Path(config.STUDY_AUDIT_DIR), guard)
                     raise RuntimeError(f"Pre-publication PHI guard gate failed: {guard.detail}")
+
+                # Pre-promote ledger gate (A4): run assertion 16 to ensure every PHI
+                # ledger event is fully documented before promotion. Under-documented
+                # ledgers block the atomic rename.
+                from scripts.skills.extract_to_llm_source import (
+                    _verify_assertion_16_ledger_fields_complete,
+                )
+
+                _ledger_gate = _verify_assertion_16_ledger_fields_complete(
+                    Path(config.STUDY_AUDIT_DIR)
+                )
+                if _ledger_gate[0] != "pass":
+                    log.error("Pre-promotion ledger gate failed: %s", _ledger_gate[1])
+                    raise RuntimeError(
+                        f"Pre-promotion ledger gate failed (assertion 16): {_ledger_gate[1]}"
+                    )
 
         def run_publish() -> None:
             published = _publish_staging()
