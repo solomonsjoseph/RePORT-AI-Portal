@@ -1531,15 +1531,85 @@ def answer_catalog_question(question: str) -> str:
         tool_cache.put("answer_catalog_question", res, question=question)
         return res
 
-    best = sorted(
+    # R3 — form-scoped, deterministic ranking. A query that names a form (or its
+    # abbreviation) prefers that form's variable, splitting same-named columns
+    # across forms (IC_HIVLOC vs HC_HIVLOC; SUBJID in form X vs Y). The tie-break
+    # is fully deterministic: exact-id match first (0 before 1 — corrected so an
+    # exact identifier never sorts behind a fuzzy one), then shorter id, then
+    # stable id/source order. No equal-key set can resolve by dict-iteration order.
+    q_form_tokens = {t for t in _expanded_form_text(question).split() if len(t) >= 2}
+
+    def _form_title(item: dict[str, Any]) -> str:
+        # summary["form"] is {"number": .., "title": "6_HIV"} — use the title.
+        form = item.get("summary", {}).get("form", "")
+        if isinstance(form, Mapping):
+            return str(form.get("title") or form.get("number") or "")
+        return str(form)
+
+    def _form_referenced(item: dict[str, Any]) -> int:
+        form_tokens = {t for t in _expanded_form_text(_form_title(item)).split() if len(t) >= 2}
+        return 1 if (form_tokens & q_form_tokens) else 0
+
+    def _exact_id(item: dict[str, Any]) -> int:
+        return 0 if str(item.get("variable_id", "")).upper() in query_identifiers else 1
+
+    for _m in matches:
+        _m["form_match"] = _form_referenced(_m)
+
+    ranked = sorted(
         matches,
         key=lambda item: (
             int(item.get("priority", 99)),
+            -int(item.get("form_match", 0)),
             -int(item.get("score", 0)),
-            str(item.get("source", "")),
+            _exact_id(item),
+            len(str(item.get("variable_id", ""))),
             str(item.get("variable_id", "")),
+            str(item.get("source", "")),
         ),
-    )[0]
+    )
+    best = ranked[0]
+
+    # R4 — explicit ambiguity. When the top candidates tie on the discriminating
+    # keys (priority, form_match, score) but are DISTINCT variables (different
+    # variable_id), do NOT silently pick one — return the disambiguation list so
+    # the agent asks which the user means. Same id across forms is NOT ambiguous
+    # (the variable's meaning is identical); only distinct ids trigger this.
+    _top_key = (best.get("priority"), best.get("form_match"), best.get("score"))
+    _tied = [
+        m
+        for m in ranked
+        if (m.get("priority"), m.get("form_match"), m.get("score")) == _top_key
+    ]
+    _distinct_ids = {str(m.get("variable_id", "")) for m in _tied}
+    if len(_distinct_ids) > 1:
+        _candidates = [
+            {
+                "variable_id": str(m.get("variable_id", "")),
+                "form": _form_title(m),
+                "study": m.get("summary", {}).get("study", ""),
+            }
+            for m in _tied[:10]
+        ]
+        res = json.dumps(
+            {
+                "question": question,
+                "answer": (
+                    f"{len(_distinct_ids)} distinct variables match equally well "
+                    "across forms — ask the user which form/variable they mean "
+                    "(or name the form in the question)."
+                ),
+                "variable_ids": sorted(_distinct_ids)[:10],
+                "audit_only": False,
+                "analysis_queryable": False,
+                "needs_clarification": True,
+                "candidates": _candidates,
+            },
+            indent=2,
+        )
+        tool_cache.put("answer_catalog_question", res, question=question)
+        return res
+
     summary = best["summary"]
     var_id = best["variable_id"]
     var_meta = summary["variables"].get(var_id, {})
