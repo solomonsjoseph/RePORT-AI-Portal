@@ -1,0 +1,19 @@
+{"gold_id": "G-001", "question": "smoking history in index cases (cohort A)", "cohort": "cohort_a", "kind": "concept", "expected_columns": ["IC_SMOKHX"]}
+{"gold_id": "G-002", "question": "diabetes in index cases (cohort A)", "cohort": "cohort_a", "kind": "concept", "expected_columns": ["IC_DMDX"]}
+{"gold_id": "G-003", "question": "alcohol use in index cases (cohort A)", "cohort": "cohort_a", "kind": "concept", "expected_columns": ["IC_ALCFRQ"]}
+{"gold_id": "G-004", "question": "age of the index case (cohort A)", "cohort": "cohort_a", "kind": "concept", "expected_columns": ["IS_AGE"]}
+{"gold_id": "G-005", "question": "sex of the index case (cohort A)", "cohort": "cohort_a", "kind": "concept", "expected_columns": ["IS_SEX"]}
+{"gold_id": "G-006", "question": "smoking history in household contacts (cohort B)", "cohort": "cohort_b", "kind": "concept", "expected_columns": ["HC_SMOKHX"]}
+{"gold_id": "G-007", "question": "diabetes in household contacts (cohort B)", "cohort": "cohort_b", "kind": "concept", "expected_columns": ["HC_DMDX"]}
+{"gold_id": "G-008", "question": "alcohol use in household contacts (cohort B)", "cohort": "cohort_b", "kind": "concept", "expected_columns": ["HC_ALCFRQ"]}
+{"gold_id": "G-009", "question": "age of the household contact (cohort B)", "cohort": "cohort_b", "kind": "concept", "expected_columns": ["HHC_AGE"]}
+{"gold_id": "G-010", "question": "sex of the household contact (cohort B)", "cohort": "cohort_b", "kind": "concept", "expected_columns": ["HHC_SEX"]}
+{"gold_id": "G-011", "question": "TB recurrence outcome in cohort A", "cohort": "cohort_a", "kind": "outcome", "expected_columns": ["FOA_COHAOUT"]}
+{"gold_id": "G-012", "question": "TB relapse versus treatment failure in cohort A", "cohort": "cohort_a", "kind": "outcome", "expected_columns": ["FOA_COHAOUT"]}
+{"gold_id": "G-013", "question": "progression to incident TB in cohort B household contacts", "cohort": "cohort_b", "kind": "outcome", "expected_columns": ["FOB_COHBOUT"]}
+{"gold_id": "G-014", "question": "malnutrition (BMI < 18.5) in index cases (cohort A)", "cohort": "cohort_a", "kind": "derivation", "expected_columns": ["IC_WEIGHT", "IC_HEIGHT"]}
+{"gold_id": "G-015", "question": "malnutrition (BMI) in household contacts (cohort B)", "cohort": "cohort_b", "kind": "derivation", "expected_columns": ["HC_WEIGHT", "HC_HEIGHT"]}
+{"gold_id": "G-016", "question": "recurrence ~ malnutrition + diabetes + alcohol use + smoking + age + sex (cohort A)", "cohort": "cohort_a", "kind": "model", "expected_columns": ["FOA_COHAOUT", "IC_DMDX", "IC_ALCFRQ", "IC_SMOKHX", "IS_AGE", "IS_SEX", "IC_WEIGHT", "IC_HEIGHT"]}
+{"gold_id": "G-017", "question": "incident TB ~ malnutrition + diabetes + alcohol use + smoking + age + sex (cohort B)", "cohort": "cohort_b", "kind": "model", "expected_columns": ["FOB_COHBOUT", "HC_DMDX", "HC_ALCFRQ", "HC_SMOKHX", "HHC_AGE", "HHC_SEX", "HC_WEIGHT", "HC_HEIGHT"]}
+{"gold_id": "G-018", "question": "smoking (cohort unspecified)", "cohort": "", "kind": "ambiguous", "expected_columns": ["IC_SMOKHX", "HC_SMOKHX"]}
+{"gold_id": "G-019", "question": "overall distribution of HIV test results", "cohort": "", "kind": "definitional", "expected_any": ["HIV_HIV"]}
