@@ -174,9 +174,11 @@ keep_fields:
   # ── Collection type (clinical) ──
   - "COLLTYP"
   # ── Clinical indicator groups (large lab/medication/AE/EE/TC/TB blocks) ──
-  - "^CBC_"
-  - "^CXR_"
-  - "^cxr_"
+  # Broad clinical-block keeps, but NOT staff initials/signatures (CBC_INIT /
+  # CXR_INIT / CXR_SIGN are direct identifiers → fall through to drop_fields; A1).
+  - "^CBC_(?!INIT|SIGN)"
+  - "^CXR_(?!INIT|SIGN)"
+  - "^cxr_(?!init|sign)"
   - "^CX_(?:DST|GROWTH|ISOLATE|LALIQUOT|LIQTTD|LRECON|MB(?:ND|SPMETH|SPSETT)|MEDIA|MTB|ND|PROCVOL|REASON|RECREFR|SOL|COLLVOL)"
   - "^DST_(?:DST|ALI|ISOLATE|MB(?:ND|SPMETH|SPSETT)|XVISIT)"
   - "^ZN_(?:AFB|LIQ(?:CONTM|MTBNEG|MTBPOS|ND|NMTBPOS|TTDD)|MB(?:ND|SPMETH)|SOL(?:CONTM|MTBNEG|MTBPOS|ND|NMTBPOS|QNCAT|QNND|QUAN)|SPMETH)"

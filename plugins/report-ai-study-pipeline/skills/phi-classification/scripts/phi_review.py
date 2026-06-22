@@ -325,13 +325,31 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
             r"\b(url|uri|ip[_ -]?address|photo|image|biometric|finger|voice)\b",
             r"\b(account|license|certificate|vehicle|plate|device[_ -]?serial)\b",
             r"\b(mrn|medical[_ -]?record|health[_ -]?plan|beneficiary)\b",
+            # A1 (Note 28): staff initials / signatures / lab-technician names /
+            # clinic NAMES and data-entry/system artefacts the scrub drops. These
+            # are direct identifiers or junk — DROP matches phi_scrub.yaml's
+            # surviving drop_fields. PROCSIG (specimen processing-ID signatures)
+            # are deliberately EXCLUDED — they pseudonymize as IDs (see the
+            # unique-identifier rule). The socioeconomic option-'specify' columns
+            # (JOBSP/LANGUAGESP/RELIGIONSP) are KEPT and are NOT matched here.
+            r"(^|[_ -])init(?:ial)?s?(?:[_ -]?\d+)?$",
+            r"(^|[_ -])sign?(?:[_ -]?\d+)?$",
+            r"(?:collsig|linsig|loutsig|reposinsig|collsign)(?:[_ -]?\d+)?$",
+            r"(?:linttech|louttech|reposintech)$",
+            r"(?:clinname|clinicname|dotsclinname)$",
+            r"(^|[_ -])batch",
+            r"^remote[_ -]?(?:phn|user|fax)$",
+            # NB: classify_headers splits CamelCase on case/digit boundaries, so
+            # OrigPgSeq→'orig_pg_seq', FormIDMthd→'form_idmthd' — match the
+            # normalized token shape, not the raw CamelCase.
+            r"^(?:route[_ -]?to|suspense[_ -]?file|verify[_ -]?wks|orig[_ -]?file|orig[_ -]?pg[_ -]?seq|form[_ -]?id(?:[_ -]?mthd)?)$",
         ),
     },
     {
         "id": "usa_safe_harbor_dates",
         "jurisdiction": "USA",
         "action": Action.JITTER_DATE,
-        "reason": "HIPAA Safe Harbor date element header.",
+        "reason": "HIPAA Safe Harbor §164.514(b)(2)(i)(C) date element header.",
         "patterns": (
             r"\b(date|datetime|timestamp|time[_ -]?stamp)\b",
             r"(^|[_ -])(dob|dod)([_ -]|$)",
@@ -345,6 +363,15 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
             # NOT as a word ending — otherwise it falsely matches RESPNDT
             # (respondent), VERDICT, etc. and decides jitter for a non-date.
             r"(^|[_ -])dt\d*$",
+            # A1 (Note 28): date tokens the generic dat-suffix rule misses —
+            # index/treatment-start dates with no trailing 'dat' (ICFDT/TBTXDT),
+            # dedup-suffixed dates (…DAT_2), 'Not Done' date flags (…DATND),
+            # specimen date-times moved into date_fields, and child years-of-birth.
+            r"(?:icfdt|tbtxdt)$",
+            r"(?:pregoutdat|compdat|procdat|mbrecdat|colldat|lindat|loutdat)(?:_?\d+)?$",
+            r"(?:colltim|lintim|louttim|reposintim)$",
+            r"(?:datnd)\d*$",
+            r"^cc_childy\d+$",
         ),
     },
     {
@@ -368,17 +395,51 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
         "reason": "Free-text header may contain identifiers and needs suppression review.",
         "patterns": (
             r"\b(comment|note|narrative|free[_ -]?text|describe|description|specify|other)\b",
+            # A1 (Note 28): abbreviated 'specify'/'other'/'explain' free-text
+            # write-ins + death-source/cause narrative the scrub drops. The
+            # socioeconomic option-'specify' columns (job/language/religion SP)
+            # AND the case-control clinical 'specify' columns kept by the ^CC_
+            # allowlist (CC_CNCTNDSP/CC_NOPREGTESTSP/CC_HIVLOCSP) are NOT matched.
+            r"(?:clinicsp|centersp|clinicoth)$",
+            r"(?:ic_hivlocsp|hc_hivlocsp)$",
+            r"(?:dthsrc|dthsrcsp|dthcaussp|fucompadcsp)$",
+            r"(?:withdrawexplain|withdraw_?explain|tbtrtsp)$",
+            # Household / contact COUNT columns → small-cell suppression.
+            # (IS_CONTACTS_6YRS normalizes to 'is_contacts_6_yrs'.)
+            r"(?:^|[_ -])contacts(?:[_ -](?:total|6[_ -]?yrs))?$",
         ),
     },
     {
         "id": "usa_unique_study_identifier",
         "jurisdiction": "USA",
         "action": Action.PSEUDONYMIZE,
-        "reason": "Unique study or participant identifier header.",
+        "reason": "HIPAA Safe Harbor §164.514(b)(2)(i)(R) unique identifier header.",
         "patterns": (
             r"\b(participant|subject|patient|person|study|record|case)[_ -]?(id|code|key|number|no)\b",
             r"\b(id|identifier|uuid|guid)\b",
             r"(^|[_ -])(?:subj(?:id)?|fid|pid|ptid|hhid|recordid)$",
+            # A1 (Note 28): study / specimen / lab / linkage IDs recovered from the
+            # over-broad drop rules → PSEUDONYMIZE. Mirrors phi_scrub.yaml id_fields
+            # so the decider's PSEUDONYMIZE decision matches the cleaner's HMAC
+            # pseudonymization (an ID is pseudonymized, never dropped).
+            r"(^|[_ -])(?:tuid|dmcid)(?:chg)?$",
+            r"(?:colltid|colltnum|colltmg|procid|lbaccid|laccnum)$",
+            # Specimen processing-ID signatures (PAX/PBMC/PLASMA/QTF/SLV/URN/GENO
+            # *PROCSIG) → pseudonymize. The bare SC_PROCSIG is a kept clinical
+            # flag (^SC_…PROCSIG allowlist), so the prefix is required here.
+            r"(?:geno|pax|pbmc|plasma|qtfgit|qtf|slv|urn)procsig$",
+            r"(?:mbrefid|artidn|diaidn|ocmidn|tbproidn|tbincid|coenrlid)\d*$",
+            r"(?:idna|idchgna)$",
+            r"(^|[_ -])(?:phcid|ictc|csid)$",
+            r"^hhc\d+$",
+            r"^remote[_ -]?bid$",
+            r"^st_louttrac$",
+            r"coe[_ -]?(?:protocol|sponsor)\d*$",
+            # Secondary subject / family IDs — the scrub resolver pseudonymizes the
+            # distinct ones and drops exact-duplicate re-entries; deciding
+            # PSEUDONYMIZE here suppresses a keep_decision under either outcome.
+            r"^subjid(?:\d+_?\d*|_\d+)$",
+            r"^(?:[a-z]{1,4}[_ -])?fid\d+$",
         ),
     },
     {
