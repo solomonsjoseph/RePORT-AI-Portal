@@ -256,6 +256,13 @@ TRIO_DATASETS_DIR = STUDY_LLM_SOURCE_DIR / "dataset_schema" / "files"
 
 STUDY_AUDIT_DIR = STUDY_OUTPUT_DIR / "audit"
 
+# Per-run operational state (run_state.json, phi_handling_approval.json, the
+# per-run human_review/run_<id> notes) lives under runs/<run_id>/ — operational
+# bookkeeping, distinct from the IRB-evidence audit/ tree (Note 24). The
+# per-run subdir is created on demand with the run id (see the dir-precreation
+# helper); this constant names the parent.
+STUDY_RUNS_DIR = STUDY_OUTPUT_DIR / "runs"
+
 # Audit-report paths written by dataset cleanup / PHI scrub.
 # Only the dataset publish leg produces audit reports. Dictionary mappings and
 # legacy PDF JSON compatibility helpers are content-only from the host side.
@@ -723,7 +730,11 @@ def ensure_run_directories(study: str | None = None, run_id: str | None = None) 
         audit_dir,
         audit_dir / "human_review",
         audit_dir / "datasets",
-        audit_dir / "scrubbing_code",
+        # NOTE (Note 24 / B7): audit/scrubbing_code is a placeholder for the
+        # DEFERRED N9 AI-scrub-config-completion feature; it is never written
+        # today, so it is no longer pre-created as an empty dir. When N9 lands it
+        # creates AUDIT_SCRUBBING_CODE_DIR on demand. (Telemetry stays under
+        # audit/ — the no-LLM-fenced zone — deliberately, NOT relocated to runs/.)
         llm_source,
         llm_source / "datasets",
         llm_source / "SoT",

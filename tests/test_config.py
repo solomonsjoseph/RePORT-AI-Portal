@@ -160,7 +160,8 @@ class TestEnsureRunDirectories:
             out / "audit",
             out / "audit" / "human_review",
             out / "audit" / "datasets",
-            out / "audit" / "scrubbing_code",
+            # audit/scrubbing_code is no longer pre-created (deferred-N9
+            # placeholder; B7 / Note 24).
             out / "runs" / run_id,
             out / "llm_source",
             out / "llm_source" / "datasets",
