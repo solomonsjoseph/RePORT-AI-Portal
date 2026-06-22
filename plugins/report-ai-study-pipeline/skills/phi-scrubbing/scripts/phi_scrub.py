@@ -50,6 +50,20 @@ fields wholesale. Current narrative fields like ``*COMMENT``, ``*REMARK``,
 ``WITHDRAWEXPLAIN``, and ``*SPECIFY`` are removed before publication; the
 agent-boundary PHI gate remains defense-in-depth for returned text.
 
+Priority-0 SUPPRESS→DROP force-drop mechanism (A2)
+-----
+phi_review classifies free-text headers as SUPPRESS (action value="suppress");
+the scrubber builds a per-form ``force_drop_by_stem`` set from all SUPPRESS
+actions (phi_scrub.py line ~2681: headers where action=="suppress") and the
+SoT-flagged direct identifiers. The priority-0 force-drop gate (phi_scrub.py
+line ~1768: ``if suppress_headers and field in suppress_headers``) applies
+*before* any keep rule, ensuring that free-text fields are force-dropped even
+when a broad form-prefix keep rule would otherwise match. This is a
+strictest-wins principle: the decider (phi_review) and cleaner (phi_scrub) both
+honor SUPPRESS as "do not publish raw" — the scrubber responds by dropping
+(for text) or clamping (for numeric contacts counts). Audit ledger records
+each force-drop as a "phi-scrub-drop" event with no corresponding keep_decision.
+
 Rule catalog is declared in ``phi_scrub.yaml`` (Indo-VAP-calibrated).
 
 Zone boundary

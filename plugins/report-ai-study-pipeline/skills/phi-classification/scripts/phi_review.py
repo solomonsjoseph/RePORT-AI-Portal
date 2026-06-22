@@ -51,7 +51,17 @@ class OfficialSourceRejected(ValueError):  # noqa: N818 - public test contract.
 
 
 class Action(StrEnum):
-    """Allowed PHI handling actions, ordered by review strictness."""
+    """Allowed PHI handling actions, ordered by review strictness.
+
+    Dual interpretation of SUPPRESS (A2 note): SUPPRESS on free-text headers
+    (comment, note, narrative, specify, explain) is realized as a priority-0
+    force-drop in the scrubber (phi_scrub.py line ~1768), overriding any keep
+    rule. SUPPRESS on numeric fields (contacts, counts) is realized as
+    small-cell clamping via suppress_small_cell_fields config. In both cases,
+    the principle is "do not publish raw" — the scrubber chooses the appropriate
+    method by field type. The audit ledger records the applied action
+    (drop or small_cell_clamp), NOT the decision (SUPPRESS).
+    """
 
     KEEP = "keep"
     SUPPRESS = "suppress"
