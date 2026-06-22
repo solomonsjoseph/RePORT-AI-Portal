@@ -117,6 +117,124 @@ def _dataset_label(stem: str) -> str:
     return _expanded_form_text(stem).title()
 
 
+# R2 — concept→column index. Resolve human concepts (smoking, BMI, recurrence)
+# to dataset columns by DICTIONARY LOOKUP against the published
+# study_variable_map.yaml, COHORT-AWARE (index-case IC_/IS_ vs household-contact
+# HC_/HHC_), replacing pure token-overlap guessing for the modeling workload
+# (recurrence ~ smoking + diabetes + …). Metadata only — column NAMES; GR-1-safe.
+#
+# Natural-language aliases for derivations/outcomes the map encodes structurally
+# but whose modeling names differ. Keyed by the map's concept key.
+_CONCEPT_ALIASES: dict[str, tuple[str, ...]] = {
+    "recurrence": ("recurrence", "recurrent tb", "relapse", "tb relapse", "treatment failure"),
+    "incident_tb": ("incident tb", "incident", "progression", "progression to tb", "active tb"),
+    "malnutrition": ("malnutrition", "malnourished", "undernutrition"),
+    "bmi": ("bmi", "body mass index"),
+    "alcohol": ("alcohol", "alcohol use", "drinking"),
+    "smoking": ("smoking", "smoker", "tobacco"),
+    "diabetes": ("diabetes", "diabetic"),
+}
+
+_CONCEPT_INDEX_CACHE: dict[str, list[tuple[str, str, str]]] = {}
+
+
+def _concept_index() -> list[tuple[str, str, str]]:
+    """Return ``(synonym_phrase, column, cohort)`` rows from the published map.
+
+    ``cohort`` is ``"cohort_a"`` / ``"cohort_b"`` / ``""`` (cohort-agnostic). A
+    derived concept with no own column (bmi, malnutrition) resolves to its source
+    columns within the same cohort. Fail-soft: any read/parse error → ``[]``.
+    """
+    key = str(getattr(config, "LLM_SOURCE_STUDY_METADATA_DIR", ""))
+    cached = _CONCEPT_INDEX_CACHE.get(key)
+    if cached is not None:
+        return cached
+    rows: list[tuple[str, str, str]] = []
+    try:
+        import yaml
+
+        map_path = Path(config.LLM_SOURCE_STUDY_METADATA_DIR) / "study_variable_map.yaml"
+        validated = validate_agent_read(map_path)
+        data = yaml.safe_load(Path(validated).read_text(encoding="utf-8"))
+        cohorts = data.get("cohorts", {}) if isinstance(data, dict) else {}
+        concept_sections = ("demographics", "predictors", "outcomes", "derived_variables")
+        for cohort_id, cohort in cohorts.items():
+            if not isinstance(cohort, Mapping):
+                continue
+            # Index every concept's metadata so derived chains can be followed.
+            by_key: dict[str, Mapping[str, Any]] = {}
+            for section in concept_sections:
+                for ckey, cdata in (cohort.get(section) or {}).items():
+                    if isinstance(cdata, Mapping):
+                        by_key[str(ckey)] = cdata
+
+            def _resolve_cols(ckey: str, seen: frozenset[str], _by_key=by_key) -> list[str]:
+                # Own column wins; else follow source/sources (e.g. malnutrition →
+                # bmi → weight/height/knee_height/age), guarding against cycles.
+                cdata = _by_key.get(ckey)
+                if cdata is None or ckey in seen:
+                    return []
+                if isinstance(cdata.get("column"), str):
+                    return [cdata["column"]]
+                srcs = cdata.get("sources") or ([cdata["source"]] if cdata.get("source") else [])
+                out: list[str] = []
+                for s in srcs:
+                    out.extend(_resolve_cols(str(s), seen | {ckey}))
+                return out
+
+            for ckey, cdata in by_key.items():
+                syns = {str(ckey).replace("_", " ")}
+                an = cdata.get("analysis_name")
+                if isinstance(an, str):
+                    syns.add(an.replace("_", " "))
+                syns.update(_CONCEPT_ALIASES.get(str(ckey), ()))
+                cols = _resolve_cols(ckey, frozenset())
+                for syn in syns:
+                    s = syn.strip().lower()
+                    if not s:
+                        continue
+                    rows.extend((s, col, str(cohort_id)) for col in cols if col)
+    except Exception:
+        logger.debug("concept index build failed", exc_info=True)
+        rows = []
+    _CONCEPT_INDEX_CACHE[key] = rows
+    return rows
+
+
+def _detect_cohort(question: str) -> str:
+    """Map question text to ``cohort_a`` / ``cohort_b`` / ``""`` (ambiguous)."""
+    q = _normalise_search_text(question)
+    a = any(t in q for t in ("cohort a", "index case", "index cases", "ic ", "icbaseline"))
+    b = any(
+        t in q for t in ("cohort b", "household contact", "household contacts", "hhc", "contact")
+    )
+    if a and not b:
+        return "cohort_a"
+    if b and not a:
+        return "cohort_b"
+    return ""
+
+
+def _concept_columns_for_query(question: str) -> set[str]:
+    """Return UPPER-cased columns the question's concepts map to (cohort-scoped).
+
+    A concept phrase present in the normalised question contributes its mapped
+    column(s); cohort detection narrows IC_/IS_ vs HC_/HHC_. Cohort-agnostic
+    rows (``cohort==""``) always apply. Empty when no concept matches.
+    """
+    q = _normalise_search_text(question)
+    q_padded = f" {q} "
+    cohort = _detect_cohort(question)
+    hits: set[str] = set()
+    for phrase, column, row_cohort in _concept_index():
+        if row_cohort and cohort and row_cohort != cohort:
+            continue
+        # whole-phrase match against the spaced question (avoids 'dm' in 'admit')
+        if f" {phrase} " in q_padded:
+            hits.add(column.upper())
+    return hits
+
+
 def _load_dataset_column_variables() -> list[dict[str, Any]]:
     """Expose published dataset columns as retrieval candidates.
 
@@ -1432,6 +1550,11 @@ def answer_catalog_question(question: str) -> str:
 
     repo_root = Path(config.REPO_ROOT)
     query_identifiers = _catalog_query_identifier_tokens(question)
+    # R2: resolve human concepts to columns by dictionary lookup against the
+    # published study_variable_map (smoking → IC_SMOKHX / HC_SMOKHX cohort-scoped,
+    # recurrence → FOA_COHAOUT, malnutrition/BMI → weight+height sources) so the
+    # modeling workload exact-matches (priority 0) instead of token-overlap guessing.
+    query_identifiers |= _concept_columns_for_query(question)
     query_tokens = _catalog_meaningful_tokens(question)
 
     # Try to identify a study from known output dirs; fall back to searching all.
@@ -1577,9 +1700,7 @@ def answer_catalog_question(question: str) -> str:
     # (the variable's meaning is identical); only distinct ids trigger this.
     _top_key = (best.get("priority"), best.get("form_match"), best.get("score"))
     _tied = [
-        m
-        for m in ranked
-        if (m.get("priority"), m.get("form_match"), m.get("score")) == _top_key
+        m for m in ranked if (m.get("priority"), m.get("form_match"), m.get("score")) == _top_key
     ]
     _distinct_ids = {str(m.get("variable_id", "")) for m in _tied}
     if len(_distinct_ids) > 1:
@@ -1625,7 +1746,9 @@ def answer_catalog_question(question: str) -> str:
 
             with open(source_path, encoding="utf-8") as fh:
                 joined_view = yaml.safe_load(fh)
-            joined_variables = joined_view.get("variables") if isinstance(joined_view, dict) else None
+            joined_variables = (
+                joined_view.get("variables") if isinstance(joined_view, dict) else None
+            )
             if isinstance(joined_variables, Mapping):
                 joined_meta = joined_variables.get(var_id)
                 if isinstance(joined_meta, Mapping):
