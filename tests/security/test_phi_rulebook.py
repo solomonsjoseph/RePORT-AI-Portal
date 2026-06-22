@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 
-from scripts.security.phi_review import StudyPrivacyConfig, refresh_jurisdiction_rules
+import pytest
+import yaml
+
+from scripts.security.phi_review import StudyPrivacyConfig, load_study_privacy_config, refresh_jurisdiction_rules
 from scripts.security.phi_rulebook import (
     RULEBOOK_CACHE_VERSION,
     cache_filename,
@@ -139,3 +143,75 @@ def test_cache_payload_is_value_free(tmp_path: Path) -> None:
     for rule in data["rules"]:
         # rule metadata only; no compiled patterns or study data
         assert set(rule) <= {"id", "jurisdiction", "action", "reason"}
+
+
+def test_classification_gate_routes_through_resolve_rulebook(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Wave B.4: publish classification gate uses resolve_rulebook (same path as P0)."""
+    import config
+    from scripts.skills.extract_to_llm_source import _run_form_approval_gate
+    from tests.skills.conftest import patch_config
+
+    study = "RulebookGate"
+    patch_config(monkeypatch, tmp_path, study=study)
+    study_raw = tmp_path / "data" / "raw" / study
+
+    privacy_yaml = {
+        "jurisdictions": ["USA", "INDIA"],
+        "data_as_of": "2025-12-31",
+        "rule_refresh": "online_preferred",
+        "conflict_policy": "strictest_wins",
+        "approval": {"mode": "hybrid", "max_synthetic_attempts": 1},
+        "parallelism": {"mode": "auto"},
+    }
+    (study_raw / "_study_privacy.yaml").write_text(yaml.dump(privacy_yaml), encoding="utf-8")
+    (study_raw / "_forms_manifest.yaml").write_text(
+        yaml.dump({"required": [], "optional": [], "reject": []}),
+        encoding="utf-8",
+    )
+
+    run_dir = config.OUTPUT_DIR / study / "runs" / "run_rulebook_gate"
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    captured: dict[str, bool] = {}
+
+    def _recording_resolve(privacy_config, **kwargs):
+        captured["allow_network"] = kwargs.get("allow_network", False)
+        return resolve_rulebook(privacy_config, **kwargs)
+
+    with patch("scripts.security.phi_rulebook.resolve_rulebook", side_effect=_recording_resolve):
+        gate = _run_form_approval_gate(
+            study=study,
+            study_raw_dir=study_raw,
+            run_dir=run_dir,
+            max_workers=None,
+        )
+
+    assert captured.get("allow_network") is True
+    assert gate.approval_report_path is not None
+    payload = json.loads(gate.approval_report_path.read_text(encoding="utf-8"))
+    privacy = load_study_privacy_config(study_raw)
+    expected = resolve_rulebook(privacy, allow_network=True)
+    assert payload["rule_bundle"]["rules_sha256"] == expected.bundle.rules_sha256
+
+
+def test_snapshot_staleness_uses_resolve_rulebook_rules_sha256() -> None:
+    """Wave B.5: evaluate_snapshot_staleness compares manifest rules_sha256 to resolve_rulebook."""
+    from scripts.utils.snapshot import check_snapshot_staleness
+
+    privacy = _privacy_config()
+    current_sha = resolve_rulebook(privacy, allow_network=False).bundle.rules_sha256
+    manifest = {
+        "phi_rulebook_version": RULEBOOK_CACHE_VERSION,
+        "phi_rulebook_rules_sha256": "0" * 64,
+    }
+    findings = check_snapshot_staleness(
+        manifest,
+        current_rulebook_version=RULEBOOK_CACHE_VERSION,
+        current_key_fingerprint=None,
+        current_input_components=None,
+        current_rulebook_rules_sha256=current_sha,
+    )
+    assert any(f.trigger == "rulebook_update" for f in findings)
+    assert findings[0].severity.value == "warn"

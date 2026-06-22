@@ -6,7 +6,8 @@ description: >
   pipeline: a 10-phase orchestrator skill governs the raw-to-llm_source publish
   path end to end — dictionary extraction, deduplication, header extraction,
   Source Truth generation, PHI classification + scrubbing, audit verification,
-  the Presidio+pyCANON PHI guard gate, promotion, staging destruction, the
+  the Presidio + residual scan PHI guard gate (pyCANON deferred at publish),
+  promotion, staging destruction, the
   cleanup verifier, and the immutable snapshot. PHI row values never reach any
   LLM; skills read column NAMES and metadata only.
 license: MIT
@@ -33,10 +34,14 @@ entrypoint:
 
 # ── Orchestrator topology ────────────────────────────────────────────────────
 # The conceptual 10 runtime phases map onto the supervisory steps run.py drives.
-# The contiguous publish phases 2-7 are executed by the proven
-# `dataset-to-llm-source` publish supervisor in one locked subprocess (which
-# itself invokes the host publish engine, scripts.pipeline.host_pipeline), rather
-# than being re-decomposed into separate subprocesses.
+# Conceptual phases 3–7 (SoT/classify/extract barrier, scrub, inline verifier,
+# PHI guard gate + promotion, cleanup/destroy) are bundled inside one locked
+# `dataset-to-llm-source run` subprocess — not separate orchestrator subprocesses.
+# Call chain: run.py → dataset-to-llm-source/scripts/extract_to_llm_source.py
+# `run` → scripts.pipeline.host_pipeline (extract) with phi-classification gate,
+# phi_scrub, inline 16-assertion verify, phi_guard_gate (Presidio + residual scan;
+# pyCANON deferred at publish), atomic promotion, cleanup propagation, staging
+# destruction. See orchestrator SKILL.md for the runtime↔conceptual phase map.
 orchestrator:
   skill: report-ai-study-pipeline
   lock: per_study_exclusive_whole_run
@@ -83,7 +88,7 @@ orchestrator:
       skills: [audit-verification]
     - phase: 6
       name: guard-gate-promote
-      action: PHI guard gate (Presidio + pyCANON, OR-combined) → atomic promotion to llm_source/
+      action: PHI guard gate (Presidio + residual scan, OR-combined; pyCANON deferred at publish) → atomic promotion to llm_source/
       skills: [dataset-to-llm-source]
     - phase: 7
       name: cleanup-destroy

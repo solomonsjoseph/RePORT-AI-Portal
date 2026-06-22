@@ -1534,20 +1534,21 @@ def _run_form_approval_gate(
     from scripts.security.phi_review import (
         load_sot_variable_signals,
         load_study_privacy_config,
-        refresh_jurisdiction_rules,
         review_form_headers,
         verify_approval_payload,
     )
+    from scripts.security.phi_rulebook import resolve_rulebook
     from scripts.security.phi_scrub import load_scrub_config
 
     privacy_config = load_study_privacy_config(study_raw_dir)
     # Note 6: read column headers from the shared header-extraction store (Phase 1)
     # when present; resolve_headers falls back to a direct row-1 read on a miss.
     _header_store = load_header_store(run_dir)
-    rule_bundle = refresh_jurisdiction_rules(
+    resolution = resolve_rulebook(
         privacy_config,
         allow_network=privacy_config.rule_refresh == "online_preferred",
     )
+    rule_bundle = resolution.bundle
     datasets_dir = study_raw_dir / "datasets"
     review_forms = _manifest_review_forms(
         config.study_config_path("_forms_manifest.yaml", study=study_raw_dir.name),
@@ -1732,8 +1733,13 @@ def _verify_cleanup_before_inline_snapshot(*, study: str, run_dir: Path) -> bool
     from dataclasses import asdict
 
     import config
+    from scripts.extraction.header_store import destroy_header_store
     from scripts.extraction.io import atomic_write_json
     from scripts.utils.cleanup_verifier import verify_cleanup, verify_workspace_cleanup
+
+    # Note 6: header store is consumed by classification inside the publish leg;
+    # destroy before the must-gone walk (orchestrator P7 does the same post-publish).
+    destroy_header_store(run_dir)
 
     ledger_report = verify_cleanup(Path(config.STUDY_AUDIT_DIR), Path(config.TRIO_DATASETS_DIR))
     ws_report = verify_workspace_cleanup(study=study, run_dir=run_dir)

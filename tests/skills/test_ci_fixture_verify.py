@@ -12,7 +12,7 @@ and asserts verify exits 0 with overall="pass".
 
 Fail-injection matrix
 ---------------------
-Six mutation cases each assert a specific non-zero exit code:
+Seven mutation cases each assert a specific non-zero exit code:
 
   null_hash          — scrub_config_hash nulled in ledger        → EXIT_LEDGER_HASH_NULL (3)
   missing_jsonl      — one required JSONL removed                 → EXIT_MANIFEST_MISMATCH (2)
@@ -20,6 +20,7 @@ Six mutation cases each assert a specific non-zero exit code:
   leftover_staging   — staging dir left behind                   → EXIT_DESTRUCTION_INCOMPLETE (7)
   leftover_lock      — pipeline lock file present                → EXIT_NEEDS_ADVICE (6)
   missing_attestation — destruction_attestation.json removed     → EXIT_DESTRUCTION_INCOMPLETE (7)
+  incomplete_ledger_event — PHI event missing method/taxonomy    → EXIT_AUDIT_COVERAGE_INCOMPLETE (10)
 
 Assertion 14 (non-vacuous)
 --------------------------
@@ -36,6 +37,7 @@ from pathlib import Path
 import pytest
 
 from scripts.audit.ledger import dataset_phi_ledger_path
+from scripts.audit.review_paths import verifier_review_path
 from scripts.skills.extract_to_llm_source import (
     EXIT_AUDIT_COVERAGE_INCOMPLETE,
     EXIT_DESTRUCTION_INCOMPLETE,
@@ -288,6 +290,11 @@ _FAIL_CASES = [
         "destruction_attestation.json removed → EXIT_DESTRUCTION_INCOMPLETE (7)",
         EXIT_DESTRUCTION_INCOMPLETE,
     ),
+    (
+        "incomplete_ledger_event",
+        "PHI ledger event missing method/taxonomy → EXIT_AUDIT_COVERAGE_INCOMPLETE (10)",
+        EXIT_AUDIT_COVERAGE_INCOMPLETE,
+    ),
 ]
 
 
@@ -328,6 +335,19 @@ def _apply_mutation(mutation_id: str, paths: dict[str, Path], tmp_root: Path) ->
         # Remove the destruction attestation.
         attest = paths["run_dir"] / "destruction_attestation.json"
         attest.unlink()
+
+    elif mutation_id == "incomplete_ledger_event":
+        # Assertion 16: under-documented PHI event (no method, no taxonomy/rationale).
+        ledger_path = dataset_phi_ledger_path(paths["audit_dir"], FIXTURE_FORMS[0])
+        data = json.loads(ledger_path.read_text())
+        data["events"] = [
+            {
+                "variable_id": "DOB",
+                "action": "jitter_date",
+                "rule": {"jurisdictions": ["USA"]},
+            }
+        ]
+        ledger_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
     else:
         raise ValueError(f"Unknown mutation_id: {mutation_id!r}")
@@ -390,3 +410,36 @@ class TestFixtureVerifyFailInjection:
         assert data["overall"] == "fail", (
             f"Mutation {mutation_id!r}: expected overall=fail in report"
         )
+
+
+# ---------------------------------------------------------------------------
+# Verifier review note (N22) — integration on failure
+# ---------------------------------------------------------------------------
+
+
+class TestVerifierReviewOnFailure:
+    """On verifier failure, a value-free verifier_review.md is written (N22)."""
+
+    def test_incomplete_ledger_event_writes_verifier_review(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _patch_config(monkeypatch, tmp_path)
+        tmp_root = tmp_path / "tmp"
+        paths = build_golden_output_tree(
+            output_root=tmp_path / "output",
+            raw_root=tmp_path / "data" / "raw",
+            tmp_root=tmp_root,
+            phi_scrub_yaml_path=_PHI_SCRUB_YAML,
+        )
+        _apply_mutation("incomplete_ledger_event", paths, tmp_root)
+
+        rc = main(["verify", "--study", FIXTURE_STUDY, "--run", FIXTURE_RUN_ID])
+        assert rc == EXIT_AUDIT_COVERAGE_INCOMPLETE
+
+        note_path = verifier_review_path(paths["audit_dir"], FIXTURE_RUN_ID)
+        assert note_path.is_file(), "verifier_review.md must be written on verifier failure"
+        text = note_path.read_text(encoding="utf-8")
+        assert "Audit verifier — human review required" in text
+        assert FIXTURE_RUN_ID in text
+        assert "ledger_entry_fields_complete" in text
+        assert "[16]" in text

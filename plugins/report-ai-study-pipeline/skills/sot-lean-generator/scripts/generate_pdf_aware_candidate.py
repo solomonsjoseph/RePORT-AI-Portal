@@ -1025,12 +1025,16 @@ def build_candidate(repo_root: Path, form: str, pack_path: Path) -> dict[str, An
     if true_missing_annotations:
         discrepancies.append(
             {
-                "kind": "printed_widget_without_dataset_header",
+                "kind": "printed_widget_without_dataset_header_reviewed",
                 "where": "PDF annotations",
                 "pdf_annotation_says": sorted(true_missing_annotations),
                 "printed_form_truth": "PDF annotation appears to identify a real printed data-entry field with no matching dataset row-1 header",
                 "dataset_column_binding": None,
-                "resolution": "Documented source/dataset discrepancy; no policy variable added without a dataset binding key",
+                "resolution": (
+                    "Maintainer-reviewed source/dataset discrepancy recorded in "
+                    "TRUE_PDF_VARIABLES_WITHOUT_DATASET_HEADER; no policy variable added "
+                    "without a dataset binding key"
+                ),
             }
         )
     if repeated_expected:

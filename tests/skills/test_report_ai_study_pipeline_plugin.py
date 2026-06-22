@@ -77,6 +77,22 @@ def test_plugin_declares_ten_phase_orchestrator() -> None:
     assert by_num["2"]["skills"] == ["dataset-deduplication"]
     assert by_num["2b"]["skills"] == ["header-extraction"]
 
+    # Phase 6 guard gate: Presidio + residual scan; publish-time pyCANON deferred.
+    phase6_action = by_num["6"]["action"]
+    assert "Presidio" in phase6_action
+    assert "residual scan" in phase6_action
+    assert "pyCANON deferred" in phase6_action
+    assert "pyCANON, OR-combined" not in phase6_action
+
+
+def test_plugin_description_guard_gate_wording() -> None:
+    manifest = _manifest()
+    desc = manifest["description"]
+    assert "Presidio" in desc
+    assert "residual scan" in desc
+    assert "pyCANON deferred" in desc
+    assert "Presidio+pyCANON" not in desc
+
 
 def test_plugin_skills_inventory_is_complete_and_well_formed() -> None:
     manifest = _manifest()
@@ -137,6 +153,9 @@ def test_plugin_bundles_entrypoint_and_all_child_skills() -> None:
     assert "Do not read raw dataset row values into the agent context." in orchestrator
     assert "$dataset-to-llm-source" in orchestrator
     assert "10-phase" in orchestrator or "10 phase" in orchestrator
+    assert "Runtime vs conceptual phase labels" in orchestrator
+    assert "P2:publish" in orchestrator
+    assert "pyCANON deferred" in orchestrator
 
 
 def test_bundled_agent_metadata_uses_platform_neutral_filename() -> None:

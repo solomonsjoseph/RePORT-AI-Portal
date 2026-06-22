@@ -333,6 +333,26 @@ def _gather_rulebook_version() -> int | None:
         return None
 
 
+def _gather_rulebook_rules_sha256(study: str) -> str | None:
+    """Effective rule-set content hash from :func:`resolve_rulebook` (N7 staleness).
+
+    Matches the classification gate's ``allow_network`` posture from
+    ``_study_privacy.yaml``. Fail-soft → ``None`` when resolution fails.
+    """
+    try:
+        from scripts.security.phi_review import load_study_privacy_config
+        from scripts.security.phi_rulebook import resolve_rulebook
+
+        privacy = load_study_privacy_config(study)
+        resolution = resolve_rulebook(
+            privacy,
+            allow_network=privacy.rule_refresh == "online_preferred",
+        )
+        return resolution.bundle.rules_sha256
+    except Exception:
+        return None
+
+
 def _gather_key_fingerprint() -> str | None:
     try:
         from scripts.security.phi_keystore import phi_key_fingerprint
@@ -1113,6 +1133,7 @@ def evaluate_snapshot_staleness(study: str, snapshot_id: str) -> list[StalenessF
         current_rulebook_version=_gather_rulebook_version(),
         current_key_fingerprint=_gather_key_fingerprint(),
         current_input_components=current_components,
+        current_rulebook_rules_sha256=_gather_rulebook_rules_sha256(study),
     )
 
 

@@ -35,7 +35,7 @@ from scripts.ai_assistant.sot_joined_view import (
     build_joined_query_view,
     write_joined_query_view_yaml,
 )
-from scripts.audit.review_paths import is_sot_review_report_path
+from scripts.audit.review_paths import is_sot_review_report_path, sot_review_report_path
 from scripts.source_truth.study_intake import (
     _find_dataset,
     _find_pdf,
@@ -122,13 +122,34 @@ _PUBLISH_BLOCKING_HOLD_KINDS = frozenset(
 )
 
 
-def _discrepancy_review_reason(policy_path: Path) -> str | None:
+def _maintainer_reviewed_printed_widgets(entry: dict, *, form: str) -> bool:
+    """True when every PDF-only widget label is pre-approved in code for *form*."""
+    says = entry.get("pdf_annotation_says")
+    if not isinstance(says, list) or not says:
+        return False
+    labels = [label for label in says if isinstance(label, str)]
+    if not labels:
+        return False
+    import importlib.util
+
+    gpc_path = Path(__file__).resolve().parent / "generate_pdf_aware_candidate.py"
+    spec = importlib.util.spec_from_file_location("generate_pdf_aware_candidate", gpc_path)
+    if spec is None or spec.loader is None:
+        return False
+    gpc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gpc)
+    approved = getattr(gpc, "TRUE_PDF_VARIABLES_WITHOUT_DATASET_HEADER", {}).get(form, set())
+    return bool(approved) and all(label in approved for label in labels)
+
+
+def _discrepancy_review_reason(policy_path: Path, *, form: str = "") -> str | None:
     """Return a held-for-review reason when policy documents an un-reviewed discrepancy.
 
     Reads SoT policy metadata only (discrepancy kinds) — never dataset row values.
-    Holds on binding conflicts, printed widgets without dataset headers, PDF-field-count
-    vs column-count mismatches, and annotation aliases whose label differs from the
-    dataset column (case-insensitive). Combined bindings and clean policies return None.
+    Holds on binding conflicts, un-reviewed printed widgets without dataset headers,
+    PDF-field-count vs column-count mismatches, and annotation aliases whose label
+    differs from the dataset column (case-insensitive). Combined bindings,
+    maintainer-reviewed printed-widget discrepancies, and clean policies return None.
     """
     try:
         policy = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
@@ -143,7 +164,15 @@ def _discrepancy_review_reason(policy_path: Path) -> str | None:
         if not isinstance(entry, dict):
             continue
         kind = entry.get("kind")
+        if entry.get("reviewed") is True:
+            continue
         if kind in _HOLD_DISCREPANCY_KINDS:
+            if (
+                kind == _HARD_PDF_MISSING_KIND
+                and form
+                and _maintainer_reviewed_printed_widgets(entry, form=form)
+            ):
+                continue
             return str(kind)
         if kind == _ALIAS_ANNOTATION_KIND:
             says = entry.get("pdf_annotation_says")
@@ -228,6 +257,9 @@ def _publish_verified_sot_outputs(
     )
     joined_path.parent.mkdir(parents=True, exist_ok=True)
     write_joined_query_view_yaml(joined_path, build_joined_query_view(policy_path, schema_path))
+    review_report = sot_review_report_path(out_root.parents[1] / "audit", form)
+    if review_report.is_file():
+        review_report.unlink()
     return joined_path
 
 
@@ -586,7 +618,7 @@ def generate_form(
     else:
         print(f"  gold diff skipped for {study}/{form}: no anchored gold at {gold}", flush=True)
 
-    held_reason = _discrepancy_review_reason(candidate)
+    held_reason = _discrepancy_review_reason(candidate, form=form)
     if held_reason:
         review_path = _write_sot_review_report(
             repo_root=repo_root,

@@ -278,6 +278,46 @@ variables:
     result = generate_lean_outputs._discrepancy_review_reason(policy_path_combined)
     assert result is None, "Should return None for combined_binding discrepancy"
 
+    policy_path_reviewed_widget = tmp_path / "policy_reviewed_widget.yaml"
+    policy_path_reviewed_widget.write_text(
+        """
+study: Test-Study
+form:
+  number: "15"
+  title: Feces
+discrepancies:
+  - kind: printed_widget_without_dataset_header_reviewed
+    pdf_annotation_says: [FC_TECH1]
+variables:
+  A: {}
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    result = generate_lean_outputs._discrepancy_review_reason(policy_path_reviewed_widget)
+    assert result is None, "Should return None for reviewed printed-widget discrepancy"
+
+    policy_path_15_feces_hard = tmp_path / "policy_15_feces_hard.yaml"
+    policy_path_15_feces_hard.write_text(
+        """
+study: Indo-VAP
+discrepancies:
+  - kind: printed_widget_without_dataset_header
+    pdf_annotation_says:
+      - FC_TECH1
+      - FC_SIGN
+variables:
+  FC_PARAS1_1: {}
+""".lstrip(),
+        encoding="utf-8",
+    )
+    assert (
+        generate_lean_outputs._discrepancy_review_reason(
+            policy_path_15_feces_hard, form="15_Feces"
+        )
+        is None
+    ), "Maintainer-approved 15_Feces widgets must not hold when all labels are in TRUE_PDF_*"
+
     policy_path_none = tmp_path / "policy_none.yaml"
     policy_path_none.write_text(
         """

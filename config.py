@@ -685,7 +685,7 @@ def ensure_run_directories(study: str | None = None, run_id: str | None = None) 
 
         config/<study>/
         tmp/<study>/{headers, datasets, datasets/quarantine, SoT}
-        output/<study>/{audit, audit/human_review/{sot,datasets,excel,publish},
+        output/<study>/{audit, audit/human_review, audit/datasets,
                         audit/scrubbing_code, runs/<run_id>, llm_source,
                         llm_source/datasets, llm_source/SoT, snapshots}
 

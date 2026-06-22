@@ -8,7 +8,8 @@ included `.codex-plugin/plugin.json`, but the source of truth is the portable
 (`skills/report-ai-study-pipeline/scripts/run.py`) drives the entire
 raw-to-`llm_source` publish path: header/dictionary extraction, deduplication,
 Source Truth, PHI classification + scrubbing, audit verification, the
-Presidio+pyCANON PHI guard gate, promotion, staging destruction, the cleanup
+Presidio + residual scan PHI guard gate (pyCANON deferred at publish),
+promotion, staging destruction, the cleanup
 verifier, and the immutable snapshot. Operators launch it with:
 
 ```bash

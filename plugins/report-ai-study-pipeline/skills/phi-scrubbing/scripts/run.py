@@ -38,7 +38,7 @@ def main(argv: list[str] | None = None) -> int:
     import config
     from scripts.security.phi_scrub import PHIScrubError, run_scrub
 
-    runs_dir = Path(config.STUDY_OUTPUT_DIR) / "runs" if args.run_id else None
+    runs_dir = Path(config.OUTPUT_DIR) / args.study / "runs" if args.run_id else None
     try:
         run_scrub(
             args.study,

@@ -54,8 +54,14 @@ NON_VARIABLE_ANNOTATION_KINDS = {
 ALIAS_ANNOTATION_KIND = "pdf_annotation_alias_to_dataset_header"
 
 HARD_PDF_MISSING_KIND = "printed_widget_without_dataset_header"
+REVIEWED_PDF_MISSING_KIND = "printed_widget_without_dataset_header_reviewed"
 
 PDF_FIELD_COUNT_MISMATCH_KIND = "pdf_field_count_column_count_mismatch"
+
+PRINTED_WIDGET_DISCREPANCY_KINDS = (
+    HARD_PDF_MISSING_KIND,
+    REVIEWED_PDF_MISSING_KIND,
+)
 
 # Duplicate row-1 header names may be documented two ways. Either is valid documentation
 # of the duplicate; the checker accepts both, and the orchestrator (generate_lean_outputs)
@@ -341,7 +347,7 @@ def _annotation_reconciliation(policy: dict[str, Any], source_pack: dict[str, An
                 accepted_non_variable.update(
                     _flatten_annotation_values(entry.get("pdf_annotation_says"))
                 )
-            elif kind == HARD_PDF_MISSING_KIND:
+            elif kind in PRINTED_WIDGET_DISCREPANCY_KINDS:
                 hard_missing.update(_flatten_annotation_values(entry.get("pdf_annotation_says")))
             elif kind == ALIAS_ANNOTATION_KIND:
                 values = entry.get("pdf_annotation_says")

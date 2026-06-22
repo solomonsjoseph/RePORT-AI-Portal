@@ -37,6 +37,27 @@ The contiguous publish phases 2–7 are executed by the proven
 turn invokes the host publish engine `scripts.pipeline.host_pipeline`), rather
 than being re-decomposed into separate subprocesses.
 
+### Runtime vs conceptual phase labels
+
+`run_state.json` records **runtime** phase names (what `run.py` emits). The table
+above uses **conceptual** phase numbers (0–10, including `2b` and `3b`) for
+operator docs and `plugin.yaml`. Both refer to the same pipeline.
+
+| Runtime label (`run_state.json`) | Conceptual phase | What runs |
+|---|---|---|
+| `P0:preflight` | 0 | Config validation, rulebook drift, input-fingerprint redundant-run check, lock |
+| `P1c:dictionary-extract` | 1 | Dictionary extraction (column NAMES only) |
+| `P2:dataset-deduplication` | 2 | Per-form raw-file deduplication |
+| `P1:header-extraction` | 2b | Shared header extraction on deduplicated file set |
+| `P1b:sot-lean-generate` | 3 (SoT leg) | Source Truth lean outputs (joined views → `llm_source/SoT/`) |
+| `P2:publish` | 3–7 (bundled) | `dataset-to-llm-source run`: classify → extract → scrub → inline verifier → PHI guard gate (Presidio + residual scan; pyCANON deferred) → promote → cleanup/destroy |
+| `P8:cleanup-verifier` | 8 | Cleanup verifier over published tree + cleanup ledgers |
+| `P9:verify` | 9 | Idempotent 16-assertion re-verify |
+| `P10:finalize` | 10 | Input fingerprint, snapshot commit, `current.json`, lock release |
+
+Conceptual phase 3b (cross-form PHI-classification barrier) executes inside
+`P2:publish` before per-form scrub; it does not get a separate runtime record.
+
 | Phase | Action | Skill(s) |
 |---|---|---|
 | 0 | Config validation ∥ rulebook fetch/drift · input-fingerprint redundant-run check · dir pre-creation · acquire lock | (shared modules) |
@@ -47,7 +68,7 @@ than being re-decomposed into separate subprocesses.
 | 3b | Cross-form PHI-classification consistency barrier | `$phi-classification` |
 | 4 | Per-form PHI scrub (fail-closed) | `$phi-scrubbing` |
 | 5 | 16-assertion audit verification | `$audit-verification` |
-| 6 | PHI guard gate (Presidio + pyCANON, OR-combined) → atomic promotion | `$dataset-to-llm-source` |
+| 6 | PHI guard gate (Presidio + residual scan, OR-combined; pyCANON deferred at publish) → atomic promotion | `$dataset-to-llm-source` |
 | 7 | Cleanup propagation ∥ staging destruction + attestation ∥ key zero | `$dataset-to-llm-source` + orchestrator |
 | 8 | Cleanup verifier over published tree + cleanup ledgers | orchestrator module |
 | 9 | Idempotent 16-assertion re-verify | `$audit-verification` |
