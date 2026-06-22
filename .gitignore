@@ -289,6 +289,11 @@ docs/.vision/**
 # Abstract drafts (working documents incl. non-markdown .docx — never tracked)
 docs/abstracts/
 
+# Working planning / session artifacts (the plan .md are already caught by the
+# *.md rule below; the value-free A1 reconciliation oracle + premap snapshot
+# JSON are regenerable working data, not source — keep them local, untracked).
+docs/plans/
+
 # Documentation Policy: inside docs/, ONLY docs/sphinx/ is tracked (long-form
 # documentation as reStructuredText). Every other markdown file under docs/ —
 # eval results, review findings, abstracts, agent notes, the IRB dossier — is
