@@ -293,8 +293,11 @@ exclude = [
 # Pytest
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --tb=short"
-markers = ["slow: marks tests as slow (live API)"]
+addopts = "-q --tb=short -m 'not stress'"
+markers = [
+    "slow: marks tests as slow (live API)",
+    "stress: robustness / performance guard tests (excluded from the default gate; run with `-m stress`)",
+]
 
 # Pyright - Static Type Checking (VS Code / LSP default)
 [tool.pyright]
