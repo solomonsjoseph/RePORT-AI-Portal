@@ -33,6 +33,25 @@ from typing import Any
 
 import config
 
+# Mirror of extract_to_llm_source._PROTECTION_RANK (assertion 12 lattice). The
+# decided-vs-applied verifier fails ONLY the under-protection direction —
+# applied protection < decided protection (scrub did LESS than the decider
+# decided → potential leak). Adding phi_review patterns that decide a STRICTER
+# action than the config applies would trip this; the harness flags it here so
+# such a regression is caught in the dry-run, not at the live verifier.
+_PROTECTION_RANK: dict[str, int] = {
+    "keep": 0,
+    "generalize": 1,
+    "band": 1,
+    "cap": 1,
+    "suppress_small_cell": 1,
+    "suppress": 1,
+    "jitter_date": 2,
+    "pseudonymize": 2,
+    "drop": 3,
+    "birthdate_drop": 3,
+}
+
 
 def _resolve_forms(study: str) -> dict[str, Path]:
     """Map each form stem → its canonical raw dataset path (row-1 read source).
@@ -84,6 +103,7 @@ def derive(study: str, oracle: dict[str, Any] | None = None) -> dict[str, Any]:
     wanted = _oracle_forms(oracle) or sorted(by_stem)
 
     contradictions: list[dict[str, str]] = []
+    under_protections: list[dict[str, str]] = []
     decided_applied: dict[str, dict[str, dict[str, str]]] = {}
     missing_raw: list[str] = []
 
@@ -99,8 +119,15 @@ def derive(study: str, oracle: dict[str, Any] | None = None) -> dict[str, Any]:
             decided = str(classified[header].action)
             applied = _configured_scrub_action(cfg, header)
             form_map[header] = {"decided": decided, "applied": applied}
+            # Contradiction: decider keeps, cleaner transforms → keep_decision + event.
             if decided == "keep" and applied != "keep":
                 contradictions.append(
+                    {"form": form, "column": header, "decided": decided, "applied": applied}
+                )
+            # Assertion-12 under-protection: cleaner protects LESS than the decider
+            # decided (e.g. a phi_review pattern decides DROP but the config keeps).
+            elif _PROTECTION_RANK.get(applied, 0) < _PROTECTION_RANK.get(decided, 0):
+                under_protections.append(
                     {"form": form, "column": header, "decided": decided, "applied": applied}
                 )
         decided_applied[form] = form_map
@@ -114,6 +141,8 @@ def derive(study: str, oracle: dict[str, Any] | None = None) -> dict[str, Any]:
         "forms_evaluated": len(decided_applied),
         "forms_missing_raw": missing_raw,
         "contradictions_total": len(contradictions),
+        "under_protection_total": len(under_protections),
+        "under_protections": under_protections,
         "applied_distribution": dict(sorted(dist.items())),
         "contradictions": contradictions,
         "decided_applied": decided_applied,
@@ -193,6 +222,15 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(f"study={report['study']} forms={report['forms_evaluated']}")
         print(f"contradictions_total={report['contradictions_total']}")
+        print(f"under_protection_total={report['under_protection_total']}")
+        if report["under_protections"]:
+            print(
+                "  under_protection (assertion-12 risk):",
+                ", ".join(
+                    f"{r['form']}:{r['column']}({r['decided']}>{r['applied']})"
+                    for r in report["under_protections"][:40]
+                ),
+            )
         print(f"applied_distribution={report['applied_distribution']}")
         if report["forms_missing_raw"]:
             print(f"forms_missing_raw={report['forms_missing_raw']}")
