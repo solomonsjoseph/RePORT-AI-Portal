@@ -71,6 +71,9 @@ if str(_REPO_ROOT) not in sys.path:
 from scripts.utils.skill_protocol import SkillResult, invoke_skill  # noqa: E402
 
 # Schema 2 adds the per-form state machine (``forms``) — Note 16.
+# V1→V2 compatibility: if a prior run_state.json is missing the ``forms`` key
+# (schema v1, pre-Note-16), the crash-recovery readback defaults it to {} and
+# proceeds with no carried-held state or fingerprint revalidation (lines 547–549).
 RUN_STATE_SCHEMA = 2
 
 # ── Per-form lifecycle states (Note 16 state machine) ─────────────────────────
@@ -544,6 +547,8 @@ def _recover_interrupted_run(state: _RunState, *, study: str, run_dir: Path) -> 
         return None
     if not isinstance(prior, dict):
         return None
+    # V1→V2 compatibility: if ``forms`` is missing or not a dict (v1 run_state),
+    # default to {} for fail-soft upgrade. No forms to carry or revalidate.
     prior_forms = prior.get("forms")
     if not isinstance(prior_forms, dict):
         prior_forms = {}

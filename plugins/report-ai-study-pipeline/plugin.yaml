@@ -50,6 +50,7 @@ orchestrator:
   # failed_pipeline_level), each form carrying a per-form input fingerprint
   # (Note 16). On restart, preflight reads any prior in_progress run_state and
   # writes a value-free run_recovery.json (crash-recovery readback).
+  # V1→V2 compatibility: missing 'forms' key defaults to {} (fail-soft upgrade).
   state_file: output/<STUDY>/runs/<RUN_ID>/run_state.json
   state_schema: 2
   recovery_file: output/<STUDY>/runs/<RUN_ID>/run_recovery.json
@@ -118,6 +119,7 @@ skills:
     role: dag
     scope: raw_file_set
     parallel: true
+    invocation: subprocess
     purpose: Extract row-1 column NAMES only from raw datasets; gates PHI classification.
   - skill: dictionary-to-llm-source
     path: skills/dictionary-to-llm-source/SKILL.md
@@ -125,6 +127,7 @@ skills:
     role: dag
     scope: study
     parallel: true
+    invocation: subprocess
     purpose: Extract + publish the study data dictionary mapping (no PHI; URLs masked at publish).
   - skill: dataset-deduplication
     path: skills/dataset-deduplication/SKILL.md
@@ -132,6 +135,7 @@ skills:
     role: dag
     scope: raw_file_set
     parallel: true
+    invocation: subprocess
     purpose: Scrub-first duplicate-file detection; merge only provably-safe duplicates, else hold for review.
   - skill: sot-lean-generator
     path: skills/sot-lean-generator/SKILL.md
@@ -139,6 +143,7 @@ skills:
     role: dag
     scope: raw_file_set
     parallel: true
+    invocation: subprocess
     purpose: Build/audit Source Truth policy YAML from printed PDFs + row-1 dataset headers only.
   - skill: phi-classification
     path: skills/phi-classification/SKILL.md
@@ -146,6 +151,7 @@ skills:
     role: dag
     scope: raw_file_set
     parallel: true
+    invocation: in_process_supervised
     purpose: Deterministic jurisdiction PHI classification from headers + SoT signals (no row values).
   - skill: phi-scrubbing
     path: skills/phi-scrubbing/SKILL.md
@@ -153,6 +159,7 @@ skills:
     role: dag
     scope: study
     parallel: false
+    invocation: in_process_supervised
     purpose: Fail-closed per-form PHI scrub (date jitter, pseudonymize, drop/generalize/band, quarantine).
   - skill: dataset-to-llm-source
     path: skills/dataset-to-llm-source/SKILL.md
@@ -160,6 +167,7 @@ skills:
     role: dag
     scope: study
     parallel: lock_aware_only
+    invocation: subprocess
     purpose: Publish supervisor — classify → extract → scrub → dedup → PHI guard gate → promote → destroy → inline verify → snapshot.
   - skill: audit-verification
     path: skills/audit-verification/SKILL.md
@@ -167,12 +175,17 @@ skills:
     role: dag
     scope: study
     parallel: false
+    invocation: subprocess
     purpose: Run the 16-assertion verifier; idempotent re-verify in phase 9.
   - skill: excel-duplicate-handler
     path: skills/excel-duplicate-handler/SKILL.md
     role: legacy_preflight
     scope: study
     parallel: false
+    # Legacy maintainer CLI (merge_excel_duplicates.py) superseded by
+    # dataset-deduplication; NOT invoked by `make study`, so it is not a
+    # pipeline subprocess DAG node.
+    invocation: native_module
     purpose: >
       Legacy workbook merge helper (superseded by dataset-deduplication at orchestrator
       phase 2 — Note 18). Retained for manual maintainer preflight only; not invoked
@@ -182,6 +195,7 @@ skills:
     role: shared_module
     scope: study
     parallel: false
+    invocation: native_module
     purpose: Versioned offline PHI rulebook cache + drift detection; consumed in phase 0 and by phi-classification.
   - skill: study-setup
     path: skills/study-setup/SKILL.md
@@ -189,6 +203,7 @@ skills:
     role: interactive
     scope: study
     parallel: false
+    invocation: subprocess
     purpose: Interactive study scaffolding (manifest/privacy config, PHI key bootstrap). NOT an orchestrator phase.
 
 raw_file_set:

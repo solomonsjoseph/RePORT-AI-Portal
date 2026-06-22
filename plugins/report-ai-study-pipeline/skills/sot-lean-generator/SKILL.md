@@ -218,6 +218,18 @@ Stage 6 output rules:
 - Avoid escaped Unicode and symbol-heavy text. Use plain ASCII markers such as `->`, `-`, and `mm3`.
 - If the dataset schema contains duplicate column names, stop and fix the schema or source review before generating the joined view.
 
+## Header Store Lifecycle (Note 16 + Task B4)
+
+The shared header store from Phase 2b (header-extraction) provides dataset column
+NAMES only (row 1) for binding dataset columns to PDF form variables during Source
+Truth policy creation. This skill may consume the store when available to validate
+that row-1 headers match the dataset schema used in Stage 0 source pack generation.
+
+The store is optional (SoT generation falls back to direct CSV/XLSX header reading
+if unavailable). It is never serialized into the final policy YAML or joined query
+view — it is a pipeline-internal signal used for validation and consistency checks
+only (GR-1 compliance).
+
 ## Verification Bar (Stage 4 acceptance criteria)
 
 Before claiming completion, confirm:

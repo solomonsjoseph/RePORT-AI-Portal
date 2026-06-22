@@ -14,6 +14,22 @@ This skill reads **only the first row** of each dataset — the column NAMES. Ro
 `study_intake.read_headers_only`, which closes the file handle after the first
 row). Column names are metadata, not PHI row values.
 
+### Header Store Lifecycle (Note 16 + Task B4)
+
+The shared header store written by this phase (`header_extraction.json`) is consumed
+by downstream phases:
+1. **PHI classification** (Phase 3) uses it to classify column PHI category before any
+   row value is opened (GR-1 compliance: headers only).
+2. **Per-form state initialization** (Phase 2b → 3) reads form stems from the store to
+   initialize the per-form crash-recovery state machine (Note 16). If the store is
+   unavailable, the orchestrator falls back to enumerating the deduplicated `datasets/`
+   directory (names only, no values).
+3. **SoT generation** (Phase 3, P1b) may optionally read the shared store to resolve
+   header binding and validate dataset schema consistency.
+
+The store is ephemeral (destroyed at run end) and never published into `llm_source/`.
+It is a pipeline-internal signal, not a deliverable artifact.
+
 ## What This Skill Does
 
 Phase **2b** of the orchestrator (after raw-file dedup, before SoT): the
