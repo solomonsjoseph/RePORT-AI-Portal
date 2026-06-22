@@ -6,7 +6,7 @@ The production LLM agent's permitted zones are:
   tree: dataset_schema, dictionary_mapping, SoT) or
   ``AGENT_STATE_DIR`` (its own analysis outputs and conversations).
   A small allowlist admits
-  read-only source-tree config files (``config/study_knowledge.yaml``)
+  read-only source-tree config files (``config/<study>/study_knowledge.yaml``)
   that tool implementations need.
 * **Write** — ``AGENT_STATE_DIR`` only.
 
@@ -74,10 +74,9 @@ def _zones() -> tuple[list[str], list[str], frozenset[str]]:
     # (system-prompt directive) and agent_tools readers. This is the
     # "how" surface (per the hard PHI rule), not the "what" — still
     # inside the source tree.
-    project_root = Path(__file__).resolve().parents[2]
     read_allowlist = frozenset(
         {
-            _resolve(project_root / "config" / "study_knowledge.yaml"),
+            _resolve(config.STUDY_KNOWLEDGE_PATH),
         }
     )
     return read_roots, write_roots, read_allowlist

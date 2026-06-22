@@ -1197,7 +1197,7 @@ not directly. For the full study build run `make study STUDY=<name>`.
         # inside the PHI-scrubbed tree it is allowed to read — it carries only
         # mappings and encodings (no subject rows, no dates), so it is PHI-safe.
         def run_publish_variable_map() -> None:
-            src = Path(config.BASE_DIR) / "config" / "study_knowledge.yaml"
+            src = config.STUDY_KNOWLEDGE_PATH
             if not src.is_file():
                 log.info("Variable map: %s not found — skipped", src)
                 return

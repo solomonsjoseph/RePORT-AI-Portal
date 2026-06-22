@@ -238,6 +238,7 @@ def study_config_path(filename: str, *, study: str | None = None) -> Path:
 
 FORMS_MANIFEST_PATH = STUDY_CONFIG_DIR / "_forms_manifest.yaml"
 STUDY_PRIVACY_PATH = STUDY_CONFIG_DIR / "_study_privacy.yaml"
+STUDY_KNOWLEDGE_PATH = STUDY_CONFIG_DIR / "study_knowledge.yaml"
 
 # Legacy constant retained for rollback/back-compat checks. The active
 # LLM-visible clean tree is STUDY_LLM_SOURCE_DIR; this directory is not created

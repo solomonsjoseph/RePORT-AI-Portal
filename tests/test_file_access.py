@@ -35,8 +35,7 @@ class TestValidateAgentRead:
 
     def test_study_knowledge_yaml_allowlisted(self) -> None:
         """The repo-tracked YAML is the only allowlisted source-tree file."""
-        project_root = Path(__file__).resolve().parents[1]
-        yaml_path = project_root / "config" / "study_knowledge.yaml"
+        yaml_path = config.STUDY_KNOWLEDGE_PATH
         assert validate_agent_read(yaml_path) == Path(yaml_path.resolve())
 
     def test_audit_rejected(self, monkeypatch_config: Path) -> None:
