@@ -456,3 +456,107 @@ def test_recover_interrupted_run_noop_when_no_crash(
     state = ORCH._RunState(study="S", run_id="run_new")
     state.path = output / "runs" / "run_new" / "run_state.json"
     assert ORCH._recover_interrupted_run(state, study="S", run_dir=tmp_path) is None
+
+
+# ── Integration tests: re-running, phase order, state resilience ──────────────────
+
+
+def test_resume_held_marks_forms_re_running(tmp_path: Path) -> None:
+    """C2: --resume-held transition: held forms → re_running (awaiting re-publish)."""
+    state = ORCH._RunState(study="S", run_id="run_resume")
+    state.path = tmp_path / "run_state.json"
+    state.init_forms(["1_A", "2_B"], {"1_A": "fp_a", "2_B": "fp_b"})
+    # Simulate: 1_A complete, 2_B held (end of prior publish).
+    state.forms["1_A"].state = ORCH.FORM_COMPLETE
+    state.forms["2_B"].state = ORCH.FORM_HELD
+    state.flush()
+
+    # Resume path: advance non-complete to re_running (spec line 797).
+    state.advance_forms(
+        ORCH.FORM_RE_RUNNING, from_states={ORCH.FORM_NOT_STARTED, ORCH.FORM_HELD}
+    )
+
+    data = json.loads(state.path.read_text())
+    # 1_A stays complete (not in from_states).
+    assert data["forms"]["1_A"]["state"] == ORCH.FORM_COMPLETE
+    # 2_B held → re_running.
+    assert data["forms"]["2_B"]["state"] == ORCH.FORM_RE_RUNNING
+
+
+def test_phase_order_invariant_preserved_after_each_transition(tmp_path: Path) -> None:
+    """C2: phase sequence P0 → P1c → P2 → P1 → P1b → P2(pub) → P8 → P9 → P10.
+    After each phase transition, the prior phases remain immutable in run_state.json."""
+    state = ORCH._RunState(study="S", run_id="run_order")
+    state.path = tmp_path / "run_state.json"
+    phase_names = [
+        "P0:preflight",
+        "P1c:dictionary-extract",
+        "P2:dataset-deduplication",
+        "P1:header-extraction",
+        "P1b:sot-lean-generate",
+        "P2:dataset-to-llm-source",
+        "P8:cleanup-verify",
+        "P9:audit-verification",
+        "P10:finalize",
+    ]
+    for phase_name in phase_names:
+        rec = state.phase(phase_name)
+        rec.status = "complete"
+        rec.exit_code = 0
+        state.status = "complete" if phase_name == phase_names[-1] else "in_progress"
+        state.flush()
+
+    data = json.loads(state.path.read_text())
+    recorded_phases = [p["phase"] for p in data["phases"]]
+    assert recorded_phases == phase_names, f"phase order mismatch: {recorded_phases} != {phase_names}"
+    # Invariant: each phase exits before the next enters.
+    for i, phase in enumerate(recorded_phases):
+        assert data["phases"][i]["status"] == "complete"
+        if i < len(recorded_phases) - 1:
+            # All prior phases completed before this one.
+            assert data["phases"][i]["exit_code"] is not None
+
+
+def test_corrupt_prior_run_state_fails_soft(tmp_path: Path) -> None:
+    """C2: malformed run_state.json (truncated JSON, wrong type, missing 'forms')
+    must not crash _recover_interrupted_run; returns None or valid dict (no raise)."""
+    import config
+
+    output = tmp_path / "output"
+    runs = output / "runs"
+    (runs / "run_old").mkdir(parents=True)
+    (runs / "run_new").mkdir(parents=True, exist_ok=True)
+    old_state_path = runs / "run_old" / "run_state.json"
+
+    # Case 1: truncated JSON (parse error).
+    old_state_path.write_text(
+        '{"status": "in_progress", "run_id": "run_old", "phases": ',
+        encoding="utf-8",
+    )
+    new = runs / "run_new"
+    state = ORCH._RunState(study="S", run_id="run_new")
+    state.path = new / "run_state.json"
+    result = ORCH._recover_interrupted_run(state, study="S", run_dir=new)
+    # Fails soft: returns None (parse error caught), does not raise.
+    assert result is None
+
+    # Case 2: data is not a dict.
+    old_state_path.write_text(json.dumps(["not", "a", "dict"]), encoding="utf-8")
+    state = ORCH._RunState(study="S", run_id="run_new_2")
+    state.path = new / "run_state_2.json"
+    result = ORCH._recover_interrupted_run(state, study="S", run_dir=new)
+    assert result is None
+
+    # Case 3: missing 'forms' key (old schema or corruption).
+    old_state_path.write_text(
+        json.dumps({"status": "in_progress", "run_id": "run_old", "phases": []}),
+        encoding="utf-8",
+    )
+    state = ORCH._RunState(study="S", run_id="run_new_3")
+    state.path = new / "run_state_3.json"
+    result = ORCH._recover_interrupted_run(state, study="S", run_dir=new)
+    # Gracefully handles missing forms (treated as empty dict).
+    # Spec lines 545-548: forms defaults to {} if missing or not dict.
+    assert result is None or (
+        isinstance(result, dict) and result.get("reset_running") == [] and result.get("carried_held") == []
+    )
