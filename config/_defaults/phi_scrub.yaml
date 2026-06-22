@@ -224,7 +224,15 @@ keep_fields:
 # ──────────────────────────────────────────────────────────────────────────
 date_fields:
   # ── Specific clinical-date catalog (Indo-VAP CRF-tuned) ──────────────────
-  - "(?:VISDAT|ICFDT|COMPDAT|COMPDTE|TBTXDT|ENRDT|SCRDT|RANDDT|ONSDT|ENDDT|ADMDT|DISDT|RXSTDT|RXENDT|FOLDT|VISTDAT|BLDDAT|RECDAT|HIVDAT|IGRADAT|CXRDAT|PREGOUTDAT|MBDAT|STDAT|ENDAT|DSTDAT|GIVEDAT|ARTDAT|HBAND|HBADAT|HEMDAT|EVENTDAT|AWAREDAT|WOUTDAT|WITHDAT|RLPSDAT|PREGDAT|PROCD|MBRECDAT|PROCDAT|COLLDAT|LINDAT|LOUTDAT|GENOPROCDAT|GENORECDAT|PAXPROCDAT|PAXRECDAT|PBMCPROCDAT|PBMCRECDAT|PLASMAPROCDAT|PLASMARECDAT|QTFGITPROCDAT|QTFGITRECDAT|SLVPROCDAT|SLVRECDAT|URNPROCDAT|URNRECDAT|ARTSTDAT|ARTENDAT|INHSTDAT|INHENDAT|RIFSTDAT|RIFENDAT|PROPHSTDAT|PROPHENDAT|RPTSTDAT|RPTENDAT|COMPDATE|xraydat|PREGOUTDAT_2|COMPDAT_2|MBDAT2|SC_URNPROC80DAT|CAREDAT|TBDIAGDAT|ENROLLDAT|CD4DAT|LNDAT|LNDATND|GENOPROC80DAT|PAXPROC80DAT|PBMCPROC80DAT|PLASMAPROC80DAT|QTFGITPROC80DAT|SLVPROC80DAT|URNPROC80DAT|LIQENDAT|LIQSTDAT|SOLENDAT|SOLSTDAT|RECDAT2|BatchRDate|TBTRTSP)"
+  - "(?:VISDAT|ICFDT|COMPDAT|COMPDTE|TBTXDT|ENRDT|SCRDT|RANDDT|ONSDT|ENDDT|ADMDT|DISDT|RXSTDT|RXENDT|FOLDT|VISTDAT|BLDDAT|RECDAT|HIVDAT|IGRADAT|CXRDAT|PREGOUTDAT|MBDAT|STDAT|ENDAT|DSTDAT|GIVEDAT|ARTDAT|HBAND|HBADAT|HEMDAT|EVENTDAT|AWAREDAT|WOUTDAT|WITHDAT|RLPSDAT|PREGDAT|PROCD|MBRECDAT|PROCDAT|COLLDAT|LINDAT|LOUTDAT|GENOPROCDAT|GENORECDAT|PAXPROCDAT|PAXRECDAT|PBMCPROCDAT|PBMCRECDAT|PLASMAPROCDAT|PLASMARECDAT|QTFGITPROCDAT|QTFGITRECDAT|SLVPROCDAT|SLVRECDAT|URNPROCDAT|URNRECDAT|ARTSTDAT|ARTENDAT|INHSTDAT|INHENDAT|RIFSTDAT|RIFENDAT|PROPHSTDAT|PROPHENDAT|RPTSTDAT|RPTENDAT|COMPDATE|xraydat|PREGOUTDAT_2|COMPDAT_2|MBDAT2|SC_URNPROC80DAT|CAREDAT|TBDIAGDAT|ENROLLDAT|CD4DAT|LNDAT|LNDATND|GENOPROC80DAT|PAXPROC80DAT|PBMCPROC80DAT|PLASMAPROC80DAT|QTFGITPROC80DAT|SLVPROC80DAT|URNPROC80DAT|LIQENDAT|LIQSTDAT|SOLENDAT|SOLSTDAT|RECDAT2|BatchRDate)"
+  # ── Specimen tracking date-time elements (A1: moved from drop_fields) ──────
+  # ST_COLLTIM / ST_LINTIM / ST_LOUTTIM / ST_REPOSINTIM — specimen collection /
+  # log-in / log-out / reposit date-times. NOTE (runtime): if any stores a bare
+  # time-of-day rather than a full date, the fail-closed date rung quarantines
+  # the row — that is a documented data item, surfaced at the real scrub run.
+  - "(?:COLLTIM|LINTIM|LOUTTIM|REPOSINTIM)$"
+  # ── Child years-of-birth (A1: moved from drop_fields) ─────────────────────
+  - "^CC_CHILDY\\d+$"
   # NOTE: MBDATNR and MBDATNR2 were removed from the catalog above — those
   # columns (ZN_MBDATNR, ZN_MBDATNR2) store free-text "Not Done" / "Not
   # Recorded" status strings, not actual dates, and must NOT be date-scrubbed.
@@ -288,6 +296,22 @@ id_fields:
   - {pattern: "(?:LABID|REFID|MBREFID|CX_LABID|XLABID|MBLABID)", label: "LAB"}
   # ── Study / protocol cross-reference (co-enrollment metadata) ────────────
   - {pattern: "COE_(?:PROTOCOL|SPONSOR)\\d*$", label: "STDY"}
+  # ── A1 (Note 28): IDs recovered from drop_fields → pseudonymize, never drop ─
+  # Treatment-unit / data-management-center IDs (per-subject linkage).
+  - {pattern: "[-_]?TUID(?:CHG)?$", label: "TU"}
+  - {pattern: "[-_]?DMCID(?:CHG)?$", label: "DMC"}
+  # Specimen collection / processing IDs + the processing-ID signature columns.
+  - {pattern: "(?:COLLTID|COLLTNUM|COLLTMG)$", label: "SPEC"}
+  - {pattern: "PROCID$", label: "SPEC"}
+  - {pattern: "PROCSIG$", label: "SPEC"}
+  - {pattern: "^ST_LOUTTRAC$", label: "SPEC"}
+  # Lab accession numbers (LBACCID / LACCNUM).
+  - {pattern: "LBACCID$", label: "LAB"}
+  - {pattern: "LACCNUM$", label: "LAB"}
+  # Household-contact IDs (HHC1..n — "Household Contact ID #", per the SoT).
+  - {pattern: "^HHC\\d+$", label: "HHC"}
+  # Batch barcode ID (data-entry, but a stable linkable code → pseudonymize).
+  - {pattern: "^Remote[-_]?Bid$", label: "BID"}
   # ── Specimen / sample / accession IDs ────────────────────────────────────
   - {pattern: "(?:specimen|sample|accession)[-_]?(?:id|num|no|number)", label: "SPEC"}
 
@@ -308,20 +332,22 @@ birthdate_field: "(?:IS_BIRTHDAT|IC_BIRTHDAT|HHC_BRTHDAT|HC_BRTHDAT|birth|dob|bd
 # because whole-value hashing of narrative strings did not remove
 # embedded PHI tokens — it only obscured the containing string.
 drop_fields:
-  # ── Duplicate/redundant subject IDs (Excel artefacts) ────────────────────
+  # ── Secondary / redundant subject IDs (Excel re-entry artefacts) ─────────
+  # The scrub's secondary-subject-ID RESOLVER (phi_scrub._scrub_row) reads each
+  # SUBJID{n}/SUBJID_{n} value, compares it to the canonical SUBJID for the row,
+  # and either DROPS it (exact duplicate re-entry) or PSEUDONYMIZES it in the
+  # SUBJ keyspace (a distinct linked subject). This drop rule is the fail-closed
+  # FALLBACK when no canonical SUBJID resolves; the resolver supersedes it when
+  # one does. (A1 / Note 28 — "an ID is pseudonymized, never dropped".)
   - "^SUBJID\\d+(?:_\\d+)?$"
   - "^SUBJID_\\d+$"
-  # ── Site IDs / treatment-unit IDs ─────────────────────────────────────────
-  - "[-_]?TUID(?:CHG)?$"
-  - "[-_]?DMCID(?:CHG)?$"
   # ── Form / CRF tracking IDs (system artefacts) ───────────────────────────
   - "^Form[-_]?ID"
   - "^Form_Id$"
   - "^Form[-_]?Id(?:Mthd)?$"
   - "^FormIDMthd$"
-  - "^Remote[-_]?(?:Bid|Uid)(?:_PRESENT)?$"
-  - "^Remote[-_]?(?:Bid|Uid)$"
-  - "^HHC\\d+$"
+  - "^Remote[-_]?Uid(?:_PRESENT)?$"
+  - "^Remote[-_]?Uid$"
   # ── Batch/scan metadata (no clinical value) ──────────────────────────────
   - "^Batch"
   - "^Verify_Wks$"
@@ -339,7 +365,9 @@ drop_fields:
   - "^(?:[A-Z]{1,4}[-_])?SIGN(?:[-_]?\\d+)?$"
   - "COLLSIGN(?:[-_]?\\d+)?$"
   - "(?:COLLSIG|LINSIG|LOUTSIG|REPOSINSIG)(?:[-_]?\\d+)?$"
-  - "^SC_.*PROCSIG$"
+  # NOTE: SC_*PROCSIG (specimen processing-ID signatures) are pseudonymized as
+  # processing IDs via id_fields (A1 maintainer resolution: category=id), NOT
+  # dropped here.
   # ── Staff / personnel identifiers ────────────────────────────────────────
   - "(?:created|modified|updated|entered|verified)[-_]?by"
   - "(?:data[-_]?entry|crf)[-_]?(?:clerk|operator|tech|user)"
@@ -348,20 +376,10 @@ drop_fields:
   - "(?:interviewer|assessor|examiner)[-_]?(?:name|id|initials?)"
   - "(?:nurse|physician|clinician|doctor)[-_]?(?:name|id|initials?)"
   - "staff[-_]?(?:name|id|initials?)"
-  # ── Lab technician / collector identifiers ───────────────────────────────
+  # ── Lab technician NAMES (staff) → drop. (Collector / specimen / accession
+  #    *IDs* are pseudonymized via id_fields, not dropped — A1 / Note 28.) ────
   - "(?:lab|laboratory)[-_]?(?:tech|technician)[-_]?(?:name|id|initials?)"
   - "(?:LINTTECH|LOUTTECH|REPOSINTECH)"
-  - "COLLTID"
-  - "COLLTNUM"
-  - "COLLTMG"
-  - "SC_.*PROCID"
-  - "^SC_PROCID$"
-  # ── Lab accession / tracking numbers ─────────────────────────────────────
-  - "LBACCID$"
-  - "SC_.*LBACCID"
-  - "^ST_LACCNUM$"
-  - "^ST_LOUTTRAC$"
-  - "^chestxno$"
   # ── SSN / MRN (HIPAA #7/#8) ──────────────────────────────────────────────
   - "(?:ssn|social_?security)"
   - "(?:mrn|medical_?record)"
@@ -394,23 +412,20 @@ drop_fields:
   - "(?:query|discrepancy)[-_]?(?:status|note|comment)"
   - "(?:lock|freeze|sign[-_]?off)[-_]?(?:status|date|by)"
   - "(?:sdv|source[-_]?doc)[-_]?(?:status|date|by)"
-  # ── Specimen tracking timestamps ─────────────────────────────────────────
-  - "(?:LINTIM|LOUTTIM|REPOSINTIM|COLLTIM)$"
+  # ── Specimen tracking timestamps → JITTERED as date/time elements (A1) ────
+  # ST_*TIM (COLLTIM/LINTIM/LOUTTIM/REPOSINTIM) are specimen collection/log
+  # date-time elements; routed to date_fields (SANT jitter) rather than dropped
+  # so visit-interval structure survives. (A1 maintainer resolution.)
   - "^ST_RESPOSINDAT$"
-  # ── Religion / caste / tribe / community / language (sensitive) ──────────
-  - "RELIG"
-  - "(?:CASTE|TRIBE|COMMUNITY)"
-  - "(?:^IC_LANGUAGE$|LANGUAGESP$|MOTHER_?TONGUE)"
-  - "(?:^[A-Z]{1,4}[-_]LANGUAGE$)"
-  # ── Education / occupation / income → PRESERVE-generalized via fail-closed
-  #    band_fields (T2.1). Only the non-bandable members stay DROP: ────────────
-  - "(?:SCHOOLDK$|SCLDK$)"   # schooling Don't-Know flags (IC_SCHOOLDK / IC_MASCHOOLDK)
-  # NOTE: EE_SCLDK also ends in SCLDK but is KEPT, not dropped — the EE_ asset-
-  #       inventory keep allowlist (^EE_(?:...|SCL|...), no $ anchor) matches it at
-  #       rung 1 and short-circuits this drop. This PRE-DATES T2.1; confirm the
-  #       intended fate of EE_SCLDK (schooling DK flag vs asset companion) at
-  #       Checkpoint B.
-  - "^IC_JOBSP$"                         # free-text occupation "specify" write-in
+  # ── Socioeconomic coded categoricals → KEEP (A1 / Note 28) ───────────────
+  # Religion / caste / tribe / community / language / schooling / occupation are
+  # NOT among the HIPAA Safe Harbor 18 identifiers and are epidemiologically
+  # load-bearing TB risk factors. phi_review classifies them KEEP; routing them
+  # to drop produced 11 keep+drop ledger contradictions (A1). They are recovered
+  # as coded categoricals here — NO drop rule. The "specify" write-ins for these
+  # coded fields (IC_JOBSP / IC_LANGUAGESP / IC_RELIGIONSP) are likewise KEEP
+  # (option codes, not free narrative). Facility/geography "specify" fields
+  # (IC_CLINICSP / *_HIVLOCSP) are handled separately below (drop / generalize).
   # ── Facility / clinic NAMES (location-identifying) ───────────────────────
   - "(?:IC_CLINIC$|IC_CLINICSP$|IC_HIVLOC$|IC_HIVLOCSP$)"
   - "(?:RE_CLINIC$|RE_CLINICNAME$|RE_CLINICOTH$|RE_DOTSCLINIC$)"
@@ -462,14 +477,17 @@ drop_fields:
   - "(?:unique[-_]?id|uid|identification[-_]?number)"
   # ── Staff-adjacent asha/anm/anganwadi worker identifiers ─────────────────
   - "(?:asha|anm|anganwadi)[-_]?(?:name|id|worker)"
-  # ── Children's birth years (person-linked DOB) ───────────────────────────
-  - "(?:CHILDY|CHILD_?YEAR|CHILD_?BIRTH)"
+  # ── Children's birth years → JITTERED (A1) ───────────────────────────────
+  # CC_CHILDY{1..8} are child years-of-birth (date elements, HIPAA Safe Harbor
+  # §164.514(b)(2)(i)(C)); routed to date_fields (SANT jitter) rather than
+  # dropped so child-age epidemiology survives. (A1 / Note 28.)
   # ── Narrative / free-text / specify / comment fields ─────────────────────
   # Whole-field DROP rather than whole-value HMAC: hashing a free-text
   # value that contains an Aadhaar or a phone number does not remove the
   # PHI, it just obscures the containing string. Dropping the field is
   # the honest-safe default until a narrative NER sweep lands.
   - "(?:WITHDRAWEXPLAIN|WITHDRAW_?EXPLAIN)"
+  - "(?:TBTRTSP|TBTRT_?SP)$"   # "TB treatment — specify" free-text (A1: was misfiled in date_fields)
   - "^FA_FUCOMPADCSP$"
   - "^CC_NOPREGTESTSP$"
   - "^CC_CNCTNDSP$"
