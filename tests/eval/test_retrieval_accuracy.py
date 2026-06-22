@@ -29,11 +29,35 @@ import config
 import scripts.ai_assistant.agent_tools as agent_tools
 
 _GOLD = Path(__file__).with_name("retrieval_gold_set.jsonl")
+# Real published Indo-VAP tree, resolved from the repo root so it is INDEPENDENT
+# of any global config repoint a prior suite test may have left behind.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REAL_LS = _REPO_ROOT / "output" / "Indo-VAP" / "llm_source"
+_REAL_META = _REAL_LS / "study_metadata"
 
 
-def _published() -> bool:
-    map_path = Path(config.LLM_SOURCE_STUDY_METADATA_DIR) / "study_variable_map.yaml"
-    return map_path.is_file()
+@pytest.fixture(autouse=True)
+def _pin_real_indovap(monkeypatch: pytest.MonkeyPatch):
+    """Pin the agent-read config at the real Indo-VAP publish + clear caches.
+
+    The module-level constants and the concept/joined-view/tool caches are
+    process-global; an earlier suite test that repoints config or warms a cache
+    under a fixture study would otherwise make this integration gate flaky. We
+    re-pin to the real publish (repo-root absolute), bust the caches, and skip
+    cleanly when no study is published (CI without ``make study``).
+    """
+    if not (_REAL_META / "study_variable_map.yaml").is_file():
+        pytest.skip("Indo-VAP not published (run make study STUDY=Indo-VAP)")
+    monkeypatch.setattr(config, "REPO_ROOT", _REPO_ROOT, raising=False)
+    monkeypatch.setattr(config, "LLM_SOURCE_STUDY_METADATA_DIR", _REAL_META, raising=False)
+    monkeypatch.setattr(
+        config, "TRIO_DATASETS_DIR", _REAL_LS / "dataset_schema" / "files", raising=False
+    )
+    agent_tools._CONCEPT_INDEX_CACHE.clear()
+    agent_tools._JOINED_VIEW_SUMMARIES_CACHE.clear()
+    agent_tools.tool_cache.clear()
+    yield
+    agent_tools._CONCEPT_INDEX_CACHE.clear()
 
 
 def _load_gold() -> list[dict]:
@@ -46,7 +70,6 @@ def _load_gold() -> list[dict]:
 
 
 _GOLD_ROWS = _load_gold()
-_pub = pytest.mark.skipif(not _published(), reason="no published study (run make study)")
 
 
 def test_gold_set_is_wellformed() -> None:
@@ -103,14 +126,12 @@ def _miss(row: dict) -> str | None:
     return f"unknown kind {kind}"
 
 
-@_pub
 @pytest.mark.parametrize("row", _GOLD_ROWS, ids=[r["gold_id"] for r in _GOLD_ROWS])
 def test_gold_entry_resolves(row: dict) -> None:
     miss = _miss(row)
     assert miss is None, f"{row['gold_id']} ({row['question']!r}): {miss}"
 
 
-@_pub
 def test_zero_misses_on_gold_set() -> None:
     """The headline gate: misses across the whole labeled set must be ZERO."""
     misses = [(r["gold_id"], _miss(r)) for r in _GOLD_ROWS]
@@ -118,7 +139,6 @@ def test_zero_misses_on_gold_set() -> None:
     assert not failing, f"{len(failing)}/{len(_GOLD_ROWS)} gold misses: {failing}"
 
 
-@_pub
 def test_concept_resolution_is_cohort_scoped() -> None:
     """Index-case vs household-contact concepts must NOT collide (R2 + R3)."""
     a = {
