@@ -356,23 +356,13 @@ def verify_workspace_cleanup(
         for p in must_gone
         if p.exists()
     )
-    # Check for ephemeral SoT per-form temp intermediates (sot_source_pack_* and
-    # sot_render_* dirs the SoT generator writes under the system temp dir and
-    # cleans via _cleanup_sot_temps in generate_form). Use gettempdir() rather
-    # than a hardcoded /tmp so the check follows TMPDIR (and satisfies S108).
-    import glob
-    import tempfile
-
-    _tmp = Path(tempfile.gettempdir())
-    for prefix in ("sot_source_pack_*", "sot_render_*"):
-        findings.extend(
-            WorkspacePathFinding(
-                phase=_PHASE_MUST_GONE,
-                target=path_str,
-                detail="SoT temp file/dir still present after cleanup",
-            )
-            for path_str in glob.glob(str(_tmp / prefix))
-        )
+    # NOTE (A3): the SoT per-form intermediates (sot_source_pack_*/sot_render_*)
+    # are written under the SYSTEM temp dir with no run/study id in their names,
+    # so a global glob here cross-contaminates across concurrent runs (and across
+    # this verifier's own test runs). They are cleaned by _cleanup_sot_temps in
+    # the SoT generator (generate_form); a run-scoped check would require the
+    # generator to write them under run_dir first. Intentionally NOT globbing
+    # /tmp here — that scan was removed after it false-flagged unrelated leftovers.
 
     must_remain: list[Path] = [
         Path(config.STUDY_LLM_SOURCE_DIR),
