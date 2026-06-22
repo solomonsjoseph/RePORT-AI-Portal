@@ -41,7 +41,7 @@
       "reason": "HIPAA Safe Harbor \u00a7164.514(b)(2)(i)(R) unique identifier header."
     }
   ],
-  "rules_sha256": "4d0a07ba13bbeb92d4b1b150eff9e8399f79b344ec5ec0cf2bcb0174f4d4a6ca",
+  "rules_sha256": "615da397b3b707c5db7993b838cc203ba81a365eb77e445178837a1730b9af80",
   "source_mode": "pinned",
   "sources": [
     {

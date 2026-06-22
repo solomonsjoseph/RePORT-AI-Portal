@@ -428,21 +428,26 @@ drop_fields:
   # coded fields (IC_JOBSP / IC_LANGUAGESP / IC_RELIGIONSP) are likewise KEEP
   # (option codes, not free narrative). Facility/geography "specify" fields
   # (IC_CLINICSP / *_HIVLOCSP) are handled separately below (drop / generalize).
-  # ── Facility / clinic NAMES (location-identifying) ───────────────────────
-  - "(?:IC_CLINIC$|IC_CLINICSP$|IC_HIVLOC$|IC_HIVLOCSP$)"
-  - "(?:RE_CLINIC$|RE_CLINICNAME$|RE_CLINICOTH$|RE_DOTSCLINIC$)"
-  - "(?:TC_CENTER$|TC_CENTERSP$)"
-  - "(?:CC_HIVLOC$|CC_HIVLOCSP$|HC_HIVLOC$|HC_HIVLOCSP$)"
-  # ── Geography (HIPAA §164.514(b)(2)(i)(B) — sub-state identifying) ───────
-  # NOTE: district-level aggregate fields (computed) retained in llm_source;
-  # raw village / hamlet / block / tehsil / pincode / GPS always dropped.
-  - "^IS_MUNIC$"
-  - "(?:VILLAGE|CITY|TOWN|DISTRICT|TALUK|BLOCK|WARD|LOCALITY|PANCHAYAT|MANDAL|TEHSIL|STATE|PROVINCE|REGION|AREA|ZONE)"
-  - "(?:ADDR|ADDRESS|RESIDENCE)"
-  - "^EE_LOC$"
-  - "(?:TBDIAGLOC|TB_?DIAG_?LOC)"
-  - "(?:OTDOTSLOC|DOTSLOC)"
+  # ── Facility / clinic NAMES + free-text 'specify' → drop (A1: codes KEEP) ──
+  # Maintainer A1 decision (2026-06-22): coded clinic / center / site numbers
+  # (IC_CLINIC / RE_CLINIC / RE_DOTSCLINIC / TC_CENTER), the coded HIV-test and
+  # TB-diagnosis facility values (IC_HIVLOC / HC_HIVLOC / RE_TBDIAGLOC), the 3-way
+  # municipality code (IS_MUNIC) and the urbanicity category (EE_LOC) are KEPT as
+  # coded research variables — NO drop rule here (the data dictionary shows them
+  # as low-cardinality option codes, not free addresses). Only clinic NAMES and
+  # free-text 'specify' write-ins drop — those boxes can carry a verbatim address
+  # or embedded identifier (free text is dropped wholesale, never preserved).
+  - "(?:RE_CLINICNAME$|RE_DOTSCLINNAME$)"
+  - "(?:IC_CLINICSP$|RE_CLINICOTH$|TC_CENTERSP$)"
+  - "(?:IC_HIVLOCSP$|HC_HIVLOCSP$|CC_HIVLOCSP$)"
   - "^TC_OTDOTSLOC$"
+  # ── Geography (HIPAA §164.514(b)(2)(i)(B) — raw sub-state identifiers) ─────
+  # Raw village / hamlet / district / block / tehsil / address / pincode / GPS
+  # always dropped (HIPAA §164.514(b)(2)(i)(B) catalog coverage). The Indo-VAP
+  # study carries none of these generic-geography column names — the specific
+  # coded municipality / facility codes it DOES carry are kept above.
+  - "(?:VILLAGE|CITY|TOWN|DISTRICT|TALUK|BLOCK|WARD|LOCALITY|PANCHAYAT|MANDAL|TEHSIL|STATE|PROVINCE|REGION|AREA|ZONE|HAMLET)"
+  - "(?:ADDR|ADDRESS|RESIDENCE)"
   - "(?:pin_?code|postal|zip)"
   - "(?:zip_?code|postal)"
   - "(?:gps|geoloc|latitude|longitude|lat[-_]?long|coordinates)"
@@ -476,7 +481,9 @@ drop_fields:
   - "(?:username|login[-_]?id|user[-_]?id|screen[-_]?name)"
   - "(?:cctv|surveillance|camera[-_]?id|footage)"
   - "(?:medical[-_]?image|xray[-_]?file|ct[-_]?scan[-_]?file|mri[-_]?file|dicom)"
-  - "(?:unique[-_]?id|uid|identification[-_]?number)"
+  # NB: \buid\b (word-bounded) so this Aadhaar/unique-id catch-all does NOT
+  # swallow treatment-unit IDs (…TUID/TUIDCHG), which pseudonymize via id_fields.
+  - "(?:unique[-_]?id|\\buid\\b|identification[-_]?number)"
   # ── Staff-adjacent asha/anm/anganwadi worker identifiers ─────────────────
   - "(?:asha|anm|anganwadi)[-_]?(?:name|id|worker)"
   # ── Children's birth years → JITTERED (A1) ───────────────────────────────

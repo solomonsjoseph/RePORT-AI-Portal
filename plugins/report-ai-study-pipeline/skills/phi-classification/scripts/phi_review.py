@@ -400,7 +400,7 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
             # socioeconomic option-'specify' columns (job/language/religion SP)
             # AND the case-control clinical 'specify' columns kept by the ^CC_
             # allowlist (CC_CNCTNDSP/CC_NOPREGTESTSP/CC_HIVLOCSP) are NOT matched.
-            r"(?:clinicsp|centersp|clinicoth)$",
+            r"(?:clinicsp|centersp|clinicoth|otdotsloc)$",
             r"(?:ic_hivlocsp|hc_hivlocsp)$",
             r"(?:dthsrc|dthsrcsp|dthcaussp|fucompadcsp)$",
             r"(?:withdrawexplain|withdraw_?explain|tbtrtsp)$",
