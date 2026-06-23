@@ -215,10 +215,11 @@ def test_publish_subprocess_resolves_main_py_at_repo_root() -> None:
 
 
 def test_assertions_and_gate_use_merged_scrub_config_loader() -> None:
-    """Risk #8: assertions 12/14 and the approval gate must load the EFFECTIVE
+    """Risk #8: assertions 12/14/17 and the approval gate must load the EFFECTIVE
     deep-merged config (load_scrub_config(study=...)) — not a single-file load —
-    so the decided-vs-applied / coverage checks and the published-raw gate
-    evaluate the SAME config run_scrub applied once per-study overrides land."""
+    so the decided-vs-applied / coverage / cap-application checks and the
+    published-raw gate evaluate the SAME config run_scrub applied once per-study
+    overrides land."""
     ext_path = (
         Path(config.BASE_DIR)
         / "plugins"
@@ -229,8 +230,10 @@ def test_assertions_and_gate_use_merged_scrub_config_loader() -> None:
         / "extract_to_llm_source.py"
     )
     src = ext_path.read_text(encoding="utf-8")
-    # Exactly the three risk-#8 sites use the merged study= loader.
-    assert src.count("load_scrub_config(study=study)") == 3
+    # Exactly the four risk-#8 sites use the merged study= loader (assertions
+    # 12, 14, 17 + the approval gate); assertion 17 (cap_application_complete)
+    # is the fourth, added to verify cap was applied to the published output.
+    assert src.count("load_scrub_config(study=study)") == 4
     # The old single-file effective-path load must be gone from those sites.
     assert "load_scrub_config(scrub_config_path)" not in src
     assert "load_scrub_config(Path(config.PHI_SCRUB_CONFIG_PATH))" not in src

@@ -165,8 +165,14 @@ keep_fields:
   - "MBRECTIM"
   # ── False-positive guards for "urine" (not a URL) ──
   - "URIN(?:E|A|B)"
-  # ── False-positive guards for clinical lab specimen ID indicators ──
-  - "^(?:CX_LABID|ZN_MBLABID\\d*|CM_MBLABID\\d*|DST_XLABID\\d*)$"
+  # ── Clinical lab specimen-ID indicators kept as research vars ──
+  # ZN_MBLABID*/CM_MBLABID* REMOVED: SoT/PDF labels them "Laboratory accession #"
+  # — the same unique specimen identifier as the pseudonymized sibling MBREFID —
+  # so they fall through to id_fields (HMAC pseudonymize), consistent with
+  # MBREFID + Safe Harbor §164.514(b)(2)(i)(R). CX_LABID/DST_XLABID are
+  # SoT-unconfirmed (CX_LABID label ambiguous; DST_XLABID has no CRF PDF) and are
+  # conservatively retained pending maintainer confirmation.
+  - "^(?:CX_LABID|DST_XLABID\\d*)$"
   - "^CBC_HBAND$"
   # ── Visit labels (categorical) ──
   - "[-_]VISIT"

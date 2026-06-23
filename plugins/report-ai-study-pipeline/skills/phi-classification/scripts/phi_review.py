@@ -438,7 +438,13 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
             # *PROCSIG) → pseudonymize. The bare SC_PROCSIG is a kept clinical
             # flag (^SC_…PROCSIG allowlist), so the prefix is required here.
             r"(?:geno|pax|pbmc|plasma|qtfgit|qtf|slv|urn)procsig$",
-            r"(?:mbrefid|artidn|diaidn|ocmidn|tbproidn|tbincid|coenrlid)\d*$",
+            # mblabid = "Laboratory accession #" (SoT/PDF-confirmed) — the SAME
+            # unique specimen identifier as the sibling mbrefid (already
+            # pseudonymized). Kept-raw was an inconsistency (the phi_scrub keep
+            # allowlist over-rode the id_fields entry); pseudonymize for
+            # consistency + Safe Harbor §164.514(b)(2)(i)(R). CX_LABID/DST_XLABID
+            # are SoT-unconfirmed and intentionally NOT matched here.
+            r"(?:mbrefid|mblabid|artidn|diaidn|ocmidn|tbproidn|tbincid|coenrlid)\d*$",
             r"(?:idna|idchgna)$",
             r"(^|[_ -])(?:phcid|ictc|csid)$",
             r"^hhc\d+$",

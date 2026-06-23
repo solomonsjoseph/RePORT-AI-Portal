@@ -184,6 +184,51 @@ def test_strictest_wins_across_usa_and_india_rules(tmp_path: Path) -> None:
     assert classified["SUBJID"].action == Action.PSEUDONYMIZE
 
 
+def test_lab_accession_mblabid_pseudonymized_like_mbrefid(tmp_path: Path) -> None:
+    """Laboratory accession # columns (MBLABID family) pseudonymize, consistent
+    with the sibling MBREFID.
+
+    Both MBLABID and MBREFID are SoT/PDF-confirmed "Laboratory accession #" unique
+    specimen identifiers (HIPAA Safe Harbor §164.514(b)(2)(i)(R)). Regression:
+    MBLABID was kept raw (an over-broad phi_scrub keep allowlist over-rode the
+    id_fields entry) while the sibling MBREFID was pseudonymized — an
+    under-protection inconsistency. CX_LABID/DST_XLABID are SoT-unconfirmed and
+    intentionally NOT reclassified (must stay KEEP — no over-reach).
+    """
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    _write_privacy_config(study_dir)
+    cfg = load_study_privacy_config(study_dir)
+    bundle = refresh_jurisdiction_rules(cfg, allow_network=False)
+
+    classified = classify_headers(
+        [
+            "ZN_MBLABID",
+            "ZN_MBLABID2",
+            "CM_MBLABID2",
+            "ZN_MBREFID",
+            "MBREFID",
+            "CX_LABID",
+            "DST_XLABID",
+            "CC_PREGNUM",
+        ],
+        cfg,
+        bundle,
+    )
+
+    # SoT-confirmed accession # → pseudonymize (now consistent with MBREFID)
+    assert classified["ZN_MBLABID"].action == Action.PSEUDONYMIZE
+    assert classified["ZN_MBLABID2"].action == Action.PSEUDONYMIZE
+    assert classified["CM_MBLABID2"].action == Action.PSEUDONYMIZE
+    # sibling identifier unchanged
+    assert classified["ZN_MBREFID"].action == Action.PSEUDONYMIZE
+    assert classified["MBREFID"].action == Action.PSEUDONYMIZE
+    # SoT-unconfirmed lab IDs stay KEEP (no over-reach)
+    assert classified["CX_LABID"].action == Action.KEEP
+    assert classified["DST_XLABID"].action == Action.KEEP
+    # clinical false-positive (pregnancy count) stays KEEP
+    assert classified["CC_PREGNUM"].action == Action.KEEP
+
+
 def test_dte_and_date_suffixes_classify_as_jitter_date(tmp_path: Path) -> None:
     """DTE/DATE date-suffix columns must classify as JITTER_DATE, not KEEP.
 
