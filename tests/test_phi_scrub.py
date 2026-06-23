@@ -357,6 +357,28 @@ class TestLoadScrubConfig:
         for sibling in ("TC_OTDOTSLOC", "TC_CENTERSP", "IC_CLINICSP", "HC_HIVLOCSP"):
             assert cfg.field_is_drop(sibling), sibling
 
+    def test_contact_counts_clamp_not_drop_normalized(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Regression (Note 32, THEME 2): household-contact COUNTS are configured
+        suppress_small_cell (clamp+keep), and must be recognized as such on BOTH
+        the raw header AND the normalized header (the force-drop-exclusion check
+        sees the normalized form). IS_CONTACTS_6YRS normalizes to is_contacts_6_yrs
+        — the pattern must tolerate the inserted underscore, else the count is
+        force-dropped instead of clamped."""
+        from scripts.security.phi_scrub import _normalize_header_for_lookup as _norm
+
+        defaults_dir = Path(__file__).resolve().parents[1] / "config" / "_defaults"
+        monkeypatch.setattr(config, "CONFIG_DEFAULTS_DIR", defaults_dir)
+        cfg = phi_scrub.load_scrub_config(study="__no_such_study__")
+        assert cfg is not None
+        for h in ("IS_CONTACTS", "IS_CONTACTS_TOTAL", "IS_CONTACTS_6YRS"):
+            assert cfg.field_is_suppress_small_cell(h), f"raw {h}"
+            assert cfg.field_is_suppress_small_cell(_norm(h)), f"normalized {h}"
+            # a small-cell count must NOT be a drop/keep — it routes to the clamp rung
+            assert not cfg.field_is_drop(h), h
+            assert not cfg.field_is_keep(h), h
+
     def test_limited_dataset_requires_authority(
         self, scrub_config_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

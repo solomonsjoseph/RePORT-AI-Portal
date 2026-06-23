@@ -2774,9 +2774,21 @@ def run_scrub(
         #      PHI) that a broad form-prefix keep would otherwise publish raw.
         force_drop_by_stem: dict[str, frozenset[str]] = {
             stem: frozenset(
-                h for h, c in per_header.items() if (c or {}).get("action") == "suppress"
+                h
+                for h in (
+                    {h for h, c in per_header.items() if (c or {}).get("action") == "suppress"}
+                    | sot_force_drop_by_stem.get(stem, frozenset())
+                )
+                # Resolve the Action.SUPPRESS overload (Note 32): a small-cell COUNT
+                # field (e.g. household-contact counts in suppress_small_cell_fields)
+                # is CLAMPED — kept + top-coded by the suppress_small_cell rung — never
+                # force-dropped. phi_review classifies free-text AND counts as SUPPRESS;
+                # the docstring promises the scrubber picks the method by field type, but
+                # the priority-0 force-drop was overriding the clamp and deleting counts.
+                # Excluding small-cell fields here honors that intent. Free-text SUPPRESS
+                # fields (no small-cell config) still force-drop as before.
+                if not cfg.field_is_suppress_small_cell(h)
             )
-            | sot_force_drop_by_stem.get(stem, frozenset())
             for stem, per_header in (approval_lookup or {}).items()
         }
 

@@ -643,9 +643,13 @@ band_ranges:
 # (default 5) to prevent k-anon re-identification via unique household
 # demographics. Values ≥ threshold collapse to threshold.
 suppress_small_cell_fields:
+  # 6[_ ]?YRS: header normalization inserts an underscore (IS_CONTACTS_6YRS ->
+  # is_contacts_6_yrs), so the force-drop-exclusion check (which sees the NORMALIZED
+  # header) must match both forms — else the count is force-dropped instead of
+  # clamped. Mirrors phi_review's own normalization-robust contacts pattern.
   - "^IS_CONTACTS$"
-  - "^IS_CONTACTS_(?:TOTAL|6YRS)$"
-  - "(?:contacts?_?(?:total|count|6yrs)?$)"
+  - "^IS_CONTACTS_(?:TOTAL|6[_ ]?YRS)$"
+  - "(?:contacts?_?(?:total|count|6[_ ]?yrs)?$)"
 
 # ──────────────────────────────────────────────────────────────────────────
 # DATE NULL TOKENS
