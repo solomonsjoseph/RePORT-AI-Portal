@@ -45,8 +45,10 @@ The active full workflow is the portable plugin bundle at
 → **dataset-deduplication** (raw-file tiers, Note 4) → SoT ∥ PHI classify ∥
 extract → scrub → verify → PHI guard gate → promote → snapshot.
 
-Legacy ``excel-duplicate-handler`` is not invoked by the orchestrator
-(superseded by ``dataset-deduplication`` at phase 2).
+The ``dataset-deduplication`` maintainer merge arm (``merge_excel_duplicates.py``,
+folded in from the retired ``excel-duplicate-handler``, Note 18) is run by a
+maintainer to resolve a held complementary-duplicate group; it is never invoked
+by the orchestrator.
 
 The plugin does not own the data dictionary. Dictionary extraction stays in
 ``main.py`` and ``scripts.extraction.load_dictionary``.

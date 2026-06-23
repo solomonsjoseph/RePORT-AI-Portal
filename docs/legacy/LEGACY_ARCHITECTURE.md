@@ -34,10 +34,13 @@ These two rows reflect the design intent recorded in the spec (Note 21). The
 *in-DAG* duplicate handling was indeed replaced, but two artifacts named above
 are not fully gone today, so they are annotated here rather than misrepresented:
 
-- **`excel-duplicate-handler` is retained as a `role: legacy_preflight` skill**
-  in `plugins/report-ai-study-pipeline/plugin.yaml` (maintainer-only merge
-  helper). Orchestrator phase 2 **`dataset-deduplication`** (`raw_file_dedup.py`)
-  replaced it in the active publish path (Note 18).
+- **`excel-duplicate-handler` was fully retired (2026-06-23).** Orchestrator
+  phase 2 **`dataset-deduplication`** (`raw_file_dedup.py`) replaced it in the
+  active publish path (Note 18). Its one surviving asset — the lossless
+  workbook-merge engine `merge_excel_duplicates.py` — was folded into
+  `dataset-deduplication/scripts/` as a maintainer-only resolution arm (never
+  auto-invoked); the skill directory, SKILL.md, `agents/llm.yaml`, and the
+  `plugin.yaml` `legacy_preflight` registration were removed.
 - **`SUSPECTED_DUPLICATE_PAIRS`, `JUNK_PATTERNS`, and the `clean_trio_datasets`
   JSONL-level dedup/junk passes were removed** (Note 18 remediation). Raw-file
   dedup (`raw_file_dedup.py`, orchestrator phase 2) plus the manifest `reject:`

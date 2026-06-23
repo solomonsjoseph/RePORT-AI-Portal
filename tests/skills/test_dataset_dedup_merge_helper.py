@@ -1,4 +1,11 @@
-"""Tests for the excel-duplicate-handler merge helper."""
+"""Tests for the dataset-deduplication merge helper.
+
+The lossless Excel merge engine (``merge_excel_duplicates.py``) was folded into
+``dataset-deduplication`` as its maintainer-invoked *resolution* arm when the
+legacy ``excel-duplicate-handler`` skill was retired (Note 18). It is NOT wired
+into the automated phase-2 DAG path — it is run by a maintainer to resolve a
+held duplicate group by lossless workbook merge.
+"""
 
 from __future__ import annotations
 
@@ -14,10 +21,25 @@ SCRIPT = (
     / "plugins"
     / "report-ai-study-pipeline"
     / "skills"
-    / "excel-duplicate-handler"
+    / "dataset-deduplication"
     / "scripts"
     / "merge_excel_duplicates.py"
 )
+
+
+def test_merge_engine_lives_under_dataset_deduplication() -> None:
+    """The retired excel-duplicate-handler skill dir must be gone; the merge
+    engine must live under dataset-deduplication and be documented there."""
+
+    excel_dir = (
+        REPO_ROOT / "plugins" / "report-ai-study-pipeline" / "skills" / "excel-duplicate-handler"
+    )
+    assert not excel_dir.exists(), "retired excel-duplicate-handler skill dir still present"
+    assert SCRIPT.is_file(), "merge engine not relocated under dataset-deduplication"
+
+    skill_md = SCRIPT.parents[1] / "SKILL.md"
+    body = skill_md.read_text(encoding="utf-8")
+    assert "merge_excel_duplicates.py" in body, "dedup SKILL.md must document the merge arm"
 
 
 def _write_workbook(path: Path) -> None:

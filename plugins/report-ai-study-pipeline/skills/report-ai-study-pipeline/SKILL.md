@@ -115,9 +115,9 @@ Conceptual phase 3b (cross-form PHI-classification barrier) executes inside
 
 `$phi-rulebook` is a shared-module skill consumed in phase 0 and by
 `$phi-classification` (not a DAG node). `$study-setup` is interactive scaffolding
-and is **not** an orchestrator phase. `$excel-duplicate-handler` is retained as
-a **legacy** maintainer-only helper (superseded by `$dataset-deduplication` at
-orchestrator phase 2 — Note 18).
+and is **not** an orchestrator phase. The legacy `excel-duplicate-handler` skill
+was retired (Note 18); its lossless workbook-merge engine is folded into
+`$dataset-deduplication` as a maintainer-only resolution arm (never auto-invoked).
 
 ## Execution Unit
 
@@ -198,8 +198,9 @@ Per-form fingerprints do **not** drive partial promotion — an accepted deviati
 ## When To Use Only One Child Skill
 
 If the user asks only about duplicate files, use `$dataset-deduplication`
-(orchestrator phase 2). The legacy `$excel-duplicate-handler` merge helper is
-not invoked by the publish path.
+(orchestrator phase 2). Its maintainer-only merge arm (`merge_excel_duplicates.py`,
+folded in from the retired `excel-duplicate-handler`) resolves complementary
+duplicates by lossless workbook merge and is never invoked by the publish path.
 If the user asks only about PDF/header Source Truth policy YAML, use
 `$sot-lean-generator`. If the user asks only to run or verify PHI-safe dataset
 publishing, use `$dataset-to-llm-source`. Use this orchestrator when the request
@@ -225,4 +226,4 @@ contract and do not invent a substitute that weakens the PHI boundary.
 - **Does not partial-promote on recovery** — per-form fingerprints drive readback classification + observability + the redundant-run check, but the publish leg is a whole-leg atomic `rename()` that always re-scrubs from raw; `--resume-held` re-publishes the full surviving set (accepted deviation D4).
 - **Does not run the publish engine directly for a normal build** — `make study` is the entry point; the orchestrator owns the lock, phase ordering, the redundant-run short-circuit, and the snapshot commit.
 - **Does not let a stale lock baton disable the lock** — the handed `REPORTAL_PIPELINE_LOCK_PARENT_PID` baton is validated against `os.getppid()`, so a leftover env var cannot silently skip lock acquisition.
-- **Does not run `$study-setup` or `$excel-duplicate-handler` as phases** — `$study-setup` is interactive scaffolding, and `$excel-duplicate-handler` is a legacy maintainer-only helper superseded by `$dataset-deduplication` at phase 2.
+- **Does not run `$study-setup` as a phase, and never auto-runs the merge resolution arm** — `$study-setup` is interactive scaffolding; the `$dataset-deduplication` maintainer merge arm (`merge_excel_duplicates.py`, folded in from the retired `excel-duplicate-handler`, Note 18) is run by a maintainer to resolve a held group, never by the orchestrator.

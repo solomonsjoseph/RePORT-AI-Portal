@@ -177,19 +177,6 @@ skills:
     parallel: false
     invocation: subprocess
     purpose: Run the 17-assertion verifier; idempotent re-verify in phase 9.
-  - skill: excel-duplicate-handler
-    path: skills/excel-duplicate-handler/SKILL.md
-    role: legacy_preflight
-    scope: study
-    parallel: false
-    # Legacy maintainer CLI (merge_excel_duplicates.py) superseded by
-    # dataset-deduplication; NOT invoked by `make study`, so it is not a
-    # pipeline subprocess DAG node.
-    invocation: native_module
-    purpose: >
-      Legacy workbook merge helper (superseded by dataset-deduplication at orchestrator
-      phase 2 — Note 18). Retained for manual maintainer preflight only; not invoked
-      by the 10-phase orchestrator.
   - skill: phi-rulebook
     path: skills/phi-rulebook/SKILL.md
     role: shared_module

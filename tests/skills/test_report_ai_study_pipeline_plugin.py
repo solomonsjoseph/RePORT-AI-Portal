@@ -29,7 +29,6 @@ _ALL_SKILL_DIRS = [
     "phi-scrubbing",
     "dataset-to-llm-source",
     "audit-verification",
-    "excel-duplicate-handler",
     "phi-rulebook",
     "study-setup",
 ]
@@ -104,7 +103,13 @@ def test_plugin_skills_inventory_is_complete_and_well_formed() -> None:
 
     for skill in manifest["skills"]:
         assert {"skill", "path", "role", "scope", "parallel", "purpose"} <= set(skill)
-        assert skill["role"] in {"dag", "preflight", "legacy_preflight", "shared_module", "interactive"}
+        assert skill["role"] in {
+            "dag",
+            "preflight",
+            "legacy_preflight",
+            "shared_module",
+            "interactive",
+        }
 
 
 def test_plugin_defines_raw_file_set_contract() -> None:

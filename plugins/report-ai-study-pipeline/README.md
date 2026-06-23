@@ -32,8 +32,10 @@ commits an immutable snapshot and points `current.json` at it.
 ## Execution Model
 
 Duplicate handling runs in orchestrator **phase 2** via
-``dataset-deduplication`` (raw-file tiers, Note 4). Legacy
-``excel-duplicate-handler`` is maintainer-only and not invoked by ``make study``.
+``dataset-deduplication`` (raw-file tiers, Note 4). Its maintainer-only merge arm
+(``merge_excel_duplicates.py``, folded in from the retired ``excel-duplicate-handler``,
+Note 18) resolves complementary duplicates by lossless workbook merge and is never
+invoked by ``make study``.
 After dedup, work is organized by **raw-file set** — one canonical form/work unit containing the
 associated raw dataset workbook or CSV, matching printed PDF when Source Truth is
 required, manifest/privacy context, duplicate variants already resolved or held
@@ -62,13 +64,12 @@ held/partial sets as non-blocking notices and never triggers the retry loop.
 - `skills/report-ai-study-pipeline/SKILL.md` — the 10-phase orchestrator entrypoint.
 - `skills/header-extraction/SKILL.md` — row-1 column NAMES only.
 - `skills/dictionary-to-llm-source/SKILL.md` — data dictionary mapping leg.
-- `skills/dataset-deduplication/SKILL.md` — raw-file dedup (orchestrator phase 2, Note 4).
+- `skills/dataset-deduplication/SKILL.md` — raw-file dedup (orchestrator phase 2, Note 4) + maintainer-only lossless merge resolution arm.
 - `skills/sot-lean-generator/SKILL.md` — Source Truth from PDFs + row-1 headers → joined views.
 - `skills/phi-classification/SKILL.md` — deterministic jurisdiction PHI classification.
 - `skills/phi-scrubbing/SKILL.md` — fail-closed per-form PHI scrub.
 - `skills/dataset-to-llm-source/SKILL.md` — publish supervisor (gate → promote → snapshot).
 - `skills/audit-verification/SKILL.md` — the 17-assertion verifier.
-- `skills/excel-duplicate-handler/SKILL.md` — **legacy** maintainer merge helper (superseded by dataset-deduplication).
 - `skills/phi-rulebook/SKILL.md` — versioned offline PHI rulebook + drift detection.
 - `skills/study-setup/SKILL.md` — interactive study scaffolding (not an orchestrator phase).
 

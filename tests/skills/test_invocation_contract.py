@@ -23,7 +23,6 @@ EXPECTED_INVOCATION: dict[str, str] = {
     "sot-lean-generator": "subprocess",  # CLI tool; also has direct import in P1b
     "dataset-to-llm-source": "subprocess",  # publish supervisor
     "audit-verification": "subprocess",
-    "excel-duplicate-handler": "native_module",  # legacy maintainer CLI, not a pipeline DAG node
     "study-setup": "subprocess",  # interactive
     # In-process supervised: called within publish supervisor under lock
     "phi-classification": "in_process_supervised",  # Phase 3, 3b (cross-form barrier)
