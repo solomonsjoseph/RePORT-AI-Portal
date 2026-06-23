@@ -2697,6 +2697,31 @@ class TestCatalogCoverage:
             assert real_cfg.field_is_keep(col) is True, f"{col} must stay kept"
             assert real_cfg.field_is_date(col) is False, f"{col} must NOT date-jitter"
 
+    def test_specimen_reposition_date_jitters_not_dropped(
+        self, real_cfg: phi_scrub.PHIScrubConfig
+    ) -> None:
+        # OVER-PROTECTION GUARD (Note 33): ST_RESPOSINDAT is the specimen
+        # RE-POSITION/repository event DATE. It was previously force-dropped — lumped
+        # into the drop list with the RE-POSITION signature/technician fields — even
+        # though the classifier decides jitter_date and every sibling ST_*DAT column
+        # (VISDAT/COLLDAT/LINDAT/LOUTDAT/LNDAT) jitters. A jitterable clinical date
+        # MUST jitter (interval-preserving), never drop. Re-adding "^ST_RESPOSINDAT$"
+        # to drop_fields re-breaks this.
+        assert real_cfg.field_is_drop("ST_RESPOSINDAT") is False, (
+            "ST_RESPOSINDAT must NOT be force-dropped"
+        )
+        assert real_cfg.field_is_keep("ST_RESPOSINDAT") is False, (
+            "ST_RESPOSINDAT must NOT be kept raw"
+        )
+        assert real_cfg.field_is_date("ST_RESPOSINDAT") is True, (
+            "ST_RESPOSINDAT must date-jitter like its sibling ST_*DAT columns"
+        )
+        # The RE-POSITION identifier siblings still drop (signature / technician),
+        # and the bare time-of-day stays kept — only the DATE changed.
+        assert real_cfg.field_is_drop("ST_REPOSINSIG") is True, "signature must drop"
+        assert real_cfg.field_is_drop("ST_REPOSINTECH") is True, "technician must drop"
+        assert real_cfg.field_is_keep("ST_REPOSINTIM") is True, "bare time stays kept"
+
     def test_socioeconomic_fields_kept_not_banded(self, real_cfg: phi_scrub.PHIScrubConfig) -> None:
         # phi_review decides KEEP for education/occupation/wage (not Safe Harbor
         # / DPDPA identifiers). The band rule is empty/inert so they are kept as

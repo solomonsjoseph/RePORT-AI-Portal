@@ -464,7 +464,13 @@ drop_fields:
   # ── Specimen tracking ──
   # ST_*TIM (COLLTIM/LINTIM/LOUTTIM/REPOSINTIM) are bare specimen log TIMES-of-day
   # → KEPT (see keep_fields; not jitterable, not a Safe Harbor date element).
-  - "^ST_RESPOSINDAT$"
+  # ST_RESPOSINDAT is the specimen RE-POSITION/repository event DATE. Like every
+  # other ST_*DAT column (VISDAT/COLLDAT/LINDAT/LOUTDAT/LNDAT — all jittered) it is a
+  # clinical specimen-timeline date: it JITTERS per-subject (interval-preserving) via
+  # the date rung, NOT dropped. The classifier decides jitter_date and the manifest
+  # declares it DMY. Only the RE-POSITION signature (ST_REPOSINSIG) and technician
+  # (ST_REPOSINTECH) elements drop — those carry identifiers; the date does not.
+  # (Was previously over-dropped — lumped with the *SIG/*TECH block; Note 33.)
   # ── Socioeconomic coded categoricals → KEEP (A1 / Note 28) ───────────────
   # Religion / caste / tribe / community / language / schooling / occupation are
   # NOT among the HIPAA Safe Harbor 18 identifiers and are epidemiologically
