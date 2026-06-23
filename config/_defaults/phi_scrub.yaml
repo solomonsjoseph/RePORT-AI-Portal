@@ -220,7 +220,10 @@ keep_fields:
   - "^SC_(?:BLD(?:DRW)|CBC|GENO(?:REC(?:GOOD)?|STOR|TYP)|HHCVST|HLMNTH|ICVST|NODRW|PAX(?:CP|GENE|REC(?:GOOD)?|STOR)|PBMC(?:REC(?:GOOD)?|STOR|TOT|VIAB|VOL)|PLASMA(?:REC(?:GOOD)?|STOR)|PROCSIG|PTCPT|QTF(?:REC(?:GOOD)?|STOR)|RECGOOD|SALIVA|SLV(?:REC(?:GOOD)?|STOR)|STORALIQ|Sputum|URINE|URN(?:REC(?:GOOD)?|STOR))"
   - "^ST_(?:COMMENT|LALIQUOT|LINPRESV|LOUTPRESV|LRECON|LRECVIAL|PBMC|QUANT|REPOSCOND|shipvial)"
   - "^TBE_(?:ND|OTHLIV|OTHWHN|SPDAYS|TBTREAT)"
-  - "^TC_(?:CARD|CHANGE(?:SP)?|CMONTH|DOSEFREQ|DOSNUM|EXTROT|EXTRPULM|MONTH|NOCARD|NOCARDSP|PHASE|WEIGHT|chestxna)"
+  # NOCARD(?!SP): keep the coded "why no card" parent (TC_NOCARD) but NOT the
+  # facility write-in TC_NOCARDSP ("specify center:") — that is a free-text facility
+  # 'specify' and drops below with its siblings TC_OTDOTSLOC / TC_CENTERSP (A1 policy).
+  - "^TC_(?:CARD|CHANGE(?:SP)?|CMONTH|DOSEFREQ|DOSNUM|EXTROT|EXTRPULM|MONTH|NOCARD(?!SP)|PHASE|WEIGHT|chestxna)"
   - "^(?:CGRYN|CHEWING|CIGYN|SMOYN|SNUFF|OSMOYN)$"
   - "^(?:Cigarettes|Clothes|Mosquito|Oinject|Oralmed|Other|Private|Removstom|Shortbreath|Silicosis|Touch|Unknown|Utensils)$"
   - "^TBKNOW"
@@ -457,6 +460,11 @@ drop_fields:
   - "(?:IC_CLINICSP$|RE_CLINICOTH$|TC_CENTERSP$)"
   - "(?:IC_HIVLOCSP$|HC_HIVLOCSP$|CC_HIVLOCSP$)"
   - "^TC_OTDOTSLOC$"
+  # TC_NOCARDSP "Treatment card held at another DOTS center, specify center:" — a
+  # facility 'specify' write-in (HIPAA geography #2; can carry a verbatim center
+  # name/address). Siblings TC_OTDOTSLOC / TC_CENTERSP already drop; NOCARDSP was
+  # accidentally swept into the ^TC_ keep prefix. Aligned to A1 facility-specify policy.
+  - "^TC_NOCARDSP$"
   # ── Geography (HIPAA §164.514(b)(2)(i)(B) — raw sub-state identifiers) ─────
   # Raw village / hamlet / district / block / tehsil / address / pincode / GPS
   # always dropped (HIPAA §164.514(b)(2)(i)(B) catalog coverage). The Indo-VAP

@@ -333,6 +333,30 @@ class TestLoadScrubConfig:
         assert cfg.field_is_id("SUBJID")
         assert cfg.field_is_birthdate("DOB")
 
+    def test_default_facility_specify_drop_policy(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Regression (Note 32): facility/geography 'specify' write-ins DROP, while
+        coded parents and clinical 'specify' refinements KEEP. TC_NOCARDSP
+        ("...specify center:") must drop with its siblings TC_OTDOTSLOC/TC_CENTERSP
+        per the A1 facility-specify policy — not be swept into the ^TC_ keep prefix.
+        Loads the REAL default config (no per-study override)."""
+        defaults_dir = Path(__file__).resolve().parents[1] / "config" / "_defaults"
+        monkeypatch.setattr(config, "CONFIG_DEFAULTS_DIR", defaults_dir)
+        cfg = phi_scrub.load_scrub_config(study="__no_such_study__")
+        assert cfg is not None
+        # the fix: facility 'specify center' write-in drops, coded parent keeps
+        assert cfg.field_is_drop("TC_NOCARDSP")
+        assert not cfg.field_is_keep("TC_NOCARDSP")
+        assert cfg.field_is_keep("TC_NOCARD")
+        assert not cfg.field_is_drop("TC_NOCARD")
+        # clinical 'specify' refinements stay KEEP (no over-protection)
+        assert cfg.field_is_keep("TC_CHANGESP")
+        assert cfg.field_is_keep("TC_EXTROTSP")
+        # documented facility-specify siblings stay DROP (policy consistency)
+        for sibling in ("TC_OTDOTSLOC", "TC_CENTERSP", "IC_CLINICSP", "HC_HIVLOCSP"):
+            assert cfg.field_is_drop(sibling), sibling
+
     def test_limited_dataset_requires_authority(
         self, scrub_config_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
