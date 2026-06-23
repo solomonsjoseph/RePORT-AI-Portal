@@ -212,6 +212,15 @@ _DEFAULT_PARTIAL_MAX_QUARANTINE_FRACTION = 0.10
 _DEFAULT_PLAUSIBLE_MAX_YEAR = 9999
 _DEFAULT_FUTURE_DATE_POLICY = "quarantine"
 _VALID_FUTURE_DATE_POLICIES = frozenset({"sentinel", "quarantine"})
+# Unparseable-date policy (Note 29). A date value that survives the sentinel /
+# null-token / future-date checks but still cannot be parsed+shifted after every
+# format is exhausted is either:
+#   "blank"      — remove that single field (set ""), publish the rest of the row;
+#                  strictly safer than today (the raw date is never published) and
+#                  preserves the row's other clean data. DEFAULT (autonomy bar).
+#   "quarantine" — withhold the whole row (the prior fail-closed behavior).
+_DEFAULT_UNPARSEABLE_DATE_POLICY = "blank"
+_VALID_UNPARSEABLE_DATE_POLICIES = frozenset({"blank", "quarantine"})
 _PSEUDO_TAG_CHARS = 12  # 48-bit HMAC tag encoded as a-p letters
 _OFFSET_DIGEST_BYTES = 4  # first N bytes of digest for offset computation
 _HEX_TO_ALPHA = str.maketrans("0123456789abcdef", "abcdefghijklmnop")
@@ -520,6 +529,7 @@ class PHIScrubConfig:
         "small_cell_threshold",
         "subject_id_fields",
         "suppress_small_cell_patterns",
+        "unparseable_date_policy",
     )
 
     def __init__(
@@ -545,6 +555,7 @@ class PHIScrubConfig:
         partial_max_quarantine_fraction: float = _DEFAULT_PARTIAL_MAX_QUARANTINE_FRACTION,
         plausible_max_year: int = _DEFAULT_PLAUSIBLE_MAX_YEAR,
         future_date_policy: str = _DEFAULT_FUTURE_DATE_POLICY,
+        unparseable_date_policy: str = _DEFAULT_UNPARSEABLE_DATE_POLICY,
         no_subject_id_forms: frozenset[str] | None = None,
     ) -> None:
         if compliance_posture not in _VALID_POSTURES:
@@ -574,6 +585,11 @@ class PHIScrubConfig:
                 f"future_date_policy must be one of {sorted(_VALID_FUTURE_DATE_POLICIES)}, "
                 f"got {future_date_policy!r}"
             )
+        if unparseable_date_policy not in _VALID_UNPARSEABLE_DATE_POLICIES:
+            raise PHIScrubError(
+                "unparseable_date_policy must be one of "
+                f"{sorted(_VALID_UNPARSEABLE_DATE_POLICIES)}, got {unparseable_date_policy!r}"
+            )
         self.compliance_posture = compliance_posture
         self.subject_id_fields = subject_id_fields
         self.date_patterns = date_patterns
@@ -596,6 +612,7 @@ class PHIScrubConfig:
         )
         self.plausible_max_year: int = plausible_max_year
         self.future_date_policy: str = future_date_policy
+        self.unparseable_date_policy: str = unparseable_date_policy
         self.no_subject_id_forms: frozenset[str] = no_subject_id_forms or frozenset()
 
     def field_is_keep(self, name: str) -> bool:
@@ -1188,6 +1205,19 @@ def load_scrub_config(
                 f"got {future_date_policy!r}"
             )
 
+    # unparseable_date_policy (Note 29) — blank the field + publish the row, or
+    # quarantine the whole row. Absent key → "blank" (the autonomy-bar default).
+    raw_udp = raw.get("unparseable_date_policy")
+    if raw_udp is None:
+        unparseable_date_policy = _DEFAULT_UNPARSEABLE_DATE_POLICY
+    else:
+        unparseable_date_policy = str(raw_udp)
+        if unparseable_date_policy not in _VALID_UNPARSEABLE_DATE_POLICIES:
+            raise PHIScrubError(
+                "unparseable_date_policy must be one of "
+                f"{sorted(_VALID_UNPARSEABLE_DATE_POLICIES)}, got {unparseable_date_policy!r}"
+            )
+
     return PHIScrubConfig(
         compliance_posture=posture,
         subject_id_fields=subject_id_fields,
@@ -1209,6 +1239,7 @@ def load_scrub_config(
         partial_max_quarantine_fraction=partial_max_quarantine_fraction,
         plausible_max_year=plausible_max_year,
         future_date_policy=future_date_policy,
+        unparseable_date_policy=unparseable_date_policy,
         no_subject_id_forms=no_subject_id_forms,
     )
 
@@ -1376,6 +1407,7 @@ def shift_date(
     *,
     field_name: str | None = None,
     date_locales: dict[str, str] | None = None,
+    default_locale: str | None = None,
 ) -> str | None:
     """Parse *value*, shift by ``offset_days``, re-emit in the same format.
 
@@ -1393,8 +1425,14 @@ def shift_date(
     date_locales:
         Per-column locale overrides from the study's ``_forms_manifest.yaml``
         ``date_locales:`` section.  Passed through to :func:`parse_date`.
+    default_locale:
+        Study-wide origin default (e.g. ``"DMY"`` for an Indian study) applied
+        when the column locale is otherwise inconclusive.  Passed to
+        :func:`parse_date`.
     """
-    parsed = parse_date(value, field_name=field_name, date_locales=date_locales)
+    parsed = parse_date(
+        value, field_name=field_name, date_locales=date_locales, default_locale=default_locale
+    )
     if parsed is None:
         return None
     try:
@@ -1714,6 +1752,7 @@ def _scrub_row(
     cfg: PHIScrubConfig,
     key: bytes,
     date_locales: dict[str, str] | None = None,
+    default_locale: str | None = None,
     dataset_has_subject_col: bool = True,
     suppress_headers: frozenset[str] = frozenset(),
 ) -> tuple[dict[str, Any] | None, dict[str, int]]:
@@ -1929,7 +1968,10 @@ def _scrub_row(
                 else:
                     try:
                         _parsed = parse_date(
-                            str(raw_val), field_name=field, date_locales=date_locales
+                            str(raw_val),
+                            field_name=field,
+                            date_locales=date_locales,
+                            default_locale=default_locale,
                         )
                         if _parsed is not None:
                             _resolved_year = _parsed.dt.year
@@ -1974,19 +2016,35 @@ def _scrub_row(
                         return None, {f"phi-scrub-date-quarantine:{field}": 1}
             try:
                 shifted = shift_date(
-                    str(raw_val), offset, field_name=field, date_locales=date_locales
+                    str(raw_val),
+                    offset,
+                    field_name=field,
+                    date_locales=date_locales,
+                    default_locale=default_locale,
                 )
             except ValueError:
                 shifted = None
-            # PS-simplify5: single trailing quarantine-return covering both the
-            # ValueError branch and the shift_date→None branch.
+            # PS-simplify5 / Note 29: a value that survived the sentinel/null-token
+            # and future-date checks but still cannot be parsed+shifted after every
+            # format is exhausted. unparseable_date_policy decides the outcome:
+            #   "blank"      → remove this single field (set ""), publish the rest of
+            #                  the row. Strictly safe (the raw, un-jitterable date is
+            #                  never published → no leak) and preserves the row's other
+            #                  clean data. Mirrors the date_future_sentinel blank path;
+            #                  count-only audit (no ledger event), like date_null_token.
+            #   "quarantine" → withhold the whole row (prior fail-closed behavior).
             if shifted is None:
                 logger.warning(
-                    "date-unshiftable field=%s shape=%s (declare a date_null_tokens "
-                    "entry if this is a missing-data placeholder)",
+                    "date-unshiftable field=%s shape=%s policy=%s (declare a "
+                    "date_null_tokens entry if this is a missing-data placeholder)",
                     field,
                     _mask_date_shape(str(raw_val)),
+                    cfg.unparseable_date_policy,
                 )
+                if cfg.unparseable_date_policy == "blank":
+                    row[field] = ""
+                    _bump("date_unparseable_blanked", field)
+                    continue
                 return None, {f"phi-scrub-date-quarantine:{field}": 1}
             # Birthdate fields under limited_dataset fall through to the SAME per-subject
             # SANT offset as every other date — deliberately NOT clamped to force birth-year
@@ -2020,6 +2078,7 @@ def _scrub_file(
     cfg: PHIScrubConfig,
     key: bytes,
     date_locales: dict[str, str] | None = None,
+    default_locale: str | None = None,
     suppress_headers: frozenset[str] = frozenset(),
 ) -> tuple[
     list[dict[str, Any]],
@@ -2076,6 +2135,7 @@ def _scrub_file(
                 cfg=cfg,
                 key=key,
                 date_locales=date_locales,
+                default_locale=default_locale,
                 dataset_has_subject_col=dataset_has_subject_col,
                 suppress_headers=suppress_headers,
             )
@@ -2627,6 +2687,28 @@ def run_scrub(
         # scrub leg only needs the date_locales mapping here.
         date_locales: dict[str, str] = check_forms_manifest(config.DATASETS_DIR).date_locales
 
+        # Note 29: study-origin default date locale. An Indian-origin study
+        # defaults ambiguous/undeclared date columns to day-first (DMY) instead
+        # of fail-closing — explicit allowlist/manifest declarations and
+        # provably-decisive values (component > 12) still win (see parse_date
+        # precedence). Read jurisdictions directly from config (NOT via
+        # phi_review, which would be a forbidden skill→skill import; same
+        # rationale as the forms_manifest note above). Fail-soft: any problem
+        # leaves default_locale unset (None), preserving fail-closed behavior.
+        default_locale: str | None = None
+        try:
+            _priv_path = config.study_config_path(
+                "_study_privacy.yaml", study=study_name or config.STUDY_NAME
+            )
+            _priv = yaml.safe_load(_priv_path.read_text(encoding="utf-8")) or {}
+            _juris = {str(j).upper() for j in (_priv.get("jurisdictions") or [])}
+            if "INDIA" in _juris:
+                default_locale = "DMY"
+        except Exception as exc:  # fail-soft; never block the scrub on config issues
+            logger.info(
+                "phi_scrub: origin default_locale unresolved (%s); falling back to None", exc
+            )
+
         if not staging_datasets.is_dir():
             logger.info(
                 "phi_scrub: staging datasets dir missing (%s) — emitting empty audit",
@@ -2704,6 +2786,7 @@ def run_scrub(
                 cfg=cfg,
                 key=key,
                 date_locales=date_locales,
+                default_locale=default_locale,
                 suppress_headers=force_drop_by_stem.get(jsonl_file.stem, frozenset()),
             )
 

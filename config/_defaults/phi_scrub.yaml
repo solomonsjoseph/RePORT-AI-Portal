@@ -84,6 +84,17 @@ plausible_max_year: 2026
 #                  Use when future dates are unexpected and may indicate bad data.
 future_date_policy: "sentinel"
 
+# unparseable_date_policy (Note 29): what to do with a date value that survives the
+# sentinel / null-token / future-date checks but still cannot be parsed+shifted after
+# every format is exhausted (genuinely malformed — NOT a recognized placeholder).
+#   "blank"      — remove that single field (set ""), publish the rest of the row.
+#                  Strictly safe: the raw, un-jitterable date is never published (no
+#                  leak) and the row's other clean data is preserved. Count-only audit
+#                  (date_unparseable_blanked), mirroring date_null_token. DEFAULT.
+#   "quarantine" — withhold the whole row (the prior fail-closed behavior). Use when a
+#                  malformed date should block the entire record pending data fix.
+unparseable_date_policy: "blank"
+
 # ── Orphan row handling ───────────────────────────────────────────────────
 # A row whose subject_id_field is missing / blank / null gets moved to
 # tmp/{STUDY}/quarantine/{file}.jsonl. If more than this many orphans

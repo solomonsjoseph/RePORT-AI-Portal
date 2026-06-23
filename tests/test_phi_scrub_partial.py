@@ -49,6 +49,10 @@ def _write_config(path: Path, **overrides: object) -> None:
         # Allow any quarantine fraction in unit tests (systemic-failure threshold
         # is production behaviour; tested separately if needed).
         "partial_max_quarantine_fraction": 1.0,
+        # Note 29: this suite exercises the quarantine→partial-publish path, so it
+        # pins the (now non-default) "quarantine" policy. Production default is
+        # "blank" (a bad date blanks its field and the row publishes).
+        "unparseable_date_policy": "quarantine",
     }
     payload.update(overrides)
     path.write_text(yaml.safe_dump(payload), encoding="utf-8")

@@ -52,6 +52,11 @@ def _write_config(path: Path, **overrides: object) -> None:
         "birthdate_field": "^DOB$",
         "max_jitter_days": 30,
         "orphan_quarantine_threshold": 5,
+        # Note 29: the PRODUCTION default for unparseable dates is "blank", but the
+        # test fixture pins "quarantine" so the many pre-existing fail-closed tests
+        # keep exercising the whole-row quarantine path. Tests that assert the
+        # production blank-and-publish behavior override this explicitly.
+        "unparseable_date_policy": "quarantine",
     }
     payload.update(overrides)
     import yaml
@@ -2307,6 +2312,55 @@ class TestDateNullTokens:
         assert quarantine.is_file()
         quarantined = [json.loads(line) for line in quarantine.read_text().splitlines() if line]
         assert len(quarantined) == 1
+
+    # ── Note 29: unparseable_date_policy="blank" publishes the row ────────────
+
+    def test_unparseable_date_blank_policy_publishes_row(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Under unparseable_date_policy='blank', a genuinely-bad date blanks ONLY
+        that field and the row is published (no raise, no whole-row quarantine)."""
+        _write_config(scrub_config_path, unparseable_date_policy="blank")
+        rows = [
+            {"SUBJID": "S1", "VISDAT": "2014-07-15"},
+            {"SUBJID": "S2", "VISDAT": "garbage", "OTHER": "keep-me"},
+        ]
+        src = _seed_staging(monkeypatch_config, rows)
+        # Must NOT raise — the malformed date is blanked, not fail-closed.
+        phi_scrub.run_scrub(study_name="TEST")
+
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        # Both rows published (no quarantine).
+        assert len(loaded) == 2
+        by_subj = {r.get("OTHER"): r for r in loaded}
+        bad_row = next(r for r in loaded if r.get("OTHER") == "keep-me")
+        # The unparseable date is blanked to ""; the row's other field survives.
+        assert bad_row["VISDAT"] == ""
+        assert bad_row["OTHER"] == "keep-me"
+        # No quarantine file produced for this form under the blank policy.
+        quarantine = (
+            config.STUDY_STAGING_DIR / "quarantine" / "date_unshiftable_1A_ICScreening.jsonl"
+        )
+        assert not quarantine.exists()
+        assert by_subj  # silence unused-var lint
+
+    def test_unparseable_date_blank_policy_does_not_touch_valid_dates(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Blank policy only blanks the unparseable value — valid dates still jitter."""
+        _write_config(scrub_config_path, unparseable_date_policy="blank")
+        rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        # A valid date is shifted (jittered), never blanked.
+        assert loaded[0]["VISDAT"] not in ("", "2014-07-15")
 
     # ── Valid date in same field still jittered ───────────────────────────────
 

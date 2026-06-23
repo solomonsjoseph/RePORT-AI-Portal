@@ -543,20 +543,18 @@ class TestCompact7Digit:
         result = parse_date("9992014")
         assert result is None
 
-    def test_7digit_explicit_locale_uses_canonical_split(self) -> None:
-        """An EXPLICIT locale pins the canonical leading-zero-truncation split
-        (DMMYYYY for DMY, MDDYYYY for MDY) — the only layout a 7-digit value can
-        physically have. The 2+1 "DDMYYYY"/"MMDYYYY" phantom split is NOT tried,
-        so a real date whose both-split reading was previously "ambiguous" is now
-        recovered (this is the ST_LOUTDAT / 96_Specimen_Tracking regression fix).
+    def test_7digit_explicit_locale_canonical_first_then_alternate(self) -> None:
+        """An EXPLICIT/derived locale tries the canonical split first (DMMYYYY for
+        DMY, MDDYYYY for MDY), then falls back to the alternate 2+1+4 split
+        (DDMYYYY/MMDYYYY) when the canonical yields an invalid calendar date
+        (Note 29). This recovers human-entered numeric dates with a 2-digit day +
+        1-digit month while preserving the both-valid canonical recovery.
 
         (a) Canonical valid:   9122014 / IC_VISDAT (DMY) → d=9,  m=12, y=2014.
-        (b) Recovered (was None under the old dual-split): 1052014 / IC_VISDAT
-            (DMY) → canonical DMMYYYY → d=1, m=5, y=2014 (NOT quarantined).
-        (c) Canonical invalid → quarantine: 1392014 / IC_VISDAT (DMY) → DMMYYYY
-            m=39 invalid → None. The phantom DDMYYYY (13/9/2014) is NOT used,
-            because that value cannot arise from truncating a zero-padded
-            DDMMYYYY (13 ≥ 10 keeps 8 digits) — fail-closed on a junk value.
+        (b) Both valid → canonical wins: 1052014 / IC_VISDAT (DMY) → DMMYYYY →
+            d=1, m=5, y=2014 (NOT the 10-May alternate).
+        (c) Canonical invalid → ALTERNATE recovers: 1392014 / IC_VISDAT (DMY) →
+            DMMYYYY m=39 invalid → fall back to DDMYYYY → d=13, m=9, y=2014.
         (d) MDY symmetry: 1052014 / MY_DATE (MDY) → canonical MDDYYYY → m=1,
             d=5, y=2014.
         """
@@ -565,25 +563,39 @@ class TestCompact7Digit:
         assert result_a is not None
         assert (result_a.dt.year, result_a.dt.month, result_a.dt.day) == (2014, 12, 9)
 
-        # (b) RECOVERED — canonical DMMYYYY, no longer "ambiguous" under explicit DMY
+        # (b) both splits valid — canonical DMMYYYY wins (no regression)
         result_b = parse_date("1052014", field_name="IC_VISDAT")  # DMY allowlist
         assert result_b is not None, (
-            "Explicit DMY must use the canonical DMMYYYY split (1+2+4) and recover "
-            "this date, not quarantine it as phantom-ambiguous"
+            "Explicit DMY must use the canonical DMMYYYY split (1+2+4) first and recover this date"
         )
         assert (result_b.dt.year, result_b.dt.month, result_b.dt.day) == (2014, 5, 1)
 
-        # (c) canonical split invalid → quarantine (phantom split NOT used)
+        # (c) canonical invalid → fall back to the 2+1+4 alternate (real date recovered)
         result_c = parse_date("1392014", field_name="IC_VISDAT")  # DMY allowlist
-        assert result_c is None, (
-            "Canonical DMMYYYY is invalid (month=39) and the 2+1 phantom split is "
-            "not a physical truncation layout → must fail-closed to None"
+        assert result_c is not None, (
+            "Canonical DMMYYYY is invalid (month=39); the alternate DDMYYYY split "
+            "(13/9/2014) is a real human-entered numeric date and must be recovered"
         )
+        assert (result_c.dt.year, result_c.dt.month, result_c.dt.day) == (2014, 9, 13)
 
         # (d) MDY symmetry — canonical MDDYYYY split
         result_d = parse_date("1052014", field_name="MY_DATE", date_locales={"MY_DATE": "MDY"})
         assert result_d is not None
         assert (result_d.dt.year, result_d.dt.month, result_d.dt.day) == (2014, 1, 5)
+
+    def test_7digit_explicit_dmy_2digit_day_1digit_month(self) -> None:
+        """Note 29 regression: a day-first numeric date with a 2-digit day and a
+        1-digit month (e.g. 15/8/2014 typed as 1582014) is a 2+1+4 layout that the
+        old canonical-only path quarantined. It must now parse to 15 Aug 2014."""
+        result = parse_date("1582014", field_name="IC_VISDAT")  # DMY allowlist
+        assert result is not None
+        assert (result.dt.year, result.dt.month, result.dt.day) == (2014, 8, 15)
+
+    def test_7digit_explicit_dmy_invalid_both_splits_quarantines(self) -> None:
+        """A 7-digit value invalid under BOTH the canonical (1+2+4) and alternate
+        (2+1+4) day-first splits is genuinely bad → fail-closed None."""
+        # 9992014: DMMYYYY m=99 invalid; DDMYYYY d=99 invalid → both fail.
+        assert parse_date("9992014", field_name="IC_VISDAT") is None
 
     def test_7digit_explicit_dmy_via_date_locales(self) -> None:
         """Explicit DMY in date_locales (UPPER-CASE key) + unambiguous value.
@@ -597,6 +609,50 @@ class TestCompact7Digit:
         assert result.dt.day == 9
         assert result.dt.month == 12
         assert result.dt.year == 2014
+
+
+class TestOriginDefaultLocale:
+    """Note 29: a study-origin ``default_locale`` (e.g. DMY for an Indian study)
+    is applied ONLY when allowlist/manifest/value-heuristic are all inconclusive
+    — explicit declarations and provably-decisive values always win."""
+
+    def test_origin_default_resolves_ambiguous_undeclared_separator(self) -> None:
+        """An ambiguous (both ≤ 12) value in an UNDECLARED column would raise
+        without a default; with default_locale='DMY' it resolves day-first."""
+        # Without a default → fail-closed.
+        with pytest.raises(ValueError):
+            parse_date("05/06/2014", field_name="UNDECLARED_DAT")
+        # With origin default → 5 June 2014 (DMY).
+        result = parse_date("05/06/2014", field_name="UNDECLARED_DAT", default_locale="DMY")
+        assert result is not None
+        assert (result.dt.year, result.dt.month, result.dt.day) == (2014, 6, 5)
+
+    def test_origin_default_resolves_ambiguous_8digit_and_6digit(self) -> None:
+        """Compact ambiguous values resolve day-first under the origin default."""
+        r8 = parse_date("05062014", field_name="UNDECLARED_DAT", default_locale="DMY")
+        assert r8 is not None and (r8.dt.year, r8.dt.month, r8.dt.day) == (2014, 6, 5)
+        r6 = parse_date("050614", field_name="UNDECLARED_DAT", default_locale="DMY")
+        assert r6 is not None and (r6.dt.year, r6.dt.month, r6.dt.day) == (2014, 6, 5)
+
+    def test_decisive_value_heuristic_beats_origin_default(self) -> None:
+        """A provably-MDY value (2nd component > 12) is respected even when the
+        origin default is DMY — data wins over a study-wide default."""
+        result = parse_date("07252014", field_name="UNDECLARED_DAT", default_locale="DMY")
+        assert result is not None
+        # 25 in the 2nd position → MDY → July 25 2014, NOT day=07/month=25 (invalid).
+        assert (result.dt.year, result.dt.month, result.dt.day) == (2014, 7, 25)
+
+    def test_explicit_manifest_mdy_beats_origin_default(self) -> None:
+        """An explicitly-declared MDY column is never swapped by an India default."""
+        result = parse_date(
+            "07052014",
+            field_name="CX_VISDAT",
+            date_locales={"CX_VISDAT": "MDY"},
+            default_locale="DMY",
+        )
+        assert result is not None
+        # MDY → month=07, day=05 → 5 July 2014 (not 7 May).
+        assert (result.dt.year, result.dt.month, result.dt.day) == (2014, 7, 5)
 
 
 # ---------------------------------------------------------------------------

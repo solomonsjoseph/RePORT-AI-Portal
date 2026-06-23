@@ -360,6 +360,7 @@ def parse_date(
     *,
     field_name: str | None = None,
     date_locales: dict[str, str] | None = None,
+    default_locale: str | None = None,
 ) -> ParsedDate | None:
     """Parse a date/datetime text string into a :class:`ParsedDate`.
 
@@ -384,8 +385,11 @@ def parse_date(
     1. :func:`is_dmy_variable` allowlist (case-insensitive) → **DMY**.
     2. ``date_locales`` manifest override (UPPER-CASE keys) → declared.
     3. Value heuristic: first component > 12 → DMY; second > 12 → MDY.
-    4. Still ambiguous with ``field_name`` known → :class:`ValueError`
-       (fail-closed; caller quarantines the row).
+    4. ``default_locale`` study-wide origin default (e.g. ``"DMY"`` for an
+       Indian-origin study) — applied ONLY when steps 1-3 are inconclusive,
+       so explicit declarations and provably-decisive values always win.
+    5. Still ambiguous with ``field_name`` known and no ``default_locale`` →
+       :class:`ValueError` (fail-closed; caller quarantines the row).
 
     Args:
         value: The raw text string (e.g. ``"7/28/14"``, ``"28.05.2014"``,
@@ -400,6 +404,10 @@ def parse_date(
                       :func:`dataset_pipeline.check_forms_manifest`).
                       Values are ``"DMY"`` or ``"MDY"``.
                       Takes precedence over the heuristic.
+        default_locale: Study-wide origin default (``"DMY"``/``"MDY"``) applied
+                      only when the allowlist, manifest, and value heuristic are
+                      all inconclusive — i.e. an ambiguous value in an undeclared
+                      column. ``None`` (default) preserves the fail-closed raise.
 
     Returns:
         A :class:`ParsedDate` on success, or ``None`` if the string cannot
@@ -470,14 +478,19 @@ def parse_date(
 
             if locale is None:
                 # Genuinely ambiguous (both components ≤ 12)
-                if field_name is not None:
+                if default_locale is not None:
+                    # Study-origin default (e.g. DMY for an Indian study) — applied
+                    # only after the allowlist/manifest/heuristic are inconclusive.
+                    locale = default_locale
+                elif field_name is not None:
                     raise ValueError(
                         f"Ambiguous date locale for column {field_name!r}: "
                         "declare in _forms_manifest.yaml under date_locales: "
                         f"(values like {_mask_date_value(value)!r} have both components ≤ 12)"
                     )
-                # No field_name → legacy fall-through: default MDY (no raise)
-                locale = "MDY"
+                else:
+                    # No field_name → legacy fall-through: default MDY (no raise)
+                    locale = "MDY"
             else:
                 if field_name is not None:
                     _log.info(
@@ -570,14 +583,18 @@ def parse_date(
                     locale_int = "MDY"
                 else:
                     # Genuinely ambiguous
-                    if field_name is not None:
+                    if default_locale is not None:
+                        # Study-origin default (e.g. DMY for an Indian study).
+                        locale_int = default_locale
+                    elif field_name is not None:
                         raise ValueError(
                             f"Ambiguous integer date locale for column {field_name!r}: "
                             "declare in _forms_manifest.yaml under date_locales: "
                             f"(value {_mask_date_value(value)!r} has both leading components ≤ 12)"
                         )
-                    # No field_name → legacy fall-through: default MDY
-                    locale_int = "MDY"
+                    else:
+                        # No field_name → legacy fall-through: default MDY
+                        locale_int = "MDY"
                 if field_name is not None:
                     _log.info(
                         "Integer date locale for %r disambiguated heuristically to %s "
@@ -620,40 +637,55 @@ def parse_date(
                 return None
 
         elif len(s) == 7:
-            # ── 7-digit: canonical leading-zero-truncation split ────────────
-            # A 7-digit integer date can only physically arise from an 8-digit
-            # zero-padded DDMMYYYY (DMY) / MMDDYYYY (MDY) whose *leading* field
-            # lost its zero during integer conversion — i.e. a single-digit DAY
-            # (DMY) or single-digit MONTH (MDY). The month/day zero that sits in
-            # the INTERIOR of the 8-digit value (e.g. the "05" in "07052014") is
-            # never dropped by int() truncation, so the only physically-possible
-            # layout is the canonical 1+2+4 split:
-            #   DMY: DMMYYYY  d=s[0:1], m=s[1:3], y=s[3:7]  (single-digit day)
-            #   MDY: MDDYYYY  m=s[0:1], d=s[1:3], y=s[3:7]  (single-digit month)
-            # The 2+1+4 "DDMYYYY"/"MMDYYYY" split is a PHANTOM — it cannot occur
-            # from truncation, and trying it merely manufactures false ambiguity
-            # (both splits valid → quarantine) that held real dates (e.g. the
-            # ~400 ST_LOUTDAT values in 96_Specimen_Tracking). For an explicit
-            # locale we therefore pin the canonical split; an invalid result is a
-            # genuinely-bad value → quarantine (fail-closed), never the phantom.
+            # ── 7-digit: canonical-first, alternate-fallback split ───────────
+            # A 7-digit integer date arises when a single-digit field (day or
+            # month) is written without a leading zero. With an explicit/derived
+            # locale, two layouts are physically possible for human-entered
+            # numeric dates (e.g. clinical specimen forms where a clerk typed a
+            # bare number):
+            #   DMY canonical (1+2+4)  DMMYYYY  d=s[0:1], m=s[1:3]  (e.g. 5/12/2014 → "5122014")
+            #   DMY alternate (2+1+4)  DDMYYYY  d=s[0:2], m=s[2:3]  (e.g. 15/8/2014 → "1582014")
+            #   MDY canonical (1+2+4)  MDDYYYY  m=s[0:1], d=s[1:3]
+            #   MDY alternate (2+1+4)  MMDYYYY  m=s[0:2], d=s[2:3]
+            # In every split the year is s[3:7]. We try the CANONICAL split
+            # first (this preserves the both-valid recovery, e.g. "1052014" →
+            # 1 May under DMY) and fall back to the ALTERNATE split only when the
+            # canonical yields an invalid calendar date (recovers real dates like
+            # "1582014" → 15 Aug, "1392014" → 13 Sep). A value invalid under BOTH
+            # splits is genuinely bad → quarantine (fail-closed). (Note 29 — the
+            # earlier "2+1+4 is a phantom" assumption held only for int-truncation
+            # of zero-padded values, not for human-entered numeric dates.)
 
-            # Resolve locale (DMY allowlist → manifest override).
-            locale_7: str | None = _resolve_locale(field_name, date_locales)
+            # Resolve locale (DMY allowlist → manifest override → origin default).
+            locale_7: str | None = _resolve_locale(field_name, date_locales) or default_locale
 
             if locale_7 is not None:
                 y7 = int(s[3:7])
-                try:
-                    if locale_7 == "DMY":
-                        # DMMYYYY: day=s[0:1], month=s[1:3]
-                        dt = datetime(y7, int(s[1:3]), int(s[0:1]))
-                    else:  # MDY — MDDYYYY: month=s[0:1], day=s[1:3]
-                        dt = datetime(y7, int(s[0:1]), int(s[1:3]))
-                except (ValueError, OverflowError):
-                    return None
                 if not (1900 <= y7 <= 2100):
                     # Same year-range guard the separator + 8-digit branches apply.
                     return None
-                nd, nmo, ny = dt.day, dt.month, dt.year
+                dt7: datetime | None = None
+                for _split in ("canonical", "alternate"):
+                    try:
+                        if locale_7 == "DMY":
+                            if _split == "canonical":  # DMMYYYY: d=s[0:1], m=s[1:3]
+                                dt7 = datetime(y7, int(s[1:3]), int(s[0:1]))
+                            else:  # DDMYYYY: d=s[0:2], m=s[2:3]
+                                dt7 = datetime(y7, int(s[2:3]), int(s[0:2]))
+                        else:  # MDY
+                            if _split == "canonical":  # MDDYYYY: m=s[0:1], d=s[1:3]
+                                dt7 = datetime(y7, int(s[0:1]), int(s[1:3]))
+                            else:  # MMDYYYY: m=s[0:2], d=s[2:3]
+                                dt7 = datetime(y7, int(s[0:2]), int(s[2:3]))
+                    except (ValueError, OverflowError):
+                        dt7 = None
+                        continue
+                    break
+                if dt7 is None:
+                    return None
+                # Bind the shared `dt` consumed by the ParsedDate return below
+                # (the 8-digit and 6-digit branches set it analogously).
+                dt = dt7
             else:
                 # No explicit locale: try both DMY layouts and pick unambiguous winner.
                 # DMMYYYY: d=s[0], m=s[1:3], y=s[3:7]
@@ -707,21 +739,23 @@ def parse_date(
                 elif m6 > 12:
                     locale_6 = "MDY"
                 else:
-                    # Genuinely ambiguous — fail-closed for a known field,
-                    # IDENTICAL to the separator + 8-digit branches. The study's
-                    # "all day-first" assumption is encoded in the manifest /
-                    # allowlist declarations (which resolve locale BEFORE this
-                    # heuristic), NOT in a silent code default — so a future
-                    # genuinely-MDY column can never be silently day/month-swapped.
-                    if field_name is not None:
+                    # Genuinely ambiguous — apply the study-origin default if set
+                    # (e.g. DMY for an Indian study), else fail-closed for a known
+                    # field, IDENTICAL to the separator + 8-digit branches. Explicit
+                    # manifest/allowlist declarations resolve BEFORE this heuristic,
+                    # so a genuinely-MDY column is never silently day/month-swapped.
+                    if default_locale is not None:
+                        locale_6 = default_locale
+                    elif field_name is not None:
                         raise ValueError(
                             f"Ambiguous 6-digit date locale for column {field_name!r}: "
                             "declare in _forms_manifest.yaml under date_locales: "
                             f"(value {_mask_date_value(value)!r} has both leading components ≤ 12)"
                         )
-                    # No field_name → legacy fall-through: default MDY (matches
-                    # the separator + 8-digit branches).
-                    locale_6 = "MDY"
+                    else:
+                        # No field_name → legacy fall-through: default MDY (matches
+                        # the separator + 8-digit branches).
+                        locale_6 = "MDY"
 
             yy6 = _expand_year(int(s[4:6]))
             if locale_6 == "DMY":
