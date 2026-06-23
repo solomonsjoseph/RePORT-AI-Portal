@@ -510,12 +510,14 @@ class PHIScrubConfig:
     __slots__ = (
         "age_cap_label",
         "age_cap_threshold",
+        "age_field_patterns",
         "band_rules",
         "birthdate_pattern",
         "cap_rules",
         "compliance_posture",
         "date_null_tokens",
         "date_patterns",
+        "death_date_patterns",
         "drop_patterns",
         "future_date_policy",
         "generalize_rules",
@@ -548,6 +550,8 @@ class PHIScrubConfig:
         generalize_rules: list[GeneralizeRule] | None = None,
         band_rules: list[BandRule] | None = None,
         suppress_small_cell_patterns: list[re.Pattern[str]] | None = None,
+        age_field_patterns: list[re.Pattern[str]] | None = None,
+        death_date_patterns: list[re.Pattern[str]] | None = None,
         age_cap_threshold: int = _DEFAULT_AGE_CAP_THRESHOLD,
         age_cap_label: str = _DEFAULT_AGE_CAP_LABEL,
         small_cell_threshold: int = _DEFAULT_SMALL_CELL_THRESHOLD,
@@ -602,6 +606,8 @@ class PHIScrubConfig:
         self.cap_rules = cap_rules or []
         self.generalize_rules = generalize_rules or []
         self.band_rules = band_rules or []
+        self.age_field_patterns = age_field_patterns or []
+        self.death_date_patterns = death_date_patterns or []
         self.suppress_small_cell_patterns = suppress_small_cell_patterns or []
         self.age_cap_threshold = age_cap_threshold
         self.age_cap_label = age_cap_label
@@ -714,6 +720,16 @@ class PHIScrubConfig:
 
     def field_is_birthdate(self, name: str) -> bool:
         return self.birthdate_pattern is not None and bool(self.birthdate_pattern.search(name))
+
+    def field_is_age(self, name: str) -> bool:
+        """True when *name* is an explicit age column (drives the age-dependent
+        birthdate/death-date policy: a form WITH an age field drops them)."""
+        return any(p.search(name) for p in self.age_field_patterns)
+
+    def field_is_death_date(self, name: str) -> bool:
+        """True when *name* is a death DATE governed by the age-dependent policy
+        (jitter when the form has no age field, drop when it does)."""
+        return any(p.search(name) for p in self.death_date_patterns)
 
     def is_date_null_token(self, value: object) -> bool:
         """True if *value* is a recognized not-applicable/unknown date placeholder
@@ -947,6 +963,8 @@ def load_scrub_config(
     keep_patterns = _compile_list("keep_fields")
     drop_patterns = _compile_list("drop_fields")
     suppress_patterns = _compile_list("suppress_small_cell_fields")
+    age_field_patterns = _compile_list("age_fields")
+    death_date_patterns = _compile_list("death_date_fields")
 
     # id_fields is structured: each entry must be a mapping with
     # ``pattern`` (regex) and ``label`` (short semantic category).
@@ -1232,6 +1250,8 @@ def load_scrub_config(
         generalize_rules=generalize_rules,
         band_rules=band_rules,
         suppress_small_cell_patterns=suppress_patterns,
+        age_field_patterns=age_field_patterns,
+        death_date_patterns=death_date_patterns,
         age_cap_threshold=default_cap_threshold,
         age_cap_label=default_cap_label,
         small_cell_threshold=small_cell_threshold,
@@ -1637,6 +1657,12 @@ def _apply_field_only_rules(
             del row[field]
             _bump("birthdate-drop", field)
             continue
+        # Death date (Note 32): age-dependent jitter needs a per-subject offset, which
+        # an orphan lacks — so the only safe option is drop (mirrors birthdate above).
+        if cfg.field_is_death_date(field):
+            del row[field]
+            _bump("drop", field)
+            continue
         if cfg.field_is_drop(field):
             del row[field]
             _bump("drop", field)
@@ -1755,6 +1781,7 @@ def _scrub_row(
     default_locale: str | None = None,
     dataset_has_subject_col: bool = True,
     suppress_headers: frozenset[str] = frozenset(),
+    form_has_age: bool = True,
 ) -> tuple[dict[str, Any] | None, dict[str, int]]:
     """Scrub a single row. Return (scrubbed_row_or_None, per-field-counts).
 
@@ -1854,12 +1881,28 @@ def _scrub_row(
                 _bump("secondary-id-pseudonymize", field)
             continue
 
-        # 2. BIRTHDATE — posture-dependent drop or jitter.
-        # Safe Harbor drops; Limited Dataset falls through to rule 7 (date jitter).
-        if cfg.field_is_birthdate(field) and cfg.compliance_posture == _POSTURE_SAFE_HARBOR:
+        # 2. BIRTHDATE / DEATH DATE — age-dependent (Note 32).
+        # When the form HAS an age field, these dates are redundant for
+        # age-at-event and are DROPPED (Safe Harbor). When the form has NO age
+        # field, they fall through to the date rung (7) and are JITTERED with the
+        # same per-subject offset so the period/timeline stays derivable (drop is
+        # the fallback there when a value cannot be jittered). Limited Dataset
+        # always jitters the birthdate (falls through regardless of age).
+        if (
+            cfg.field_is_birthdate(field)
+            and cfg.compliance_posture == _POSTURE_SAFE_HARBOR
+            and form_has_age
+        ):
             del row[field]
             _bump("birthdate-drop", field)
             continue
+        if cfg.field_is_death_date(field) and form_has_age:
+            del row[field]
+            _bump("drop", field)
+            continue
+        # A birthdate (Safe Harbor) or death date in a NO-age form falls through to
+        # the date rung (7) below and is JITTERED with the per-subject offset, so the
+        # period/timeline stays derivable (drop is the fallback if it cannot jitter).
 
         # 3. DROP — field removed entirely from this row
         if cfg.field_is_drop(field):
@@ -1936,8 +1979,17 @@ def _scrub_row(
         # Exception: recognized missing-data sentinels (date_null_tokens) are left
         # as-is (skipped) rather than quarantined — they are not real dates.
         is_birthdate_field = cfg.field_is_birthdate(field)
-        if cfg.field_is_date(field) or (
-            is_birthdate_field and cfg.compliance_posture == _POSTURE_LIMITED_DATASET
+        # Age-dependent dates (Note 32) jitter here when the form has no age field:
+        # a birthdate (Safe Harbor) or a death date that rung 2 let fall through.
+        # Death dates usually also match field_is_date, but the explicit clause keeps
+        # the routing correct even for a death-date name the date_fields regex misses.
+        if (
+            cfg.field_is_date(field)
+            or (
+                is_birthdate_field
+                and (cfg.compliance_posture == _POSTURE_LIMITED_DATASET or not form_has_age)
+            )
+            or (cfg.field_is_death_date(field) and not form_has_age)
         ):
             raw_val = row[field]
             if raw_val is None or (isinstance(raw_val, str) and not raw_val.strip()):
@@ -2112,6 +2164,10 @@ def _scrub_file(
 
     # A dataset is subject-specific unless its filename matches a no_subject_id_forms pattern.
     dataset_has_subject_col = not any(pat in jsonl_path.name for pat in cfg.no_subject_id_forms)
+    # Age-dependent date policy (Note 32): does this FORM carry an explicit age column?
+    # Computed ONCE from the column set (consistent across rows — extraction pads every
+    # row to the same columns), not per-row, so a sparse row never flips the decision.
+    form_has_age: bool | None = None
 
     with jsonl_path.open("r", encoding="utf-8") as fh:
         for line in fh:
@@ -2124,6 +2180,10 @@ def _scrub_file(
                 continue
             if not isinstance(row, dict):
                 continue
+            if form_has_age is None:
+                form_has_age = any(
+                    cfg.field_is_age(k) for k in row if not str(k).startswith("__")
+                )
 
             # Idempotency guard: pre-scrubbed rows pass through unchanged.
             if row.get(_SCRUB_MARKER_FIELD) == _SCRUB_VERSION:
@@ -2138,6 +2198,7 @@ def _scrub_file(
                 default_locale=default_locale,
                 dataset_has_subject_col=dataset_has_subject_col,
                 suppress_headers=suppress_headers,
+                form_has_age=bool(form_has_age),
             )
             if scrubbed is None:
                 if not row_counts:

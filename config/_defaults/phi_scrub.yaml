@@ -345,6 +345,32 @@ id_fields:
 birthdate_field: "(?:IS_BIRTHDAT|IC_BIRTHDAT|HHC_BRTHDAT|HC_BRTHDAT|birth|dob|bday|brthdat)"
 
 # ──────────────────────────────────────────────────────────────────────────
+# AGE-DEPENDENT DATE POLICY (birthdate + death date)
+# ──────────────────────────────────────────────────────────────────────────
+# Policy: a birthdate / death date is the ONLY way to recover age-at-event or
+# event timing when a form carries no explicit AGE column. So:
+#   * form HAS an age field  → birthdate/death date DROPPED (Safe Harbor; the age
+#     column already carries the needed info, capped at 89).
+#   * form has NO age field  → birthdate/death date JITTERED with the same
+#     per-subject offset (preserves the period/timeline, not the real date), and
+#     DROPPED as a fallback when the value cannot be jittered (unparseable_date_policy).
+# The jitter is interval-preserving by construction (one deterministic offset per
+# subject across ALL their dates). NOTE: a jittered birthdate keeps the birth YEAR;
+# for a no-age form carrying ages > 89 the year would imply age > 89 (HIPAA cap) —
+# add a year-generalize there if such a form ever appears (none in Indo-VAP: every
+# birthdate-bearing form has an age field, so the birthdate-jitter branch is dormant).
+#
+# age_fields: header NAMES that mean "this form has an age value" (drives the
+# has-age decision). death_date_fields: the death-DATE columns governed above
+# (death SOURCE/CAUSE/PLACE stay in drop_fields).
+age_fields:
+  - "^(?:IS_AGE|IC_AGE|HHC_AGE|HC_AGE|AE_AGE|CC_AGE|NC_AGE)$"
+  - "(?:^|_)AGE(?:Y|YR|YRS|EST|MON|MONTH|MONTHS)?$"
+death_date_fields:
+  - "(?:DTH|DEATH)[-_]?(?:DAT|DATE)"
+  - "^(?:FA_DTHDAT|FB_DTHDAT|AE_DEATHDAT)$"
+
+# ──────────────────────────────────────────────────────────────────────────
 # DROP FIELDS (entire column removed from every row)
 # ──────────────────────────────────────────────────────────────────────────
 # Archive catalog: 93 rules across 14 categories. HIPAA §164.514(b)(2)(i)(A-R)
@@ -414,10 +440,11 @@ drop_fields:
   - "^SC_NAME$"
   - "CLINNAME"
   - "[-_]NAME$"
-  # ── DOB / death dates (HIPAA §164.514(b)(2)(i)(C)) ───────────────────────
-  # (birthdate is in birthdate_field; this catches death dates + any remaining)
-  - "(?:DTH|DEATH)[-_]?(?:DAT|DATE)"
-  - "^(?:FA_DTHDAT|FB_DTHDAT|AE_DEATHDAT)$"
+  # ── DOB / death dates ────────────────────────────────────────────────────
+  # Death DATES are NO LONGER dropped here — they are age-dependent (see
+  # death_date_fields + age_fields below): jittered when the form has no age
+  # field (preserve timeline), dropped when it does. Birthdate is in
+  # birthdate_field (also age-dependent). Death SOURCE/CAUSE/PLACE stay dropped.
   # ── Place of death / death cause source ──────────────────────────────────
   - "(?:PLACE_?OF_?DEATH|DEATH_?PLACE)"
   - "(?:DTHSRC|DTHSRCSP|DTHCAUSSP)$"

@@ -18,7 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -50,6 +50,10 @@ def _write_config(path: Path, **overrides: object) -> None:
         "date_fields": ["^VISDAT$", "_DAT$"],
         "id_fields": [{"pattern": "^SUBJID$", "label": "SUBJ"}],
         "birthdate_field": "^DOB$",
+        # Note 32 age-dependent date policy: birthdate/death date are dropped when the
+        # form carries an age column, jittered (preserving timeline) when it does not.
+        "age_fields": ["^AGE$", "(?:^|_)AGE(?:Y|YR|YRS|EST|MON|MONTH|MONTHS)?$"],
+        "death_date_fields": ["(?:DTH|DEATH)[-_]?(?:DAT|DATE)", "^(?:FA_DTHDAT|FB_DTHDAT)$"],
         "max_jitter_days": 30,
         "orphan_quarantine_threshold": 5,
         # Note 29: the PRODUCTION default for unparseable dates is "blank", but the
@@ -625,9 +629,12 @@ class TestRunScrub:
         scrub_config_path: Path,
     ) -> None:
         _write_config(scrub_config_path)  # safe_harbor default
+        # Note 32: birthdate drops under Safe Harbor only when the form carries an
+        # age column (here AGE); with no age column it would jitter instead. See
+        # test_no_age_birthdate_jitters_preserving_timeline for that branch.
         rows = [
-            {"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15"},
-            {"SUBJID": "S2", "DOB": "1975-05-20", "VISDAT": "2014-07-16"},
+            {"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15", "AGE": "44"},
+            {"SUBJID": "S2", "DOB": "1975-05-20", "VISDAT": "2014-07-16", "AGE": "39"},
         ]
         src = _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
@@ -646,6 +653,86 @@ class TestRunScrub:
             )
             expected = phi_scrub.shift_date(str(original["VISDAT"]), expected_offset)
             assert row["VISDAT"] == expected
+
+    def test_no_age_birthdate_and_death_date_jitter_preserving_timeline(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Note 32: in a form with NO age column, birthdate AND death date are
+        JITTERED (not dropped) with the per-subject offset, so the interval/timeline
+        between a subject's events is preserved (the real dates are obscured)."""
+        _write_config(scrub_config_path)  # rows below carry NO age column
+        rows = [
+            {
+                "SUBJID": "S1",
+                "DOB": "1970-01-01",
+                "FA_DTHDAT": "2020-06-15",
+                "VISDAT": "2020-01-15",
+            },
+        ]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+        row = next(json.loads(ln) for ln in src.read_text().splitlines() if ln.strip())
+        # both age-dependent dates SURVIVE (jittered), and are not the raw value
+        assert "DOB" in row and row["DOB"] != "1970-01-01"
+        assert "FA_DTHDAT" in row and row["FA_DTHDAT"] != "2020-06-15"
+        assert "VISDAT" in row and row["VISDAT"] != "2020-01-15"
+
+        def _d(s: str) -> date:
+            y, m, dd = (int(p) for p in s.split("-"))
+            return date(y, m, dd)
+
+        # timeline preserved: one per-subject offset → every interval unchanged
+        assert (_d(row["FA_DTHDAT"]) - _d(row["VISDAT"])).days == (
+            _d("2020-06-15") - _d("2020-01-15")
+        ).days
+
+    def test_age_present_drops_birthdate_and_death_date(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Note 32: when the form HAS an age column, birthdate + death date are
+        DROPPED (the age column already carries the de-identified age)."""
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "DOB": "1970-01-01", "FA_DTHDAT": "2020-06-15", "AGE": "50"}]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+        row = next(json.loads(ln) for ln in src.read_text().splitlines() if ln.strip())
+        assert "DOB" not in row
+        assert "FA_DTHDAT" not in row
+
+    def test_form_has_age_detected_via_column_structure_row(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Note 32: form_has_age is computed from the column set. A leading
+        column-structure metadata row lists every column (incl. AGE), so it must
+        drive the has-age decision — a death date in a has-age form drops even when
+        the FIRST line is the schema row and the data rows are sparse. (This is the
+        real 95_SAE shape.)"""
+        _write_config(scrub_config_path)
+        rows = [
+            {"SUBJID": "", "FA_DTHDAT": "", "AGE": "", "_metadata": {"type": "column_structure"}},
+            {"SUBJID": "S1", "FA_DTHDAT": "2020-06-15", "AGE": "50"},  # sparse data row
+        ]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+        published = [json.loads(ln) for ln in src.read_text().splitlines() if ln.strip()]
+        data = [
+            r
+            for r in published
+            if (r.get("_metadata") or {}).get("type") != "column_structure"
+            and str(r.get("SUBJID", "")).startswith("RID_")
+        ]
+        assert data, "expected a scrubbed data row"
+        # form_has_age=True (from the column-structure row) → death date drops
+        assert "FA_DTHDAT" not in data[0]
 
     def test_limited_dataset_shifts_birthdate(
         self,
@@ -1497,8 +1584,10 @@ class TestLedgerClassificationThreading:
     ) -> None:
         """With approval, classification metadata threads into the event."""
         _write_config(scrub_config_path)
+        # AGE column → birthdate (DOB) drops under Safe Harbor (Note 32), so the only
+        # jitter_date event is VISDAT and its classification metadata can be asserted.
         rows = [
-            {"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15"},
+            {"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15", "AGE": "44"},
         ]
         _seed_staging(monkeypatch_config, rows)
 
