@@ -116,7 +116,7 @@ def _build_llm(provider: str, model: str) -> Any:
         kwargs: dict[str, Any] = {
             "model": model,
             "max_completion_tokens": config.AGENT_MAX_TOKENS,
-            "temperature": 1,
+            "temperature": config.AGENT_TEMPERATURE,
             "top_p": 1,
         }
         if api_key:
@@ -130,6 +130,7 @@ def _build_llm(provider: str, model: str) -> Any:
             "model": model,
             "model_provider": provider,
             "max_tokens": config.AGENT_MAX_TOKENS,
+            "temperature": config.AGENT_TEMPERATURE,
             "timeout": config.AGENT_TIMEOUT,
             # Absorb transient 429/5xx via the SDK's exponential backoff
             # (honours Retry-After) instead of erroring on the first throttle.

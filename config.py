@@ -49,6 +49,16 @@ def _get_env_int(key: str, default: int) -> int:
         raise ValueError(f"{key} must be an integer") from exc
 
 
+def _get_env_float(key: str, default: float) -> float:
+    raw = _get_env(key)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except ValueError as exc:
+        raise ValueError(f"{key} must be a float") from exc
+
+
 def _get_env_bool(key: str, default: bool) -> bool:
     value = str(_get_env(key, str(default))).lower()
     return value in {"1", "true", "yes", "on"}
@@ -595,6 +605,11 @@ PHI_SCRUB_GENERATED_FILENAME: str = "phi_scrub.generated.yaml"
 # Chat / agent
 AGENT_MAX_TOKENS: int = _get_env_int("AGENT_MAX_TOKENS", 16384)
 AGENT_TIMEOUT: int = _get_env_int("AGENT_TIMEOUT", 300)
+# Sampling temperature for the agent / eval judge. Default 0 for deterministic,
+# reproducible answers — a graded eval (scripts/eval/cloud_eval.py) is only
+# meaningful if the same question yields the same answer run-to-run. Override
+# via AGENT_TEMPERATURE for exploratory/creative use.
+AGENT_TEMPERATURE: float = _get_env_float("AGENT_TEMPERATURE", 0.0)
 # Bounded automatic retries for transient provider errors (HTTP 429 rate
 # limits, 5xx). The OpenAI/Anthropic SDKs back off exponentially and honour
 # the server's Retry-After header up to this many attempts, so brief

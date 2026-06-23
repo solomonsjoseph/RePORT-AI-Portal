@@ -121,17 +121,54 @@ types, file creation, preflight logic).  They never make network calls.
 | `tools_called` | Ordered list of `ToolMessage.name` values from the agent response |
 | `tools_used_ok` | At least one data/SoT tool fired (see `_DATA_TOOLS` in `cloud_eval.py`) |
 | `answered` | Final `AIMessage` has non-empty content |
-| `keyword_overlap` | Fraction of lowercase tokens (≥4 chars) in the matching golden report also present in the answer.  Best-effort; `null` when no golden report is mapped |
+| `answer_score` | **Graded answer correctness (0-1).** `numeric` for statistical questions, `judge` for definitional. `null` when ungraded (no golden / no judge) |
+| `answer_score_method` | `numeric` (deterministic table grade), `judge` (LLM-as-judge), `judge-skipped` (smoke run, no judge), or `none` |
+| `keyword_overlap` | *Secondary, weak proxy.* Fraction of lowercase tokens (≥4 chars) in the matching golden report also present in the answer.  Retained for continuity; not the headline number |
+
+Aggregate adds `answer_score_mean` (overall), `answer_score_mean_numeric`,
+`answer_score_mean_judge`, and `answer_score_n_graded`.
+
+### The graded answer-correctness track (`answer_score`)
+
+`answer_score` replaces `keyword_overlap` as the real accuracy number.  It is computed
+two ways depending on question kind (`scripts/eval/answer_grading.py`):
+
+- **Statistical questions → deterministic numeric grading.**  The per-predictor
+  results table (`| Predictor | n | Events | Odds ratio | 95% CI | p-value | … |`) is
+  parsed out of both the golden chat report and the agent's answer, then compared
+  cell-by-cell:
+  - odds ratios must match within a **relative** tolerance `OR_REL_TOL` (default 5%);
+  - p-values must match within an **absolute** tolerance `P_ABS_TOL` (default 0.01)
+    **and** sit on the same side of the 0.05 significance threshold — a significance
+    flip fails the row even at a tiny delta, because it inverts the clinical conclusion;
+  - a real estimate where the golden suppressed a sub-k=5 cell is a **privacy
+    regression**, scored as a miss and listed in `answer_score_detail.privacy_regressions`.
+  This path needs no LLM, so it runs in CI and pins the `run_python_analysis` numbers
+  against regression (`tests/eval/test_answer_grading.py`).
+- **Definitional questions → LLM-as-judge.**  A rubric judge (grounded? complete?
+  correct? hallucinated variable caps at 0.5) scores the prose answer 0-1.  The judge
+  is provider-agnostic and only runs on a **real-model** Track B run; smoke runs leave
+  the score `null` (`answer_score_method: judge-skipped`).
+
+**Reporting discipline:** always report `answer_score_mean` *with the model id and the
+date of the run* (both are in the result files).  Never quote a bare "100%": the number
+is model- and corpus-specific, and the definitional half depends on a judge model.
+
+### Reproducibility — temperature
+
+The agent now samples at `config.AGENT_TEMPERATURE` (default **0**) so a graded eval is
+meaningful: the same question yields the same answer run-to-run.  Override with the
+`AGENT_TEMPERATURE` env var for exploratory use; keep it at 0 for eval.
 
 ### Caveats
 
 - Real-model accuracy and latency numbers are only obtainable after operator key
   injection as described above.  This evaluation environment has no API keys and
   cannot run cloud providers.
-- `keyword_overlap` is a weak proxy for accuracy.  It measures word-level coverage
-  against a human-written reference report, not semantic correctness.
+- `keyword_overlap` is a weak proxy retained only as a secondary signal — read
+  `answer_score` for accuracy.  Word-level coverage is not semantic correctness.
 - Golden reports are in `tests/golden/chat_reports/`.  Questions without a mapped
-  golden file (e.g. `Q-A2`, `Q-A3`) report `keyword_overlap: null`.
+  golden file report `keyword_overlap: null` and `answer_score: null`.
 - The agent uses `MemorySaver` with per-run thread IDs (`cloud-eval-{id}`) to prevent
   cross-question memory bleed.
 - For the `run_python_analysis` tool to produce real statistical output, the published

@@ -174,12 +174,58 @@ def _keyword_overlap(answer: str, golden: set[str]) -> float:
     return round(len(hits) / len(golden), 4)
 
 
+def _golden_text(qid: str) -> str | None:
+    """Return the full text of the golden report matching ``qid``, or None."""
+    stem = _QID_TO_GOLDEN_STEM.get(qid)
+    if stem is None or not _GOLDEN_DIR.is_dir():
+        return None
+    matches = sorted(_GOLDEN_DIR.glob(f"{stem}*.md"))
+    if not matches:
+        return None
+    return matches[0].read_text(encoding="utf-8", errors="replace")
+
+
 # ---------------------------------------------------------------------------
 # Per-question runner
 # ---------------------------------------------------------------------------
 
 
-def _run_one(q: EvalQuestion, *, thread_prefix: str = "cloud-eval") -> dict[str, Any]:
+def _grade_answer(
+    q: EvalQuestion, final_answer: str, *, judge: Any | None
+) -> tuple[float | None, str, dict[str, Any]]:
+    """Return ``(answer_score, method, detail)`` for one answered question.
+
+    * statistical → deterministic numeric grading vs the golden table.
+    * definitional → LLM-as-judge, but only when a ``judge`` callable is
+      supplied (real-model runs); smoke runs leave the score ``None``.
+    """
+    from scripts.eval import answer_grading as grading
+
+    golden = _golden_text(q.id)
+    if not final_answer.strip() or golden is None:
+        return None, "none", {}
+
+    if q.kind == "statistical":
+        g = grading.grade_statistical(final_answer, golden)
+        detail = {
+            "matched": g.matched,
+            "total": g.total,
+            "per_predictor": g.per_predictor,
+            "privacy_regressions": g.privacy_regressions,
+            "parse_ok": g.parse_ok,
+        }
+        return (g.score if g.parse_ok else None), "numeric", detail
+
+    # definitional
+    if judge is None:
+        return None, "judge-skipped", {}
+    score, rationale = grading.grade_definitional(q.question, final_answer, golden, judge)
+    return score, "judge", {"rationale": rationale}
+
+
+def _run_one(
+    q: EvalQuestion, *, thread_prefix: str = "cloud-eval", judge: Any | None = None
+) -> dict[str, Any]:
     """Invoke the agent for one question; return per-question metrics dict."""
     from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
@@ -203,6 +249,9 @@ def _run_one(q: EvalQuestion, *, thread_prefix: str = "cloud-eval") -> dict[str,
             "answered": False,
             "tools_used_ok": False,
             "keyword_overlap": None,
+            "answer_score": None,
+            "answer_score_method": "none",
+            "answer_score_detail": {},
             "answer_excerpt": "",
             "error": str(exc),
         }
@@ -220,11 +269,14 @@ def _run_one(q: EvalQuestion, *, thread_prefix: str = "cloud-eval") -> dict[str,
     answered = bool(final_answer.strip())
     tools_used_ok = bool(_DATA_TOOLS & set(tool_names))
 
-    # Golden keyword overlap
+    # Golden keyword overlap (secondary, weak proxy — kept for continuity)
     golden_kw = _golden_keywords(q.id)
     kw_overlap: float | None = None
     if golden_kw and final_answer:
         kw_overlap = _keyword_overlap(final_answer, golden_kw)
+
+    # Graded answer-correctness (the real number)
+    answer_score, score_method, score_detail = _grade_answer(q, final_answer, judge=judge)
 
     return {
         "id": q.id,
@@ -234,6 +286,9 @@ def _run_one(q: EvalQuestion, *, thread_prefix: str = "cloud-eval") -> dict[str,
         "answered": answered,
         "tools_used_ok": tools_used_ok,
         "keyword_overlap": kw_overlap,
+        "answer_score": answer_score,
+        "answer_score_method": score_method,
+        "answer_score_detail": score_detail,
         "answer_excerpt": final_answer[:300].replace("\n", " "),
         "error": None,
     }
@@ -242,6 +297,36 @@ def _run_one(q: EvalQuestion, *, thread_prefix: str = "cloud-eval") -> dict[str,
 # ---------------------------------------------------------------------------
 # Percentile helper
 # ---------------------------------------------------------------------------
+
+
+def _fmt_pct(x: float | None) -> str:
+    """Format a 0-1 score as a percent, or an em-dash when ungraded."""
+    return f"{x * 100:.1f}%" if x is not None else "—"
+
+
+def _answer_score_aggregates(results: list[dict[str, Any]]) -> dict[str, Any]:
+    """Mean answer_score over graded questions, split overall / by method."""
+    graded = [r["answer_score"] for r in results if r.get("answer_score") is not None]
+    numeric = [
+        r["answer_score"]
+        for r in results
+        if r.get("answer_score") is not None and r.get("answer_score_method") == "numeric"
+    ]
+    judged = [
+        r["answer_score"]
+        for r in results
+        if r.get("answer_score") is not None and r.get("answer_score_method") == "judge"
+    ]
+
+    def _mean(xs: list[float]) -> float | None:
+        return round(sum(xs) / len(xs), 4) if xs else None
+
+    return {
+        "answer_score_mean": _mean(graded),
+        "answer_score_n_graded": len(graded),
+        "answer_score_mean_numeric": _mean(numeric),
+        "answer_score_mean_judge": _mean(judged),
+    }
 
 
 def _percentile(values: list[float], p: float) -> float:
@@ -282,6 +367,7 @@ def _write_report(
         "latency_p95_s": _percentile(latencies, 95),
         "tool_usage_rate": round(tool_ok_rate, 4),
         "answered_rate": round(answered_rate, 4),
+        **_answer_score_aggregates(results),
     }
 
     payload: dict[str, Any] = {
@@ -315,23 +401,47 @@ def _write_report(
     lines.append(f"- Latency p50: **{aggregate['latency_p50_s'] * 1000:.1f} ms**\n")
     lines.append(f"- Latency p95: **{aggregate['latency_p95_s'] * 1000:.1f} ms**\n")
     lines.append(f"- Tool-usage rate: **{aggregate['tool_usage_rate'] * 100:.1f}%**\n")
-    lines.append(f"- Answered rate: **{aggregate['answered_rate'] * 100:.1f}%**\n\n")
+    lines.append(f"- Answered rate: **{aggregate['answered_rate'] * 100:.1f}%**\n")
+
+    asm = aggregate.get("answer_score_mean")
+    if asm is not None:
+        lines.append(
+            f"- **Answer score (graded, n={aggregate['answer_score_n_graded']}): "
+            f"{asm * 100:.1f}%**"
+            f" — numeric={_fmt_pct(aggregate.get('answer_score_mean_numeric'))}, "
+            f"judge={_fmt_pct(aggregate.get('answer_score_mean_judge'))}\n"
+        )
+        lines.append(
+            f"  _(model `{model}`, run type {aggregate['run_type']} — "
+            "report this number WITH the model id and date; never as a bare 100%)_\n"
+        )
+    else:
+        lines.append(
+            "- Answer score: **not graded** "
+            "(smoke run grades statistical numerically; definitional grading "
+            "needs a real-model judge)\n"
+        )
+    lines.append("\n")
 
     lines.append("## Per-question Results\n\n")
     lines.append(
-        "| ID | Kind | Latency (s) | Tools called | Data tool? | KW overlap | Answered | Error |\n"
+        "| ID | Kind | Latency (s) | Tools called | Data tool? "
+        "| Answer score | Method | KW overlap | Answered | Error |\n"
     )
     lines.append(
-        "|----|------|-------------|--------------|------------|------------|----------|-------|\n"
+        "|----|------|-------------|--------------|------------"
+        "|--------------|--------|------------|----------|-------|\n"
     )
     for r in results:
         tools_str = ", ".join(r["tools_called"]) if r["tools_called"] else "—"
         kw = f"{r['keyword_overlap']:.2f}" if r["keyword_overlap"] is not None else "—"
+        ascore = _fmt_pct(r.get("answer_score"))
+        method = r.get("answer_score_method", "—") or "—"
         err = r.get("error") or "—"
         lines.append(
             f"| {r['id']} | {r['kind']} | {r['latency_s']:.3f} "
             f"| {tools_str[:50]} | {'YES' if r['tools_used_ok'] else 'NO'} "
-            f"| {kw} | {'YES' if r['answered'] else 'NO'} | {err[:40]} |\n"
+            f"| {ascore} | {method} | {kw} | {'YES' if r['answered'] else 'NO'} | {err[:40]} |\n"
         )
 
     lines.append("\n## Answer Excerpts\n\n")
@@ -365,6 +475,7 @@ def run_cloud_eval(
     questions: list[EvalQuestion] | None = None,
     limit: int | None = None,
     thread_prefix: str = "cloud-eval",
+    judge: Any | None = None,
 ) -> dict[str, Any]:
     """Run Track B evaluation and return the result payload.
 
@@ -376,6 +487,11 @@ def run_cloud_eval(
         Cap on number of questions to evaluate (applied after filtering).
     thread_prefix:
         Prefix for LangGraph thread IDs (avoids cross-run memory bleed).
+    judge:
+        Optional ``Callable[[str], str]`` LLM judge for definitional answers.
+        Tests inject a stub.  On a real-model run, when left ``None``, a judge
+        backed by the configured provider is built automatically; smoke runs
+        leave definitional ``answer_score`` as ``None``.
 
     Returns
     -------
@@ -388,6 +504,14 @@ def run_cloud_eval(
     # Preflight — abort early for cloud providers with no key loaded
     if not _preflight_check(provider):
         sys.exit(1)
+
+    # Build a real judge for definitional grading on real-model runs unless the
+    # caller injected one.  Smoke runs deliberately leave the judge unset so no
+    # network call is made and definitional answer_score stays None.
+    if judge is None and not is_smoke:
+        from scripts.eval.answer_grading import default_judge
+
+        judge = default_judge()
 
     target_questions: list[EvalQuestion] = (
         questions if questions is not None else list(EVAL_QUESTIONS)
@@ -406,9 +530,10 @@ def run_cloud_eval(
     results: list[dict[str, Any]] = []
     for i, q in enumerate(target_questions, 1):
         print(f"  [{i}/{len(target_questions)}] {q.id} ({q.kind}) ... ", end="", flush=True)
-        rec = _run_one(q, thread_prefix=thread_prefix)
+        rec = _run_one(q, thread_prefix=thread_prefix, judge=judge)
         status = "OK" if rec.get("error") is None else f"ERROR: {rec['error'][:60]}"
-        print(f"{rec['latency_s']:.3f}s  tools={rec['tools_called']}  {status}")
+        score_str = f" score={rec['answer_score']}" if rec.get("answer_score") is not None else ""
+        print(f"{rec['latency_s']:.3f}s  tools={rec['tools_called']}{score_str}  {status}")
         results.append(rec)
 
     _write_report(results, model=model, provider=provider, is_smoke=is_smoke)
@@ -429,13 +554,15 @@ def run_cloud_eval(
         "answered_rate": round(sum(1 for r in results if r.get("answered")) / len(results), 4)
         if results
         else 0.0,
+        **_answer_score_aggregates(results),
     }
 
     print(
         f"\n[cloud_eval] Done — p50={aggregate['latency_p50_s'] * 1000:.1f}ms  "
         f"p95={aggregate['latency_p95_s'] * 1000:.1f}ms  "
         f"tool_ok={aggregate['tool_usage_rate'] * 100:.0f}%  "
-        f"answered={aggregate['answered_rate'] * 100:.0f}%"
+        f"answered={aggregate['answered_rate'] * 100:.0f}%  "
+        f"answer_score={_fmt_pct(aggregate['answer_score_mean'])}"
     )
 
     return {"aggregate": aggregate, "per_question": results}
