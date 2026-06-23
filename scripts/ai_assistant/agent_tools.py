@@ -982,8 +982,9 @@ def _list_available_datasets_impl(*, include_columns: bool = False) -> list[dict
 def list_available_datasets(include_columns: bool = False) -> str:
     """Discovery hop: enumerate every PHI-scrubbed dataset the agent can read.
 
-    Returns one record per JSONL under the published ``llm_source/datasets/``
-    path. Each record exposes schema + row counts only — never row contents —
+    Returns one record per JSONL under the published
+    ``llm_source/dataset_schema/files/`` path. Each record exposes schema +
+    row counts only — never row contents —
     so you can plan a custom analysis in one tool call instead of probing
     forms one at a time. Operates strictly on the PHI-scrubbed view; free-
     text narrative columns (``*COMMENT``, ``*REMARK``, ``*NOTE``,

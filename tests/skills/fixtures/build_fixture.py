@@ -66,7 +66,7 @@ FIXTURE_FORM_DATA: dict[str, list[dict[str, Any]]] = {
     ],
 }
 
-# Corresponding JSONL rows for llm_source/datasets/ (PHI-free representations).
+# Corresponding JSONL rows for llm_source/dataset_schema/files/ (PHI-free representations).
 FIXTURE_JSONL_ROWS: dict[str, list[dict[str, Any]]] = FIXTURE_FORM_DATA
 
 
