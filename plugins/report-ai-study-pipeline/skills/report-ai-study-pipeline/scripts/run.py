@@ -60,6 +60,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -363,6 +364,24 @@ def _preflight(state: _RunState, *, study: str, run_id: str, resume_held: bool, 
                 state.flush()
                 return -1  # sentinel: redundant, short-circuit cleanly
             # else: a BLOCK-level staleness was found → fall through to a full re-run
+
+    # Note 29 follow-up: reconcile the human-review queue so it reflects ONLY this
+    # run's holds. The per-form/cross-form notes under audit/human_review/ persist
+    # across runs and are NOT otherwise cleaned, so a clean re-run leaves stale
+    # notes (e.g. a form that now publishes still showing a prior kept=0 quarantine
+    # note). We only reach here on a real full run — a redundant run short-circuits
+    # above (returns -1), so notes are never wiped without being repopulated. The
+    # later phases recreate each note dir on demand (writers mkdir parents). A
+    # --resume-held run is exempt: those notes are the maintainer's working set.
+    if not resume_held:
+        try:
+            from scripts.audit.review_paths import human_review_root
+
+            _hr = human_review_root(Path(config.STUDY_AUDIT_DIR))
+            if _hr.exists():
+                shutil.rmtree(_hr, ignore_errors=True)
+        except Exception as exc:  # advisory — never blocks the run
+            print(f"P0:preflight — human-review reconciliation skipped: {exc}", file=sys.stderr)
 
     rec.status, rec.exit_code = "complete", 0
     state.flush()
