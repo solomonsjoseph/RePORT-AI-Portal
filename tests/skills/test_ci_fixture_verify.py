@@ -117,7 +117,7 @@ class TestFixtureVerifyHappyPath:
         data = json.loads(report.read_text())
         assert data["overall"] == "pass"
         assert data["exit_code"] == EXIT_OK
-        assert len(data["assertions"]) == 16
+        assert len(data["assertions"]) == 17
 
     def test_all_verifier_assertions_pass(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

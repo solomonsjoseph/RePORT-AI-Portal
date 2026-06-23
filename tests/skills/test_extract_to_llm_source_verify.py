@@ -1,9 +1,9 @@
-"""Tests for the verify subcommand — 16-assertion verifier.
+"""Tests for the verify subcommand — 17-assertion verifier.
 
 Coverage
 --------
-A. Happy path: synthetic study setup with all 16 conditions satisfied → exit 0,
-   verifier_report.json has all 16 "pass", status.json updated with
+A. Happy path: synthetic study setup with all 17 conditions satisfied → exit 0,
+   verifier_report.json has all 17 "pass", status.json updated with
    verifier_passed: true.
 
 B. Failure-injection fixtures — one test per failure mode:
@@ -241,7 +241,7 @@ def _build_happy_study(
     forms: list[str] | None = None,
     run_id: str = RUN_ID,
 ) -> dict[str, Path]:
-    """Build a complete synthetic study hierarchy that satisfies all 16 assertions.
+    """Build a complete synthetic study hierarchy that satisfies all 17 assertions.
 
     Returns a dict of named paths for easy mutation in failure-injection tests.
     """
@@ -312,7 +312,7 @@ class TestVerifyHappyPath:
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         assert report_path.exists()
 
-    def test_report_has_16_assertions(
+    def test_report_has_17_assertions(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_config(monkeypatch, tmp_path)
@@ -320,7 +320,7 @@ class TestVerifyHappyPath:
         main(["verify", "--study", STUDY, "--run", RUN_ID])
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
-        assert len(report["assertions"]) == 16
+        assert len(report["assertions"]) == 17
 
     def test_all_assertions_pass(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_config(monkeypatch, tmp_path)
@@ -407,7 +407,7 @@ class TestVerifyHappyPath:
         assert rc == EXIT_OK
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
-        assert len(report["assertions"]) == 16
+        assert len(report["assertions"]) == 17
         assert all(a["result"] == "pass" for a in report["assertions"])
         assert report["overall"] == "pass"
 

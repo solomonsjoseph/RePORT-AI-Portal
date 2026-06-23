@@ -438,6 +438,12 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
             # *PROCSIG) → pseudonymize. The bare SC_PROCSIG is a kept clinical
             # flag (^SC_…PROCSIG allowlist), so the prefix is required here.
             r"(?:geno|pax|pbmc|plasma|qtfgit|qtf|slv|urn)procsig$",
+            # NB: mbrefid (the reference-lab accession #) is a near-unique
+            # per-specimen identifier (cardinality ~0.7-0.9) → pseudonymize. The
+            # sibling mblabid is NOT included: despite a shared SoT label
+            # "Laboratory accession #", its cardinality is low (7-63 distinct over
+            # ~3000 rows, k-anonymous) → a lab code, not a unique identifier, and
+            # is correctly KEPT via the phi_scrub keep allowlist.
             r"(?:mbrefid|artidn|diaidn|ocmidn|tbproidn|tbincid|coenrlid)\d*$",
             r"(?:idna|idchgna)$",
             r"(^|[_ -])(?:phcid|ictc|csid)$",

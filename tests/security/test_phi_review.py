@@ -184,6 +184,52 @@ def test_strictest_wins_across_usa_and_india_rules(tmp_path: Path) -> None:
     assert classified["SUBJID"].action == Action.PSEUDONYMIZE
 
 
+def test_mbrefid_pseudonymized_but_low_card_mblabid_kept(tmp_path: Path) -> None:
+    """MBREFID (unique accession #) pseudonymizes; MBLABID (low-card lab code) is KEPT.
+
+    Both carry the SoT/PDF label "Laboratory accession #", but the DATA disagrees:
+    MBREFID is near-unique per specimen (cardinality ~0.7-0.9 over ~3000 rows) → a
+    HIPAA Safe Harbor §164.514(b)(2)(i)(R) unique identifier → PSEUDONYMIZE. MBLABID
+    is low-cardinality (7-63 distinct over ~3000 rows, k-anonymous) → a lab code, not
+    a re-identifying identifier → KEEP. Guards against re-conflating the two on the
+    shared (misleading) SoT label: identifier-vs-category is decided by cardinality,
+    not the SoT question text. CX_LABID/DST_XLABID are likewise low-card lab codes.
+    """
+    study_dir = tmp_path / "data" / "raw" / "Study"
+    _write_privacy_config(study_dir)
+    cfg = load_study_privacy_config(study_dir)
+    bundle = refresh_jurisdiction_rules(cfg, allow_network=False)
+
+    classified = classify_headers(
+        [
+            "MBREFID",
+            "ZN_MBREFID",
+            "CM_MBREFID2",
+            "ZN_MBLABID",
+            "ZN_MBLABID2",
+            "CM_MBLABID2",
+            "CX_LABID",
+            "DST_XLABID",
+            "CC_PREGNUM",
+        ],
+        cfg,
+        bundle,
+    )
+
+    # Unique accession # → pseudonymize
+    assert classified["MBREFID"].action == Action.PSEUDONYMIZE
+    assert classified["ZN_MBREFID"].action == Action.PSEUDONYMIZE
+    assert classified["CM_MBREFID2"].action == Action.PSEUDONYMIZE
+    # Low-cardinality lab codes → KEEP (not a unique identifier)
+    assert classified["ZN_MBLABID"].action == Action.KEEP
+    assert classified["ZN_MBLABID2"].action == Action.KEEP
+    assert classified["CM_MBLABID2"].action == Action.KEEP
+    assert classified["CX_LABID"].action == Action.KEEP
+    assert classified["DST_XLABID"].action == Action.KEEP
+    # clinical false-positive (pregnancy count) stays KEEP
+    assert classified["CC_PREGNUM"].action == Action.KEEP
+
+
 def test_dte_and_date_suffixes_classify_as_jitter_date(tmp_path: Path) -> None:
     """DTE/DATE date-suffix columns must classify as JITTER_DATE, not KEEP.
 

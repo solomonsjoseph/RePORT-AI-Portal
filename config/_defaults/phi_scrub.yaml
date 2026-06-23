@@ -166,6 +166,10 @@ keep_fields:
   # ── False-positive guards for "urine" (not a URL) ──
   - "URIN(?:E|A|B)"
   # ── False-positive guards for clinical lab specimen ID indicators ──
+  # These are LOW-cardinality lab codes (CX_LABID 9 distinct, DST_XLABID 2,
+  # ZN_MBLABID 63, CM_MBLABID 7 — each over ~3000 rows, k-anonymous), NOT
+  # unique per-specimen identifiers (contrast the near-unique MBREFID accession
+  # #, ratio ~0.7-0.9, which pseudonymizes via id_fields). Kept as research vars.
   - "^(?:CX_LABID|ZN_MBLABID\\d*|CM_MBLABID\\d*|DST_XLABID\\d*)$"
   - "^CBC_HBAND$"
   # ── Visit labels (categorical) ──

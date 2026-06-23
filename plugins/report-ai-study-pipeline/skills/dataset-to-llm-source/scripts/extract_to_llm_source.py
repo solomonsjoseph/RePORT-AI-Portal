@@ -327,7 +327,7 @@ def _cmd_status(_args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Subcommand: verify — 16-assertion verifier (assertions 1-12, 14, 15, 16, 13 in execution order)
+# Subcommand: verify — 17-assertion verifier (assertions 1-12, 14, 15, 16, 17, 13 in execution order)
 # ---------------------------------------------------------------------------
 
 # Determinism-check: these keys must not appear in any llm_source/ artifact.
@@ -1037,6 +1037,79 @@ def _verify_assertion_16_ledger_fields_complete(audit_dir: Path) -> _AssertionRe
     return "pass", f"all {total} PHI ledger event(s) carry taxonomy + jurisdictions + method"
 
 
+def _verify_assertion_17_cap_application_complete(
+    dataset_files_dir: Path, study: str
+) -> _AssertionResult:
+    """Assertion 17: no un-capped age survives in a cap-ruled published column.
+
+    Output invariant that COMPLETES assertion 12's coverage. Assertion 12 confirms a
+    cap column is PROTECTED at the cap LEVEL (a configured cap rule exists, even when
+    no event fired), but it does not confirm the cap RESULT holds. ``cap_numeric``
+    clamps every numeric value strictly above the threshold — HIPAA Safe Harbor
+    §164.514(b)(2)(i)(C), age > 89 → a single 90+ category — to the label. This
+    re-runs that exact predicate over the PUBLISHED output and fails if any value
+    ``cap_numeric`` WOULD still clamp is present, i.e. capping did not run on a
+    cap-ruled column. No gate else checks this: the residual PHI scanner cannot flag
+    a bare age without false-positiving on every glucose / height / lab value.
+
+    Reuses ``cap_numeric`` itself (zero drift from the scrub) and is therefore scoped
+    to bare-numeric values by that function's own contract — categorical text in an
+    age-named field (e.g. a coded ``NC_AGE``) returns ``was_capped=False`` and never
+    false-positives. Reads the scrubbed, LLM-readable JSONL; count-only — detail names
+    form:column + count, never a value. No scrub config → pass (mirrors assertion 12).
+    """
+    if not dataset_files_dir.is_dir():
+        return "pass", ""
+    try:
+        import scripts.security.phi_scrub as _phi_scrub
+
+        cfg = _phi_scrub.load_scrub_config(study=study)
+    except Exception:
+        return "pass", ""  # config load failure → nothing to cross-check
+    if cfg is None:
+        return "pass", ""
+
+    offenders: list[str] = []
+    for fpath in sorted(dataset_files_dir.glob("*.jsonl")):
+        cap_rule_for: dict[str, Any] = {}  # col -> CapRule|None (resolved once)
+        counts: dict[str, int] = {}
+        try:
+            with fpath.open(encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if not isinstance(row, dict):
+                        continue
+                    for col, val in row.items():
+                        rule = cap_rule_for.get(col, False)
+                        if rule is False:
+                            rule = cfg.cap_rule_for(col)
+                            cap_rule_for[col] = rule
+                        if rule is None:
+                            continue
+                        _, was_capped = _phi_scrub.cap_numeric(
+                            val, threshold=rule.threshold, label=rule.label
+                        )
+                        if was_capped:
+                            counts[col] = counts.get(col, 0) + 1
+        except OSError as exc:
+            return "fail", f"could not read {fpath}: {exc}"
+        for col, c in sorted(counts.items()):
+            offenders.append(f"{fpath.stem}:{col}={c}")
+
+    if offenders:
+        return "fail", (
+            "un-capped numeric value(s) above the age threshold survived in "
+            f"cap-ruled column(s): {', '.join(offenders)} (count-only)"
+        )
+    return "pass", ""
+
+
 def _cmd_verify(args: argparse.Namespace) -> int:
     """Run 16 verifier assertions for the given study.
 
@@ -1178,6 +1251,12 @@ def _cmd_verify(args: argparse.Namespace) -> int:
             "ledger_entry_fields_complete",
             lambda: _verify_assertion_16_ledger_fields_complete(audit_dir),
             EXIT_AUDIT_COVERAGE_INCOMPLETE,
+        ),
+        (
+            17,
+            "cap_application_complete",
+            lambda: _verify_assertion_17_cap_application_complete(dataset_files_dir, study),
+            EXIT_VERIFIER_FAIL,
         ),
         (
             13,

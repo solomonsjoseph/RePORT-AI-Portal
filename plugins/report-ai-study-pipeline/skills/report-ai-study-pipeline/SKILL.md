@@ -91,7 +91,7 @@ operator docs and `plugin.yaml`. Both refer to the same pipeline.
 | `P1b:sot-lean-generate` | 3 (SoT leg) | Source Truth lean outputs (joined views → `llm_source/SoT/`) |
 | `P2:publish` | 3–7 (bundled) | `dataset-to-llm-source run`: classify → extract → scrub → inline verifier → PHI guard gate (Presidio + residual scan; pyCANON deferred) → promote → cleanup/destroy |
 | `P8:cleanup-verifier` | 8 | Cleanup verifier over published tree + cleanup ledgers |
-| `P9:verify` | 9 | Idempotent 16-assertion re-verify |
+| `P9:verify` | 9 | Idempotent 17-assertion re-verify |
 | `P10:finalize` | 10 | Input fingerprint, snapshot commit, `current.json`, lock release |
 
 Conceptual phase 3b (cross-form PHI-classification barrier) executes inside
@@ -106,11 +106,11 @@ Conceptual phase 3b (cross-form PHI-classification barrier) executes inside
 | 3 | Source Truth ∥ PHI classification ∥ full data extraction | `$sot-lean-generator` ∥ `$phi-classification` ∥ `$dataset-to-llm-source` |
 | 3b | Cross-form PHI-classification consistency barrier | `$phi-classification` |
 | 4 | Per-form PHI scrub (fail-closed) | `$phi-scrubbing` |
-| 5 | 16-assertion audit verification | `$audit-verification` |
+| 5 | 17-assertion audit verification | `$audit-verification` |
 | 6 | PHI guard gate (Presidio + residual scan, OR-combined; pyCANON deferred at publish) → atomic promotion | `$dataset-to-llm-source` |
 | 7 | Cleanup propagation ∥ staging destruction + attestation ∥ key zero | `$dataset-to-llm-source` + orchestrator |
 | 8 | Cleanup verifier over published tree + cleanup ledgers | orchestrator module |
-| 9 | Idempotent 16-assertion re-verify | `$audit-verification` |
+| 9 | Idempotent 17-assertion re-verify | `$audit-verification` |
 | 10 | Snapshot → current pointer → status.json → lock release | orchestrator module |
 
 `$phi-rulebook` is a shared-module skill consumed in phase 0 and by
