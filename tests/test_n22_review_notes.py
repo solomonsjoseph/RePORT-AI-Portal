@@ -14,12 +14,14 @@ from scripts.skills.extract_to_llm_source import (
     EXIT_AUDIT_COVERAGE_INCOMPLETE,
     _write_classification_hold_note,
     _write_scrub_quarantine_note,
+)
+from scripts.skills.extract_to_llm_source import (
     main as verify_main,
 )
 from tests.skills.fixtures.build_fixture import (
+    FIXTURE_FORMS,
     FIXTURE_RUN_ID,
     FIXTURE_STUDY,
-    FIXTURE_FORMS,
     build_golden_output_tree,
 )
 
@@ -41,13 +43,104 @@ def test_scrub_quarantine_note_is_value_free(tmp_path: Path) -> None:
     note = tmp_path / "scrub_quarantine_review.md"
     _write_scrub_quarantine_note(
         note,
-        {"form": "9_SAE", "kept": 40, "quarantined": 3, "reasons": ["date_unshiftable"], "elevated": True},
+        {
+            "form": "9_SAE",
+            "kept": 40,
+            "quarantined": 3,
+            "reasons": ["date_unshiftable"],
+            "elevated": True,
+        },
     )
     text = note.read_text(encoding="utf-8")
     assert "9_SAE" in text
     assert "Quarantined rows:** 3" in text
     assert "ELEVATED" in text
     assert "date_unshiftable" in text
+
+
+def test_scrub_quarantine_note_lists_variables_involved(tmp_path: Path) -> None:
+    """A quarantine note must name WHICH columns could not be scrubbed (header
+    names only), so a reviewer sees the variables involved — not just a count."""
+    note = tmp_path / "scrub_quarantine_review.md"
+    _write_scrub_quarantine_note(
+        note,
+        {
+            "form": "12A_FUA",
+            "kept": 100,
+            "quarantined": 4,
+            "reasons": ["date_unshiftable:4"],
+            "elevated": False,
+            "columns": ["FU_VISITDAT", "FU_NEXTDAT"],
+        },
+    )
+    text = note.read_text(encoding="utf-8")
+    assert "Variables involved" in text
+    assert "FU_VISITDAT" in text
+    assert "FU_NEXTDAT" in text
+
+
+def test_scrub_quarantine_note_handles_whole_row_holds(tmp_path: Path) -> None:
+    """Orphan/whole-row holds have no offending column — the note says so rather
+    than rendering an empty section."""
+    note = tmp_path / "scrub_quarantine_review.md"
+    _write_scrub_quarantine_note(
+        note,
+        {"form": "9_SAE", "kept": 40, "quarantined": 2, "reasons": ["orphan_no_subject_id:2"]},
+    )
+    text = note.read_text(encoding="utf-8")
+    assert "Variables involved" in text
+    assert "whole-row hold" in text
+
+
+def test_sot_joined_gate_clean_run_writes_no_human_review_note(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """human_review/ is issues-only: a clear SoT gate (no held forms) writes the
+    machine-readable JSON sidecar but NO human_review .md note (no clutter)."""
+    import config
+    from scripts.audit.review_paths import publish_sot_joined_gate_md_path
+    from scripts.pipeline.host_pipeline import _write_sot_joined_gate_outcome
+
+    study = "S"
+    monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output", raising=False)
+    monkeypatch.setattr(config, "STUDY_NAME", study, raising=False)
+    monkeypatch.setattr(config, "STUDY_OUTPUT_DIR", tmp_path / "output" / study, raising=False)
+    monkeypatch.setattr(
+        config, "STUDY_AUDIT_DIR", tmp_path / "output" / study / "audit", raising=False
+    )
+
+    _write_sot_joined_gate_outcome(run_id="run_clean", study=study, held_forms=[])
+
+    sidecar = tmp_path / "output" / study / "runs" / "run_clean" / "sot_joined_gate_outcome.json"
+    assert sidecar.is_file(), "JSON sidecar (run record) must still be written"
+    assert json.loads(sidecar.read_text())["held_count"] == 0
+    md = publish_sot_joined_gate_md_path(config.STUDY_AUDIT_DIR, "run_clean")
+    assert not md.exists(), "a clear run must NOT drop a human_review note"
+
+
+def test_sot_joined_gate_held_run_writes_human_review_note(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When forms ARE held, the note IS written and names the held forms."""
+    import config
+    from scripts.audit.review_paths import publish_sot_joined_gate_md_path
+    from scripts.pipeline.host_pipeline import _write_sot_joined_gate_outcome
+
+    study = "S"
+    monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output", raising=False)
+    monkeypatch.setattr(config, "STUDY_NAME", study, raising=False)
+    monkeypatch.setattr(config, "STUDY_OUTPUT_DIR", tmp_path / "output" / study, raising=False)
+    monkeypatch.setattr(
+        config, "STUDY_AUDIT_DIR", tmp_path / "output" / study / "audit", raising=False
+    )
+
+    _write_sot_joined_gate_outcome(run_id="run_held", study=study, held_forms=["20_CoEnroll.xlsx"])
+
+    md = publish_sot_joined_gate_md_path(config.STUDY_AUDIT_DIR, "run_held")
+    assert md.is_file(), "a held run MUST write a human_review note"
+    text = md.read_text(encoding="utf-8")
+    assert "20_CoEnroll.xlsx" in text
+    assert "held" in text
 
 
 def test_classification_hold_note_is_value_free(tmp_path: Path) -> None:

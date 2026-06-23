@@ -1552,11 +1552,19 @@ def _write_scrub_quarantine_note(path: Path, pf: dict[str, Any]) -> None:
     Counts + reason codes only — never a row value.
     """
     elevated = "  ⚠ ELEVATED" if pf.get("elevated") else ""
+    columns = pf.get("columns") or []
     lines = [
         "# PHI scrub — quarantine / review",
         "",
         f"**Form:** {pf['form']}",
         f"**Kept rows:** {pf.get('kept', 0)} · **Quarantined rows:** {pf.get('quarantined', 0)}{elevated}",
+        "",
+        "## Variables involved (column names only — no row values)",
+        *(
+            [f"- `{col}`" for col in columns]
+            if columns
+            else ["- (none — whole-row hold, e.g. missing subject ID)"]
+        ),
         "",
         "## Quarantine reason codes (counts only — no row values)",
         *[f"- {reason}" for reason in pf.get("reasons", [])],
@@ -2169,6 +2177,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
                                 "quarantined": int(_counts.get("quarantined", 0)),
                                 "reasons": [str(r) for r in (_counts.get("reasons") or [])],
                                 "elevated": bool(_counts.get("elevated", False)),
+                                "columns": [str(c) for c in (_counts.get("columns") or [])],
                             }
                         )
         except (json.JSONDecodeError, OSError, TypeError, ValueError):
@@ -2325,12 +2334,15 @@ def _cmd_run(args: argparse.Namespace) -> int:
             extra=_status_extra,
         )
 
-        # ── Step 7: run verifier + commit snapshot on verifier-eligible passes ──
+        # ── Step 7: run verifier + commit snapshot ONLY on a fully-clean pass ──
         # EXIT_OK: no form-gate holds and no scrub-leg quarantine.
-        # Scrub-only partial (EXIT_PARTIAL_REVIEW with zero held forms): every
-        # approved form is published; only some rows were quarantined. Still
-        # snapshot after the inline verifier passes (Note 14 — published tree is
-        # complete; quarantine counts live in scrub_outcome / partial_forms).
+        # Scrub-only partial (EXIT_PARTIAL_REVIEW, zero held forms, some rows
+        # quarantined): every approved form IS published, but the run is NOT fully
+        # clean. A snapshot is an immutable milestone of a clean pass, so a partial
+        # run is NOT snapshot-eligible — the published tree stays in llm_source/
+        # but is never enshrined as a snapshot. We still run the verifier for its
+        # audit value. (commit_run_snapshot also fail-closes on a non-clean run as
+        # defense-in-depth.)
         _scrub_only_partial = (
             final_code == EXIT_PARTIAL_REVIEW and not _all_held_forms and _scrub_partial
         )
@@ -2338,17 +2350,19 @@ def _cmd_run(args: argparse.Namespace) -> int:
             # Build a minimal Namespace that _cmd_verify accepts.
             verify_args = argparse.Namespace(study=study, run_id=run_id)
             verify_exit = _cmd_verify(verify_args)
-            if verify_exit == EXIT_OK:
-                # Verifier passed. On a pure-clean run under the orchestrator the
-                # commit is DEFERRED to orchestrator P10 (Note 13) so it happens
-                # only after the cleanup + audit verifiers pass. A standalone run
-                # (flag unset) commits here as before; a scrub-only-partial run
-                # always commits here because the orchestrator returns at
-                # EXIT_PARTIAL_REVIEW before reaching P10.
-                _defer = (
-                    final_code == EXIT_OK
-                    and os.environ.get("REPORTAL_DEFER_SNAPSHOT_COMMIT") == "1"
+            if verify_exit == EXIT_OK and final_code != EXIT_OK:
+                # Scrub-only-partial run: verifier/audit recorded, but per the
+                # clean-pass-only policy NO snapshot is committed.
+                print(
+                    "Scrub-only-partial publish (rows quarantined): snapshot not "
+                    "committed — snapshots mark fully-clean passes only.",
+                    file=sys.stderr,
                 )
+            elif verify_exit == EXIT_OK:
+                # Fully clean. Under the orchestrator the commit is DEFERRED to
+                # P10 (Note 13) so it happens only after the cleanup + audit
+                # verifiers pass; a standalone run commits here.
+                _defer = os.environ.get("REPORTAL_DEFER_SNAPSHOT_COMMIT") == "1"
                 if _defer:
                     print("Snapshot commit deferred to orchestrator P10.", file=sys.stderr)
                 else:

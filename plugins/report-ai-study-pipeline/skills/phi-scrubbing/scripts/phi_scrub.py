@@ -2913,11 +2913,32 @@ def run_scrub(
                 ]
                 if elevated:
                     reasons.append(f"elevated_review:{held_frac:.0%}_held")
+                # Variables involved (Note 30 follow-up): the offending column NAMES
+                # are carried in the per-row count keys as
+                # ``phi-scrub-{date,band,generalize}-quarantine:{field}`` — header
+                # names only, never values. Surfacing them lets the human-review note
+                # say WHICH variable could not be scrubbed, not just the reason class.
+                # Orphan rows have no offending column (whole-row, missing subject_id).
+                quarantine_columns = sorted(
+                    {
+                        k.split(":", 1)[1]
+                        for k in counts
+                        if ":" in k
+                        and k.startswith(
+                            (
+                                "phi-scrub-date-quarantine:",
+                                "phi-scrub-generalize-quarantine:",
+                                "phi-scrub-band-quarantine:",
+                            )
+                        )
+                    }
+                )
                 partial_forms[jsonl_file.name] = {
                     "kept": len(kept),
                     "quarantined": held_count,
                     "reasons": reasons,
                     "elevated": elevated,
+                    "columns": quarantine_columns,
                 }
                 log_fn = logger.warning if elevated else logger.info
                 log_fn(

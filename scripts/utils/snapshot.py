@@ -583,7 +583,9 @@ def write_snapshot(
         # N14: capture the cleanup-verification REPORT itself (not just the
         # cleanup_verifier_passed bool), so the workspace-clean proof is
         # reproducible from the snapshot. Fail-soft (absent on a partial run).
-        cleanup_report_src = Path(config.OUTPUT_DIR) / study / "audit" / "cleanup_verification_report.json"
+        cleanup_report_src = (
+            Path(config.OUTPUT_DIR) / study / "audit" / "cleanup_verification_report.json"
+        )
         cleanup_report_captured = cleanup_report_src.is_file()
         if cleanup_report_captured:
             shutil.copy2(cleanup_report_src, staging / "cleanup_verification_report.json")
@@ -680,6 +682,71 @@ def write_snapshot(
     return dest
 
 
+def _assess_run_cleanliness(run_dir: Path, *, allow_review_notes: bool) -> tuple[bool, list[str]]:
+    """Decide whether a run is FULLY clean and thus snapshot-eligible.
+
+    A snapshot is an immutable milestone of a clean publish pass. Per policy it is
+    committed ONLY when the run has zero outstanding issues:
+      * no form held for review (``held_forms``),
+      * no quarantined / elevated rows (``publish_status`` != ``partial``;
+        ``partial_forms`` carry no quarantine),
+      * no actionable human-review note awaiting a maintainer.
+
+    A ``--resume-held`` (Type-2) commit is the maintainer's deliberate, human-
+    verified republish: the notes under ``human_review/`` are the maintainer's
+    working set, so ``allow_review_notes=True`` skips the note check — but the
+    republish itself must still be free of new holds / quarantine.
+
+    Returns ``(is_clean, reasons)``. ``reasons`` are value-free (counts / dir
+    names only — never a row value).
+    """
+    import json as _json
+
+    reasons: list[str] = []
+    status_path = Path(run_dir) / "status.json"
+    if status_path.is_file():
+        try:
+            status = _json.loads(status_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            status = {}
+        if isinstance(status, dict):
+            held_n = len(status.get("held_forms") or []) or int(status.get("held_forms_count") or 0)
+            if held_n:
+                reasons.append(f"{held_n} form(s) held for review")
+            partial_forms = status.get("partial_forms") or []
+            quarantined = sum(
+                int((f or {}).get("quarantined") or 0) for f in partial_forms if isinstance(f, dict)
+            )
+            elevated = sum(1 for f in partial_forms if isinstance(f, dict) and f.get("elevated"))
+            if quarantined:
+                reasons.append(
+                    f"{quarantined} quarantined row(s) across {len(partial_forms)} form(s)"
+                )
+            if elevated:
+                reasons.append(f"{elevated} form(s) flagged elevated")
+            # publish_status=partial with no partial_forms detail still signals a
+            # non-clean publish (e.g. an older sidecar shape) — block on it too.
+            if status.get("publish_status") == "partial" and not (quarantined or held_n):
+                reasons.append("publish_status=partial")
+    if not allow_review_notes:
+        try:
+            from scripts.audit.review_paths import human_review_root
+
+            # Study-scoped: run_dir is ``output/{study}/runs/{run_id}``, so the
+            # study's audit dir is ``run_dir.parent.parent / "audit"``. Deriving it
+            # here (rather than reading the global ``config.STUDY_AUDIT_DIR``) keeps
+            # the check pinned to the run being committed — never another study's
+            # or a stale global.
+            audit_dir = Path(run_dir).parent.parent / "audit"
+            hr = human_review_root(audit_dir)
+            notes = sorted(hr.rglob("*.md")) if hr.is_dir() else []
+            if notes:
+                reasons.append(f"{len(notes)} unresolved human-review note(s) under {hr.name}/")
+        except Exception:  # noqa: S110 — advisory; a scan hiccup must not crash the committer
+            pass
+    return (not reasons, reasons)
+
+
 def commit_run_snapshot(
     *,
     study: str,
@@ -748,6 +815,21 @@ def commit_run_snapshot(
                 "committed_utc": datetime.now(UTC).isoformat(),
             }
         ]
+
+    # Clean-pass-only gate (defense-in-depth). A snapshot is an immutable
+    # milestone of a FULLY clean publish; refuse to commit one for a run with any
+    # outstanding issue (held form, quarantined/elevated rows, or — for a non-
+    # resume run — an unresolved human-review note). The partial publish remains
+    # in llm_source/ but is never enshrined. Skip reason recorded value-free.
+    _clean, _reasons = _assess_run_cleanliness(run_dir, allow_review_notes=resume_held)
+    if not _clean:
+        _msg = "; ".join(_reasons)
+        _update_status("snapshot_skipped_reason", _msg)
+        print(
+            f"Snapshot not committed for {study} (run {run_id}): run is not fully clean [{_msg}].",
+            file=_sys.stderr,
+        )
+        return None
 
     try:
         snap_dest = write_snapshot(

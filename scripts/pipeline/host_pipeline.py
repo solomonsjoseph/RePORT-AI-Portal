@@ -145,6 +145,14 @@ def _write_sot_joined_gate_outcome(
     }
     atomic_write_json(runs_dir / "sot_joined_gate_outcome.json", payload)
 
+    # human_review/ is an ISSUES-ONLY queue: on a clear run (no held forms) we
+    # write NO note — an empty note ("status: clear / (none)") is pure clutter
+    # that makes the queue look redundant. The machine-readable JSON sidecar above
+    # is the run record the orchestrator reads; the .md note exists only to tell a
+    # reviewer what to fix. No hold → nothing to fix → no note.
+    if not held_forms:
+        return
+
     md_path = publish_sot_joined_gate_md_path(Path(config.STUDY_AUDIT_DIR), run_id)
     md_path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
@@ -162,10 +170,7 @@ def _write_sot_joined_gate_outcome(
         "## Held Forms",
         "",
     ]
-    if held_forms:
-        lines.extend(f"- `{form}`" for form in held_forms)
-    else:
-        lines.append("- (none)")
+    lines.extend(f"- `{form}`" for form in held_forms)
     lines.extend(
         [
             "",
@@ -173,19 +178,18 @@ def _write_sot_joined_gate_outcome(
             "",
         ]
     )
-    # Optional per-form pointer: link to the per-form review directories (Note 22).
-    # These are where other producers (Presidio, classification, scrub, verifier) deposit
+    # Per-form pointer: link to the per-form review directories (Note 22). These
+    # are where other producers (Presidio, classification, scrub, verifier) deposit
     # their holds for the same forms, so the maintainer can navigate to consolidated
     # per-form review material.
-    if held_forms:
-        for form in sorted(held_forms):
-            from scripts.audit.review_paths import form_review_dir
+    for form in sorted(held_forms):
+        from scripts.audit.review_paths import form_review_dir
 
-            form_review_subdir = form_review_dir(Path(config.STUDY_AUDIT_DIR), form)
-            # Markdown link using just the relative form slug (human_review/{form}/).
-            form_slug = form_review_subdir.name
-            lines.append(f"- **[{form}](../{form_slug}/)** — per-form review directory")
-        lines.append("")
+        form_review_subdir = form_review_dir(Path(config.STUDY_AUDIT_DIR), form)
+        # Markdown link using just the relative form slug (human_review/{form}/).
+        form_slug = form_review_subdir.name
+        lines.append(f"- **[{form}](../{form_slug}/)** — per-form review directory")
+    lines.append("")
     lines.extend(
         [
             "## Required Next Step",
