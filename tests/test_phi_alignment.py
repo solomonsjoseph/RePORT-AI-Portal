@@ -155,6 +155,36 @@ def test_aligned_rule_is_value_free():
         assert marker not in text
 
 
+def test_llm_aligner_prompt_is_header_and_rulebook_only_never_a_value():
+    """GR-1 at the LLM boundary: the production aligner sends the column NAME + the
+    value-free rulebook to the model and NOTHING else. ``align_one`` has no value
+    parameter by construction; this locks that the prompt it builds stays value-free,
+    so enabling alignment never exposes a dataset value to the LLM."""
+    from scripts.security.phi_alignment import LLMHeaderAligner, _VALUE_MARKERS
+
+    captured: dict[str, str] = {}
+
+    class _CapturingClient:
+        def invoke_json(self, system_prompt: str, user_prompt: str):
+            captured["system"] = system_prompt
+            captured["user"] = user_prompt
+            return _good_birthdate()
+
+    LLMHeaderAligner(client=_CapturingClient()).align_one(
+        "patient_aadhaar_no", RULEBOOK, ("INDIA", "USA")
+    )
+
+    # The header NAME and the value-free rulebook reach the model …
+    assert "patient_aadhaar_no" in captured["user"]
+    assert "usa_safe_harbor_direct_identifiers" in captured["user"]
+    # … the system prompt commits to never seeing values …
+    assert "never see data values" in captured["system"]
+    # … and no dataset-value marker appears anywhere in the prompt (defense in depth).
+    blob = captured["system"] + captured["user"]
+    for marker in _VALUE_MARKERS:
+        assert marker not in blob
+
+
 # ── Integration: review_form_headers alignment wiring (default-off + on) ──
 
 

@@ -335,6 +335,23 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
             r"\b(url|uri|ip[_ -]?address|photo|image|biometric|finger|voice)\b",
             r"\b(account|license|certificate|vehicle|plate|device[_ -]?serial)\b",
             r"\b(mrn|medical[_ -]?record|health[_ -]?plan|beneficiary)\b",
+            # Synthetic-benchmark-driven coverage (2026-06-26, Note 34): direct
+            # identifiers the token-boundary rules above missed — person-name
+            # suffixes (FNAME/LNAME/MNAME/EMERGNAME/SURNAME), US financial / govt
+            # IDs, device/biometric tokens, and contact-info columns. Every pattern
+            # below was verified collision-free against all 1,702 Indo-VAP columns
+            # (TC_CARD/TC_CARDLOC, ST_LACCNUM excluded by anchoring).
+            r"(^|[_ -])[a-z]{0,12}names?\d*$",
+            r"\bpassport\b",
+            r"\b(medicare|medicaid)\b",
+            r"\b(insurance|insur)\b|(^|[_ -])ins[_ -]?id\b|\bmember[_ -]?id\b|\bpolicy[_ -]?(?:no|num|number|id)\b",
+            r"(^|[_ -])bank\w*",
+            r"\bcredit[_ -]?card\b|(^|[_ -])cc[_ -]?num\d*$|\bcard[_ -]?(?:no|num|number)\b",
+            r"(^|[_ -])vin\d*$",
+            r"\bdevice\b|\bserial\b|\bfinger\w*",
+            r"(^|[_ -])(?:driving[_ -]?licen\w*|dl(?:[_ -]?(?:no|num|number))?)\d*$",
+            r"\bcontact[_ -]?(?:line|info|details|phone|number|no)\b",
+            r"(^|[_ -])alt[_ -]?(?:mobile|phone|cell|fax)\d*$",
             # A1 (Note 28): staff initials / signatures / lab-technician names /
             # clinic NAMES and data-entry/system artefacts the scrub drops. These
             # are direct identifiers or junk — DROP matches phi_scrub.yaml's
@@ -404,7 +421,7 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
         "action": Action.SUPPRESS,
         "reason": "Free-text header may contain identifiers and needs suppression review.",
         "patterns": (
-            r"\b(comment|note|narrative|free[_ -]?text|describe|description|specify|other)\b",
+            r"\b(comments?|notes?|remarks?|narrative|free[_ -]?text|describe|description|specify|other)\b",
             # A1 (Note 28): abbreviated 'specify'/'other'/'explain' free-text
             # write-ins + death-source/cause narrative the scrub drops. The
             # socioeconomic option-'specify' columns (job/language/religion SP)
@@ -434,6 +451,10 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
             # pseudonymization (an ID is pseudonymized, never dropped).
             r"(^|[_ -])(?:tuid|dmcid)(?:chg)?$",
             r"(?:colltid|colltnum|colltmg|procid|lbaccid|laccnum)$",
+            # Specimen ACCESSION number (full word; anchored so it cannot match the
+            # already-handled ST_LACCNUM "…accnum") → pseudonymize (unique id, like
+            # the sibling laccnum). Note 34.
+            r"(^|[_ -])accession\d*$",
             # Specimen processing-ID signatures (PAX/PBMC/PLASMA/QTF/SLV/URN/GENO
             # *PROCSIG) → pseudonymize. The bare SC_PROCSIG is a kept clinical
             # flag (^SC_…PROCSIG allowlist), so the prefix is required here.
@@ -470,6 +491,14 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
             # CATEGORY (APL/BPL/None, e.g. IC_RATION) is socioeconomic, not an
             # identifier — require card/no/number so the category is not flagged.
             r"\bration[_ -]?(?:card|no|num|number)\b",
+            # Note 34: India identity numbers the boundary rules above missed —
+            # voter EPIC (VOTERID), driving licence (DL), ABHA health-account id,
+            # UHID, GSTIN, and a bare PIN/PINCODE postal field. Verified
+            # collision-free against Indo-VAP (bare RATION category untouched).
+            r"\bvoter|\bepic[_ -]?(?:no|number)?\b",
+            r"\babha\b|\buhid\b|\bgst(?:in)?\b",
+            r"(^|[_ -])(?:driving[_ -]?licen\w*|dl(?:[_ -]?(?:no|num|number))?)\d*$",
+            r"(^|[_ -])pin(?:[_ -]?code)?$",
         ),
     },
     {
@@ -504,7 +533,7 @@ _PINNED_RULE_SPECS: tuple[dict[str, object], ...] = (
         "action": Action.SUPPRESS,
         "reason": "Free-text personal-data header needs suppression review.",
         "patterns": (
-            r"\b(comment|note|narrative|free[_ -]?text|describe|description|specify|other)\b",
+            r"\b(comments?|notes?|remarks?|narrative|free[_ -]?text|describe|description|specify|other)\b",
         ),
     },
     {

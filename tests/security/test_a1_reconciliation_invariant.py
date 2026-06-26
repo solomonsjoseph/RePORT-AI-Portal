@@ -29,7 +29,11 @@ _STUDY = "Indo-VAP"
 # confirmed-keep / force-drop reconciliation): free-text ``*_OTHER`` / ``*_COMMENT``
 # columns (raw-classified SUPPRESS) and ``Image_Seq`` (raw-classified DROP) that
 # the config keeps and the live flow clears. A1 must not GROW this set.
-_KNOWN_UNDER_PROTECTION_BASELINE = 20
+# 20 → 23 (Note 34): the free-text suppress rule was extended to plural forms
+# (``notes?``/``comments?``/``remarks?``), so three ``*_Notes`` columns now decide
+# SUPPRESS instead of KEEP — STRICTER protection (closing a free-text gap), cleared
+# by the live force-drop flow exactly like the existing ``*_OTHER``/``*_COMMENT`` set.
+_KNOWN_UNDER_PROTECTION_BASELINE = 23
 
 
 def _raw_present() -> bool:

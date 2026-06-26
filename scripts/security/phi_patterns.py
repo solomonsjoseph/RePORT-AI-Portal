@@ -223,7 +223,12 @@ BLOCKING_PATTERNS: list[tuple[str, Any]] = [
             re.compile(r"\b(?!(\d)(?:[\s\-\.]?\1){11}\b)[2-9]\d{3}[\s\-\.]?\d{4}[\s\-\.]?\d{4}\b"),
         ),
     ),
-    ("PAN", re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b")),
+    # PAN is officially uppercase, but data entry can lowercase it; the 5-alpha +
+    # 4-digit + 1-alpha shape is distinctive enough that case-insensitive matching
+    # adds negligible false-positive surface while closing a lowercased-PAN leak
+    # vector (Note 34: a PAN mislabeled under a benign header evades both the
+    # case-sensitive regex and Presidio, which has no PAN recognizer).
+    ("PAN", re.compile(r"\b[A-Za-z]{5}\d{4}[A-Za-z]\b")),
     ("INDIAN_VOTER_ID", re.compile(r"\b[A-Z]{3}\d{7}\b")),
     ("INDIAN_DL", re.compile(r"\b[A-Z]{2}\d{2}\s?\d{4}\d{7}\b")),
     ("INDIAN_PASSPORT", re.compile(r"\b[A-Z]\d{7}\b")),

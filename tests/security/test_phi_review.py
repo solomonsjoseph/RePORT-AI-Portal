@@ -368,7 +368,12 @@ def test_phi_risky_header_passes_benign_clinical_names(header: str) -> None:
 def test_risky_keep_header_escapee_is_force_dropped(tmp_path: Path) -> None:
     """A KEEP header with a PHI-risky name (no SoT/keep confirmation) is a direct
     identifier → FORCE-DROPPED (not held). Policy: direct identifiers must be
-    dropped; the form still publishes its remaining columns."""
+    dropped; the form still publishes its remaining columns.
+
+    ``interviewer_landmark`` is a genuine escapee: a risky geographic token with no
+    specific drop/suppress rule, so it classifies KEEP and is force-dropped. (Free-
+    text tokens like ``remarks`` now take the more specific SUPPRESS path — Note 34 —
+    which also removes the column, so they no longer exercise the escapee branch.)"""
     study_dir = tmp_path / "data" / "raw" / "Study"
     _write_privacy_config(study_dir)
     cfg = load_study_privacy_config(study_dir)
@@ -376,14 +381,14 @@ def test_risky_keep_header_escapee_is_force_dropped(tmp_path: Path) -> None:
 
     approval = review_form_headers(
         form_name="04_FollowUp.xlsx",
-        headers=["participant_id", "visit_date", "culture_result", "interviewer_remarks"],
+        headers=["participant_id", "visit_date", "culture_result", "interviewer_landmark"],
         privacy_config=cfg,
         rule_bundle=bundle,
     )
 
     # Not held for the risky escapee — it is dropped instead, so the form publishes.
     assert approval.status == "approved"
-    assert "interviewer_remarks" in approval.force_drop_headers
+    assert "interviewer_landmark" in approval.force_drop_headers
     # benign clinical columns are NOT force-dropped
     assert "culture_result" not in approval.force_drop_headers
 
