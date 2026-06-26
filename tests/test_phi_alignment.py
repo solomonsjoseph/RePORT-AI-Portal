@@ -160,7 +160,7 @@ def test_llm_aligner_prompt_is_header_and_rulebook_only_never_a_value():
     value-free rulebook to the model and NOTHING else. ``align_one`` has no value
     parameter by construction; this locks that the prompt it builds stays value-free,
     so enabling alignment never exposes a dataset value to the LLM."""
-    from scripts.security.phi_alignment import LLMHeaderAligner, _VALUE_MARKERS
+    from scripts.security.phi_alignment import _VALUE_MARKERS, LLMHeaderAligner
 
     captured: dict[str, str] = {}
 
@@ -183,6 +183,41 @@ def test_llm_aligner_prompt_is_header_and_rulebook_only_never_a_value():
     blob = captured["system"] + captured["user"]
     for marker in _VALUE_MARKERS:
         assert marker not in blob
+
+
+def test_alignment_gates_on_llm_availability_else_falls_back(monkeypatch):
+    """Alignment is default-ON but must fall back to deterministic when no LLM is
+    reachable: _should_align() is True ONLY outside pytest AND with a cloud-provider
+    key present. No key / keyless-local / test-context → deterministic (no LLM)."""
+    import config
+    from scripts.ai_assistant import keystore as ks
+    from scripts.skills.extract_to_llm_source import _llm_key_available, _should_align
+
+    class _FakeKS:
+        def __init__(self, present: bool):
+            self._present = present
+
+        def has(self, slug: str) -> bool:
+            return self._present
+
+    monkeypatch.setattr(ks, "get_keystore", lambda: _FakeKS(True))
+    monkeypatch.setattr(config, "LLM_PROVIDER", "anthropic")
+
+    # Under pytest, is_test_context() is True → fall back even with a key present.
+    assert config.is_test_context() is True
+    assert _should_align() is False
+
+    # Simulate production (not under pytest):
+    monkeypatch.setattr(config, "is_test_context", lambda: False)
+    assert _llm_key_available() is True and _should_align() is True  # cloud key → run
+
+    monkeypatch.setattr(ks, "get_keystore", lambda: _FakeKS(False))
+    assert _llm_key_available() is False and _should_align() is False  # no key → fallback
+
+    # Keyless/local provider (ollama → no slug) → fallback even if a store exists.
+    monkeypatch.setattr(ks, "get_keystore", lambda: _FakeKS(True))
+    monkeypatch.setattr(config, "LLM_PROVIDER", "ollama")
+    assert _llm_key_available() is False and _should_align() is False
 
 
 # ── Integration: review_form_headers alignment wiring (default-off + on) ──

@@ -590,14 +590,18 @@ def preferred_or_installed_downgrade(model: str) -> list[str]:
 TELEMETRY_DIR = STUDY_AUDIT_DIR / "telemetry"
 TELEMETRY_SINK = TELEMETRY_DIR / "events.jsonl"
 
-# ── PHI AI-assist (Notes 7 + 9) — default OFF; opt-in via env / orchestrator ──
-# Gate the LLM-assisted PHI subsystem. When OFF (default) the publish path is
-# byte-identical to the deterministic pinned-rules behavior and NO LLM is ever
-# constructed. When ON, the LLM reads ONLY public regulation text (N7 rulebook)
-# and column NAMES (N9 alignment) — never a dataset row value (GR-1). All AI
-# output is deterministically verified, version-stamped, frozen, and the pinned
-# rules remain the protection floor.
-PHI_ALIGNMENT_ENABLED: bool = _get_env_bool("REPORTAL_PHI_ALIGNMENT_ENABLED", False)
+# ── PHI AI-assist (Notes 7 + 9) — default ON, with deterministic fallback ──
+# Gate the LLM-assisted PHI subsystem. Default ON, but it only RUNS where an LLM
+# is actually reachable: the publish supervisor constructs the aligner only when
+# this flag is on, the process is not under pytest, AND the configured provider
+# has a usable API key in the KeyStore (entered via the UI). When the LLM is NOT
+# available — no key, airgapped, CI, pytest, or REPORTAL_PHI_ALIGNMENT_ENABLED=0 —
+# the publish path FALLS BACK to the deterministic pinned-rules behavior, byte-
+# identical to before, and NO LLM is constructed. When it does run, the LLM reads
+# ONLY public regulation text (N7 rulebook) and column NAMES (N9 alignment) —
+# never a dataset row value (GR-1). All AI output is deterministically verified,
+# version-stamped, frozen, and the pinned rules remain the protection floor.
+PHI_ALIGNMENT_ENABLED: bool = _get_env_bool("REPORTAL_PHI_ALIGNMENT_ENABLED", True)
 RULEBOOK_AI_EXTRACT: bool = _get_env_bool("REPORTAL_RULEBOOK_AI_EXTRACT", False)
 RULEBOOK_REQUIRE_LIVE: bool = _get_env_bool("REPORTAL_RULEBOOK_REQUIRE_LIVE", False)
 PHI_SCRUB_GENERATED_FILENAME: str = "phi_scrub.generated.yaml"

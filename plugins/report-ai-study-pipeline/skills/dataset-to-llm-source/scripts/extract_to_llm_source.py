@@ -1607,6 +1607,33 @@ def _write_classification_hold_note(path: Path, item: Any) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def _llm_key_available() -> bool:
+    """True only when the configured cloud provider has a key in the KeyStore.
+
+    Keyless/local/unknown providers and any lookup error → False, so AI alignment
+    (default ON) auto-falls-back to deterministic classification wherever an LLM is
+    not actually reachable. No values are read; this inspects provider config + the
+    role-gated KeyStore only.
+    """
+    import config
+
+    try:
+        from scripts.ai_assistant.keystore import get_keystore, provider_slug_for
+
+        slug = provider_slug_for(config.LLM_PROVIDER)
+        return slug is not None and get_keystore().has(slug)
+    except Exception:
+        return False
+
+
+def _should_align() -> bool:
+    """Whether to construct the LLM aligner: only outside pytest and when an LLM
+    key is available. Pure + tiny so the fallback contract is unit-testable."""
+    import config
+
+    return not config.is_test_context() and _llm_key_available()
+
+
 def _run_form_approval_gate(
     *,
     study: str,
@@ -1654,10 +1681,13 @@ def _run_form_approval_gate(
     # the scrub applies (defaults == merged when no per-study override exists).
     _scrub_cfg = load_scrub_config(study=study)
 
-    # N9: AI header→rule alignment for uncovered headers — opt-in (default off →
-    # _aligner is None → deterministic behavior, byte-identical to before).
+    # N9: AI header→rule alignment for uncovered headers — default ON, but it only
+    # RUNS when an LLM is reachable: flag on, not under pytest, and a provider key
+    # is present (entered via the UI/KeyStore). Otherwise _aligner stays None and the
+    # gate falls back to deterministic pinned-rules classification — fail-closed, no
+    # LLM constructed, byte-identical to the deterministic path.
     _aligner = None
-    if config.PHI_ALIGNMENT_ENABLED:
+    if config.PHI_ALIGNMENT_ENABLED and _should_align():
         from scripts.security.phi_alignment import LLMHeaderAligner
 
         _aligner = LLMHeaderAligner()
