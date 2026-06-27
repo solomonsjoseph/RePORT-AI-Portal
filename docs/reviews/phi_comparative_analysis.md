@@ -61,12 +61,41 @@ the rest are design properties.
 | **Per-variable audit trail** (enforced) | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ➖ |
 | Named **HIPAA + DPDPA** posture | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
 | Runs **offline, no API key, no cost** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| **Multi-jurisdiction** (>1 regime out of the box) | ✓ | ➖ | ✗ | ✗ | ➖ | ➖ | ➖ | ➖ |
 | **India-specific IDs** (Aadhaar/PAN/GSTIN…) | ✓ | ✗ | ➖ | ✗ | ✗ | ✗ | ✗ | n/a |
 | **0 identifiers leaked** (measured) | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | not run | n/a |
 | **0 benign cells destroyed** (measured) | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | not run | n/a |
 
 RePORTal is the only column that is ✓ on every row. scrubadub earns the lone incumbent ✓ on "0 benign
 destroyed", but only because it detects so little (14.85% recall); its precision is bought with leakage.
+
+### 1.2 Multi-jurisdiction coverage
+
+Almost every incumbent is built around a **single** regulatory regime, in practice US HIPAA, because
+the canonical training corpora (i2b2, n2c2) and the default recognizer packs are US-centric:
+
+- **RePORTal** is jurisdiction-configurable by design. A study declares its jurisdictions in
+  `_study_privacy.yaml`, and the classifier composes the matching rule bundles under a
+  `strictest_wins` conflict policy. The Indo-VAP run is published under a combined **HIPAA Safe Harbor
+  + India DPDPA / Aadhaar Act / ICMR** posture, the two regimes enforced together rather than either
+  alone.
+- **Presidio** ships predefined recognizers for several locales (US, UK, a few EU) and is extensible,
+  but carries no India identifier pack out of the box (it leaked every Aadhaar, PAN, GSTIN, ABHA, and
+  UHID in §2). Marked partial (➖).
+- **Philter / transformer (`obi/deid_roberta_i2b2`)** are trained on US i2b2 free text and are
+  effectively single-jurisdiction (✗).
+- **spaCy, scrubadub, the cloud services, and ARX/sdcMicro** offer some locale or language
+  configurability but no built-in *multi-regime PHI posture* binding detection to a named regulation
+  (➖); the SDC tools are jurisdiction-agnostic statistics with no identifier-rule layer at all.
+
+This matters for RePORT-style international cohorts: a US-only de-identifier silently passes through
+exactly the India-specific identifiers (Aadhaar, PAN, GSTIN) that dominate an Indian CRF.
+
+For the broader open-source landscape (Presidio, Philter, NLM Scrubber, deid, MIST, scrubadub, and
+others discussed by practitioners), see the community survey thread
+[r/LanguageTechnology, "Open-source PHI de-identification tool"](https://www.reddit.com/r/LanguageTechnology/comments/o7nlju/opensource_phi_deidentification_tool/);
+the recurring theme there is the same one measured in §2: the mature open tools are US-centric and
+probabilistic.
 
 ---
 
