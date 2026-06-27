@@ -141,7 +141,7 @@ def organize(
 
     with tempfile.TemporaryDirectory() as tmp:
         staged = stage_source(Path(src), Path(tmp))
-        counts = {b: 0 for b in _ALL_BUCKETS}
+        counts = dict.fromkeys(_ALL_BUCKETS, 0)
         unclassified: list = []
         for path in staged:
             bucket = classify(path.name)

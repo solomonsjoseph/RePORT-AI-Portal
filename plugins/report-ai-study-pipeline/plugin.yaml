@@ -184,6 +184,15 @@ skills:
     parallel: false
     invocation: native_module
     purpose: Versioned offline PHI rulebook cache + drift detection; consumed in phase 0 and by phi-classification.
+  - skill: raw-data-intake
+    path: skills/raw-data-intake/SKILL.md
+    run: skills/raw-data-intake/scripts/run.py
+    role: setup
+    scope: raw_delivery
+    note: >
+      Skill 0 — standalone prep run BEFORE the 10-phase orchestrator. Sorts an
+      unorganized delivery into data/raw/<study>/ and drafts the forms manifest.
+      Filename + extension only (GR-1); idempotent; never a DAG phase.
   - skill: study-setup
     path: skills/study-setup/SKILL.md
     run: skills/study-setup/scripts/run.py

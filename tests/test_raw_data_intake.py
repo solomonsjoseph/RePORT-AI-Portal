@@ -1,5 +1,8 @@
 import importlib.util
+import json
+import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 _INTAKE = (
@@ -10,6 +13,13 @@ _spec = importlib.util.spec_from_file_location("intake", _INTAKE)
 intake = importlib.util.module_from_spec(_spec)
 sys.modules["intake"] = intake
 _spec.loader.exec_module(intake)
+
+from scripts.audit.review_paths import intake_review_path  # noqa: E402
+
+_RUN_PY = (
+    Path(__file__).resolve().parents[1]
+    / "plugins/report-ai-study-pipeline/skills/raw-data-intake/scripts/run.py"
+)
 
 
 def test_classify_pdf_to_annotated():
@@ -31,9 +41,6 @@ def test_classify_unknown_extension_quarantines():
     assert intake.classify("readme.txt") == "_unclassified"
     assert intake.classify("notes.docx") == "_unclassified"
     assert intake.classify("nodotextension") == "_unclassified"
-
-
-import zipfile
 
 
 def _touch(path: Path, content: str = "x"):
@@ -81,13 +88,9 @@ def test_stage_missing_src_raises(tmp_path):
         intake.stage_source(tmp_path / "nope", tmp_path / "work")
 
 
-from pathlib import Path as _P
-from scripts.audit.review_paths import intake_review_path
-
-
 def test_intake_review_path():
-    p = intake_review_path(_P("/out/STUDY/audit"))
-    assert p == _P("/out/STUDY/audit/human_review/intake/intake_review.md")
+    p = intake_review_path(Path("/out/STUDY/audit"))
+    assert p == Path("/out/STUDY/audit/human_review/intake/intake_review.md")
 
 
 def test_organize_sorts_and_drafts_manifest(tmp_path):
@@ -173,3 +176,35 @@ def test_organize_preserves_existing_manifest(tmp_path):
     )
     assert res.manifest_written is False
     assert "hand-tuned" in mpath.read_text()  # never clobbered
+
+
+def test_run_py_emits_marker(tmp_path, monkeypatch):
+    src = tmp_path / "delivery"
+    _touch(src / "a.xlsx")
+    _touch(src / "junk.txt")
+    raw_root = tmp_path / "raw"
+    monkeypatch.setenv("RPLN_INTAKE_RAW_ROOT", str(raw_root))
+    monkeypatch.setenv("RPLN_INTAKE_CONFIG_ROOT", str(tmp_path / "config"))
+    monkeypatch.setenv("RPLN_INTAKE_AUDIT_DIR", str(tmp_path / "audit"))
+    proc = subprocess.run(
+        [sys.executable, str(_RUN_PY), "--study", "STUDY", "--src", str(src)],
+        capture_output=True, text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    marker = [ln for ln in proc.stdout.splitlines() if ln.startswith("RPLN_SKILL_RESULT:")][-1]
+    payload = json.loads(marker[len("RPLN_SKILL_RESULT:"):])
+    assert payload["skill"] == "raw-data-intake"
+    assert payload["ok"] is True
+    assert payload["data"]["counts"]["datasets"] == 1
+    assert payload["data"]["unclassified"] == ["junk.txt"]
+
+
+def test_run_py_missing_src_fails(tmp_path):
+    proc = subprocess.run(
+        [sys.executable, str(_RUN_PY), "--study", "STUDY", "--src", str(tmp_path / "nope")],
+        capture_output=True, text=True,
+    )
+    assert proc.returncode != 0
+    marker = [ln for ln in proc.stdout.splitlines() if ln.startswith("RPLN_SKILL_RESULT:")][-1]
+    payload = json.loads(marker[len("RPLN_SKILL_RESULT:"):])
+    assert payload["ok"] is False

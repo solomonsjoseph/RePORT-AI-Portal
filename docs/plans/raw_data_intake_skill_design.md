@@ -1,6 +1,6 @@
 # Skill 0 — `raw-data-intake` Design Spec
 
-> Sphinx pointer: durable architecture lives in `docs/sphinx`; this is a working design spec for a new plugin skill.
+> Historical implementation plan is no longer current documentation. Durable architecture lives in `docs/sphinx`; this was a working design spec for the raw-data-intake plugin skill.
 
 **Date:** 2026-06-26
 **Status:** Approved design, pending implementation plan

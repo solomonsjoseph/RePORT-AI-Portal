@@ -1,5 +1,7 @@
 # Skill 0 — `raw-data-intake` Implementation Plan
 
+> Historical implementation plan is no longer current documentation. Durable architecture lives in `docs/sphinx`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a standalone prep skill that sorts an unorganized study delivery (flat dump and/or zips) into the canonical `data/raw/{STUDY}/` four-bucket layout plus a draft `_forms_manifest.yaml`, idempotently, classifying on filename + extension only.

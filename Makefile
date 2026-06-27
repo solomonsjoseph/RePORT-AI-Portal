@@ -93,7 +93,8 @@ N := \033[0m
 	test test-all lint lint-legacy-dirs typecheck typecheck-skills security ci verify release-check \
 	docs doc-freshness docs-quality docs-linkcheck docs-ci release-notes \
 	chat-smoke check-study-knowledge \
-	clean clean-legacy clean-legacy-dry-run nuke
+	clean clean-legacy clean-legacy-dry-run nuke \
+	organize
 
 # ═══════════════════════════════════════════════════════════════════════
 # HELP
@@ -202,6 +203,14 @@ study: ## Build/publish a study via the 10-phase orchestrator (the pipeline)
 	@STUDY_NAME=$(STUDY) $(UV) run --all-groups python $(ORCHESTRATOR) \
 		--study $(STUDY) $(FFLAG) $(RESUMEFLAG) $(STRICTFLAG)
 	@printf "$(G)✓ Study pipeline complete for $(STUDY)$(N)\n"
+
+INTAKE := plugins/report-ai-study-pipeline/skills/raw-data-intake/scripts/run.py
+
+organize: ## Skill 0: sort an unorganized study delivery into data/raw/<study>/ (SRC=dir-or-zip)
+	@printf "$(C)Organizing raw delivery for STUDY=$(STUDY) from SRC=$(SRC)...$(N)\n"
+	@STUDY_NAME=$(STUDY) $(UV) run --all-groups python $(INTAKE) \
+		--study $(STUDY) --src $(SRC) $(FFLAG)
+	@printf "$(G)✓ Intake complete for $(STUDY)$(N)\n"
 
 rebuild-llm-source: ## Remove generated llm_source/staging, preserve audit/agent, then re-run the orchestrator
 	@printf "$(Y)Removing generated llm_source/staging for STUDY=$(STUDY); preserving audit manifest, agent state, and raw inputs.$(N)\n"
