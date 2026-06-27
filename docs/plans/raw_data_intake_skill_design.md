@@ -56,8 +56,10 @@ following the same subprocess + `RPLN_SKILL_RESULT:` marker convention
    - other `*.xlsx`/`*.csv` → `datasets/`
    - everything else, or a dictionary-pattern collision that can't be resolved
      to exactly one file → `_unclassified/`
-3. **Place.** Copy into `data/raw/{STUDY}/{bucket}/`. Refuse to overwrite an
-   existing organized tree unless `FORCE=1` (fail-closed).
+3. **Place.** First check whether `data/raw/{STUDY}/` is already organized — i.e.
+   the bucket dirs exist and at least `datasets/` is non-empty. If so, **leave it
+   as is and no-op** (log `already organized — skipping`), unless `FORCE=1` is
+   given to rebuild. Otherwise copy each file into `data/raw/{STUDY}/{bucket}/`.
 4. **Draft manifest.** Write `config/{STUDY}/_forms_manifest.yaml` listing every
    `datasets/` file under `required:`, with empty `optional:`/`reject:` and a
    header comment: `# DRAFT — operator must confirm before make study.`
@@ -80,8 +82,9 @@ following the same subprocess + `RPLN_SKILL_RESULT:` marker convention
 - Writes only to `data/raw/`, `config/`, and `output/*/audit/`. **Never** writes
   `llm_source/`.
 - One-way dependency rule honored: `plugins/ → scripts/` only.
-- Fail-closed: refuses to overwrite an organized tree without `FORCE=1`;
-  unclassifiable files quarantine rather than land silently in `datasets/`.
+- Idempotent + fail-closed: an already-organized tree is left untouched (no-op
+  without `FORCE=1`); unclassifiable files quarantine rather than land silently
+  in `datasets/`.
 
 ## 8. Out of scope (YAGNI — owned by existing skills)
 
@@ -102,7 +105,8 @@ following the same subprocess + `RPLN_SKILL_RESULT:` marker convention
 ## 10. Acceptance
 
 - `make organize STUDY=X SRC=<flat dump>` produces the four-bucket tree + draft
-  manifest; re-running without `FORCE=1` refuses; with `FORCE=1` rebuilds.
+  manifest; re-running on an already-organized tree no-ops and leaves it
+  untouched; `FORCE=1` rebuilds.
 - A zip-only `SRC` is extracted then classified identically.
 - An unrecognized file lands in `_unclassified/` and produces a count-only note.
 - No workbook is opened (no PHI read); the deterministic test suite stays green.
