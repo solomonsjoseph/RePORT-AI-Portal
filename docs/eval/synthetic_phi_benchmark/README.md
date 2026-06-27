@@ -7,7 +7,7 @@
 
 Indo-VAP cannot score the **leakage axis**. Its raw corpus contains essentially no
 regex-detectable structured identifiers (1 government-ID-shaped hit in 1,495,216
-cells), so both RePORTal and stock Presidio leave 0 residual — *degenerate, not a
+cells), so both RePORTal and stock Presidio leave 0 residual: *degenerate, not a
 tie* (`../headtohead/FINDINGS.md`, Finding 1). To measure **recall** (does a tool
 remove a planted identifier?) and **precision** (does it destroy benign clinical
 data?) we need a corpus whose ground truth is known per cell. This is that corpus.
@@ -20,7 +20,7 @@ value provably trips the real ruler, every "invalid/placeholder" provably evades
 
 ```
 generate_synthetic.py          # the generator (declarative spec, one pass)
-ground_truth.jsonl             # 4,680 rows — one per cell: category/placement/edge_case/is_identifier
+ground_truth.jsonl             # 4,680 rows, one per cell: category/placement/edge_case/is_identifier
 ground_truth_columns.json      # per-column catalog + header_reveals_category flag
 data/Synth-India/datasets/*.xlsx   # India-jurisdiction arm (6 forms)
 data/Synth-US/datasets/*.xlsx      # US-jurisdiction arm (6 forms)
@@ -40,7 +40,7 @@ edge-case rows + 24 bulk rows), modelled on the Indo-VAP form anatomy
 | `05_AE_AdverseEvent` | free-text narrative with **embedded** name/phone/ID + eponym FP bait |
 | `06_FU_FollowUp` | visit/death dates, age>89, vital + **embedded** ID in notes |
 
-## Coverage: HIPAA Safe Harbor §164.514(b)(2) — all 18 identifiers
+## Coverage: HIPAA Safe Harbor §164.514(b)(2): all 18 identifiers
 
 | # | HIPAA identifier | Column(s) | Arm |
 |---|---|---|---|
@@ -112,7 +112,7 @@ Age exercises the HIPAA boundary explicitly: 89 (benign) vs 90/92/95/103
 
 - **`is_identifier`** is the recall denominator: `true` = a real identifier is present
   and a correct system must remove/transform it. A checksum-invalid Aadhaar or a
-  repeating-digit placeholder is `false` (not a real identifier — a value validator
+  repeating-digit placeholder is `false` (not a real identifier: a value validator
   ignoring it is *correct*, not a miss).
 - **`category` + `is_identifier=false` + `category=="non_phi"`** is the precision
   denominator: 560 benign cells (incl. 32 clinical eponyms like *Koch*/*Mantoux* and
@@ -123,8 +123,8 @@ Age exercises the HIPAA boundary explicitly: 89 (benign) vs 90/92/95/103
 | Axis | Expected RePORTal | Expected stock Presidio |
 |---|---|---|
 | Structured IDs in `named` columns | removes whole column (recall 1.0) | per-value, misses no-signature cats (UHID/ABHA/ration/device) |
-| IDs in `mislabeled`/`freetext` | **at risk** — header is benign; relies on value safety-net / free-text rules | should catch (value-based) |
-| Plain names in free text | **at risk** — only `Dr. X` matches its value ruler | NER (`PERSON`) should catch |
+| IDs in `mislabeled`/`freetext` | **at risk**: header is benign; relies on value safety-net / free-text rules | should catch (value-based) |
+| Plain names in free text | **at risk**: only `Dr. X` matches its value ruler | NER (`PERSON`) should catch |
 | Age > 89 | caps (HIPAA §164.514(b)(2)(i)(C)) | no AGE recognizer → **misses** |
 | Bare PIN / ZIP, ration, ABHA | header-classified → removed | no signature → **misses** |
 | Precision (benign cells, eponyms) | 0 false positives by design (header-scoped) | false positives expected (US recognizers, PERSON on eponyms) |
@@ -132,7 +132,7 @@ Age exercises the HIPAA boundary explicitly: 89 (benign) vs 90/92/95/103
 
 The honest expectation: **RePORTal wins recall on structured/no-signature PHI and on
 precision; Presidio wins recall on free-text names and on identifiers hidden under
-benign headers.** That two-sided result is the point — it tells the manuscript exactly
+benign headers.** That two-sided result is the point. It tells the manuscript exactly
 where each approach's residual risk lives.
 
 ## Run
@@ -142,7 +142,7 @@ uv run --all-groups python docs/eval/synthetic_phi_benchmark/generate_synthetic.
 uv run --all-groups python docs/eval/synthetic_phi_benchmark/generate_synthetic.py --selfcheck-only
 ```
 
-## Scoring (BUILT + RUN — see `SCORE.md`)
+## Scoring (BUILT + RUN, see `SCORE.md`)
 
 `score_synthetic.py` drives the **production** RePORTal engines (`classify_headers` +
 the OR-combined publish gate) and a registry of **value-scanner incumbents** over both
@@ -158,7 +158,7 @@ uv pip install scrubadub philter-lite transformers torch   # spaCy en_core_web_l
 uv run --all-groups python docs/eval/synthetic_phi_benchmark/score_synthetic.py
 ```
 
-**Result (2026-06-26) — measured on the identical corpus (3,422 identifiers, 704 benign):**
+**Result (2026-06-26), measured on the identical corpus (3,422 identifiers, 704 benign):**
 
 | Tool | Recall (IDs removed) | Leaked | Precision (benign kept) | Over-redacted |
 |---|---:|---:|---:|---:|
@@ -168,13 +168,13 @@ uv run --all-groups python docs/eval/synthetic_phi_benchmark/score_synthetic.py
 | Microsoft Presidio | 73.79% | 897 | 85.80% | 100 |
 | spaCy NER (`en_core_web_lg`) | 62.80% | 1273 | 25.85% | 522 |
 | scrubadub | 14.85% | 2914 | 100.0% | 0 |
-| LLM de-id (GPT-4/Claude) | not run (no API key) | — | — | — |
+| LLM de-id (GPT-4/Claude) | not run (no API key) | n/a | n/a | n/a |
 
 Every probabilistic incumbent leaks (69–2,914 IDs); only the deterministic + fail-closed
 RePORTal reaches 0 leak / 0 over-redaction. Full prose: `docs/reviews/phi_comparative_analysis.md`.
 
 The benchmark did its job: the **first** run exposed real classifier gaps (recall
-76.7%, 798 leaks — names, India IDs, US financial/device IDs). Closing them in the
+76.7%, 798 leaks: names, India IDs, US financial/device IDs). Closing them in the
 *production* classifier (Note 34, all collision-checked against Indo-VAP) took
 RePORTal to **0% leakage / 0% over-redaction**. Full analysis + the opposite-direction
 Presidio weakness in `SCORE.md`.
@@ -186,4 +186,4 @@ APL/BPL socioeconomic *category* (kept, like Indo-VAP's `IC_RATION`); a ration *
 number* field is named `RATIONNO`/`RATION_CARD_NO`. The benchmark uses the realistic
 number-suffixed name. Likewise `IP` is intentionally left to value-based
 disambiguation (intraperitoneal/inpatient vs. IP-address) rather than dropped by
-header — see `SCORE.md`.
+header. See `SCORE.md`.

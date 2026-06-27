@@ -1,4 +1,4 @@
-# PHI Handling System — Benchmark Report
+# PHI Handling System: Benchmark Report
 
 **Prepared:** 2026-06-26 · **Study:** Indo-VAP (RePORT India, ventilator-associated-pneumonia TB cohort)
 **System:** RePORTal deterministic, header-only, fail-closed PHI de-identification pipeline
@@ -15,12 +15,12 @@ same claim, and the report keeps them separate on purpose.
 | **100% detection accuracy** (recall + precision) | **Synthetic** benchmark | Every identifier is *planted*, so there is a ground truth to score against. |
 | **0% PHI leak + full autonomy + complete audit trail** | **Real Indo-VAP** study | No ground truth exists for real data, but leak-freedom and audit-coverage are *structurally verified*, not estimated. |
 
-We do **not** claim "100% accuracy" on Indo-VAP — that number is unmeasurable on data without
+We do **not** claim "100% accuracy" on Indo-VAP; that number is unmeasurable on data without
 planted labels. We claim the stronger, checkable properties below instead.
 
 ---
 
-## 2. Synthetic benchmark — detection accuracy vs. the incumbent
+## 2. Synthetic benchmark: detection accuracy vs. the incumbent
 
 A shareable synthetic corpus was built to mirror the Indo-VAP schema with **planted, known-location
 identifiers** across every HIPAA-18 category plus India-specific IDs (Aadhaar, PAN, Indian phone,
@@ -38,17 +38,17 @@ voter/passport), at three placement patterns (full-cell, embedded-in-text, adjac
 
 **Interpretation.** The 26% Presidio leakage is the structural risk of probabilistic recognisers:
 they miss what their models were not trained on (India IDs, clinical accession numbers, lowercase
-PAN). The 14% Presidio precision gap is the *other* cost — cohort-impossible false positives that a
+PAN). The 14% Presidio precision gap is the *other* cost: cohort-impossible false positives that a
 probabilistic system redacts anyway, destroying analysable data. RePORTal's header-only,
 rule-driven design hit neither failure mode on this corpus.
 
-> Synthetic autonomy note: the synthetic corpus is **adversarial** — roughly half its cells are
-> planted identifiers — so it intentionally triggers human-review holds (6/12 forms). That is the
+> Synthetic autonomy note: the synthetic corpus is **adversarial** (roughly half its cells are
+> planted identifiers), so it intentionally triggers human-review holds (6/12 forms). That is the
 > worst case by construction, not a representative one (contrast §3).
 
 ---
 
-## 3. Real study (Indo-VAP) — leak-freedom, autonomy, audit coverage
+## 3. Real study (Indo-VAP): leak-freedom, autonomy, audit coverage
 
 Fresh from-scratch rebuild (`make study STUDY=Indo-VAP FORCE=1 STRICT=1`), full 10-phase
 orchestrator, snapshot `snap_20260626T235752Z` (clean first run, `snapshot_type=1`).
@@ -61,7 +61,7 @@ orchestrator, snapshot `snap_20260626T235752Z` (clean first run, `snapshot_type=
 | Forms held for human review | **0** |
 | **Autonomy** | **100%** |
 
-On real study data the pipeline published every form with **zero** human-review holds — the headline
+On real study data the pipeline published every form with **zero** human-review holds: the headline
 "reduces human review" claim, end-to-end, with no manual intervention.
 
 ### 3.2 Ensures 0% PHI leak (dual-verified)
@@ -73,7 +73,7 @@ On real study data the pipeline published every form with **zero** human-review 
 | Independent residual scan (`scan_tree_for_phi`, out-of-band) | **0 findings** |
 | Publish-time OR-combined guard gate (Presidio + residual scan) | **pass** |
 
-Leak-freedom is checked **twice independently** — at publish time, and again by a separate scan run
+Leak-freedom is checked **twice independently**: at publish time, and again by a separate scan run
 after the fact for this report. Both returned zero.
 
 ### 3.3 Complete, per-variable audit trail
@@ -92,7 +92,7 @@ Every published column carries an audit record (enforced at runtime by assertion
 | Keep decisions (retained clinical fields, traced) | 1,466 |
 
 Posture: **HIPAA Safe Harbor**. Every event records what / why (regulation) / how (method) /
-provenance — counts and rule references only, never a raw value.
+provenance, counts and rule references only, never a raw value.
 
 ---
 
@@ -100,9 +100,9 @@ provenance — counts and rule references only, never a raw value.
 
 The system is **header-only** (classification reads column *names* and metadata, never row values),
 **deterministic** (same input → byte-identical output and ledgers across re-runs), and
-**fail-closed** (an un-scrubbable row is quarantined and never published — it cannot leak). PHI
+**fail-closed** (an un-scrubbable row is quarantined and never published, so it cannot leak). PHI
 never reaches an LLM. These are *structural* properties, not statistical ones, which is why
-leak-freedom and audit-coverage can be **verified** rather than merely estimated — the distinction
+leak-freedom and audit-coverage can be **verified** rather than merely estimated. This is the distinction
 that separates this approach from the probabilistic incumbents in §2.
 
 ---
@@ -112,7 +112,7 @@ that separates this approach from the probabilistic incumbents in §2.
 - **Detection accuracy:** 100% recall / 100% precision / 0 leak on a ground-truth synthetic
   benchmark, vs. Presidio's 73.79% recall / 26% leakage / 14% precision gap.
 - **Real study:** 0% PHI leak (dual-verified), 100% autonomy (0/37 held), complete per-variable
-  audit trail — on the actual Indo-VAP cohort, fully unattended.
+  audit trail, on the actual Indo-VAP cohort, fully unattended.
 - **Honest scope:** "100% accuracy" is a *synthetic-only* number (it requires planted ground truth);
   on real data the equivalent, stronger, and checkable claims are zero-leak + full autonomy + full
   audit coverage.
