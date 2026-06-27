@@ -47,6 +47,27 @@ regulatory posture. The structured SDC tools (ARX/sdcMicro) share the modality a
 are interactive utilities — they impose no fail-closed publish gate and no automated audit/posture
 binding. Every probabilistic/cloud row trades a structural guarantee for a statistical estimate.
 
+### 1.1 Capability matrix (✓ = has it, ✗ = does not, ➖ = partial/manual)
+
+Measured cells (0 leak / 0 over-redaction) are from the §2 head-to-head on the identical corpus;
+the rest are design properties.
+
+| Capability | **RePORTal** | Presidio | Philter | Transformer | spaCy | scrubadub | AWS/Azure/GPT-4 | ARX/sdcMicro |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Built for **structured** tabular data | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
+| **Deterministic** (not probabilistic) | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
+| **Fail-closed** (holds, never leaks on doubt) | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ➖ |
+| Row values **never to LLM/cloud** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| **Per-variable audit trail** (enforced) | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ➖ |
+| Named **HIPAA + DPDPA** posture | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Runs **offline, no API key, no cost** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ |
+| **India-specific IDs** (Aadhaar/PAN/GSTIN…) | ✓ | ✗ | ➖ | ✗ | ✗ | ✗ | ✗ | n/a |
+| **0 identifiers leaked** (measured) | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | not run | n/a |
+| **0 benign cells destroyed** (measured) | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | not run | n/a |
+
+RePORTal is the only column that is ✓ on every row. scrubadub earns the lone incumbent ✓ on "0 benign
+destroyed" — but only because it detects so little (14.85% recall); its precision is bought with leakage.
+
 ---
 
 ## 2. Measured head-to-head — every free incumbent on the IDENTICAL corpus
