@@ -18,7 +18,12 @@ already-organized tree unless `FORCE=1`).
 ## What This Skill Does
 
 1. **Stage** — copy `SRC` (a dir or a `.zip`) into a temp working dir; extract
-   any zips. The source is never modified.
+   any zips. The source is never modified. A directory `SRC` is walked
+   recursively, so files may sit loose in `SRC` or in subfolders. Pipeline-managed
+   subdirs (`snapshots/`, `output/`, `tmp/`, `.git/`, …), hidden/junk files
+   (`.DS_Store`), and the destination `data/raw/` tree itself are skipped — so
+   `SRC` can safely be `data/` (which already contains `data/raw/`) without
+   re-ingesting the study's own organized files.
 2. **Classify** each staged file by name + extension (case-insensitive):
    - `*.pdf` -> `annotated_pdfs/`
    - `*.xlsx`/`*.csv` whose name contains `mapping`/`dictionary`/`deb`/`codebook` -> `data_dictionary/`
@@ -48,9 +53,10 @@ python plugins/report-ai-study-pipeline/skills/raw-data-intake/scripts/run.py \
 
 `ADD=1` (`--add`) files new files from `SRC` into an already-organized study
 without the `FORCE` rebuild semantics: it never overwrites an existing file
-(reports it as `already_present` instead). Point `SRC` at a dedicated inbox of
-the new files — not at `data/`, which already contains the study's `raw/` tree.
-Manifest-gap surfacing for newly-added forms is deferred (future work).
+(reports it as `already_present` instead). `SRC` may be `data/` directly — the
+study's own `raw/` and `snapshots/` are skipped automatically, so only the loose
+new files (in `data/` or its subfolders) are filed. Manifest-gap surfacing for
+newly-added forms is deferred (future work).
 
 Emits a value-free `RPLN_SKILL_RESULT:` line with per-bucket counts.
 

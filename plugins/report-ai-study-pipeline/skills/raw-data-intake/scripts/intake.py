@@ -49,10 +49,48 @@ def _safe_dest(workdir: Path, name: str) -> tuple[Path, bool]:
         n += 1
 
 
-def stage_source(src: Path, workdir: Path, collisions: list | None = None) -> list[Path]:
+# Subdirectories that are pipeline-managed / VCS / junk — never part of a
+# delivery. The destination raw tree is excluded separately via exclude_under so
+# pointing SRC at data/ (which contains data/raw/) never re-ingests the study.
+_IGNORED_DIR_NAMES = frozenset(
+    {"snapshots", "output", "tmp", ".git", "__pycache__", "node_modules"}
+)
+_IGNORED_FILE_NAMES = frozenset({".DS_Store", "Thumbs.db"})
+
+
+def _is_ignored_source(path: Path, src_root: Path, exclude_under: list[Path]) -> bool:
+    """True if *path* is junk, hidden, in a managed subdir, or under a dest tree."""
+    if path.name in _IGNORED_FILE_NAMES or path.name.startswith("."):
+        return True
+    rel_parents = path.relative_to(src_root).parts[:-1]
+    if any(part in _IGNORED_DIR_NAMES or part.startswith(".") for part in rel_parents):
+        return True
+    resolved = path.resolve()
+    for ex in exclude_under:
+        try:
+            resolved.relative_to(Path(ex).resolve())
+            return True  # lives under a destination/managed root
+        except ValueError:
+            continue
+    return False
+
+
+def stage_source(
+    src: Path,
+    workdir: Path,
+    collisions: list | None = None,
+    *,
+    exclude_under: list[Path] | None = None,
+) -> list[Path]:
     """Copy SRC (file or dir) into WORKDIR and extract any .zip. Non-destructive.
 
     Returns the flat list of staged regular files (zips extracted, not returned).
+
+    When SRC is a directory it is walked recursively, but pipeline-managed
+    subdirs (``_IGNORED_DIR_NAMES``), hidden/junk files, and anything under a
+    path in *exclude_under* (e.g. the destination ``data/raw`` tree) are skipped
+    — so pointing SRC at ``data/`` files only the loose new files and never
+    re-ingests the study's own organized tree or snapshots.
 
     When two source files share a basename the later file is written under a
     disambiguated name (``stem.collidN.ext``) and its original basename is
@@ -63,8 +101,16 @@ def stage_source(src: Path, workdir: Path, collisions: list | None = None) -> li
         raise FileNotFoundError(f"intake source not found: {src}")
     workdir = Path(workdir)
     workdir.mkdir(parents=True, exist_ok=True)
+    exclude_under = exclude_under or []
 
-    sources = [src] if src.is_file() else sorted(p for p in src.rglob("*") if p.is_file())
+    if src.is_file():
+        sources = [src]
+    else:
+        sources = sorted(
+            p
+            for p in src.rglob("*")
+            if p.is_file() and not _is_ignored_source(p, src, exclude_under)
+        )
     for item in sources:
         dest, collided = _safe_dest(workdir, item.name)
         shutil.copy2(item, dest)
@@ -178,7 +224,9 @@ def organize(
 
     with tempfile.TemporaryDirectory() as tmp:
         collisions: list[str] = []
-        staged = stage_source(Path(src), Path(tmp), collisions=collisions)
+        # Exclude the destination raw tree so SRC=data (which contains data/raw)
+        # never re-ingests the study's own organized files.
+        staged = stage_source(Path(src), Path(tmp), collisions=collisions, exclude_under=[raw_root])
         counts = dict.fromkeys(_ALL_BUCKETS, 0)
         unclassified: list = []
         already_present: list = []

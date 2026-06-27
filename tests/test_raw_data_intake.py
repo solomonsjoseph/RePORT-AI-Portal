@@ -371,3 +371,45 @@ def test_organize_add_never_overwrites_existing(tmp_path):
     assert res.already_present == ["form.xlsx"]
     assert existing.read_text() == "ORIGINAL"  # never overwritten
     assert res.counts["datasets"] == 0  # nothing newly placed
+
+
+def test_stage_source_skips_managed_dirs_and_junk(tmp_path):
+    """Walking a dir skips snapshots/, hidden/junk, and anything under exclude_under."""
+    root = tmp_path / "data"
+    _touch(root / "loose.xlsx")  # loose in data/  -> staged
+    _touch(root / "sub" / "nested.csv")  # legit subfolder -> staged
+    _touch(root / "snapshots" / "snap.jsonl")  # managed         -> skipped
+    _touch(root / ".DS_Store")  # junk            -> skipped
+    _touch(root / "raw" / "STUDY" / "datasets" / "x.xlsx")  # dest tree -> skipped
+    work = tmp_path / "work"
+    staged = intake.stage_source(root, work, exclude_under=[root / "raw"])
+    assert sorted(p.name for p in staged) == ["loose.xlsx", "nested.csv"]
+
+
+def test_organize_src_is_data_dir_ignores_own_raw_tree(tmp_path):
+    """SRC=data with the study's own raw/ underneath: only loose files are filed."""
+    data = tmp_path / "data"
+    raw_root = data / "raw"
+    base = raw_root / "STUDY"
+    # pre-existing organized tree under data/raw
+    for b in ("annotated_pdfs", "data_dictionary", "datasets", "_unclassified"):
+        (base / b).mkdir(parents=True)
+    _touch(base / "datasets" / "old.xlsx")
+    _touch(data / "snapshots" / "snap.jsonl")  # must be ignored
+    # new loose files dropped directly into data/
+    _touch(data / "new_form.xlsx")
+    _touch(data / "scan.pdf")
+
+    res = intake.organize(
+        "STUDY",
+        data,
+        add=True,
+        raw_root=raw_root,
+        config_root=tmp_path / "config",
+        audit_dir=tmp_path / "audit",
+    )
+    ds = sorted(p.name for p in (base / "datasets").iterdir())
+    assert ds == ["new_form.xlsx", "old.xlsx"]  # old not re-ingested/duplicated
+    assert [p.name for p in (base / "annotated_pdfs").iterdir()] == ["scan.pdf"]
+    # the snapshot jsonl was never pulled in as a dataset/unclassified
+    assert "snap.jsonl" not in [p.name for p in (base / "_unclassified").iterdir()]
