@@ -187,9 +187,11 @@ skills:
   - skill: raw-data-intake
     path: skills/raw-data-intake/SKILL.md
     run: skills/raw-data-intake/scripts/run.py
-    role: setup
+    role: interactive
     scope: raw_delivery
-    note: >
+    parallel: false
+    invocation: subprocess
+    purpose: >
       Skill 0 — standalone prep run BEFORE the 10-phase orchestrator. Sorts an
       unorganized delivery into data/raw/<study>/ and drafts the forms manifest.
       Filename + extension only (GR-1); idempotent; never a DAG phase.

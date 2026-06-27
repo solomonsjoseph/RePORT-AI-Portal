@@ -46,3 +46,37 @@ python plugins/report-ai-study-pipeline/skills/raw-data-intake/scripts/run.py \
 ```
 
 Emits a value-free `RPLN_SKILL_RESULT:` line with per-bucket counts.
+
+## Result Contract
+
+`RPLN_SKILL_RESULT:` JSON with:
+
+- `ok` — `true` on success (including a no-op skip), `false` on error (missing SRC, etc.)
+- `exit_code` — 0 on success, 2 on error
+- `summary` — per-bucket counts (`datasets=N; annotated_pdfs=N; ...`) or `"already organized — skipping"`
+- `data.counts` — `{datasets, annotated_pdfs, data_dictionary, _unclassified}` (all int)
+- `data.unclassified` — list of filenames that landed in `_unclassified/`
+- `data.manifest_written` — `true` if a new draft manifest was created
+- `data.skipped` — `true` if the tree was already organized and `--force` was not passed
+- `data.review_note` — absolute path to the intake review note, or `null` if no unclassified files
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success (organized, or no-op skip) |
+| 2 | Error — missing SRC dir or invalid arguments |
+
+## Portability
+
+- Python 3.11+; no external dependencies beyond the stdlib and the repo's `scripts/` package.
+- Path roots (`data/raw/`, `config/`, `output/`) may be overridden via env vars for testing:
+  `RPLN_INTAKE_RAW_ROOT`, `RPLN_INTAKE_CONFIG_ROOT`, `RPLN_INTAKE_AUDIT_DIR`.
+
+## What This Skill Does NOT Do
+
+- Does NOT open any workbook or read dataset row values (GR-1).
+- Does NOT resolve duplicate files — that is `dataset-deduplication` (skill 2).
+- Does NOT fuzzy-match filenames or make reject decisions.
+- Does NOT touch the per-study pipeline lock (never a DAG phase).
+- Does NOT clobber a hand-tuned `_forms_manifest.yaml`.

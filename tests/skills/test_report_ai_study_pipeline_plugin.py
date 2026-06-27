@@ -21,6 +21,7 @@ PLUGIN_ROOT = REPO_ROOT / "plugins" / "report-ai-study-pipeline"
 # Every skill directory that must ship a platform-neutral SKILL.md entrypoint.
 _ALL_SKILL_DIRS = [
     "report-ai-study-pipeline",
+    "raw-data-intake",
     "header-extraction",
     "dictionary-to-llm-source",
     "dataset-deduplication",
