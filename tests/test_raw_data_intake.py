@@ -494,3 +494,93 @@ def test_resolve_study_name_env_acts_as_explicit(tmp_path):
     raw.mkdir()  # nothing detectable, but env names it
     name, source = intake.resolve_study_name(None, raw_root=raw, env_study_name="EnvStudy")
     assert (name, source) == ("EnvStudy", "explicit")
+
+
+def test_append_to_manifest_required_block_form_preserves_existing(tmp_path):
+    m = tmp_path / "_forms_manifest.yaml"
+    m.write_text(
+        "# hand-tuned — keep this comment\n"
+        "required:\n"
+        "- A.xlsx\n"
+        "- B.xlsx\n"
+        "optional: []\n"
+        "reject:\n"
+        "- junk.xlsx\n"
+    )
+    appended = intake.append_to_manifest_required(m, ["C.xlsx"])
+    assert appended == ["C.xlsx"]
+    text = m.read_text()
+    assert "# hand-tuned — keep this comment" in text  # comment preserved
+    import yaml
+
+    data = yaml.safe_load(text)
+    assert data["required"] == ["A.xlsx", "B.xlsx", "C.xlsx"]  # appended after B
+    assert data["reject"] == ["junk.xlsx"]  # untouched
+
+
+def test_append_to_manifest_required_inline_empty(tmp_path):
+    m = tmp_path / "_forms_manifest.yaml"
+    m.write_text("required: []\noptional: []\nreject: []\n")
+    intake.append_to_manifest_required(m, ["New.xlsx"])
+    import yaml
+
+    assert yaml.safe_load(m.read_text())["required"] == ["New.xlsx"]
+
+
+def test_organize_add_auto_appends_manifest_gap_and_flags(tmp_path):
+    raw_root = tmp_path / "raw"
+    base = raw_root / "STUDY"
+    for b in ("annotated_pdfs", "data_dictionary", "datasets", "_unclassified"):
+        (base / b).mkdir(parents=True)
+    _touch(base / "datasets" / "old.xlsx")
+    # an existing hand-tuned manifest that lists old.xlsx but not the new form
+    cfg = tmp_path / "config" / "STUDY"
+    cfg.mkdir(parents=True)
+    (cfg / "_forms_manifest.yaml").write_text("required:\n- old.xlsx\noptional: []\nreject: []\n")
+    src = tmp_path / "inbox"
+    _touch(src / "99Z_NewForm.xlsx")
+
+    res = intake.organize(
+        "STUDY",
+        src,
+        add=True,
+        raw_root=raw_root,
+        config_root=tmp_path / "config",
+        audit_dir=tmp_path / "audit",
+    )
+    assert res.manifest_gaps == ["99Z_NewForm.xlsx"]
+    import yaml
+
+    required = yaml.safe_load((cfg / "_forms_manifest.yaml").read_text())["required"]
+    assert required == ["old.xlsx", "99Z_NewForm.xlsx"]  # auto-appended
+    note = (tmp_path / "audit" / "human_review" / "intake" / "intake_review.md").read_text()
+    assert "manifest_gap_appended" in note and "99Z_NewForm.xlsx" in note
+
+
+def test_organize_add_no_gap_when_form_already_listed(tmp_path):
+    raw_root = tmp_path / "raw"
+    base = raw_root / "STUDY"
+    for b in ("annotated_pdfs", "data_dictionary", "datasets", "_unclassified"):
+        (base / b).mkdir(parents=True)
+    _touch(base / "datasets" / "old.xlsx")
+    cfg = tmp_path / "config" / "STUDY"
+    cfg.mkdir(parents=True)
+    (cfg / "_forms_manifest.yaml").write_text(
+        "required:\n- old.xlsx\n- listed.xlsx\noptional: []\nreject: []\n"
+    )
+    src = tmp_path / "inbox"
+    _touch(src / "listed.xlsx")  # already in required
+
+    res = intake.organize(
+        "STUDY",
+        src,
+        add=True,
+        raw_root=raw_root,
+        config_root=tmp_path / "config",
+        audit_dir=tmp_path / "audit",
+    )
+    assert res.manifest_gaps == []  # nothing appended
+    import yaml
+
+    required = yaml.safe_load((cfg / "_forms_manifest.yaml").read_text())["required"]
+    assert required == ["old.xlsx", "listed.xlsx"]  # unchanged

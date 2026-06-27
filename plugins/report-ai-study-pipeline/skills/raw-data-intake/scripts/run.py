@@ -114,6 +114,8 @@ def main(argv: list[str] | None = None) -> int:
             parts.append(f"already_present={len(result.already_present)}")
         if result.pruned:
             parts.append(f"pruned={len(result.pruned)}")
+        if result.manifest_gaps:
+            parts.append(f"manifest_appended={len(result.manifest_gaps)}")
         summary = f"{study_label}: " + ("; ".join(parts) if parts else "no files staged")
     emit_skill_result(
         SkillResult(
@@ -129,6 +131,7 @@ def main(argv: list[str] | None = None) -> int:
                 "unclassified": result.unclassified,
                 "already_present": result.already_present,
                 "pruned": result.pruned,
+                "manifest_gaps": result.manifest_gaps,
                 "manifest_written": result.manifest_written,
                 "review_note": result.review_note,
             },

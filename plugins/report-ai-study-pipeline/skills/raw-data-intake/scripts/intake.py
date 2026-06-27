@@ -5,6 +5,7 @@ ONLY — no workbook is ever opened (GR-1). Standalone prep, not a DAG phase.
 
 from __future__ import annotations
 
+import re
 import shutil
 import tempfile
 import zipfile
@@ -183,6 +184,7 @@ class IntakeResult:
     review_note: str | None = None
     already_present: list = field(default_factory=list)
     pruned: list = field(default_factory=list)
+    manifest_gaps: list = field(default_factory=list)
 
 
 def _validate_study_name(name: str) -> None:
@@ -269,6 +271,80 @@ def draft_manifest(dataset_names: list, manifest_path: Path) -> bool:
     return True
 
 
+def _manifest_known_names(manifest_path: Path) -> set[str] | None:
+    """Names listed under required/optional/reject, or None if absent/unreadable."""
+    manifest_path = Path(manifest_path)
+    if not manifest_path.exists():
+        return None
+    import yaml
+
+    try:
+        data = yaml.safe_load(manifest_path.read_text()) or {}
+    except yaml.YAMLError:
+        return None  # malformed — don't guess; skip gap detection
+    if not isinstance(data, dict):
+        return None
+    known: set[str] = set()
+    for key in ("required", "optional", "reject"):
+        vals = data.get(key) or []
+        if isinstance(vals, list):
+            known.update(str(v) for v in vals)
+    return known
+
+
+def append_to_manifest_required(manifest_path: Path, names: list[str]) -> list[str]:
+    """Append *names* under the manifest's ``required:`` block, append-only.
+
+    Existing entries, ordering, and comments are preserved — new items are
+    inserted after the last current ``required:`` item, matching its indentation
+    (or converting an inline ``required: []`` to block form). Returns the names
+    appended (empty if there is no ``required:`` key to extend).
+    """
+    manifest_path = Path(manifest_path)
+    if not names or not manifest_path.exists():
+        return []
+    text = manifest_path.read_text()
+    lines = text.split("\n")
+
+    req_idx = next((i for i, ln in enumerate(lines) if re.match(r"^required\s*:", ln)), None)
+    if req_idx is None:
+        return []  # no required: key to extend — never fabricate structure
+
+    inline = lines[req_idx].split(":", 1)[1].strip()
+    item_re = re.compile(r"^(\s*)-\s")
+    indent = ""
+    last_item = req_idx
+    found_item = False
+    j = req_idx + 1
+    while j < len(lines):
+        m = item_re.match(lines[j])
+        if m:
+            indent = m.group(1)
+            last_item = j
+            found_item = True
+            j += 1
+            continue
+        if lines[j].strip() == "" or lines[j].lstrip().startswith("#"):
+            j += 1
+            continue
+        break  # next top-level key
+
+    if inline.startswith("["):
+        # inline list form: rebuild as a block, preserving any inline items
+        import yaml
+
+        existing = yaml.safe_load(lines[req_idx].split(":", 1)[1]) or []
+        block = ["required:"] + [f"  - {x}" for x in existing] + [f"  - {n}" for n in names]
+        lines[req_idx : req_idx + 1] = block
+    else:
+        use_indent = indent if found_item else ""
+        lines[last_item + 1 : last_item + 1] = [f"{use_indent}- {n}" for n in names]
+
+    out = "\n".join(lines)
+    manifest_path.write_text(out)
+    return list(names)
+
+
 def write_review_note(audit_dir: Path, unclassified: list[tuple[str, str]]) -> str | None:
     """unclassified: list[(filename, reason_code)]. Count-only; no contents."""
     if not unclassified:
@@ -314,7 +390,8 @@ def organize(
     # add mode files NEW files into an already-organized study without the force
     # rebuild semantics: it never overwrites an existing file (records it as
     # already_present instead) and never re-ingests the study's own buckets
-    # (SRC is the inbox). Manifest-gap surfacing is deferred (future work).
+    # (SRC is the inbox). Newly placed datasets missing from an existing manifest
+    # are auto-appended to required: + flagged (see below).
     if not force and not add and is_already_organized(raw_study_dir):
         return IntakeResult(skipped=True)
 
@@ -332,6 +409,7 @@ def organize(
         counts = dict.fromkeys(_ALL_BUCKETS, 0)
         unclassified: list = []
         already_present: list = []
+        placed_datasets: list[str] = []
         for path in staged:
             bucket = classify(path.name)
             dest_dir = raw_study_dir / bucket
@@ -344,13 +422,29 @@ def organize(
             counts[bucket] += 1
             if bucket == UNCLASSIFIED:
                 unclassified.append((path.name, "unrecognized_name_or_extension"))
+            elif bucket == DATASETS:
+                placed_datasets.append(path.name)
         # Record collisions so a human can verify no data was lost.
         collision_entries = [(name, "name_collision") for name in collisions]
 
     dataset_names = [p.name for p in (raw_study_dir / DATASETS).glob("*") if p.is_file()]
     manifest_path = config_root / study / "_forms_manifest.yaml"
     manifest_written = draft_manifest(dataset_names, manifest_path)
-    review_note = write_review_note(audit_dir, unclassified + collision_entries)
+
+    # When a manifest already exists (not freshly drafted), auto-append any newly
+    # placed dataset that it does not yet list under required/optional/reject —
+    # append-only, preserving existing entries + comments — so a new form can't
+    # silently trip ManifestMismatchError at `make study`. Each appended form is
+    # also flagged in the count-only review note for the audit trail.
+    manifest_gaps: list[str] = []
+    if not manifest_written and placed_datasets:
+        known = _manifest_known_names(manifest_path)
+        if known is not None:
+            gaps = sorted(n for n in placed_datasets if n not in known)
+            manifest_gaps = append_to_manifest_required(manifest_path, gaps)
+    gap_entries = [(name, "manifest_gap_appended") for name in manifest_gaps]
+
+    review_note = write_review_note(audit_dir, unclassified + collision_entries + gap_entries)
 
     # Opt-in: remove the loose source files now that they are filed into the raw
     # tree (the skill is copy-by-default; prune is explicit). Never touches the
@@ -365,4 +459,5 @@ def organize(
         review_note=review_note,
         already_present=already_present,
         pruned=pruned,
+        manifest_gaps=manifest_gaps,
     )

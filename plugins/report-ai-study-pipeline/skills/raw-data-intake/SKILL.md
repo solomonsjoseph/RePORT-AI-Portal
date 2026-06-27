@@ -74,8 +74,15 @@ emptied leftover subfolders.
 without the `FORCE` rebuild semantics: it never overwrites an existing file
 (reports it as `already_present` instead). `SRC` may be `data/` directly — the
 study's own `raw/` and `snapshots/` are skipped automatically, so only the loose
-new files (in `data/` or its subfolders) are filed. Manifest-gap surfacing for
-newly-added forms is deferred (future work).
+new files (in `data/` or its subfolders) are filed.
+
+**Manifest-gap auto-append.** When a manifest already exists, any newly placed
+dataset it does not yet list (under `required`/`optional`/`reject`) is
+auto-appended to its `required:` list — append-only, preserving existing entries,
+ordering, and comments — so a new form can't silently trip
+`ManifestMismatchError` at `make study`. Each appended form is also flagged in
+the count-only review note (`manifest_gap_appended`) and reported in the result
+(`manifest_gaps` / `manifest_appended=N`).
 
 Emits a value-free `RPLN_SKILL_RESULT:` line with per-bucket counts.
 
