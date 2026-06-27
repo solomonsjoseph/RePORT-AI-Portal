@@ -38,6 +38,8 @@ only genuine apples-to-apples head-to-head, a value scanner on the identical tab
 | Google Cloud Healthcare API | FHIR/DICOM/text | Managed transform | **Google tenancy, poss. cross-region** | No | Limited | No Safe Harbor / DPDPA claim |
 | Azure Health Data Services + Presidio | (text) | Remote recognizer | **Sent to Azure service** | No | No | None established |
 | Microsoft Presidio (self-hosted) | Free-text + values | Probabilistic recognizers | Local process | No | No | No |
+| John Snow Labs Spark NLP for Healthcare | Free-text notes | Probabilistic (neural, commercial) | Local/cluster | No | No | No formal claim (vendor accuracy figures) |
+| NLM Scrubber / PhysioNet deid / MIST / NeuroNER / CliniDeID | Free-text notes | Probabilistic (rules / CRF / NN) | Local process | No | No | No |
 | ARX / sdcMicro / μ-ARGUS | **Structured tabular** | Deterministic SDC (k-anon / suppression) | Local process | Partial (manual) | Partial (manual) | Tool, not a posture claim |
 
 **What the table shows.** RePORTal is the only row that is simultaneously (i) built for *structured*
@@ -96,6 +98,35 @@ others discussed by practitioners), see the community survey thread
 [r/LanguageTechnology, "Open-source PHI de-identification tool"](https://www.reddit.com/r/LanguageTechnology/comments/o7nlju/opensource_phi_deidentification_tool/);
 the recurring theme there is the same one measured in §2: the mature open tools are US-centric and
 probabilistic.
+
+### 1.3 Coverage of the community-cited toolset
+
+The community thread above names the canonical de-identification toolset. The table below records
+exactly which were measured live in §2 versus cited, so this analysis claims no more than it tested.
+The pattern: the rules-based tool the thread flagged as most interesting (Philter) was measured
+directly, the neural state of the art is represented by a measured transformer, and the remaining
+named tools are either commercial/paid or legacy single-jurisdiction systems whose published numbers
+are cited rather than re-run.
+
+| Thread-cited tool | Type | Status in this analysis |
+|---|---|---|
+| Philter (BCHSI/philter-ucsf) | Open, rules-based | **Measured live** (§2): 93.16% recall, 234 leaks |
+| Microsoft Presidio | Open, probabilistic | **Measured live** (§2): 73.79% recall, 897 leaks |
+| Transformer (`obi/deid_roberta_i2b2`) | Open, neural (i2b2) | **Measured live** (§2): 97.98% recall, 69 leaks |
+| scrubadub, spaCy NER | Open | **Measured live** (§2) |
+| NLM Scrubber | Open, rules | Cited (name recall 88.1%); legacy, registration-gated, not re-run |
+| PhysioNet/MIT deid | Open, Perl + lexicon | Cited; legacy, not re-run |
+| MIST | Open, CRF | Cited (F1 ~0.93 to 0.99 by doc type); legacy, not re-run |
+| NeuroNER | Open, neural (TF1) | Cited (name recall 84.1%); superseded by the measured RoBERTa transformer |
+| CliniDeID (Clinacuity) | Commercial | Cited (name recall 95.9%); paid, not run |
+| John Snow Labs Spark NLP for Healthcare | Commercial | Cited (vendor SOTA claims); paid licence, not run |
+| AWS Comprehend Medical | Commercial cloud | Architecture row only; paid + sends data to cloud |
+
+All eleven are free-text / probabilistic except the SDC tools, and none binds a multi-jurisdiction
+posture (§1.2). The measured set (Philter, Presidio, transformer, scrubadub, spaCy) spans the
+rules-based, neural, and generic-NER families, so it is representative of the open landscape rather
+than cherry-picked. Survey corroboration: JMIR 2024 (PMID 38805692) and Patterns 2021
+(S2666-3899(21)00081-7) both conclude no single free-text de-identifier is uniformly best.
 
 ---
 
