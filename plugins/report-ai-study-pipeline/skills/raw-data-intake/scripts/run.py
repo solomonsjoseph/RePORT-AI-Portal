@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import zipfile
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[5]
@@ -52,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
             config_root=_env_path("RPLN_INTAKE_CONFIG_ROOT"),
             audit_dir=_env_path("RPLN_INTAKE_AUDIT_DIR"),
         )
-    except (FileNotFoundError, ValueError) as exc:
+    except (FileNotFoundError, ValueError, OSError, zipfile.BadZipFile) as exc:
         emit_skill_result(
             SkillResult(
                 skill="raw-data-intake",

@@ -84,6 +84,7 @@ def test_stage_single_file(tmp_path):
 
 def test_stage_missing_src_raises(tmp_path):
     import pytest
+
     with pytest.raises(FileNotFoundError):
         intake.stage_source(tmp_path / "nope", tmp_path / "work")
 
@@ -104,12 +105,13 @@ def test_organize_sorts_and_drafts_manifest(tmp_path):
     cfg_root = tmp_path / "config"
     audit = tmp_path / "audit"
 
-    res = intake.organize(
-        "STUDY", src, raw_root=raw_root, config_root=cfg_root, audit_dir=audit
-    )
+    res = intake.organize("STUDY", src, raw_root=raw_root, config_root=cfg_root, audit_dir=audit)
 
     base = raw_root / "STUDY"
-    assert sorted(p.name for p in (base / "datasets").iterdir()) == ["14_Case_Control.xlsx", "labs.csv"]
+    assert sorted(p.name for p in (base / "datasets").iterdir()) == [
+        "14_Case_Control.xlsx",
+        "labs.csv",
+    ]
     assert [p.name for p in (base / "data_dictionary").iterdir()] == ["DEB_mapping.xlsx"]
     assert [p.name for p in (base / "annotated_pdfs").iterdir()] == ["form12.pdf"]
     assert [p.name for p in (base / "_unclassified").iterdir()] == ["readme.txt"]
@@ -137,7 +139,10 @@ def test_organize_noop_on_already_organized(tmp_path):
     _touch(src / "new.xlsx")
 
     res = intake.organize(
-        "STUDY", src, raw_root=raw_root, config_root=tmp_path / "config",
+        "STUDY",
+        src,
+        raw_root=raw_root,
+        config_root=tmp_path / "config",
         audit_dir=tmp_path / "audit",
     )
     assert res.skipped is True
@@ -154,8 +159,12 @@ def test_organize_force_rebuilds(tmp_path):
     _touch(src / "new.xlsx")
 
     res = intake.organize(
-        "STUDY", src, force=True, raw_root=raw_root,
-        config_root=tmp_path / "config", audit_dir=tmp_path / "audit",
+        "STUDY",
+        src,
+        force=True,
+        raw_root=raw_root,
+        config_root=tmp_path / "config",
+        audit_dir=tmp_path / "audit",
     )
     assert res.skipped is False
     assert "new.xlsx" in [p.name for p in (base / "datasets").iterdir()]
@@ -171,7 +180,10 @@ def test_organize_preserves_existing_manifest(tmp_path):
     mpath.parent.mkdir(parents=True)
     mpath.write_text("# hand-tuned\nrequired:\n  - a.xlsx\n")
     res = intake.organize(
-        "STUDY", src, raw_root=tmp_path / "raw", config_root=cfg_root,
+        "STUDY",
+        src,
+        raw_root=tmp_path / "raw",
+        config_root=cfg_root,
         audit_dir=tmp_path / "audit",
     )
     assert res.manifest_written is False
@@ -188,11 +200,12 @@ def test_run_py_emits_marker(tmp_path, monkeypatch):
     monkeypatch.setenv("RPLN_INTAKE_AUDIT_DIR", str(tmp_path / "audit"))
     proc = subprocess.run(  # noqa: S603
         [sys.executable, str(_RUN_PY), "--study", "STUDY", "--src", str(src)],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     assert proc.returncode == 0, proc.stderr
     marker = [ln for ln in proc.stdout.splitlines() if ln.startswith("RPLN_SKILL_RESULT:")][-1]
-    payload = json.loads(marker[len("RPLN_SKILL_RESULT:"):])
+    payload = json.loads(marker[len("RPLN_SKILL_RESULT:") :])
     assert payload["skill"] == "raw-data-intake"
     assert payload["ok"] is True
     assert payload["data"]["counts"]["datasets"] == 1
@@ -202,9 +215,78 @@ def test_run_py_emits_marker(tmp_path, monkeypatch):
 def test_run_py_missing_src_fails(tmp_path):
     proc = subprocess.run(  # noqa: S603
         [sys.executable, str(_RUN_PY), "--study", "STUDY", "--src", str(tmp_path / "nope")],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     assert proc.returncode != 0
     marker = [ln for ln in proc.stdout.splitlines() if ln.startswith("RPLN_SKILL_RESULT:")][-1]
-    payload = json.loads(marker[len("RPLN_SKILL_RESULT:"):])
+    payload = json.loads(marker[len("RPLN_SKILL_RESULT:") :])
+    assert payload["ok"] is False
+
+
+# --- Fix 1: name-collision tests ---
+
+
+def test_stage_source_preserves_name_collision(tmp_path):
+    """Two files with the same basename must both survive staging; no silent overwrite."""
+    src = tmp_path / "delivery"
+    _touch(src / "labs.csv", "top-level")
+    _touch(src / "sub" / "labs.csv", "subdir")
+    work = tmp_path / "work"
+    collisions: list = []
+    staged = intake.stage_source(src, work, collisions=collisions)
+    # Both files must be present under distinct names.
+    assert len(staged) == 2
+    names = {p.name for p in staged}
+    assert "labs.csv" in names
+    # The colliding file got a disambiguated name.
+    assert any(n.startswith("labs.collid") and n.endswith(".csv") for n in names)
+    # Collision was recorded.
+    assert "labs.csv" in collisions
+
+
+def test_organize_collision_emits_review_note(tmp_path):
+    """organize() must write a review note containing name_collision when a basename collision occurs."""
+    src = tmp_path / "delivery"
+    _touch(src / "labs.csv", "top")
+    _touch(src / "sub" / "labs.csv", "sub")
+    raw_root = tmp_path / "raw"
+    cfg_root = tmp_path / "config"
+    audit = tmp_path / "audit"
+
+    res = intake.organize("STUDY", src, raw_root=raw_root, config_root=cfg_root, audit_dir=audit)
+
+    assert res.review_note is not None
+    note = (audit / "human_review" / "intake" / "intake_review.md").read_text()
+    assert "name_collision" in note
+    # Both staged files must exist in datasets/.
+    dataset_files = list((raw_root / "STUDY" / "datasets").iterdir())
+    assert len(dataset_files) == 2
+
+
+# --- Fix 2: corrupt-zip emits structured failure marker ---
+
+
+def test_run_py_corrupt_zip_emits_failure_marker(tmp_path):
+    """A corrupt zip must not escape as an unstructured traceback; ok=False marker required."""
+    src = tmp_path / "delivery"
+    src.mkdir()
+    (src / "bad.zip").write_bytes(b"not a zip")
+    raw_root = tmp_path / "raw"
+    env = {
+        **__import__("os").environ,
+        "RPLN_INTAKE_RAW_ROOT": str(raw_root),
+        "RPLN_INTAKE_CONFIG_ROOT": str(tmp_path / "config"),
+        "RPLN_INTAKE_AUDIT_DIR": str(tmp_path / "audit"),
+    }
+    proc = subprocess.run(  # noqa: S603
+        [sys.executable, str(_RUN_PY), "--study", "STUDY", "--src", str(src)],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert proc.returncode != 0
+    markers = [ln for ln in proc.stdout.splitlines() if ln.startswith("RPLN_SKILL_RESULT:")]
+    assert markers, f"No RPLN_SKILL_RESULT marker in stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+    payload = json.loads(markers[-1][len("RPLN_SKILL_RESULT:") :])
     assert payload["ok"] is False

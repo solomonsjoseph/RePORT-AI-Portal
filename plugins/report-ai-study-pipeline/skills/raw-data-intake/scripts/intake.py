@@ -34,10 +34,29 @@ def classify(filename: str) -> str:
     return UNCLASSIFIED
 
 
-def stage_source(src: Path, workdir: Path) -> list[Path]:
+def _safe_dest(workdir: Path, name: str) -> tuple[Path, bool]:
+    """Return a collision-free destination path and whether a collision occurred."""
+    dest = workdir / name
+    if not dest.exists():
+        return dest, False
+    stem = Path(name).stem
+    suffix = Path(name).suffix
+    n = 1
+    while True:
+        candidate = workdir / f"{stem}.collid{n}{suffix}"
+        if not candidate.exists():
+            return candidate, True
+        n += 1
+
+
+def stage_source(src: Path, workdir: Path, collisions: list | None = None) -> list[Path]:
     """Copy SRC (file or dir) into WORKDIR and extract any .zip. Non-destructive.
 
     Returns the flat list of staged regular files (zips extracted, not returned).
+
+    When two source files share a basename the later file is written under a
+    disambiguated name (``stem.collidN.ext``) and its original basename is
+    appended to *collisions* (if provided), so no data is silently lost.
     """
     src = Path(src)
     if not src.exists():
@@ -47,8 +66,10 @@ def stage_source(src: Path, workdir: Path) -> list[Path]:
 
     sources = [src] if src.is_file() else sorted(p for p in src.rglob("*") if p.is_file())
     for item in sources:
-        dest = workdir / item.name
+        dest, collided = _safe_dest(workdir, item.name)
         shutil.copy2(item, dest)
+        if collided and collisions is not None:
+            collisions.append(item.name)
 
     # Extract any staged zips (one level; extracted zips themselves are dropped).
     for zpath in sorted(workdir.glob("*.zip")):
@@ -56,9 +77,12 @@ def stage_source(src: Path, workdir: Path) -> list[Path]:
             for member in zf.namelist():
                 if member.endswith("/"):
                     continue
-                target = workdir / Path(member).name  # flatten; name + ext is all we need
-                with zf.open(member) as fh, open(target, "wb") as out:
+                orig_name = Path(member).name  # flatten; name + ext is all we need
+                dest, collided = _safe_dest(workdir, orig_name)
+                with zf.open(member) as fh, open(dest, "wb") as out:
                     shutil.copyfileobj(fh, out)
+                if collided and collisions is not None:
+                    collisions.append(orig_name)
         zpath.unlink()
 
     return sorted(p for p in workdir.glob("*") if p.is_file() and p.suffix.lower() != ".zip")
@@ -101,6 +125,7 @@ def write_review_note(audit_dir: Path, unclassified: list[tuple[str, str]]) -> s
     """unclassified: list[(filename, reason_code)]. Count-only; no contents."""
     if not unclassified:
         return None
+
     from scripts.audit.review_paths import intake_review_path
 
     note_path = intake_review_path(Path(audit_dir))
@@ -140,7 +165,8 @@ def organize(
         return IntakeResult(skipped=True)
 
     with tempfile.TemporaryDirectory() as tmp:
-        staged = stage_source(Path(src), Path(tmp))
+        collisions: list[str] = []
+        staged = stage_source(Path(src), Path(tmp), collisions=collisions)
         counts = dict.fromkeys(_ALL_BUCKETS, 0)
         unclassified: list = []
         for path in staged:
@@ -151,11 +177,13 @@ def organize(
             counts[bucket] += 1
             if bucket == UNCLASSIFIED:
                 unclassified.append((path.name, "unrecognized_name_or_extension"))
+        # Record collisions so a human can verify no data was lost.
+        collision_entries = [(name, "name_collision") for name in collisions]
 
     dataset_names = [p.name for p in (raw_study_dir / DATASETS).glob("*") if p.is_file()]
     manifest_path = config_root / study / "_forms_manifest.yaml"
     manifest_written = draft_manifest(dataset_names, manifest_path)
-    review_note = write_review_note(audit_dir, unclassified)
+    review_note = write_review_note(audit_dir, unclassified + collision_entries)
 
     return IntakeResult(
         counts=counts,
