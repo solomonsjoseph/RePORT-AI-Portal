@@ -114,12 +114,8 @@ def reportal_outcome(action: str, value: str, is_id: bool, gate_caught: bool) ->
     return "protected_gate_hold" if gate_caught else "LEAKED"
 
 
-def build_presidio():
-    from presidio_analyzer import AnalyzerEngine
-    from presidio_anonymizer import AnonymizerEngine
-
-    analyzer = AnalyzerEngine()
-    anonymizer = AnonymizerEngine()
+def _cached(fn):
+    """Wrap a per-value detector in a value cache (the corpus repeats values)."""
     cache: dict[str, bool] = {}
 
     def modified(value: str) -> bool:
@@ -128,15 +124,116 @@ def build_presidio():
             return False
         if v in cache:
             return cache[v]
-        res = analyzer.analyze(text=v, language="en")
-        out = bool(res) and anonymizer.anonymize(text=v, analyzer_results=res).text != v
-        cache[v] = out
-        return out
+        cache[v] = bool(fn(v))
+        return cache[v]
 
     return modified
 
 
-def presidio_outcome(modified_fn, value: str, is_id: bool) -> str:
+def build_presidio():
+    from presidio_analyzer import AnalyzerEngine
+    from presidio_anonymizer import AnonymizerEngine
+
+    analyzer, anonymizer = AnalyzerEngine(), AnonymizerEngine()
+
+    def fn(v: str) -> bool:
+        res = analyzer.analyze(text=v, language="en")
+        return bool(res) and anonymizer.anonymize(text=v, analyzer_results=res).text != v
+
+    return _cached(fn)
+
+
+def build_scrubadub():
+    import scrubadub
+
+    s = scrubadub.Scrubber()
+    return _cached(lambda v: s.clean(v) != v)
+
+
+def build_philter():
+    import os
+
+    import philter_lite
+    from philter_lite import detect_phi, load_filters, transform_text_asterisk
+
+    base = os.path.dirname(philter_lite.__file__)
+    filters = load_filters(os.path.join(base, "configs", "philter_delta.toml"))
+
+    def fn(v: str) -> bool:
+        inc, _exc, _dt = detect_phi(v, filters)
+        return transform_text_asterisk(v, inc) != v
+
+    return _cached(fn)
+
+
+def build_spacy():
+    import spacy
+
+    nlp = spacy.load("en_core_web_lg")
+    # NER labels that correspond to identifying spans (a stock-NER de-id baseline).
+    pii = {"PERSON", "ORG", "GPE", "LOC", "DATE", "TIME", "CARDINAL", "FAC", "NORP"}
+    return _cached(lambda v: any(e.label_ in pii for e in nlp(v).ents))
+
+
+def build_transformer():
+    # Best-in-class open clinical de-id model (i2b2-trained RoBERTa).
+    from transformers import pipeline
+
+    ner = pipeline("ner", model="obi/deid_roberta_i2b2", aggregation_strategy="simple")
+    return _cached(lambda v: len(ner(v)) > 0)
+
+
+def build_llm():
+    """LLM de-id (GPT-4 / Claude). Optional: needs an API key. Synthetic data only."""
+    import os
+
+    prompt = (
+        "You are a PHI de-identification system. Output ONLY the input text with every "
+        "identifier (names, IDs, dates, contact, locations, account/device numbers) "
+        "replaced by [REDACTED]. If nothing is an identifier, return the text unchanged.\n\nTEXT: "
+    )
+    if os.environ.get("OPENAI_API_KEY"):
+        from openai import OpenAI
+
+        client = OpenAI()
+        model = os.environ.get("LLM_DEID_MODEL", "gpt-4o")
+
+        def fn(v: str) -> bool:
+            r = client.chat.completions.create(
+                model=model, temperature=0,
+                messages=[{"role": "user", "content": prompt + v}])
+            return r.choices[0].message.content.strip() != v
+
+        return _cached(fn)
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        import anthropic
+
+        client = anthropic.Anthropic()
+        model = os.environ.get("LLM_DEID_MODEL", "claude-opus-4-8")
+
+        def fn(v: str) -> bool:
+            r = client.messages.create(
+                model=model, max_tokens=512, temperature=0,
+                messages=[{"role": "user", "content": prompt + v}])
+            return r.content[0].text.strip() != v
+
+        return _cached(fn)
+    return None  # no key -> tool skipped, reported as not-run
+
+
+# Registry of value-scanner incumbents. RePORTal is scored separately (it is
+# classification-based, not a per-value scanner). Order = display order.
+VALUE_SCANNER_BUILDERS = {
+    "presidio": build_presidio,
+    "scrubadub": build_scrubadub,
+    "philter": build_philter,
+    "spacy_ner": build_spacy,
+    "transformer": build_transformer,
+    "llm": build_llm,
+}
+
+
+def value_scanner_outcome(modified_fn, value: str, is_id: bool) -> str:
     v = value.strip()
     if not v:
         return "ok_untouched"
@@ -148,13 +245,30 @@ def presidio_outcome(modified_fn, value: str, is_id: bool) -> str:
 
 def score() -> dict[str, Any]:
     gt = load_ground_truth()
-    presidio_modified = build_presidio()
+
+    # Build every available value-scanner incumbent (skip any that need a missing key).
+    scanners: dict[str, Any] = {}
+    skipped: list[str] = []
+    for name, builder in VALUE_SCANNER_BUILDERS.items():
+        try:
+            fn = builder()
+        except Exception as exc:  # a tool that won't import is reported, not fatal
+            skipped.append(f"{name} ({type(exc).__name__})")
+            continue
+        if fn is None:
+            skipped.append(f"{name} (no API key)")
+            continue
+        scanners[name] = fn
+    if skipped:
+        print("skipped value scanners:", ", ".join(skipped), file=sys.stderr)
+    # The production OR-combined gate's second detector is specifically Presidio.
+    presidio_modified = scanners.get("presidio") or build_presidio()
 
     # results[tool][cell_class][category][placement][outcome] = count
     def nested() -> Any:
         return defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(int))))
 
-    results = {"reportal": nested(), "presidio": nested()}
+    results: dict[str, Any] = {t: nested() for t in ["reportal", *scanners]}
     form_status: dict[str, dict[str, Any]] = {}
 
     for arm, jurs in ARMS.items():
@@ -194,8 +308,9 @@ def score() -> dict[str, Any]:
                     elif ro == "protected_gate_hold":
                         form_holds += 1
 
-                    po = presidio_outcome(presidio_modified, value, is_id)
-                    results["presidio"][cls][cat][plc][po] += 1
+                    for tname, tfn in scanners.items():
+                        to = value_scanner_outcome(tfn, value, is_id)
+                        results[tname][cls][cat][plc][to] += 1
             wb.close()
             form_status[f"{arm}/{form}"] = {
                 "actions": actions, "reportal_leak_cells": form_leaks,
@@ -209,13 +324,13 @@ def score() -> dict[str, Any]:
             return {k: plain(v) for k, v in d.items()}
         return d
 
-    return {"results": plain(results), "form_status": form_status}
+    return {"results": plain(results), "form_status": form_status, "skipped_tools": skipped}
 
 
 def summarize(data: dict[str, Any]) -> dict[str, Any]:
     """Headline recall/precision/leak per tool, plus leak detail by category+placement."""
     out: dict[str, Any] = {}
-    for tool in ("reportal", "presidio"):
+    for tool in data["results"]:
         res = data["results"][tool]
         id_total = id_protected = leaked = gate_hold = 0
         benign_total = benign_ok = over = 0
@@ -272,7 +387,9 @@ def main() -> None:
     (HERE / "score_results.json").write_text(json.dumps(report, indent=2, sort_keys=True))
 
     print("\n================ HEADLINE ================")
-    for tool in ("reportal", "presidio"):
+    if data.get("skipped_tools"):
+        print("(skipped:", ", ".join(data["skipped_tools"]), ")")
+    for tool in summary:
         s = summary[tool]
         print(f"\n{tool.upper()}")
         print(f"  recall (identifiers protected) : {s['protected']}/{s['identifier_cells']} = {s['recall_pct']}%  | LEAKED={s['leaked']}")

@@ -1,0 +1,3323 @@
+{
+  "benchmark": "planted-identifier synthetic (Synth-US + Synth-India)",
+  "by_category_placement": {
+    "philter": {
+      "benign": {
+        "age": {
+          "named": {
+            "ok_untouched": 144
+          }
+        },
+        "non_phi": {
+          "named": {
+            "ok_untouched": 470,
+            "over_redacted": 90
+          }
+        }
+      },
+      "edge": {
+        "aadhaar": {
+          "freetext": {
+            "ok_untouched": 5,
+            "over_redacted": 1
+          },
+          "mislabeled": {
+            "ok_untouched": 5,
+            "over_redacted": 1
+          },
+          "named": {
+            "ok_untouched": 5,
+            "over_redacted": 1
+          }
+        },
+        "abha": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "accession": {
+          "named": {
+            "ok_untouched": 8,
+            "over_redacted": 4
+          }
+        },
+        "bank_acct": {
+          "named": {
+            "ok_untouched": 5,
+            "over_redacted": 1
+          }
+        },
+        "biometric": {
+          "named": {
+            "ok_untouched": 8,
+            "over_redacted": 4
+          }
+        },
+        "birthdate": {
+          "named": {
+            "ok_untouched": 8,
+            "over_redacted": 4
+          }
+        },
+        "credit_card": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "date": {
+          "named": {
+            "ok_untouched": 40,
+            "over_redacted": 20
+          }
+        },
+        "device": {
+          "named": {
+            "ok_untouched": 8,
+            "over_redacted": 4
+          }
+        },
+        "dl_in": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "dl_us": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "email": {
+          "named": {
+            "ok_untouched": 8,
+            "over_redacted": 4
+          }
+        },
+        "family_id": {
+          "named": {
+            "ok_untouched": 48,
+            "over_redacted": 24
+          }
+        },
+        "fax": {
+          "named": {
+            "ok_untouched": 10,
+            "over_redacted": 2
+          }
+        },
+        "geo": {
+          "named": {
+            "ok_untouched": 8
+          }
+        },
+        "gstin": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "insurance": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "ip": {
+          "named": {
+            "ok_untouched": 10,
+            "over_redacted": 2
+          }
+        },
+        "medicare": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "mobile_in": {
+          "freetext": {
+            "ok_untouched": 8,
+            "over_redacted": 4
+          },
+          "named": {
+            "ok_untouched": 8,
+            "over_redacted": 4
+          }
+        },
+        "mrn": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "name": {
+          "freetext": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          },
+          "named": {
+            "ok_untouched": 12,
+            "over_redacted": 6
+          }
+        },
+        "pan": {
+          "mislabeled": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          },
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "passport_in": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "passport_us": {
+          "named": {
+            "ok_untouched": 5,
+            "over_redacted": 1
+          }
+        },
+        "photo": {
+          "named": {
+            "ok_untouched": 10,
+            "over_redacted": 2
+          }
+        },
+        "pin": {
+          "named": {
+            "ok_untouched": 5,
+            "over_redacted": 1
+          }
+        },
+        "plate": {
+          "named": {
+            "ok_untouched": 5,
+            "over_redacted": 1
+          }
+        },
+        "ration": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "ssn": {
+          "freetext": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          },
+          "mislabeled": {
+            "ok_untouched": 8,
+            "over_redacted": 4
+          },
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "subject_id": {
+          "named": {
+            "ok_untouched": 48,
+            "over_redacted": 24
+          }
+        },
+        "uhid": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "url": {
+          "named": {
+            "ok_untouched": 8,
+            "over_redacted": 4
+          }
+        },
+        "us_phone": {
+          "freetext": {
+            "ok_untouched": 10,
+            "over_redacted": 2
+          },
+          "named": {
+            "ok_untouched": 10,
+            "over_redacted": 2
+          }
+        },
+        "vin": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "voter_id": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "zip": {
+          "named": {
+            "ok_untouched": 5,
+            "over_redacted": 1
+          }
+        }
+      },
+      "identifier": {
+        "aadhaar": {
+          "freetext": {
+            "LEAKED": 1,
+            "protected_classification": 33
+          },
+          "mislabeled": {
+            "LEAKED": 1,
+            "protected_classification": 33
+          },
+          "named": {
+            "LEAKED": 1,
+            "protected_classification": 33
+          }
+        },
+        "abha": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "accession": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "age": {
+          "named": {
+            "LEAKED": 16
+          }
+        },
+        "bank_acct": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "biometric": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "birthdate": {
+          "named": {
+            "LEAKED": 2,
+            "protected_classification": 66
+          }
+        },
+        "credit_card": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "date": {
+          "named": {
+            "LEAKED": 10,
+            "protected_classification": 330
+          }
+        },
+        "device": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "dl_in": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "dl_us": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "email": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "family_id": {
+          "named": {
+            "protected_classification": 408
+          }
+        },
+        "fax": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "geo": {
+          "named": {
+            "LEAKED": 56,
+            "protected_classification": 96
+          }
+        },
+        "gstin": {
+          "named": {
+            "LEAKED": 33,
+            "protected_classification": 1
+          }
+        },
+        "insurance": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "ip": {
+          "named": {
+            "LEAKED": 11,
+            "protected_classification": 57
+          }
+        },
+        "medicare": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "mobile_in": {
+          "freetext": {
+            "protected_classification": 68
+          },
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "mrn": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "name": {
+          "freetext": {
+            "protected_classification": 74
+          },
+          "named": {
+            "protected_classification": 222
+          }
+        },
+        "pan": {
+          "mislabeled": {
+            "protected_classification": 34
+          },
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "passport_in": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "passport_us": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "photo": {
+          "named": {
+            "LEAKED": 68
+          }
+        },
+        "pin": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "plate": {
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "ration": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "ssn": {
+          "freetext": {
+            "protected_classification": 34
+          },
+          "mislabeled": {
+            "protected_classification": 68
+          },
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "subject_id": {
+          "named": {
+            "protected_classification": 408
+          }
+        },
+        "uhid": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "url": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "us_phone": {
+          "freetext": {
+            "protected_classification": 68
+          },
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "vin": {
+          "named": {
+            "LEAKED": 1,
+            "protected_classification": 33
+          }
+        },
+        "voter_id": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "zip": {
+          "named": {
+            "protected_classification": 34
+          }
+        }
+      }
+    },
+    "presidio": {
+      "benign": {
+        "age": {
+          "named": {
+            "ok_untouched": 144
+          }
+        },
+        "non_phi": {
+          "named": {
+            "ok_untouched": 460,
+            "over_redacted": 100
+          }
+        }
+      },
+      "edge": {
+        "aadhaar": {
+          "freetext": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          },
+          "mislabeled": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          },
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "abha": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "accession": {
+          "named": {
+            "ok_untouched": 12
+          }
+        },
+        "bank_acct": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "biometric": {
+          "named": {
+            "ok_untouched": 10,
+            "over_redacted": 2
+          }
+        },
+        "birthdate": {
+          "named": {
+            "ok_untouched": 8,
+            "over_redacted": 4
+          }
+        },
+        "credit_card": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "date": {
+          "named": {
+            "ok_untouched": 40,
+            "over_redacted": 20
+          }
+        },
+        "device": {
+          "named": {
+            "ok_untouched": 10,
+            "over_redacted": 2
+          }
+        },
+        "dl_in": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "dl_us": {
+          "named": {
+            "ok_untouched": 5,
+            "over_redacted": 1
+          }
+        },
+        "email": {
+          "named": {
+            "ok_untouched": 12
+          }
+        },
+        "family_id": {
+          "named": {
+            "ok_untouched": 70,
+            "over_redacted": 2
+          }
+        },
+        "fax": {
+          "named": {
+            "ok_untouched": 12
+          }
+        },
+        "geo": {
+          "named": {
+            "ok_untouched": 8
+          }
+        },
+        "gstin": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "insurance": {
+          "named": {
+            "ok_untouched": 5,
+            "over_redacted": 1
+          }
+        },
+        "ip": {
+          "named": {
+            "ok_untouched": 9,
+            "over_redacted": 3
+          }
+        },
+        "medicare": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "mobile_in": {
+          "freetext": {
+            "ok_untouched": 8,
+            "over_redacted": 4
+          },
+          "named": {
+            "ok_untouched": 8,
+            "over_redacted": 4
+          }
+        },
+        "mrn": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "name": {
+          "freetext": {
+            "ok_untouched": 6
+          },
+          "named": {
+            "ok_untouched": 14,
+            "over_redacted": 4
+          }
+        },
+        "pan": {
+          "mislabeled": {
+            "ok_untouched": 6
+          },
+          "named": {
+            "ok_untouched": 5,
+            "over_redacted": 1
+          }
+        },
+        "passport_in": {
+          "named": {
+            "ok_untouched": 5,
+            "over_redacted": 1
+          }
+        },
+        "passport_us": {
+          "named": {
+            "ok_untouched": 5,
+            "over_redacted": 1
+          }
+        },
+        "photo": {
+          "named": {
+            "ok_untouched": 12
+          }
+        },
+        "pin": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "plate": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "ration": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "ssn": {
+          "freetext": {
+            "ok_untouched": 5,
+            "over_redacted": 1
+          },
+          "mislabeled": {
+            "ok_untouched": 12
+          },
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "subject_id": {
+          "named": {
+            "ok_untouched": 60,
+            "over_redacted": 12
+          }
+        },
+        "uhid": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "url": {
+          "named": {
+            "ok_untouched": 10,
+            "over_redacted": 2
+          }
+        },
+        "us_phone": {
+          "freetext": {
+            "ok_untouched": 10,
+            "over_redacted": 2
+          },
+          "named": {
+            "ok_untouched": 9,
+            "over_redacted": 3
+          }
+        },
+        "vin": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "voter_id": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "zip": {
+          "named": {
+            "ok_untouched": 5,
+            "over_redacted": 1
+          }
+        }
+      },
+      "identifier": {
+        "aadhaar": {
+          "freetext": {
+            "protected_classification": 34
+          },
+          "mislabeled": {
+            "LEAKED": 1,
+            "protected_classification": 33
+          },
+          "named": {
+            "LEAKED": 1,
+            "protected_classification": 33
+          }
+        },
+        "abha": {
+          "named": {
+            "LEAKED": 16,
+            "protected_classification": 18
+          }
+        },
+        "accession": {
+          "named": {
+            "LEAKED": 52,
+            "protected_classification": 16
+          }
+        },
+        "age": {
+          "named": {
+            "LEAKED": 16
+          }
+        },
+        "bank_acct": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "biometric": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "birthdate": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "credit_card": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "date": {
+          "named": {
+            "LEAKED": 1,
+            "protected_classification": 339
+          }
+        },
+        "device": {
+          "named": {
+            "LEAKED": 61,
+            "protected_classification": 7
+          }
+        },
+        "dl_in": {
+          "named": {
+            "LEAKED": 32,
+            "protected_classification": 2
+          }
+        },
+        "dl_us": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "email": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "family_id": {
+          "named": {
+            "LEAKED": 357,
+            "protected_classification": 51
+          }
+        },
+        "fax": {
+          "named": {
+            "LEAKED": 7,
+            "protected_classification": 61
+          }
+        },
+        "geo": {
+          "named": {
+            "LEAKED": 52,
+            "protected_classification": 100
+          }
+        },
+        "gstin": {
+          "named": {
+            "LEAKED": 33,
+            "protected_classification": 1
+          }
+        },
+        "insurance": {
+          "named": {
+            "LEAKED": 26,
+            "protected_classification": 8
+          }
+        },
+        "ip": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "medicare": {
+          "named": {
+            "LEAKED": 33,
+            "protected_classification": 1
+          }
+        },
+        "mobile_in": {
+          "freetext": {
+            "protected_classification": 68
+          },
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "mrn": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "name": {
+          "freetext": {
+            "protected_classification": 74
+          },
+          "named": {
+            "protected_classification": 222
+          }
+        },
+        "pan": {
+          "mislabeled": {
+            "LEAKED": 31,
+            "protected_classification": 3
+          },
+          "named": {
+            "LEAKED": 32,
+            "protected_classification": 2
+          }
+        },
+        "passport_in": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "passport_us": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "photo": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "pin": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "plate": {
+          "named": {
+            "LEAKED": 33,
+            "protected_classification": 1
+          }
+        },
+        "ration": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "ssn": {
+          "freetext": {
+            "protected_classification": 34
+          },
+          "mislabeled": {
+            "protected_classification": 68
+          },
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "subject_id": {
+          "named": {
+            "protected_classification": 408
+          }
+        },
+        "uhid": {
+          "named": {
+            "LEAKED": 29,
+            "protected_classification": 5
+          }
+        },
+        "url": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "us_phone": {
+          "freetext": {
+            "LEAKED": 4,
+            "protected_classification": 64
+          },
+          "named": {
+            "LEAKED": 5,
+            "protected_classification": 63
+          }
+        },
+        "vin": {
+          "named": {
+            "LEAKED": 29,
+            "protected_classification": 5
+          }
+        },
+        "voter_id": {
+          "named": {
+            "LEAKED": 28,
+            "protected_classification": 6
+          }
+        },
+        "zip": {
+          "named": {
+            "LEAKED": 18,
+            "protected_classification": 16
+          }
+        }
+      }
+    },
+    "reportal": {
+      "benign": {
+        "age": {
+          "named": {
+            "ok_untouched": 144
+          }
+        },
+        "non_phi": {
+          "named": {
+            "ok_untouched": 560
+          }
+        }
+      },
+      "edge": {
+        "aadhaar": {
+          "freetext": {
+            "over_redacted": 6
+          },
+          "mislabeled": {
+            "ok_untouched": 6
+          },
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "abha": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "accession": {
+          "named": {
+            "over_redacted": 12
+          }
+        },
+        "bank_acct": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "biometric": {
+          "named": {
+            "over_redacted": 12
+          }
+        },
+        "birthdate": {
+          "named": {
+            "ok_untouched": 12
+          }
+        },
+        "credit_card": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "date": {
+          "named": {
+            "ok_untouched": 60
+          }
+        },
+        "device": {
+          "named": {
+            "over_redacted": 12
+          }
+        },
+        "dl_in": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "dl_us": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "email": {
+          "named": {
+            "over_redacted": 12
+          }
+        },
+        "family_id": {
+          "named": {
+            "over_redacted": 72
+          }
+        },
+        "fax": {
+          "named": {
+            "over_redacted": 12
+          }
+        },
+        "geo": {
+          "named": {
+            "over_redacted": 8
+          }
+        },
+        "gstin": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "insurance": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "ip": {
+          "named": {
+            "ok_untouched": 12
+          }
+        },
+        "medicare": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "mobile_in": {
+          "freetext": {
+            "over_redacted": 12
+          },
+          "named": {
+            "over_redacted": 12
+          }
+        },
+        "mrn": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "name": {
+          "freetext": {
+            "over_redacted": 6
+          },
+          "named": {
+            "over_redacted": 18
+          }
+        },
+        "pan": {
+          "mislabeled": {
+            "ok_untouched": 6
+          },
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "passport_in": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "passport_us": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "photo": {
+          "named": {
+            "over_redacted": 12
+          }
+        },
+        "pin": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "plate": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "ration": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "ssn": {
+          "freetext": {
+            "over_redacted": 6
+          },
+          "mislabeled": {
+            "ok_untouched": 12
+          },
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "subject_id": {
+          "named": {
+            "over_redacted": 72
+          }
+        },
+        "uhid": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "url": {
+          "named": {
+            "over_redacted": 12
+          }
+        },
+        "us_phone": {
+          "freetext": {
+            "over_redacted": 12
+          },
+          "named": {
+            "over_redacted": 12
+          }
+        },
+        "vin": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "voter_id": {
+          "named": {
+            "over_redacted": 6
+          }
+        },
+        "zip": {
+          "named": {
+            "over_redacted": 6
+          }
+        }
+      },
+      "identifier": {
+        "aadhaar": {
+          "freetext": {
+            "protected_classification": 34
+          },
+          "mislabeled": {
+            "protected_gate_hold": 34
+          },
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "abha": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "accession": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "age": {
+          "named": {
+            "protected_classification": 16
+          }
+        },
+        "bank_acct": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "biometric": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "birthdate": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "credit_card": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "date": {
+          "named": {
+            "protected_classification": 340
+          }
+        },
+        "device": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "dl_in": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "dl_us": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "email": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "family_id": {
+          "named": {
+            "protected_classification": 408
+          }
+        },
+        "fax": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "geo": {
+          "named": {
+            "protected_classification": 152
+          }
+        },
+        "gstin": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "insurance": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "ip": {
+          "named": {
+            "protected_gate_hold": 68
+          }
+        },
+        "medicare": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "mobile_in": {
+          "freetext": {
+            "protected_classification": 68
+          },
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "mrn": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "name": {
+          "freetext": {
+            "protected_classification": 74
+          },
+          "named": {
+            "protected_classification": 222
+          }
+        },
+        "pan": {
+          "mislabeled": {
+            "protected_gate_hold": 34
+          },
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "passport_in": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "passport_us": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "photo": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "pin": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "plate": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "ration": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "ssn": {
+          "freetext": {
+            "protected_classification": 34
+          },
+          "mislabeled": {
+            "protected_gate_hold": 68
+          },
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "subject_id": {
+          "named": {
+            "protected_classification": 408
+          }
+        },
+        "uhid": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "url": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "us_phone": {
+          "freetext": {
+            "protected_classification": 68
+          },
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "vin": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "voter_id": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "zip": {
+          "named": {
+            "protected_classification": 34
+          }
+        }
+      }
+    },
+    "scrubadub": {
+      "benign": {
+        "age": {
+          "named": {
+            "ok_untouched": 144
+          }
+        },
+        "non_phi": {
+          "named": {
+            "ok_untouched": 560
+          }
+        }
+      },
+      "edge": {
+        "aadhaar": {
+          "freetext": {
+            "ok_untouched": 6
+          },
+          "mislabeled": {
+            "ok_untouched": 6
+          },
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "abha": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "accession": {
+          "named": {
+            "ok_untouched": 12
+          }
+        },
+        "bank_acct": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "biometric": {
+          "named": {
+            "ok_untouched": 12
+          }
+        },
+        "birthdate": {
+          "named": {
+            "ok_untouched": 12
+          }
+        },
+        "credit_card": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "date": {
+          "named": {
+            "ok_untouched": 60
+          }
+        },
+        "device": {
+          "named": {
+            "ok_untouched": 12
+          }
+        },
+        "dl_in": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "dl_us": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "email": {
+          "named": {
+            "ok_untouched": 10,
+            "over_redacted": 2
+          }
+        },
+        "family_id": {
+          "named": {
+            "ok_untouched": 72
+          }
+        },
+        "fax": {
+          "named": {
+            "ok_untouched": 12
+          }
+        },
+        "geo": {
+          "named": {
+            "ok_untouched": 8
+          }
+        },
+        "gstin": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "insurance": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "ip": {
+          "named": {
+            "ok_untouched": 12
+          }
+        },
+        "medicare": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "mobile_in": {
+          "freetext": {
+            "ok_untouched": 12
+          },
+          "named": {
+            "ok_untouched": 11,
+            "over_redacted": 1
+          }
+        },
+        "mrn": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "name": {
+          "freetext": {
+            "ok_untouched": 6
+          },
+          "named": {
+            "ok_untouched": 18
+          }
+        },
+        "pan": {
+          "mislabeled": {
+            "ok_untouched": 6
+          },
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "passport_in": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "passport_us": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "photo": {
+          "named": {
+            "ok_untouched": 12
+          }
+        },
+        "pin": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "plate": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "ration": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "ssn": {
+          "freetext": {
+            "ok_untouched": 6
+          },
+          "mislabeled": {
+            "ok_untouched": 12
+          },
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "subject_id": {
+          "named": {
+            "ok_untouched": 72
+          }
+        },
+        "uhid": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "url": {
+          "named": {
+            "ok_untouched": 10,
+            "over_redacted": 2
+          }
+        },
+        "us_phone": {
+          "freetext": {
+            "ok_untouched": 12
+          },
+          "named": {
+            "ok_untouched": 12
+          }
+        },
+        "vin": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "voter_id": {
+          "named": {
+            "ok_untouched": 6
+          }
+        },
+        "zip": {
+          "named": {
+            "ok_untouched": 6
+          }
+        }
+      },
+      "identifier": {
+        "aadhaar": {
+          "freetext": {
+            "LEAKED": 34
+          },
+          "mislabeled": {
+            "LEAKED": 34
+          },
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "abha": {
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "accession": {
+          "named": {
+            "LEAKED": 68
+          }
+        },
+        "age": {
+          "named": {
+            "LEAKED": 16
+          }
+        },
+        "bank_acct": {
+          "named": {
+            "LEAKED": 31,
+            "protected_classification": 3
+          }
+        },
+        "biometric": {
+          "named": {
+            "LEAKED": 33,
+            "protected_classification": 35
+          }
+        },
+        "birthdate": {
+          "named": {
+            "LEAKED": 66,
+            "protected_classification": 2
+          }
+        },
+        "credit_card": {
+          "named": {
+            "LEAKED": 33,
+            "protected_classification": 1
+          }
+        },
+        "date": {
+          "named": {
+            "LEAKED": 330,
+            "protected_classification": 10
+          }
+        },
+        "device": {
+          "named": {
+            "LEAKED": 68
+          }
+        },
+        "dl_in": {
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "dl_us": {
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "email": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "family_id": {
+          "named": {
+            "LEAKED": 408
+          }
+        },
+        "fax": {
+          "named": {
+            "LEAKED": 28,
+            "protected_classification": 40
+          }
+        },
+        "geo": {
+          "named": {
+            "LEAKED": 152
+          }
+        },
+        "gstin": {
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "insurance": {
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "ip": {
+          "named": {
+            "LEAKED": 57,
+            "protected_classification": 11
+          }
+        },
+        "medicare": {
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "mobile_in": {
+          "freetext": {
+            "LEAKED": 41,
+            "protected_classification": 27
+          },
+          "named": {
+            "LEAKED": 32,
+            "protected_classification": 36
+          }
+        },
+        "mrn": {
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "name": {
+          "freetext": {
+            "LEAKED": 74
+          },
+          "named": {
+            "LEAKED": 222
+          }
+        },
+        "pan": {
+          "mislabeled": {
+            "LEAKED": 34
+          },
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "passport_in": {
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "passport_us": {
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "photo": {
+          "named": {
+            "LEAKED": 68
+          }
+        },
+        "pin": {
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "plate": {
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "ration": {
+          "named": {
+            "LEAKED": 32,
+            "protected_classification": 2
+          }
+        },
+        "ssn": {
+          "freetext": {
+            "LEAKED": 1,
+            "protected_classification": 33
+          },
+          "mislabeled": {
+            "LEAKED": 2,
+            "protected_classification": 66
+          },
+          "named": {
+            "LEAKED": 1,
+            "protected_classification": 33
+          }
+        },
+        "subject_id": {
+          "named": {
+            "LEAKED": 408
+          }
+        },
+        "uhid": {
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "url": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "us_phone": {
+          "freetext": {
+            "LEAKED": 31,
+            "protected_classification": 37
+          },
+          "named": {
+            "LEAKED": 32,
+            "protected_classification": 36
+          }
+        },
+        "vin": {
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "voter_id": {
+          "named": {
+            "LEAKED": 34
+          }
+        },
+        "zip": {
+          "named": {
+            "LEAKED": 34
+          }
+        }
+      }
+    },
+    "spacy_ner": {
+      "benign": {
+        "age": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 140
+          }
+        },
+        "non_phi": {
+          "named": {
+            "ok_untouched": 178,
+            "over_redacted": 382
+          }
+        }
+      },
+      "edge": {
+        "aadhaar": {
+          "freetext": {
+            "ok_untouched": 2,
+            "over_redacted": 4
+          },
+          "mislabeled": {
+            "ok_untouched": 2,
+            "over_redacted": 4
+          },
+          "named": {
+            "ok_untouched": 2,
+            "over_redacted": 4
+          }
+        },
+        "abha": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "accession": {
+          "named": {
+            "ok_untouched": 7,
+            "over_redacted": 5
+          }
+        },
+        "bank_acct": {
+          "named": {
+            "ok_untouched": 2,
+            "over_redacted": 4
+          }
+        },
+        "biometric": {
+          "named": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          }
+        },
+        "birthdate": {
+          "named": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          }
+        },
+        "credit_card": {
+          "named": {
+            "ok_untouched": 2,
+            "over_redacted": 4
+          }
+        },
+        "date": {
+          "named": {
+            "ok_untouched": 30,
+            "over_redacted": 30
+          }
+        },
+        "device": {
+          "named": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          }
+        },
+        "dl_in": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "dl_us": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "email": {
+          "named": {
+            "ok_untouched": 8,
+            "over_redacted": 4
+          }
+        },
+        "family_id": {
+          "named": {
+            "ok_untouched": 46,
+            "over_redacted": 26
+          }
+        },
+        "fax": {
+          "named": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          }
+        },
+        "geo": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 4
+          }
+        },
+        "gstin": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "insurance": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "ip": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 8
+          }
+        },
+        "medicare": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "mobile_in": {
+          "freetext": {
+            "ok_untouched": 4,
+            "over_redacted": 8
+          },
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 8
+          }
+        },
+        "mrn": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "name": {
+          "freetext": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          },
+          "named": {
+            "ok_untouched": 8,
+            "over_redacted": 10
+          }
+        },
+        "pan": {
+          "mislabeled": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          },
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "passport_in": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "passport_us": {
+          "named": {
+            "ok_untouched": 2,
+            "over_redacted": 4
+          }
+        },
+        "photo": {
+          "named": {
+            "ok_untouched": 8,
+            "over_redacted": 4
+          }
+        },
+        "pin": {
+          "named": {
+            "ok_untouched": 2,
+            "over_redacted": 4
+          }
+        },
+        "plate": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "ration": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "ssn": {
+          "freetext": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          },
+          "mislabeled": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          },
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "subject_id": {
+          "named": {
+            "ok_untouched": 44,
+            "over_redacted": 28
+          }
+        },
+        "uhid": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "url": {
+          "named": {
+            "ok_untouched": 7,
+            "over_redacted": 5
+          }
+        },
+        "us_phone": {
+          "freetext": {
+            "ok_untouched": 4,
+            "over_redacted": 8
+          },
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 8
+          }
+        },
+        "vin": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "voter_id": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 2
+          }
+        },
+        "zip": {
+          "named": {
+            "ok_untouched": 2,
+            "over_redacted": 4
+          }
+        }
+      },
+      "identifier": {
+        "aadhaar": {
+          "freetext": {
+            "LEAKED": 2,
+            "protected_classification": 32
+          },
+          "mislabeled": {
+            "LEAKED": 1,
+            "protected_classification": 33
+          },
+          "named": {
+            "LEAKED": 1,
+            "protected_classification": 33
+          }
+        },
+        "abha": {
+          "named": {
+            "LEAKED": 2,
+            "protected_classification": 32
+          }
+        },
+        "accession": {
+          "named": {
+            "LEAKED": 48,
+            "protected_classification": 20
+          }
+        },
+        "age": {
+          "named": {
+            "protected_classification": 16
+          }
+        },
+        "bank_acct": {
+          "named": {
+            "LEAKED": 2,
+            "protected_classification": 32
+          }
+        },
+        "biometric": {
+          "named": {
+            "LEAKED": 3,
+            "protected_classification": 65
+          }
+        },
+        "birthdate": {
+          "named": {
+            "LEAKED": 6,
+            "protected_classification": 62
+          }
+        },
+        "credit_card": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "date": {
+          "named": {
+            "LEAKED": 20,
+            "protected_classification": 320
+          }
+        },
+        "device": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "dl_in": {
+          "named": {
+            "LEAKED": 30,
+            "protected_classification": 4
+          }
+        },
+        "dl_us": {
+          "named": {
+            "LEAKED": 29,
+            "protected_classification": 5
+          }
+        },
+        "email": {
+          "named": {
+            "LEAKED": 55,
+            "protected_classification": 13
+          }
+        },
+        "family_id": {
+          "named": {
+            "LEAKED": 292,
+            "protected_classification": 116
+          }
+        },
+        "fax": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "geo": {
+          "named": {
+            "LEAKED": 13,
+            "protected_classification": 139
+          }
+        },
+        "gstin": {
+          "named": {
+            "LEAKED": 5,
+            "protected_classification": 29
+          }
+        },
+        "insurance": {
+          "named": {
+            "LEAKED": 22,
+            "protected_classification": 12
+          }
+        },
+        "ip": {
+          "named": {
+            "LEAKED": 10,
+            "protected_classification": 58
+          }
+        },
+        "medicare": {
+          "named": {
+            "LEAKED": 17,
+            "protected_classification": 17
+          }
+        },
+        "mobile_in": {
+          "freetext": {
+            "LEAKED": 7,
+            "protected_classification": 61
+          },
+          "named": {
+            "LEAKED": 8,
+            "protected_classification": 60
+          }
+        },
+        "mrn": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "name": {
+          "freetext": {
+            "protected_classification": 74
+          },
+          "named": {
+            "protected_classification": 222
+          }
+        },
+        "pan": {
+          "mislabeled": {
+            "LEAKED": 28,
+            "protected_classification": 6
+          },
+          "named": {
+            "LEAKED": 26,
+            "protected_classification": 8
+          }
+        },
+        "passport_in": {
+          "named": {
+            "LEAKED": 30,
+            "protected_classification": 4
+          }
+        },
+        "passport_us": {
+          "named": {
+            "LEAKED": 4,
+            "protected_classification": 30
+          }
+        },
+        "photo": {
+          "named": {
+            "LEAKED": 67,
+            "protected_classification": 1
+          }
+        },
+        "pin": {
+          "named": {
+            "LEAKED": 1,
+            "protected_classification": 33
+          }
+        },
+        "plate": {
+          "named": {
+            "LEAKED": 20,
+            "protected_classification": 14
+          }
+        },
+        "ration": {
+          "named": {
+            "LEAKED": 27,
+            "protected_classification": 7
+          }
+        },
+        "ssn": {
+          "freetext": {
+            "LEAKED": 1,
+            "protected_classification": 33
+          },
+          "mislabeled": {
+            "LEAKED": 3,
+            "protected_classification": 65
+          },
+          "named": {
+            "LEAKED": 1,
+            "protected_classification": 33
+          }
+        },
+        "subject_id": {
+          "named": {
+            "LEAKED": 356,
+            "protected_classification": 52
+          }
+        },
+        "uhid": {
+          "named": {
+            "LEAKED": 21,
+            "protected_classification": 13
+          }
+        },
+        "url": {
+          "named": {
+            "LEAKED": 64,
+            "protected_classification": 4
+          }
+        },
+        "us_phone": {
+          "freetext": {
+            "protected_classification": 68
+          },
+          "named": {
+            "LEAKED": 1,
+            "protected_classification": 67
+          }
+        },
+        "vin": {
+          "named": {
+            "LEAKED": 21,
+            "protected_classification": 13
+          }
+        },
+        "voter_id": {
+          "named": {
+            "LEAKED": 24,
+            "protected_classification": 10
+          }
+        },
+        "zip": {
+          "named": {
+            "LEAKED": 5,
+            "protected_classification": 29
+          }
+        }
+      }
+    },
+    "transformer": {
+      "benign": {
+        "age": {
+          "named": {
+            "ok_untouched": 140,
+            "over_redacted": 4
+          }
+        },
+        "non_phi": {
+          "named": {
+            "ok_untouched": 349,
+            "over_redacted": 211
+          }
+        }
+      },
+      "edge": {
+        "aadhaar": {
+          "freetext": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          },
+          "mislabeled": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          },
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "abha": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "accession": {
+          "named": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          }
+        },
+        "bank_acct": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "biometric": {
+          "named": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          }
+        },
+        "birthdate": {
+          "named": {
+            "ok_untouched": 8,
+            "over_redacted": 4
+          }
+        },
+        "credit_card": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "date": {
+          "named": {
+            "ok_untouched": 40,
+            "over_redacted": 20
+          }
+        },
+        "device": {
+          "named": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          }
+        },
+        "dl_in": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "dl_us": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "email": {
+          "named": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          }
+        },
+        "family_id": {
+          "named": {
+            "ok_untouched": 36,
+            "over_redacted": 36
+          }
+        },
+        "fax": {
+          "named": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          }
+        },
+        "geo": {
+          "named": {
+            "ok_untouched": 4,
+            "over_redacted": 4
+          }
+        },
+        "gstin": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "insurance": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "ip": {
+          "named": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          }
+        },
+        "medicare": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "mobile_in": {
+          "freetext": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          },
+          "named": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          }
+        },
+        "mrn": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "name": {
+          "freetext": {
+            "ok_untouched": 2,
+            "over_redacted": 4
+          },
+          "named": {
+            "ok_untouched": 8,
+            "over_redacted": 10
+          }
+        },
+        "pan": {
+          "mislabeled": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          },
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "passport_in": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "passport_us": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "photo": {
+          "named": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          }
+        },
+        "pin": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "plate": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "ration": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "ssn": {
+          "freetext": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          },
+          "mislabeled": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          },
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "subject_id": {
+          "named": {
+            "ok_untouched": 36,
+            "over_redacted": 36
+          }
+        },
+        "uhid": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "url": {
+          "named": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          }
+        },
+        "us_phone": {
+          "freetext": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          },
+          "named": {
+            "ok_untouched": 6,
+            "over_redacted": 6
+          }
+        },
+        "vin": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "voter_id": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        },
+        "zip": {
+          "named": {
+            "ok_untouched": 3,
+            "over_redacted": 3
+          }
+        }
+      },
+      "identifier": {
+        "aadhaar": {
+          "freetext": {
+            "protected_classification": 34
+          },
+          "mislabeled": {
+            "protected_classification": 34
+          },
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "abha": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "accession": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "age": {
+          "named": {
+            "LEAKED": 16
+          }
+        },
+        "bank_acct": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "biometric": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "birthdate": {
+          "named": {
+            "LEAKED": 1,
+            "protected_classification": 67
+          }
+        },
+        "credit_card": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "date": {
+          "named": {
+            "LEAKED": 10,
+            "protected_classification": 330
+          }
+        },
+        "device": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "dl_in": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "dl_us": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "email": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "family_id": {
+          "named": {
+            "protected_classification": 408
+          }
+        },
+        "fax": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "geo": {
+          "named": {
+            "LEAKED": 37,
+            "protected_classification": 115
+          }
+        },
+        "gstin": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "insurance": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "ip": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "medicare": {
+          "named": {
+            "LEAKED": 1,
+            "protected_classification": 33
+          }
+        },
+        "mobile_in": {
+          "freetext": {
+            "protected_classification": 68
+          },
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "mrn": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "name": {
+          "freetext": {
+            "LEAKED": 1,
+            "protected_classification": 73
+          },
+          "named": {
+            "LEAKED": 3,
+            "protected_classification": 219
+          }
+        },
+        "pan": {
+          "mislabeled": {
+            "protected_classification": 34
+          },
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "passport_in": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "passport_us": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "photo": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "pin": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "plate": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "ration": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "ssn": {
+          "freetext": {
+            "protected_classification": 34
+          },
+          "mislabeled": {
+            "protected_classification": 68
+          },
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "subject_id": {
+          "named": {
+            "protected_classification": 408
+          }
+        },
+        "uhid": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "url": {
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "us_phone": {
+          "freetext": {
+            "protected_classification": 68
+          },
+          "named": {
+            "protected_classification": 68
+          }
+        },
+        "vin": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "voter_id": {
+          "named": {
+            "protected_classification": 34
+          }
+        },
+        "zip": {
+          "named": {
+            "protected_classification": 34
+          }
+        }
+      }
+    }
+  },
+  "form_status": {
+    "Synth-India/01_DM_Demographics": {
+      "actions": {
+        "DM_AGE": "cap",
+        "DM_CITY": "drop",
+        "DM_COMPDAT": "jitter_date",
+        "DM_DOB": "jitter_date",
+        "DM_FNAME": "drop",
+        "DM_LNAME": "drop",
+        "DM_PIN": "drop",
+        "DM_RELIGION": "keep",
+        "DM_SEX": "keep",
+        "DM_STREET": "drop",
+        "FID": "pseudonymize",
+        "SUBJID": "pseudonymize"
+      },
+      "reportal_gate_hold_cells": 0,
+      "reportal_leak_cells": 0,
+      "reportal_publishes": true
+    },
+    "Synth-India/02_CON_Contact": {
+      "actions": {
+        "CON_ALTMOBILE": "drop",
+        "CON_EMAIL": "drop",
+        "CON_EMERGNAME": "drop",
+        "CON_FAX": "drop",
+        "CON_IP": "keep",
+        "CON_MOBILE": "drop",
+        "CON_NOTE": "suppress",
+        "CON_URL": "drop",
+        "FID": "pseudonymize",
+        "SUBJID": "pseudonymize"
+      },
+      "reportal_gate_hold_cells": 34,
+      "reportal_leak_cells": 0,
+      "reportal_publishes": false
+    },
+    "Synth-India/03_GID_GovIDs": {
+      "actions": {
+        "FID": "pseudonymize",
+        "GID_AADHAAR": "drop",
+        "GID_ABHA": "drop",
+        "GID_DL": "drop",
+        "GID_GSTIN": "drop",
+        "GID_PAN": "drop",
+        "GID_PASSPORT": "drop",
+        "GID_RATIONNO": "drop",
+        "GID_UHID": "drop",
+        "GID_VOTERID": "drop",
+        "SUBJID": "pseudonymize"
+      },
+      "reportal_gate_hold_cells": 0,
+      "reportal_leak_cells": 0,
+      "reportal_publishes": true
+    },
+    "Synth-India/04_LB_Specimen": {
+      "actions": {
+        "FID": "pseudonymize",
+        "LB_ACCESSION": "pseudonymize",
+        "LB_CD4": "keep",
+        "LB_COLLDAT": "jitter_date",
+        "LB_DEVICE": "drop",
+        "LB_FINGERPRINT": "drop",
+        "LB_HGB": "keep",
+        "LB_PHOTO": "drop",
+        "LB_RESULT": "keep",
+        "SUBJID": "pseudonymize"
+      },
+      "reportal_gate_hold_cells": 34,
+      "reportal_leak_cells": 0,
+      "reportal_publishes": false
+    },
+    "Synth-India/05_AE_AdverseEvent": {
+      "actions": {
+        "AE_CONTACTLINE": "drop",
+        "AE_DESC": "keep",
+        "AE_NARRATIVE": "suppress",
+        "AE_ONSETDAT": "jitter_date",
+        "AE_REFID": "keep",
+        "AE_TERM": "keep",
+        "FID": "pseudonymize",
+        "SUBJID": "pseudonymize"
+      },
+      "reportal_gate_hold_cells": 34,
+      "reportal_leak_cells": 0,
+      "reportal_publishes": false
+    },
+    "Synth-India/06_FU_FollowUp": {
+      "actions": {
+        "FID": "pseudonymize",
+        "FU_AGE": "cap",
+        "FU_DTHDAT": "jitter_date",
+        "FU_NOTES": "suppress",
+        "FU_VISDAT": "jitter_date",
+        "FU_VITAL": "keep",
+        "SUBJID": "pseudonymize"
+      },
+      "reportal_gate_hold_cells": 0,
+      "reportal_leak_cells": 0,
+      "reportal_publishes": true
+    },
+    "Synth-US/01_DM_Demographics": {
+      "actions": {
+        "DM_AGE": "cap",
+        "DM_CITY": "drop",
+        "DM_COMPDAT": "jitter_date",
+        "DM_DOB": "jitter_date",
+        "DM_FNAME": "drop",
+        "DM_LNAME": "drop",
+        "DM_RACE": "keep",
+        "DM_SEX": "keep",
+        "DM_STREET": "drop",
+        "DM_ZIP": "drop",
+        "FID": "pseudonymize",
+        "SUBJID": "pseudonymize"
+      },
+      "reportal_gate_hold_cells": 0,
+      "reportal_leak_cells": 0,
+      "reportal_publishes": true
+    },
+    "Synth-US/02_CON_Contact": {
+      "actions": {
+        "CON_EMAIL": "drop",
+        "CON_EMERGNAME": "drop",
+        "CON_FAX": "drop",
+        "CON_IP": "keep",
+        "CON_MOBILE": "drop",
+        "CON_NOTE": "suppress",
+        "CON_PHONE": "drop",
+        "CON_URL": "drop",
+        "FID": "pseudonymize",
+        "SUBJID": "pseudonymize"
+      },
+      "reportal_gate_hold_cells": 34,
+      "reportal_leak_cells": 0,
+      "reportal_publishes": false
+    },
+    "Synth-US/03_GID_GovIDs": {
+      "actions": {
+        "FID": "pseudonymize",
+        "GID_BANKACCT": "drop",
+        "GID_CREDITCARD": "drop",
+        "GID_DL": "drop",
+        "GID_INSID": "drop",
+        "GID_MEDICARE": "drop",
+        "GID_MRN": "drop",
+        "GID_PASSPORT": "drop",
+        "GID_PLATE": "drop",
+        "GID_SSN": "drop",
+        "GID_VIN": "drop",
+        "SUBJID": "pseudonymize"
+      },
+      "reportal_gate_hold_cells": 0,
+      "reportal_leak_cells": 0,
+      "reportal_publishes": true
+    },
+    "Synth-US/04_LB_Specimen": {
+      "actions": {
+        "FID": "pseudonymize",
+        "LB_ACCESSION": "pseudonymize",
+        "LB_CD4": "keep",
+        "LB_COLLDAT": "jitter_date",
+        "LB_DEVICE": "drop",
+        "LB_FINGERPRINT": "drop",
+        "LB_HGB": "keep",
+        "LB_PHOTO": "drop",
+        "LB_RESULT": "keep",
+        "SUBJID": "pseudonymize"
+      },
+      "reportal_gate_hold_cells": 34,
+      "reportal_leak_cells": 0,
+      "reportal_publishes": false
+    },
+    "Synth-US/05_AE_AdverseEvent": {
+      "actions": {
+        "AE_CONTACTLINE": "drop",
+        "AE_DESC": "keep",
+        "AE_NARRATIVE": "suppress",
+        "AE_ONSETDAT": "jitter_date",
+        "AE_REFID": "keep",
+        "AE_TERM": "keep",
+        "FID": "pseudonymize",
+        "SUBJID": "pseudonymize"
+      },
+      "reportal_gate_hold_cells": 34,
+      "reportal_leak_cells": 0,
+      "reportal_publishes": false
+    },
+    "Synth-US/06_FU_FollowUp": {
+      "actions": {
+        "FID": "pseudonymize",
+        "FU_AGE": "cap",
+        "FU_DTHDAT": "jitter_date",
+        "FU_NOTES": "suppress",
+        "FU_VISDAT": "jitter_date",
+        "FU_VITAL": "keep",
+        "SUBJID": "pseudonymize"
+      },
+      "reportal_gate_hold_cells": 0,
+      "reportal_leak_cells": 0,
+      "reportal_publishes": true
+    }
+  },
+  "method": "RePORTal = production classify_headers + residual publish gate; Presidio = stock AnalyzerEngine + en_core_web_lg + AnonymizerEngine; joined per-cell to ground_truth.jsonl. Counts only, no value emitted.",
+  "summary": {
+    "philter": {
+      "benign_cells": 704,
+      "benign_untouched": 614,
+      "identifier_cells": 3422,
+      "leak_by_category_placement": {
+        "aadhaar/freetext": 1,
+        "aadhaar/mislabeled": 1,
+        "aadhaar/named": 1,
+        "age/named": 16,
+        "birthdate/named": 2,
+        "date/named": 10,
+        "geo/named": 56,
+        "gstin/named": 33,
+        "ip/named": 11,
+        "photo/named": 68,
+        "plate/named": 34,
+        "vin/named": 1
+      },
+      "leaked": 234,
+      "over_redacted": 90,
+      "precision_pct": 87.22,
+      "protected": 3188,
+      "protected_by_classification": 3188,
+      "protected_by_gate_hold": 0,
+      "recall_pct": 93.16
+    },
+    "presidio": {
+      "benign_cells": 704,
+      "benign_untouched": 604,
+      "identifier_cells": 3422,
+      "leak_by_category_placement": {
+        "aadhaar/mislabeled": 1,
+        "aadhaar/named": 1,
+        "abha/named": 16,
+        "accession/named": 52,
+        "age/named": 16,
+        "date/named": 1,
+        "device/named": 61,
+        "dl_in/named": 32,
+        "family_id/named": 357,
+        "fax/named": 7,
+        "geo/named": 52,
+        "gstin/named": 33,
+        "insurance/named": 26,
+        "medicare/named": 33,
+        "pan/mislabeled": 31,
+        "pan/named": 32,
+        "plate/named": 33,
+        "uhid/named": 29,
+        "us_phone/freetext": 4,
+        "us_phone/named": 5,
+        "vin/named": 29,
+        "voter_id/named": 28,
+        "zip/named": 18
+      },
+      "leaked": 897,
+      "over_redacted": 100,
+      "precision_pct": 85.8,
+      "protected": 2525,
+      "protected_by_classification": 2525,
+      "protected_by_gate_hold": 0,
+      "recall_pct": 73.79
+    },
+    "reportal": {
+      "benign_cells": 704,
+      "benign_untouched": 704,
+      "identifier_cells": 3422,
+      "leak_by_category_placement": {},
+      "leaked": 0,
+      "over_redacted": 0,
+      "precision_pct": 100.0,
+      "protected": 3422,
+      "protected_by_classification": 3218,
+      "protected_by_gate_hold": 204,
+      "recall_pct": 100.0
+    },
+    "scrubadub": {
+      "benign_cells": 704,
+      "benign_untouched": 704,
+      "identifier_cells": 3422,
+      "leak_by_category_placement": {
+        "aadhaar/freetext": 34,
+        "aadhaar/mislabeled": 34,
+        "aadhaar/named": 34,
+        "abha/named": 34,
+        "accession/named": 68,
+        "age/named": 16,
+        "bank_acct/named": 31,
+        "biometric/named": 33,
+        "birthdate/named": 66,
+        "credit_card/named": 33,
+        "date/named": 330,
+        "device/named": 68,
+        "dl_in/named": 34,
+        "dl_us/named": 34,
+        "family_id/named": 408,
+        "fax/named": 28,
+        "geo/named": 152,
+        "gstin/named": 34,
+        "insurance/named": 34,
+        "ip/named": 57,
+        "medicare/named": 34,
+        "mobile_in/freetext": 41,
+        "mobile_in/named": 32,
+        "mrn/named": 34,
+        "name/freetext": 74,
+        "name/named": 222,
+        "pan/mislabeled": 34,
+        "pan/named": 34,
+        "passport_in/named": 34,
+        "passport_us/named": 34,
+        "photo/named": 68,
+        "pin/named": 34,
+        "plate/named": 34,
+        "ration/named": 32,
+        "ssn/freetext": 1,
+        "ssn/mislabeled": 2,
+        "ssn/named": 1,
+        "subject_id/named": 408,
+        "uhid/named": 34,
+        "us_phone/freetext": 31,
+        "us_phone/named": 32,
+        "vin/named": 34,
+        "voter_id/named": 34,
+        "zip/named": 34
+      },
+      "leaked": 2914,
+      "over_redacted": 0,
+      "precision_pct": 100.0,
+      "protected": 508,
+      "protected_by_classification": 508,
+      "protected_by_gate_hold": 0,
+      "recall_pct": 14.85
+    },
+    "spacy_ner": {
+      "benign_cells": 704,
+      "benign_untouched": 182,
+      "identifier_cells": 3422,
+      "leak_by_category_placement": {
+        "aadhaar/freetext": 2,
+        "aadhaar/mislabeled": 1,
+        "aadhaar/named": 1,
+        "abha/named": 2,
+        "accession/named": 48,
+        "bank_acct/named": 2,
+        "biometric/named": 3,
+        "birthdate/named": 6,
+        "date/named": 20,
+        "dl_in/named": 30,
+        "dl_us/named": 29,
+        "email/named": 55,
+        "family_id/named": 292,
+        "geo/named": 13,
+        "gstin/named": 5,
+        "insurance/named": 22,
+        "ip/named": 10,
+        "medicare/named": 17,
+        "mobile_in/freetext": 7,
+        "mobile_in/named": 8,
+        "pan/mislabeled": 28,
+        "pan/named": 26,
+        "passport_in/named": 30,
+        "passport_us/named": 4,
+        "photo/named": 67,
+        "pin/named": 1,
+        "plate/named": 20,
+        "ration/named": 27,
+        "ssn/freetext": 1,
+        "ssn/mislabeled": 3,
+        "ssn/named": 1,
+        "subject_id/named": 356,
+        "uhid/named": 21,
+        "url/named": 64,
+        "us_phone/named": 1,
+        "vin/named": 21,
+        "voter_id/named": 24,
+        "zip/named": 5
+      },
+      "leaked": 1273,
+      "over_redacted": 522,
+      "precision_pct": 25.85,
+      "protected": 2149,
+      "protected_by_classification": 2149,
+      "protected_by_gate_hold": 0,
+      "recall_pct": 62.8
+    },
+    "transformer": {
+      "benign_cells": 704,
+      "benign_untouched": 489,
+      "identifier_cells": 3422,
+      "leak_by_category_placement": {
+        "age/named": 16,
+        "birthdate/named": 1,
+        "date/named": 10,
+        "geo/named": 37,
+        "medicare/named": 1,
+        "name/freetext": 1,
+        "name/named": 3
+      },
+      "leaked": 69,
+      "over_redacted": 215,
+      "precision_pct": 69.46,
+      "protected": 3353,
+      "protected_by_classification": 3353,
+      "protected_by_gate_hold": 0,
+      "recall_pct": 97.98
+    }
+  }
+}

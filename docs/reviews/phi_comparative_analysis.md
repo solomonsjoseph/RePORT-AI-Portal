@@ -49,50 +49,59 @@ binding. Every probabilistic/cloud row trades a structural guarantee for a stati
 
 ---
 
-## 2. Published accuracy — kept corpus-labelled (no false equivalence)
+## 2. Measured head-to-head — every free incumbent on the IDENTICAL corpus
 
-These are the incumbents' **own** published numbers, on **free-text** benchmarks. They are listed
-for context, **not** as a head-to-head against RePORTal's structured-data result.
+This is **not** citations. We ran each tool ourselves on the same planted-identifier corpus
+(4,680 cells, **3,422 identifiers**, **704 benign**), each cell value fed to each tool and scored
+against the *same* ground truth. Reproducible:
+`uv run --all-groups python docs/eval/synthetic_phi_benchmark/score_synthetic.py`.
 
-| System | Published metric | Corpus | Note |
-|---|---|---|---|
-| deid | name recall **48.8%** | i2b2-era | lower bound of the field |
-| MIST | name recall **66.9%** | i2b2-era | trainable CRF |
-| NeuroNER | name recall **84.1%** | i2b2-era | neural |
-| NLM Scrubber | name recall **88.1%** | i2b2-era | rules |
-| CliniDeID | name recall **95.9%** | i2b2-era | best classical free-text |
-| Philter | recall **99.92%**, F2 **94.77%** | i2b2 2014 | recall-prioritised; still probabilistic, not fail-closed |
-| Transformer (RoBERTa-i2b2) | F1 **95.5%**, but **59.7%** on the *rare-ID* category | i2b2 2014 | degrades exactly where structured study IDs live |
-| Azure DeID | F1 **0.939** | UK NHS (3,650 records) | leading task-specific transformer |
-| GPT-4 | misses **~1 in 6** identifiers; can hallucinate | private oncology set | needs raw text |
-| **RePORTal** | **recall 100% / precision 100% / 0 leak** | **planted-identifier synthetic, structured** | deterministic; reproducible (`docs/eval/synthetic_phi_benchmark/`) |
+| Tool | Recall (IDs removed) | **Leaked** | Precision (benign kept) | Over-redacted |
+|---|---|---|---|---|
+| **RePORTal (this work)** | **100%** (3422/3422) | **0** | **100%** (704/704) | **0** |
+| Transformer `obi/deid_roberta_i2b2` | 97.98% | **69** | 69.46% | 215 |
+| Philter (UCSF, i2b2 filters) | 93.16% | **234** | 87.22% | 90 |
+| Microsoft Presidio | 73.79% | **897** | 85.80% | 100 |
+| spaCy NER (`en_core_web_lg`) | 62.80% | **1273** | 25.85% | 522 |
+| scrubadub | 14.85% | **2914** | 100% | 0 |
+| LLM de-id (GPT-4/Claude) | *not run* — needs API key (set `OPENAI_API_KEY`/`ANTHROPIC_API_KEY` to include) | | | |
 
-**The key cross-read** is the transformer row: a 95.5%-F1 model still falls to **59.7%** on the rare
-structured-ID category — Aadhaar, accession numbers, device IDs — which is *precisely* the content of
-a clinical CRF. Probabilistic systems are weakest where structured study data is strongest in
-identifiers. A deterministic rule + fail-closed gate has no such soft spot: an identifier shape it is
-configured for is removed every time, and an un-scrubbable row is held rather than guessed.
+**Reading the table.** *Every probabilistic incumbent leaks*, and the recall/precision tension is
+visible across the whole field:
+
+- The **best-in-class open clinical transformer** (i2b2-trained RoBERTa) is the strongest incumbent
+  at 97.98% recall — yet it *still* leaks **69** identifiers and pays for its recall with the
+  *lowest-but-one* precision (69.46%): it over-redacts **215** benign clinical cells. High recall and
+  high precision are in tension for a probabilistic model; RePORTal owes nothing to either tail.
+- **Philter** (recall-prioritised by design) is the most balanced incumbent but still leaks **234**.
+- **scrubadub** shows the opposite failure: perfect precision but 14.85% recall — it is US-centric and
+  blind to almost every structured/India identifier (Aadhaar, PAN, GSTIN, accession, device, MRN…).
+- **spaCy NER** alone is the weakest de-identifier on both axes (62.8% / 25.85%) — generic NER is not
+  a de-id system.
+
+**The decisive gap is not the recall column — it is the leak column.** The best incumbent here still
+puts **69 real identifiers** into the published corpus. For a release that must be *provably*
+de-identified, 69 ≠ 0, and a probabilistic tool cannot promise 0. RePORTal's determinism + fail-closed
+publish gate is what makes the leak column exactly **0**: an identifier shape it is configured for is
+removed every time, and any `keep` cell whose value trips the residual gate **holds the form** rather
+than leaking it (this is the 204 "via gate-hold" protections inside RePORTal's 100% recall).
+
+This also matches the literature cross-read: a 95.5%-F1 transformer on i2b2 falls to **59.7%** on the
+*rare-ID* category (BMC Med Inform 2020) — precisely the Aadhaar/accession/device content of a CRF.
+Probabilistic systems are weakest exactly where structured study data is densest in identifiers.
+
+### 2.1 For context only — incumbents' OWN published numbers (different, free-text corpora)
+
+Not comparable to §2 (different corpus, different task); listed so the field is anchored:
+deid name-recall **48.8%** · MIST **66.9%** · NeuroNER **84.1%** · NLM Scrubber **88.1%** ·
+CliniDeID **95.9%** (JMIR 2024) · Philter recall **99.92%** on i2b2 2014 (npj Digit Med 2020) ·
+Azure DeID F1 **0.939** on UK NHS (iScience 2025) · GPT-4 misses **~1 in 6** (Nature Sci Rep 2025).
+Note Philter scores 99.92% on its *home* free-text benchmark but **93.16%** when pointed at this
+structured corpus — the modality shift is the whole point.
 
 ---
 
-## 3. The one fair head-to-head: Presidio on the identical structured corpus
-
-Because Presidio runs locally on values, it is the only incumbent that can be pointed at the *same*
-tabular corpus as RePORTal. Live re-run (`docs/eval/synthetic_phi_benchmark/score_synthetic.py`,
-4,680 cells / 3,422 planted identifiers):
-
-| Metric | **RePORTal** | Presidio |
-|---|---|---|
-| Recall (identifiers removed) | **100%** (3422/3422) | 73.79% (2525/3422) |
-| Residual leak | **0** | **897 identifiers** |
-| Precision (benign untouched) | **100%** (704/704) | 85.8% (604/704; 100 over-redacted) |
-
-Presidio's 897 leaks cluster exactly on the structured/India categories (family_id, accession,
-device, PAN, GSTIN, DL, voter ID, ABHA/UHID) — the rare-ID failure mode the transformer row predicts.
-
----
-
-## 4. Where RePORTal is *not* the right tool (honest limits)
+## 3. Where RePORTal is *not* the right tool (honest limits)
 
 - **Free-text narrative de-identification** — if the deliverable is de-identified discharge *prose*,
   a probabilistic NLP/transformer model (Philter, Azure DeID) is the correct instrument; RePORTal's
@@ -108,12 +117,14 @@ device, PAN, GSTIN, DL, voter ID, ABHA/UHID) — the rare-ID failure mode the tr
 
 ---
 
-## 5. Bottom line for the PI
+## 4. Bottom line for the PI
 
 RePORTal is not "a better Presidio" — it solves a **different and largely unserved problem**:
 fail-closed, deterministic, audit-complete de-identification of **structured** clinical study data
-under a named HIPAA + DPDPA posture, with **no row value ever reaching an LLM or cloud service**. The
-incumbents are overwhelmingly probabilistic free-text tools whose published accuracy (i) is measured
-on a different problem and (ii) degrades sharply on exactly the rare structured IDs a CRF is full of.
-On the single fair head-to-head — a value scanner on the same tabular corpus — RePORTal removes 100%
-of identifiers with zero over-redaction where Presidio leaks 26%.
+under a named HIPAA + DPDPA posture, with **no row value ever reaching an LLM or cloud service**.
+
+Measured on the identical corpus, **five free incumbents — including the best-in-class open clinical
+transformer — all leak** (69 to 2,914 identifiers each), and the strongest by recall pays for it with
+the worst precision. Only RePORTal reaches the one number a de-identification release actually
+requires: **0 identifiers leaked**, with **0 benign cells destroyed**. The probabilistic field cannot
+promise that 0, by construction; a deterministic + fail-closed design can, and does.

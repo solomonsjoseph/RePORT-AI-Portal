@@ -145,20 +145,33 @@ uv run --all-groups python docs/eval/synthetic_phi_benchmark/generate_synthetic.
 ## Scoring (BUILT + RUN — see `SCORE.md`)
 
 `score_synthetic.py` drives the **production** RePORTal engines (`classify_headers` +
-the OR-combined publish gate) and **stock Presidio** over both arms, joins every cell
-to `ground_truth.jsonl`, and emits a per-category / per-placement confusion matrix
-(`score_results.json`). Count-only, no value leaves the harness.
+the OR-combined publish gate) and a registry of **value-scanner incumbents** over both
+arms, joins every cell to `ground_truth.jsonl`, and emits a per-category / per-placement
+confusion matrix (`score_results.json`). Count-only, no value leaves the harness.
+
+Each incumbent is built only if importable; missing ones are skipped and reported.
+Extra deps for the full panel (Presidio ships with the repo):
 
 ```bash
+uv pip install scrubadub philter-lite transformers torch   # spaCy en_core_web_lg already present
+# LLM arm (optional): export OPENAI_API_KEY=… (gpt-4o) or ANTHROPIC_API_KEY=… (claude)
 uv run --all-groups python docs/eval/synthetic_phi_benchmark/score_synthetic.py
 ```
 
-**Result (2026-06-26, after the Note 34 fixes):**
+**Result (2026-06-26) — measured on the identical corpus (3,422 identifiers, 704 benign):**
 
-| | RePORTal | stock Presidio |
-|---|---:|---:|
-| recall (identifiers protected) | **100.0%** (0 leaked) | 73.79% (897 leaked) |
-| precision (benign untouched) | **100.0%** (0 over-redacted) | 85.8% (100 over-redacted) |
+| Tool | Recall (IDs removed) | Leaked | Precision (benign kept) | Over-redacted |
+|---|---:|---:|---:|---:|
+| **RePORTal** | **100.0%** | **0** | **100.0%** | **0** |
+| Transformer `obi/deid_roberta_i2b2` | 97.98% | 69 | 69.46% | 215 |
+| Philter (UCSF) | 93.16% | 234 | 87.22% | 90 |
+| Microsoft Presidio | 73.79% | 897 | 85.80% | 100 |
+| spaCy NER (`en_core_web_lg`) | 62.80% | 1273 | 25.85% | 522 |
+| scrubadub | 14.85% | 2914 | 100.0% | 0 |
+| LLM de-id (GPT-4/Claude) | not run (no API key) | — | — | — |
+
+Every probabilistic incumbent leaks (69–2,914 IDs); only the deterministic + fail-closed
+RePORTal reaches 0 leak / 0 over-redaction. Full prose: `docs/reviews/phi_comparative_analysis.md`.
 
 The benchmark did its job: the **first** run exposed real classifier gaps (recall
 76.7%, 798 leaks — names, India IDs, US financial/device IDs). Closing them in the
