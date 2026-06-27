@@ -75,6 +75,49 @@ def _is_ignored_source(path: Path, src_root: Path, exclude_under: list[Path]) ->
     return False
 
 
+def _iter_source_files(src: Path, exclude_under: list[Path]) -> list[Path]:
+    """The source files a directory SRC contributes (filtered), or [src] for a file."""
+    src = Path(src)
+    if src.is_file():
+        return [src]
+    return sorted(
+        p for p in src.rglob("*") if p.is_file() and not _is_ignored_source(p, src, exclude_under)
+    )
+
+
+def prune_source(src: Path, exclude_under: list[Path] | None = None) -> list[str]:
+    """Delete the loose source files that were staged (same filter as stage_source).
+
+    Only files that would be ingested are removed — never anything under
+    *exclude_under* (the destination raw tree) or a managed/hidden subdir. The
+    SRC root and any non-empty directory are left in place; empty leftover
+    subdirectories are best-effort removed. Returns the names deleted.
+    """
+    src = Path(src)
+    exclude_under = exclude_under or []
+    pruned: list[str] = []
+    for f in _iter_source_files(src, exclude_under):
+        try:
+            f.unlink()
+            pruned.append(f.name)
+        except OSError:
+            continue
+    if src.is_dir():
+        # Remove now-empty leftover subdirs bottom-up; rmdir only succeeds on an
+        # empty dir, so managed/excluded dirs (which keep their files) are safe.
+        subdirs = sorted(
+            (p for p in src.rglob("*") if p.is_dir()),
+            key=lambda p: len(p.parts),
+            reverse=True,
+        )
+        for d in subdirs:
+            try:
+                d.rmdir()
+            except OSError:
+                continue
+    return pruned
+
+
 def stage_source(
     src: Path,
     workdir: Path,
@@ -103,14 +146,7 @@ def stage_source(
     workdir.mkdir(parents=True, exist_ok=True)
     exclude_under = exclude_under or []
 
-    if src.is_file():
-        sources = [src]
-    else:
-        sources = sorted(
-            p
-            for p in src.rglob("*")
-            if p.is_file() and not _is_ignored_source(p, src, exclude_under)
-        )
+    sources = _iter_source_files(src, exclude_under)
     for item in sources:
         dest, collided = _safe_dest(workdir, item.name)
         shutil.copy2(item, dest)
@@ -146,6 +182,7 @@ class IntakeResult:
     skipped: bool = False
     review_note: str | None = None
     already_present: list = field(default_factory=list)
+    pruned: list = field(default_factory=list)
 
 
 def is_already_organized(raw_study_dir: Path) -> bool:
@@ -197,6 +234,7 @@ def organize(
     *,
     force: bool = False,
     add: bool = False,
+    prune: bool = False,
     raw_root: Path | None = None,
     config_root: Path | None = None,
     audit_dir: Path | None = None,
@@ -250,6 +288,11 @@ def organize(
     manifest_written = draft_manifest(dataset_names, manifest_path)
     review_note = write_review_note(audit_dir, unclassified + collision_entries)
 
+    # Opt-in: remove the loose source files now that they are filed into the raw
+    # tree (the skill is copy-by-default; prune is explicit). Never touches the
+    # destination raw tree (excluded) — only the loose delivery files in SRC.
+    pruned = prune_source(Path(src), exclude_under=[raw_root]) if prune else []
+
     return IntakeResult(
         counts=counts,
         unclassified=[name for name, _ in unclassified],
@@ -257,4 +300,5 @@ def organize(
         skipped=False,
         review_note=review_note,
         already_present=already_present,
+        pruned=pruned,
     )

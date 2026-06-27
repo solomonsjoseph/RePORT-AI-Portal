@@ -413,3 +413,48 @@ def test_organize_src_is_data_dir_ignores_own_raw_tree(tmp_path):
     assert [p.name for p in (base / "annotated_pdfs").iterdir()] == ["scan.pdf"]
     # the snapshot jsonl was never pulled in as a dataset/unclassified
     assert "snap.jsonl" not in [p.name for p in (base / "_unclassified").iterdir()]
+
+
+def test_prune_source_deletes_staged_files_only(tmp_path):
+    """prune_source removes filed files but never anything under exclude_under."""
+    data = tmp_path / "data"
+    raw_root = data / "raw"
+    _touch(raw_root / "STUDY" / "datasets" / "keep.xlsx")  # dest tree, excluded
+    _touch(data / "loose.xlsx")
+    _touch(data / "sub" / "nested.pdf")
+    pruned = intake.prune_source(data, exclude_under=[raw_root])
+    assert sorted(pruned) == ["loose.xlsx", "nested.pdf"]
+    assert not (data / "loose.xlsx").exists()
+    assert not (data / "sub").exists()  # emptied subdir removed
+    assert (raw_root / "STUDY" / "datasets" / "keep.xlsx").exists()  # dest untouched
+
+
+def test_organize_prune_files_data_then_cleans_source(tmp_path):
+    """End-to-end: SRC=data, file loose new files into raw, then prune the source."""
+    data = tmp_path / "data"
+    raw_root = data / "raw"
+    base = raw_root / "STUDY"
+    for b in ("annotated_pdfs", "data_dictionary", "datasets", "_unclassified"):
+        (base / b).mkdir(parents=True)
+    _touch(base / "datasets" / "old.xlsx")  # organized tree
+    _touch(data / "new_form.xlsx")  # loose new files
+    _touch(data / "scan.pdf")
+
+    res = intake.organize(
+        "STUDY",
+        data,
+        add=True,
+        prune=True,
+        raw_root=raw_root,
+        config_root=tmp_path / "config",
+        audit_dir=tmp_path / "audit",
+    )
+    # filed into the raw tree
+    assert "new_form.xlsx" in [p.name for p in (base / "datasets").iterdir()]
+    assert "scan.pdf" in [p.name for p in (base / "annotated_pdfs").iterdir()]
+    # source loose copies removed
+    assert sorted(res.pruned) == ["new_form.xlsx", "scan.pdf"]
+    assert not (data / "new_form.xlsx").exists()
+    assert not (data / "scan.pdf").exists()
+    # the study's own raw tree was never pruned
+    assert (base / "datasets" / "old.xlsx").exists()

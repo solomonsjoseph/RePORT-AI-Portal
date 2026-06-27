@@ -56,6 +56,12 @@ else
 ADDFLAG :=
 endif
 
+ifdef PRUNE
+PRUNEFLAG := --prune-source
+else
+PRUNEFLAG :=
+endif
+
 RESUME ?=
 ifdef RESUME
 RESUMEFLAG := --resume-held
@@ -215,7 +221,7 @@ INTAKE := plugins/report-ai-study-pipeline/skills/raw-data-intake/scripts/run.py
 organize: ## Skill 0: sort an unorganized study delivery into data/raw/<study>/ (SRC=dir-or-zip; ADD=1 to file new files into an organized study)
 	@printf "$(C)Organizing raw delivery for STUDY=$(STUDY) from SRC=$(SRC)...$(N)\n"
 	@STUDY_NAME=$(STUDY) $(UV) run --all-groups python $(INTAKE) \
-		--study $(STUDY) --src $(SRC) $(FFLAG) $(ADDFLAG)
+		--study $(STUDY) --src $(SRC) $(FFLAG) $(ADDFLAG) $(PRUNEFLAG)
 	@printf "$(G)✓ Intake complete for $(STUDY)$(N)\n"
 
 rebuild-llm-source: ## Remove generated llm_source/staging, preserve audit/agent, then re-run the orchestrator

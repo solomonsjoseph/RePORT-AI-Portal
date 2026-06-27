@@ -46,10 +46,17 @@ Duplicate / collision-pair resolution stays with `dataset-deduplication` (skill 
 make organize STUDY=<name> SRC=<dir-or-zip>
 make organize STUDY=<name> SRC=<dir-or-zip> FORCE=1   # rebuild an organized tree
 make organize STUDY=<name> SRC=<inbox-dir> ADD=1      # file NEW files into an organized study
+make organize STUDY=<name> SRC=data ADD=1 PRUNE=1     # file new files, then delete them from SRC
 
 python plugins/report-ai-study-pipeline/skills/raw-data-intake/scripts/run.py \
-  --study <STUDY> --src <dir-or-zip> [--force | --add]
+  --study <STUDY> --src <dir-or-zip> [--force | --add] [--prune-source]
 ```
+
+`PRUNE=1` (`--prune-source`) deletes the loose source files from `SRC` after
+they are filed into the raw tree (the skill is copy-by-default; pruning is
+opt-in). It only removes files it actually ingested — never anything under the
+destination `data/raw/` tree or a managed subdir — and best-effort removes
+emptied leftover subfolders.
 
 `ADD=1` (`--add`) files new files from `SRC` into an already-organized study
 without the `FORCE` rebuild semantics: it never overwrites an existing file

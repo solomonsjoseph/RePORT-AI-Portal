@@ -47,6 +47,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="file NEW files into an already-organized study (never overwrites existing files)",
     )
+    parser.add_argument(
+        "--prune-source",
+        action="store_true",
+        help="after filing, delete the loose source files from SRC (never touches data/raw)",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -55,6 +60,7 @@ def main(argv: list[str] | None = None) -> int:
             Path(args.src),
             force=args.force,
             add=args.add,
+            prune=args.prune_source,
             raw_root=_env_path("RPLN_INTAKE_RAW_ROOT"),
             config_root=_env_path("RPLN_INTAKE_CONFIG_ROOT"),
             audit_dir=_env_path("RPLN_INTAKE_AUDIT_DIR"),
@@ -77,6 +83,8 @@ def main(argv: list[str] | None = None) -> int:
         parts = [f"{b}={n}" for b, n in sorted(result.counts.items()) if n]
         if result.already_present:
             parts.append(f"already_present={len(result.already_present)}")
+        if result.pruned:
+            parts.append(f"pruned={len(result.pruned)}")
         summary = "; ".join(parts)
     emit_skill_result(
         SkillResult(
@@ -90,6 +98,7 @@ def main(argv: list[str] | None = None) -> int:
                 "counts": result.counts,
                 "unclassified": result.unclassified,
                 "already_present": result.already_present,
+                "pruned": result.pruned,
                 "manifest_written": result.manifest_written,
                 "review_note": result.review_note,
             },
