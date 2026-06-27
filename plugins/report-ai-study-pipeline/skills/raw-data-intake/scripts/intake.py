@@ -164,6 +164,12 @@ def organize(
     if not force and is_already_organized(raw_study_dir):
         return IntakeResult(skipped=True)
 
+    # Pre-create the canonical buckets so the layout is complete even when a
+    # bucket gets no files (e.g. a delivery with no data dictionary). This also
+    # makes a re-run correctly no-op via is_already_organized.
+    for bucket in _ALL_BUCKETS:
+        (raw_study_dir / bucket).mkdir(parents=True, exist_ok=True)
+
     with tempfile.TemporaryDirectory() as tmp:
         collisions: list[str] = []
         staged = stage_source(Path(src), Path(tmp), collisions=collisions)

@@ -290,3 +290,34 @@ def test_run_py_corrupt_zip_emits_failure_marker(tmp_path):
     assert markers, f"No RPLN_SKILL_RESULT marker in stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
     payload = json.loads(markers[-1][len("RPLN_SKILL_RESULT:") :])
     assert payload["ok"] is False
+
+
+def test_organize_no_dictionary_is_still_idempotent(tmp_path):
+    """A delivery with no data-dictionary file (the real Indo-VAP shape) must
+    still pre-create the data_dictionary bucket so a re-run no-ops."""
+    src = tmp_path / "delivery"
+    _touch(src / "10_TST.xlsx")
+    _touch(src / "form10.pdf")  # no dictionary-hint file at all
+    raw_root = tmp_path / "raw"
+    res = intake.organize(
+        "STUDY",
+        src,
+        raw_root=raw_root,
+        config_root=tmp_path / "config",
+        audit_dir=tmp_path / "audit",
+    )
+    assert res.skipped is False
+    base = raw_root / "STUDY"
+    # all four canonical buckets exist, even the empty ones
+    for bucket in ("annotated_pdfs", "datasets", "data_dictionary", "_unclassified"):
+        assert (base / bucket).is_dir(), f"missing bucket {bucket}"
+    assert list((base / "data_dictionary").iterdir()) == []  # empty but present
+    # second run must no-op despite the empty data_dictionary bucket
+    res2 = intake.organize(
+        "STUDY",
+        src,
+        raw_root=raw_root,
+        config_root=tmp_path / "config",
+        audit_dir=tmp_path / "audit",
+    )
+    assert res2.skipped is True
