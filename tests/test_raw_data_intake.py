@@ -186,7 +186,7 @@ def test_run_py_emits_marker(tmp_path, monkeypatch):
     monkeypatch.setenv("RPLN_INTAKE_RAW_ROOT", str(raw_root))
     monkeypatch.setenv("RPLN_INTAKE_CONFIG_ROOT", str(tmp_path / "config"))
     monkeypatch.setenv("RPLN_INTAKE_AUDIT_DIR", str(tmp_path / "audit"))
-    proc = subprocess.run(
+    proc = subprocess.run(  # noqa: S603
         [sys.executable, str(_RUN_PY), "--study", "STUDY", "--src", str(src)],
         capture_output=True, text=True,
     )
@@ -200,7 +200,7 @@ def test_run_py_emits_marker(tmp_path, monkeypatch):
 
 
 def test_run_py_missing_src_fails(tmp_path):
-    proc = subprocess.run(
+    proc = subprocess.run(  # noqa: S603
         [sys.executable, str(_RUN_PY), "--study", "STUDY", "--src", str(tmp_path / "nope")],
         capture_output=True, text=True,
     )
