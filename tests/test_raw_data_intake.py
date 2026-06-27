@@ -1,4 +1,5 @@
 import importlib.util
+import sys
 from pathlib import Path
 
 _INTAKE = (
@@ -7,6 +8,7 @@ _INTAKE = (
 )
 _spec = importlib.util.spec_from_file_location("intake", _INTAKE)
 intake = importlib.util.module_from_spec(_spec)
+sys.modules["intake"] = intake
 _spec.loader.exec_module(intake)
 
 
@@ -154,6 +156,8 @@ def test_organize_force_rebuilds(tmp_path):
     )
     assert res.skipped is False
     assert "new.xlsx" in [p.name for p in (base / "datasets").iterdir()]
+    # force is additive-overwrite: pre-existing files are still present alongside new ones
+    assert "existing.xlsx" in [p.name for p in (base / "datasets").iterdir()]
 
 
 def test_organize_preserves_existing_manifest(tmp_path):

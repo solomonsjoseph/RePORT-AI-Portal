@@ -8,6 +8,7 @@ from __future__ import annotations
 import shutil
 import tempfile
 import zipfile
+from dataclasses import dataclass, field
 from pathlib import Path
 
 ANNOTATED_PDFS = "annotated_pdfs"
@@ -67,20 +68,13 @@ _REAL_BUCKETS = (ANNOTATED_PDFS, DATA_DICTIONARY, DATASETS)
 _ALL_BUCKETS = (*_REAL_BUCKETS, UNCLASSIFIED)
 
 
+@dataclass
 class IntakeResult:
-    def __init__(
-        self,
-        counts=None,
-        unclassified=None,
-        manifest_written: bool = False,
-        skipped: bool = False,
-        review_note=None,
-    ):
-        self.counts: dict = counts if counts is not None else {}
-        self.unclassified: list = unclassified if unclassified is not None else []
-        self.manifest_written = manifest_written
-        self.skipped = skipped
-        self.review_note = review_note
+    counts: dict = field(default_factory=dict)
+    unclassified: list = field(default_factory=list)
+    manifest_written: bool = False
+    skipped: bool = False
+    review_note: str | None = None
 
 
 def is_already_organized(raw_study_dir: Path) -> bool:
@@ -103,7 +97,7 @@ def draft_manifest(dataset_names: list, manifest_path: Path) -> bool:
     return True
 
 
-def write_review_note(audit_dir: Path, unclassified: list) -> str | None:
+def write_review_note(audit_dir: Path, unclassified: list[tuple[str, str]]) -> str | None:
     """unclassified: list[(filename, reason_code)]. Count-only; no contents."""
     if not unclassified:
         return None
@@ -141,6 +135,7 @@ def organize(
     audit_dir = Path(audit_dir) if audit_dir is not None else Path(config.STUDY_AUDIT_DIR)
 
     raw_study_dir = raw_root / study
+    # ponytail: force bypasses the no-op guard and re-sorts additively (same-named files overwritten); a destructive clean is out of scope — dedup is skill 2
     if not force and is_already_organized(raw_study_dir):
         return IntakeResult(skipped=True)
 
