@@ -131,14 +131,14 @@ def write_review_note(audit_dir: Path, unclassified: list[tuple[str, str]]) -> s
     note_path = intake_review_path(Path(audit_dir))
     note_path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        "# raw-data-intake review — unclassified files",
+        "# raw-data-intake review — items needing attention",
         "",
         f"count: {len(unclassified)}",
         "",
-        "| file | bucket_guess | reason |",
-        "| --- | --- | --- |",
+        "| file | reason |",
+        "| --- | --- |",
     ]
-    lines += [f"| {name} | {UNCLASSIFIED} | {reason} |" for name, reason in unclassified]
+    lines += [f"| {name} | {reason} |" for name, reason in unclassified]
     lines.append("")
     note_path.write_text("\n".join(lines))
     return str(note_path)
