@@ -458,3 +458,25 @@ def test_organize_prune_files_data_then_cleans_source(tmp_path):
     assert not (data / "scan.pdf").exists()
     # the study's own raw tree was never pruned
     assert (base / "datasets" / "old.xlsx").exists()
+
+
+def test_resolve_study_name_explicit_valid():
+    assert intake.resolve_study_name("Cohort-7") == ("Cohort-7", "explicit")
+    assert intake.resolve_study_name("  Trimmed  ") == ("Trimmed", "explicit")
+
+
+def test_resolve_study_name_rejects_path_injection():
+    import pytest
+
+    for bad in ("a/b", "..", ".", "x\\y"):
+        with pytest.raises(ValueError):
+            intake.resolve_study_name(bad)
+    # empty / whitespace is treated as "omitted" -> falls back, never raises
+    assert intake.resolve_study_name("")[1] in {"detected", "default"}
+    assert intake.resolve_study_name("   ")[1] in {"detected", "default"}
+
+
+def test_resolve_study_name_falls_back_when_omitted():
+    name, source = intake.resolve_study_name(None)
+    assert name and "/" not in name and "\\" not in name  # a plain folder name
+    assert source in {"detected", "default"}

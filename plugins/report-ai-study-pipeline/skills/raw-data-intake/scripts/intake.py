@@ -185,6 +185,39 @@ class IntakeResult:
     pruned: list = field(default_factory=list)
 
 
+def _validate_study_name(name: str) -> None:
+    """Pre-run check: the study name must be a plain folder name, not a path."""
+    if not name or not name.strip():
+        raise ValueError("study name is empty")
+    if "/" in name or "\\" in name or name in {".", ".."}:
+        raise ValueError(f"study name must be a plain folder name, not a path: {name!r}")
+
+
+def resolve_study_name(explicit: str | None) -> tuple[str, str]:
+    """Resolve + validate the target study folder name BEFORE filing anything.
+
+    An explicit name (CLI ``--study`` / ``STUDY=``) wins and is validated. When
+    omitted, falls back to ``config.STUDY_NAME`` (env ``STUDY_NAME`` →
+    auto-detected ``data/raw/<x>/datasets`` study → generic ``Indo-VAP``
+    default). Returns ``(name, source)`` where source is ``explicit`` |
+    ``detected`` (an existing study) | ``default`` (the generic fallback — a
+    brand-new study folder will be created under this name). Raises ``ValueError``
+    on an invalid name (the pre-run check), so files are never filed into a bad
+    or path-injected folder.
+    """
+    if explicit and explicit.strip():
+        name = explicit.strip()
+        _validate_study_name(name)
+        return name, "explicit"
+
+    import config
+
+    name = config.STUDY_NAME
+    _validate_study_name(name)
+    has_datasets = (Path(config.RAW_DATA_DIR) / name / DATASETS).is_dir()
+    return name, ("detected" if has_datasets else "default")
+
+
 def is_already_organized(raw_study_dir: Path) -> bool:
     """True iff the bucket dirs exist and datasets/ already holds files."""
     raw_study_dir = Path(raw_study_dir)

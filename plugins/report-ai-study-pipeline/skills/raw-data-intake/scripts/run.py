@@ -27,7 +27,6 @@ import intake  # noqa: E402
 
 from scripts.utils.skill_protocol import (  # noqa: E402
     SkillResult,
-    add_common_skill_args,
     emit_skill_result,
 )
 
@@ -39,7 +38,17 @@ def _env_path(name: str) -> Path | None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Sort an unorganized study delivery (skill 0).")
-    add_common_skill_args(parser)
+    # --study is OPTIONAL here (unlike other skills): when omitted it is
+    # auto-detected with a generic fallback via intake.resolve_study_name, and
+    # validated before any filing. --run-id/--run-dir are accepted for interface
+    # parity with the other skills but unused (intake is not a DAG phase).
+    parser.add_argument(
+        "--study",
+        default=None,
+        help="Study folder under data/raw/; auto-detected (generic fallback) if omitted.",
+    )
+    parser.add_argument("--run-id", dest="run_id", default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--run-dir", dest="run_dir", default=None, help=argparse.SUPPRESS)
     parser.add_argument("--src", required=True, help="dir or zip of the unorganized delivery")
     parser.add_argument("--force", action="store_true", help="rebuild an already-organized tree")
     parser.add_argument(
@@ -54,9 +63,24 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    # Pre-run check: resolve + validate the study folder name BEFORE filing.
+    try:
+        study, study_source = intake.resolve_study_name(args.study)
+    except ValueError as exc:
+        emit_skill_result(
+            SkillResult(
+                skill="raw-data-intake",
+                ok=False,
+                exit_code=2,
+                summary=f"invalid study name: {exc}",
+                data={"study": args.study},
+            )
+        )
+        return 2
+
     try:
         result = intake.organize(
-            args.study,
+            study,
             Path(args.src),
             force=args.force,
             add=args.add,
@@ -72,20 +96,23 @@ def main(argv: list[str] | None = None) -> int:
                 ok=False,
                 exit_code=2,
                 summary=f"intake failed: {exc}",
-                data={"study": args.study},
+                data={"study": study},
             )
         )
         return 2
 
+    # Surface the resolved study + how it was resolved so the operator can
+    # confirm files went to the right folder (esp. on auto-detect/fallback).
+    study_label = f"study={study}" + ("" if study_source == "explicit" else f" ({study_source})")
     if result.skipped:
-        summary = "already organized — skipping"
+        summary = f"{study_label}: already organized — skipping"
     else:
         parts = [f"{b}={n}" for b, n in sorted(result.counts.items()) if n]
         if result.already_present:
             parts.append(f"already_present={len(result.already_present)}")
         if result.pruned:
             parts.append(f"pruned={len(result.pruned)}")
-        summary = "; ".join(parts)
+        summary = f"{study_label}: " + ("; ".join(parts) if parts else "no files staged")
     emit_skill_result(
         SkillResult(
             skill="raw-data-intake",
@@ -93,7 +120,8 @@ def main(argv: list[str] | None = None) -> int:
             exit_code=0,
             summary=summary or "no files staged",
             data={
-                "study": args.study,
+                "study": study,
+                "study_source": study_source,
                 "skipped": result.skipped,
                 "counts": result.counts,
                 "unclassified": result.unclassified,

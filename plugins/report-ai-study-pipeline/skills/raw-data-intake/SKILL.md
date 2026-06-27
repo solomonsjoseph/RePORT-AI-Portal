@@ -44,13 +44,23 @@ Duplicate / collision-pair resolution stays with `dataset-deduplication` (skill 
 
 ```bash
 make organize STUDY=<name> SRC=<dir-or-zip>
+make organize SRC=<dir-or-zip>                        # STUDY auto-detected (generic fallback)
 make organize STUDY=<name> SRC=<dir-or-zip> FORCE=1   # rebuild an organized tree
 make organize STUDY=<name> SRC=<inbox-dir> ADD=1      # file NEW files into an organized study
 make organize STUDY=<name> SRC=data ADD=1 PRUNE=1     # file new files, then delete them from SRC
 
 python plugins/report-ai-study-pipeline/skills/raw-data-intake/scripts/run.py \
-  --study <STUDY> --src <dir-or-zip> [--force | --add] [--prune-source]
+  [--study <STUDY>] --src <dir-or-zip> [--force | --add] [--prune-source]
 ```
+
+**Study name resolution.** `STUDY` / `--study` is optional. The target folder
+name is resolved and validated *before* anything is filed: an explicit name
+wins; otherwise it is auto-detected (the existing `data/raw/<x>/` study, env
+`STUDY_NAME`) and falls back to the generic default (`Indo-VAP`) for a brand-new
+study. The name must be a plain folder name — a path-injected name (`../evil`,
+`a/b`) is rejected up front (exit 2, nothing filed). The resolved name and how
+it was resolved (`explicit` / `detected` / `default`) are reported in the
+result so the operator can confirm files went to the right study folder.
 
 `PRUNE=1` (`--prune-source`) deletes the loose source files from `SRC` after
 they are filed into the raw tree (the skill is copy-by-default; pruning is
