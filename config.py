@@ -426,7 +426,6 @@ STAGING_SOT_DIR: Path = STUDY_STAGING_DIR / "SoT"
 AUDIT_HUMAN_REVIEW_DIR: Path = STUDY_AUDIT_DIR / "human_review"
 AUDIT_DATASETS_DIR: Path = STUDY_AUDIT_DIR / "datasets"
 AUDIT_SCRUBBING_CODE_DIR: Path = STUDY_AUDIT_DIR / "scrubbing_code"
-LLM_SOURCE_DATASETS_DIR: Path = STUDY_LLM_SOURCE_DIR / "datasets"
 
 # ----------------------------------------------------------------------------
 # PHI SCRUB
@@ -714,7 +713,7 @@ def ensure_run_directories(study: str | None = None, run_id: str | None = None) 
         tmp/<study>/{headers, datasets, datasets/quarantine, SoT}
         output/<study>/{audit, audit/human_review, audit/datasets,
                         audit/scrubbing_code, runs/<run_id>, llm_source,
-                        llm_source/datasets, llm_source/SoT, snapshots}
+                        llm_source/SoT, snapshots}
 
     Sensitive leaves (anything that may carry PHI-scrubbed data, staging PHI, or
     audit evidence) are hardened to 0o700 after creation, mirroring
@@ -755,7 +754,6 @@ def ensure_run_directories(study: str | None = None, run_id: str | None = None) 
         # creates AUDIT_SCRUBBING_CODE_DIR on demand. (Telemetry stays under
         # audit/ — the no-LLM-fenced zone — deliberately, NOT relocated to runs/.)
         llm_source,
-        llm_source / "datasets",
         llm_source / "SoT",
         output_dir / "snapshots",
     ]

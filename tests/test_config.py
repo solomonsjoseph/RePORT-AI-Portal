@@ -164,7 +164,8 @@ class TestEnsureRunDirectories:
             # placeholder; B7 / Note 24).
             out / "runs" / run_id,
             out / "llm_source",
-            out / "llm_source" / "datasets",
+            # llm_source/datasets removed: dead empty stub, no writers — data
+            # lives under llm_source/dataset_schema/files/.
             out / "llm_source" / "SoT",
             out / "snapshots",
         ]
