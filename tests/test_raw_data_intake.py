@@ -321,3 +321,53 @@ def test_organize_no_dictionary_is_still_idempotent(tmp_path):
         audit_dir=tmp_path / "audit",
     )
     assert res2.skipped is True
+
+
+def test_organize_add_files_into_organized_tree(tmp_path):
+    """--add files NEW files into an already-organized study (no no-op skip)."""
+    raw_root = tmp_path / "raw"
+    base = raw_root / "STUDY"
+    for b in ("annotated_pdfs", "data_dictionary", "datasets", "_unclassified"):
+        (base / b).mkdir(parents=True)
+    _touch(base / "datasets" / "existing.xlsx")  # organized: datasets non-empty
+    src = tmp_path / "inbox"
+    _touch(src / "new_form.xlsx")
+    _touch(src / "new_scan.pdf")
+
+    res = intake.organize(
+        "STUDY",
+        src,
+        add=True,
+        raw_root=raw_root,
+        config_root=tmp_path / "config",
+        audit_dir=tmp_path / "audit",
+    )
+    assert res.skipped is False
+    assert "new_form.xlsx" in [p.name for p in (base / "datasets").iterdir()]
+    assert "new_scan.pdf" in [p.name for p in (base / "annotated_pdfs").iterdir()]
+    assert "existing.xlsx" in [p.name for p in (base / "datasets").iterdir()]
+    assert res.already_present == []
+
+
+def test_organize_add_never_overwrites_existing(tmp_path):
+    """--add records a same-named file as already_present and leaves it untouched."""
+    raw_root = tmp_path / "raw"
+    base = raw_root / "STUDY"
+    (base / "datasets").mkdir(parents=True)
+    existing = base / "datasets" / "form.xlsx"
+    existing.write_text("ORIGINAL")  # pre-existing content
+    src = tmp_path / "inbox"
+    (src / "form.xlsx").parent.mkdir(parents=True, exist_ok=True)
+    (src / "form.xlsx").write_text("INCOMING")  # same name, different content
+
+    res = intake.organize(
+        "STUDY",
+        src,
+        add=True,
+        raw_root=raw_root,
+        config_root=tmp_path / "config",
+        audit_dir=tmp_path / "audit",
+    )
+    assert res.already_present == ["form.xlsx"]
+    assert existing.read_text() == "ORIGINAL"  # never overwritten
+    assert res.counts["datasets"] == 0  # nothing newly placed

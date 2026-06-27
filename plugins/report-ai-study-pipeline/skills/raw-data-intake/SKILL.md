@@ -40,10 +40,17 @@ Duplicate / collision-pair resolution stays with `dataset-deduplication` (skill 
 ```bash
 make organize STUDY=<name> SRC=<dir-or-zip>
 make organize STUDY=<name> SRC=<dir-or-zip> FORCE=1   # rebuild an organized tree
+make organize STUDY=<name> SRC=<inbox-dir> ADD=1      # file NEW files into an organized study
 
 python plugins/report-ai-study-pipeline/skills/raw-data-intake/scripts/run.py \
-  --study <STUDY> --src <dir-or-zip> [--force]
+  --study <STUDY> --src <dir-or-zip> [--force | --add]
 ```
+
+`ADD=1` (`--add`) files new files from `SRC` into an already-organized study
+without the `FORCE` rebuild semantics: it never overwrites an existing file
+(reports it as `already_present` instead). Point `SRC` at a dedicated inbox of
+the new files — not at `data/`, which already contains the study's `raw/` tree.
+Manifest-gap surfacing for newly-added forms is deferred (future work).
 
 Emits a value-free `RPLN_SKILL_RESULT:` line with per-bucket counts.
 

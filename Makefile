@@ -50,6 +50,12 @@ else
 FFLAG :=
 endif
 
+ifdef ADD
+ADDFLAG := --add
+else
+ADDFLAG :=
+endif
+
 RESUME ?=
 ifdef RESUME
 RESUMEFLAG := --resume-held
@@ -206,10 +212,10 @@ study: ## Build/publish a study via the 10-phase orchestrator (the pipeline)
 
 INTAKE := plugins/report-ai-study-pipeline/skills/raw-data-intake/scripts/run.py
 
-organize: ## Skill 0: sort an unorganized study delivery into data/raw/<study>/ (SRC=dir-or-zip)
+organize: ## Skill 0: sort an unorganized study delivery into data/raw/<study>/ (SRC=dir-or-zip; ADD=1 to file new files into an organized study)
 	@printf "$(C)Organizing raw delivery for STUDY=$(STUDY) from SRC=$(SRC)...$(N)\n"
 	@STUDY_NAME=$(STUDY) $(UV) run --all-groups python $(INTAKE) \
-		--study $(STUDY) --src $(SRC) $(FFLAG)
+		--study $(STUDY) --src $(SRC) $(FFLAG) $(ADDFLAG)
 	@printf "$(G)✓ Intake complete for $(STUDY)$(N)\n"
 
 rebuild-llm-source: ## Remove generated llm_source/staging, preserve audit/agent, then re-run the orchestrator

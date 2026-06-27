@@ -99,6 +99,7 @@ class IntakeResult:
     manifest_written: bool = False
     skipped: bool = False
     review_note: str | None = None
+    already_present: list = field(default_factory=list)
 
 
 def is_already_organized(raw_study_dir: Path) -> bool:
@@ -149,6 +150,7 @@ def organize(
     src: Path,
     *,
     force: bool = False,
+    add: bool = False,
     raw_root: Path | None = None,
     config_root: Path | None = None,
     audit_dir: Path | None = None,
@@ -161,7 +163,11 @@ def organize(
 
     raw_study_dir = raw_root / study
     # ponytail: force bypasses the no-op guard and re-sorts additively (same-named files overwritten); a destructive clean is out of scope — dedup is skill 2
-    if not force and is_already_organized(raw_study_dir):
+    # add mode files NEW files into an already-organized study without the force
+    # rebuild semantics: it never overwrites an existing file (records it as
+    # already_present instead) and never re-ingests the study's own buckets
+    # (SRC is the inbox). Manifest-gap surfacing is deferred (future work).
+    if not force and not add and is_already_organized(raw_study_dir):
         return IntakeResult(skipped=True)
 
     # Pre-create the canonical buckets so the layout is complete even when a
@@ -175,11 +181,16 @@ def organize(
         staged = stage_source(Path(src), Path(tmp), collisions=collisions)
         counts = dict.fromkeys(_ALL_BUCKETS, 0)
         unclassified: list = []
+        already_present: list = []
         for path in staged:
             bucket = classify(path.name)
             dest_dir = raw_study_dir / bucket
             dest_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(path, dest_dir / path.name)
+            dest = dest_dir / path.name
+            if add and dest.exists():
+                already_present.append(path.name)  # never overwrite in add mode
+                continue
+            shutil.copy2(path, dest)
             counts[bucket] += 1
             if bucket == UNCLASSIFIED:
                 unclassified.append((path.name, "unrecognized_name_or_extension"))
@@ -197,4 +208,5 @@ def organize(
         manifest_written=manifest_written,
         skipped=False,
         review_note=review_note,
+        already_present=already_present,
     )

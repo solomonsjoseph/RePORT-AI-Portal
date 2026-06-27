@@ -42,6 +42,11 @@ def main(argv: list[str] | None = None) -> int:
     add_common_skill_args(parser)
     parser.add_argument("--src", required=True, help="dir or zip of the unorganized delivery")
     parser.add_argument("--force", action="store_true", help="rebuild an already-organized tree")
+    parser.add_argument(
+        "--add",
+        action="store_true",
+        help="file NEW files into an already-organized study (never overwrites existing files)",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -49,6 +54,7 @@ def main(argv: list[str] | None = None) -> int:
             args.study,
             Path(args.src),
             force=args.force,
+            add=args.add,
             raw_root=_env_path("RPLN_INTAKE_RAW_ROOT"),
             config_root=_env_path("RPLN_INTAKE_CONFIG_ROOT"),
             audit_dir=_env_path("RPLN_INTAKE_AUDIT_DIR"),
@@ -68,7 +74,10 @@ def main(argv: list[str] | None = None) -> int:
     if result.skipped:
         summary = "already organized — skipping"
     else:
-        summary = "; ".join(f"{b}={n}" for b, n in sorted(result.counts.items()) if n)
+        parts = [f"{b}={n}" for b, n in sorted(result.counts.items()) if n]
+        if result.already_present:
+            parts.append(f"already_present={len(result.already_present)}")
+        summary = "; ".join(parts)
     emit_skill_result(
         SkillResult(
             skill="raw-data-intake",
@@ -80,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
                 "skipped": result.skipped,
                 "counts": result.counts,
                 "unclassified": result.unclassified,
+                "already_present": result.already_present,
                 "manifest_written": result.manifest_written,
                 "review_note": result.review_note,
             },
