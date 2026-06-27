@@ -284,3 +284,47 @@ class TestAsWrittenLedger:
         envelope = json.loads(self._ledger_path("Some_Form.jsonl").read_text())
         col_drops = [e for e in envelope["events"] if e["action"] == "dataset_column_drop"]
         assert col_drops == [], "non-column scope must not produce dataset_column_drop events"
+
+
+class TestClassifyRejectedFiles:
+    """_classify_rejected_files: filename-only junk-vs-duplicate split (Note: dedup audit)."""
+
+    def test_matches_real_indo_vap_rejects(self) -> None:
+        from scripts.extraction.dataset_cleanup import _classify_rejected_files
+
+        rejected = [
+            "101_HHC_Recontact_1.xlsx",  # _1 suffix -> dup of survivor
+            "2A_ICBaseline_1.xlsx",  # _1 suffix -> dup
+            "14_CaseControl.xlsx",  # norm-equal -> dup of 14_Case_Control
+            "21_DSTISO.xlsx",  # prefix-overlap -> dup of 21_DSTIsolate
+            "Paste Errors.xlsx",  # no twin -> junk
+            "TEST1EK.xlsx",  # no twin -> junk
+        ]
+        surviving = [
+            "101_HHC_Recontact",
+            "2A_ICBaseline",
+            "14_Case_Control",
+            "21_DSTIsolate",
+            "5_CBC",
+            "6_HIV",
+        ]
+        junk, dups = _classify_rejected_files(rejected, surviving)
+
+        assert sorted(junk) == ["Paste Errors.xlsx", "TEST1EK.xlsx"]
+        dup_map = {d["removed"]: d["kept"] for d in dups}
+        assert dup_map == {
+            "101_HHC_Recontact_1.xlsx": "101_HHC_Recontact",
+            "2A_ICBaseline_1.xlsx": "2A_ICBaseline",
+            "14_CaseControl.xlsx": "14_Case_Control",
+            "21_DSTISO.xlsx": "21_DSTIsolate",
+        }
+
+    def test_no_false_duplicate_across_sibling_forms(self) -> None:
+        from scripts.extraction.dataset_cleanup import _classify_rejected_files
+
+        # 2A and 2B are distinct forms — a junk file must not bind to either.
+        junk, dups = _classify_rejected_files(
+            ["Random_Junk.xlsx"], ["2A_ICBaseline", "2B_HCBaseline"]
+        )
+        assert junk == ["Random_Junk.xlsx"]
+        assert dups == []

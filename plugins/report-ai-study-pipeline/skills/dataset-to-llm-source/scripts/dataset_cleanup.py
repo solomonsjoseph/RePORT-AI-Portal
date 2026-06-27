@@ -34,6 +34,7 @@ Usage:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -69,10 +70,10 @@ __all__ = [
 class CleanupReport:
     """Summary of dataset cleanup actions.
 
-    The ``junk_removed`` / ``duplicates_merged`` / ``duplicates_skipped`` lists
-    are retained for audit-schema stability but are always empty now that
-    file-level junk/duplicate handling moved to raw-file dedup before extraction
-    (Note 4/18).
+    ``junk_removed`` / ``duplicates_merged`` are populated from the manifest
+    ``reject:`` list (classified by :func:`_classify_rejected_files`) so every
+    excluded raw file is audited; ``duplicates_skipped`` stays for schema
+    stability. No row VALUES are read — classification is filename-only.
     """
 
     junk_removed: list[str] = field(default_factory=list)
@@ -83,6 +84,44 @@ class CleanupReport:
     @property
     def total_actions(self) -> int:
         return len(self.junk_removed) + len(self.duplicates_merged)
+
+
+def _norm_stem(name: str) -> str:
+    """Normalized stem for duplicate matching: lowercase alnum, ``_<n>`` stripped."""
+    stem = re.sub(r"_\d+$", "", Path(name).stem.lower())
+    return re.sub(r"[^a-z0-9]", "", stem)
+
+
+def _classify_rejected_files(
+    rejected: list[str], surviving_stems: list[str]
+) -> tuple[list[str], list[dict[str, str]]]:
+    """Split manifest-rejected filenames into junk vs duplicate (filename-only).
+
+    A reject whose normalized stem matches (or prefix-overlaps) a surviving
+    published stem is recorded as a duplicate of it; otherwise it is standalone
+    junk. Deterministic and value-free — reads only filenames, never row values.
+    Mirrors the operator's curated ``reject:`` intent for the audit trail.
+    """
+    surv = {_norm_stem(s): s for s in surviving_stems}
+    junk: list[str] = []
+    dups: list[dict[str, str]] = []
+    for fn in sorted(rejected):
+        rn = _norm_stem(fn)
+        twin = surv.get(rn) or next(
+            (orig for sn, orig in surv.items() if sn and (sn.startswith(rn) or rn.startswith(sn))),
+            None,
+        )
+        if twin:
+            dups.append(
+                {
+                    "removed": fn,
+                    "kept": twin,
+                    "reason": f"manifest reject-list: duplicate of surviving {twin}",
+                }
+            )
+        else:
+            junk.append(fn)
+    return junk, dups
 
 
 class UnscrubbedDatasetError(Exception):
@@ -257,6 +296,7 @@ def emit_dataset_cleanup_audit_envelope(
     extracted_drop_events: list[dict[str, Any]] | None = None,
     study_name: str | None = None,
     audit_path: Path | None = None,
+    raw_datasets_dir: Path | None = None,
 ) -> CleanupReport:
     """Emit the unified dataset-cleanup audit envelope (audit-only).
 
@@ -308,6 +348,29 @@ def emit_dataset_cleanup_audit_envelope(
             "Datasets directory does not exist — emitting empty audit envelope: %s",
             datasets_dir,
         )
+
+    # Phase 2b: record manifest-rejected raw files (junk / duplicate) so the
+    # audit trail explains every excluded file, not just dropped columns.
+    # Fail-soft: a manifest hiccup must never break the audit envelope.
+    if raw_datasets_dir is None:
+        raw_datasets_dir = config.DATASETS_DIR
+    try:
+        from scripts.extraction.forms_manifest import check_forms_manifest
+
+        rejected = sorted(check_forms_manifest(raw_datasets_dir).rejected_files)
+        if rejected:
+            surviving = [Path(name).stem for name in dataset_files]
+            report.junk_removed, report.duplicates_merged = _classify_rejected_files(
+                rejected, surviving
+            )
+            logger.info(
+                "Recorded %d manifest-rejected file(s): %d junk, %d duplicate",
+                len(rejected),
+                len(report.junk_removed),
+                len(report.duplicates_merged),
+            )
+    except Exception as exc:  # audit must stay best-effort
+        logger.warning("Could not record manifest rejects (non-fatal): %s", exc)
 
     # Phase 3: Always emit unified audit (even on empty/missing input)
     _serialize_audit(report, extracted_drop_events, study_name, audit_path)
