@@ -471,12 +471,26 @@ def test_resolve_study_name_rejects_path_injection():
     for bad in ("a/b", "..", ".", "x\\y"):
         with pytest.raises(ValueError):
             intake.resolve_study_name(bad)
-    # empty / whitespace is treated as "omitted" -> falls back, never raises
-    assert intake.resolve_study_name("")[1] in {"detected", "default"}
-    assert intake.resolve_study_name("   ")[1] in {"detected", "default"}
 
 
-def test_resolve_study_name_falls_back_when_omitted():
-    name, source = intake.resolve_study_name(None)
-    assert name and "/" not in name and "\\" not in name  # a plain folder name
-    assert source in {"detected", "default"}
+def test_resolve_study_name_detects_existing_study(tmp_path):
+    raw = tmp_path / "raw"
+    (raw / "Cohort-9" / "datasets").mkdir(parents=True)
+    name, source = intake.resolve_study_name(None, raw_root=raw, env_study_name="")
+    assert (name, source) == ("Cohort-9", "detected")
+
+
+def test_resolve_study_name_refuses_when_nothing_detected(tmp_path):
+    import pytest
+
+    raw = tmp_path / "raw"
+    raw.mkdir()  # no study with a datasets/ dir
+    with pytest.raises(ValueError):
+        intake.resolve_study_name(None, raw_root=raw, env_study_name="")
+
+
+def test_resolve_study_name_env_acts_as_explicit(tmp_path):
+    raw = tmp_path / "raw"
+    raw.mkdir()  # nothing detectable, but env names it
+    name, source = intake.resolve_study_name(None, raw_root=raw, env_study_name="EnvStudy")
+    assert (name, source) == ("EnvStudy", "explicit")

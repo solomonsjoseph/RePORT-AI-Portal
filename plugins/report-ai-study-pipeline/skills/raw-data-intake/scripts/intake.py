@@ -193,29 +193,60 @@ def _validate_study_name(name: str) -> None:
         raise ValueError(f"study name must be a plain folder name, not a path: {name!r}")
 
 
-def resolve_study_name(explicit: str | None) -> tuple[str, str]:
+def _detect_existing_study(raw_root: Path) -> str | None:
+    """The first existing study folder under raw_root that has a datasets/ dir."""
+    raw_root = Path(raw_root)
+    if not raw_root.is_dir():
+        return None
+    excluded = {".backup", ".DS_Store", "output"}
+    for p in sorted(raw_root.iterdir()):
+        if p.is_dir() and not p.name.startswith(".") and p.name not in excluded:
+            if (p / DATASETS).is_dir():
+                return p.name
+    return None
+
+
+def resolve_study_name(
+    explicit: str | None,
+    *,
+    raw_root: Path | None = None,
+    env_study_name: str | None = None,
+) -> tuple[str, str]:
     """Resolve + validate the target study folder name BEFORE filing anything.
 
-    An explicit name (CLI ``--study`` / ``STUDY=``) wins and is validated. When
-    omitted, falls back to ``config.STUDY_NAME`` (env ``STUDY_NAME`` →
-    auto-detected ``data/raw/<x>/datasets`` study → generic ``Indo-VAP``
-    default). Returns ``(name, source)`` where source is ``explicit`` |
-    ``detected`` (an existing study) | ``default`` (the generic fallback — a
-    brand-new study folder will be created under this name). Raises ``ValueError``
-    on an invalid name (the pre-run check), so files are never filed into a bad
-    or path-injected folder.
+    Precedence: an explicit name (CLI ``--study`` / ``STUDY=``) → an intentional
+    ``STUDY_NAME`` env var → an auto-detected existing ``data/raw/<x>/datasets``
+    study. If NONE of these resolves, the call **refuses** (raises ``ValueError``)
+    rather than inventing a generic default — so a brand-new study is never
+    silently filed into another study's folder. Returns ``(name, source)`` where
+    source is ``explicit`` | ``detected``. The name is validated (a path-injected
+    name like ``../evil`` is rejected up front), so files are never filed into a
+    bad folder.
     """
     if explicit and explicit.strip():
         name = explicit.strip()
         _validate_study_name(name)
         return name, "explicit"
 
+    import os
+
     import config
 
-    name = config.STUDY_NAME
-    _validate_study_name(name)
-    has_datasets = (Path(config.RAW_DATA_DIR) / name / DATASETS).is_dir()
-    return name, ("detected" if has_datasets else "default")
+    env = env_study_name if env_study_name is not None else os.environ.get("STUDY_NAME")
+    if env and env.strip():
+        name = env.strip()
+        _validate_study_name(name)
+        return name, "explicit"
+
+    raw_root = Path(raw_root) if raw_root is not None else Path(config.RAW_DATA_DIR)
+    detected = _detect_existing_study(raw_root)
+    if detected:
+        return detected, "detected"
+
+    raise ValueError(
+        "no study specified and none detected under data/raw/; "
+        "pass STUDY=<name> (or --study) to name the new study folder"
+    )
 
 
 def is_already_organized(raw_study_dir: Path) -> bool:

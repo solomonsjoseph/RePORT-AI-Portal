@@ -65,7 +65,9 @@ def main(argv: list[str] | None = None) -> int:
 
     # Pre-run check: resolve + validate the study folder name BEFORE filing.
     try:
-        study, study_source = intake.resolve_study_name(args.study)
+        study, study_source = intake.resolve_study_name(
+            args.study, raw_root=_env_path("RPLN_INTAKE_RAW_ROOT")
+        )
     except ValueError as exc:
         emit_skill_result(
             SkillResult(

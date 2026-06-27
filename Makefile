@@ -62,11 +62,16 @@ else
 PRUNEFLAG :=
 endif
 
-# organize: STUDY is OPTIONAL (auto-detected with a generic fallback by the skill).
-ifdef STUDY
+# organize: STUDY is OPTIONAL. Only forward it when set on the command line —
+# the global `STUDY ?= Indo-VAP` default must NOT leak in, or the skill could
+# silently file a brand-new study into Indo-VAP. With no CLI STUDY the skill
+# auto-detects an existing study and otherwise refuses (no generic fallback).
+ifeq ($(origin STUDY),command line)
 STUDYARG := --study $(STUDY)
+STUDYENV := STUDY_NAME=$(STUDY)
 else
 STUDYARG :=
+STUDYENV :=
 endif
 
 RESUME ?=
@@ -227,7 +232,7 @@ INTAKE := plugins/report-ai-study-pipeline/skills/raw-data-intake/scripts/run.py
 
 organize: ## Skill 0: sort an unorganized study delivery into data/raw/<study>/ (SRC=dir-or-zip; ADD=1 to file new files into an organized study)
 	@printf "$(C)Organizing raw delivery for STUDY=$(STUDY) from SRC=$(SRC)...$(N)\n"
-	@STUDY_NAME=$(STUDY) $(UV) run --all-groups python $(INTAKE) \
+	@$(STUDYENV) $(UV) run --all-groups python $(INTAKE) \
 		$(STUDYARG) --src $(SRC) $(FFLAG) $(ADDFLAG) $(PRUNEFLAG)
 	@printf "$(G)✓ Intake complete for $(STUDY)$(N)\n"
 
