@@ -77,3 +77,12 @@ def test_stage_missing_src_raises(tmp_path):
     import pytest
     with pytest.raises(FileNotFoundError):
         intake.stage_source(tmp_path / "nope", tmp_path / "work")
+
+
+from pathlib import Path as _P
+from scripts.audit.review_paths import intake_review_path
+
+
+def test_intake_review_path():
+    p = intake_review_path(_P("/out/STUDY/audit"))
+    assert p == _P("/out/STUDY/audit/human_review/intake/intake_review.md")

@@ -22,6 +22,7 @@ __all__ = [
     "excel_duplicate_review_path",
     "form_review_dir",
     "human_review_root",
+    "intake_review_path",
     "is_sot_review_report_path",
     "legacy_sot_review_report_path",
     "presidio_failure_md_path",
@@ -50,6 +51,11 @@ def human_review_root(audit_dir: Path) -> Path:
 def form_review_dir(audit_dir: Path, key: str) -> Path:
     """The single per-form (or per-key) review directory (Note 22)."""
     return human_review_root(audit_dir) / safe_review_slug(key)
+
+
+def intake_review_path(audit_dir: Path) -> Path:
+    """Count-only note for skill-0 quarantined files (Note 22, key='intake')."""
+    return form_review_dir(audit_dir, "intake") / "intake_review.md"
 
 
 def sot_review_report_path(audit_dir: Path, form: str) -> Path:
