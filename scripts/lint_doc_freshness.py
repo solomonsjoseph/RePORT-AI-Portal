@@ -73,12 +73,6 @@ EXCLUDED_PATH_PARTS: frozenset[str] = frozenset(
 )
 
 CANONICAL_MARKDOWN_ENTRYPOINTS: frozenset[str] = frozenset({"README.md"})
-# Tracked evidence directories whose Markdown is allowed to be standalone
-# (point-in-time evaluation results + review findings) rather than a Sphinx
-# pointer — analogous to the skills/ and plugins/ exemptions below, and kept
-# consistent with the docs/eval + docs/reviews entries in .gitignore's *.md
-# allowlist. These are evidence artifacts, not parallel user documentation.
-EVIDENCE_MARKDOWN_DIRS: tuple[str, ...] = ("docs/eval", "docs/reviews")
 POINTER_PHRASES: tuple[str, ...] = (
     "current project context lives in sphinx",
     "current release notes live in sphinx",
@@ -152,8 +146,6 @@ def _iter_tracked_markdown_files() -> Iterable[Path]:
         parts = Path(rel).parts
         if "skills" in parts or "plugins" in parts:
             continue
-        if any(rel == d or rel.startswith(f"{d}/") for d in EVIDENCE_MARKDOWN_DIRS):
-            continue
         yield REPO_ROOT / rel
 
 
@@ -214,26 +206,21 @@ def _live_version() -> str:
 
 
 def _live_action_class_count() -> int:
-    """Count distinct action classes in ``config/_defaults/phi_scrub.yaml``.
+    """Count distinct action classes in ``scripts/security/phi_scrub.yaml``.
 
-    The catalog ships nine: keep / birthdate / drop / cap / generalize /
-    band / suppress_small_cell / date_jitter / id_pseudonymize. Each appears
-    as a top-level YAML key (``<name>_fields:`` or ``<name>_field:``).
-    ``band_fields`` ships empty (``[]``) under the active rule bundle but is a
-    real action class (priority rung 6, a valid ``LedgerWriter`` action), so it
-    counts — omitting it blinds this check to the eight-vs-nine drift it exists
-    to catch.
+    The catalog ships eight: keep / birthdate / drop / cap / generalize /
+    suppress_small_cell / date_jitter / id_pseudonymize. Each appears as
+    a top-level YAML key (``<name>_fields:`` or ``<name>_field:``).
     """
-    yaml_path = REPO_ROOT / "config" / "_defaults" / "phi_scrub.yaml"
+    yaml_path = REPO_ROOT / "scripts" / "security" / "phi_scrub.yaml"
     if not yaml_path.is_file():
-        return 9  # fall back to documented constant
+        return 8  # fall back to documented constant
     expected = {
         "keep_fields",
         "birthdate_field",
         "drop_fields",
         "cap_fields",
         "generalize_fields",
-        "band_fields",
         "suppress_small_cell_fields",
         "date_fields",
         "id_fields",
@@ -243,7 +230,7 @@ def _live_action_class_count() -> int:
         head = line.split(":", 1)[0].strip()
         if head in expected:
             seen.add(head)
-    return len(seen) or 9
+    return len(seen) or 8
 
 
 # ---------------------------------------------------------------------------
@@ -325,18 +312,6 @@ FORBIDDEN: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     (
         r"\bmake\s+(extract-pdfs|pdf-extract)\b",
         "stale Make target — use `make sot-source-pack` and `make sot-generate-all`",
-        (),
-    ),
-    (
-        r"\bmake\s+(pipeline|build-llm-source)\b",
-        "stale Make target — use `make study STUDY=<name>` "
-        "(or `make rebuild-llm-source STUDY=<name>` to force a rebuild)",
-        (),
-    ),
-    (
-        r"\bmain\.py\s+--pipeline\b",
-        "dead entry point — main.py is --chat/--web/--version only; "
-        "publish runs inside `make study` (host_pipeline.py in-lock)",
         (),
     ),
     # Pre-scrubbed wording (operators don't pre-scrub; pipeline does at Step 1.6)
@@ -452,30 +427,8 @@ FORBIDDEN: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     # :func:`_check_file` skips correct-number matches.
     (
         r"\b\d+[-\s]+action\s+(?:catalog|catalogue|classes?|set)\b",
-        "stale action-class count — canonical is {action_count} classes (see config/_defaults/phi_scrub.yaml)",
+        "stale action-class count — canonical is {action_count} classes (see scripts/security/phi_scrub.yaml)",
         (),
-    ),
-    # Retired JSONL-level dedup mechanisms (Note 18). ``SUSPECTED_DUPLICATE_PAIRS``,
-    # ``JUNK_PATTERNS``, and the row-reading ``clean_trio_datasets`` pair merge are
-    # removed from the production path — superseded by the dynamic raw-file dedup
-    # tiers (``raw_file_dedup.py`` / ``$dataset-deduplication``). Naming them as a
-    # CURRENT/ACTIVE mechanism is stale; the allowlist passes accurate phrasing that
-    # explicitly marks them retired/legacy/removed/superseded.
-    (
-        r"\b(?:suspected_duplicate_pairs|junk_patterns|clean_trio_datasets)\b",
-        "stale active-mechanism residue — the JSONL-level dedup/junk passes "
-        "(SUSPECTED_DUPLICATE_PAIRS / JUNK_PATTERNS / clean_trio_datasets) are "
-        "retired (Note 18); dedup uses raw_file_dedup.py ($dataset-deduplication)",
-        (
-            r"retired",
-            r"removed",
-            r"legacy",
-            r"superseded",
-            r"deprecated",
-            r"no\s+longer",
-            r"redundant",
-            r"audit[-\s]envelope[-\s]only",
-        ),
     ),
 )
 

@@ -22,7 +22,6 @@ from scripts.ai_assistant.ui.conversations import (
     _conversation_has_artifacts,
     _export_conversation_as_md,
     _export_conversation_as_text,
-    _export_plots_as_zip,
     _list_conversations_bucketed,
 )
 from scripts.ai_assistant.ui.providers import (
@@ -36,7 +35,6 @@ from scripts.ai_assistant.ui.shell import _TITLE_DISPLAY_LIMIT, _truncate_title
 from scripts.ai_assistant.ui.streaming import (
     _MEMORY_KEYWORDS,
     _artifact_file_download,
-    _content_has_saved_code,
     _sanitize_file_refs,
 )
 from scripts.ai_assistant.web_ui import (
@@ -48,25 +46,6 @@ from scripts.ai_assistant.web_ui import (
 )
 
 _PROJECT_ROOT = Path(__file__).parent.parent
-
-
-def test_content_has_saved_code_detects_code_marker() -> None:
-    """The duplicate-generated-code guard: content carrying a <RPLN_CODE:> marker
-    means the inline saved-code render already fired, so the analysis-code cards
-    must be suppressed. Without a marker (code not persisted), cards are the
-    sole fallback. This is the predicate that keeps generated code rendered
-    exactly once."""
-    # Marker present -> inline saved-code render owns it; cards suppressed.
-    assert _content_has_saved_code(
-        "Here is the analysis.\n<RPLN_CODE:output/Indo-VAP/agent/analysis/code/run_abc.py>"
-    )
-    # Other artifact markers must NOT count as code (figures still need cards).
-    assert not _content_has_saved_code(
-        "See the plot.\n<RPLN_PLOTLY:output/Indo-VAP/agent/analysis/figures/fig_1.json>"
-    )
-    assert not _content_has_saved_code("Plain answer with no executed code.")
-    assert not _content_has_saved_code("")
-    assert not _content_has_saved_code(None)
 
 
 def test_ollama_model_matching_treats_latest_as_implicit() -> None:
@@ -165,12 +144,14 @@ def test_load_study_activates_report_ai_study_plugin(
 
     assert result["success"] is True
     assert "[report-ai-study-pipeline plugin]" in result["output"]
-    assert "[dataset-deduplication]" in result["output"]
-    assert calls[0][1:3] == ["-m", "scripts.source_truth.generate_lean_outputs"]
-    publish_calls = [c for c in calls[1:] if any("extract_to_llm_source.py" in str(part) for part in c)]
-    assert len(publish_calls) == 2
-    assert publish_calls[0][-3:] == ["run", "--study", "Study"]
-    assert publish_calls[1][-3:] == ["verify", "--study", "Study"]
+    assert [Path(call[1]).name for call in calls] == [
+        "merge_excel_duplicates.py",
+        "generate_lean_outputs.py",
+        "extract_to_llm_source.py",
+        "extract_to_llm_source.py",
+    ]
+    assert calls[2][-3:] == ["run", "--study", "Study"]
+    assert calls[3][-3:] == ["verify", "--study", "Study"]
 
 
 def test_load_study_reports_missing_dictionary_mapping_when_source_exists(
@@ -191,14 +172,11 @@ def test_load_study_reports_missing_dictionary_mapping_when_source_exists(
     data_dictionary.mkdir(parents=True)
     (data_dictionary / "dictionary.csv").write_text("variable,label\nAGE,Age\n", encoding="utf-8")
     datasets_out = llm_source / "dataset_schema" / "files"
-    joined_dir = llm_source / "SoT" / "6_HIV" / "joined"
+    sot_policy = llm_source / "SoT" / "6_HIV" / "pdf"
     datasets_out.mkdir(parents=True)
-    joined_dir.mkdir(parents=True)
+    sot_policy.mkdir(parents=True)
     (datasets_out / "6_HIV.jsonl").write_text('{"_metadata": true}\n', encoding="utf-8")
-    (joined_dir / "6_HIV_joined_query_view.yaml").write_text(
-        "study: Study\nform: 6_HIV\nvariables: {}\n",
-        encoding="utf-8",
-    )
+    (sot_policy / "6_HIV_policy.yaml").write_text("variables: {}\n", encoding="utf-8")
 
     def fake_run(_cmd: list[str], **_kwargs: object) -> SimpleNamespace:
         return SimpleNamespace(returncode=0, stdout="ok", stderr="")
@@ -278,12 +256,6 @@ def test_theme_includes_hidden_end_chat_and_model_pill() -> None:
     assert "_render_analysis_code_cards" in streaming_source
     assert "rpln_artifact_download_" in streaming_source
     assert "st.download_button(" in streaming_source
-    # Generated code must render exactly once: the analysis-code cards are the
-    # fallback that fires ONLY when the inline saved-code render did not (no
-    # <RPLN_CODE:> marker). Both call sites must be guarded by
-    # _content_has_saved_code so the same code never appears twice.
-    assert streaming_source.count("_render_analysis_code_cards(") == 3  # 1 def + 2 calls
-    assert streaming_source.count("not _content_has_saved_code(") == 2  # both call sites guarded
     assert 'on_click="ignore"' in streaming_source
     assert 'st.empty() if st.session_state.get("rpln_pending_stream")' in chat_source
     assert "assistant_slot = chat.render_thread()" in web_ui_source
@@ -936,109 +908,6 @@ class TestConversationHasArtifacts:
     ) -> None:
         self._setup(tmp_path, monkeypatch)
         assert _conversation_has_artifacts("does-not-exist") is False
-
-
-class TestExportPlotsZoneBoundary:
-    """PHI read-boundary enforcement for the ZIP figure/plot export.
-
-    The inline render path (``streaming.py``) gates every artifact read with
-    ``validate_agent_read``. The ZIP export must do the same: a figure or
-    Plotly path that resolves OUTSIDE the agent read zones (``llm_source/`` or
-    ``agent/``) — e.g. a raw-data PHI file — must never be read or embedded in
-    a downloadable archive, even though the candidate-resolution loop is happy
-    to point at it.
-    """
-
-    def test_out_of_zone_figure_is_not_embedded(self, monkeypatch_config: Path) -> None:
-        import zipfile
-        from io import BytesIO
-
-        # A legitimate figure INSIDE the agent output zone (agent/analysis/figures).
-        figures_dir = config.AGENT_OUTPUT_DIR / "figures"
-        figures_dir.mkdir(parents=True, exist_ok=True)
-        ok_fig = figures_dir / "ok.png"
-        ok_fig.write_bytes(b"\x89PNG-in-zone-ok")
-
-        # A figure OUTSIDE every read zone — stands in for a raw-data PHI file.
-        phi_fig = config.DATASETS_DIR / "phi_secret.png"
-        phi_fig.parent.mkdir(parents=True, exist_ok=True)
-        phi_bytes = b"\x89PNG-PHI-SECRET-do-not-leak"
-        phi_fig.write_bytes(phi_bytes)
-
-        conv_dir = config.CONVERSATIONS_DIR
-        conv_dir.mkdir(parents=True, exist_ok=True)
-        _write_conv_json(
-            conv_dir,
-            "zone-fig-01",
-            datetime.now(UTC).isoformat(),
-            messages=[
-                {
-                    "role": "assistant",
-                    "content": (
-                        f"in-zone <RPLN_FIGURE:{ok_fig}> out-of-zone <RPLN_FIGURE:{phi_fig}>"
-                    ),
-                }
-            ],
-        )
-
-        raw = _export_plots_as_zip("zone-fig-01", "png")
-
-        assert raw, "expected a non-empty zip (the in-zone figure should export)"
-        with zipfile.ZipFile(BytesIO(raw)) as zf:
-            names = zf.namelist()
-            blob = b"".join(zf.read(n) for n in names if n != "README.txt")
-
-        # The in-zone figure exports normally...
-        assert "ok.png" in names
-        # ...but the out-of-zone (PHI) figure is neither named nor embedded.
-        assert "phi_secret.png" not in names
-        assert phi_bytes not in blob
-
-    def test_out_of_zone_plotly_is_not_read(
-        self, monkeypatch_config: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        import zipfile
-        from io import BytesIO
-
-        import plotly.io as pio
-
-        # If the export ever reads + renders a file, it embeds this sentinel.
-        # After the guard lands, the out-of-zone file is never read, so the
-        # sentinel must never appear.
-        sentinel = b"RENDERED-SENTINEL-bytes"
-        monkeypatch.setattr(pio, "to_image", lambda *_a, **_k: sentinel)
-
-        phi_plotly = config.DATASETS_DIR / "phi_chart.json"
-        phi_plotly.parent.mkdir(parents=True, exist_ok=True)
-        phi_plotly.write_text('{"data": [], "layout": {}}', encoding="utf-8")
-
-        conv_dir = config.CONVERSATIONS_DIR
-        conv_dir.mkdir(parents=True, exist_ok=True)
-        _write_conv_json(
-            conv_dir,
-            "zone-plotly-01",
-            datetime.now(UTC).isoformat(),
-            messages=[
-                {
-                    "role": "assistant",
-                    "content": f"out-of-zone <RPLN_PLOTLY:{phi_plotly}>",
-                }
-            ],
-        )
-
-        raw = _export_plots_as_zip("zone-plotly-01", "png")
-
-        # The only out-of-zone plot was skipped: no rendered bytes leaked, and
-        # no plot-derived entry was added (a notes-only README may remain).
-        if raw:
-            with zipfile.ZipFile(BytesIO(raw)) as zf:
-                names = zf.namelist()
-                blob = b"".join(zf.read(n) for n in names)
-            assert sentinel not in blob
-            assert all(n == "README.txt" for n in names), names
-        # The path/filename must not appear anywhere in the archive bytes
-        # (skip notes are generic — paths can themselves be PHI-ish).
-        assert b"phi_chart" not in raw
 
 
 # ---------------------------------------------------------------------------

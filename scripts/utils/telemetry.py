@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 import os
 import tempfile
 from datetime import UTC, datetime
@@ -17,7 +18,6 @@ from typing import Any
 
 import config
 from scripts.security.phi_patterns import BLOCKING_PATTERNS, WARN_PATTERNS
-from scripts.utils.logging_system import get_logger
 
 _HAS_LANGCHAIN = False
 _AIMessage: type | None = None
@@ -35,7 +35,7 @@ except ImportError:
 
 __all__ = ["TelemetryLogger"]
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 # Single source of truth for PHI patterns is scripts.security.phi_patterns.
 # Using the shared catalog keeps telemetry aligned with the query-time gate

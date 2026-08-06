@@ -269,6 +269,22 @@ Telemetry
    :undoc-members:
    :show-inheritance:
 
+Analytical Engine
+~~~~~~~~~~~~~~~~~
+
+.. automodule:: scripts.ai_assistant.analytical_engine
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Study Knowledge
+~~~~~~~~~~~~~~~
+
+.. automodule:: scripts.ai_assistant.study_knowledge
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Web UI Modules
 ~~~~~~~~~~~~~~
 
@@ -348,6 +364,14 @@ Step Cache
 ~~~~~~~~~~
 
 .. automodule:: scripts.utils.step_cache
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Artifact Version Registry
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: scripts.artifact_versions
    :members:
    :undoc-members:
    :show-inheritance:

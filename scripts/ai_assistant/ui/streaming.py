@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html as _html
 import json
+import logging
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -19,9 +20,8 @@ from scripts.ai_assistant.phi_safe import (
     redact_phi_in_text,
     sanitise_traceback,
 )
-from scripts.utils.logging_system import get_logger
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 # Ollama OOM surface — the ladder in agent_graph._init_llm catches this at
 # boot, but if every rung also refuses (very low free RAM) the RuntimeError
@@ -242,7 +242,6 @@ def _render_artifact_bar(
 _FILE_REF_EXTENSIONS = "jsonl|json|pdf|png|csv|xlsx|md"
 _INTERNAL_MARKER_RE = re.compile(r"<RPLN_[A-Za-z0-9_]+:[^>\r\n]*>")
 _ARTIFACT_MARKER_RE = re.compile(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>\r\n]*>")
-_CODE_MARKER_RE = re.compile(r"<RPLN_CODE:[^>\r\n]*>")
 _ABSOLUTE_FILE_REF_RE = re.compile(
     rf"(?<![\w.-])/(?:[\w.-]+/)*[\w.-]+\.(?:{_FILE_REF_EXTENSIONS})\b"
 )
@@ -263,20 +262,6 @@ def _sanitize_file_refs(text: str) -> str:
 def _strip_internal_markers(text: str) -> str:
     """Replace internal render markers with generic placeholders."""
     return _ARTIFACT_MARKER_RE.sub("[Artifact]", text)
-
-
-def _content_has_saved_code(content: str | None) -> bool:
-    """True when ``content`` carries a ``<RPLN_CODE:...>`` marker.
-
-    When the marker is present, ``_render_message_content`` already renders the
-    executed code inline from the saved ``.py`` file (with a download button),
-    so ``_render_analysis_code_cards`` must NOT render the same code a second
-    time — otherwise the generated code appears twice. The card path stays as
-    the fallback for runs where code was not persisted to disk (no marker
-    emitted; governed by the all-or-nothing ``SANDBOX_PERSIST_CODE`` config),
-    guaranteeing the code is shown exactly once in every case.
-    """
-    return bool(content and _CODE_MARKER_RE.search(content))
 
 
 # ---------------------------------------------------------------------------
@@ -702,22 +687,19 @@ def split_conversational_and_evidence(content: str) -> tuple[str, str]:
     """Split the message content into conversational text and evidence text."""
     pattern = re.compile(
         r"(?i)(?:^|\n)(###?\s*(?:evidence|sources?|citations?|references?)\b.*?\n|\*\*?(?:evidence|sources?|citations?|references?)(?:\*\*?)?\s*:?\s*\n)(.*)",
-        re.DOTALL,
+        re.DOTALL
     )
     m = pattern.search(content)
     if m:
         evidence = m.group(2).strip()
-        conversational = content[: m.start()].strip()
-
+        conversational = content[:m.start()].strip()
+        
         # Re-attach any trailing figure/plot/code/analysis tags that should remain at the end of conversational
-        tags = [
-            tag_match.group(0)
-            for tag_match in re.finditer(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>", evidence)
-        ]
-
-        evidence_clean = re.sub(
-            r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>", "", evidence
-        ).strip()
+        tags = []
+        for tag_match in re.finditer(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>", evidence):
+            tags.append(tag_match.group(0))
+            
+        evidence_clean = re.sub(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>]+>", "", evidence).strip()
         if tags:
             conversational += "\n\n" + "\n".join(tags)
         return conversational, evidence_clean
@@ -729,6 +711,8 @@ def _render_message_content(
     *,
     msg_idx: int = 0,
     tools_used: list[dict[str, str]] | None = None,
+    _from_narrative: bool = False,
+    _role: str = "assistant",
 ) -> None:
     """Render message content: figures as images, Python code collapsed, output visible.
 
@@ -745,12 +729,76 @@ def _render_message_content(
         # Remove thinking blocks from content for main display
         content = think_pattern.sub("", content).strip()
 
-    # Legacy ``<RPLN_ANALYSIS:...>`` markers come from the removed
-    # analytical-engine flow; nothing emits them anymore. Conversations saved
-    # by older versions may still carry one -- strip it rather than render it,
-    # and never read its path from disk (the old fallback read
-    # ``output/{STUDY}/analysis/`` without the zone guard).
-    content = re.sub(r"<RPLN_ANALYSIS:[^>]+>", "", content).strip()
+    # Render full analysis results directly from disk (bypasses LLM context limits)
+    analysis_pattern = re.compile(r"<RPLN_ANALYSIS:([^>]+)>")
+    analysis_match = analysis_pattern.search(content)
+    if analysis_match:
+        analysis_path = Path(analysis_match.group(1).strip())
+        # Zone guard: only read files inside the agent zone (llm_source + agent/).
+        # Matches the unified chokepoint used by every agent tool.
+        try:
+            validate_agent_read(analysis_path)
+        except PermissionError as _perm_exc:
+            # Show a debuggable card: path + reason + permitted zone.
+            st.error(
+                "**Analysis result blocked by zone guard.**\n\n"
+                "The analysis tool saved results outside the permitted agent zone. "
+                "This is a configuration error — contact your system administrator.",
+                icon="🔒",
+            )
+            logger.error(
+                "Zone guard blocked analysis read: path=%s reason=%s", analysis_path, _perm_exc
+            )
+            return
+        if analysis_path.exists():
+            # Replace the marker in content with just a brief note
+            content = analysis_pattern.sub("", content).strip()
+            # Render the full narrative from the saved file
+            full_narrative = analysis_path.read_text(encoding="utf-8")
+            # Recursively render the full narrative (which contains RPLN_FIGURE markers)
+            _render_message_content(
+                full_narrative,
+                msg_idx=msg_idx,
+                _from_narrative=True,
+            )
+            if content:
+                st.markdown(_sanitize_file_refs(content))
+            return
+        else:
+            st.warning(
+                "**Analysis result not found.**  \n"
+                "The analysis result was not saved to disk — the tool may have failed silently. "
+                "Try running the query again.",
+                icon="📂",
+            )
+            logger.warning("Analysis file missing: path=%s", analysis_path)
+            content = analysis_pattern.sub("", content).strip()
+
+    # Fallback: if content looks like an analysis response but the LLM
+    # paraphrased the tool output and dropped the RPLN_ANALYSIS marker,
+    # auto-render the narrative from disk.
+    if not analysis_match and not _from_narrative and _role == "assistant":
+        _fallback_cohort_ids: list[str] = []
+        if re.search(r"cohort.?a|index.cases", content, re.IGNORECASE):
+            _fallback_cohort_ids.append("cohort_a")
+        if re.search(r"cohort.?b|household.contacts", content, re.IGNORECASE):
+            _fallback_cohort_ids.append("cohort_b")
+
+        for _cid in _fallback_cohort_ids:
+            _narrative_path = config.STUDY_OUTPUT_DIR / "analysis" / f"{_cid}_narrative.md"
+            _render_key = f"_narrative_rendered_{msg_idx}_{_cid}"
+            if _narrative_path.exists() and _render_key not in st.session_state:
+                st.session_state[_render_key] = True
+                with st.expander(
+                    f"\U0001f4ca Full Analysis Report \u2014 {_cid.replace('_', ' ').title()}",
+                    expanded=True,
+                ):
+                    _full_narrative = _narrative_path.read_text(encoding="utf-8")
+                    _render_message_content(
+                        _full_narrative,
+                        msg_idx=msg_idx * 1000 + hash(_cid) % 1000,
+                        _from_narrative=True,
+                    )
 
     # Split content on all artifact markers — figures (Plotly JSON, matplotlib
     # PNG) and saved analysis code (.py file from the sandbox).
@@ -780,7 +828,7 @@ def _render_message_content(
             clean_seg = seg.strip().replace("\\", "/")
             p = Path(clean_seg)
             agent_out = Path(getattr(config, "AGENT_OUTPUT_DIR", "."))
-            repo_root = Path(config.REPO_ROOT)
+            repo_root = Path(getattr(config, "REPO_ROOT", "."))
             filename = p.name.lstrip(".")
 
             candidates = []
@@ -792,14 +840,12 @@ def _render_message_content(
                     candidates.append(agent_out / "code" / filename)
 
             if not p.is_absolute():
-                candidates.extend(
-                    [
-                        agent_out / clean_seg,
-                        agent_out / "code" / clean_seg,
-                        agent_out / "figures" / clean_seg,
-                        repo_root / clean_seg,
-                    ]
-                )
+                candidates.extend([
+                    agent_out / clean_seg,
+                    agent_out / "code" / clean_seg,
+                    agent_out / "figures" / clean_seg,
+                    repo_root / clean_seg
+                ])
             else:
                 candidates.append(p)
 
@@ -978,8 +1024,9 @@ def _render_chat_history() -> None:
                 content_to_render,
                 msg_idx=i,
                 tools_used=_replay_tools_used,
+                _role=msg["role"],
             )
-            if msg["role"] == "assistant" and not _content_has_saved_code(content_to_render):
+            if msg["role"] == "assistant":
                 _render_analysis_code_cards(_replay_tools_used, msg_idx=i)
             m = meta_map.get(i, {})
             # Timestamp
@@ -1152,11 +1199,7 @@ def _stream_response(question: str) -> tuple[str, list[dict[str, str]]]:
                 msg_idx=len(st.session_state.messages),
                 tools_used=tools_detail,
             )
-            # Only render the code cards when the inline saved-code render did
-            # NOT already fire (no <RPLN_CODE:> marker) — otherwise the same
-            # generated code would appear twice. See _content_has_saved_code.
-            if not _content_has_saved_code(conversational_content):
-                _render_analysis_code_cards(tools_detail, msg_idx=len(st.session_state.messages))
+            _render_analysis_code_cards(tools_detail, msg_idx=len(st.session_state.messages))
             # Render sources and tool call disclosure inline (so they appear
             # immediately after streaming without requiring a page rerun).
             if tools_detail or evidence:

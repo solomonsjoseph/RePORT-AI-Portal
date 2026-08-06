@@ -1,9 +1,4 @@
-"""Unit tests for the host publish staging helpers.
-
-These helpers were moved verbatim from the repo-root ``main.py`` into
-``scripts.pipeline.host_pipeline`` in the Wave 6 "thin main.py" cutover; the
-tests import the engine module under the local alias ``main`` so the assertions
-read unchanged.
+"""Unit tests for the staging helpers added to main.py in Task 5.
 
 Covers:
 
@@ -23,7 +18,7 @@ from typing import Any
 
 import pytest
 
-from scripts.pipeline import host_pipeline as main
+import main
 
 # ── _prepare_staging ────────────────────────────────────────────────────────
 
@@ -449,73 +444,3 @@ class TestEmitOutputSignpost:
 
         assert fresh.is_dir()
         assert (fresh / "README.md").is_file()
-
-
-# ── _prune_empty_staged_forms (N6) ───────────────────────────────────────────
-
-
-class TestPruneEmptyStagedForms:
-    """N6: zero-byte (100%-quarantined) staged forms must be removed before the
-    whole-directory publish rename, so they are never promoted as empty datasets."""
-
-    def test_removes_only_empty_jsonl_and_returns_stems(self, tmp_path: Path) -> None:
-        staging = tmp_path / "datasets"
-        staging.mkdir()
-        full = staging / "12B_FUB.jsonl"
-        full.write_text('{"SUBJID": "S1"}\n', encoding="utf-8")
-        empty = staging / "7_Culture.jsonl"
-        empty.write_text("", encoding="utf-8")  # 100%-quarantined → zero bytes
-
-        removed = main._prune_empty_staged_forms(staging)
-
-        assert removed == ["7_Culture"]  # NAME only, no row values
-        assert not empty.exists(), "empty form must be physically removed before publish"
-        assert full.exists(), "a form with rows must survive (mixed case)"
-
-    def test_noop_when_all_nonempty(self, tmp_path: Path) -> None:
-        staging = tmp_path / "datasets"
-        staging.mkdir()
-        (staging / "a.jsonl").write_text('{"x": 1}\n', encoding="utf-8")
-        assert main._prune_empty_staged_forms(staging) == []
-        assert (staging / "a.jsonl").exists()
-
-    def test_missing_dir_returns_empty(self, tmp_path: Path) -> None:
-        assert main._prune_empty_staged_forms(tmp_path / "nope") == []
-
-
-# ── _hold_forms_missing_sot_joined_view (N2a) ───────────────────────────────
-
-
-class TestHoldFormsMissingSotJoinedView:
-    def test_holds_forms_without_joined_view(self, tmp_path: Path) -> None:
-        staging = tmp_path / "datasets"
-        staging.mkdir()
-        sot_root = tmp_path / "SoT"
-        pair = sot_root / "6_HIV" / "joined"
-        pair.mkdir(parents=True)
-        (pair / "6_HIV_joined_query_view.yaml").write_text("form: 6_HIV\n", encoding="utf-8")
-
-        (staging / "6_HIV.jsonl").write_text('{"SUBJID":"x"}\n', encoding="utf-8")
-        missing = staging / "7_Culture.jsonl"
-        missing.write_text('{"SUBJID":"y"}\n', encoding="utf-8")
-
-        held = main._hold_forms_missing_sot_joined_view(
-            staging, sot_root, required_stems=frozenset({"6_HIV", "7_Culture"})
-        )
-
-        assert held == ["7_Culture.xlsx"]
-        assert (staging / "6_HIV.jsonl").is_file()
-        assert not missing.exists()
-
-    def test_skips_zero_byte_staged_forms(self, tmp_path: Path) -> None:
-        staging = tmp_path / "datasets"
-        staging.mkdir()
-        empty = staging / "7_Culture.jsonl"
-        empty.write_text("", encoding="utf-8")
-
-        held = main._hold_forms_missing_sot_joined_view(
-            staging, tmp_path / "SoT", required_stems=frozenset({"7_Culture"})
-        )
-
-        assert held == []
-        assert empty.exists()

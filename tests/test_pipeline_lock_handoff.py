@@ -7,14 +7,7 @@ same file held by its parent and fail (POSIX behaviour — fcntl flocks are
 inherited but a fresh ``open + flock`` from the child blocks/raises).
 
 The handoff: the wrapper sets ``REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT=1`` in
-the subprocess env AND ``REPORTAL_PIPELINE_LOCK_PARENT_PID`` to its own PID.
-main.py's lock helper honours the skip ONLY when both conditions hold:
-  1. REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT == "1"
-  2. REPORTAL_PIPELINE_LOCK_PARENT_PID names a live process equal to os.getppid()
-
-If PARENT_PID is absent, stale, or mismatched, the skip is NOT applied and
-acquisition proceeds normally (GAP-3 hardening).
-
+the subprocess env, and main.py's lock helpers honour it by no-op-ing.
 Direct ``python main.py --pipeline`` invocations leave the env unset and go
 through the normal acquire path.
 """
@@ -22,43 +15,25 @@ through the normal acquire path.
 from __future__ import annotations
 
 import importlib
-import os
 
 import pytest
 
 
 @pytest.fixture()
 def fresh_main(monkeypatch: pytest.MonkeyPatch):
-    """Return the canonical pipeline_lock module with its singleton reset.
+    """Import main.py with module-state reset so each test starts clean."""
+    import main as _main
 
-    The lock implementation was extracted from main.py into
-    ``scripts.utils.pipeline_lock`` (Wave 4); main.py now delegates to it. The
-    public functions are ``acquire_pipeline_lock`` / ``release_pipeline_lock``;
-    this fixture exposes them under the historical ``_acquire``/``_release``
-    names so the behavioural assertions below read unchanged.
-    """
-    import scripts.utils.pipeline_lock as _lock
-
-    importlib.reload(_lock)
-    monkeypatch.setattr(_lock, "_PIPELINE_LOCK_FILE", None, raising=False)
-    monkeypatch.setattr(_lock, "_acquire_pipeline_lock", _lock.acquire_pipeline_lock, raising=False)
-    monkeypatch.setattr(_lock, "_release_pipeline_lock", _lock.release_pipeline_lock, raising=False)
-    return _lock
+    importlib.reload(_main)
+    monkeypatch.setattr(_main, "_PIPELINE_LOCK_FILE", None, raising=False)
+    return _main
 
 
 class TestLockSkipOnParentHeld:
     def test_acquire_returns_without_opening_file_when_env_set(
         self, fresh_main, monkeypatch: pytest.MonkeyPatch, tmp_path
     ) -> None:
-        """GAP-3: skip path requires HELD_BY_PARENT=1 AND a valid PARENT_PID that
-        matches os.getppid() and is alive. Use os.getpid() as the claimed PID
-        (this process is alive) and monkeypatch os.getppid to return os.getpid()
-        so the equality check passes."""
-        my_pid = os.getpid()
         monkeypatch.setenv("REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT", "1")
-        monkeypatch.setenv("REPORTAL_PIPELINE_LOCK_PARENT_PID", str(my_pid))
-        # Make getppid() return our own PID so claimed_pid == os.getppid() is True.
-        monkeypatch.setattr(fresh_main.os, "getppid", lambda: my_pid)
         monkeypatch.setattr(fresh_main.config, "TMP_DIR", str(tmp_path), raising=False)
 
         fresh_main._acquire_pipeline_lock(study="Indo-VAP")
@@ -69,28 +44,6 @@ class TestLockSkipOnParentHeld:
         assert fresh_main._PIPELINE_LOCK_FILE is None, (
             "Acquire must leave the module-level handle untouched"
         )
-
-    def test_acquire_falls_through_when_parent_pid_absent(
-        self, fresh_main, monkeypatch: pytest.MonkeyPatch, tmp_path
-    ) -> None:
-        """GAP-3 hardening: HELD_BY_PARENT=1 but PARENT_PID absent → PID validation
-        fails → real acquisition happens (lock file IS created).
-        """
-        monkeypatch.setenv("REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT", "1")
-        monkeypatch.delenv("REPORTAL_PIPELINE_LOCK_PARENT_PID", raising=False)
-        monkeypatch.setattr(fresh_main.config, "TMP_DIR", str(tmp_path), raising=False)
-
-        fresh_main._acquire_pipeline_lock(study="Indo-VAP")
-        try:
-            assert (tmp_path / ".Indo-VAP.pipeline.lock").exists(), (
-                "Acquire must create the lockfile when PARENT_PID is absent "
-                "(baton cannot be validated, fall through to real acquisition)"
-            )
-            assert fresh_main._PIPELINE_LOCK_FILE is not None, (
-                "Acquire must populate the module-level handle"
-            )
-        finally:
-            fresh_main._release_pipeline_lock(study="Indo-VAP")
 
     def test_release_is_noop_when_env_set(
         self, fresh_main, monkeypatch: pytest.MonkeyPatch

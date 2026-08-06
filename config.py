@@ -49,16 +49,6 @@ def _get_env_int(key: str, default: int) -> int:
         raise ValueError(f"{key} must be an integer") from exc
 
 
-def _get_env_float(key: str, default: float) -> float:
-    raw = _get_env(key)
-    if raw is None:
-        return default
-    try:
-        return float(raw)
-    except ValueError as exc:
-        raise ValueError(f"{key} must be a float") from exc
-
-
 def _get_env_bool(key: str, default: bool) -> bool:
     value = str(_get_env(key, str(default))).lower()
     return value in {"1", "true", "yes", "on"}
@@ -72,27 +62,6 @@ def production_mode_enabled() -> bool:
         or _get_env_bool("REPORT_AI_REQUIRE_PHI_LOG_REDACTOR", False)
         or str(_get_env("REPORT_AI_AUTH_MODE", "")).strip().lower() == "proxy"
     )
-
-
-def is_test_context() -> bool:
-    """Return True ONLY when this process is genuinely running under pytest.
-
-    Used by security-floor code (the disabled-scrub refusal in phi_scrub.run_scrub)
-    to relax a control that would otherwise block deliberate test-only paths.
-
-    SECURITY: the sole signal is ``"pytest" in sys.modules`` — a fact about the
-    running interpreter that no pipeline entry point (``main.py --pipeline``, the
-    skill wrapper, the SoT CLIs) ever satisfies, because none of them import
-    pytest.  We deliberately do NOT consult operator/attacker-settable environment
-    variables (``REPORTAL_TEST_FAKE_LLM``, ``PYTEST_CURRENT_TEST``): those are
-    ordinary runtime flags (the fake-LLM smoke mode sets the former), so trusting
-    them here would let a production operator who happens to have one set lower a
-    raw-PHI fail-closed floor. Detection stays fully automatic — no operator flag
-    needed — and cannot be spoofed from the environment.
-    """
-    import sys  # local import to avoid circular dependency at module level
-
-    return "pytest" in sys.modules
 
 
 def strict_study_detection_enabled() -> bool:
@@ -159,11 +128,6 @@ AGENT_MODEL_ID: str = os.environ.get("REPORTAL_AGENT_MODEL", "claude-opus-4-7")
 # ----------------------------------------------------------------------------
 
 BASE_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
-# Repo root alias — config.py lives at the repository root, so BASE_DIR *is* the
-# repo root. Several UI/agent artifact-path resolvers reference ``config.REPO_ROOT``;
-# expose it explicitly so those callers resolve against the repo root rather than
-# silently falling back to the process CWD via ``getattr(config, "REPO_ROOT", ".")``.
-REPO_ROOT = BASE_DIR
 DATA_DIR = BASE_DIR / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
 
@@ -234,22 +198,6 @@ DATASETS_DIR = STUDY_DATA_DIR / "datasets"
 ANNOTATED_PDFS_DIR = STUDY_DATA_DIR / "annotated_pdfs"
 DATA_DICTIONARY_DIR = STUDY_DATA_DIR / "data_dictionary"
 
-# Study config lives in config/<study>/ (underscore-prefixed YAML), separate
-# from raw data (Excel/CSV in data/raw/<study>/datasets/). Note 11.
-CONFIG_DIR = BASE_DIR / "config"
-CONFIG_DEFAULTS_DIR = CONFIG_DIR / "_defaults"
-STUDY_CONFIG_DIR = CONFIG_DIR / STUDY_NAME
-
-
-def study_config_path(filename: str, *, study: str | None = None) -> Path:
-    """Resolve a per-study config file under config/<study>/ (single chokepoint)."""
-    return CONFIG_DIR / (study or STUDY_NAME) / filename
-
-
-FORMS_MANIFEST_PATH = STUDY_CONFIG_DIR / "_forms_manifest.yaml"
-STUDY_PRIVACY_PATH = STUDY_CONFIG_DIR / "_study_privacy.yaml"
-STUDY_KNOWLEDGE_PATH = STUDY_CONFIG_DIR / "study_knowledge.yaml"
-
 # Legacy constant retained for rollback/back-compat checks. The active
 # LLM-visible clean tree is STUDY_LLM_SOURCE_DIR; this directory is not created
 # by default.
@@ -265,13 +213,6 @@ TRIO_DATASETS_DIR = STUDY_LLM_SOURCE_DIR / "dataset_schema" / "files"
 # dataset and dictionary outputs.
 
 STUDY_AUDIT_DIR = STUDY_OUTPUT_DIR / "audit"
-
-# Per-run operational state (run_state.json, phi_handling_approval.json, the
-# per-run human_review/run_<id> notes) lives under runs/<run_id>/ — operational
-# bookkeeping, distinct from the IRB-evidence audit/ tree (Note 24). The
-# per-run subdir is created on demand with the run id (see the dir-precreation
-# helper); this constant names the parent.
-STUDY_RUNS_DIR = STUDY_OUTPUT_DIR / "runs"
 
 # Audit-report paths written by dataset cleanup / PHI scrub.
 # Only the dataset publish leg produces audit reports. Dictionary mappings and
@@ -297,6 +238,8 @@ SOT_GAP_DRAFTS_DIR: Path = TMP_DIR / "sot_gap_drafts"
 # Coverage and report artefacts written at the end of a gap run.
 SOT_GAP_COVERAGE_PATH: Path = TMP_DIR / "sot_gap_coverage.json"
 SOT_GAP_REPORT_PATH: Path = TMP_DIR / "sot_gap_report.md"
+# Evidence packs are subdirectories of the gap-drafts workspace.
+SOT_EVIDENCE_PACK_DRAFTS_DIR: Path = SOT_GAP_DRAFTS_DIR / "evidence_packs"
 
 # --- Phase 1: PHI rule audit and expand --------------------------------------
 PHI_TECHNIQUES_INVENTORY_PATH: Path = (
@@ -310,45 +253,22 @@ PHI_SWEEP_HITL_DRAFTS_DIR: Path = TMP_DIR / "phi_sweep_hitl_drafts"
 PHI_SWEEP_PR_DRAFTS_DIR: Path = TMP_DIR / "phi_sweep_pr_drafts"
 
 # --- Phase 2: llm_source restructure -----------------------------------------
+LLM_SOURCE_DATASET_SCHEMA_FILES_DIR: Path = STUDY_LLM_SOURCE_DIR / "dataset_schema" / "files"
 LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH: Path = (
     STUDY_LLM_SOURCE_DIR / "dataset_schema" / "catalog.json"
 )
 LLM_SOURCE_DICTIONARY_MAPPING_DIR: Path = STUDY_LLM_SOURCE_DIR / "dictionary_mapping"
 LLM_SOURCE_DICTIONARY_MAPPING_JSONL_DIR: Path = LLM_SOURCE_DICTIONARY_MAPPING_DIR / "jsonl"
 LLM_SOURCE_DICTIONARY_CATALOG_PATH: Path = LLM_SOURCE_DICTIONARY_MAPPING_DIR / "catalog.json"
+# Compatibility-only metadata paths for legacy cleanup/redaction helpers.
+# The active Load Study flow does not produce study_metadata evidence packs or
+# a concept index; it uses plugin-published SoT sets instead.
 LLM_SOURCE_STUDY_METADATA_DIR: Path = STUDY_LLM_SOURCE_DIR / "study_metadata"
 LLM_SOURCE_STUDY_METADATA_CATALOG_PATH: Path = LLM_SOURCE_STUDY_METADATA_DIR / "catalog.json"
+LLM_SOURCE_EVIDENCE_PACKS_DIR: Path = LLM_SOURCE_STUDY_METADATA_DIR / "evidence_packs"
+LLM_SOURCE_CONCEPT_DIR: Path = STUDY_LLM_SOURCE_DIR / "concept"
 LLM_SOURCE_SOT_DIR: Path = STUDY_LLM_SOURCE_DIR / "SoT"
 LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR: Path = STUDY_LLM_SOURCE_DIR / "source_truth"
-
-
-def repoint_llm_source_base(new_base: Path) -> None:
-    """Atomically repoint ``STUDY_LLM_SOURCE_DIR`` AND every derived constant.
-
-    The llm_source-derived path constants above are computed once at import time
-    from ``STUDY_LLM_SOURCE_DIR``. Setting ``STUDY_LLM_SOURCE_DIR`` alone (e.g.
-    when the Load Study UI activates a snapshot) leaves the dataset-query and
-    SoT-citation tools reading the LIVE output tree while only the readiness
-    checks observe the new base — a split-brain read zone.
-
-    This helper rebases ALL of them from *new_base*, mirroring the exact relative
-    subpaths declared above, so a snapshot activation is complete and atomic: a
-    single call repoints the whole llm_source surface to *new_base*.
-    """
-    new_base = Path(new_base)
-    g = globals()
-    g["STUDY_LLM_SOURCE_DIR"] = new_base
-    g["TRIO_DATASETS_DIR"] = new_base / "dataset_schema" / "files"
-    g["DICTIONARY_JSON_OUTPUT_DIR"] = new_base / "dictionary_mapping" / "jsonl"
-    g["LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH"] = new_base / "dataset_schema" / "catalog.json"
-    g["LLM_SOURCE_DICTIONARY_MAPPING_DIR"] = new_base / "dictionary_mapping"
-    g["LLM_SOURCE_DICTIONARY_MAPPING_JSONL_DIR"] = new_base / "dictionary_mapping" / "jsonl"
-    g["LLM_SOURCE_DICTIONARY_CATALOG_PATH"] = new_base / "dictionary_mapping" / "catalog.json"
-    g["LLM_SOURCE_STUDY_METADATA_DIR"] = new_base / "study_metadata"
-    g["LLM_SOURCE_STUDY_METADATA_CATALOG_PATH"] = new_base / "study_metadata" / "catalog.json"
-    g["LLM_SOURCE_SOT_DIR"] = new_base / "SoT"
-    g["LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR"] = new_base / "source_truth"
-
 
 # Lean-catalog size thresholds (bytes). CI fails if a catalog exceeds.
 LEAN_CATALOG_DICTIONARY_MAX_BYTES: int = 20 * 1024
@@ -356,6 +276,9 @@ LEAN_CATALOG_DATASET_SCHEMA_MAX_BYTES: int = 50 * 1024
 LEAN_CATALOG_STUDY_METADATA_MAX_BYTES: int = 200 * 1024
 
 # --- Phase 3: cross-verify ---------------------------------------------------
+# STUDY_AUDIT_DIR is defined above in the study-paths block; reuse it here.
+PHI_ID_MAPPING_PATH: Path = STUDY_AUDIT_DIR / "phi_id_mapping.json"
+CROSS_VERIFY_REPEAT_LEDGER_PATH: Path = STUDY_AUDIT_DIR / "cross_verify_repeat_ledger.json"
 CROSS_VERIFY_SAFE_REPORT_PATH: Path = TMP_DIR / "cross_verify_safe_report.json"
 CROSS_VERIFY_AGENT_WORKDIR: Path = TMP_DIR / "cross_verify_agent_workdir"
 CROSS_VERIFY_PR_DRAFTS_DIR: Path = TMP_DIR / "cross_verify_pr_drafts"
@@ -390,25 +313,6 @@ CONVERSATIONS_DIR: Path = AGENT_STATE_DIR / "conversations"
 # path under this directory is hard-rejected by ``validate_agent_read``.
 STUDY_SNAPSHOTS_DIR: Path = DATA_DIR / "snapshots" / STUDY_NAME
 
-# ----------------------------------------------------------------------------
-# STUDY SNAPSHOT OUTPUT TIER (immutable clean-publish records — W1)
-# ----------------------------------------------------------------------------
-# Per-study, immutable record of a fully-clean publish pass written by
-# ``scripts/utils/snapshot.py``. Each ``snapshots/{snapshot_id}/`` holds a copy
-# of the run's ``llm_source/`` tree, its ``phi_handling_approval.json``, the
-# verifier report, and a ``snapshot_manifest.json``. The Load Study UI's
-# "existing study data" selector lists these and loads one in place of the live
-# pipeline output.
-#
-# SECURITY: the snapshot ROOT is OUTSIDE the agent read zone (which is
-# ``llm_source/`` + ``agent/``). ``validate_agent_read`` hard-rejects any path
-# under this directory EXCEPT a ``snapshots/{id}/llm_source/`` subtree that has
-# been explicitly selected (i.e. ``config.STUDY_LLM_SOURCE_DIR`` repointed at
-# it). A ``.NO_LLM_ZONE`` sentinel is dropped at each snapshot root as
-# defence-in-depth. Distinct from the legacy ``STUDY_SNAPSHOTS_DIR`` baseline
-# marker above, which lives under ``data/`` and is never auto-created.
-STUDY_SNAPSHOTS_OUTPUT_DIR: Path = STUDY_OUTPUT_DIR / "snapshots"
-
 # Staging workspace — per-study tree inside TMP_DIR. Managed per-run by
 # main.py's _prepare_staging() / _publish_staging(); NOT created eagerly by
 # ensure_directories() so a stale workspace from a crashed previous run is
@@ -417,66 +321,24 @@ STUDY_STAGING_DIR: Path = TMP_DIR / STUDY_NAME
 STAGING_DATASETS_DIR: Path = STUDY_STAGING_DIR / "datasets"
 STAGING_DICTIONARY_DIR: Path = STUDY_STAGING_DIR / "dictionary"
 
-# Note-16 pre-creation tree leaves (Break 5). Staging legs under TMP_DIR and the
-# audit / llm_source legs under STUDY_OUTPUT_DIR. These mirror the per-run tree
-# created by ``ensure_run_directories()`` below.
-STAGING_HEADERS_DIR: Path = STUDY_STAGING_DIR / "headers"
-STAGING_QUARANTINE_DIR: Path = STAGING_DATASETS_DIR / "quarantine"
-STAGING_SOT_DIR: Path = STUDY_STAGING_DIR / "SoT"
-AUDIT_HUMAN_REVIEW_DIR: Path = STUDY_AUDIT_DIR / "human_review"
-AUDIT_DATASETS_DIR: Path = STUDY_AUDIT_DIR / "datasets"
-AUDIT_SCRUBBING_CODE_DIR: Path = STUDY_AUDIT_DIR / "scrubbing_code"
-
 # ----------------------------------------------------------------------------
 # PHI SCRUB
 # ----------------------------------------------------------------------------
 # Narrow PHI handling: per-subject deterministic date jitter (SANT method) +
 # HMAC-SHA256 ID pseudonymization. See scripts/security/phi_scrub.py.
 #
-# The scrub config is resolved per-study: a per-study override at
-# ``config/<study>/phi_scrub.yaml`` wins over the packaged defaults at
-# ``config/_defaults/phi_scrub.yaml``. ``phi_scrub.load_scrub_config()`` deep-
-# merges the per-study file ON TOP of the defaults (the EFFECTIVE config); this
-# resolver returns the single most-specific *existing* file so the ~24
-# ``config.PHI_SCRUB_CONFIG_PATH`` consumers (existence checks, friendly
-# messaging) keep working. The reproducibility-critical scrub_config_hash hashes
-# the MERGED effective config, not this single path — see
-# ``phi_scrub.effective_scrub_config_hash()``.
-PHI_SCRUB_CONFIG_FILENAME = "phi_scrub.yaml"
-
-
-def phi_scrub_config_path(study: str | None = None) -> Path:
-    """Resolve the active scrub-config path for *study*.
-
-    Returns ``config/<study>/phi_scrub.yaml`` when that per-study override
-    exists, otherwise ``config/_defaults/phi_scrub.yaml``. The deep-merge of the
-    two (when both exist) happens in ``phi_scrub.load_scrub_config()``; this
-    helper only picks the most-specific existing file.
-    """
-    per_study = CONFIG_DIR / (study or STUDY_NAME) / PHI_SCRUB_CONFIG_FILENAME
-    if per_study.is_file():
-        return per_study
-    return CONFIG_DEFAULTS_DIR / PHI_SCRUB_CONFIG_FILENAME
-
-
-PHI_SCRUB_CONFIG_PATH: Path = phi_scrub_config_path()
+# Config file lives alongside the module so study-specific regex patterns can
+# be edited without touching code.
+PHI_SCRUB_CONFIG_PATH: Path = BASE_DIR / "scripts" / "security" / "phi_scrub.yaml"
 
 
 def _phi_key_path() -> Path:
     """Resolve the sidecar PHI HMAC key path.
 
-    Resolution order (Note 12):
-    1. ``$PHI_KEY_PATH`` — explicit override (the spec's named storage env var);
-    2. ``$XDG_CONFIG_HOME/report_ai_portal/phi_key`` when XDG is set;
-    3. ``~/.config/report_ai_portal/phi_key`` fallback.
-
-    The value is a PATH (not key material), so it is not a secret. The key file
-    itself lives OUTSIDE the repo tree and is never read by the agent or committed
-    to git.
+    Uses ``$XDG_CONFIG_HOME/report_ai_portal/phi_key`` when the env var is set,
+    otherwise falls back to ``~/.config/report_ai_portal/phi_key``. The key lives
+    OUTSIDE the repo tree and is never read by the agent or committed to git.
     """
-    explicit = os.getenv("PHI_KEY_PATH")
-    if explicit:
-        return Path(explicit)
     xdg = os.getenv("XDG_CONFIG_HOME")
     base = Path(xdg) if xdg else Path.home() / ".config"
     return base / "report_ai_portal" / "phi_key"
@@ -589,30 +451,9 @@ def preferred_or_installed_downgrade(model: str) -> list[str]:
 TELEMETRY_DIR = STUDY_AUDIT_DIR / "telemetry"
 TELEMETRY_SINK = TELEMETRY_DIR / "events.jsonl"
 
-# ── PHI AI-assist (Notes 7 + 9) — default ON, with deterministic fallback ──
-# Gate the LLM-assisted PHI subsystem. Default ON, but it only RUNS where an LLM
-# is actually reachable: the publish supervisor constructs the aligner only when
-# this flag is on, the process is not under pytest, AND the configured provider
-# has a usable API key in the KeyStore (entered via the UI). When the LLM is NOT
-# available — no key, airgapped, CI, pytest, or REPORTAL_PHI_ALIGNMENT_ENABLED=0 —
-# the publish path FALLS BACK to the deterministic pinned-rules behavior, byte-
-# identical to before, and NO LLM is constructed. When it does run, the LLM reads
-# ONLY public regulation text (N7 rulebook) and column NAMES (N9 alignment) —
-# never a dataset row value (GR-1). All AI output is deterministically verified,
-# version-stamped, frozen, and the pinned rules remain the protection floor.
-PHI_ALIGNMENT_ENABLED: bool = _get_env_bool("REPORTAL_PHI_ALIGNMENT_ENABLED", True)
-RULEBOOK_AI_EXTRACT: bool = _get_env_bool("REPORTAL_RULEBOOK_AI_EXTRACT", False)
-RULEBOOK_REQUIRE_LIVE: bool = _get_env_bool("REPORTAL_RULEBOOK_REQUIRE_LIVE", False)
-PHI_SCRUB_GENERATED_FILENAME: str = "phi_scrub.generated.yaml"
-
 # Chat / agent
 AGENT_MAX_TOKENS: int = _get_env_int("AGENT_MAX_TOKENS", 16384)
 AGENT_TIMEOUT: int = _get_env_int("AGENT_TIMEOUT", 300)
-# Sampling temperature for the agent / eval judge. Default 0 for deterministic,
-# reproducible answers — a graded eval (scripts/eval/cloud_eval.py) is only
-# meaningful if the same question yields the same answer run-to-run. Override
-# via AGENT_TEMPERATURE for exploratory/creative use.
-AGENT_TEMPERATURE: float = _get_env_float("AGENT_TEMPERATURE", 0.0)
 # Bounded automatic retries for transient provider errors (HTTP 429 rate
 # limits, 5xx). The OpenAI/Anthropic SDKs back off exponentially and honour
 # the server's Retry-After header up to this many attempts, so brief
@@ -699,70 +540,6 @@ def ensure_directories() -> None:
     for path in sensitive_paths:
         # Best-effort: a chmod failure (e.g., not the file owner) is not a
         # fatal startup error.
-        with contextlib.suppress(OSError):
-            path.chmod(0o700)
-
-
-def ensure_run_directories(study: str | None = None, run_id: str | None = None) -> None:
-    """Pre-create the full Note-16 per-study (and per-run) directory tree.
-
-    Builds the complete tree a publish run expects so downstream legs never have
-    to ``mkdir(parents=True)`` ad hoc:
-
-        config/<study>/
-        tmp/<study>/{headers, datasets, datasets/quarantine, SoT}
-        output/<study>/{audit, audit/human_review, audit/datasets,
-                        audit/scrubbing_code, runs/<run_id>, llm_source,
-                        llm_source/SoT, snapshots}
-
-    Sensitive leaves (anything that may carry PHI-scrubbed data, staging PHI, or
-    audit evidence) are hardened to 0o700 after creation, mirroring
-    ``ensure_directories()``. This does NOT replace ``ensure_directories()`` —
-    it is the per-run superset used by the publish pipeline. ``study`` defaults
-    to ``STUDY_NAME``; ``run_id`` adds ``runs/<run_id>`` when supplied.
-
-    Pre-creating empty ``tmp/<study>/`` leaves is safe: secure_staging purges /
-    re-creates the staging workspace explicitly before reuse, so an empty
-    pre-created dir is indistinguishable from a fresh one.
-    """
-    import contextlib
-
-    active_study = study or STUDY_NAME
-    study_config_dir = CONFIG_DIR / active_study
-    staging_root = TMP_DIR / active_study
-    staging_datasets = staging_root / "datasets"
-    output_dir = OUTPUT_DIR / active_study
-    audit_dir = output_dir / "audit"
-    llm_source = output_dir / "llm_source"
-
-    # Non-sensitive parents created first.
-    for path in (OUTPUT_DIR, TMP_DIR, CONFIG_DIR, study_config_dir, staging_root):
-        path.mkdir(parents=True, exist_ok=True)
-
-    sensitive_paths = [
-        staging_root / "headers",
-        staging_datasets,
-        staging_datasets / "quarantine",
-        staging_root / "SoT",
-        output_dir,
-        audit_dir,
-        audit_dir / "human_review",
-        audit_dir / "datasets",
-        # NOTE (Note 24 / B7): audit/scrubbing_code is a placeholder for the
-        # DEFERRED N9 AI-scrub-config-completion feature; it is never written
-        # today, so it is no longer pre-created as an empty dir. When N9 lands it
-        # creates AUDIT_SCRUBBING_CODE_DIR on demand. (Telemetry stays under
-        # audit/ — the no-LLM-fenced zone — deliberately, NOT relocated to runs/.)
-        llm_source,
-        llm_source / "SoT",
-        output_dir / "snapshots",
-    ]
-    if run_id:
-        sensitive_paths.append(output_dir / "runs" / run_id)
-
-    for path in sensitive_paths:
-        path.mkdir(parents=True, exist_ok=True)
-    for path in sensitive_paths:
         with contextlib.suppress(OSError):
             path.chmod(0o700)
 

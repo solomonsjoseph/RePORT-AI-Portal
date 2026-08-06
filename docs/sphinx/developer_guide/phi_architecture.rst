@@ -2,7 +2,7 @@ PHI Architecture
 ================
 
 The canonical developer-facing description of the full PHI-handling story — the
-four zones, the nine-action scrub catalog, the integrity chain, the
+four zones, the eight-action scrub catalog, the integrity chain, the
 log redactor, the plugin Source Truth PDF/header boundary, and the
 agent-boundary three-gate stack. For the reviewer-only IRB/Auditor
 profile, see :doc:`../irb_auditor/phi_handling`; for the architectural
@@ -34,7 +34,7 @@ surface that the agent cannot read.
        the entire tree is overwritten with random bytes + ``fsync``-ed
        + unlinked. On failure preserved for forensic inspection.
    * - **GREEN**
-     - ``output/{STUDY}/llm_source/`` (live or repointed to a snapshot's ``snapshots/{id}/llm_source/``) + ``output/{STUDY}/agent/``
+     - ``output/{STUDY}/llm_source/`` + ``output/{STUDY}/agent/``
      - PHI-free published artifacts + agent's own state.
        :func:`scripts.ai_assistant.file_access.validate_agent_read`
        admits paths in this zone only.
@@ -65,46 +65,35 @@ Two complementary chokepoints:
   ``validate_agent_write``, ``validate_sandbox_write``,
   ``is_agent_readable``. Resolves every path with
   ``os.path.realpath`` and verifies containment with
-  ``os.path.commonpath``. Reads accept the active ``llm_source/`` (which may be repointed to an active snapshot's ``llm_source/`` subtree) ∪ ``agent/``
+  ``os.path.commonpath``. Reads accept ``llm_source/`` ∪ ``agent/``
   (plus ``config/study_knowledge.yaml`` via an explicit allowlist for
-  the study-knowledge YAML overlay consumed by agent prompts and tools).
-  Agent-tool writes accept ``agent/`` only;
+  the StudyKnowledge helper). Agent-tool writes accept ``agent/`` only;
   ``exec_python`` sandbox writes narrow further to
-  ``agent/analysis/``. Audit, telemetry, staging, snapshot-root metadata directories, and raw paths are
-  hard-rejected with ``ZoneViolationError`` or ``SnapshotZoneViolation``.
+  ``agent/analysis/``. Audit, telemetry, staging, and raw paths are
+  hard-rejected with ``ZoneViolationError``.
 
-The Nine-Action Scrub Catalog (Step 1.6)
+The Eight-Action Scrub Catalog (Step 1.6)
 -----------------------------------------
 
 :func:`scripts.security.phi_scrub.run_scrub` is invoked between the
 parallel extraction phase and the dataset cleanup. It operates on
-``tmp/{STUDY}/datasets/*.jsonl`` in place. Nine action classes,
+``tmp/{STUDY}/datasets/*.jsonl`` in place. Eight action classes,
 evaluated in strict priority order against ~200 Indo-VAP-calibrated
 rules in ``scripts/security/phi_scrub.yaml``:
 
 1. **keep** — pass through (only for confirmed non-PHI columns)
-2. **birthdate** — posture-gated. Under the active **Safe Harbor**
-   posture the matched birthdate is **dropped unconditionally**
-   (``birthdate_drop``), never exposed to the LLM; under the opt-in
-   **Limited Dataset** posture (§164.514(e)) it is instead kept and
-   SANT date-jittered. (HIPAA Safe Harbor §164.514(b)(2)(i))
+2. **birthdate** — replace with ``birthyear`` only (HIPAA Safe
+   Harbor §164.514(b)(2)(i))
 3. **drop** — null out
-4. **cap** — replace values above a fixed threshold with a label
-   (the "age > 89" → "90+" rule, HIPAA Safe Harbor §164.514(b)(2)(i)(C));
-   not a quantile clamp
+4. **cap** — clamp at a quantile (the "age > 89" rule)
 5. **generalize** — bucket into ranges (e.g. age → 5-year bands)
-6. **band** — preserve socioeconomic variables (education, occupation,
-   income, wages, work-hours) as broad categorical or numeric bands
-   instead of dropping them. Fail-closed: an unmapped value quarantines
-   the row. Ships empty (``band_fields: []``) under the active HIPAA
-   Safe Harbor + India DPDPA bundle — retained-but-inert.
-7. **suppress_small_cell** — null when the cohort cell has fewer
+6. **suppress_small_cell** — null when the cohort cell has fewer
    than the configured threshold
-8. **date_jitter (SANT)** — per-subject deterministic shift via
+7. **date_jitter (SANT)** — per-subject deterministic shift via
    ``HMAC-SHA256(key, subject_id)[:4] mod (2*max_days+1) - max_days``.
    Within-subject visit intervals are preserved exactly; absolute
    dates are obscured.
-9. **hmac_pseudonymize** — replace IDs with
+8. **hmac_pseudonymize** — replace IDs with
    ``RID_<LABEL>_<alpha12(HMAC-SHA256(key, label + ":" + value))>``.
    Non-reversible without the key, deterministic with it, and shaped so
    generated pseudonyms do not match raw subject-ID or phone regexes.
@@ -157,9 +146,9 @@ The clinical-phrase allowlist exempts strings like "INH 5 mg/kg" or
 Gate 2 — k-anonymity (k=5) (``guard_rows_with_kanon``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Wrapper: :func:`scripts.ai_assistant.phi_safe.guard_rows_with_kanon`.
-Primitive: :func:`scripts.security.kanon_gate.kanon_check` (called
-internally by ``guard_rows_with_kanon`` and ``guard_rows_with_kanon_and_ldiv``).
+Module: :mod:`scripts.security.kanon_gate`. Function:
+:func:`scripts.security.kanon_gate.kanon_check` (used as a
+primitive by ``guard_rows_with_kanon_and_ldiv`` below).
 
 When a tool would surface row-level data, the gate computes the
 equivalence class of each row over the configured quasi-identifiers
@@ -171,9 +160,8 @@ gate suppresses the response and returns an aggregate or an explicit
 Gate 3 — l-diversity (l=2) (``guard_rows_with_kanon_and_ldiv``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Wrapper: :func:`scripts.ai_assistant.phi_safe.guard_rows_with_kanon_and_ldiv`.
-Primitive: :func:`scripts.security.kanon_gate.l_diversity_check` (called
-internally).
+Function: :func:`scripts.security.kanon_gate.l_diversity_check` (used as a
+primitive by ``guard_rows_with_kanon_and_ldiv``).
 
 When a k-anon-passing equivalence class shares the same sensitive
 attribute (e.g. all 5 rows have ``hiv_status = positive``), the gate
@@ -281,7 +269,7 @@ Module Map
    * - Module
      - Role
    * - :mod:`scripts.security.phi_scrub`
-     - Nine-action scrub catalog driver. Reads
+     - Eight-action scrub catalog driver. Reads
        ``scripts/security/phi_scrub.yaml``.
    * - :mod:`scripts.security.phi_patterns`
      - Shared regex catalog (``BLOCKING_PATTERNS``, ``WARN_PATTERNS``).
@@ -294,8 +282,8 @@ Module Map
      - Agent-output PHI gate. ``phi_gate_check`` returns blocked /
        allowed.
    * - :mod:`scripts.security.kanon_gate`
-     - k-anonymity (k=5) + l-diversity (l=2) primitives: ``kanon_check``,
-       ``l_diversity_check``, ``mask_small_cell``, ``suppress_small_cells``.
+     - k-anonymity (k=5) + l-diversity (l=2). ``kanon_check``,
+       ``l_diversity_check``, ``guard_rows_with_kanon_and_ldiv``.
    * - :mod:`scripts.security.secure_env`
      - Pipeline-side directory-level zone guards.
    * - :mod:`scripts.ai_assistant.file_access`
@@ -303,9 +291,7 @@ Module Map
    * - :mod:`scripts.ai_assistant.phi_safe`
      - Agent-side PHI helpers: ``phi_safe_return``, ``guard_text``,
        ``guard_user_prompt``, ``sanitise_untrusted_snippet``,
-       ``redact_phi_in_text``, ``sanitise_traceback``;
-       k-anon/l-diversity wrappers: ``guard_rows_with_kanon``,
-       ``guard_rows_with_kanon_and_ldiv``.
+       ``redact_phi_in_text``, ``sanitise_traceback``.
    * - :mod:`scripts.ai_assistant.keystore`
      - In-memory API-key registry.
    * - :mod:`scripts.utils.log_hygiene`
@@ -329,7 +315,7 @@ The active IRB/Auditor conformance profile lives at
 Pillar mapping:
 
 * **Pillar 1 — PHI scrub catalog**: ``phi_scrub.py`` + ``phi_scrub.yaml``,
-  the 9 action classes documented above.
+  the 8 action classes documented above.
 * **Pillar 2 — Zone isolation + agent access**: ``file_access.py`` +
   ``secure_env.py`` + the three agent-output gates.
 * **Pillar 3 — Secure channel + integrity**: ``secure_staging.py`` +

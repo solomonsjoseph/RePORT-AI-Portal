@@ -13,8 +13,7 @@ Review Path
 
 1. Read :doc:`phi_handling` for the PHI flow and jurisdiction alignment.
 2. Read :doc:`conformance` for the claim-to-evidence control table.
-3. Read :doc:`mathematical_proof` for the formal logical and mathematical containment proof.
-4. Read :doc:`attestations` for the two approvals that operators must
+3. Read :doc:`attestations` for the two approvals that operators must
    file before higher-risk modes are used.
 
 What This System Does
@@ -53,5 +52,4 @@ Contents
 
    phi_handling
    conformance
-   mathematical_proof
    attestations

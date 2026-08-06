@@ -39,15 +39,15 @@ Public API:
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
 import secrets
 from collections.abc import Generator, Iterable
 from pathlib import Path
 
 from scripts.security.secure_env import assert_write_zone
-from scripts.utils.logging_system import get_logger
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "prepare_staging",

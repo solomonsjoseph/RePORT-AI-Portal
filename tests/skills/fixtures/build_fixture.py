@@ -4,7 +4,7 @@ This script generates:
   - Three minimal .xlsx files under tests/skills/fixtures/datasets/
   - A _forms_manifest.yaml listing them as required
   - A golden output tree under tests/skills/fixtures/golden_output/ that
-    satisfies all 16 verifier assertions (except the phi_scrub.yaml hash,
+    satisfies all 12 verifier assertions (except the phi_scrub.yaml hash,
     which is computed dynamically at build time from the real file).
 
 Usage
@@ -66,7 +66,7 @@ FIXTURE_FORM_DATA: dict[str, list[dict[str, Any]]] = {
     ],
 }
 
-# Corresponding JSONL rows for llm_source/dataset_schema/files/ (PHI-free representations).
+# Corresponding JSONL rows for llm_source/datasets/ (PHI-free representations).
 FIXTURE_JSONL_ROWS: dict[str, list[dict[str, Any]]] = FIXTURE_FORM_DATA
 
 
@@ -148,19 +148,6 @@ def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
         raise
 
 
-def _write_minimal_sot_joined_views(llm_source_dir: Path, forms: list[str]) -> None:
-    """Stub SoT joined query views so verifier assertion 15 passes."""
-    sot_root = llm_source_dir / "SoT"
-    for form in forms:
-        stem = Path(form).stem
-        joined = sot_root / stem / "joined" / f"{stem}_joined_query_view.yaml"
-        joined.parent.mkdir(parents=True, exist_ok=True)
-        joined.write_text(
-            f"form: {stem}\nvariables:\n  col_a:\n    dataset: {{}}\n",
-            encoding="utf-8",
-        )
-
-
 def build_golden_output_tree(
     output_root: Path,
     raw_root: Path,
@@ -171,17 +158,12 @@ def build_golden_output_tree(
     study: str = FIXTURE_STUDY,
     forms: list[str] | None = None,
 ) -> dict[str, Path]:
-    """Construct a complete golden output tree that satisfies all 16 verifier assertions.
+    """Construct a complete golden output tree that satisfies all 12 verifier assertions.
 
     Populates:
       - output_root/{study}/runs/{run_id}/destruction_attestation.json
       - output_root/{study}/runs/{run_id}/status.json
-      - output_root/{study}/runs/{run_id}/phi_handling_approval.json
-        (approves all forms; required for assertions 12 and 14 to exercise
-        real coverage rather than short-circuiting on "no approval file")
       - output_root/{study}/audit/datasets/{stem}/phi_handling_ledger.as_written.json
-        (includes keep_decisions for every published column so assertion 14
-        fires and passes with full per-variable audit coverage)
       - output_root/{study}/audit/.NO_LLM_ZONE
       - output_root/{study}/llm_source/dataset_schema/files/{stem}.jsonl
         (one per form)
@@ -203,23 +185,9 @@ def build_golden_output_tree(
     llm_source_dir = study_output_dir / "llm_source"
 
     # ── a. phi_scrub.yaml hash ───────────────────────────────────────────────
-    # Task A7: the ledger seals the MERGED-EFFECTIVE scrub-config hash (defaults +
-    # per-study override) via phi_scrub.effective_scrub_config_hash(); verifier
-    # assertion 5 recomputes the SAME helper, so the fixture must use it too (a
-    # raw single-file SHA-256 would no longer match). Fall back to the single-file
-    # hash only if no config resolves (helper returns None).
-    import scripts.security.phi_scrub as _phi_scrub
-
-    scrub_config_hash = (
-        _phi_scrub.effective_scrub_config_hash()
-        or hashlib.sha256(phi_scrub_yaml_path.read_bytes()).hexdigest()
-    )
+    scrub_config_hash = hashlib.sha256(phi_scrub_yaml_path.read_bytes()).hexdigest()
 
     # ── b. Manifest + stub datasets dir ─────────────────────────────────────
-    # The manifest now lives under config/<study>/ (Note 11). The verifier
-    # resolves it via config.study_config_path() → config.CONFIG_DIR/<study>/.
-    # The CI fixture tests point config.CONFIG_DIR at raw_root, so writing here
-    # (raw_root/<study>/_forms_manifest.yaml) is the location the verifier reads.
     manifest_data = {"required": forms, "optional": [], "reject": []}
     study_raw_dir.mkdir(parents=True, exist_ok=True)
     (study_raw_dir / "_forms_manifest.yaml").write_text(
@@ -231,31 +199,14 @@ def build_golden_output_tree(
         if not stub.exists():
             stub.write_bytes(b"PK\x03\x04stub-xlsx-fixture")  # minimal xlsx magic
 
-    # ── c. Audit: ledger with keep_decisions + .NO_LLM_ZONE ─────────────────
-    # Per-column keep_decisions are required so that assertion 14
-    # (ledger_covers_all_columns) fires and passes for every published column
-    # rather than short-circuiting due to a missing approval file.  Each
-    # column is classified "keep" — these are non-PHI fixture columns.
+    # ── c. Audit: ledger + .NO_LLM_ZONE ─────────────────────────────────────
     audit_dir.mkdir(parents=True, exist_ok=True)
+    ledger_payload: dict[str, Any] = {
+        "run_id": run_id,
+        "scrub_config_hash": scrub_config_hash,
+        "input_dataset_hash": "deadbeef" * 8,  # 64-char placeholder hash
+    }
     for form in forms:
-        stem = Path(form).stem
-        columns = list(
-            FIXTURE_JSONL_ROWS.get(stem, [{"col_a": "val_a", "col_b": "val_b"}])[0].keys()
-        )
-        keep_decisions = [
-            {
-                "variable_id": col,
-                "action": "keep",
-                "rationale": "non-PHI fixture column; retained for LLM query",
-            }
-            for col in columns
-        ]
-        ledger_payload: dict[str, Any] = {
-            "run_id": run_id,
-            "scrub_config_hash": scrub_config_hash,
-            "input_dataset_hash": "deadbeef" * 8,  # 64-char placeholder hash
-            "keep_decisions": keep_decisions,
-        }
         _atomic_write_json(dataset_phi_ledger_path(audit_dir, form), ledger_payload)
     (audit_dir / ".NO_LLM_ZONE").write_text(
         "This directory is outside the LLM read zone.\n", encoding="utf-8"
@@ -295,66 +246,7 @@ def build_golden_output_tree(
             for row in jsonl_rows:
                 fh.write(json.dumps(row) + "\n")
 
-    _write_minimal_sot_joined_views(llm_source_dir, forms)
-
-    # ── f. phi_handling_approval.json — approves all forms ──────────────────
-    # Required for assertions 12 (decided_action_matches_applied) and 14
-    # (ledger_covers_all_columns) to exercise real coverage rather than
-    # short-circuiting with "no approval file → pass".  All columns are
-    # classified "keep" (matching the keep_decisions in the ledger), which
-    # satisfies _DECIDED_APPLIED_EQUIV["keep"] == {"keep"}.
-    stub_rule_bundle: dict[str, Any] = {
-        "source_mode": "pinned",
-        "rules_sha256": "fixture" * 9,  # 63-char placeholder
-        "sources": [
-            {"jurisdiction": "USA", "url": "https://www.hhs.gov/"},
-        ],
-        "rules": [],
-    }
-    approval_forms: list[dict[str, Any]] = []
-    for form in forms:
-        stem = Path(form).stem
-        columns = list(
-            FIXTURE_JSONL_ROWS.get(stem, [{"col_a": "val_a", "col_b": "val_b"}])[0].keys()
-        )
-        classifications = [
-            {
-                "header": col,
-                "action": "keep",
-                "matched_rules": [],
-                "jurisdictions": [],
-                "reasons": ["fixture: non-PHI column"],
-            }
-            for col in columns
-        ]
-        approval_forms.append(
-            {
-                "form_name": form,
-                "status": "approved",
-                "attempts": 1,
-                "actions": dict.fromkeys(columns, "keep"),
-                "classifications": classifications,
-                "reasons": [],
-                "rule_bundle_sha256": stub_rule_bundle["rules_sha256"],
-                "source_mode": "pinned",
-            }
-        )
-    approval_payload: dict[str, Any] = {
-        "run_id": run_id,
-        "study": study,
-        "created_utc": _iso_now(),
-        "jurisdictions": ["USA"],
-        "conflict_policy": "strictest_wins",
-        "rule_bundle": stub_rule_bundle,
-        "worker_count": 1,
-        "forms": approval_forms,
-        "approved_forms": list(forms),
-        "held_forms": [],
-        "status": "approved",
-    }
-    _atomic_write_json(run_dir / "phi_handling_approval.json", approval_payload)
-
-    # ── g. status.json (verifier_passed = None initially) ───────────────────
+    # ── f. status.json (verifier_passed = None initially) ───────────────────
     status_payload: dict[str, Any] = {
         "completed_utc": _iso_now(),
         "destruction_attestation_path": str(run_dir / "destruction_attestation.json"),
@@ -369,7 +261,7 @@ def build_golden_output_tree(
     }
     _atomic_write_json(run_dir / "status.json", status_payload)
 
-    # ── h. No staging dir (assertion 3 must pass) ───────────────────────────
+    # ── g. No staging dir (assertion 3 must pass) ───────────────────────────
     staging_dir = tmp_root / study
     assert not staging_dir.exists(), f"Staging dir must not exist: {staging_dir}"
 

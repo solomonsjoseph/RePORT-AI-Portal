@@ -75,7 +75,7 @@ Header-only approval before extraction
    allowlist to the real extraction subprocess. The approval report must
    not contain raw row values or synthetic row values.
 
-Nine-action scrub
+Eight-action scrub
    Staged datasets are scrubbed before publication. The scrub can keep
    approved clinical fields, drop direct identifiers, convert birthdate
    to safer date handling, cap age over 89, generalize categories,

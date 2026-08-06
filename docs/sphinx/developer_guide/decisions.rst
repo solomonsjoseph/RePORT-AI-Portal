@@ -206,9 +206,8 @@ ADR-006 — External-API PDF extraction refused by default
 
    Historical. The active LLM source flow no longer runs PDF extraction
    modules. The Load Study plugin's Source Truth child skill reads PDFs plus
-   dataset headers, keeps the reviewed SoT policy YAMLs in the audit zone
-   under ``audit/SoT_construction/<pair>/pdf/``, and publishes only the
-   derived joined query view under ``llm_source/SoT/<pair>/joined/``.
+   dataset headers and publishes reviewed SoT policy YAMLs under
+   ``llm_source/SoT/<pair>/``.
 
 **What.** ``scripts/extraction/extract_pdf_data._resolve_pdf_provider``
 refuses to initialise an Anthropic / Google Gemini client unless the
@@ -415,11 +414,11 @@ time. Tested by ``tests/test_keystore.py``,
 * **Encrypted on-disk vault**. Rejected — adds a master-key bootstrap
   problem on top of the existing PHI-key bootstrap problem.
 
-**Consequences.** Operators running the shell publish path (``make study
-STUDY=<name>`` directly without the wizard) still rely on the env-var
-path. The CLI ``main.py`` (``--chat`` launcher) reads ``LLM_PROVIDER`` /
-``ANTHROPIC_API_KEY`` from env; this is intentional for back-compat with
-existing shell-script invocations. The KeyStore posture only applies to the
+**Consequences.** Operators using the CLI (``python main.py
+--pipeline`` directly without the wizard) still rely on the env-var
+path. The CLI ``main.py`` reads ``LLM_PROVIDER`` / ``ANTHROPIC_API_KEY``
+from env; this is intentional for back-compat with existing
+shell-script invocations. The KeyStore posture only applies to the
 in-app (Streamlit/CLI-REPL) lifetimes.
 
 ADR-012 — Two-way PDF orchestrator (pdfplumber + redacted-text LLM merge)
@@ -515,9 +514,7 @@ ADR-014 — Parallel extraction phase (3-worker ThreadPoolExecutor)
 
    Historical. The current LLM source flow starts from the Load Study
    study-preparation plugin. Its Source Truth child skill generates verified
-   lean SoT policy YAMLs (retained in the audit zone under
-   ``audit/SoT_construction/<pair>/``) and publishes only the derived joined
-   query view under ``llm_source/SoT/<pair>/joined/``, and its dataset child
+   lean SoT YAMLs under ``llm_source/SoT/<pair>/``, and its dataset child
    skill delegates to the trusted host publish path for scrubbed dataset /
    dictionary artifacts. The old PDF leg, catalog/evidence-pack builder, and
    ``variables.json`` builder are not active LLM-visible outputs.
@@ -603,10 +600,9 @@ scripts and rule files.
 
 **How.** ``scripts/source_truth/study_intake.py`` resolves one PDF/dataset
 pair and delegates Stage 0 extraction to the skill script. It reads only
-dataset row 1 for SoT binding. ``python -m scripts.source_truth.generate_lean_outputs``
+dataset row 1 for SoT binding. ``scripts/source_truth/generate_lean_outputs.py``
 runs the batch runtime loop: source pack -> candidate under ``/tmp`` -> verifier
--> policy/schema to ``output/{STUDY}/audit/SoT_construction/<pair>/`` and the
-derived joined view to ``output/{STUDY}/llm_source/SoT/<pair>/joined/``. The web UI's
+-> promote to ``output/{STUDY}/llm_source/SoT/<pair>/``. The web UI's
 **Load Study** action activates the plugin; the dataset publish phase still
 uses the trusted host ``dataset-to-llm-source`` skill. The CLI is documented in
 :doc:`source_truth_build`.
@@ -637,9 +633,8 @@ uses the trusted host ``dataset-to-llm-source`` skill. The CLI is documented in
    ``scripts/ai_assistant/agent_tools.py`` have been audited and decoupled
    (Task 6a). Re-introduction of a YAML-backed retriever is tracked as
    future work if the agent needs direct SoT policy access at runtime.
-3. *Full study preparation runs through the orchestrator.* ``make study
-   STUDY=<name>`` is the entry point; it drives the host publish path in-lock
-   via the ``dataset-to-llm-source`` child skill. Study preparation is also
+3. *Makefile targets are lower-level helpers.* ``make pipeline`` remains the
+   host publish path used by the dataset child skill. Full study preparation is
    initiated through the ``report-ai-study-pipeline`` plugin, including the
    web UI **Load Study** flow.
 

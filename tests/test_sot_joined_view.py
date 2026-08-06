@@ -13,7 +13,6 @@ import pytest
 from scripts.ai_assistant.sot_joined_view import (
     build_joined_query_view,
     find_dataset_schema_for_policy,
-    resolve_sot_joined_view_path,
     write_joined_query_view_yaml,
 )
 
@@ -231,62 +230,3 @@ def test_schema_discovery_supports_sot_pair_layout(tmp_path: Path) -> None:
     _write_schema(schema, [{"name": "HIV_CD4DAT", "source_order": 12}])
 
     assert find_dataset_schema_for_policy(policy) == schema
-
-
-def test_resolve_sot_joined_view_path_uses_pair_layout(tmp_path: Path) -> None:
-    sot_root = tmp_path / "SoT"
-    joined = sot_root / "6_HIV" / "joined" / "6_HIV_joined_query_view.yaml"
-    joined.parent.mkdir(parents=True)
-    joined.write_text("form: 6_HIV\n", encoding="utf-8")
-
-    assert resolve_sot_joined_view_path(sot_root, "6_HIV.xlsx") == joined
-    assert resolve_sot_joined_view_path(sot_root, "6_HIV").is_file()
-
-
-def test_resolve_sot_joined_view_path_matches_underscore_variant_pair_dir(tmp_path: Path) -> None:
-    sot_root = tmp_path / "SoT"
-    pair_dir = sot_root / "14_CaseControl"
-    joined = pair_dir / "joined" / "14_CaseControl_joined_query_view.yaml"
-    schema = pair_dir / "dataset" / "14_CaseControl_schema.json"
-    joined.parent.mkdir(parents=True)
-    joined.write_text("form: 14_CaseControl\n", encoding="utf-8")
-    schema.parent.mkdir(parents=True)
-    schema.write_text(
-        json.dumps(
-            {
-                "study": "Indo-VAP",
-                "form": "14_CaseControl",
-                "source_dataset": "data/raw/Indo-VAP/datasets/14_Case_Control.xlsx",
-                "columns": [{"name": "CC_VISDAT"}],
-            }
-        ),
-        encoding="utf-8",
-    )
-
-    resolved = resolve_sot_joined_view_path(sot_root, "14_Case_Control.xlsx")
-    assert resolved == joined
-    assert resolved.is_file()
-
-
-def test_resolve_sot_joined_view_path_normalizes_case_and_separators(tmp_path: Path) -> None:
-    sot_root = tmp_path / "SoT"
-    pair_dir = sot_root / "14_CaseControl"
-    joined = pair_dir / "joined" / "14_CaseControl_joined_query_view.yaml"
-    joined.parent.mkdir(parents=True)
-    joined.write_text("form: 14_CaseControl\n", encoding="utf-8")
-
-    resolved = resolve_sot_joined_view_path(sot_root, "14-case control")
-    assert resolved == joined
-    assert resolved.is_file()
-
-
-def test_resolve_sot_joined_view_path_rejects_ambiguous_normalized_matches(tmp_path: Path) -> None:
-    sot_root = tmp_path / "SoT"
-    for pair_name in ("14_CaseControl", "14Case_Control"):
-        joined = sot_root / pair_name / "joined" / f"{pair_name}_joined_query_view.yaml"
-        joined.parent.mkdir(parents=True)
-        joined.write_text(f"form: {pair_name}\n", encoding="utf-8")
-
-    unresolved = resolve_sot_joined_view_path(sot_root, "14_Case_Control.xlsx")
-    assert unresolved.name == "14_Case_Control_joined_query_view.yaml"
-    assert not unresolved.is_file()

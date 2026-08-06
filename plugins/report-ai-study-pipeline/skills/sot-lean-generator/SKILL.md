@@ -5,8 +5,6 @@ description: Use when creating or auditing RePORT-AI Source-of-Truth policy YAML
 
 # SoT Policy Generator
 
-> **Global Rule (GR-1):** No LLM — including Claude — may read dataset row values at any time, under any circumstance. Column headers (row 1) are the only permitted LLM dataset input. Failure reports carry pattern + column + count only, never a value.
-
 ## Core Rule
 
 Generate SoT policy YAML from scratch using only:
@@ -28,24 +26,6 @@ Every variable-like PDF annotation must be reconciled before a final policy file
 Source names and source-column positions are compile-time scaffolding, not final policy signal. It is acceptable to carry them in `/tmp/<form>_exhaustive.yaml`, unresolved notes, or review notes while reconciling duplicate/ambiguous inputs. The final policy YAML should contain the combined PDF/header truth, not raw source-name dumps, except for concise source attribution inside `discrepancies` when needed to explain a conflict or combined binding.
 
 Do not use generic annotation placeholders as signal. Phrases like `"Visible printed field associated with PDF annotation X"` or `"visible printed widget associated with PDF annotation X"` are not acceptable policy `pdf_question`, `pdf_label`, or `widget` values. Either transcribe the printed PDF wording/widget shape, or use `pdf_question: null` with a discrepancy when the printed widget cannot be verified.
-
-## What This Skill Does
-
-Builds and audits Source Truth policy YAML from printed clinical PDFs plus dataset
-row-1 headers, under the authority order **printed PDF > annotation label > dataset
-header > dataset rows (forbidden)**. The end product the LLM ever reads is the
-derived **joined query view** (`llm_source/SoT/<pair>/joined/`); the policy YAML +
-dataset schema construction material is fenced into the audit zone.
-
-The orchestrator invokes this skill at conceptual phase 3 (SoT leg) as a file-path
-subprocess, once per form. The subprocess entry (`scripts/run.py`) is a thin
-passthrough to the Stage-0 per-form intake CLI (`study_intake.main`): it resolves
-the annotated PDF + dataset for one form and produces the deterministic source pack
-JSON + 600-DPI page renders, or — when sources are missing/ambiguous — a
-PHI-metadata-only human-review note under `audit/human_review/<form>/`. Stages 1–6
-(exhaustive YAML write, visual sweep, policy trim, verify, promote, joined-view
-generation) are the LLM-driven authoring loop documented below; the LLM reads only
-the joined query view and page renders — never dataset row values (GR-1).
 
 ## Pipeline (6 stages; Stage 6 is derived query output)
 
@@ -88,12 +68,12 @@ When both sources are available, the wrapper prints `source_pack=/tmp/sot_source
 When the PDF is missing, the dataset is missing, or the dataset match is ambiguous, do not author YAML and do not invent a partial SoT. The wrapper writes a human-review audit file and prints its path:
 
 ```text
-output/<study>/audit/human_review/<form>/review_report.md
+output/<study>/audit/Sot_review/<form>/review_report.md
 ```
 
 The review report title must be `Sot_review: Source Truth Human Review`. It records file/path availability, the missing/ambiguous source classification, and the required next step. It must not contain dataset row values.
 
-Batch generation follows the same rule. If `scripts.source_truth.generate_lean_outputs` discovers a PDF-backed form with a missing or ambiguous dataset, or a selected form is missing its PDF/dataset pair, it writes the same human-review report under `audit/human_review/<form>/` and continues with forms that have complete source pairs. A SoT review report is a handled audit outcome, not a policy file and not a partial source pack.
+Batch generation follows the same rule. If `scripts.source_truth.generate_lean_outputs` discovers a PDF-backed form with a missing or ambiguous dataset, or a selected form is missing its PDF/dataset pair, it writes the same `Sot_review` report and continues with forms that have complete source pairs. A `Sot_review` report is a handled audit outcome, not a policy file and not a partial source pack.
 
 Use the lower-level extractor only when the exact PDF and exact dataset path are already known:
 
@@ -185,33 +165,27 @@ If the verifier fails: fix the policy YAML in place and re-run (up to 5 fix iter
 
 ### Stage 5 — Promote to output
 
-After Stage 4 passes, the **joined query view is the sole LLM-facing SoT file**
-(N2/N3/N17). The construction material (policy YAML + dataset schema) goes to the
-AUDIT zone — fenced from the LLM by `deny_if_audit_zone` — and ONLY the joined
-view is promoted into `llm_source/`:
+After Stage 4 passes:
 
 ```bash
-# construction material -> AUDIT zone (NOT llm_source)
 cp tmp/SoT/<sot-pair-name>/pdf/<form>_policy.yaml \
-  output/<study>/audit/SoT_construction/<sot-pair-name>/pdf/<form>_policy.yaml
+  output/<study>/llm_source/SoT/<sot-pair-name>/pdf/<form>_policy.yaml
 cp tmp/SoT/<sot-pair-name>/dataset/<form>_schema.json \
-  output/<study>/audit/SoT_construction/<sot-pair-name>/dataset/<form>_schema.json
+  output/<study>/llm_source/SoT/<sot-pair-name>/dataset/<form>_schema.json
 ```
 
-Do not write to `output/` before Stage 4 passes. `llm_source/SoT/<sot-pair-name>/`
-holds ONLY `joined/` — the policy YAML + dataset schema never enter the LLM read
-zone. (The automated pipeline does exactly this in
-`generate_lean_outputs._publish_verified_sot_outputs`, and the per-form `tmp/`
-intermediates are destroyed after promotion.)
+Do not write to `output/` before Stage 4 passes. The promote step is the only write that leaves `tmp/`, and the promoted SoT files must live under the PHI-clean LLM source surface: `output/<study>/llm_source/SoT/`.
 
-### Stage 6 — Generate joined query view (the sole LLM-facing SoT file)
+### Stage 6 — Generate joined query view (derived, LLM-facing)
 
-Use this only after the policy Source Truth and per-form dataset schema already exist. The joined view combines them for LLM querying without exposing the construction files. Build it FROM the audit-zone construction material, and write it INTO `llm_source/`:
+Use this only after the policy Source Truth and per-form dataset schema already exist. The joined view combines them for LLM querying without merging the authority files.
+
+For a published output pair:
 
 ```bash
 uv run --all-groups python skills/sot-lean-generator/scripts/generate_joined_query_view.py \
-  --policy output/<study>/audit/SoT_construction/<sot-pair-name>/pdf/<form>_policy.yaml \
-  --schema output/<study>/audit/SoT_construction/<sot-pair-name>/dataset/<form>_schema.json \
+  --policy output/<study>/llm_source/SoT/<sot-pair-name>/pdf/<form>_policy.yaml \
+  --schema output/<study>/llm_source/SoT/<sot-pair-name>/dataset/<form>_schema.json \
   --out output/<study>/llm_source/SoT/<sot-pair-name>/joined/<form>_joined_query_view.yaml
 ```
 
@@ -236,18 +210,6 @@ Stage 6 output rules:
 - Avoid escaped Unicode and symbol-heavy text. Use plain ASCII markers such as `->`, `-`, and `mm3`.
 - If the dataset schema contains duplicate column names, stop and fix the schema or source review before generating the joined view.
 
-## Header Store Lifecycle (Note 16 + Task B4)
-
-The shared header store from Phase 2b (header-extraction) provides dataset column
-NAMES only (row 1) for binding dataset columns to PDF form variables during Source
-Truth policy creation. This skill may consume the store when available to validate
-that row-1 headers match the dataset schema used in Stage 0 source pack generation.
-
-The store is optional (SoT generation falls back to direct CSV/XLSX header reading
-if unavailable). It is never serialized into the final policy YAML or joined query
-view — it is a pipeline-internal signal used for validation and consistency checks
-only (GR-1 compliance).
-
 ## Verification Bar (Stage 4 acceptance criteria)
 
 Before claiming completion, confirm:
@@ -267,59 +229,3 @@ Before claiming completion, confirm:
 - Units and date masks match the printed form exactly: do not convert plain printed unit text to Unicode notation, and include `format:` for non-routine printed masks such as `DD/MM/YY`.
 - Row-level `Not Done` columns are mutually exclusive with every same-row value/dependent field they suppress, including adjacent free-text "Other, specify" fields.
 - Property-validator policy notes are present: `free_text` variables have `phi:` or `notes: "no PHI expected"`, and `type: code` variables with `phi: pseudonymize` have `notes:` explaining the quasi-identifier reason.
-
-## CLI
-
-The orchestrator-facing subprocess entry is the per-form Stage-0 intake passthrough:
-
-```bash
-uv run --all-groups python \
-  plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/run.py \
-  --study <STUDY> --form <FORM>
-```
-
-It resolves the form's annotated PDF + dataset and either prints `source_pack=…`
-plus one `render=…` line per page, or writes a human-review note and prints
-`status=human_review_required`. The individual authoring/verification stages each
-have their own dev CLIs (see the per-stage commands above): `study_intake`
-(Stage 0 source pack), `check_lean_policy.py` (Stage 4 verify), and
-`generate_joined_query_view.py` (Stage 6 joined view).
-
-## Result Contract
-
-The subprocess entry emits one `RPLN_SKILL_RESULT:` marker line (the shared skill
-contract, `scripts/utils/skill_protocol.py`): the study + form names and the
-ok/failed outcome with the intake exit code only — never dataset row values, PDF
-content dumps, or sample values. Stage outputs are file artifacts: the source pack
-JSON + page renders (`/tmp/`), the policy YAML + dataset schema (audit zone), and
-the joined query view (`llm_source/SoT/<pair>/joined/`). A missing/ambiguous source
-pair is a handled audit outcome (human-review report), not an error.
-
-## Portability
-
-The authoring stages are LLM-driven and host-neutral — any LLM platform can run
-them by reading this `SKILL.md` and the per-stage dev CLIs. The deterministic
-Stage-0 intake + verifier + joined-view generator are pure host-side Python
-(pdfplumber + ghostscript renders; no network, no LLM call). `agents/llm.yaml`
-carries the platform-neutral adapter metadata.
-
-## Exit Codes
-
-The subprocess entry mirrors the Stage-0 intake (`study_intake.main`):
-
-| Code | Meaning |
-|---|---|
-| `0` | Source pack + renders produced, **or** a missing/ambiguous source pair handled as a human-review audit outcome (both are non-error Stage-0 results). |
-| `1` | Stage-0 intake failed (e.g. an unreadable source or an internal extraction error; the exception type NAME only is reported). |
-| `2` | Argparse usage error (e.g. missing `--study`/`--form`). |
-
-The downstream authoring stages report their own pass/fail through their dev CLIs
-(`check_lean_policy.py` non-zero on a failing policy); fix the policy YAML in place
-and re-run, up to the documented fix-iteration cap.
-
-## What This Skill Does NOT Do
-
-- **Never reads dataset row values** — uses printed PDF page renders + dataset row-1 headers only; the dataset is never the clinical authority, and row 2+ values are forbidden input (GR-1).
-- **Does not publish construction material to the LLM zone** — only the joined query view enters `llm_source/`; the policy YAML + dataset schema are fenced into the audit zone (`audit/SoT_construction/`).
-- **Does not author a partial SoT on missing/ambiguous sources** — it writes a count/path-only human-review note and continues with complete source pairs instead of inventing YAML.
-- **Does not invent printed wording** — an unmatched header is kept for binding with `pdf_question: null` and a `discrepancies` entry; it never fabricates a PDF question, options, units, or clinical meaning.

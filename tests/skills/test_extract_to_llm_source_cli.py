@@ -46,22 +46,14 @@ from scripts.skills.extract_to_llm_source import (
     EXIT_OK,
     EXIT_PARTIAL_REVIEW,
     EXIT_QUARANTINE_NON_EMPTY,
-    EXIT_VERIFIER_FAIL,
     main,
-)
-from tests.skills.conftest import (
-    SKILLS_TEST_STUDY,
-    make_datasets_dir,
-    make_staging,
-    patch_config,
-    write_valid_ledger,
 )
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
 
-STUDY = SKILLS_TEST_STUDY
+STUDY = "Test-Study"
 SKILL_SCRIPT = Path(skill_mod.__file__)
 
 
@@ -82,11 +74,6 @@ def _bypass_expensive_phi_gate(monkeypatch: pytest.MonkeyPatch) -> None:
             partial=False,
         ),
     )
-    monkeypatch.setattr(
-        skill_mod,
-        "_verify_cleanup_before_inline_snapshot",
-        lambda **_kwargs: True,
-    )
 
 
 def test_wrapper_does_not_load_phi_key_material() -> None:
@@ -96,6 +83,40 @@ def test_wrapper_does_not_load_phi_key_material() -> None:
     assert "load_key" not in source
     assert "_preflight_phi_key" not in source
     assert "preflight.phi_key" not in source
+
+
+def _patch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Redirect config path constants to tmp_path so tests are hermetic."""
+    monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output", raising=False)
+    monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp", raising=False)
+    monkeypatch.setattr(
+        config, "DATASETS_DIR", tmp_path / f"data/raw/{STUDY}/datasets", raising=False
+    )
+
+
+def _write_valid_ledger(output_dir: Path) -> None:
+    """Write a per-dataset ledger with non-null hashes."""
+    audit_dir = output_dir / STUDY / "audit"
+    audit_dir.mkdir(parents=True, exist_ok=True)
+    ledger = {
+        "run_id": "run_x",
+        "scrub_config_hash": "abc123",
+        "input_dataset_hash": "def456",
+    }
+    ledger_path = dataset_phi_ledger_path(audit_dir, "approved.xlsx")
+    ledger_path.parent.mkdir(parents=True, exist_ok=True)
+    ledger_path.write_text(json.dumps(ledger), encoding="utf-8")
+
+
+def _make_staging(staging_dir: Path) -> None:
+    """Create a non-empty staging directory."""
+    staging_dir.mkdir(parents=True, exist_ok=True)
+    (staging_dir / "dummy.jsonl").write_bytes(b"data")
+
+
+def _make_datasets_dir(datasets_dir: Path) -> None:
+    """Create the datasets directory (no files — manifest absent → no raise)."""
+    datasets_dir.mkdir(parents=True, exist_ok=True)
 
 
 # ---------------------------------------------------------------------------
@@ -131,7 +152,7 @@ class TestVerifyStub:
     """Smoke tests for the verify subcommand.
 
     P3.1 tested a one-assertion scaffold.  P4.1 replaced the scaffold with the
-    full 16-assertion verifier.  These tests are updated to reflect that:
+    full 12-assertion verifier.  These tests are updated to reflect that:
       - verify without --run and without any runs/ directory exits EXIT_NEEDS_ADVICE.
       - staging-present is caught by assertion 3, but only AFTER run_id is resolved.
     """
@@ -139,7 +160,7 @@ class TestVerifyStub:
     def test_no_run_dir_exits_needs_advice(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        patch_config(monkeypatch, tmp_path)
+        _patch_config(monkeypatch, tmp_path)
         # Neither runs/ dir nor --run provided: verifier should exit EXIT_NEEDS_ADVICE
         rc = main(["verify", "--study", STUDY])
         assert rc == EXIT_NEEDS_ADVICE
@@ -154,7 +175,7 @@ class TestVerifyStub:
         """
         import yaml as _yaml
 
-        patch_config(monkeypatch, tmp_path)
+        _patch_config(monkeypatch, tmp_path)
         # Also patch RAW_DATA_DIR so the verifier looks in tmp_path
         monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False)
         # Also patch PHI_SCRUB_CONFIG_PATH to a dummy
@@ -187,17 +208,12 @@ class TestVerifyStub:
 
         import yaml as _yaml
 
-        patch_config(monkeypatch, tmp_path)
+        _patch_config(monkeypatch, tmp_path)
         monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False)
         scrub_config = tmp_path / "scripts" / "security" / "phi_scrub.yaml"
         scrub_config.parent.mkdir(parents=True, exist_ok=True)
         scrub_config.write_text("subject_id_fields: [SUBJID]\n", encoding="utf-8")
         monkeypatch.setattr(config, "PHI_SCRUB_CONFIG_PATH", scrub_config, raising=False)
-        # Task A7: assertion 5 hashes the EFFECTIVE config via
-        # effective_scrub_config_hash(), which resolves the defaults base from
-        # CONFIG_DEFAULTS_DIR — point it at this tmp config's dir so the verifier
-        # hashes the same single file the ledger seeds.
-        monkeypatch.setattr(config, "CONFIG_DEFAULTS_DIR", scrub_config.parent, raising=False)
 
         run_id = "run_dataset_scope"
         study_output = tmp_path / "output" / STUDY
@@ -235,7 +251,7 @@ class TestVerifyStub:
         )
 
         audit_dir = study_output / "audit"
-        audit_dir.mkdir(parents=True, exist_ok=True)
+        audit_dir.mkdir(parents=True)
         (audit_dir / ".NO_LLM_ZONE").write_text("", encoding="utf-8")
         ledger_path = dataset_phi_ledger_path(audit_dir, "approved.xlsx")
         ledger_path.parent.mkdir(parents=True, exist_ok=True)
@@ -264,18 +280,6 @@ class TestVerifyStub:
         (datasets_out / "approved.jsonl").write_text(
             json.dumps({"SUBJID": "RID_SUBJ_abcdefghijkl"}) + "\n",
             encoding="utf-8",
-        )
-        joined = (
-            study_output
-            / "llm_source"
-            / "SoT"
-            / "approved"
-            / "joined"
-            / "approved_joined_query_view.yaml"
-        )
-        joined.parent.mkdir(parents=True, exist_ok=True)
-        joined.write_text(
-            "form: approved\nvariables:\n  SUBJID:\n    dataset: {}\n", encoding="utf-8"
         )
         dictionary_out = study_output / "llm_source" / "dictionary_mapping" / "jsonl"
         dictionary_out.mkdir(parents=True)
@@ -340,13 +344,13 @@ class TestRunHappyPath:
     def test_exits_ok_and_writes_status_json(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        patch_config(monkeypatch, tmp_path)
-        write_valid_ledger(tmp_path / "output")
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _patch_config(monkeypatch, tmp_path)
+        _write_valid_ledger(tmp_path / "output")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         # Staging must be present before subprocess, absent after destruction.
         # We mock destruction too so we don't need zone markers.
         staging_dir = tmp_path / "tmp" / STUDY
-        make_staging(staging_dir)
+        _make_staging(staging_dir)
 
         run_id = "run_test001"
 
@@ -375,11 +379,6 @@ class TestRunHappyPath:
             patch.object(skill_mod, "_release_pipeline_lock_for_skill", _fake_release),
             patch.object(skill_mod, "destroy_staging_and_attest", _fake_destroy),
             patch("subprocess.run", return_value=SimpleNamespace(returncode=0)),
-            # Step 7 now runs on any clean pass; mock the verifier + snapshot so
-            # this test stays focused on plain-run publish behavior, not the
-            # verifier or snapshot infrastructure.
-            patch.object(skill_mod, "_cmd_verify", return_value=EXIT_OK),
-            patch.object(skill_mod, "_try_commit_snapshot", return_value=None),
         ):
             rc = main(["run", "--study", STUDY])
 
@@ -393,74 +392,14 @@ class TestRunHappyPath:
         assert status_data["verifier_passed"] is None
         assert status_data["ledger_hash_present"] is True
 
-    def test_confirm_rotation_flag_reaches_host_subprocess(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        patch_config(monkeypatch, tmp_path)
-        write_valid_ledger(tmp_path / "output")
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
-        make_staging(tmp_path / "tmp" / STUDY)
-        monkeypatch.setenv("REPORTAL_RUN_ID", "run_rotation001")
-
-        seen: dict[str, list[str]] = {}
-
-        def _fake_run(cmd, **_kwargs):
-            seen["cmd"] = list(cmd)
-            return SimpleNamespace(returncode=0)
-
-        with (
-            patch.object(skill_mod, "_acquire_pipeline_lock_for_skill", lambda _study: None),
-            patch.object(skill_mod, "_release_pipeline_lock_for_skill", lambda: None),
-            patch.object(skill_mod, "destroy_staging_and_attest", lambda **_kwargs: tmp_path / "attest.json"),
-            patch("subprocess.run", side_effect=_fake_run),
-            patch.object(skill_mod, "_cmd_verify", return_value=EXIT_OK),
-            patch.object(skill_mod, "_try_commit_snapshot", return_value=None),
-        ):
-            rc = main(["run", "--study", STUDY, "--confirm-rotation"])
-
-        assert rc == EXIT_OK
-        assert "--confirm-rotation" in seen["cmd"]
-
-    def test_inline_snapshot_skipped_when_cleanup_verifier_fails(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        patch_config(monkeypatch, tmp_path)
-        write_valid_ledger(tmp_path / "output")
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
-        make_staging(tmp_path / "tmp" / STUDY)
-        monkeypatch.setenv("REPORTAL_RUN_ID", "run_cleanup_fail")
-        monkeypatch.setattr(
-            skill_mod,
-            "_verify_cleanup_before_inline_snapshot",
-            lambda **_kwargs: False,
-        )
-
-        snapshot_calls: list[dict[str, object]] = []
-
-        def _snapshot(**kwargs):
-            snapshot_calls.append(kwargs)
-
-        with (
-            patch.object(skill_mod, "_acquire_pipeline_lock_for_skill", lambda _study: None),
-            patch.object(skill_mod, "_release_pipeline_lock_for_skill", lambda: None),
-            patch.object(skill_mod, "destroy_staging_and_attest", lambda **_kwargs: tmp_path / "attest.json"),
-            patch("subprocess.run", return_value=SimpleNamespace(returncode=0)),
-            patch.object(skill_mod, "_cmd_verify", return_value=EXIT_OK),
-            patch.object(skill_mod, "_try_commit_snapshot", side_effect=_snapshot),
-        ):
-            rc = main(["run", "--study", STUDY])
-
-        assert rc == EXIT_VERIFIER_FAIL
-        assert snapshot_calls == []
-
     def test_staging_removed_on_success(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        patch_config(monkeypatch, tmp_path)
-        write_valid_ledger(tmp_path / "output")
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _patch_config(monkeypatch, tmp_path)
+        _write_valid_ledger(tmp_path / "output")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         staging_dir = tmp_path / "tmp" / STUDY
-        make_staging(staging_dir)
+        _make_staging(staging_dir)
         run_id = "run_test002"
         monkeypatch.setenv("REPORTAL_RUN_ID", run_id)
 
@@ -494,11 +433,11 @@ class TestRunHappyPath:
     def test_attestation_present_on_success(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        patch_config(monkeypatch, tmp_path)
-        write_valid_ledger(tmp_path / "output")
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _patch_config(monkeypatch, tmp_path)
+        _write_valid_ledger(tmp_path / "output")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         staging_dir = tmp_path / "tmp" / STUDY
-        make_staging(staging_dir)
+        _make_staging(staging_dir)
         run_id = "run_test003"
         monkeypatch.setenv("REPORTAL_RUN_ID", run_id)
 
@@ -539,7 +478,7 @@ class TestRunHappyPath:
 class TestRunExitCodes:
     def _base_patches(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> tuple[Any, Any]:
         """Return context managers for lock acquire/release mocks."""
-        patch_config(monkeypatch, tmp_path)
+        _patch_config(monkeypatch, tmp_path)
 
         def _fake_acquire(_study: str) -> None:
             pass
@@ -553,7 +492,7 @@ class TestRunExitCodes:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _fake_acquire, _fake_release = self._base_patches(monkeypatch, tmp_path)
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         # Plant a scrub.in_progress token.
         runs_dir = tmp_path / "output" / STUDY / "runs"
         token_dir = runs_dir / "run_prior"
@@ -574,7 +513,7 @@ class TestRunExitCodes:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _fake_acquire, _fake_release = self._base_patches(monkeypatch, tmp_path)
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         monkeypatch.setenv("REPORTAL_RUN_ID", "run_x")
 
         from scripts.extraction.dataset_pipeline import ManifestMismatchError
@@ -596,7 +535,7 @@ class TestRunExitCodes:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _fake_acquire, _fake_release = self._base_patches(monkeypatch, tmp_path)
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         monkeypatch.setenv("REPORTAL_RUN_ID", "run_x")
 
         with (
@@ -613,7 +552,7 @@ class TestRunExitCodes:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _fake_acquire, _fake_release = self._base_patches(monkeypatch, tmp_path)
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         # Write a ledger with null hashes.
         audit_dir = tmp_path / "output" / STUDY / "audit"
         audit_dir.mkdir(parents=True, exist_ok=True)
@@ -637,7 +576,7 @@ class TestRunExitCodes:
 
     def test_missing_ledger_exits_3(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _fake_acquire, _fake_release = self._base_patches(monkeypatch, tmp_path)
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         # Do NOT write ledger file — it's absent.
         (tmp_path / "output" / STUDY / "audit").mkdir(parents=True, exist_ok=True)
         monkeypatch.setenv("REPORTAL_RUN_ID", "run_x")
@@ -656,8 +595,8 @@ class TestRunExitCodes:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _fake_acquire, _fake_release = self._base_patches(monkeypatch, tmp_path)
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
-        write_valid_ledger(tmp_path / "output")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _write_valid_ledger(tmp_path / "output")
         # Plant a file in quarantine.
         quarantine_dir = tmp_path / "tmp" / STUDY / "quarantine"
         quarantine_dir.mkdir(parents=True, exist_ok=True)
@@ -678,8 +617,8 @@ class TestRunExitCodes:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _fake_acquire, _fake_release = self._base_patches(monkeypatch, tmp_path)
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
-        write_valid_ledger(tmp_path / "output")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _write_valid_ledger(tmp_path / "output")
         monkeypatch.setenv("REPORTAL_RUN_ID", "run_x")
 
         from scripts.skills.extract_to_llm_source import DestructionIncompleteError
@@ -702,8 +641,8 @@ class TestRunExitCodes:
     def test_lock_failure_exits_needs_advice(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        patch_config(monkeypatch, tmp_path)
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _patch_config(monkeypatch, tmp_path)
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         monkeypatch.setenv("REPORTAL_RUN_ID", "run_x")
 
         def _fake_release() -> None:
@@ -731,9 +670,9 @@ class TestDisabledScrubBypass:
     def test_scrub_bypass_env_var_refuses_before_subprocess(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        patch_config(monkeypatch, tmp_path)
-        write_valid_ledger(tmp_path / "output")
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _patch_config(monkeypatch, tmp_path)
+        _write_valid_ledger(tmp_path / "output")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         monkeypatch.setenv("REPORTAL_RUN_ID", "run_envpop")
         # Plant the bypass variable in the current process environment.
         monkeypatch.setenv("REPORTALIN_ALLOW_DISABLED_SCRUB", "1")
@@ -761,9 +700,9 @@ class TestDisabledScrubBypass:
     def test_run_id_is_propagated_to_subprocess_env(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        patch_config(monkeypatch, tmp_path)
-        write_valid_ledger(tmp_path / "output")
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _patch_config(monkeypatch, tmp_path)
+        _write_valid_ledger(tmp_path / "output")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         run_id = "run_envcheck"
         monkeypatch.setenv("REPORTAL_RUN_ID", run_id)
 
@@ -804,9 +743,9 @@ class TestDisabledScrubBypass:
     def test_form_selector_limits_allowed_forms_env(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        patch_config(monkeypatch, tmp_path)
-        write_valid_ledger(tmp_path / "output")
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _patch_config(monkeypatch, tmp_path)
+        _write_valid_ledger(tmp_path / "output")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         run_id = "run_form_selector"
         monkeypatch.setenv("REPORTAL_RUN_ID", run_id)
 
@@ -850,10 +789,6 @@ class TestDisabledScrubBypass:
             patch.object(skill_mod, "check_forms_manifest", return_value={}),
             patch.object(skill_mod, "_run_form_approval_gate", side_effect=_fake_gate),
             patch("subprocess.run", side_effect=_capturing_subprocess_run),
-            # Step 7 now runs on any clean pass; mock verifier + snapshot so
-            # this test stays focused on the form-selector/env behavior.
-            patch.object(skill_mod, "_cmd_verify", return_value=EXIT_OK),
-            patch.object(skill_mod, "_try_commit_snapshot", return_value=None),
         ):
             rc = main(["run", "--study", STUDY, "--form", "6_HIV"])
 
@@ -866,9 +801,9 @@ class TestPartialPublish:
     def test_held_forms_return_partial_review_code_and_allowed_forms_env(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        patch_config(monkeypatch, tmp_path)
-        write_valid_ledger(tmp_path / "output")
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _patch_config(monkeypatch, tmp_path)
+        _write_valid_ledger(tmp_path / "output")
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         run_id = "run_partial"
         monkeypatch.setenv("REPORTAL_RUN_ID", run_id)
 
@@ -921,7 +856,6 @@ class TestPartialPublish:
         status = json.loads(status_path.read_text(encoding="utf-8"))
         assert status["publish_status"] == "partial"
         assert status["held_forms_count"] == 1
-        assert status["held_forms"] == ["95_SAE.xlsx"]
 
 
 class TestFormSelection:
@@ -973,8 +907,8 @@ class TestSignalHandler:
     ) -> None:
         """Simulate SIGINT raised during the subprocess call by raising _SkillInterrupted
         from within the subprocess mock."""
-        patch_config(monkeypatch, tmp_path)
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _patch_config(monkeypatch, tmp_path)
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         monkeypatch.setenv("REPORTAL_RUN_ID", "run_sig")
 
         destroy_called = False
@@ -1013,8 +947,8 @@ class TestSignalHandler:
         Uses a threading timer to fire SIGINT shortly after the subprocess mock
         blocks, then unblocks subprocess to let cleanup proceed.
         """
-        patch_config(monkeypatch, tmp_path)
-        make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
+        _patch_config(monkeypatch, tmp_path)
+        _make_datasets_dir(tmp_path / f"data/raw/{STUDY}/datasets")
         monkeypatch.setenv("REPORTAL_RUN_ID", "run_sigkill")
 
         event = threading.Event()

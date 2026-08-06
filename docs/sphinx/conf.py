@@ -43,7 +43,6 @@ extensions: list[str] = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "sphinx.ext.doctest",
-    "sphinx.ext.mathjax",
     "sphinx_autodoc_typehints",
 ]
 

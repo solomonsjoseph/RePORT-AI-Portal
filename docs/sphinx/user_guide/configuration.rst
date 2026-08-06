@@ -88,22 +88,6 @@ specific decision.
    * - ``REPORTALIN_TMPFS_STAGING=1``
      - Linux-only option to place temporary staging files in memory when
        available.
-   * - ``REPORTAL_PROCESS_ROLE=llm-agent``
-     - **Security-critical.** Set in agent subprocess environments to deny
-       audit-ledger writes and maintainer-only CLI paths (such as
-       ``--resume-held``) from agent processes. Any agent that attempts those
-       operations while this variable is set receives an explicit refusal.
-   * - ``REPORTAL_AGENT_MODEL``
-     - Overrides the default agent model id (``config.AGENT_MODEL_ID``).
-       Takes effect at import time via ``config.py``.
-   * - ``REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT`` / ``REPORTAL_PIPELINE_LOCK_PARENT_PID``
-     - **Internal pipeline use only — not for operators to set manually.**
-       The orchestrator sets these when handing the already-acquired pipeline
-       lock baton to each skill subprocess (such as the
-       ``dataset-to-llm-source`` supervisor / ``host_pipeline.py``). The child
-       validates the claimed parent PID is live and equals ``os.getppid()``
-       before honouring the baton; a stale or mismatched value causes the child
-       to acquire the lock normally.
 
 PHI Key
 -------

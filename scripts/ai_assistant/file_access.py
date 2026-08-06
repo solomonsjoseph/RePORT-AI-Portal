@@ -6,7 +6,7 @@ The production LLM agent's permitted zones are:
   tree: dataset_schema, dictionary_mapping, SoT) or
   ``AGENT_STATE_DIR`` (its own analysis outputs and conversations).
   A small allowlist admits
-  read-only source-tree config files (``config/<study>/study_knowledge.yaml``)
+  read-only source-tree config files (``config/study_knowledge.yaml``)
   that tool implementations need.
 * **Write** — ``AGENT_STATE_DIR`` only.
 
@@ -29,7 +29,7 @@ import os
 from pathlib import Path
 
 import config
-from scripts.audit.zone_guards import deny_if_audit_zone, deny_if_snapshot_root
+from scripts.audit.zone_guards import deny_if_audit_zone
 from scripts.security.secure_env import ZoneViolationError
 
 __all__ = [
@@ -70,13 +70,13 @@ def _zones() -> tuple[list[str], list[str], frozenset[str]]:
     write_roots = [
         _resolve(config.AGENT_STATE_DIR),
     ]
-    # Repo-tracked config read at tool-invocation time by agent_prompts
-    # (system-prompt directive) and agent_tools readers. This is the
-    # "how" surface (per the hard PHI rule), not the "what" — still
-    # inside the source tree.
+    # Repo-tracked config that StudyKnowledge + similar helpers load at
+    # tool-invocation time. This is the "how" surface (per the hard PHI
+    # rule), not the "what" — still inside the source tree.
+    project_root = Path(__file__).resolve().parents[2]
     read_allowlist = frozenset(
         {
-            _resolve(config.STUDY_KNOWLEDGE_PATH),
+            _resolve(project_root / "config" / "study_knowledge.yaml"),
         }
     )
     return read_roots, write_roots, read_allowlist
@@ -88,11 +88,8 @@ def validate_agent_read(path: str | Path) -> Path:
     Raises:
         ZoneViolationError: *path* is outside the agent's permitted read zones.
         AuditZoneViolation: *path* resolves into ``output/*/audit/``.
-        SnapshotZoneViolation: *path* is under ``output/*/snapshots/<id>/`` but
-            outside that snapshot's ``<id>/llm_source/`` subtree.
     """
     deny_if_audit_zone(path)  # Phase 4 audit-zone deny
-    deny_if_snapshot_root(path)  # W1 snapshot-root deny (non-llm_source subtree)
     read_roots, _, allowlist = _zones()
     resolved = _resolve(path)
     if resolved in allowlist:

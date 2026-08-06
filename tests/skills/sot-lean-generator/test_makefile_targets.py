@@ -15,8 +15,4 @@ def test_sot_validate_targets_candidate_by_default() -> None:
     assert "--lean $(CANDIDATE)" in makefile
     assert "--candidate $(CANDIDATE)" in makefile
     assert "sot-verify-output:" in makefile
-    # N3: policy YAML lives in the audit construction zone, not llm_source.
-    assert (
-        "--policy output/$(STUDY)/audit/SoT_construction/$(SOT_PAIR)/pdf/$(FORM)_policy.yaml"
-        in makefile
-    )
+    assert "--policy output/$(STUDY)/llm_source/SoT/$(SOT_PAIR)/pdf/$(FORM)_policy.yaml" in makefile

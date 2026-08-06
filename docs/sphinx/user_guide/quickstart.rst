@@ -75,9 +75,9 @@ handling, Source Truth creation from printed PDFs plus row-1 headers, and
 PHI-safe dataset publishing. The data dictionary remains handled by the host
 repo.
 
-The command-line ``make study STUDY=<name>`` path runs the same orchestrator
-from the shell for developers and deployment operators. It drives the host
-publish path in-lock via the dataset child skill.
+The command-line ``make pipeline`` path is for developers and deployment
+operators who need the lower-level host publish path used by the dataset
+child skill. It is not the complete plugin workflow.
 
 Expected result:
 

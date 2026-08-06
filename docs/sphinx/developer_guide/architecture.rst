@@ -23,26 +23,21 @@ through the ``dataset-to-llm-source`` child skill. The plugin may delegate
 independent raw-file sets to subagents, but raw dataset row 2+ values stay
 inside trusted repo code paths.
 
-``scripts/pipeline/host_pipeline.py`` is the host execution primitive for the
-data dictionary and the lock-aware extraction/scrub/publish path that the
-``dataset-to-llm-source`` supervisor invokes inside the orchestrator's locked
-run. ``main.py`` is only the AI-assistant launcher (``--chat`` / ``--web`` /
-``--version``); it is not a pipeline entry point and not the top-level LLM
-workflow description for full study preparation.
+``main.py`` remains the host execution primitive for the data dictionary
+and the lock-aware extraction/scrub/publish path that the dataset skill
+invokes. It is no longer the top-level LLM workflow description for full
+study preparation.
 
 The current LLM-visible outputs are scrubbed dataset files under
 ``llm_source/dataset_schema/files/``, dictionary mappings under
 ``llm_source/dictionary_mapping/jsonl/``, and plugin-produced Source Truth
-joined query views under ``llm_source/SoT/<pair>/joined/`` — the only SoT
-artifact promoted to ``llm_source/`` (Note 3). The construction-stage
-``pdf/<form>_policy.yaml`` and ``dataset/<form>_schema.json`` files live in
-the audit zone under ``audit/SoT_construction/<pair>/`` (fenced from the LLM
-by ``deny_if_audit_zone``). Older ``llm_source/source_truth/`` policy files
-are accepted by the assistant as a compatibility layout only.
+sets under ``llm_source/SoT/<pair>/{pdf,dataset,joined}/``. Older
+``llm_source/source_truth/`` policy files are accepted by the assistant as a
+compatibility layout only.
 
 **World 2 — AI Assistant** (``scripts/ai_assistant/``).
 
-A LangGraph ReAct agent with 11 tools that reads the published
+A LangGraph ReAct agent with 10 tools that reads the published
 llm_source bundle and answers researcher queries. Provider-agnostic via
 ``init_chat_model``; runs against Anthropic / OpenAI / Google /
 NVIDIA / Ollama. Never accesses raw data. Three independent gates
@@ -124,18 +119,17 @@ source-truth build steps run.
 Pipeline Modules
 ----------------
 
-The plugin workflow is the active study-preparation coordinator
-(``make study STUDY=<name>`` — 10 phases):
+The plugin workflow is the active study-preparation coordinator:
 
-1. ``dataset-deduplication`` (phase 2 — raw-file tiers, Note 4).
-2. ``sot-lean-generator`` ∥ ``phi-classification`` ∥ extraction (phase 3).
-3. ``phi-scrubbing`` → audit verification → PHI guard gate → promote →
-   snapshot (phases 4–10 via the publish supervisor and orchestrator).
+1. ``excel-duplicate-handler`` runs once per study.
+2. ``sot-lean-generator`` runs per raw-file set and may fan out across
+   independent sets.
+3. ``dataset-to-llm-source`` publishes PHI-safe dataset JSONL through the
+   host repo's lock-aware CLI and verifier.
 
-The data dictionary is intentionally outside the plugin. It is published by
-the host engine (``scripts/pipeline/host_pipeline.py:publish_dictionary_leg``
-via ``scripts.extraction.load_dictionary``) into
-``llm_source/dictionary_mapping/jsonl/``.
+The data dictionary is intentionally outside the plugin. It stays in
+``main.py`` / ``scripts.extraction.load_dictionary`` and publishes dictionary
+mapping JSONL into ``llm_source/dictionary_mapping/jsonl/``.
 
 Dictionary Loader
 ~~~~~~~~~~~~~~~~~
@@ -167,10 +161,8 @@ PDF Extraction (Historical)
 The ``scripts.extraction.pdf_pipeline`` and
 ``scripts.extraction.extract_pdf_data`` paths are historical. They are
 preserved in ADRs and old test context, but they are not the active LLM
-source flow. PDF-derived evidence is captured in reviewed Source Truth
-policy YAMLs under ``audit/SoT_construction/<pair>/pdf/`` (audit zone) and
-reaches the LLM only through the derived joined query view under
-``llm_source/SoT/<pair>/joined/``.
+source flow. PDF-derived evidence now enters through reviewed Source
+Truth policy YAMLs under ``llm_source/SoT/<pair>/pdf/``.
 
 PHI Scrub
 ~~~~~~~~~
@@ -181,8 +173,8 @@ PHI Scrub
 * **Reads/writes:** ``tmp/{STUDY}/datasets/*.jsonl`` in place
 * **Audit:** ``output/{STUDY}/audit/phi_scrub_report.json``
   (counts-only)
-* **Nine action classes:** keep / birthdate / drop / cap /
-  generalize / band / suppress_small_cell / date_jitter / hmac_pseudonymize.
+* **Eight action classes:** keep / birthdate / drop / cap /
+  generalize / suppress_small_cell / date_jitter / hmac_pseudonymize.
   Configured in ``scripts/security/phi_scrub.yaml`` (~200
   Indo-VAP-calibrated rules).
 * **HMAC key:** ``~/.config/report_ai_portal/phi_key`` (mode 0600,
@@ -191,14 +183,12 @@ PHI Scrub
 Dataset Cleanup
 ~~~~~~~~~~~~~~~
 
-* **Module:** :func:`scripts.extraction.dataset_cleanup.emit_dataset_cleanup_audit_envelope`
+* **Module:** :func:`scripts.extraction.dataset_cleanup.clean_trio_datasets`
 * **Step:** Step 1.7
-* **Audit:** ``output/{STUDY}/audit/dataset_cleanup_report.json`` plus the
-  per-dataset ``dataset_cleanup_ledger.as_written.json``
-* Audit-envelope-only (Note 18): writes the dataset audit and ``as_written``
-  cleanup ledgers from the extraction column-drop events. It no longer removes
-  rows or merges duplicate records — raw-file deduplication runs earlier at
-  orchestrator phase 2.
+* **Reads/writes:** ``tmp/{STUDY}/datasets/*.jsonl`` in place
+* **Audit:** ``output/{STUDY}/audit/dataset_cleanup_report.json``
+* Removes junk rows, merges duplicate records, propagates
+  Step 1's drop events into the cleanup record.
 
 Cleanup Propagation
 ~~~~~~~~~~~~~~~~~~~
@@ -214,7 +204,7 @@ Cleanup Propagation
 Publish
 ~~~~~~~
 
-* **Function:** ``_publish_staging`` in ``scripts/pipeline/host_pipeline.py``
+* **Function:** ``_publish_staging`` in ``main.py``
 * **Step:** Step 2
 * **Atomic per-leg rename** ``tmp/{STUDY}/{leg}/`` →
   ``output/{STUDY}/llm_source/{leg}/``. Same-filesystem rename =
@@ -230,13 +220,12 @@ Source-Truth Set Creation (sot-lean-generator skill)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SoT production is the plugin's PDF/header phase. It produces one
-Source Truth set per raw-file set. The **LLM-facing** artifact is
-``llm_source/SoT/<pair>/joined/<form>_joined_query_view.yaml`` (Note 3) —
-the only SoT file promoted to ``llm_source/``. The
-``pdf/<form>_policy.yaml`` and ``dataset/<form>_schema.json`` files are
-construction materials used to build the joined view; they are written to
-the audit zone under ``audit/SoT_construction/<pair>/`` and never enter
-``llm_source/``.
+Source Truth set per raw-file set:
+``llm_source/SoT/<pair>/pdf/<form>_policy.yaml``,
+``llm_source/SoT/<pair>/dataset/<form>_schema.json``, and
+``llm_source/SoT/<pair>/joined/<form>_joined_query_view.yaml``. The phase
+mixes deterministic helpers with LLM reasoning and can run in parallel
+across independent ready raw-file sets.
 
 **Stage 0 — Source pack (deterministic)**
 
@@ -288,11 +277,10 @@ shell differs.
 
 **Stage 5 — Promote (deterministic)**
 
-* Writes the verified policy YAML and per-form dataset schema into the
-  audit zone under ``output/{STUDY}/audit/SoT_construction/<pair>/{pdf,dataset}/``
-  (fenced from the LLM by ``deny_if_audit_zone``).
-* Builds the derived joined query view — the sole LLM-facing SoT artifact —
-  under ``output/{STUDY}/llm_source/SoT/<pair>/joined/``.
+* Copies the verified policy YAML and per-form dataset schema into
+  ``output/{STUDY}/llm_source/SoT/<pair>/{pdf,dataset}/``.
+* Builds the derived joined query view under
+  ``output/{STUDY}/llm_source/SoT/<pair>/joined/``.
 * The ``SoT/<pair>/`` set is the canonical plugin output for
   variable metadata. Older ``source_truth/`` files are compatibility-only.
 
@@ -350,7 +338,7 @@ AI Assistant Agent Layer
   the only module that constructs an LLM client. Provider keys
   flow in via the explicit ``api_key=`` kwarg, sourced from the
   KeyStore (no ``os.environ`` lookup).
-* :mod:`scripts.ai_assistant.agent_tools` — 11 ``@tool``-decorated
+* :mod:`scripts.ai_assistant.agent_tools` — 12 ``@tool``-decorated
   functions. ``ALL_TOOLS`` is the canonical list; the
   doc-freshness lint ties prose docs to this list.
 * :mod:`scripts.ai_assistant.agent_prompts` — system prompt with
@@ -364,6 +352,15 @@ AI Assistant Agent Layer
   validator (the canonical chokepoint for every tool's file I/O).
 * :mod:`scripts.ai_assistant.keystore` — in-memory API-key registry.
 * :mod:`scripts.ai_assistant.tool_cache` — per-tool memoisation.
+
+Analytical Engine
+~~~~~~~~~~~~~~~~~
+
+:mod:`scripts.ai_assistant.analytical_engine` — deterministic
+epidemiology helpers (logistic regression, survival, descriptive
+stats) called from the ``run_python_analysis`` tool. Pre-loaded
+DataFrames come from ``config.TRIO_DATASETS_DIR`` only (GREEN
+zone).
 
 Subprocess Sandbox
 ~~~~~~~~~~~~~~~~~~
@@ -426,19 +423,18 @@ End-to-End Runtime Flow
 
 .. code-block:: text
 
-   report-ai-study-pipeline orchestrator (make study)
+   report-ai-study-pipeline plugin
       |
-      +-- P2 dataset-deduplication (raw files; headers + row counts only)
+      +-- excel-duplicate-handler (once per study)
       |
-      +-- P3 sot-lean-generator ∥ phi-classification ∥ extraction
-      |      -> joined views under output/{STUDY}/llm_source/SoT/<pair>/joined/
+      +-- sot-lean-generator (per ready raw-file set; PDF + row-1 headers only)
+      |      -> output/{STUDY_NAME}/llm_source/SoT/<pair>/{pdf,dataset,joined}/
       |
-      +-- P4–P10 publish supervisor (dataset-to-llm-source + host_pipeline)
-             data/raw/{STUDY}/datasets/ -> tmp/{STUDY}/datasets/
-             -> phi_scrub.run_scrub -> promote
-             -> output/{STUDY}/llm_source/dataset_schema/files/
-             -> output/{STUDY}/audit/{lineage,ledgers,reports}
-             -> snapshot under output/{STUDY}/snapshots/
+      +-- dataset-to-llm-source (trusted host publish path)
+             data/raw/{STUDY_NAME}/datasets/ -> tmp/{STUDY_NAME}/datasets/
+             -> phi_scrub.run_scrub -> dataset_cleanup
+             -> output/{STUDY_NAME}/llm_source/dataset_schema/files/
+             -> output/{STUDY_NAME}/audit/{lineage,ledgers,reports}
       |
       +-- host dictionary loader (outside the plugin)
              data/raw/{STUDY_NAME}/data_dictionary/
@@ -473,8 +469,9 @@ Expected processed tree:
    │   ├── dataset_schema/files/*.jsonl  # PHI-scrubbed
    │   ├── dictionary_mapping/jsonl/**/*.jsonl
    │   └── SoT/<pair>/
-   │       └── joined/*_joined_query_view.yaml   # LLM read zone (Note 3)
-   │       # pdf/ and dataset/ may exist as intermediate construction artifacts
+   │       ├── pdf/*_policy.yaml
+   │       ├── dataset/*_schema.json
+   │       └── joined/*_joined_query_view.yaml
    ├── audit/                        # AUDIT — counts only; LLM hard-rejected
    │   ├── lineage_manifest.json
    │   ├── phi_scrub_report.json
@@ -544,8 +541,7 @@ Design Principles
 Modularity
 ~~~~~~~~~~
 
-Each pipeline step is a function in
-``scripts/pipeline/host_pipeline.py`` that imports its
+Each pipeline step is a function in ``main.py`` that imports its
 operative module from ``scripts/``. The step + its module are the
 unit of audit; you can verify Step 1.6 by reading
 :func:`scripts.security.phi_scrub.run_scrub` and

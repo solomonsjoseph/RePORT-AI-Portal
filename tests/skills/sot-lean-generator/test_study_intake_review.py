@@ -2,24 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from scripts.source_truth import study_intake
-from scripts.source_truth.study_intake import _find_dataset
-
-
-@pytest.fixture(autouse=True)
-def _config_dir_to_raw(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """Point config.CONFIG_DIR so _forms_manifest.yaml resolves under study_dir.
-
-    ``_find_dataset`` → ``_rejected_dataset_names`` → ``check_forms_manifest``
-    now reads the manifest from ``config.study_config_path(...)`` =
-    ``CONFIG_DIR/<study>/_forms_manifest.yaml`` (Note 11). Tests use
-    ``study_dir = tmp_path / "data" / "raw" / <name>``, so pointing CONFIG_DIR at
-    ``tmp_path / "data" / "raw"`` makes the manifest resolve where the tests
-    write it (study_dir / _forms_manifest.yaml).
-    """
-    monkeypatch.setattr("config.CONFIG_DIR", tmp_path / "data" / "raw", raising=False)
 
 
 def test_missing_pdf_is_routed_to_sot_review(tmp_path: Path, capsys) -> None:
@@ -29,19 +12,11 @@ def test_missing_pdf_is_routed_to_sot_review(tmp_path: Path, capsys) -> None:
 
     rc = study_intake.main(["--study", "Study", "--form", "1_Form", "--repo-root", str(tmp_path)])
 
-    report = (
-        tmp_path
-        / "output"
-        / "Study"
-        / "audit"
-        / "human_review"
-        / "1_Form"
-        / "review_report.md"
-    )
+    report = tmp_path / "output" / "Study" / "audit" / "Sot_review" / "1_Form" / "review_report.md"
     assert rc == 0
     assert report.is_file()
     text = report.read_text(encoding="utf-8")
-    assert "# Source Truth Human Review" in text
+    assert "# Sot_review: Source Truth Human Review" in text
     assert "missing_pdf" in text
     assert (
         "no Source Truth policy, dataset schema, joined view, or source pack was generated" in text
@@ -56,15 +31,7 @@ def test_missing_dataset_is_routed_to_sot_review(tmp_path: Path) -> None:
 
     rc = study_intake.main(["--study", "Study", "--form", "1_Form", "--repo-root", str(tmp_path)])
 
-    report = (
-        tmp_path
-        / "output"
-        / "Study"
-        / "audit"
-        / "human_review"
-        / "1_Form"
-        / "review_report.md"
-    )
+    report = tmp_path / "output" / "Study" / "audit" / "Sot_review" / "1_Form" / "review_report.md"
     assert rc == 0
     assert report.is_file()
     text = report.read_text(encoding="utf-8")
@@ -82,68 +49,10 @@ def test_ambiguous_dataset_is_routed_to_sot_review(tmp_path: Path) -> None:
 
     rc = study_intake.main(["--study", "Study", "--form", "1_Form", "--repo-root", str(tmp_path)])
 
-    report = (
-        tmp_path
-        / "output"
-        / "Study"
-        / "audit"
-        / "human_review"
-        / "1_Form"
-        / "review_report.md"
-    )
+    report = tmp_path / "output" / "Study" / "audit" / "Sot_review" / "1_Form" / "review_report.md"
     assert rc == 0
     assert report.is_file()
     text = report.read_text(encoding="utf-8")
     assert "ambiguous_dataset" in text
     assert "1_A.xlsx" in text
     assert "1_B.xlsx" in text
-
-
-# ---------------------------------------------------------------------------
-# Regression tests: _find_dataset must honour _forms_manifest.yaml reject list
-# ---------------------------------------------------------------------------
-
-_MANIFEST_WITH_REJECT = """\
-required:
-  - 14_Case_Control.xlsx
-optional: []
-reject:
-  - 14_CaseControl.xlsx
-"""
-
-
-def test_find_dataset_skips_rejected_exact_match(tmp_path: Path) -> None:
-    """Exact-name match returns the kept file, not the manifest-rejected duplicate stub."""
-    study_dir = tmp_path / "data" / "raw" / "TestStudy"
-    ds_dir = study_dir / "datasets"
-    ds_dir.mkdir(parents=True)
-
-    # Both the kept file and the rejected stub exist on disk.
-    (ds_dir / "14_Case_Control.xlsx").write_bytes(b"")
-    (ds_dir / "14_CaseControl.xlsx").write_bytes(b"")
-
-    # Manifest rejects the stub and requires the real file.
-    (study_dir / "_forms_manifest.yaml").write_text(_MANIFEST_WITH_REJECT, encoding="utf-8")
-
-    result = _find_dataset(study_dir, "14_CaseControl")
-
-    assert result is not None
-    assert result.name == "14_Case_Control.xlsx", (
-        f"Expected the kept dataset 14_Case_Control.xlsx but got {result.name!r}; "
-        "rejected stub 14_CaseControl.xlsx must not be returned"
-    )
-
-
-def test_find_dataset_degrades_gracefully_without_manifest(tmp_path: Path) -> None:
-    """When no _forms_manifest.yaml is present, _find_dataset falls back to current behaviour."""
-    study_dir = tmp_path / "data" / "raw" / "TestStudy"
-    ds_dir = study_dir / "datasets"
-    ds_dir.mkdir(parents=True)
-
-    # Only one file; no manifest.  Exact-match should still resolve it.
-    (ds_dir / "5_Demographics.xlsx").write_bytes(b"")
-
-    result = _find_dataset(study_dir, "5_Demographics")
-
-    assert result is not None
-    assert result.name == "5_Demographics.xlsx"

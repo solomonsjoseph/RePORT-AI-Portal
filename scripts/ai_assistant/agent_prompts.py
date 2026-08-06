@@ -17,6 +17,7 @@ from __future__ import annotations
 # Verbatim deflection text for audit/PHI-handling questions surfaced through
 # the normal chat path. Pinned as a constant so tests, retrieval, and tool
 # descriptions all use the same exact wording — see issue #73 / HITL #83.
+# (Inlined from scripts.source_truth.catalog — Task 6a decoupling.)
 AUDIT_ONLY_NOTE = (
     "Note: PHI handling decisions are recorded in the study audit ledger "
     "and aren't exposed through normal chat. For audit questions, please "
@@ -122,17 +123,14 @@ For counts, distributions, regressions, and risk-factor analyses:
 * ``list_available_datasets`` — enumerate available PHI-scrubbed datasets.
 
 **Resolving variables before you analyse.** Do not invent column names. For \
-cohort risk-factor analyses (recurrence / incident-TB predictors), call \
-``get_study_variable_map`` first — it returns the curated ground-truth map \
-giving, per cohort, each concept's exact dataset column, value encodings / \
-binary maps, the BMI formula + Chumlea height-estimation, malnutrition \
-threshold, the SUBJID join key, and each outcome's positive-label set and \
-aggregation verb. Pass ``cohort="cohort_a"`` / ``cohort="cohort_b"`` to \
-narrow the result, or a ``concept=`` keyword (e.g. ``"diabetes"``, \
-``"recurrence"``) to fetch a single concept. Build the \
-``run_python_analysis`` code directly from those bindings. \
+cohort risk-factor analyses (recurrence / incident-TB predictors), read \
+``study_metadata/study_variable_map.yaml`` first with \
+``read_llm_source_file`` — it is the curated ground-truth map giving, per \
+cohort, each concept's exact dataset column, value encodings / binary maps, \
+the BMI + malnutrition derivations, the SUBJID joins, and each outcome's \
+positive-label set. Build the ``run_python_analysis`` code from that map. \
 For anything not in the map, search the Source-Truth tree with \
-``search_llm_source`` and read the matching joined query view with \
+``search_llm_source`` and read the matching policy YAML with \
 ``read_llm_source_file``; ``query_dataset`` / ``get_dataset_stats`` confirm \
 exact column names.
 
@@ -143,22 +141,22 @@ relapse vs treatment failure, the household-contact definition, follow-up \
 schedule and specimens, drug-susceptibility panels and timing — are answered \
 from the published Source-Truth tree, not from a canned report:
 
-* ``list_llm_source`` — browse the ``llm_source/`` tree (``SoT/<pair>/joined/`` \
-  query views, ``dataset_schema/``, ``dictionary_mapping/``).
+* ``list_llm_source`` — browse the ``llm_source/`` tree (``SoT/<form>/`` \
+  policy YAMLs, ``dataset_schema/``, ``dictionary_mapping/``).
 * ``search_llm_source`` — full-text search across that tree for the terms in \
   the question (e.g. *"household contact same dwelling"*, *"relapse"*, \
   *"inclusion"*). Returns ``path:line: snippet`` hits.
-* ``read_llm_source_file`` — read a specific joined query view in full once \
-  search has located it.
+* ``read_llm_source_file`` — read a specific policy YAML in full once search \
+  has located it.
 
 Ground every protocol answer in what these tools return. If the tree has no \
 matching text, say so plainly rather than inventing a definition.
 
 When you need to back a variable claim with a verifiable source location, \
 call ``cite_source(form_id, field_id)``. It returns a real \
-``file:line:snippet`` from the indexed SoT joined query views and schema \
-JSONLs; never fabricate a citation, and surface ``"no citation"`` plainly if \
-the tool says so.
+``file:line:snippet`` from the indexed policy YAMLs and schema JSONLs; \
+never fabricate a citation, and surface ``"no citation"`` plainly if the \
+tool says so.
 
 ---
 

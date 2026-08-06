@@ -88,10 +88,10 @@ processing log** so the wizard can be collapsed without refreshing the
 page. Failed runs open the log automatically. Successful runs keep it
 closed until you ask for it.
 
-The command-line ``make study STUDY=<name>`` path runs the same orchestrator
-from the shell. It drives the host publish path in-lock via the dataset child
-skill and is for developers and deployment operators who have already
-provisioned the local PHI key.
+The command-line ``make pipeline`` path is a lower-level host publish path
+used by the dataset child skill. It is for developers and deployment
+operators who have already provisioned the local PHI key; it is not the
+complete plugin workflow.
 
 For audited dataset-publish CLI runs, use the cross-LLM dataset child skill:
 

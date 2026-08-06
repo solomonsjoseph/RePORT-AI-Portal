@@ -1,15 +1,10 @@
 name: report-ai-study-pipeline
-version: 0.2.0
+version: 0.1.0
 kind: llm-plugin-pack
 description: >
-  Platform-neutral RePORT-AI study preparation plugin pack. The plugin IS the
-  pipeline: a 10-phase orchestrator skill governs the raw-to-llm_source publish
-  path end to end — dictionary extraction, deduplication, header extraction,
-  Source Truth generation, PHI classification + scrubbing, audit verification,
-  the Presidio + residual scan PHI guard gate (pyCANON deferred at publish),
-  promotion, staging destruction, the
-  cleanup verifier, and the immutable snapshot. PHI row values never reach any
-  LLM; skills read column NAMES and metadata only.
+  Platform-neutral RePORT-AI study preparation plugin pack. It runs duplicate
+  dataset handling first, Source Truth policy generation second, and PHI-safe
+  dataset-to-LLM-source publishing last.
 license: MIT
 platforms:
   primary: generic-llm
@@ -19,191 +14,31 @@ platforms:
     - chatgpt
     - cursor
     - gemini
-
-# ── Entry point ──────────────────────────────────────────────────────────────
-# The orchestrator skill is the single entry point. Its run.py is a 10-phase
-# state machine that holds the per-study pipeline lock for the whole run and
-# invokes the pipeline skills as file-path subprocesses (hyphenated skill dirs
-# are not importable as Python modules — D3). Operators launch it via
-# `make study STUDY=<name>` (which exports STUDY_NAME and delegates here).
 entrypoint:
   skill: report-ai-study-pipeline
   path: skills/report-ai-study-pipeline/SKILL.md
-  run: skills/report-ai-study-pipeline/scripts/run.py
-  command: make study STUDY=<name>
-
-# ── Orchestrator topology ────────────────────────────────────────────────────
-# The conceptual 10 runtime phases map onto the supervisory steps run.py drives.
-# Conceptual phases 3–7 (SoT/classify/extract barrier, scrub, inline verifier,
-# PHI guard gate + promotion, cleanup/destroy) are bundled inside one locked
-# `dataset-to-llm-source run` subprocess — not separate orchestrator subprocesses.
-# Call chain: run.py → dataset-to-llm-source/scripts/extract_to_llm_source.py
-# `run` → scripts.pipeline.host_pipeline (extract) with phi-classification gate,
-# phi_scrub, inline 17-assertion verify, phi_guard_gate (Presidio + residual scan;
-# pyCANON deferred at publish), atomic promotion, cleanup propagation, staging
-# destruction. See orchestrator SKILL.md for the runtime↔conceptual phase map.
-orchestrator:
-  skill: report-ai-study-pipeline
-  lock: per_study_exclusive_whole_run
-  # run_state.json is schema 2: phase records + a value-free per-form state map
-  # (not_started -> running -> complete | held_for_review | re_running |
-  # failed_pipeline_level), each form carrying a per-form input fingerprint
-  # (Note 16). On restart, preflight reads any prior in_progress run_state and
-  # writes a value-free run_recovery.json (crash-recovery readback).
-  # V1→V2 compatibility: missing 'forms' key defaults to {} (fail-soft upgrade).
-  state_file: output/<STUDY>/runs/<RUN_ID>/run_state.json
-  state_schema: 2
-  recovery_file: output/<STUDY>/runs/<RUN_ID>/run_recovery.json
-  phases:
-    - phase: 0
-      name: preflight
-      action: Config validation ∥ rulebook fetch/drift · input-fingerprint redundant-run check · dir pre-creation · acquire lock
-      skills: []
-    - phase: 1
-      name: dictionary
-      action: Dictionary extraction (column NAMES only; ∥ rulebook in P0)
-      skills: [dictionary-to-llm-source]
-    - phase: 2
-      name: deduplication
-      action: Per-form duplicate detection (scrub-first; provably-safe merges only; internal header reads)
-      skills: [dataset-deduplication]
-    - phase: 2b
-      name: headers
-      action: Shared header extraction on deduplicated file set (column NAMES only; gates classification)
-      skills: [header-extraction]
-    - phase: 3
-      name: sot-classify-extract
-      action: Source Truth ∥ PHI classification ∥ full data extraction
-      skills: [sot-lean-generator, phi-classification, dataset-to-llm-source]
-    - phase: 3b
-      name: cross-form-barrier
-      action: Cross-form PHI-classification consistency barrier
-      skills: [phi-classification]
-    - phase: 4
-      name: phi-scrubbing
-      action: Per-form PHI scrub pipeline (fail-closed; date jitter + pseudonymize + drop/generalize/band)
-      skills: [phi-scrubbing]
-    - phase: 5
-      name: audit-verification
-      action: 17-assertion audit verification
-      skills: [audit-verification]
-    - phase: 6
-      name: guard-gate-promote
-      action: PHI guard gate (Presidio + residual scan, OR-combined; pyCANON deferred at publish) → atomic promotion to llm_source/
-      skills: [dataset-to-llm-source]
-    - phase: 7
-      name: cleanup-destroy
-      action: Cleanup propagation ∥ staging destruction + attestation ∥ artifact cleanup ∥ key zero
-      skills: [dataset-to-llm-source]
-    - phase: 8
-      name: cleanup-verifier
-      action: Cleanup verifier over the published tree + cleanup ledgers (orchestrator module)
-      skills: []
-    - phase: 9
-      name: full-verifier
-      action: Idempotent 17-assertion re-verify
-      skills: [audit-verification]
-    - phase: 10
-      name: finalize
-      action: Snapshot commit → current pointer → status.json → lock release (orchestrator module)
-      skills: []
-
-# ── Skills ───────────────────────────────────────────────────────────────────
-# Each pipeline skill has scripts/run.py (the subprocess contract) and a SKILL.md.
-# phi-rulebook is a shared-module skill consumed in phase 0 + by phi-classification
-# (not a DAG node). study-setup is interactive and NOT an orchestrator phase.
-skills:
-  - skill: header-extraction
-    path: skills/header-extraction/SKILL.md
-    run: skills/header-extraction/scripts/run.py
-    role: dag
-    scope: raw_file_set
-    parallel: true
-    invocation: subprocess
-    purpose: Extract row-1 column NAMES only from raw datasets; gates PHI classification.
-  - skill: dictionary-to-llm-source
-    path: skills/dictionary-to-llm-source/SKILL.md
-    run: skills/dictionary-to-llm-source/scripts/run.py
-    role: dag
+workflow:
+  - order: 1
+    skill: excel-duplicate-handler
+    path: skills/excel-duplicate-handler/SKILL.md
     scope: study
-    parallel: true
-    invocation: subprocess
-    purpose: Extract + publish the study data dictionary mapping (no PHI; URLs masked at publish).
-  - skill: dataset-deduplication
-    path: skills/dataset-deduplication/SKILL.md
-    run: skills/dataset-deduplication/scripts/run.py
-    role: dag
-    scope: raw_file_set
-    parallel: true
-    invocation: subprocess
-    purpose: Scrub-first duplicate-file detection; merge only provably-safe duplicates, else hold for review.
-  - skill: sot-lean-generator
+    execution: once_per_study
+    parallel: false
+    purpose: Resolve duplicate workbook/file/schema issues once before Source Truth or dataset publishing.
+  - order: 2
+    skill: sot-lean-generator
     path: skills/sot-lean-generator/SKILL.md
-    run: skills/sot-lean-generator/scripts/run.py
-    role: dag
     scope: raw_file_set
+    execution: single_or_parallel_per_set
     parallel: true
-    invocation: subprocess
-    purpose: Build/audit Source Truth policy YAML from printed PDFs + row-1 dataset headers only.
-  - skill: phi-classification
-    path: skills/phi-classification/SKILL.md
-    run: skills/phi-classification/scripts/run.py
-    role: dag
-    scope: raw_file_set
-    parallel: true
-    invocation: in_process_supervised
-    purpose: Deterministic jurisdiction PHI classification from headers + SoT signals (no row values).
-  - skill: phi-scrubbing
-    path: skills/phi-scrubbing/SKILL.md
-    run: skills/phi-scrubbing/scripts/run.py
-    role: dag
-    scope: study
-    parallel: false
-    invocation: in_process_supervised
-    purpose: Fail-closed per-form PHI scrub (date jitter, pseudonymize, drop/generalize/band, quarantine).
-  - skill: dataset-to-llm-source
+    purpose: Build or audit Source Truth policy YAML from printed PDFs and row-1 dataset headers only.
+  - order: 3
+    skill: dataset-to-llm-source
     path: skills/dataset-to-llm-source/SKILL.md
-    run: skills/dataset-to-llm-source/scripts/run.py
-    role: dag
-    scope: study
+    scope: raw_file_set_or_lock_aware_study_run
+    execution: single_or_controlled_parallel_per_set
     parallel: lock_aware_only
-    invocation: subprocess
-    purpose: Publish supervisor — classify → extract → scrub → dedup → PHI guard gate → promote → destroy → inline verify → snapshot.
-  - skill: audit-verification
-    path: skills/audit-verification/SKILL.md
-    run: skills/audit-verification/scripts/run.py
-    role: dag
-    scope: study
-    parallel: false
-    invocation: subprocess
-    purpose: Run the 17-assertion verifier; idempotent re-verify in phase 9.
-  - skill: phi-rulebook
-    path: skills/phi-rulebook/SKILL.md
-    role: shared_module
-    scope: study
-    parallel: false
-    invocation: native_module
-    purpose: Versioned offline PHI rulebook cache + drift detection; consumed in phase 0 and by phi-classification.
-  - skill: raw-data-intake
-    path: skills/raw-data-intake/SKILL.md
-    run: skills/raw-data-intake/scripts/run.py
-    role: interactive
-    scope: raw_delivery
-    parallel: false
-    invocation: subprocess
-    purpose: >
-      Skill 0 — standalone prep run BEFORE the 10-phase orchestrator. Sorts an
-      unorganized delivery into data/raw/<study>/ and drafts the forms manifest.
-      Filename + extension only (GR-1); idempotent; never a DAG phase.
-  - skill: study-setup
-    path: skills/study-setup/SKILL.md
-    run: skills/study-setup/scripts/run.py
-    role: interactive
-    scope: study
-    parallel: false
-    invocation: subprocess
-    purpose: Interactive study scaffolding (manifest/privacy config, PHI key bootstrap). NOT an orchestrator phase.
-
+    purpose: Publish verified PHI-safe llm_source dataset JSONL after duplicate and Source Truth work is settled.
 raw_file_set:
   definition: >
     One canonical form/work unit after duplicate preflight, containing the
@@ -216,15 +51,54 @@ raw_file_set:
   inputs:
     - data/raw/<STUDY>/datasets/<FORM>.xlsx or .csv
     - data/raw/<STUDY>/annotated_pdfs/<FORM>.pdf when Source Truth is required
-    - config/<STUDY>/_forms_manifest.yaml
-    - config/<STUDY>/_study_privacy.yaml
+    - data/raw/<STUDY>/_forms_manifest.yaml
+    - data/raw/<STUDY>/_study_privacy.yaml
   statuses:
     - ready
     - held_duplicate_review
     - held_sot_review
     - held_publish_review
     - complete
-
+execution_model:
+  modes:
+    single_set:
+      description: Run one raw-file set through Source Truth and dataset publishing after the study duplicate preflight is complete.
+      phases:
+        - duplicate_preflight_once_per_study
+        - sot_for_one_set
+        - dataset_publish_for_one_set
+        - verify_for_one_set_or_study
+    batch_parallel:
+      description: Run duplicate preflight once, then fan out independent raw-file sets for safe Source Truth and controlled dataset publishing.
+      phases:
+        - duplicate_preflight_once_per_study
+        - discover_ready_raw_file_sets
+        - parallel_sot_for_ready_sets
+        - controlled_dataset_publish_for_ready_sets
+        - aggregate_verification_and_held_set_report
+  duplicate_preflight:
+    scope: study
+    run_count: once_per_study
+    parallel_allowed: false
+    must_complete_before:
+      - sot
+      - dataset_publish
+    held_behavior: Hold only affected sets when review is required; continue only with sets classified ready.
+  sot:
+    scope: raw_file_set
+    parallel_allowed: true
+    safety_rules:
+      - Use one exact form id per set when form codes are ambiguous.
+      - Do not read dataset row 2+ values.
+      - Stop only the affected set when PDF/dataset pairing requires human review.
+  dataset_publish:
+    scope: raw_file_set_or_study
+    parallel_allowed: lock_aware_only
+    safety_rules:
+      - Use the host repo's lock-aware extraction/publish CLI.
+      - Never force concurrent writes into the same study output directory.
+      - Queue or serialize publish jobs when the host repo lock is held.
+      - Verify published artifacts before marking a set complete.
 privacy_boundary:
   dataset_values: trusted_pipeline_only
   agent_allowed_inputs:
@@ -235,29 +109,21 @@ privacy_boundary:
     - row-1 headers through approved paths
     - printed PDF/page renders
     - audit reports and verifier outputs that contain metadata only
-
 host_repo_contract:
   required_paths:
     - data/raw/<STUDY>/
     - data/raw/<STUDY>/data_dictionary/
-    - config/<STUDY>/_forms_manifest.yaml
-    - config/<STUDY>/_study_privacy.yaml
-    - config/_defaults/phi_scrub.yaml
-    - plugins/report-ai-study-pipeline/skills/report-ai-study-pipeline/scripts/run.py
-    - plugins/report-ai-study-pipeline/skills/dataset-to-llm-source/scripts/extract_to_llm_source.py
-    - plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/study_intake.py
-    - plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/generate_lean_outputs.py
-    - scripts/pipeline/host_pipeline.py
+    - scripts/skills/extract_to_llm_source.py
+    - scripts/source_truth/study_intake.py
+    - scripts/source_truth/generate_lean_outputs.py
+    - scripts/security/phi_scrub.yaml
   expected_outputs:
-    - output/<STUDY>/llm_source/SoT/<PAIR>/joined/<FORM>_joined_query_view.yaml
+    - output/<STUDY>/llm_source/SoT/<PAIR>/pdf/<FORM>_policy.yaml
     - output/<STUDY>/llm_source/dataset_schema/files/<FORM>.jsonl
     - output/<STUDY>/llm_source/dictionary_mapping/jsonl/**/*.jsonl when raw dictionary files exist
-    - output/<STUDY>/snapshots/<SNAPSHOT_ID>/ (immutable clean-pass snapshot)
-    - output/<STUDY>/audit/lineage_manifest.json
   optional_paths:
     - .codex-plugin/plugin.json
     - .agents/plugins/marketplace.json
-
 adapters:
   generic_llm:
     agent_metadata: agents/llm.yaml

@@ -33,6 +33,7 @@ summarized in `docs/sphinx/irb_auditor/conformance.rst`.
 from __future__ import annotations
 
 import functools
+import logging
 import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
@@ -45,9 +46,8 @@ from scripts.security.kanon_gate import (
     l_diversity_check,
 )
 from scripts.security.phi_gate import PHIGateResult, phi_gate_check
-from scripts.utils.logging_system import get_logger
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "PHISafetyError",
@@ -86,15 +86,7 @@ def guard_text(text: str, *, tool_name: str = "<unknown>") -> str:
     if not isinstance(text, str):
         text = str(text)
     scan_text = _RPLN_ARTIFACT_MARKER_RE.sub("<RPLN_ARTIFACT>", text)
-    try:
-        result: PHIGateResult = phi_gate_check(scan_text)
-    except Exception:
-        # Fail-closed: if the gate itself errors, NEVER return the unscanned
-        # tool output — redact it. guard_text is public API (exported in
-        # __all__); containing the gate exception here makes every caller
-        # fail-closed by construction rather than by caller discipline.
-        logger.error("phi_safe: gate raised on tool %s — failing closed", tool_name)
-        return _REDACTED_MESSAGE.format(findings="<gate-error>")
+    result: PHIGateResult = phi_gate_check(scan_text)
     if result.blocked:
         logger.warning(
             "phi_safe: tool %s response blocked — findings=%s",
@@ -133,9 +125,10 @@ def phi_safe_return(fn: F) -> F:
     @functools.wraps(fn)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         tool_name = getattr(fn, "__name__", "<anonymous>")
-        # A tool-function exception is allowed to propagate (LangChain reports
-        # the tool error); only the *return value* is PHI-gated, in guard_text.
-        result = fn(*args, **kwargs)
+        try:
+            result = fn(*args, **kwargs)
+        except Exception:
+            raise
         return guard_text(result, tool_name=tool_name)
 
     return cast(F, wrapper)
@@ -387,14 +380,9 @@ def sanitise_untrusted_snippet(
 def redact_phi_in_text(text: str) -> str:
     """Replace PHI-shaped substrings with category tags, returning a safe string.
 
-    Shares the blocking + warn pattern *catalog* with
-    :mod:`scripts.security.phi_patterns` and the log-hygiene filter. Note this
-    at-rest surface applies the warn tier (incl. the generic two-word
-    ``PERSON_NAME_GENERIC`` heuristic) **without** the per-match clinical-phrase
-    allowlist suppression that :func:`scripts.security.phi_gate.phi_gate_check`
-    applies — i.e. it deliberately leans toward *over*-redaction when persisting
-    text (consistent with the log-hygiene filter), so a benign clinical bigram
-    like "Treatment Completed" may be tagged. Intended for:
+    Shares the blocking + warn catalog with :mod:`scripts.security.phi_patterns`
+    and the log-hygiene filter, so every surface that persists or exports text
+    sees the same substitution rules. Intended for:
 
     * saving conversation JSON to disk (raw user prompts + assistant
       replies),

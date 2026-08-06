@@ -34,24 +34,24 @@ Batch Runtime Build
 -------------------
 
 The full study-preparation workflow is owned by the portable
-``report-ai-study-pipeline`` plugin. Use the orchestrator entry point below
-to build the full study, including the SoT phase:
+``report-ai-study-pipeline`` plugin. For the SoT phase only, use the batch
+command below when you need a repo-local rebuild of PDF/header Source Truth
+sets:
 
 .. code-block:: bash
 
-   make study STUDY=Indo-VAP
+   make build-llm-source STUDY=Indo-VAP
 
-The orchestrator:
+That command:
 
 1. creates source packs for PDF-backed forms,
 2. generates conservative policy YAML candidates under ``/tmp``,
 3. verifies each candidate,
-4. writes the verified policy YAML + dataset schema into the audit zone
-   (``output/Indo-VAP/audit/SoT_construction/<pair>/``) and promotes ONLY the
-   joined query view to ``output/Indo-VAP/llm_source/SoT/<pair>/joined/``, and
-5. drives the in-lock host publish path (via the ``dataset-to-llm-source``
-   supervisor) to publish dictionary mappings, PHI-scrubbed dataset JSONL,
-   audit ledgers, lineage, and the output signpost.
+4. promotes passing policy/schema/joined outputs to
+   ``output/Indo-VAP/llm_source/SoT/``, and
+5. runs the host publish path to publish dictionary mappings,
+   PHI-scrubbed dataset JSONL, audit ledgers, lineage, and the output
+   signpost.
 
 Use ``make rebuild-llm-source STUDY=Indo-VAP`` when you want to remove
 generated ``llm_source/`` and study staging first. It preserves audit
@@ -162,43 +162,35 @@ To inspect gold diffs directly:
      --study Indo-VAP --form 6_HIV \
      --candidate /tmp/6_HIV_lean.yaml
 
-Anchored calibration gold lives at ``data/SoT/{STUDY}/``. Runtime policy
-YAMLs under ``output/{STUDY}/audit/SoT_construction/<pair>/pdf/`` are
-generated outputs; they are never silently copied over anchored gold.
+Anchored calibration gold lives at ``data/SoT/{STUDY}/``. Runtime YAMLs
+under ``output/{STUDY}/llm_source/SoT/<pair>/pdf/`` are generated outputs;
+they are never silently copied over anchored gold.
 
 Stage 5: promote
 ~~~~~~~~~~~~~~~~
 
-Promote only after all validation gates pass. The policy YAML and dataset
-schema JSON are construction artifacts written to the **audit** zone (fenced
-from the LLM by ``deny_if_audit_zone``); the **LLM-facing** runtime output is
-the joined query view, the sole SoT file promoted to ``llm_source/`` (Note 3):
+Promote only after all validation gates pass. The plugin-owned layout keeps
+the PDF policy, per-form dataset schema, and derived joined query view
+together:
 
 .. code-block:: bash
 
    cp tmp/SoT/6_HIV/pdf/6_HIV_policy.yaml \
-     output/Indo-VAP/audit/SoT_construction/6_HIV/pdf/6_HIV_policy.yaml
+     output/Indo-VAP/llm_source/SoT/6_HIV/pdf/6_HIV_policy.yaml
    cp tmp/SoT/6_HIV/dataset/6_HIV_schema.json \
-     output/Indo-VAP/audit/SoT_construction/6_HIV/dataset/6_HIV_schema.json
-   uv run --all-groups python \
-     plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/generate_joined_query_view.py \
-     --policy output/Indo-VAP/audit/SoT_construction/6_HIV/pdf/6_HIV_policy.yaml \
-     --schema output/Indo-VAP/audit/SoT_construction/6_HIV/dataset/6_HIV_schema.json \
+     output/Indo-VAP/llm_source/SoT/6_HIV/dataset/6_HIV_schema.json
+   uv run --all-groups python skills/sot-lean-generator/scripts/generate_joined_query_view.py \
+     --policy output/Indo-VAP/llm_source/SoT/6_HIV/pdf/6_HIV_policy.yaml \
+     --schema output/Indo-VAP/llm_source/SoT/6_HIV/dataset/6_HIV_schema.json \
      --out output/Indo-VAP/llm_source/SoT/6_HIV/joined/6_HIV_joined_query_view.yaml
 
-Canonical **LLM-published** path (only the joined view lives in
-``llm_source/``):
+The canonical runtime output paths are:
 
 .. code-block:: text
 
+   output/{STUDY}/llm_source/SoT/{PAIR}/pdf/{FORM}_policy.yaml
+   output/{STUDY}/llm_source/SoT/{PAIR}/dataset/{FORM}_schema.json
    output/{STUDY}/llm_source/SoT/{PAIR}/joined/{FORM}_joined_query_view.yaml
-
-Construction-artifact paths (audit zone, not agent-facing):
-
-.. code-block:: text
-
-   output/{STUDY}/audit/SoT_construction/{PAIR}/pdf/{FORM}_policy.yaml
-   output/{STUDY}/audit/SoT_construction/{PAIR}/dataset/{FORM}_schema.json
 
 Escalation Rules
 ----------------

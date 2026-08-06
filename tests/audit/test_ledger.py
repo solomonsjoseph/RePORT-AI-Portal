@@ -57,9 +57,8 @@ def test_phi_event_flush_file_and_shape(tmp_path: Path) -> None:
     data = json.loads(out.read_text())
 
     assert "run_id" in data
-    # Primary ledger is content-only — wall-clock fields moved to timing sidecar.
-    assert "iso_timestamp" not in data
-    assert "generated_utc" not in data
+    assert "iso_timestamp" in data
+    assert "generated_utc" in data
     assert "study" in data
     assert "leg" in data
     assert "compliance_posture" not in data
@@ -251,23 +250,16 @@ def test_envelope_keys_and_types(tmp_path: Path) -> None:
     data = json.loads((tmp_path / "ledger.json").read_text())
 
     assert data["run_id"] == "run_test123"
-    # Primary ledger is content-only — wall-clock fields moved to timing sidecar.
-    assert "iso_timestamp" not in data
-    assert "generated_utc" not in data
+    assert isinstance(data["iso_timestamp"], str)
+    # Z-suffix UTC format
+    assert data["iso_timestamp"].endswith("Z")
+    assert data["generated_utc"] == data["iso_timestamp"]
     assert data["study"] == "TestStudy"
     assert data["leg"] == "phi-scrub"
     assert data["compliance_posture"] == "safe_harbor"
     assert data["scrub_config_hash"] == "sha256:abc"
     assert data["input_dataset_hash"] == "sha256:def"
     assert isinstance(data["events"], list)
-
-    # Timing sidecar carries the wall-clock fields.
-    from scripts.audit.ledger import PHI_LEDGER_TIMING_FILENAME
-
-    timing_data = json.loads((tmp_path / PHI_LEDGER_TIMING_FILENAME).read_text())
-    assert timing_data["run_id"] == "run_test123"
-    assert isinstance(timing_data["generated_utc"], str)
-    assert timing_data["generated_utc"].endswith("Z")
 
 
 def test_envelope_optional_metadata_omitted_when_absent(tmp_path: Path) -> None:
@@ -287,141 +279,3 @@ def test_run_id_auto_generated(tmp_path: Path) -> None:
     data = json.loads((tmp_path / "ledger.json").read_text())
     assert data["run_id"].startswith("run_")
     assert len(data["run_id"]) > 4
-
-
-# ---------------------------------------------------------------------------
-# Test 11: add_phi_event with new classification and method fields
-# ---------------------------------------------------------------------------
-
-
-def test_phi_event_flush_file_and_shape_with_new_fields(tmp_path: Path) -> None:
-    """Extend test 1 to verify new default fields are present."""
-    writer = _make_writer(tmp_path)
-    writer.add_phi_event(**_phi_event_kwargs())
-    writer.flush()
-
-    out = tmp_path / "ledger.json"
-    assert out.exists()
-    data = json.loads(out.read_text())
-
-    event = data["events"][0]
-    # New default field assertions
-    assert event["rule"]["matched_rules"] == []
-    assert event["rule"]["jurisdictions"] == []
-    assert event["rule"]["rule_bundle_sha256"] is None
-    assert event["method"] is None
-
-
-def test_phi_event_with_classification_and_method(tmp_path: Path) -> None:
-    """Call add_phi_event with classification and method parameters."""
-    writer = _make_writer(tmp_path)
-    kwargs = _phi_event_kwargs()
-    kwargs.update(
-        {
-            "matched_rules": ["usa_safe_harbor_dates", "india_date_identifier"],
-            "jurisdictions": ["USA", "INDIA"],
-            "rule_bundle_sha256": "abc",
-            "method_name": "SANT_date_jitter",
-            "method_parameters": {"max_jitter_days": 30},
-        }
-    )
-    writer.add_phi_event(**kwargs)
-    writer.flush()
-
-    out = tmp_path / "ledger.json"
-    data = json.loads(out.read_text())
-
-    event = data["events"][0]
-    assert event["rule"]["matched_rules"] == ["usa_safe_harbor_dates", "india_date_identifier"]
-    assert event["rule"]["jurisdictions"] == ["USA", "INDIA"]
-    assert event["rule"]["rule_bundle_sha256"] == "abc"
-    assert event["method"] == {
-        "name": "SANT_date_jitter",
-        "parameters": {"max_jitter_days": 30},
-    }
-
-
-def test_keep_decision_added_and_flushed(tmp_path: Path) -> None:
-    """Call add_keep_decision and verify it appears in keep_decisions."""
-    writer = _make_writer(tmp_path)
-    writer.add_keep_decision(
-        form="6_HIV",
-        variable_id="hiv_visit",
-        jurisdictions=[],
-        matched_rules=[],
-        rationale="kept",
-        rule_bundle_sha256=None,
-    )
-    writer.flush()
-
-    out = tmp_path / "ledger.json"
-    data = json.loads(out.read_text())
-
-    assert "keep_decisions" in data
-    assert len(data["keep_decisions"]) == 1
-    keep = data["keep_decisions"][0]
-    assert keep["form"] == "6_HIV"
-    assert keep["variable_id"] == "hiv_visit"
-    assert keep["jurisdictions"] == []
-    assert keep["matched_rules"] == []
-    assert keep["rationale"] == "kept"
-    assert keep["rule_bundle_sha256"] is None
-
-
-def test_keep_decisions_omitted_when_empty(tmp_path: Path) -> None:
-    """When no keep_decisions are added, the key should not appear."""
-    writer = _make_writer(tmp_path)
-    writer.add_phi_event(**_phi_event_kwargs())
-    writer.flush()
-
-    out = tmp_path / "ledger.json"
-    data = json.loads(out.read_text())
-
-    assert "keep_decisions" not in data
-
-
-# ---------------------------------------------------------------------------
-# Test: primary ledger has no wall-clock field (reproducibility invariant)
-# ---------------------------------------------------------------------------
-
-
-def test_primary_ledger_has_no_wall_clock_fields(tmp_path: Path) -> None:
-    """Primary ledger must carry no timestamps so byte-identical re-runs produce
-    byte-identical output on the same input.
-    """
-    writer = _make_writer(tmp_path)
-    writer.add_phi_event(**_phi_event_kwargs())
-    writer.flush()
-
-    data = json.loads((tmp_path / "ledger.json").read_text())
-    assert "iso_timestamp" not in data, "iso_timestamp must not appear in primary ledger"
-    assert "generated_utc" not in data, "generated_utc must not appear in primary ledger"
-
-
-def test_timing_sidecar_written_on_flush(tmp_path: Path) -> None:
-    """flush() must write a parallel timing sidecar carrying generated_utc."""
-    from scripts.audit.ledger import PHI_LEDGER_TIMING_FILENAME
-
-    writer = _make_writer(tmp_path)
-    writer.add_phi_event(**_phi_event_kwargs())
-    writer.flush()
-
-    timing_path = tmp_path / PHI_LEDGER_TIMING_FILENAME
-    assert timing_path.exists(), "timing sidecar must be written on flush()"
-    timing = json.loads(timing_path.read_text())
-    assert "generated_utc" in timing
-    assert timing["generated_utc"].endswith("Z")
-    assert "run_id" in timing
-
-
-def test_flush_idempotent_primary_ledger_bytes(tmp_path: Path) -> None:
-    """Two consecutive flush() calls must produce byte-identical primary ledger."""
-    writer = _make_writer(tmp_path, run_id="run_fixed")
-    writer.add_phi_event(**_phi_event_kwargs())
-
-    writer.flush()
-    first = (tmp_path / "ledger.json").read_bytes()
-    writer.flush()
-    second = (tmp_path / "ledger.json").read_bytes()
-
-    assert first == second, "Primary ledger bytes must be identical across re-flushes"

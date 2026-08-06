@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import json
+import logging
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -14,11 +15,9 @@ import streamlit as st
 
 import config
 from scripts.ai_assistant.agent_graph import reset_agent
-from scripts.ai_assistant.file_access import validate_agent_read
 from scripts.ai_assistant.phi_safe import redact_message_content, redact_phi_in_text
-from scripts.utils.logging_system import get_logger
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 _FILE_REF_EXTENSIONS = "jsonl|json|pdf|png|csv|xlsx|md"
 _EXPORT_ARTIFACT_MARKER_RE = re.compile(r"<RPLN_(?:FIGURE|PLOTLY|ANALYSIS|CODE):[^>\r\n]*>")
@@ -530,7 +529,6 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
         try:
             ap = Path(analysis_path_str)
             if ap.exists():
-                validate_agent_read(ap)
                 narrative = ap.read_text(encoding="utf-8")
                 refs["figures"].extend(
                     m.group(1).strip() for m in _FIGURE_MARKER_RE.finditer(narrative)
@@ -566,7 +564,6 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
 
     buf = BytesIO()
     added = 0
-    skipped_out_of_zone = 0
     notes: list[str] = []
     used_names: set[str] = set()
 
@@ -588,27 +585,25 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
         for fig_str in figures:
             clean_str = fig_str.replace("\\", "/")
             p = Path(clean_str)
-
+            
             agent_out = Path(getattr(config, "AGENT_OUTPUT_DIR", "."))
-            repo_root = Path(config.REPO_ROOT)
+            repo_root = Path(getattr(config, "REPO_ROOT", "."))
             filename = p.name.lstrip(".")
-
+            
             candidates = []
             if filename:
                 candidates.append(agent_out / "figures" / filename)
                 candidates.append(agent_out / "code" / filename)
-
+                
             if not p.is_absolute():
-                candidates.extend(
-                    [
-                        agent_out / clean_str,
-                        agent_out / "figures" / clean_str,
-                        repo_root / clean_str,
-                    ]
-                )
+                candidates.extend([
+                    agent_out / clean_str,
+                    agent_out / "figures" / clean_str,
+                    repo_root / clean_str
+                ])
             else:
                 candidates.append(p)
-
+                
             for cand in candidates:
                 try:
                     resolved = cand.resolve()
@@ -618,15 +613,6 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
                 except OSError:
                     continue
             if not p.exists():
-                continue
-            # PHI read-boundary: only embed artifacts inside the agent's
-            # permitted read zones (llm_source/ or agent/). A resolved path that
-            # escapes those zones (e.g. a raw-data file) is skipped, mirroring the
-            # inline render path's validate_agent_read gate in streaming.py.
-            try:
-                validate_agent_read(p)
-            except PermissionError:
-                skipped_out_of_zone += 1
                 continue
             try:
                 raw = p.read_bytes()
@@ -664,27 +650,25 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
                 for plt_str in plotly_paths:
                     clean_str = plt_str.replace("\\", "/")
                     p = Path(clean_str)
-
+                    
                     agent_out = Path(getattr(config, "AGENT_OUTPUT_DIR", "."))
-                    repo_root = Path(config.REPO_ROOT)
+                    repo_root = Path(getattr(config, "REPO_ROOT", "."))
                     filename = p.name.lstrip(".")
-
+                    
                     candidates = []
                     if filename:
                         candidates.append(agent_out / "figures" / filename)
                         candidates.append(agent_out / "code" / filename)
-
+                        
                     if not p.is_absolute():
-                        candidates.extend(
-                            [
-                                agent_out / clean_str,
-                                agent_out / "figures" / clean_str,
-                                repo_root / clean_str,
-                            ]
-                        )
+                        candidates.extend([
+                            agent_out / clean_str,
+                            agent_out / "figures" / clean_str,
+                            repo_root / clean_str
+                        ])
                     else:
                         candidates.append(p)
-
+                        
                     for cand in candidates:
                         try:
                             resolved = cand.resolve()
@@ -694,13 +678,6 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
                         except OSError:
                             continue
                     if not p.exists():
-                        continue
-                    # PHI read-boundary (see figure branch above): never read a
-                    # Plotly spec that resolves outside the agent read zones.
-                    try:
-                        validate_agent_read(p)
-                    except PermissionError:
-                        skipped_out_of_zone += 1
                         continue
                     try:
                         fig = pio.from_json(p.read_text(encoding="utf-8"))
@@ -717,17 +694,6 @@ def _export_plots_as_zip(conv_id: str, fmt: str) -> bytes:
                     "Plotly JSON to static images. Install with `uv add kaleido` "
                     "or `pip install kaleido`."
                 )
-
-        if skipped_out_of_zone:
-            # Generic, path-free note — the path itself can be PHI-ish.
-            notes.append(
-                f"{skipped_out_of_zone} artifact(s) skipped: outside the permitted read zone."
-            )
-            logger.warning(
-                "Export skipped %d artifact(s) outside the agent read zone (conv_id=%s)",
-                skipped_out_of_zone,
-                conv_id,
-            )
 
         if notes:
             zf.writestr("README.txt", "\n".join(dict.fromkeys(notes)) + "\n")
@@ -847,12 +813,10 @@ def _export_tables_as_zip(conv_id: str, fmt: str) -> bytes:
             tables: list[dict[str, Any]] = []
             try:
                 if ap.exists() and ap.suffix.lower() in {".md", ".markdown", ".txt"}:
-                    validate_agent_read(ap)
                     tables = _parse_markdown_tables(ap.read_text(encoding="utf-8"))
                 elif ap.exists() and ap.suffix.lower() == ".json":
                     # Defensive: also support the originally-specified JSON shape
                     # ``{"tables": [{"name","rows","columns"}, ...]}``.
-                    validate_agent_read(ap)
                     data = json.loads(ap.read_text(encoding="utf-8"))
                     for t in data.get("tables", []) or []:
                         if not isinstance(t, dict):

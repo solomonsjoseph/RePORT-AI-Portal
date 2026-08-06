@@ -93,9 +93,7 @@ pdfplumber
 **What.** Layout-aware PDF extractor. **Why.** Previously used by the
 two-way PDF orchestrator for complex multi-section CRFs. **How.**
 Historical only; current PDF-derived metadata is reviewed into Source
-Truth policy YAMLs (kept in the audit zone under
-``audit/SoT_construction/<pair>/pdf/``) and reaches the LLM only through the
-derived joined query view published under ``llm_source/SoT/<pair>/joined/``.
+Truth policy YAMLs and published under ``llm_source/SoT/<pair>/``.
 
 PyYAML
 ~~~~~~

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import os
-import secrets
 from pathlib import Path
 from typing import Any
 
@@ -17,69 +16,6 @@ skip_as_root = pytest.mark.skipif(
     hasattr(os, "geteuid") and os.geteuid() == 0,
     reason="chmod-based denial has no effect for root",
 )
-
-
-# ── Logging propagation for caplog ─────────────────────────────────────────
-# Module loggers are children of ``report_ai_portal`` (propagate=False in
-# production so Streamlit/root handlers never double-print). pytest's caplog
-# captures via a root-logger handler, so re-enable propagation during tests.
-
-
-@pytest.fixture(autouse=True)
-def _propagate_portal_logs():
-    import logging
-
-    portal = logging.getLogger("report_ai_portal")
-    root = logging.getLogger()
-    prior = portal.propagate
-    portal.propagate = True
-    # Strip PHIRedactingFilters leaked by earlier tests (the logger and its
-    # handlers are process-global singletons); each test installs its own.
-    for obj in (root, portal, *portal.handlers, *root.handlers):
-        for flt in list(obj.filters):
-            if type(flt).__name__ == "PHIRedactingFilter":
-                obj.removeFilter(flt)
-    yield
-    portal.propagate = prior
-
-
-# ── Shared PHI-scrub fixtures ──────────────────────────────────────────────
-# Defined here to avoid duplication between test_phi_scrub.py and
-# test_phi_scrub_partial.py.  Both files inject these by fixture name.
-
-
-@pytest.fixture()
-def sidecar_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Write a valid 64-hex-char key file with 0600 and monkeypatch PHI_KEY_PATH."""
-    import config
-
-    key_path = tmp_path / "phi_key"
-    key_path.write_text(secrets.token_hex(32), encoding="utf-8")
-    key_path.chmod(0o600)
-    monkeypatch.setattr(config, "PHI_KEY_PATH", key_path)
-    return key_path
-
-
-@pytest.fixture()
-def scrub_config_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Point the scrub config at a fresh tmp_path file (absent by default).
-
-    Task A7: ``load_scrub_config()`` deep-merges ``config/_defaults/phi_scrub.yaml``
-    (base) with ``config/<study>/phi_scrub.yaml`` (override). Patch ``CONFIG_DIR``
-    and ``CONFIG_DEFAULTS_DIR`` under the same tmp ``config/`` tree that
-    ``monkeypatch_config`` uses so a real per-study ``phi_scrub.yaml`` on disk
-    is never picked up during unit tests."""
-    import config
-
-    config_dir = tmp_path / "config"
-    defaults_dir = config_dir / "_defaults"
-    defaults_dir.mkdir(parents=True, exist_ok=True)
-    cfg_path = defaults_dir / "phi_scrub.yaml"
-    monkeypatch.setattr(config, "CONFIG_DIR", config_dir)
-    monkeypatch.setattr(config, "CONFIG_DEFAULTS_DIR", defaults_dir)
-    monkeypatch.setattr(config, "PHI_SCRUB_CONFIG_PATH", cfg_path)
-    return cfg_path
-
 
 # ── Synthetic data helpers ──────────────────────────────────────────────────
 
@@ -190,16 +126,6 @@ def monkeypatch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     raw_datasets.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(config, "DATASETS_DIR", raw_datasets)
 
-    # Study config now lives under config/<study>/ (Note 11). Patch the config
-    # chokepoint to a tmp location so check_forms_manifest / load_study_privacy
-    # resolve there (no manifest present = backward-compatible empty dict).
-    config_dir = tmp_path / "config"
-    study_config_dir = config_dir / config.STUDY_NAME
-    monkeypatch.setattr(config, "CONFIG_DIR", config_dir)
-    monkeypatch.setattr(config, "STUDY_CONFIG_DIR", study_config_dir)
-    monkeypatch.setattr(config, "FORMS_MANIFEST_PATH", study_config_dir / "_forms_manifest.yaml")
-    monkeypatch.setattr(config, "STUDY_PRIVACY_PATH", study_config_dir / "_study_privacy.yaml")
-
     # Also patch secure_env markers so zone guards accept tmp_path-based paths
     import scripts.security.secure_env as _se
 
@@ -253,12 +179,6 @@ def _write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
     with path.open("w") as fh:
         for rec in records:
             fh.write(json.dumps(rec) + "\n")
-
-
-def scrubbed_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Stamp the post-scrub marker on test records so they pass the
-    dataset_cleanup scrub-first guard."""
-    return [{**r, "_phi_scrubbed": "v3"} for r in records]
 
 
 # ── Pytest markers ─────────────────────────────────────────────────────────

@@ -78,11 +78,11 @@ Then click **Load Study**. That button activates the
 ``report-ai-study-pipeline`` plugin and prepares the published
 ``llm_source/`` bundle.
 
-For developer/operator runs from the shell:
+For developer/operator host publish runs only:
 
 .. code-block:: bash
 
-   make study STUDY=<name>
+   make pipeline
 
 Can I use an existing processed study?
 --------------------------------------
@@ -137,7 +137,7 @@ Start with:
 
 * ``output/{STUDY}/README.md``
 * ``output/{STUDY}/audit/``
-* the terminal output from ``make study STUDY=<name>`` or ``make chat``
+* the terminal output from ``make pipeline`` or ``make chat``
 
 What if I find raw PHI in output?
 ---------------------------------

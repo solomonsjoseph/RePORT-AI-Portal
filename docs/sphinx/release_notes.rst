@@ -69,7 +69,7 @@ Subcommands:
 
 - ``run --study {STUDY}``: manifest pre-check → pipeline lock → scrubbed pipeline →
   ledger + quarantine assertions → secure staging destruction + attestation.
-- ``verify --study {STUDY} [--run RUN_ID]``: 16 ordered post-publish assertions
+- ``verify --study {STUDY} [--run RUN_ID]``: 12 ordered post-publish assertions
   (manifest, staging absent, attestation valid, ledger hashes non-null +
   matching, ``.NO_LLM_ZONE`` sentinel, no quarantine, PHI-absence sweep,
   determinism, required-form coverage, lock absent, status.json).

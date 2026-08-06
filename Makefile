@@ -21,6 +21,7 @@ UV_RUN_LOCKED ?= $(UV) run --locked
 STUDY ?= Indo-VAP
 CANDIDATE ?= /tmp/$(FORM)_lean.yaml
 SOT_PAIR ?= $(FORM)
+COLUMN_INVENTORY ?=
 
 ifeq ($(OS),Windows_NT)
 VENV_PYTHON := $(abspath .venv/Scripts/python.exe)
@@ -50,44 +51,6 @@ else
 FFLAG :=
 endif
 
-ifdef ADD
-ADDFLAG := --add
-else
-ADDFLAG :=
-endif
-
-ifdef PRUNE
-PRUNEFLAG := --prune-source
-else
-PRUNEFLAG :=
-endif
-
-# organize: STUDY is OPTIONAL. Only forward it when set on the command line —
-# the global `STUDY ?= Indo-VAP` default must NOT leak in, or the skill could
-# silently file a brand-new study into Indo-VAP. With no CLI STUDY the skill
-# auto-detects an existing study and otherwise refuses (no generic fallback).
-ifeq ($(origin STUDY),command line)
-STUDYARG := --study $(STUDY)
-STUDYENV := STUDY_NAME=$(STUDY)
-else
-STUDYARG :=
-STUDYENV :=
-endif
-
-RESUME ?=
-ifdef RESUME
-RESUMEFLAG := --resume-held
-else
-RESUMEFLAG :=
-endif
-
-STRICT ?=
-ifdef STRICT
-STRICTFLAG := --strict-abort
-else
-STRICTFLAG :=
-endif
-
 ifdef PROVIDER
 PROVIDERFLAG := --provider $(PROVIDER)
 else
@@ -111,14 +74,14 @@ N := \033[0m
 .DEFAULT_GOAL := help
 .PHONY: \
 	help quickstart debug sync version \
-	study rebuild-llm-source \
+	pipeline dictionary extract-datasets bundle \
 	sot-source-pack sot-generate-all sot-verify sot-verify-output sot-validate \
+	build-llm-source rebuild-llm-source \
 	chat-deps chat-cli-deps chat-cli chat \
-	test test-all lint lint-legacy-dirs typecheck typecheck-skills security ci verify release-check \
+	test test-all lint typecheck security ci verify release-check \
 	docs doc-freshness docs-quality docs-linkcheck docs-ci release-notes \
-	chat-smoke check-study-knowledge \
-	clean clean-legacy clean-legacy-dry-run nuke \
-	organize
+	chat-smoke \
+	clean nuke
 
 # ═══════════════════════════════════════════════════════════════════════
 # HELP
@@ -138,10 +101,15 @@ help:
 	@printf "  $(C)make sync$(N)             Install / restore all dependencies (uv sync)\n"
 	@printf "  $(C)make version$(N)          Show version + environment info\n"
 	@printf "\n"
-	@printf "$(B)$(G)  Study build (the plugin IS the pipeline)$(N)\n"
-	@printf "  $(C)make study$(N) STUDY=…    Build/publish a study via the 10-phase orchestrator\n"
-	@printf "                          (modifiers: FORCE=1, RESUME=1 maintainer resume, STRICT=1)\n"
-	@printf "  $(C)make rebuild-llm-source$(N) STUDY=… — Remove generated llm_source/staging, preserve audit/agent, then re-run\n"
+	@printf "$(B)$(G)  Host publish path$(N)\n"
+	@printf "  $(C)make pipeline$(N)         Host publish path used by dataset-to-llm-source\n"
+	@printf "  $(C)make build-llm-source$(N) STUDY=… — SoT plugin outputs → Dict → Datasets → PHI scrub → llm_source\n"
+	@printf "  $(C)make rebuild-llm-source$(N) STUDY=… — Remove generated llm_source/staging, preserve audit/agent, then rebuild\n"
+	@printf "\n"
+	@printf "$(B)$(G)  Lower-level publish helpers$(N)\n"
+	@printf "  $(C)make dictionary$(N)       Dictionary publish leg → llm_source\n"
+	@printf "  $(C)make extract-datasets$(N) Step 1+3 — Extract → promote datasets\n"
+	@printf "  $(C)make bundle$(N)           Legacy alias — prepare llm_source dictionary leg\n"
 	@printf "\n"
 	@printf "$(B)$(G)  Source-of-Truth (SoT)$(N)\n"
 	@printf "  $(C)make sot-source-pack$(N)  STUDY=… FORM=… — Stage 0: resolve PDF+dataset → source pack + page renders\n"
@@ -176,7 +144,6 @@ help:
 	@printf "$(B)$(G)  Maintenance$(N)\n"
 	@printf "  $(C)make clean$(N)            Remove caches, docs build output, stale logs\n"
 	@printf "  $(C)make nuke$(N)             Remove generated state; preserve data/raw\n"
-	@printf "  $(C)make check-study-knowledge$(N) Diff published study_variable_map.yaml against config/study_knowledge.yaml\n"
 	@printf "\n"
 	@printf "$(Y)  Modifiers:$(N)\n"
 	@printf "  $(Y)VERBOSE=1$(N) make <target>   Enable DEBUG logging\n"
@@ -210,41 +177,38 @@ debug:
 	@$(MAKE) quickstart VERBOSE=1
 
 # ═══════════════════════════════════════════════════════════════════════
-# STUDY BUILD — the plugin IS the pipeline (10-phase orchestrator)
+# HOST PUBLISH PATH
 # ═══════════════════════════════════════════════════════════════════════
-#
-# `make study STUDY=<name>` is the single entry point for building/publishing a
-# study. It exports STUDY_NAME (so config resolves the same study the
-# orchestrator was asked to run) and delegates to the 10-phase orchestrator,
-# which holds the per-study lock for the whole run. Modifiers:
-#   FORCE=1   — run even if inputs are unchanged (skip the redundant-run check)
-#   RESUME=1  — maintainer human-review resume (re-publish the full surviving set)
-#   STRICT=1  — abort the whole study on the first un-scrubbable row
-ORCHESTRATOR := plugins/report-ai-study-pipeline/skills/report-ai-study-pipeline/scripts/run.py
 
-study: ## Build/publish a study via the 10-phase orchestrator (the pipeline)
-	@printf "$(C)Running 10-phase study pipeline for STUDY=$(STUDY)...$(N)\n"
-	@STUDY_NAME=$(STUDY) $(UV) run --all-groups python $(ORCHESTRATOR) \
-		--study $(STUDY) $(FFLAG) $(RESUMEFLAG) $(STRICTFLAG)
-	@printf "$(G)✓ Study pipeline complete for $(STUDY)$(N)\n"
+pipeline:
+	@printf "$(C)Running host publish path: Dict → Datasets → PHI scrub → llm_source$(N)\n"
+	@$(PYTHON) main.py --pipeline $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG) $(FFLAG)
+	@printf "$(G)✓ Host publish complete$(N)\n"
 
-INTAKE := plugins/report-ai-study-pipeline/skills/raw-data-intake/scripts/run.py
+build-llm-source: sot-generate-all
+	@printf "$(C)Building llm_source: Dict → Datasets → PHI scrub → Publish → Audit$(N)\n"
+	@$(PYTHON) main.py --pipeline $(PROVIDERFLAG) $(MODELFLAG) $(VFLAG) $(FFLAG)
+	@printf "$(G)✓ llm_source built$(N)\n"
 
-organize: ## Skill 0: sort an unorganized study delivery into data/raw/<study>/ (SRC=dir-or-zip; ADD=1 to file new files into an organized study)
-	@printf "$(C)Organizing raw delivery for STUDY=$(STUDY) from SRC=$(SRC)...$(N)\n"
-	@$(STUDYENV) $(UV) run --all-groups python $(INTAKE) \
-		$(STUDYARG) --src $(SRC) $(FFLAG) $(ADDFLAG) $(PRUNEFLAG)
-	@printf "$(G)✓ Intake complete for $(STUDY)$(N)\n"
-
-rebuild-llm-source: ## Remove generated llm_source/staging, preserve audit/agent, then re-run the orchestrator
+rebuild-llm-source:
 	@printf "$(Y)Removing generated llm_source/staging for STUDY=$(STUDY); preserving audit manifest, agent state, and raw inputs.$(N)\n"
-	@STUDY_NAME=$(STUDY) $(UV) run --all-groups python -m scripts.utils.pre_delete_cleanup
-	@rm -rf "output/$(STUDY)/llm_source" "tmp/$(STUDY)" 2>/dev/null || true
-	@$(MAKE) study STUDY=$(STUDY) FORCE=1
+	@$(UV) run --all-groups python -m scripts.utils.pre_delete_cleanup
+	@rm -rf output/$(STUDY)/llm_source tmp/$(STUDY) 2>/dev/null || true
+	@$(MAKE) build-llm-source STUDY=$(STUDY) FORCE=1
 
 # ═══════════════════════════════════════════════════════════════════════
-# SOURCE TRUTH — INDIVIDUAL STEPS
+# PIPELINE — INDIVIDUAL STEPS
 # ═══════════════════════════════════════════════════════════════════════
+
+dictionary:
+	@printf "$(C)Publishing dictionary leg to llm_source...$(N)\n"
+	@$(PYTHON) main.py --build-bundle --skip-datasets $(VFLAG) $(FFLAG)
+	@printf "$(G)✓ Dictionary publish complete$(N)\n"
+
+extract-datasets:
+	@printf "$(C)Step 1+3: Extract → promote datasets...$(N)\n"
+	@$(PYTHON) main.py --skip-dictionary --process-datasets $(VFLAG) $(FFLAG)
+	@printf "$(G)✓ Dataset processing complete$(N)\n"
 
 sot-source-pack: ## Stage 0: resolve PDF+dataset and write source pack JSON + per-page render PNGs
 	$(UV) run --all-groups python -m scripts.source_truth.study_intake \
@@ -261,10 +225,10 @@ sot-verify: ## Stage 4: verify candidate lean YAML against the source pack produ
 		--source-pack /tmp/sot_source_pack_$(FORM).json \
 		--repo-root .
 
-sot-verify-output: ## Verify the construction policy YAML (audit zone) against the source pack produced by sot-source-pack
+sot-verify-output: ## Verify a promoted output policy YAML against the source pack produced by sot-source-pack
 	$(UV) run --all-groups python \
 		plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/check_lean_policy.py \
-		--policy output/$(STUDY)/audit/SoT_construction/$(SOT_PAIR)/pdf/$(FORM)_policy.yaml \
+		--policy output/$(STUDY)/llm_source/SoT/$(SOT_PAIR)/pdf/$(FORM)_policy.yaml \
 		--source-pack /tmp/sot_source_pack_$(FORM).json \
 		--repo-root .
 
@@ -290,6 +254,11 @@ sot-validate: ## All-gates check: verifier + property validator + diff-against-g
 		--study $(STUDY) --form $(FORM) \
 		--candidate $(CANDIDATE)
 	@printf "$(G)✓ sot-validate STUDY=$(STUDY) FORM=$(FORM) — all gates green$(N)\n"
+
+bundle:
+	@printf "$(C)Preparing llm_source dictionary leg...$(N)\n"
+	@$(PYTHON) main.py --build-bundle $(VFLAG) $(FFLAG)
+	@printf "$(G)✓ llm_source dictionary leg prepared$(N)\n"
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -356,15 +325,6 @@ typecheck:
 	@$(MYPY) scripts/ main.py config.py --ignore-missing-imports
 	@printf "$(G)✓ Typecheck passed$(N)\n"
 
-typecheck-skills: ## Informational mypy over the plugin skill scripts (non-blocking)
-	@printf "$(C)Type-checking plugin skill scripts (informational)…$(N)\n"
-	@# The skill scripts are imported as scripts.* via the meta_path shim at
-	@# runtime; mypy cannot follow that bridge, so they are type-checked here by
-	@# their on-disk path. Non-blocking (piped) — the blocking gate is `typecheck`.
-	@$(MYPY) plugins/report-ai-study-pipeline/skills/*/scripts/*.py \
-		--ignore-missing-imports --no-error-summary 2>&1 | tail -20 || true
-	@printf "$(G)✓ Skill typecheck (informational) done$(N)\n"
-
 security:
 	@$(UV) run pip-audit
 	@printf "$(G)✓ Security audit passed$(N)\n"
@@ -372,6 +332,10 @@ security:
 chat-smoke:
 	@$(PYTHON) -m pytest tests/test_production_smoke.py
 	@printf "$(G)✓ Chat smoke passed$(N)\n"
+
+cutover-gate:
+	@$(PYTHON) -m pytest tests/test_hard_cutover_validation_gate.py -v
+	@printf "$(G)✓ Hard cutover validation gate passed$(N)\n"
 
 ci: lint typecheck test-all chat-smoke
 	@printf "$(G)✓ All CI gates passed$(N)\n"
@@ -419,23 +383,6 @@ release-notes:
 # MAINTENANCE
 # ═══════════════════════════════════════════════════════════════════════
 
-check-study-knowledge: ## Diff published study_variable_map.yaml against config/study_knowledge.yaml
-	@PUBLISHED="output/$(STUDY)/llm_source/study_metadata/study_variable_map.yaml"; \
-	SOURCE="config/study_knowledge.yaml"; \
-	if [ ! -f "$$SOURCE" ]; then \
-		printf "$(R)ERROR: source not found: $$SOURCE$(N)\n"; exit 1; \
-	fi; \
-	if [ ! -f "$$PUBLISHED" ]; then \
-		printf "$(Y)SKIP: published file not found: $$PUBLISHED (run the pipeline first)$(N)\n"; exit 0; \
-	fi; \
-	if diff -q "$$SOURCE" "$$PUBLISHED" >/dev/null 2>&1; then \
-		printf "$(G)✓ study_variable_map.yaml matches config/study_knowledge.yaml$(N)\n"; \
-	else \
-		printf "$(R)✗ Drift detected between config/study_knowledge.yaml and $$PUBLISHED$(N)\n"; \
-		diff "$$SOURCE" "$$PUBLISHED" || true; \
-		exit 1; \
-	fi
-
 clean:
 	@find scripts tests docs/sphinx -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
 	@find scripts tests docs/sphinx -type f \( -name "*.pyc" -o -name "*.pyo" -o -name ".DS_Store" \) -delete 2>/dev/null || true
@@ -445,7 +392,7 @@ clean:
 	@if [ -d ".logs" ]; then find .logs/ -type f -mtime +7 -delete 2>/dev/null || true; fi
 	@printf "$(G)✓ Caches, sessions, stale logs cleaned$(N)\n"
 
-clean-legacy: ## Phase 5b: write pre-delete manifest, delete legacy output dirs
+clean-legacy: ## Phase 5b: write pre-delete manifest, prune per-variable packs, delete legacy output dirs
 	$(UV) run --all-groups python -m scripts.utils.pre_delete_cleanup
 
 clean-legacy-dry-run: ## Phase 5b: print what clean-legacy would delete (no filesystem changes)

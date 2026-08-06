@@ -87,33 +87,6 @@ dependencies = [
     "matplotlib>=3.8.0,<4.0.0",
     "plotly>=5.18.0,<6.0.0",
     "pyyaml>=6.0.0,<7.0.0",
-    # -------------------------------------------------------------------------
-    # PHI Guard Gate (Wave 3 C3 — adopt-and-replace, OR-combined with the
-    # study-calibrated scan_tree_for_phi). These are part of the always-on
-    # security boundary, not the publish pipeline alone: the PHI residual gate
-    # runs at publish time, snapshot activation, AND session start, so the
-    # scanners must be importable in every install (hence core, not a group).
-    #
-    # D4 (resolver risk, plan §5/§7-1) verified GREEN before adding: presidio
-    # 2.2.362 + spacy 3.8.14 + pycanon 1.2.0 resolve cleanly against
-    # numpy>=2.0,<3.0 (resolver selected numpy 2.0.2, no downgrade forced).
-    # The explicit spacy floor pins the numpy-2-compatible line so a future
-    # resolution can never silently select an older spacy that caps numpy<2.
-    "presidio-analyzer>=2.2.0,<3.0.0",
-    "presidio-anonymizer>=2.2.0,<3.0.0",
-    "spacy>=3.7.0,<4.0.0",
-    # pycanon is PINNED to 1.0.1 deliberately. From 1.0.5 onward pycanon pulls
-    # a docutils dependency (1.0.5 → docutils 0.21.2; 1.1.0 → ==0.22.1; 1.2.0 →
-    # ==0.22.4) for its own reportlab/rich PDF-report feature, which we do not
-    # use — we call only the anonymity-metric API (k_anonymity / l_diversity /
-    # t_closeness). That docutils edge collides with the docs group: no
-    # myst-parser release (through 4.x) accepts docutils >= 0.22, and the
-    # current myst-parser 2.0.0 caps docutils < 0.21, so any pycanon >= 1.0.5
-    # makes `uv lock` unsatisfiable. 1.0.1 is the last release with ZERO
-    # docutils dependency, keeping the security-critical gate path lean and
-    # avoiding a Sphinx-stack migration (deferred to Wave 6). Revisit when the
-    # docs stack is upgraded.
-    "pycanon==1.0.1",
 ]
 
 [project.urls]
@@ -159,10 +132,7 @@ llm = [
 ]
 
 ai_assistant = [
-    # Pinned to 0.2.1: kaleido 1.x requires plotly>=6.1.1, but plotly is
-    # capped <6.0.0 above. 0.2.1 is the stable static-export (to_image)
-    # backend for the plotly 5.x line the plotting code is written against.
-    "kaleido==0.2.1",
+    "kaleido>=1.0.0,<2.0",
     # LangChain 1.x family bumped together for security: closes
     # langchain-openai GHSA-r7w7-9xr2-qq2r and langchain-text-splitters
     # GHSA-fv5p-p927-qmxr (April 2026 audit). Pinning <2.0 within the 1.x
@@ -293,11 +263,8 @@ exclude = [
 # Pytest
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --tb=short -m 'not stress'"
-markers = [
-    "slow: marks tests as slow (live API)",
-    "stress: robustness / performance guard tests (excluded from the default gate; run with `-m stress`)",
-]
+addopts = "-q --tb=short"
+markers = ["slow: marks tests as slow (live API)"]
 
 # Pyright - Static Type Checking (VS Code / LSP default)
 [tool.pyright]

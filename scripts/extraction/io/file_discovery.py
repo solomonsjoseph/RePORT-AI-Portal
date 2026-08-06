@@ -10,10 +10,6 @@ implemented this same logic inline.  This module consolidates it into
 one tested, canonical helper.
 """
 
-# SHARED UTILITY (Note 20 Gap C / Note 19): stays in scripts/, imported
-# read-only by plugin skills; never moved into a skill, never imports from
-# plugins/.
-
 from __future__ import annotations
 
 from pathlib import Path

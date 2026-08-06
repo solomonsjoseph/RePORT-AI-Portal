@@ -20,15 +20,14 @@ Tools
 -----
 1.  list_llm_source — browse the PHI-scrubbed ``llm_source/`` tree
 2.  search_llm_source — full-text search across ``llm_source/`` (protocol/definitions)
-3.  read_llm_source_file — read a specific ``llm_source/`` file (e.g. a SoT joined query view)
+3.  read_llm_source_file — read a specific ``llm_source/`` file (e.g. a policy YAML)
 4.  search_variables — dataset column search (dictionary fallback)
 5.  query_dataset — structural query on a JSONL dataset
 6.  list_available_datasets — list available PHI-scrubbed datasets
 7.  get_dataset_stats — summary statistics for a dataset (record counts, columns)
 8.  run_python_analysis — sandboxed code execution for statistical analysis (primary)
-9.  answer_catalog_question — variable metadata lookup via SoT joined query views
+9.  answer_catalog_question — variable metadata lookup via policy SoT YAMLs
 10. cite_source — deterministic (file, line, snippet) citation for form fields
-11. get_study_variable_map — concept→column bindings with encodings, derivations, outcomes
 
 The agent resolves variables and protocol facts through the ``llm_source``
 retrieval tools and performs all statistical analysis through the sandboxed
@@ -38,6 +37,7 @@ retrieval tools and performs all statistical analysis through the sandboxed
 from __future__ import annotations
 
 import json
+import logging
 import re
 from collections.abc import Mapping
 from pathlib import Path
@@ -54,9 +54,8 @@ from scripts.ai_assistant.phi_safe import (
 )
 from scripts.ai_assistant.tool_cache import tool_cache
 from scripts.security.secure_env import assert_output_zone
-from scripts.utils.logging_system import get_logger
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -74,12 +73,7 @@ _INTERNAL_COLUMNS = frozenset(
 )
 
 _DATE_VALUE_RE = re.compile(
-    # ISO date (YYYY-MM-DD), optionally with time component.
     r"^\d{4}-\d{2}-\d{2}(?:[T\s]\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:?\d{2})?)?$"
-    # GAP-2: also match slash/dot/hyphen day-granular dates (DMY/MDY) emitted by
-    # phi_scrub when a separator-locale date is kept and jitter-shifted.
-    # Anchored at start/end so a bare year or partial token doesn't match.
-    r"|^\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}$"
 )
 
 _FORM_TOKEN_EXPANSIONS: dict[str, str] = {
@@ -115,124 +109,6 @@ def _expanded_form_text(value: str) -> str:
 
 def _dataset_label(stem: str) -> str:
     return _expanded_form_text(stem).title()
-
-
-# R2 — concept→column index. Resolve human concepts (smoking, BMI, recurrence)
-# to dataset columns by DICTIONARY LOOKUP against the published
-# study_variable_map.yaml, COHORT-AWARE (index-case IC_/IS_ vs household-contact
-# HC_/HHC_), replacing pure token-overlap guessing for the modeling workload
-# (recurrence ~ smoking + diabetes + …). Metadata only — column NAMES; GR-1-safe.
-#
-# Natural-language aliases for derivations/outcomes the map encodes structurally
-# but whose modeling names differ. Keyed by the map's concept key.
-_CONCEPT_ALIASES: dict[str, tuple[str, ...]] = {
-    "recurrence": ("recurrence", "recurrent tb", "relapse", "tb relapse", "treatment failure"),
-    "incident_tb": ("incident tb", "incident", "progression", "progression to tb", "active tb"),
-    "malnutrition": ("malnutrition", "malnourished", "undernutrition"),
-    "bmi": ("bmi", "body mass index"),
-    "alcohol": ("alcohol", "alcohol use", "drinking"),
-    "smoking": ("smoking", "smoker", "tobacco"),
-    "diabetes": ("diabetes", "diabetic"),
-}
-
-_CONCEPT_INDEX_CACHE: dict[str, list[tuple[str, str, str]]] = {}
-
-
-def _concept_index() -> list[tuple[str, str, str]]:
-    """Return ``(synonym_phrase, column, cohort)`` rows from the published map.
-
-    ``cohort`` is ``"cohort_a"`` / ``"cohort_b"`` / ``""`` (cohort-agnostic). A
-    derived concept with no own column (bmi, malnutrition) resolves to its source
-    columns within the same cohort. Fail-soft: any read/parse error → ``[]``.
-    """
-    key = str(getattr(config, "LLM_SOURCE_STUDY_METADATA_DIR", ""))
-    cached = _CONCEPT_INDEX_CACHE.get(key)
-    if cached is not None:
-        return cached
-    rows: list[tuple[str, str, str]] = []
-    try:
-        import yaml
-
-        map_path = Path(config.LLM_SOURCE_STUDY_METADATA_DIR) / "study_variable_map.yaml"
-        validated = validate_agent_read(map_path)
-        data = yaml.safe_load(Path(validated).read_text(encoding="utf-8"))
-        cohorts = data.get("cohorts", {}) if isinstance(data, dict) else {}
-        concept_sections = ("demographics", "predictors", "outcomes", "derived_variables")
-        for cohort_id, cohort in cohorts.items():
-            if not isinstance(cohort, Mapping):
-                continue
-            # Index every concept's metadata so derived chains can be followed.
-            by_key: dict[str, Mapping[str, Any]] = {}
-            for section in concept_sections:
-                for ckey, cdata in (cohort.get(section) or {}).items():
-                    if isinstance(cdata, Mapping):
-                        by_key[str(ckey)] = cdata
-
-            def _resolve_cols(ckey: str, seen: frozenset[str], _by_key=by_key) -> list[str]:
-                # Own column wins; else follow source/sources (e.g. malnutrition →
-                # bmi → weight/height/knee_height/age), guarding against cycles.
-                cdata = _by_key.get(ckey)
-                if cdata is None or ckey in seen:
-                    return []
-                if isinstance(cdata.get("column"), str):
-                    return [cdata["column"]]
-                srcs = cdata.get("sources") or ([cdata["source"]] if cdata.get("source") else [])
-                out: list[str] = []
-                for s in srcs:
-                    out.extend(_resolve_cols(str(s), seen | {ckey}))
-                return out
-
-            for ckey, cdata in by_key.items():
-                syns = {str(ckey).replace("_", " ")}
-                an = cdata.get("analysis_name")
-                if isinstance(an, str):
-                    syns.add(an.replace("_", " "))
-                syns.update(_CONCEPT_ALIASES.get(str(ckey), ()))
-                cols = _resolve_cols(ckey, frozenset())
-                for syn in syns:
-                    s = syn.strip().lower()
-                    if not s:
-                        continue
-                    rows.extend((s, col, str(cohort_id)) for col in cols if col)
-    except Exception:
-        logger.debug("concept index build failed", exc_info=True)
-        rows = []
-    _CONCEPT_INDEX_CACHE[key] = rows
-    return rows
-
-
-def _detect_cohort(question: str) -> str:
-    """Map question text to ``cohort_a`` / ``cohort_b`` / ``""`` (ambiguous)."""
-    q = _normalise_search_text(question)
-    a = any(t in q for t in ("cohort a", "index case", "index cases", "ic ", "icbaseline"))
-    b = any(
-        t in q for t in ("cohort b", "household contact", "household contacts", "hhc", "contact")
-    )
-    if a and not b:
-        return "cohort_a"
-    if b and not a:
-        return "cohort_b"
-    return ""
-
-
-def _concept_columns_for_query(question: str) -> set[str]:
-    """Return UPPER-cased columns the question's concepts map to (cohort-scoped).
-
-    A concept phrase present in the normalised question contributes its mapped
-    column(s); cohort detection narrows IC_/IS_ vs HC_/HHC_. Cohort-agnostic
-    rows (``cohort==""``) always apply. Empty when no concept matches.
-    """
-    q = _normalise_search_text(question)
-    q_padded = f" {q} "
-    cohort = _detect_cohort(question)
-    hits: set[str] = set()
-    for phrase, column, row_cohort in _concept_index():
-        if row_cohort and cohort and row_cohort != cohort:
-            continue
-        # whole-phrase match against the spaced question (avoids 'dm' in 'admit')
-        if f" {phrase} " in q_padded:
-            hits.add(column.upper())
-    return hits
 
 
 def _load_dataset_column_variables() -> list[dict[str, Any]]:
@@ -746,7 +622,6 @@ def query_dataset(
 
     safe_records: list[Mapping[str, Any]] = list(results)
     kanon_violation: dict[str, Any] | None = None
-    kanon_note: str | None = None
 
     if subject_identifier_filter:
         safe_records = []
@@ -808,31 +683,6 @@ def query_dataset(
             # ``gated`` is the full-row safety check. Surface only the caller's
             # projected records after the gate passes.
             safe_records = list(results)
-    elif not qi_present and gating_rows and len(gating_rows) > 1:
-        # GAP-6: make the no-quasi-identifier case EXPLICIT rather than silently
-        # passing rows through. k-anonymity protects against QI-based
-        # re-identification; when a result set has NO recognised QI column, the
-        # remaining columns are clinical outcomes/measurements (the *sensitive
-        # attribute* k-anon is meant to shield, not a QI) plus dates that are
-        # already jittered and redacted to <DATE_SHIFTED> downstream. Treating
-        # those as quasi-identifiers and suppressing would over-redact legitimate,
-        # non-identifying research data with no privacy gain. So we RETURN the rows
-        # (still date-redacted via _surface_safe_records and PHI-text-gated via
-        # @phi_safe_return) but log the gap and flag it in the payload so it is
-        # auditable. If a form carries a genuine identifier not in
-        # _DEFAULT_QUASI_IDENTIFIERS, extend that list so the qi_present branch
-        # above gates it — that is the correct lever, not blanket suppression.
-        logger.warning(
-            "query_dataset: no recognised quasi-identifier columns in result set "
-            "(%d rows) — row-level k-anon not applicable; returning date-redacted, "
-            "PHI-text-gated rows. Extend _DEFAULT_QUASI_IDENTIFIERS if a QI is missing.",
-            len(gating_rows),
-        )
-        kanon_note = (
-            "No recognised quasi-identifier columns are present in this result set, "
-            "so row-level k-anonymity was not applicable. Rows are date-redacted and "
-            "PHI-text-gated. Treat any cross-column combination with caution."
-        )
 
     safe_records, date_values_redacted = _surface_safe_records(safe_records)
 
@@ -848,7 +698,6 @@ def query_dataset(
             "records": safe_records,
             "date_values_redacted": date_values_redacted,
             "kanon_violation": kanon_violation,
-            "kanon_note": kanon_note,
         },
         indent=2,
         ensure_ascii=False,
@@ -893,7 +742,7 @@ def _list_available_datasets_impl(*, include_columns: bool = False) -> list[dict
     counts and inferred column schema. Free-text narrative columns are
     dropped as defense in depth; the count is reported on each record.
     """
-    datasets_dir_raw = config.TRIO_DATASETS_DIR
+    datasets_dir_raw = config.LLM_SOURCE_DATASET_SCHEMA_FILES_DIR
     # Gate: ensures the dataset zone is inside the agent read allowlist
     # (``llm_source/`` or ``agent/``). Never bypass.
     try:
@@ -982,9 +831,8 @@ def _list_available_datasets_impl(*, include_columns: bool = False) -> list[dict
 def list_available_datasets(include_columns: bool = False) -> str:
     """Discovery hop: enumerate every PHI-scrubbed dataset the agent can read.
 
-    Returns one record per JSONL under the published
-    ``llm_source/dataset_schema/files/`` path. Each record exposes schema +
-    row counts only — never row contents —
+    Returns one record per JSONL under the published ``llm_source/datasets/``
+    path. Each record exposes schema + row counts only — never row contents —
     so you can plan a custom analysis in one tool call instead of probing
     forms one at a time. Operates strictly on the PHI-scrubbed view; free-
     text narrative columns (``*COMMENT``, ``*REMARK``, ``*NOTE``,
@@ -1070,30 +918,18 @@ def get_dataset_stats(dataset_name: str | None = None) -> str:
     for f in files:
         record_count = 0
         all_columns: set[str] = set()
-        # Per-file zone validation + read guard — defense in depth against
-        # symlink escape, and so one bad/locked file does not abort stats for
-        # every other dataset (mirrors _list_available_datasets_impl).
-        try:
-            resolved = validate_agent_read(f)
-        except PermissionError:
-            logger.warning("get_dataset_stats: skipping out-of-zone file %s", f.name)
-            continue
-        try:
-            with open(resolved, encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.rstrip("\n")
-                    if not line:
-                        continue
-                    record_count += 1
-                    if not all_columns:
-                        try:
-                            rec = json.loads(line)
-                            all_columns.update(rec.keys())
-                        except json.JSONDecodeError:
-                            pass
-        except OSError:
-            logger.warning("get_dataset_stats: unreadable file %s", resolved)
-            continue
+        with open(validate_agent_read(f), encoding="utf-8") as fh:
+            for line in fh:
+                line = line.rstrip("\n")
+                if not line:
+                    continue
+                record_count += 1
+                if not all_columns:
+                    try:
+                        rec = json.loads(line)
+                        all_columns.update(rec.keys())
+                    except json.JSONDecodeError:
+                        pass
         visible_columns = all_columns - _INTERNAL_COLUMNS
         stats.append(
             {
@@ -1181,7 +1017,6 @@ def _discover_trio_dataframe_paths() -> dict[str, str]:
             logger.debug("Skipping %s (failed validate_agent_read)", f.name)
             continue
     return out
-
 
 def _unsafe_sandbox_stdout_reason(stdout: str) -> str | None:
     """Return a security reason when stdout appears to expose row-level data."""
@@ -1287,46 +1122,6 @@ def run_python_analysis(code: str) -> str:
     return _format_sandbox_result_for_agent(result)
 
 
-def _gate_figure_path(path: Path) -> bool:
-    """GAP-1: Gate a figure file through the PHI check before exposing its path.
-
-    Figure content is an LLM/user-visible surface that requires the same PHI
-    gating as stdout — a Plotly JSON embeds every data point, hover text, and
-    annotation in plain text, potentially surfacing raw quasi-identifier
-    combinations, pseudonymized IDs, and day-granular dates that bypass the
-    k-anon gate enforced at the query_dataset level.
-
-    Returns True when the figure is safe to emit, False when it must be
-    suppressed. Fail-closed: any read/parse failure returns False.
-
-    Known limitation (residual, not a regression): Plotly JSON — the primary
-    vector — stores all data/labels as TEXT and is fully scanned. A matplotlib
-    PNG, by contrast, rasterises any text into PIXELS, which a text scan cannot
-    inspect; PHI baked into a PNG as rendered glyphs is therefore not detectable
-    here. Mitigations elsewhere still apply (dates are jittered, IDs
-    pseudonymized, query_dataset enforces k-anon on the data the code reads), so
-    this is a defense-in-depth gap, not an open raw-PHI channel. OCR-grade PNG
-    inspection is out of scope.
-    """
-    from scripts.security.phi_gate import phi_gate_check
-
-    try:
-        text = path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        logger.warning("run_python_analysis: figure unreadable — suppressed: %s", path.name)
-        return False
-
-    result = phi_gate_check(text)
-    if not result:
-        logger.warning(
-            "run_python_analysis: figure suppressed due to PHI gate findings %s: %s",
-            list(result.findings),
-            path.name,
-        )
-        return False
-    return True
-
-
 def _format_sandbox_result_for_agent(result: Any) -> str:
     """Format a :class:`SandboxResult` into the marker-bearing string the
     streaming UI parses (``<RPLN_PLOTLY:>``, ``<RPLN_FIGURE:>``, ``<RPLN_CODE:>``).
@@ -1372,32 +1167,13 @@ def _format_sandbox_result_for_agent(result: Any) -> str:
     if result.stdout.strip():
         parts.append(result.stdout.strip())
 
-    # GAP-1: Gate figure content through the PHI check before emitting paths.
-    # Plotly JSON files embed every data point and annotation in plain text;
-    # a figure can surface raw quasi-identifier combos and day-granular dates
-    # that bypass the k-anon gate enforced at query_dataset level. Suppressed
-    # figures are replaced with a redaction note; fail-closed (unreadable → suppress).
-    plotly_paths_raw = [p for p in result.figure_paths if p.suffix == ".json"]
-    matplotlib_paths_raw = [p for p in result.figure_paths if p.suffix == ".png"]
-
-    plotly_paths = [p for p in plotly_paths_raw if _gate_figure_path(p)]
-    matplotlib_paths = [p for p in matplotlib_paths_raw if _gate_figure_path(p)]
-
-    suppressed_count = (len(plotly_paths_raw) - len(plotly_paths)) + (
-        len(matplotlib_paths_raw) - len(matplotlib_paths)
-    )
-
+    plotly_paths = [p for p in result.figure_paths if p.suffix == ".json"]
+    matplotlib_paths = [p for p in result.figure_paths if p.suffix == ".png"]
     total_figs = len(plotly_paths) + len(matplotlib_paths)
     if total_figs:
         parts.append(f"\n[{total_figs} figure(s) generated]")
         parts.extend(f"\n<RPLN_PLOTLY:{p}>" for p in plotly_paths)
         parts.extend(f"\n<RPLN_FIGURE:{p}>" for p in matplotlib_paths)
-
-    if suppressed_count:
-        parts.append(
-            f"\n[{suppressed_count} figure(s) suppressed by PHI security gate — "
-            "regenerate using aggregate values, model coefficients, or binned data.]"
-        )
 
     parts.extend(f"\n<RPLN_CODE:{code_path}>" for code_path in result.code_paths)
 
@@ -1406,13 +1182,11 @@ def _format_sandbox_result_for_agent(result: Any) -> str:
 
     formatted = "\n".join(parts)
     logger.info(
-        "run_python_analysis: %d chars stdout, %d plotly, %d matplotlib, %d code-saved, "
-        "%d figure(s) suppressed by PHI gate",
+        "run_python_analysis: %d chars stdout, %d plotly, %d matplotlib, %d code-saved",
         len(result.stdout),
         len(plotly_paths),
         len(matplotlib_paths),
         len(result.code_paths),
-        suppressed_count,
     )
     return formatted
 
@@ -1461,38 +1235,13 @@ def _load_catalog_artifact() -> Mapping[str, Any] | None:
     return None
 
 
-# Thread-safe in-memory cache for joined-view summaries (Note 3: LLM reads joined views only)
-_JOINED_VIEW_SUMMARIES_CACHE: dict[Path, dict[str, Any]] = {}
-
-
-def _catalog_pdf_question(var_meta: Any) -> str:
-    """Extract printable question text from policy-flat or joined-view variable metadata."""
-
-    if not isinstance(var_meta, dict):
-        return ""
-    if var_meta.get("pdf_question"):
-        return str(var_meta["pdf_question"])
-    pdf = var_meta.get("pdf")
-    if isinstance(pdf, dict) and pdf.get("question"):
-        return str(pdf["question"])
-    return ""
-
-
-def _catalog_phi_flag(var_meta: Any) -> Any:
-    if not isinstance(var_meta, dict):
-        return None
-    if "phi" in var_meta:
-        return var_meta.get("phi")
-    pdf = var_meta.get("pdf")
-    if isinstance(pdf, dict):
-        return pdf.get("phi")
-    return None
-
+# Thread-safe in-memory cache for policy summaries to avoid repeated disk reads and safe_load parsing
+_POLICY_SUMMARIES_CACHE: dict[Path, dict[str, Any]] = {}
 
 @tool
 @phi_safe_return
 def answer_catalog_question(question: str) -> str:
-    """Answer a study-variable metadata question through published SoT joined query views.
+    """Answer a study-variable metadata question through published policy SoT YAMLs.
 
     Use this for ordinary questions about retained study variables: their
     label, dataset column, form, options, and provenance. The plugin-published
@@ -1535,11 +1284,15 @@ def answer_catalog_question(question: str) -> str:
         (bool). The ``answer`` is already boundary-aware; the LLM should
         normally pass it through verbatim.
     """
-    """Answer a study-variable metadata question by searching SoT joined query views (Note 3)."""
+    """Answer a study-variable metadata question by searching policy SoT YAMLs."""
+    from scripts.ai_assistant.sot_joined_view import (
+        build_joined_query_view,
+        find_dataset_schema_for_policy,
+    )
     from scripts.ai_assistant.sot_loader import (
-        find_joined_query_view_paths,
-        load_joined_query_view,
-        summarize_joined_view,
+        find_policy_yaml,
+        load_policy_yaml,
+        summarize_policy,
     )
 
     if _query_looks_conversational(question):
@@ -1549,13 +1302,8 @@ def answer_catalog_question(question: str) -> str:
     if hit is not None:
         return hit
 
-    repo_root = Path(config.REPO_ROOT)
+    repo_root = Path(config.REPO_ROOT) if hasattr(config, "REPO_ROOT") else Path(".")
     query_identifiers = _catalog_query_identifier_tokens(question)
-    # R2: resolve human concepts to columns by dictionary lookup against the
-    # published study_variable_map (smoking → IC_SMOKHX / HC_SMOKHX cohort-scoped,
-    # recurrence → FOA_COHAOUT, malnutrition/BMI → weight+height sources) so the
-    # modeling workload exact-matches (priority 0) instead of token-overlap guessing.
-    query_identifiers |= _concept_columns_for_query(question)
     query_tokens = _catalog_meaningful_tokens(question)
 
     # Try to identify a study from known output dirs; fall back to searching all.
@@ -1565,16 +1313,20 @@ def answer_catalog_question(question: str) -> str:
 
     matches: list[dict[str, Any]] = []
     for study_dir in study_dirs:
-        all_paths = find_joined_query_view_paths(study_dir.name, None, repo_root)
+        all_paths = find_policy_yaml(study_dir.name, None, repo_root)
         for path in all_paths:
-            summary = _JOINED_VIEW_SUMMARIES_CACHE.get(path)
+            # Check the in-memory cache for policy summaries first
+            summary = _POLICY_SUMMARIES_CACHE.get(path)
             if summary is None:
                 try:
-                    data = load_joined_query_view(path)
-                    summary = summarize_joined_view(data)
-                    _JOINED_VIEW_SUMMARIES_CACHE[path] = summary
+                    data = load_policy_yaml(path)
+                    summary = summarize_policy(data)
+                    _POLICY_SUMMARIES_CACHE[path] = summary
                 except ValueError:
                     continue
+            # Prefer exact variable-id matches, then require meaningful token
+            # overlap. A single generic question word like "what" must never
+            # decide the catalog answer.
             for var_name, var_meta in summary["variables"].items():
                 if var_name.upper() in query_identifiers:
                     matches.append(
@@ -1588,7 +1340,7 @@ def answer_catalog_question(question: str) -> str:
                     )
                     continue
                 if isinstance(var_meta, dict):
-                    question_text = _catalog_pdf_question(var_meta)
+                    question_text = str(var_meta.get("pdf_question") or "")
                     question_overlap = query_tokens & _catalog_meaningful_tokens(question_text)
                     name_overlap = query_tokens & _catalog_meaningful_tokens(
                         var_name.replace("_", " ")
@@ -1610,15 +1362,16 @@ def answer_catalog_question(question: str) -> str:
                         )
 
     if not matches:
+        # Return all available SoT metadata across studies as a catalog dump.
         all_summaries = []
         for study_dir in study_dirs:
-            for path in find_joined_query_view_paths(study_dir.name, None, repo_root):
-                summary = _JOINED_VIEW_SUMMARIES_CACHE.get(path)
+            for path in find_policy_yaml(study_dir.name, None, repo_root):
+                summary = _POLICY_SUMMARIES_CACHE.get(path)
                 if summary is None:
                     try:
-                        data = load_joined_query_view(path)
-                        summary = summarize_joined_view(data)
-                        _JOINED_VIEW_SUMMARIES_CACHE[path] = summary
+                        data = load_policy_yaml(path)
+                        summary = summarize_policy(data)
+                        _POLICY_SUMMARIES_CACHE[path] = summary
                     except ValueError:
                         continue
                 all_summaries.append(summary)
@@ -1627,9 +1380,10 @@ def answer_catalog_question(question: str) -> str:
                 {
                     "question": question,
                     "answer": (
-                        "No SoT joined query views found. Run Load Study to activate "
-                        "a clean snapshot, or run the `sot-lean-generator` phase and "
-                        "publish under `llm_source/SoT/<pair>/joined/`."
+                        "No policy SoT YAMLs found. Run Load Study to activate "
+                        "the report-ai-study-pipeline plugin, or run the "
+                        "`sot-lean-generator` phase for the affected form and publish "
+                        "the result under `llm_source/SoT/<pair>/pdf/`."
                     ),
                     "variable_ids": [],
                     "audit_only": False,
@@ -1655,111 +1409,59 @@ def answer_catalog_question(question: str) -> str:
         tool_cache.put("answer_catalog_question", res, question=question)
         return res
 
-    # R3 — form-scoped, deterministic ranking. A query that names a form (or its
-    # abbreviation) prefers that form's variable, splitting same-named columns
-    # across forms (IC_HIVLOC vs HC_HIVLOC; SUBJID in form X vs Y). The tie-break
-    # is fully deterministic: exact-id match first (0 before 1 — corrected so an
-    # exact identifier never sorts behind a fuzzy one), then shorter id, then
-    # stable id/source order. No equal-key set can resolve by dict-iteration order.
-    q_form_tokens = {t for t in _expanded_form_text(question).split() if len(t) >= 2}
-
-    def _form_title(item: dict[str, Any]) -> str:
-        # summary["form"] is {"number": .., "title": "6_HIV"} — use the title.
-        form = item.get("summary", {}).get("form", "")
-        if isinstance(form, Mapping):
-            return str(form.get("title") or form.get("number") or "")
-        return str(form)
-
-    def _form_referenced(item: dict[str, Any]) -> int:
-        form_tokens = {t for t in _expanded_form_text(_form_title(item)).split() if len(t) >= 2}
-        return 1 if (form_tokens & q_form_tokens) else 0
-
-    def _exact_id(item: dict[str, Any]) -> int:
-        return 0 if str(item.get("variable_id", "")).upper() in query_identifiers else 1
-
-    for _m in matches:
-        _m["form_match"] = _form_referenced(_m)
-
-    ranked = sorted(
+    best = sorted(
         matches,
         key=lambda item: (
             int(item.get("priority", 99)),
-            -int(item.get("form_match", 0)),
             -int(item.get("score", 0)),
-            _exact_id(item),
-            len(str(item.get("variable_id", ""))),
-            str(item.get("variable_id", "")),
             str(item.get("source", "")),
+            str(item.get("variable_id", "")),
         ),
-    )
-    best = ranked[0]
-
-    # R4 — explicit ambiguity. When the top candidates tie on the discriminating
-    # keys (priority, form_match, score) but are DISTINCT variables (different
-    # variable_id), do NOT silently pick one — return the disambiguation list so
-    # the agent asks which the user means. Same id across forms is NOT ambiguous
-    # (the variable's meaning is identical); only distinct ids trigger this.
-    _top_key = (best.get("priority"), best.get("form_match"), best.get("score"))
-    _tied = [
-        m for m in ranked if (m.get("priority"), m.get("form_match"), m.get("score")) == _top_key
-    ]
-    _distinct_ids = {str(m.get("variable_id", "")) for m in _tied}
-    if len(_distinct_ids) > 1:
-        _candidates = [
-            {
-                "variable_id": str(m.get("variable_id", "")),
-                "form": _form_title(m),
-                "study": m.get("summary", {}).get("study", ""),
-            }
-            for m in _tied[:10]
-        ]
-        res = json.dumps(
-            {
-                "question": question,
-                "answer": (
-                    f"{len(_distinct_ids)} distinct variables match equally well "
-                    "across forms — ask the user which form/variable they mean "
-                    "(or name the form in the question)."
-                ),
-                "variable_ids": sorted(_distinct_ids)[:10],
-                "audit_only": False,
-                "analysis_queryable": False,
-                "needs_clarification": True,
-                "candidates": _candidates,
-            },
-            indent=2,
-        )
-        tool_cache.put("answer_catalog_question", res, question=question)
-        return res
-
+    )[0]
     summary = best["summary"]
     var_id = best["variable_id"]
     var_meta = summary["variables"].get(var_id, {})
-    phi_flag = _catalog_phi_flag(var_meta)
+    phi_flag = var_meta.get("phi") if isinstance(var_meta, dict) else None
     analysis_queryable = phi_flag not in ("drop",)
     metadata: Any = var_meta
     source_path = Path(str(best["source"]))
-
-    if source_path.is_file() and source_path.name.endswith("_joined_query_view.yaml"):
+    
+    # Try loading pre-compiled joined query view from file first to save dynamic parsing and join CPU/IO
+    form_id = source_path.name
+    for suffix in ("_policy.yaml", "_policy.lean.yaml", ".lean.yaml", ".yaml"):
+        if form_id.endswith(suffix):
+            form_id = form_id[:-len(suffix)]
+            break
+    joined_view_path = source_path.parent.parent / "joined" / f"{form_id}_joined_query_view.yaml"
+    
+    loaded_from_file = False
+    if joined_view_path.is_file():
         try:
-            validate_agent_read(source_path)
+            validate_agent_read(joined_view_path)
             import yaml
-
-            with open(source_path, encoding="utf-8") as fh:
+            with open(joined_view_path, encoding="utf-8") as fh:
                 joined_view = yaml.safe_load(fh)
-            joined_variables = (
-                joined_view.get("variables") if isinstance(joined_view, dict) else None
-            )
+            joined_variables = joined_view.get("variables")
             if isinstance(joined_variables, Mapping):
                 joined_meta = joined_variables.get(var_id)
                 if isinstance(joined_meta, Mapping):
                     metadata = dict(joined_meta)
+                    loaded_from_file = True
         except Exception:
-            logger.debug(
-                "joined-view metadata load failed for %s",
-                var_id,
-                exc_info=True,
-            )
+            pass
+
+    if not loaded_from_file:
+        schema_path = find_dataset_schema_for_policy(source_path)
+        if schema_path is not None:
+            try:
+                joined_view = build_joined_query_view(source_path, schema_path)
+                joined_variables = joined_view.get("variables")
+                if isinstance(joined_variables, Mapping):
+                    joined_meta = joined_variables.get(var_id)
+                    if isinstance(joined_meta, Mapping):
+                        metadata = dict(joined_meta)
+            except ValueError:
+                metadata = var_meta
     answer_text = json.dumps(
         {
             "variable_id": var_id,
@@ -1791,9 +1493,9 @@ def cite_source(form_id: str, field_id: str) -> str:
     """Return a deterministic (file, line, snippet) citation for a study variable.
 
     Use this whenever you need to back a variable claim with a verifiable
-    provenance reference. The citation is looked up in published joined query
-    views, LLM source JSONL schemas, and study-config YAMLs — so the result is
-    a real file location, never a fabricated string.
+    provenance reference. The citation is looked up in the indexed corpus of
+    form-policy YAMLs, LLM source JSONL schemas, and study-config YAMLs — so
+    the result is a real file location, never a fabricated string.
 
     Typical usage: when answering a question about a form field
     (e.g. ``FOA_COHAOUT``, ``FA_RLPSDAT``), call ``cite_source(form_id="98A",
@@ -1803,15 +1505,15 @@ def cite_source(form_id: str, field_id: str) -> str:
     Args:
         form_id: The form identifier (e.g. ``"98A"``, ``"99A"``, ``"10"``).
             Short prefixes are accepted; the tool resolves to the matching
-            joined query view.
-        field_id: The exact field name as it appears in the joined query view
+            policy YAML.
+        field_id: The exact field name as it appears in the policy YAML
             (e.g. ``"FOA_COHAOUT"``, ``"FA_RLPSDAT"``).
 
     Returns:
         A JSON string with ``file`` (repo-relative path), ``line`` (1-indexed),
         ``snippet`` (~200 chars), ``matched_term`` (what the lookup matched),
-        and ``source_kind`` (``joined_query_view`` | ``llm_jsonl`` |
-        ``study_config``). If no citation is found, returns a JSON object
+        and ``source_kind`` (``form_policy`` | ``llm_jsonl`` | ``study_config``
+        | ``dataset_schema``). If no citation is found, returns a JSON object
         with ``error: "no citation"`` — never a guessed location.
     """
     from scripts.ai_assistant.citations import (
@@ -1923,10 +1625,8 @@ def list_llm_source(subdir: str = "") -> str:
     Use this to discover what is available before searching or reading. The
     tree holds the canonical study content the assistant may read:
 
-    * ``SoT/<pair>/joined/`` — Source-Truth joined query views (the sole
-      LLM-facing SoT file; policy YAML + dataset schema are fenced to the audit
-      zone): form questions, variable labels, coded options, definitions,
-      inclusion/exclusion text, schedules.
+    * ``SoT/<form>/`` — Source-Truth policy YAMLs: form questions, variable
+      labels, coded options, definitions, inclusion/exclusion text, schedules.
     * ``dataset_schema/files/`` — the de-identified per-form ``.jsonl``
       datasets (use ``run_python_analysis`` to compute over these).
     * ``dataset_schema/`` and ``dictionary_mapping/`` — column dictionaries.
@@ -1997,7 +1697,7 @@ def search_llm_source(query: str, subdir: str = "", max_results: int = 40) -> st
         query: One or more search terms. Multi-word queries match lines
             containing any term; ranking favours lines matching more terms.
         subdir: Optional path relative to ``llm_source/`` to scope the search
-            (e.g. ``"SoT"`` to search only Source-Truth joined query views).
+            (e.g. ``"SoT"`` to search only Source-Truth policy YAMLs).
         max_results: Cap on returned hits (default 40, max 60).
 
     Returns:
@@ -2061,7 +1761,9 @@ def search_llm_source(query: str, subdir: str = "", max_results: int = 40) -> st
                         # metadata carries jittered ISO dates that the
                         # fail-closed PHI gate treats as blocking. Tag
                         # them here so useful protocol text still flows.
-                        "snippet": _redact_blocking_phi(line.strip()[:_LLM_SOURCE_SNIPPET_CHARS]),
+                        "snippet": _redact_blocking_phi(
+                            line.strip()[:_LLM_SOURCE_SNIPPET_CHARS]
+                        ),
                     }
                 )
                 if len(hits) >= pool_limit:
@@ -2098,12 +1800,12 @@ def read_llm_source_file(relative_path: str, max_bytes: int = 24000) -> str:
     """Read a single file from the PHI-scrubbed ``llm_source/`` tree.
 
     Use after ``list_llm_source`` / ``search_llm_source`` to read a specific
-    SoT joined query view or dictionary file in full. For large ``.jsonl`` datasets,
+    SoT policy YAML or dictionary file in full. For large ``.jsonl`` datasets,
     prefer ``run_python_analysis`` — this returns only the first ``max_bytes``.
 
     Args:
         relative_path: Path relative to ``llm_source/`` (e.g.
-            ``"SoT/6_HIV/joined/6_HIV_joined_query_view.yaml"``).
+            ``"SoT/6_HIV/6_HIV_policy.yaml"``).
         max_bytes: Maximum bytes to return (default 24000; capped at 100000).
 
     Returns:
@@ -2157,120 +1859,6 @@ def read_llm_source_file(relative_path: str, max_bytes: int = 24000) -> str:
 
 
 # ============================================================================
-# Tool 11: study variable map — concept→column bindings
-# ============================================================================
-
-
-@tool
-@phi_safe_return
-def get_study_variable_map(cohort: str = "", concept: str = "") -> str:
-    """Return the curated concept→column bindings from ``study_variable_map.yaml``.
-
-    This is the **primary** tool to call before any cohort risk-factor or
-    outcome analysis.  It surfaces the exact dataset column, value encodings,
-    derivation formulas, and outcome aggregation rules so that
-    ``run_python_analysis`` code is built from ground truth rather than guessed
-    names.
-
-    The map covers:
-
-    * **Demographics** — sex, age column + dataset for each cohort.
-    * **Predictors** — smoking, diabetes (binary maps), alcohol
-      (valid-range/labels), height, weight, knee-height (for Chumlea
-      height estimation), HbA1c.
-    * **Derived variables** — BMI formula ``weight_kg / (height_m^2)``; Chumlea
-      knee-height estimation ``H = 2.02*knee - 0.04*age + 64.19``; malnutrition
-      threshold (BMI < 18.5).
-    * **Outcomes** — recurrence (cohort A: ``FOA_COHAOUT``, ``worst_per_subject``
-      aggregation), incident TB (cohort B: ``FOB_COHBOUT`` + ``FUB_TBDIAG``
-      additional source, ``any_positive_per_subject`` aggregation).
-    * **Join key** — ``SUBJID`` links all datasets within a cohort.
-
-    All fields are variable *names* and *encodings* — pure metadata, no row
-    values.
-
-    Args:
-        cohort:  Filter to a single cohort — ``"cohort_a"`` or ``"cohort_b"``.
-            Leave blank (or ``""``) to return both cohorts.
-        concept: Filter to a single concept key, e.g. ``"diabetes"``,
-            ``"bmi"``, ``"recurrence"``, ``"incident_tb"``.  Leave blank to
-            return all concepts for the requested cohort(s).
-
-    Returns:
-        A JSON string containing the requested slice of the variable map.
-        On a missing map file, returns a JSON object with an ``"error"`` key
-        describing the problem — never raises.
-    """
-    import yaml
-
-    map_path = Path(config.LLM_SOURCE_STUDY_METADATA_DIR) / "study_variable_map.yaml"
-    try:
-        resolved = validate_agent_read(map_path)
-    except PermissionError as exc:
-        return json.dumps({"error": f"Access denied to study_variable_map.yaml: {exc}"}, indent=2)
-
-    if not resolved.exists():
-        return json.dumps(
-            {
-                "error": (
-                    "study_variable_map.yaml not found at "
-                    f"{map_path}. Run the study build pipeline first."
-                )
-            },
-            indent=2,
-        )
-
-    try:
-        with resolved.open("r", encoding="utf-8") as fh:
-            raw_map: dict[str, Any] = yaml.safe_load(fh) or {}
-    except Exception as exc:
-        return json.dumps({"error": f"Failed to parse study_variable_map.yaml: {exc}"}, indent=2)
-
-    cohort_key = (cohort or "").strip().lower()
-    concept_key = (concept or "").strip().lower()
-
-    cohorts_src: dict[str, Any] = raw_map.get("cohorts", {})
-    dataset_relationships: dict[str, Any] = raw_map.get("dataset_relationships", {})
-    study_meta: dict[str, Any] = {
-        k: v for k, v in raw_map.items() if k not in ("cohorts", "dataset_relationships")
-    }
-
-    def _filter_cohort(cohort_data: dict[str, Any]) -> dict[str, Any]:
-        """Return cohort_data filtered to concept_key (or unfiltered if blank)."""
-        if not concept_key:
-            return cohort_data
-        result: dict[str, Any] = {}
-        # Look in all top-level sections for a key matching concept_key.
-        for section_name, section_val in cohort_data.items():
-            if not isinstance(section_val, dict):
-                result[section_name] = section_val
-                continue
-            if concept_key in section_val:
-                result[section_name] = {concept_key: section_val[concept_key]}
-            elif section_name == concept_key:
-                result[section_name] = section_val
-        return result
-
-    if cohort_key in ("cohort_a", "cohort_b"):
-        cohort_data = cohorts_src.get(cohort_key, {})
-        output: dict[str, Any] = {
-            "study": study_meta,
-            "cohort": cohort_key,
-            "data": _filter_cohort(cohort_data),
-            "dataset_relationships": dataset_relationships,
-        }
-    else:
-        # Return both cohorts.
-        output = {
-            "study": study_meta,
-            "cohorts": {name: _filter_cohort(data) for name, data in cohorts_src.items()},
-            "dataset_relationships": dataset_relationships,
-        }
-
-    return json.dumps(output, indent=2, ensure_ascii=False)
-
-
-# ============================================================================
 # Tool registry
 # ============================================================================
 
@@ -2285,5 +1873,4 @@ ALL_TOOLS = [
     run_python_analysis,
     answer_catalog_question,
     cite_source,
-    get_study_variable_map,
 ]

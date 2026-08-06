@@ -128,10 +128,8 @@ Run Flow
     ``phi_handling_approval.json``.
 10. Pass approved forms, including any ``--form`` subset, to the main pipeline through
     ``REPORTAL_ALLOWED_DATASET_FORMS``.
-11. Run the host publish engine (``scripts/pipeline/host_pipeline.py``) in-lock.
-    The PHI scrub step loads the key internally; the wrapper does not inspect
-    key material. (``main.py`` has no pipeline flag — it is the AI-assistant
-    launcher only; publish runs inside ``make study``.)
+11. Run ``main.py --pipeline`` in a subprocess. The PHI scrub step loads
+    the key internally; the wrapper does not inspect key material.
 12. Assert required per-dataset PHI ledger hashes and empty quarantine.
 13. Destroy ``tmp/{STUDY}/`` after successful publish and write
     ``destruction_attestation.json``.
@@ -196,22 +194,13 @@ Exit Codes
    * - 8
      - ``EXIT_PARTIAL_REVIEW``
      - Approved forms published, held forms need review.
-   * - 9
-     - ``EXIT_DECISION_MISMATCH``
-     - phi_review decision ≠ ledger-applied scrub action (protection-lattice
-       under-protection detected).
-   * - 10
-     - ``EXIT_AUDIT_COVERAGE_INCOMPLETE``
-     - Published column has no PHI ledger entry and no non-keep configured
-       scrub rule.
 
 Verifier Assertions
 -------------------
 
 ``verify`` writes
 ``output/{STUDY}/runs/{run_id}/verifier_report.json`` on pass or fail.
-It checks 16 assertions; execution order is 1→12, then 14, 15, 16, then 13
-(13 always runs last as the terminal status update):
+It checks, in order:
 
 1. manifest exists and parses;
 2. manifest reconciles with the dataset directory;
@@ -224,20 +213,8 @@ It checks 16 assertions; execution order is 1→12, then 14, 15, 16, then 13
 9. ``llm_source/`` has no runtime key material;
 10. required or approved dataset JSONL files exist;
 11. the pipeline lock is absent;
-12. decided action matches applied — cross-checks each approved form's
-    applied protection (ledger events + keep_decisions) against
-    ``phi_review``'s decided action via the protection lattice; fails
-    only under-protection (applied rank < decided rank); exits 9;
-13. ledger covers all columns (assertion 14) — every published dataset
-    column is accounted for by a PHI ledger entry or a non-keep
-    configured scrub rule; exits 10;
-14. SoT joined view present (assertion 15) — when SoT pairs exist, the
-    joined query view is published and is the sole LLM-facing SoT file;
-15. ledger entry fields complete (assertion 16) — every PHI ledger event
-    carries a ``method``, ``rule.jurisdictions``, and a why
-    (``rule.taxonomy`` or ``rationale``); exits 10;
-16. ``status.json`` exists and is updated (assertion 13) with
-    ``verifier_passed: true`` on full pass (always runs last).
+12. ``status.json`` exists and is updated with
+    ``verifier_passed: true`` on full pass.
 
 Destruction Attestation
 -----------------------

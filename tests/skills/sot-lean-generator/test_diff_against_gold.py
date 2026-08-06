@@ -27,7 +27,7 @@ import yaml
 REPO_ROOT = Path(__file__).parents[3]
 CLI = str(REPO_ROOT / "scripts" / "source_truth" / "diff_against_gold.py")
 
-STUDY = "Indo-VAP"
+STUDY = "Test-Study"
 FORM = "test_form"
 
 

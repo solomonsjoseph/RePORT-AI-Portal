@@ -1,0 +1,286 @@
+# ============================================================
+# Study Knowledge Base — Ground Truth Variable Mappings
+# ============================================================
+# This file provides the authoritative mapping between human
+# concepts (e.g., "smoking") and actual dataset columns, value
+# encodings, dataset relationships, and outcome definitions.
+#
+# Used by: scripts/ai_assistant/study_knowledge.py → StudyKnowledge class
+# ============================================================
+
+study:
+  name: "Indo-VAP"
+  full_name: "Indo-US VAP Biomarkers for Risk of TB"
+  description: "Prospective cohort study of TB index cases and household contacts in India"
+
+cohorts:
+  cohort_a:
+    name: "Index Cases"
+    description: "TB patients enrolled at diagnosis"
+    screening_dataset: "1A_ICScreening.jsonl"
+    baseline_dataset: "2A_ICBaseline.jsonl"
+    subject_id: "SUBJID"
+    demographics:
+      sex:
+        column: "IS_SEX"
+        dataset: "1A_ICScreening.jsonl"
+        type: "categorical"
+        encoding:
+          "Male": 1
+          "Female": 0
+      age:
+        column: "IS_AGE"
+        dataset: "1A_ICScreening.jsonl"
+        type: "continuous"
+        unit: "years"
+    predictors:
+      smoking:
+        column: "IC_SMOKHX"
+        dataset: "2A_ICBaseline.jsonl"
+        type: "categorical"
+        binary_map:
+          positive:
+            - "Yes, current smoker (Go to 18)"
+            - "Yes, former smoker (Go to 18)"
+            - "Yes, current smoker (Go to 16)"
+            - "Yes, former smoker (Go to 16)"
+            - "Yes, current"
+            - "Yes, former"
+          negative:
+            - "No (Skip to 19)"
+            - "No (skip to 16)"
+            - "No, never"
+            - "No"
+        analysis_name: "smoking"
+        description: "Smoking history (current/former vs never)"
+      diabetes:
+        column: "IC_DMDX"
+        dataset: "2A_ICBaseline.jsonl"
+        type: "categorical"
+        binary_map:
+          positive:
+            - "Yes"
+            - "Yes (Go to 21a-b)"
+            - "Yes (Go to 18a-b)"
+            - "Yes (Go to 24a)"
+          negative:
+            - "No"
+            - "Don't know"
+            - "No (Skip to 25)"
+            - "Don't know (Skip to 25)"
+        analysis_name: "diabetes"
+        description: "Diabetes diagnosis"
+      alcohol:
+        column: "IC_ALCFRQ"
+        dataset: "2A_ICBaseline.jsonl"
+        type: "ordinal"
+        valid_range: [0, 1, 2, 3, 4]
+        labels:
+          0: "Never"
+          1: "Less than monthly"
+          2: "Monthly"
+          3: "Weekly"
+          4: "4+ times/week"
+        analysis_name: "alcohol_freq"
+        description: "Alcohol consumption frequency"
+      height:
+        column: "IC_HEIGHT"
+        dataset: "2A_ICBaseline.jsonl"
+        type: "continuous"
+        unit: "cm"
+        plausible_range: [50, 250]
+      weight:
+        column: "IC_WEIGHT"
+        dataset: "2A_ICBaseline.jsonl"
+        type: "continuous"
+        unit: "kg"
+      knee_height:
+        column: "IC_KNEEHT"
+        dataset: "2A_ICBaseline.jsonl"
+        type: "continuous"
+        unit: "cm"
+        note: "Used to estimate height via Chumlea formula: H = 2.02*knee - 0.04*age + 64.19"
+      hba1c:
+        column: "CBC_HGAPCT"
+        dataset: "5_CBC.jsonl"
+        type: "continuous"
+        unit: "percent"
+        aggregation: "first_per_subject"
+    derived_variables:
+      bmi:
+        formula: "weight_kg / (height_m ^ 2)"
+        sources: ["weight", "height", "knee_height", "age"]
+        plausible_range: [10, 60]
+        height_estimation: "Chumlea formula if primary height missing"
+      malnutrition:
+        type: "binary"
+        source: "bmi"
+        threshold: 18.5
+        description: "BMI < 18.5 (WHO adult undernutrition threshold)"
+    outcomes:
+      recurrence:
+        column: "FOA_COHAOUT"
+        dataset: "98A_FOA.jsonl"
+        type: "binary"
+        positive_labels:
+          - "Bacteriologic relapse"
+          - "Bact. relapse"
+          - "Clinical relapse"
+          - "Bacteriologic failure"
+          - "Bact. failure"
+          - "Clinical failure"
+        aggregation: "worst_per_subject"
+        description: "TB recurrence (relapse or failure)"
+
+  cohort_b:
+    name: "Household Contacts"
+    description: "Household contacts of TB index cases"
+    screening_dataset: "1B_HCScreening.jsonl"
+    baseline_dataset: "2B_HCBaseline.jsonl"
+    subject_id: "SUBJID"
+    demographics:
+      sex:
+        column: "HHC_SEX"
+        dataset: "1B_HCScreening.jsonl"
+        type: "categorical"
+        encoding:
+          "Male": 1
+          "Female": 0
+      age:
+        column: "HHC_AGE"
+        dataset: "1B_HCScreening.jsonl"
+        type: "continuous"
+        unit: "years"
+    predictors:
+      smoking:
+        column: "HC_SMOKHX"
+        dataset: "2B_HCBaseline.jsonl"
+        type: "categorical"
+        binary_map:
+          positive:
+            - "Yes, current smoker (Go to 18)"
+            - "Yes, former smoker (Go to 18)"
+            - "Yes, current smoker (Go to 16)"
+            - "Yes, former smoker (Go to 16)"
+            - "Yes, current"
+            - "Yes, former"
+          negative:
+            - "No (Skip to 19)"
+            - "No (skip to 16)"
+            - "No, never"
+            - "No"
+        analysis_name: "smoking"
+        description: "Smoking history (current/former vs never)"
+      diabetes:
+        column: "HC_DMDX"
+        dataset: "2B_HCBaseline.jsonl"
+        type: "categorical"
+        binary_map:
+          positive:
+            - "Yes"
+            - "Yes (Go to 21a-b)"
+            - "Yes (Go to 18a-b)"
+            - "Yes (Go to 24a)"
+          negative:
+            - "No"
+            - "Don't know"
+            - "No (Skip to 25)"
+            - "Don't know (Skip to 25)"
+        analysis_name: "diabetes"
+        description: "Diabetes diagnosis"
+      alcohol:
+        column: "HC_ALCFRQ"
+        dataset: "2B_HCBaseline.jsonl"
+        type: "ordinal"
+        valid_range: [0, 1, 2, 3, 4]
+        analysis_name: "alcohol_freq"
+        description: "Alcohol consumption frequency"
+      height:
+        column: "HC_HEIGHT"
+        dataset: "2B_HCBaseline.jsonl"
+        type: "continuous"
+        unit: "cm"
+        plausible_range: [50, 250]
+      weight:
+        column: "HC_WEIGHT"
+        dataset: "2B_HCBaseline.jsonl"
+        type: "continuous"
+        unit: "kg"
+      knee_height:
+        column: "HC_KNEEHT"
+        dataset: "2B_HCBaseline.jsonl"
+        type: "continuous"
+        unit: "cm"
+        note: "Used to estimate height via Chumlea formula"
+      hba1c:
+        column: "CBC_HGAPCT"
+        dataset: "5_CBC.jsonl"
+        type: "continuous"
+        unit: "percent"
+        aggregation: "first_per_subject"
+    derived_variables:
+      bmi:
+        formula: "weight_kg / (height_m ^ 2)"
+        sources: ["weight", "height", "knee_height", "age"]
+        plausible_range: [10, 60]
+        height_estimation: "Chumlea formula if primary height missing"
+      malnutrition:
+        type: "binary"
+        source: "bmi"
+        threshold: 18.5
+        description: "BMI < 18.5 (WHO adult undernutrition threshold)"
+    outcomes:
+      incident_tb:
+        column: "FOB_COHBOUT"
+        dataset: "98B_FOB.jsonl"
+        type: "binary"
+        positive_labels:
+          - "Definite case"
+          - "Probable case"
+          - "Possible case"
+          - "Definite Case"
+          - "Probable Case"
+          - "Possible Case"
+        additional_sources:
+          - column: "FUB_TBDIAG"
+            dataset: "12B_FUB.jsonl"
+            positive_values: [1]
+        aggregation: "any_positive_per_subject"
+        description: "Incident TB (progression from latent to active)"
+
+dataset_relationships:
+  join_key: "SUBJID"
+  datasets:
+    "1A_ICScreening.jsonl":
+      form: "1A"
+      description: "Index case screening and demographics"
+      key_columns: ["SUBJID", "IS_SEX", "IS_AGE"]
+    "1B_HCScreening.jsonl":
+      form: "1B"
+      description: "Household contact screening and demographics"
+      key_columns: ["SUBJID", "HHC_SEX", "HHC_AGE"]
+    "2A_ICBaseline.jsonl":
+      form: "2A"
+      description: "Index case baseline clinical assessment"
+      key_columns: ["SUBJID", "IC_SMOKHX", "IC_DMDX", "IC_ALCFRQ", "IC_HEIGHT", "IC_WEIGHT", "IC_KNEEHT"]
+    "2B_HCBaseline.jsonl":
+      form: "2B"
+      description: "Household contact baseline clinical assessment"
+      key_columns: ["SUBJID", "HC_SMOKHX", "HC_DMDX", "HC_ALCFRQ", "HC_HEIGHT", "HC_WEIGHT", "HC_KNEEHT"]
+    "5_CBC.jsonl":
+      form: "5"
+      description: "Complete blood count / lab results"
+      key_columns: ["SUBJID", "CBC_HGAPCT"]
+      note: "Shared across cohorts — use first record per subject"
+    "98A_FOA.jsonl":
+      form: "98A"
+      description: "Final outcome assessment — Index cases"
+      key_columns: ["SUBJID", "FOA_COHAOUT"]
+    "98B_FOB.jsonl":
+      form: "98B"
+      description: "Final outcome assessment — Household contacts"
+      key_columns: ["SUBJID", "FOB_COHBOUT"]
+    "12B_FUB.jsonl":
+      form: "12B"
+      description: "Follow-up B — Household contact visits"
+      key_columns: ["SUBJID", "FUB_TBDIAG"]

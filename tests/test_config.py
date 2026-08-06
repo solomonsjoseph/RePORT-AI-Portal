@@ -135,67 +135,6 @@ class TestEnsureDirectories:
         assert not (staging_root / "dictionary").exists()
 
 
-class TestEnsureRunDirectories:
-    """Task A9: ensure_run_directories() pre-creates the full Note-16 tree."""
-
-    def _patch_bases(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output")
-        monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp")
-        monkeypatch.setattr(config, "CONFIG_DIR", tmp_path / "config")
-
-    def test_creates_full_tree(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        self._patch_bases(tmp_path, monkeypatch)
-        study = "MyStudy"
-        run_id = "run_abc123"
-        config.ensure_run_directories(study, run_id)
-
-        out = tmp_path / "output" / study
-        tmp = tmp_path / "tmp" / study
-        expected = [
-            tmp_path / "config" / study,
-            tmp / "headers",
-            tmp / "datasets",
-            tmp / "datasets" / "quarantine",
-            tmp / "SoT",
-            out / "audit",
-            out / "audit" / "human_review",
-            out / "audit" / "datasets",
-            # audit/scrubbing_code is no longer pre-created (deferred-N9
-            # placeholder; B7 / Note 24).
-            out / "runs" / run_id,
-            out / "llm_source",
-            # llm_source/datasets removed: dead empty stub, no writers — data
-            # lives under llm_source/dataset_schema/files/.
-            out / "llm_source" / "SoT",
-            out / "snapshots",
-        ]
-        for path in expected:
-            assert path.is_dir(), f"missing {path}"
-
-    def test_run_id_optional(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        self._patch_bases(tmp_path, monkeypatch)
-        config.ensure_run_directories("MyStudy")  # no run_id
-        assert (tmp_path / "output" / "MyStudy" / "llm_source").is_dir()
-        assert not (tmp_path / "output" / "MyStudy" / "runs").exists()
-
-    @pytest.mark.skipif(
-        hasattr(__import__("os"), "geteuid") and __import__("os").geteuid() == 0,
-        reason="chmod-based mode check has no effect for root",
-    )
-    def test_sensitive_leaves_are_0o700(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        self._patch_bases(tmp_path, monkeypatch)
-        config.ensure_run_directories("MyStudy", "run_x")
-        for leaf in (
-            tmp_path / "output" / "MyStudy" / "audit",
-            tmp_path / "output" / "MyStudy" / "llm_source",
-            tmp_path / "tmp" / "MyStudy" / "datasets" / "quarantine",
-        ):
-            mode = leaf.stat().st_mode & 0o777
-            assert mode == 0o700, f"{leaf} mode is {oct(mode)}"
-
-
 class TestStagingPaths:
     def test_study_staging_dir_under_tmp(self) -> None:
         assert config.STUDY_STAGING_DIR == config.TMP_DIR / config.STUDY_NAME

@@ -32,23 +32,15 @@ Prerequisites
        ``data_dictionary/`` and ``annotated_pdfs/`` when Source Truth is
        required
 
-Authoritative session-notes spec (Notes 1–22, GR-1): the Q&A session notes file
-``now-we-are-going-playful-dove.md`` (maintainer copy under ``~/.claude/plans/``).
-Implementation tracker: ``docs/plans/pipeline_redesign_implementation_plan.md``.
-
 Plugin Study Preparation
 ------------------------
 
 The active full workflow is the portable plugin bundle at
-``plugins/report-ai-study-pipeline/``. Launch via ``make study STUDY=<name>``
-(the 10-phase orchestrator): config preflight → header ∥ dictionary extraction
-→ **dataset-deduplication** (raw-file tiers, Note 4) → SoT ∥ PHI classify ∥
-extract → scrub → verify → PHI guard gate → promote → snapshot.
+``plugins/report-ai-study-pipeline/``. Its phase order is fixed:
 
-The ``dataset-deduplication`` maintainer merge arm (``merge_excel_duplicates.py``,
-folded in from the retired ``excel-duplicate-handler``, Note 18) is run by a
-maintainer to resolve a held complementary-duplicate group; it is never invoked
-by the orchestrator.
+1. ``excel-duplicate-handler`` once per study.
+2. ``sot-lean-generator`` per ready raw-file set.
+3. ``dataset-to-llm-source`` through the host repo's lock-aware publish path.
 
 The plugin does not own the data dictionary. Dictionary extraction stays in
 ``main.py`` and ``scripts.extraction.load_dictionary``.
@@ -77,12 +69,11 @@ binding. Anchored calibration gold, when present, stays under
 ``data/raw/{STUDY}/annotated_pdfs/*.pdf`` and
 ``data/raw/{STUDY}/datasets/*.{xlsx,csv}``
 
-**Outputs (LLM-facing):**
+**Outputs:**
+``output/{STUDY}/llm_source/SoT/{pair}/pdf/{form}_policy.yaml``,
+``output/{STUDY}/llm_source/SoT/{pair}/dataset/{form}_schema.json``, and
 ``output/{STUDY}/llm_source/SoT/{pair}/joined/{form}_joined_query_view.yaml``
-for each PDF-backed form that passes the checker — the only SoT artifact in
-``llm_source/``. The policy/schema construction artifacts are written to the
-audit zone under ``output/{STUDY}/audit/SoT_construction/{pair}/{pdf,dataset}/``
-(fenced from the LLM by ``deny_if_audit_zone``).
+for each PDF-backed form that passes the checker.
 
 **Re-run policy:** ``make sot-generate-all`` is idempotent and overwrites only
 after the generated candidate passes verification.
@@ -105,31 +96,28 @@ dictionary files are present, the bundle check also requires published
 ``llm_source/dictionary_mapping/jsonl/`` output from the host dictionary
 loader.
 
-Host Publish Path (inside the orchestrator)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Lower-Level Host Publish Path
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   make study STUDY=Indo-VAP
+   make pipeline
 
-There is no standalone host-pipeline entry point. ``make study`` runs the
-orchestrator, which drives the raw-data publish via the
-``dataset-to-llm-source`` supervisor (``scripts/skills/extract_to_llm_source.py``)
-calling ``scripts/pipeline/host_pipeline.py`` in-lock: dictionary ->
-dataset extraction -> AMBER scrub (nine-action catalog, rule + allowlist) ->
-publish scrubbed dataset files into the ``llm_source/`` GREEN zone -> audit
-lineage. Duplicate preflight and Source Truth worker delegation are the
-surrounding orchestrator phases.
+Runs the host raw-data steps in order: dictionary -> dataset extraction ->
+AMBER scrub (eight-action catalog, rule + allowlist) -> publish scrubbed
+dataset files into the ``llm_source/`` GREEN zone -> audit lineage. This is
+the lower-level path used by the dataset child skill; it is not the complete
+plugin workflow because duplicate preflight and Source Truth worker
+delegation happen at the plugin layer.
 
 For a repo-local rebuild of generated outputs, use:
 
 .. code-block:: bash
 
-   make rebuild-llm-source STUDY=Indo-VAP
+   make build-llm-source STUDY=Indo-VAP
 
-That removes generated ``llm_source/`` and study staging first, then re-runs
-the orchestrator (SoT generation followed by the in-lock host publish path).
-The current LLM-visible outputs are ``llm_source/SoT/``,
+That adds the SoT generation step before the raw-data host publish path. The
+current LLM-visible outputs are ``llm_source/SoT/``,
 ``llm_source/dataset_schema/files/``, and
 ``llm_source/dictionary_mapping/jsonl/``.
 
@@ -164,13 +152,12 @@ Individual Steps
      - Publish the dictionary mapping leg into ``llm_source/`` without
        running dataset extraction
    * - ``make extract-datasets``
-     - Dataset extraction into AMBER staging, run through the nine-action
+     - Dataset extraction into AMBER staging, run through the eight-action
        PHI scrub, then atomically promoted into the GREEN ``llm_source/``
-   * - ``make study STUDY=<name>``
-     - Run the full 10-phase orchestrator: generate verified SoT
-       policy/schema/joined sets, then publish dictionary mappings,
-       PHI-scrubbed dataset JSONL, audit ledgers, lineage, and the output
-       signpost.
+   * - ``make build-llm-source``
+     - Generate verified SoT policy/schema/joined sets, then publish
+       dictionary mappings, PHI-scrubbed dataset JSONL, audit ledgers,
+       lineage, and the output signpost.
    * - ``make bundle``
      - Legacy compatibility alias for preparing the ``llm_source`` dictionary leg
    * - ``make chat``
@@ -202,13 +189,13 @@ Quickstart
 Artifact Rebuild
 ----------------
 
-When schemas, SoT policies, the data dictionary, or the nine-action PHI scrub catalog
+When schemas, SoT policies, the data dictionary, or the eight-action PHI scrub catalog
 (``scripts/security/phi_scrub.yaml``) change:
 
 .. code-block:: bash
 
    # Full generated-output rebuild
-   make nuke && make rebuild-llm-source STUDY=Indo-VAP
+   make nuke && make build-llm-source STUDY=Indo-VAP
 
 Cleanup
 -------
@@ -229,7 +216,7 @@ Security Verification
 Dataset Promotion Protocol
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After **Load Study**, ``make study STUDY=<name>``, or the extraction skill
+After **Load Study**, ``make build-llm-source``, or the extraction skill
 publishes clean JSONL:
 
 1. Run the deterministic verifier:
@@ -280,7 +267,7 @@ Common issues:
 - **Missing study data:** Ensure ``data/raw/{STUDY}/`` has the required
   subdirectories
 - **Dependency issues:** ``uv lock --upgrade && uv sync --all-groups``
-- **Stale artifacts:** ``make nuke && make rebuild-llm-source STUDY={STUDY}``
+- **Stale artifacts:** ``make nuke && make build-llm-source STUDY={STUDY}``
 
 Known Limitations
 -----------------

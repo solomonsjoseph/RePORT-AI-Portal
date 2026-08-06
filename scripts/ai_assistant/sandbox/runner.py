@@ -201,7 +201,6 @@ class LazyNamespace(dict):
         if isinstance(key, str) and key in self.df_paths:
             if key not in self.loaded_dfs:
                 import pandas as pd
-
                 path_str = self.df_paths[key]
                 try:
                     self.loaded_dfs[key] = pd.read_json(path_str, lines=True)
@@ -225,7 +224,6 @@ class LazyNamespace(dict):
 def _load_dataframes(df_paths: dict[str, str]) -> dict[str, Any]:
     """Eagerly load pandas DataFrames from JSONL files (compatibility for replicate.py)."""
     import pandas as pd
-
     dataframes: dict[str, Any] = {}
     for name, path_str in df_paths.items():
         try:
@@ -233,6 +231,7 @@ def _load_dataframes(df_paths: dict[str, str]) -> dict[str, Any]:
         except Exception as exc:
             print(f"Failed to load dataframe {name} from {path_str}: {exc}", file=sys.stderr)
     return dataframes
+
 
 
 def _persist_code(
@@ -336,7 +335,7 @@ def main(spec_path: str) -> int:
         initial_vars={
             "__builtins__": safe_builtins,
             "output_dir": output_dir,
-        },
+        }
     )
 
     try:
@@ -396,12 +395,14 @@ def main(spec_path: str) -> int:
         fig_dir.chmod(0o700)
     figure_paths: list[str] = []
     # Auto-capture any instantiated Plotly figures from the namespace that were not shown
-    with contextlib.suppress(Exception):
+    try:
         import plotly.graph_objects as _go
-
         for val in list(namespace.values()):
-            if isinstance(val, _go.Figure) and val not in plotly_figs:
-                plotly_figs.append(val)
+            if isinstance(val, _go.Figure):
+                if val not in plotly_figs:
+                    plotly_figs.append(val)
+    except Exception:
+        pass
 
     try:
         import plotly.io as _pio

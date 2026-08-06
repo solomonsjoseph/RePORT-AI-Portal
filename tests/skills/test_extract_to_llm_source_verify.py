@@ -1,9 +1,9 @@
-"""Tests for the verify subcommand — 17-assertion verifier.
+"""Tests for the verify subcommand — 12-assertion verifier.
 
 Coverage
 --------
-A. Happy path: synthetic study setup with all 17 conditions satisfied → exit 0,
-   verifier_report.json has all 17 "pass", status.json updated with
+A. Happy path: synthetic study setup with all 12 conditions satisfied → exit 0,
+   verifier_report.json has all 12 "pass", status.json updated with
    verifier_passed: true.
 
 B. Failure-injection fixtures — one test per failure mode:
@@ -39,8 +39,6 @@ import yaml
 
 from scripts.audit.ledger import dataset_phi_ledger_path
 from scripts.skills.extract_to_llm_source import (
-    EXIT_AUDIT_COVERAGE_INCOMPLETE,
-    EXIT_DECISION_MISMATCH,
     EXIT_DESTRUCTION_INCOMPLETE,
     EXIT_LEDGER_HASH_NULL,
     EXIT_MANIFEST_MISMATCH,
@@ -72,25 +70,14 @@ def _patch_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Redirect config path constants to tmp_path so tests are hermetic."""
     import config
 
-    monkeypatch.setattr(config, "BASE_DIR", tmp_path, raising=False)
     monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path / "output", raising=False)
     monkeypatch.setattr(config, "TMP_DIR", tmp_path / "tmp", raising=False)
     monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False)
-    # Study config now lives under config/<study>/ (Note 11). Point CONFIG_DIR at
-    # tmp/data/raw so study_config_path resolves the manifest where the test
-    # helpers write it (study_dir / _forms_manifest.yaml).
-    monkeypatch.setattr(config, "CONFIG_DIR", tmp_path / "data" / "raw", raising=False)
     monkeypatch.setattr(
         config,
         "PHI_SCRUB_CONFIG_PATH",
         tmp_path / "scripts" / "security" / "phi_scrub.yaml",
         raising=False,
-    )
-    # Task A7: effective_scrub_config_hash() resolves its defaults base from
-    # CONFIG_DEFAULTS_DIR; point it at the tmp phi_scrub.yaml's dir so the
-    # verifier hashes the same single tmp file the test seeds into the ledger.
-    monkeypatch.setattr(
-        config, "CONFIG_DEFAULTS_DIR", tmp_path / "scripts" / "security", raising=False
     )
 
 
@@ -125,31 +112,14 @@ def _make_valid_ledger(
     run_id: str = RUN_ID,
     forms: list[str] | None = None,
 ) -> None:
-    """Write valid per-dataset phi_handling_ledger.as_written.json files.
-
-    Each ledger carries keep_decisions for the published columns (col_a, col_b)
-    so the fixture is audit-coverage-complete (assertion 14): every published
-    variable has a ledger accounting.
-    """
+    """Write valid per-dataset phi_handling_ledger.as_written.json files."""
     audit_dir.mkdir(parents=True, exist_ok=True)
+    ledger = {
+        "run_id": run_id,
+        "scrub_config_hash": scrub_config_hash,
+        "input_dataset_hash": "abc123deadbeef",
+    }
     for form in forms or ["form_a.xlsx"]:
-        stem = Path(form).stem
-        ledger = {
-            "run_id": run_id,
-            "scrub_config_hash": scrub_config_hash,
-            "input_dataset_hash": "abc123deadbeef",
-            "keep_decisions": [
-                {
-                    "form": stem,
-                    "variable_id": col,
-                    "jurisdictions": [],
-                    "matched_rules": [],
-                    "rationale": "retained per review",
-                    "rule_bundle_sha256": None,
-                }
-                for col in ("col_a", "col_b")
-            ],
-        }
         dataset_phi_ledger_path(audit_dir, form).parent.mkdir(parents=True, exist_ok=True)
         dataset_phi_ledger_path(audit_dir, form).write_text(json.dumps(ledger), encoding="utf-8")
 
@@ -198,28 +168,6 @@ def _make_llm_source_dir(
         (datasets_out / jsonl_name).write_text(json.dumps(row) + "\n", encoding="utf-8")
 
 
-def _make_annotated_pdfs(study_dir: Path, forms: list[str]) -> None:
-    """Stub annotated PDFs so assertion 15 treats forms as PDF-backed (Note 3)."""
-    pdf_dir = study_dir / "annotated_pdfs"
-    pdf_dir.mkdir(parents=True, exist_ok=True)
-    for form in forms:
-        stem = Path(form).stem
-        (pdf_dir / f"{stem}.pdf").write_bytes(b"%PDF-1.4 stub")
-
-
-def _make_sot_joined_views(llm_source_dir: Path, forms: list[str]) -> None:
-    """Create minimal SoT joined query views for each published form stem."""
-    sot_root = llm_source_dir / "SoT"
-    for form in forms:
-        stem = Path(form).stem
-        joined = sot_root / stem / "joined" / f"{stem}_joined_query_view.yaml"
-        joined.parent.mkdir(parents=True, exist_ok=True)
-        joined.write_text(
-            f"form: {stem}\nvariables:\n  col_a:\n    dataset: {{}}\n",
-            encoding="utf-8",
-        )
-
-
 def _make_valid_status_json(run_dir: Path, run_id: str = RUN_ID) -> None:
     """Write a minimal status.json (verifier_passed = None initially)."""
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -241,7 +189,7 @@ def _build_happy_study(
     forms: list[str] | None = None,
     run_id: str = RUN_ID,
 ) -> dict[str, Path]:
-    """Build a complete synthetic study hierarchy that satisfies all 17 assertions.
+    """Build a complete synthetic study hierarchy that satisfies all 12 assertions.
 
     Returns a dict of named paths for easy mutation in failure-injection tests.
     """
@@ -261,10 +209,9 @@ def _build_happy_study(
     _make_phi_scrub_yaml(phi_scrub_path)
     scrub_hash = _compute_sha256(phi_scrub_path)
 
-    # b. _forms_manifest.yaml + datasets dir + annotated PDFs (assertion 15 scope)
+    # b. _forms_manifest.yaml + datasets dir
     _make_valid_manifest(study_dir, forms)
     _make_datasets_dir(datasets_dir, forms)
-    _make_annotated_pdfs(study_dir, forms)
 
     # c. ledger + sentinel
     _make_valid_ledger(audit_dir, scrub_hash, run_id=run_id, forms=forms)
@@ -275,7 +222,6 @@ def _build_happy_study(
 
     # e. llm_source/dataset_schema/files/ JSONL files (one per required form)
     _make_llm_source_dir(llm_source_dir, forms)
-    _make_sot_joined_views(llm_source_dir, forms)
 
     # f. status.json
     _make_valid_status_json(run_dir, run_id=run_id)
@@ -312,7 +258,7 @@ class TestVerifyHappyPath:
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         assert report_path.exists()
 
-    def test_report_has_17_assertions(
+    def test_report_has_12_assertions(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         _patch_config(monkeypatch, tmp_path)
@@ -320,7 +266,7 @@ class TestVerifyHappyPath:
         main(["verify", "--study", STUDY, "--run", RUN_ID])
         report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
         report = json.loads(report_path.read_text())
-        assert len(report["assertions"]) == 17
+        assert len(report["assertions"]) == 12
 
     def test_all_assertions_pass(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         _patch_config(monkeypatch, tmp_path)
@@ -369,307 +315,6 @@ class TestVerifyHappyPath:
             assert "name" in a
             assert "result" in a
             assert "detail" in a
-
-    def test_decided_vs_applied_happy_path(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Verify passes when approval has all-keep classifications consistent with ledger."""
-        _patch_config(monkeypatch, tmp_path)
-        paths = _build_happy_study(tmp_path)
-        # Write approval with approved_forms and keep classifications for form_a
-        approval = {
-            "approved_forms": ["form_a.xlsx"],
-            "forms": [
-                {
-                    "form_name": "form_a.xlsx",
-                    "classifications": [
-                        {
-                            "header": "col_a",
-                            "action": "keep",
-                            "jurisdictions": [],
-                            "matched_rules": [],
-                            "reasons": [],
-                        },
-                        {
-                            "header": "col_b",
-                            "action": "keep",
-                            "jurisdictions": [],
-                            "matched_rules": [],
-                            "reasons": [],
-                        },
-                    ],
-                }
-            ],
-        }
-        approval_path = paths["run_dir"] / "phi_handling_approval.json"
-        approval_path.write_text(json.dumps(approval), encoding="utf-8")
-        rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
-        assert rc == EXIT_OK
-        report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
-        report = json.loads(report_path.read_text())
-        assert len(report["assertions"]) == 17
-        assert all(a["result"] == "pass" for a in report["assertions"])
-        assert report["overall"] == "pass"
-
-    def test_audit_coverage_complete_happy_path(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Assertion 14 passes when every published column has a ledger accounting."""
-        _patch_config(monkeypatch, tmp_path)
-        paths = _build_happy_study(tmp_path)
-        approval = {
-            "approved_forms": ["form_a.xlsx"],
-            "forms": [
-                {
-                    "form_name": "form_a.xlsx",
-                    "classifications": [
-                        {
-                            "header": "col_a",
-                            "action": "keep",
-                            "jurisdictions": [],
-                            "matched_rules": [],
-                            "reasons": [],
-                        },
-                        {
-                            "header": "col_b",
-                            "action": "keep",
-                            "jurisdictions": [],
-                            "matched_rules": [],
-                            "reasons": [],
-                        },
-                    ],
-                }
-            ],
-        }
-        (paths["run_dir"] / "phi_handling_approval.json").write_text(
-            json.dumps(approval), encoding="utf-8"
-        )
-        rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
-        assert rc == EXIT_OK
-        report = json.loads((paths["run_dir"] / "verifier_report.json").read_text(encoding="utf-8"))
-        cov = next(a for a in report["assertions"] if a["name"] == "ledger_covers_all_columns")
-        assert cov["result"] == "pass"
-
-    def test_sot_joined_view_missing_fails_assertion_15(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Published form without SoT joined view → assertion 15 fails."""
-        _patch_config(monkeypatch, tmp_path)
-        paths = _build_happy_study(tmp_path)
-        joined = (
-            paths["llm_source_dir"] / "SoT" / "form_a" / "joined" / "form_a_joined_query_view.yaml"
-        )
-        joined.unlink()
-        rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
-        assert rc == EXIT_VERIFIER_FAIL
-        report = json.loads((paths["run_dir"] / "verifier_report.json").read_text(encoding="utf-8"))
-        a15 = next(a for a in report["assertions"] if a["name"] == "sot_joined_view_present")
-        assert a15["result"] == "fail"
-        assert "form_a" in a15["detail"]
-
-    def test_audit_coverage_incomplete_holds_run(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """A published column with NO ledger entry → assertion 14 holds + exit 10."""
-        _patch_config(monkeypatch, tmp_path)
-        paths = _build_happy_study(tmp_path)
-        approval = {
-            "approved_forms": ["form_a.xlsx"],
-            "forms": [
-                {
-                    "form_name": "form_a.xlsx",
-                    "classifications": [
-                        {
-                            "header": "col_a",
-                            "action": "keep",
-                            "jurisdictions": [],
-                            "matched_rules": [],
-                            "reasons": [],
-                        },
-                        {
-                            "header": "col_b",
-                            "action": "keep",
-                            "jurisdictions": [],
-                            "matched_rules": [],
-                            "reasons": [],
-                        },
-                    ],
-                }
-            ],
-        }
-        (paths["run_dir"] / "phi_handling_approval.json").write_text(
-            json.dumps(approval), encoding="utf-8"
-        )
-        # Publish an EXTRA column 'col_c' that has no ledger accounting.
-        jsonl = paths["llm_source_dir"] / "dataset_schema" / "files" / "form_a.jsonl"
-        jsonl.write_text(
-            json.dumps({"col_a": "v", "col_b": "v", "col_c": "v"}) + "\n", encoding="utf-8"
-        )
-        rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
-        assert rc == EXIT_AUDIT_COVERAGE_INCOMPLETE
-        status = json.loads((paths["run_dir"] / "status.json").read_text(encoding="utf-8"))
-        assert status["publish_status"] == "held"
-        assert "form_a.xlsx" in status["held_forms"]
-        report = json.loads((paths["run_dir"] / "verifier_report.json").read_text(encoding="utf-8"))
-        cov = next(a for a in report["assertions"] if a["name"] == "ledger_covers_all_columns")
-        assert cov["result"] == "fail"
-        assert "col_c" in cov["detail"]
-
-    def test_decided_vs_applied_mismatch_holds(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Verify fails and holds run when approval action doesn't match ledger action."""
-        _patch_config(monkeypatch, tmp_path)
-        paths = _build_happy_study(tmp_path)
-        # Write approval with drop action for a header that has no drop event in ledger
-        approval = {
-            "approved_forms": ["form_a.xlsx"],
-            "forms": [
-                {
-                    "form_name": "form_a.xlsx",
-                    "classifications": [
-                        {
-                            "header": "col_a",
-                            "action": "drop",
-                            "jurisdictions": [],
-                            "matched_rules": [],
-                            "reasons": [],
-                        },
-                        {
-                            "header": "col_b",
-                            "action": "keep",
-                            "jurisdictions": [],
-                            "matched_rules": [],
-                            "reasons": [],
-                        },
-                    ],
-                }
-            ],
-        }
-        approval_path = paths["run_dir"] / "phi_handling_approval.json"
-        approval_path.write_text(json.dumps(approval), encoding="utf-8")
-        rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
-        assert rc == EXIT_DECISION_MISMATCH
-        # Check status.json was updated to held
-        status_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "status.json"
-        status = json.loads(status_path.read_text())
-        assert status["publish_status"] == "held"
-        assert "form_a.xlsx" in status["held_forms"]
-        # Check verifier_report shows fail
-        report_path = tmp_path / "output" / STUDY / "runs" / RUN_ID / "verifier_report.json"
-        report = json.loads(report_path.read_text())
-        assert report["overall"] == "fail"
-
-    def test_decided_vs_applied_over_protection_passes(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """phi_review KEEP but scrub applied a MORE protective action must PASS.
-
-        The protection lattice fails ONLY under-protection (applied < decided).
-        Over-protection (here: decided keep, applied pseudonymize) cannot leak,
-        so it must pass — this was a false positive under the old strict table.
-        """
-        _patch_config(monkeypatch, tmp_path)
-        paths = _build_happy_study(tmp_path)
-        approval = {
-            "approved_forms": ["form_a.xlsx"],
-            "forms": [
-                {
-                    "form_name": "form_a.xlsx",
-                    "classifications": [
-                        {
-                            "header": "col_a",
-                            "action": "keep",
-                            "jurisdictions": [],
-                            "matched_rules": [],
-                            "reasons": [],
-                        },
-                        {
-                            "header": "col_b",
-                            "action": "keep",
-                            "jurisdictions": [],
-                            "matched_rules": [],
-                            "reasons": [],
-                        },
-                    ],
-                }
-            ],
-        }
-        (paths["run_dir"] / "phi_handling_approval.json").write_text(
-            json.dumps(approval), encoding="utf-8"
-        )
-        # Scrub pseudonymized col_a (MORE protective than the keep decision).
-        ledger_path = dataset_phi_ledger_path(paths["audit_dir"], "form_a.xlsx")
-        led = json.loads(ledger_path.read_text(encoding="utf-8"))
-        led["events"] = [
-            {
-                "variable_id": "col_a",
-                "action": "pseudonymize",
-                "rule": {"taxonomy": "hipaa_safe_harbor:18_unique_id", "jurisdictions": ["USA"]},
-                "method": {"name": "RID_pseudonymize"},
-            }
-        ]
-        led["keep_decisions"] = [kd for kd in led["keep_decisions"] if kd["variable_id"] != "col_a"]
-        ledger_path.write_text(json.dumps(led), encoding="utf-8")
-
-        rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
-        assert rc == EXIT_OK
-        report = json.loads((paths["run_dir"] / "verifier_report.json").read_text(encoding="utf-8"))
-        a12 = next(a for a in report["assertions"] if a["name"] == "decided_action_matches_applied")
-        assert a12["result"] == "pass"
-
-    def test_decided_vs_applied_absent_header_skipped(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """A classified header NOT present in the published dataset is skipped.
-
-        phi_review classifies headers from the form schema; some are dropped /
-        renamed / duplicate-collapsed upstream and never reach the output. Such a
-        column cannot be under-protected in an output it is absent from, so it
-        must not falsely fail assertion 12 (the old default-to-keep behavior did).
-        """
-        _patch_config(monkeypatch, tmp_path)
-        paths = _build_happy_study(tmp_path)
-        approval = {
-            "approved_forms": ["form_a.xlsx"],
-            "forms": [
-                {
-                    "form_name": "form_a.xlsx",
-                    "classifications": [
-                        {
-                            "header": "col_a",
-                            "action": "keep",
-                            "jurisdictions": [],
-                            "matched_rules": [],
-                            "reasons": [],
-                        },
-                        {
-                            "header": "col_b",
-                            "action": "keep",
-                            "jurisdictions": [],
-                            "matched_rules": [],
-                            "reasons": [],
-                        },
-                        # Classified DROP but NOT present in the published jsonl:
-                        {
-                            "header": "col_gone",
-                            "action": "drop",
-                            "jurisdictions": [],
-                            "matched_rules": [],
-                            "reasons": [],
-                        },
-                    ],
-                }
-            ],
-        }
-        (paths["run_dir"] / "phi_handling_approval.json").write_text(
-            json.dumps(approval), encoding="utf-8"
-        )
-        rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
-        assert rc == EXIT_OK
-        report = json.loads((paths["run_dir"] / "verifier_report.json").read_text(encoding="utf-8"))
-        a12 = next(a for a in report["assertions"] if a["name"] == "decided_action_matches_applied")
-        assert a12["result"] == "pass"
 
 
 # ---------------------------------------------------------------------------
@@ -930,22 +575,6 @@ class TestVerifyFailures:
         lock_file.write_text(f"pid={os.getpid()}\nstudy={STUDY}\n", encoding="utf-8")
         rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
         assert rc == EXIT_NEEDS_ADVICE
-
-    def test_assertion11_passes_when_this_process_holds_lock(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Inline Step 7 verify: the wrapper's own lock must not fail the run."""
-        import scripts.utils.pipeline_lock as lock_module
-
-        _patch_config(monkeypatch, tmp_path)
-        _build_happy_study(tmp_path)
-        tmp_dir = tmp_path / "tmp"
-        tmp_dir.mkdir(parents=True, exist_ok=True)
-        lock_file = tmp_dir / f".{STUDY}.pipeline.lock"
-        with lock_file.open("a+", encoding="utf-8") as fh:
-            monkeypatch.setattr(lock_module, "_PIPELINE_LOCK_FILE", fh)
-            rc = main(["verify", "--study", STUDY, "--run", RUN_ID])
-        assert rc == EXIT_OK
 
     # --- Skipped assertions in report after first failure ---
     def test_skipped_assertions_after_first_failure(

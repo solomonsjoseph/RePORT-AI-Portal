@@ -17,7 +17,6 @@ from scripts.extraction.load_dictionary import (
     UNNAMED_COLUMN_PREFIX,
     _deduplicate_columns,
     _split_sheet_into_tables,
-    _strip_doc_urls,
     discover_dictionary_files,
     load_study_dictionary,
 )
@@ -57,52 +56,6 @@ class TestDeduplicateColumns:
             f"{UNNAMED_COLUMN_PREFIX}_1",
             "Name_2",
         ]
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# _strip_doc_urls — publish-time URL scrub (leak-gate alignment)
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-class TestStripDocUrls:
-    """URLs in dictionary text are masked before publication.
-
-    The residual leak gate (``scan_tree_for_phi``) blocks any URL in the
-    published tree; the publisher must therefore never emit one.
-    """
-
-    def test_url_in_notes_masked(self):
-        df = pd.DataFrame(
-            {
-                "Codes": ["BRA"],
-                "Notes": ["https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3"],
-            }
-        )
-        out = _strip_doc_urls(df)
-        assert out["Notes"].iloc[0] == "<URL_REMOVED>"
-        assert out["Codes"].iloc[0] == "BRA"
-
-    def test_url_embedded_in_text_masked_in_place(self):
-        df = pd.DataFrame({"Notes": ["see http://example.org/std for details"]})
-        out = _strip_doc_urls(df)
-        assert "http" not in out["Notes"].iloc[0]
-        assert out["Notes"].iloc[0].startswith("see ")
-        assert out["Notes"].iloc[0].endswith(" for details")
-
-    def test_non_string_cells_untouched(self):
-        df = pd.DataFrame({"Mixed": [3, None, float("nan"), "plain text"]})
-        out = _strip_doc_urls(df)
-        assert out["Mixed"].iloc[0] == 3
-        assert out["Mixed"].iloc[3] == "plain text"
-
-    def test_masked_output_passes_leak_gate_pattern(self):
-        """The mask token itself must never re-trip the gate's URL pattern."""
-        from scripts.security.phi_patterns import BLOCKING_PATTERNS
-
-        url_pat = next(pat for name, pat in BLOCKING_PATTERNS if name == "URL")
-        df = pd.DataFrame({"Notes": ["ref: https://who.int/x and http://cdc.gov/y"]})
-        out = _strip_doc_urls(df)
-        assert url_pat.search(out["Notes"].iloc[0]) is None
 
 
 # ═══════════════════════════════════════════════════════════════════════════

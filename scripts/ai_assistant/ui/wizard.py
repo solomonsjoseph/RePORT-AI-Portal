@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import logging
 import subprocess
 import sys
 from typing import Any
@@ -13,13 +14,7 @@ import config
 from scripts.ai_assistant.agent_graph import reset_agent
 from scripts.ai_assistant.ui.bundle_status import (
     bundle_readiness_issues,
-    held_set_notice,
-    partial_run_notice,
     published_bundle_exists,
-)
-from scripts.ai_assistant.ui.model_policy import (
-    describe_allowlist,
-    is_model_allowed_for_study_load,
 )
 from scripts.ai_assistant.ui.providers import (
     _OTHER_MODEL_OPTION,
@@ -28,15 +23,8 @@ from scripts.ai_assistant.ui.providers import (
     _default_provider_label,
     _get_ollama_models,
 )
-from scripts.ai_assistant.ui.snapshot_select import (
-    SnapshotActivationError,
-    activate_snapshot,
-    available_snapshots,
-    current_snapshot_id,
-)
-from scripts.utils.logging_system import get_logger
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -227,7 +215,7 @@ def run_pipeline() -> dict[str, Any]:
     parts = [
         "[report-ai-study-pipeline plugin]",
         f"manifest={plugin_manifest}",
-        "phase_order=make study (10-phase orchestrator: dataset-deduplication @ P2 -> sot/phi/extract @ P3 -> publish @ P6-10)",
+        "phase_order=excel-duplicate-handler -> sot-lean-generator -> dataset-to-llm-source",
     ]
     if not plugin_manifest.is_file():
         combined = "\n".join(
@@ -242,21 +230,34 @@ def run_pipeline() -> dict[str, Any]:
     dataset_dir = config.BASE_DIR / "data" / "raw" / study / "datasets"
     lock_temp_files = sorted(dataset_dir.glob("~$*.xls*")) if dataset_dir.is_dir() else []
     if lock_temp_files:
-        parts.extend(
+        ok, logs = _run_plugin_subprocess(
+            "excel-duplicate-handler",
             [
-                "[dataset-deduplication]",
-                (
-                    f"Found {len(lock_temp_files)} Excel lock/temp artifact(s); "
-                    "these are ignored automatically by raw-file dedup in "
-                    "`make study` phase 2 (Note 4). No legacy merge run invoked."
+                sys.executable,
+                str(
+                    config.BASE_DIR
+                    / "skills"
+                    / "excel-duplicate-handler"
+                    / "scripts"
+                    / "merge_excel_duplicates.py"
                 ),
-            ]
+                "--study",
+                study,
+                "--dataset-dir",
+                str(dataset_dir),
+                "--artifact-root",
+                str(config.BASE_DIR),
+            ],
+            subprocess_env=subprocess_env,
         )
+        parts.extend(logs)
+        if not ok:
+            return {"success": False, "output": "\n".join(parts).strip()}
     else:
         parts.extend(
             [
-                "[dataset-deduplication]",
-                "No Excel lock/temp dataset artifacts found; dedup runs in orchestrator phase 2.",
+                "[excel-duplicate-handler]",
+                "No Excel lock/temp dataset artifacts found; duplicate preflight did not need a merge run.",
             ]
         )
 
@@ -265,8 +266,7 @@ def run_pipeline() -> dict[str, Any]:
             "sot-lean-generator",
             [
                 sys.executable,
-                "-m",
-                "scripts.source_truth.generate_lean_outputs",
+                str(config.BASE_DIR / "scripts" / "source_truth" / "generate_lean_outputs.py"),
                 "--study",
                 study,
                 "--repo-root",
@@ -277,15 +277,7 @@ def run_pipeline() -> dict[str, Any]:
             "dataset-to-llm-source run",
             [
                 sys.executable,
-                str(
-                    config.BASE_DIR
-                    / "plugins"
-                    / "report-ai-study-pipeline"
-                    / "skills"
-                    / "dataset-to-llm-source"
-                    / "scripts"
-                    / "extract_to_llm_source.py"
-                ),
+                str(config.BASE_DIR / "scripts" / "skills" / "extract_to_llm_source.py"),
                 "run",
                 "--study",
                 study,
@@ -295,15 +287,7 @@ def run_pipeline() -> dict[str, Any]:
             "dataset-to-llm-source verify",
             [
                 sys.executable,
-                str(
-                    config.BASE_DIR
-                    / "plugins"
-                    / "report-ai-study-pipeline"
-                    / "skills"
-                    / "dataset-to-llm-source"
-                    / "scripts"
-                    / "extract_to_llm_source.py"
-                ),
+                str(config.BASE_DIR / "scripts" / "skills" / "extract_to_llm_source.py"),
                 "verify",
                 "--study",
                 study,
@@ -351,111 +335,6 @@ def _render_pipeline_log() -> None:
     if st.session_state[open_key]:
         with st.container(height=280, border=True):
             st.code(st.session_state.pipeline_log, language="")
-
-
-# ---------------------------------------------------------------------------
-# Held-set notice + snapshot selector (W2)
-# ---------------------------------------------------------------------------
-
-
-def _render_held_set_notice() -> None:
-    """Show a NON-BLOCKING warning when the latest run held forms for review.
-
-    Advisory only: the operator may keep querying the already-published approved
-    sets. The UI never triggers a retry/resume from here — held forms are
-    resolved by a maintainer in CLI mode, never from this surface.
-    """
-    try:
-        notice = held_set_notice(config.STUDY_NAME)
-    except Exception:  # pragma: no cover - advisory path must never crash chat
-        logger.debug("held_set_notice raised; suppressing for the UI", exc_info=True)
-        notice = None
-    if notice:
-        st.warning(notice, icon="⚠️")
-
-
-def _render_partial_run_notice() -> None:
-    """Show a NON-BLOCKING notice when the latest run partially published forms.
-
-    The scrub-leg counterpart of :func:`_render_held_set_notice`: a *partial*
-    form IS published (its surviving rows are queryable) while its quarantined
-    rows await review — distinct from a *held* form, which is not published at
-    all. Form names + counts + reason codes only; never row values.
-    """
-    try:
-        notice = partial_run_notice(config.STUDY_NAME)
-    except Exception:  # pragma: no cover - advisory path must never crash chat
-        logger.debug("partial_run_notice raised; suppressing for the UI", exc_info=True)
-        notice = None
-    if notice:
-        st.info(notice, icon=":material/info:")
-
-
-def _render_snapshot_selector() -> None:
-    """Render a dropdown to load a previously written immutable study snapshot.
-
-    Selecting a snapshot calls :func:`activate_snapshot`, which re-runs the PHI
-    leak gate and repoints the assistant read zone at that snapshot's
-    ``llm_source/`` ONLY. No scrub/retry/resume path is ever invoked.
-    """
-    try:
-        snapshots = available_snapshots(config.STUDY_NAME)
-    except Exception:  # pragma: no cover - advisory path must never crash chat
-        logger.debug("available_snapshots raised; suppressing for the UI", exc_info=True)
-        snapshots = []
-    if not snapshots:
-        return
-
-    _placeholder = "Use live pipeline output"
-
-    # N14: surface the CURRENT snapshot first and default to it ("UI shows current
-    # first"), keeping live pipeline output as an explicit escape hatch.
-    current_id = current_snapshot_id(config.STUDY_NAME)
-
-    def _label(entry: dict[str, Any]) -> str:
-        passed = "verified" if entry.get("verifier_passed") else "unverified"
-        tag = " — current" if entry["id"] == current_id else ""
-        return (
-            f"{entry['id']}{tag} — {entry.get('approved_count', 0)} approved, "
-            f"{entry.get('held_count', 0)} held ({passed})"
-        )
-
-    snapshot_ids = [entry["id"] for entry in snapshots]
-    if current_id in snapshot_ids:
-        snapshot_ids = [current_id] + [s for s in snapshot_ids if s != current_id]
-    options = [*snapshot_ids, _placeholder]
-    labels = {entry["id"]: _label(entry) for entry in snapshots}
-    # Default to the current snapshot when one exists; else live pipeline output.
-    default_index = 0 if current_id in snapshot_ids else len(options) - 1
-
-    selected = st.selectbox(
-        "Existing study data (snapshot)",
-        options,
-        index=default_index,
-        format_func=lambda opt: opt if opt == _placeholder else labels.get(opt, opt),
-        help=(
-            "Defaults to the current (most-recent clean-pass) snapshot. Choose "
-            "another immutable snapshot, or 'Use live pipeline output' for the "
-            "freshly-published tree. Only PHI-scrubbed data is exposed; the "
-            "approval/manifest stay private."
-        ),
-    )
-
-    if (
-        selected is not None
-        and selected != _placeholder
-        and selected != st.session_state.get("active_snapshot_id")
-    ):
-        try:
-            activate_snapshot(config.STUDY_NAME, selected)
-        except SnapshotActivationError as exc:
-            st.error(f"Could not load snapshot: {exc}")
-            return
-        st.session_state["active_snapshot_id"] = selected
-        st.session_state.pipeline_ready = True
-        reset_agent()
-        st.toast(f"Loaded snapshot {selected}.", icon="✅")
-        st.rerun()
 
 
 # ---------------------------------------------------------------------------
@@ -681,35 +560,12 @@ def render_setup_page() -> None:
                         icon=":material/info:",
                     )
 
-                # Non-blocking held-set notice (advisory; never gates querying).
-                _render_held_set_notice()
-
-                # Non-blocking partial-publish notice (scrub-leg counterpart).
-                _render_partial_run_notice()
-
-                # Existing study data: select a reviewed, immutable snapshot.
-                _render_snapshot_selector()
-
                 # ── Load Study: activate the report-ai-study-pipeline plugin. ──
-                # High-risk gate: a study load/reload irreversibly rewrites
-                # output/{STUDY}. Only allowlisted high-capability models (or
-                # local Ollama) may trigger it; snapshots and existing-bundle
-                # querying stay available regardless of model.
-                model_gate = is_model_allowed_for_study_load(
-                    provider=config.LLM_PROVIDER, model=config.LLM_MODEL
-                )
-                if not model_gate.allowed:
-                    st.warning(
-                        f"Load Study is disabled for the current model: {model_gate.reason}",
-                        icon="🛡️",
-                    )
-                    st.caption(describe_allowlist())
                 load_label = "Reload Study" if pipeline_ready or output_exists else "Load Study"
                 if st.button(
                     load_label,
                     type="primary" if not output_exists else "secondary",
                     width="stretch",
-                    disabled=not model_gate.allowed,
                 ):
                     with st.spinner("Activating study plugin — this may take a minute..."):
                         result = run_pipeline()

@@ -12,7 +12,6 @@ import config
 __all__ = [
     "CLEANUP_LEDGER_FILENAME",
     "PHI_LEDGER_FILENAME",
-    "PHI_LEDGER_TIMING_FILENAME",
     "LedgerWriter",
     "dataset_cleanup_ledger_path",
     "dataset_phi_ledger_path",
@@ -23,7 +22,6 @@ __all__ = [
 
 DATASET_LEDGER_DIRNAME = "datasets"
 PHI_LEDGER_FILENAME = "phi_handling_ledger.as_written.json"
-PHI_LEDGER_TIMING_FILENAME = "phi_handling_ledger_timing.json"
 CLEANUP_LEDGER_FILENAME = "dataset_cleanup_ledger.as_written.json"
 
 _PHI_ACTIONS: frozenset[str] = frozenset(
@@ -35,7 +33,6 @@ _PHI_ACTIONS: frozenset[str] = frozenset(
         "suppress_small_cell",
         "cap",
         "birthdate_drop",
-        "band",
     }
 )
 
@@ -149,8 +146,8 @@ class LedgerWriter:
         self._study = study
         self._leg = leg
         self._compliance_posture = compliance_posture
+        self._iso_timestamp: str = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         self._events: list[dict] = []
-        self._keeps: list[dict] = []
         self._sentinel_seen: bool = False
 
     # ------------------------------------------------------------------
@@ -210,11 +207,6 @@ class LedgerWriter:
         dataset_file: str | None,
         pdf_source: str | None,
         count: int | None,
-        matched_rules: list[str] | None = None,
-        jurisdictions: list[str] | None = None,
-        rule_bundle_sha256: str | None = None,
-        method_name: str | None = None,
-        method_parameters: dict | None = None,
     ) -> None:
         """Append one PHI handling event. Raises ValueError on unknown action."""
         self._phase4_guard()
@@ -234,48 +226,13 @@ class LedgerWriter:
                 "rule": {
                     "taxonomy": rule_taxonomy,
                     "project_category": rule_project_category,
-                    "matched_rules": list(matched_rules or []),
-                    "jurisdictions": list(jurisdictions or []),
-                    "rule_bundle_sha256": rule_bundle_sha256,
                 },
-                "method": (
-                    {"name": method_name, "parameters": dict(method_parameters or {})}
-                    if (method_name is not None or method_parameters)
-                    else None
-                ),
                 "rationale": rationale,
                 "where": {
                     "dataset_file": dataset_file,
                     "pdf_source": pdf_source,
                 },
                 "count": count,
-            }
-        )
-
-    def add_keep_decision(
-        self,
-        *,
-        form: str,
-        variable_id: str,
-        jurisdictions: list[str] | None,
-        matched_rules: list[str] | None,
-        rationale: str,
-        rule_bundle_sha256: str | None,
-    ) -> None:
-        """Append one KEEP decision (field retained, not scrubbed)."""
-        self._phase4_guard()
-        if not form:
-            raise ValueError("form must not be empty")
-        if not variable_id:
-            raise ValueError("variable_id must not be empty")
-        self._keeps.append(
-            {
-                "form": form,
-                "variable_id": variable_id,
-                "jurisdictions": list(jurisdictions or []),
-                "matched_rules": list(matched_rules or []),
-                "rationale": rationale,
-                "rule_bundle_sha256": rule_bundle_sha256,
             }
         )
 
@@ -319,18 +276,13 @@ class LedgerWriter:
         )
 
     def flush(self) -> None:
-        """Write events to output_path atomically. Safe to call multiple times (overwrites).
-
-        The primary ledger is content-only (no wall-clock timestamps) so that
-        byte-identical re-runs on identical input produce byte-identical output.
-        Wall-clock fields (``generated_utc``) are written to a parallel timing
-        sidecar ``phi_handling_ledger_timing.json`` in the same directory.
-        """
+        """Write events to output_path atomically. Safe to call multiple times (overwrites)."""
         self._phase4_guard()
         self._output_path.parent.mkdir(parents=True, exist_ok=True)
-        # Primary ledger: content-only, no timestamps.
         envelope: dict = {
             "run_id": self._run_id,
+            "iso_timestamp": self._iso_timestamp,
+            "generated_utc": self._iso_timestamp,
             "study": self._study,
             "leg": self._leg,
             "events": self._events,
@@ -341,18 +293,7 @@ class LedgerWriter:
             envelope["scrub_config_hash"] = self._scrub_config_hash
         if self._input_dataset_hash is not None:
             envelope["input_dataset_hash"] = self._input_dataset_hash
-        if self._keeps:
-            envelope["keep_decisions"] = self._keeps
         _atomic_write_json(self._output_path, envelope)
-
-        # Timing sidecar: wall-clock fields only, excluded from content hash.
-        generated_utc = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-        timing_path = self._output_path.parent / PHI_LEDGER_TIMING_FILENAME
-        timing: dict = {
-            "run_id": self._run_id,
-            "generated_utc": generated_utc,
-        }
-        _atomic_write_json(timing_path, timing)
 
     def event_count(self) -> int:
         """Return number of events collected so far."""

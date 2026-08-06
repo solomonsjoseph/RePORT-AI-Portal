@@ -35,13 +35,12 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 import os
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-
-from scripts.utils.logging_system import get_logger
 
 from .integrity import hash_file
 
@@ -53,7 +52,7 @@ __all__ = [
     "save_step_manifest",
 ]
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 MANIFEST_VERSION = "1.0.0"
 """Schema version of the manifest file itself."""

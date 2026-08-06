@@ -17,7 +17,7 @@ Dataset extraction reads raw study data files from
 resulting JSONL into the study's **AMBER staging workspace**
 (``tmp/{STUDY_NAME}/datasets/`` by default; or ``/dev/shm/{STUDY}/`` when
 ``REPORTALIN_TMPFS_STAGING=1``). The staged JSONL is then run through
-``phi_scrub.run_scrub`` (**Step 1.6**, nine-action catalog defined in
+``phi_scrub.run_scrub`` (**Step 1.6**, eight-action catalog defined in
 ``scripts/security/phi_scrub.yaml``) before any audit artifact is
 written. A subsequent publish step atomically promotes the now-PHI-free
 staging bundle into ``output/{STUDY_NAME}/llm_source/dataset_schema/files/``. PHI

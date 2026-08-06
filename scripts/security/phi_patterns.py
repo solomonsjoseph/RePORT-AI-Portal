@@ -22,15 +22,12 @@ Act §29, SPDI Rule 3, ICMR 2017 §11.4.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
 from typing import Any
 
 __all__ = [
     "BLOCKING_PATTERNS",
     "SUBJECT_ID_PATTERNS",
     "WARN_PATTERNS",
-    "IndianPhonePattern",
-    "VerhoeffPattern",
 ]
 
 
@@ -94,16 +91,7 @@ class VerhoeffPattern:
 
     @property
     def groupindex(self) -> dict[str, int]:
-        return dict(self._pattern.groupindex)
-
-    def validate(self, matched_text: str) -> bool:
-        """Return True iff *matched_text* is a Verhoeff-valid 12-digit Aadhaar.
-
-        Shared by the Presidio recognizer (``presidio_gate``) so the regex
-        framework and this wrapper apply identical validation — no drift.
-        """
-        candidate = "".join(c for c in matched_text if c.isdigit())
-        return len(candidate) == 12 and _verhoeff_validate(candidate)
+        return self._pattern.groupindex
 
     def search(self, string: str, pos: int = 0, endpos: int = 2**31 - 1) -> re.Match[str] | None:
         for match in self._pattern.finditer(string, pos, endpos):
@@ -118,7 +106,7 @@ class VerhoeffPattern:
             if len(candidate) == 12 and _verhoeff_validate(candidate):
                 yield match
 
-    def sub(self, repl: str | Callable[[re.Match[str]], str], string: str, count: int = 0) -> str:
+    def sub(self, repl: Any, string: str, count: int = 0) -> str:
         def replacement_fn(match: re.Match[str]) -> str:
             candidate = "".join(c for c in match.group(0) if c.isdigit())
             if len(candidate) == 12 and _verhoeff_validate(candidate):
@@ -133,7 +121,7 @@ class VerhoeffPattern:
 def _is_valid_indian_phone(number: str) -> bool:
     if len(number) != 10:
         return False
-    counts: dict[str, int] = {}
+    counts = {}
     for char in number:
         counts[char] = counts.get(char, 0) + 1
     if any(count >= 8 for count in counts.values()):
@@ -165,18 +153,7 @@ class IndianPhonePattern:
 
     @property
     def groupindex(self) -> dict[str, int]:
-        return dict(self._pattern.groupindex)
-
-    def validate(self, matched_text: str) -> bool:
-        """Return True iff *matched_text* is a valid (non-placeholder) Indian phone.
-
-        Shared by the Presidio recognizer (``presidio_gate``) so the regex
-        framework and this wrapper apply identical validation — no drift.
-        """
-        candidate = "".join(c for c in matched_text if c.isdigit())
-        if candidate.startswith("91") and len(candidate) == 12:
-            candidate = candidate[2:]
-        return len(candidate) == 10 and _is_valid_indian_phone(candidate)
+        return self._pattern.groupindex
 
     def search(self, string: str, pos: int = 0, endpos: int = 2**31 - 1) -> re.Match[str] | None:
         for match in self._pattern.finditer(string, pos, endpos):
@@ -197,7 +174,7 @@ class IndianPhonePattern:
             if len(candidate) == 10 and _is_valid_indian_phone(candidate):
                 yield match
 
-    def sub(self, repl: str | Callable[[re.Match[str]], str], string: str, count: int = 0) -> str:
+    def sub(self, repl: Any, string: str, count: int = 0) -> str:
         def replacement_fn(match: re.Match[str]) -> str:
             matched_text = match.group(0)
             candidate = "".join(c for c in matched_text if c.isdigit())
@@ -223,12 +200,7 @@ BLOCKING_PATTERNS: list[tuple[str, Any]] = [
             re.compile(r"\b(?!(\d)(?:[\s\-\.]?\1){11}\b)[2-9]\d{3}[\s\-\.]?\d{4}[\s\-\.]?\d{4}\b"),
         ),
     ),
-    # PAN is officially uppercase, but data entry can lowercase it; the 5-alpha +
-    # 4-digit + 1-alpha shape is distinctive enough that case-insensitive matching
-    # adds negligible false-positive surface while closing a lowercased-PAN leak
-    # vector (Note 34: a PAN mislabeled under a benign header evades both the
-    # case-sensitive regex and Presidio, which has no PAN recognizer).
-    ("PAN", re.compile(r"\b[A-Za-z]{5}\d{4}[A-Za-z]\b")),
+    ("PAN", re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b")),
     ("INDIAN_VOTER_ID", re.compile(r"\b[A-Z]{3}\d{7}\b")),
     ("INDIAN_DL", re.compile(r"\b[A-Z]{2}\d{2}\s?\d{4}\d{7}\b")),
     ("INDIAN_PASSPORT", re.compile(r"\b[A-Z]\d{7}\b")),
@@ -281,37 +253,6 @@ SUBJECT_ID_PATTERNS: list[re.Pattern[str]] = [
     # Indo-VAP / RePORT India subject ID shapes.
     re.compile(r"\bSUBJ[-_]?\d+\b"),
     re.compile(r"\bSC\d{4,}\b"),
-    # Require >=4 digits (mirrors the SC subject-ID width): a real Family-ID
-    # *value* is a multi-digit identifier (e.g. "FID12345"), whereas the
-    # short-suffixed tokens "FID", "FID2"..."FID5" are column/header NAMES
-    # (family-member index) that legitimately appear in SoT schema metadata and
-    # must not trip the residual leak gate. Data-owner/security: confirm real
-    # FID values are >=4 digits.
-    re.compile(r"\bFID\d{4,}\b"),
+    re.compile(r"\bFID\d*\b"),
 ]
 """Literal subject-ID substrings that the log wrapper HMAC-redacts per-subject."""
-
-
-# ── PHI-safe shape masking ───────────────────────────────────────────────────
-
-_DIGIT_RE = re.compile(r"\d")
-_ALPHA_RE = re.compile(r"[A-Za-z]")
-
-
-def mask_date_shape(value: str) -> str:
-    """Return a PHI-safe shape of *value* for logs and error messages.
-
-    Every digit → ``'9'``, every ASCII letter → ``'X'``, separator
-    characters are kept.  The shape gives operators enough structural
-    information to diagnose parsing issues without revealing the raw value.
-
-    Examples::
-
-        >>> mask_date_shape("28/05/2014")
-        '99/99/9999'
-        >>> mask_date_shape("UNK")
-        'XXX'
-        >>> mask_date_shape("07-05-2014 14:30:00")
-        '99-99-9999 99:99:99'
-    """
-    return _ALPHA_RE.sub("X", _DIGIT_RE.sub("9", str(value)))

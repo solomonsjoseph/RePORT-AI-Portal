@@ -24,13 +24,12 @@ Reference: ICMR 2017 §11.7; NIST SP 800-188 §5.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from scripts.utils.logging_system import get_logger
-
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "KAnonResult",
@@ -43,6 +42,7 @@ __all__ = [
 
 
 _DEFAULT_K = 5
+_SUPPRESSED_LABEL = "<5"
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,38 +191,26 @@ def l_diversity_check(
     )
 
 
-def mask_small_cell(
-    count: int,
-    *,
-    k: int = _DEFAULT_K,
-    label: str | None = None,
-) -> Any:
-    """Return *count* if ``count >= k``, else the suppression label.
-
-    GAP-8: when *label* is not explicitly provided the label is derived from
-    *k* as ``f'<{k}'`` so the suppression text always matches the threshold
-    actually applied — previously the label was hardcoded to ``"<5"``
-    regardless of the k value passed by the caller.  Passing an explicit
-    *label* still overrides the default (backwards-compatible).
+def mask_small_cell(count: int, *, k: int = _DEFAULT_K, label: str = _SUPPRESSED_LABEL) -> Any:
+    """Return *count* if ``count >= k``, else *label* (default ``"<5"``).
 
     Pair with :func:`suppress_small_cells` when aggregating cross-
     tabulations for the agent surface.
     """
     if count >= k:
         return count
-    return label if label is not None else f"<{k}"
+    return label
 
 
 def suppress_small_cells(
     counts: Mapping[Any, int],
     *,
     k: int = _DEFAULT_K,
-    label: str | None = None,
+    label: str = _SUPPRESSED_LABEL,
 ) -> dict[Any, Any]:
-    """Return a new dict where values < *k* are replaced with the suppression label.
+    """Return a new dict where values < *k* are replaced with *label*.
 
     Leaves keys untouched. Intended for cross-tab / frequency counts
-    that a tool is about to return to the LLM. The default label is derived
-    from *k* (see :func:`mask_small_cell`).
+    that a tool is about to return to the LLM.
     """
     return {key: mask_small_cell(val, k=k, label=label) for key, val in counts.items()}

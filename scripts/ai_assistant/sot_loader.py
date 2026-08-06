@@ -9,8 +9,6 @@ from typing import Any
 
 import yaml
 
-from scripts.ai_assistant.file_access import validate_agent_read
-
 # ---------------------------------------------------------------------------
 # Validation dataclasses
 # ---------------------------------------------------------------------------
@@ -407,45 +405,61 @@ def validate(data: dict[str, Any]) -> ValidationReport:
     return ValidationReport(passed=len(errors) == 0, errors=errors)
 
 
-# N3: load_policy_yaml + summarize_policy removed — the agent reads ONLY the
-# joined query view (find_joined_query_view_paths / load_joined_query_view /
-# summarize_joined_view). The SoT policy YAML is construction material fenced into
-# the audit zone and is never an LLM-facing read surface.
-
-
-def find_joined_query_view_paths(
+def find_policy_yaml(
     study: str,
     form: str | None,
     repo_root: Path,
 ) -> list[Path]:
-    """Return published SoT joined query view paths — the only LLM-facing SoT files (Note 3)."""
+    """Return policy YAML paths for one study.
 
-    from scripts.ai_assistant.sot_joined_view import resolve_sot_joined_view_path
-
-    sot_root = repo_root / "output" / study / "llm_source" / "SoT"
-    if not sot_root.is_dir():
-        return []
-
-    if form is not None:
-        path = resolve_sot_joined_view_path(sot_root, form)
-        return [path] if path.is_file() else []
+    New SoT outputs live under ``output/<study>/llm_source/SoT/<pair>/pdf``.
+    Older ``output/<study>/llm_source/source_truth`` and
+    ``output/<study>/SoT`` layouts, plus ``<form>_policy.lean.yaml`` names,
+    are still accepted for compatibility.
+    """
+    study_output = repo_root / "output" / study
+    llm_source_dir = study_output / "llm_source"
+    legacy_dir = llm_source_dir / "source_truth"
+    sot_roots = [
+        llm_source_dir / "SoT",
+        study_output / "SoT",
+    ]
 
     paths: list[Path] = []
-    for pair_dir in sorted(path for path in sot_root.iterdir() if path.is_dir()):
-        joined_dir = pair_dir / "joined"
-        if joined_dir.is_dir():
+    if form is not None:
+        if legacy_dir.is_dir():
             paths.extend(
-                sorted(joined_dir.glob("*_joined_query_view.yaml"), key=lambda p: p.name)
+                candidate
+                for candidate in [
+                    legacy_dir / f"{form}_policy.yaml",
+                    legacy_dir / f"{form}_policy.lean.yaml",
+                ]
+                if candidate.exists()
             )
+        for sot_root in sot_roots:
+            if sot_root.is_dir():
+                paths.extend(sorted(sot_root.glob(f"*/pdf/{form}_policy.yaml")))
+                paths.extend(sorted(sot_root.glob(f"*/pdf/{form}_policy.lean.yaml")))
+    else:
+        if legacy_dir.is_dir():
+            paths.extend(legacy_dir.glob("*_policy.yaml"))
+            paths.extend(legacy_dir.glob("*_policy.lean.yaml"))
+        for sot_root in sot_roots:
+            if sot_root.is_dir():
+                paths.extend(sot_root.glob("*/pdf/*_policy.yaml"))
+                paths.extend(sot_root.glob("*/pdf/*_policy.lean.yaml"))
+
     return list(dict.fromkeys(paths))
 
 
-def load_joined_query_view(path: Path) -> dict[str, Any]:
-    """Load a joined query view YAML (LLM read zone)."""
+def load_policy_yaml(path: Path) -> dict[str, Any]:
+    """Load a policy YAML file and return its contents as a dict.
 
+    Raises ``ValueError`` when the file is missing, unreadable, or structurally
+    invalid (root not a dict, or missing the required *variables* key).
+    """
     if not path.exists():
-        raise ValueError(f"Joined query view not found: {path}")
-    validate_agent_read(path)
+        raise ValueError(f"Policy YAML not found: {path}")
     try:
         data: Any = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
@@ -457,29 +471,57 @@ def load_joined_query_view(path: Path) -> dict[str, Any]:
     return data  # type: ignore[return-value]
 
 
-def summarize_joined_view(data: dict[str, Any]) -> dict[str, Any]:
-    """Compact summary of a joined query view for catalog search (metadata only)."""
+def summarize_policy(data: dict[str, Any]) -> dict[str, Any]:
+    """Return a compact summary view of a loaded policy YAML.
 
-    form_val = data.get("form")
-    if isinstance(form_val, dict):
+    Includes top-level metadata, section/variable counts, per-variable metadata
+    (no dataset row values), and pass-through of instructions/arrows/discrepancies.
+    """
+    form_block = data.get("form", {})
+    if isinstance(form_block, dict):
         form_summary = {
-            "number": form_val.get("number"),
-            "title": form_val.get("title"),
+            "number": form_block.get("number"),
+            "title": form_block.get("title"),
         }
     else:
-        form_summary = {"number": None, "title": str(form_val) if form_val else ""}
+        form_summary = {"number": None, "title": str(form_block)}
 
+    sections = data.get("sections", {})
     raw_variables = data.get("variables", {})
-    variables: dict[str, Any] = (
-        {var_name: var_meta for var_name, var_meta in raw_variables.items() if isinstance(var_meta, dict)}
-        if isinstance(raw_variables, dict)
-        else {}
-    )
 
-    return {
+    keep_fields = {
+        "section",
+        "pdf_question",
+        "description",
+        "widget",
+        "type",
+        "options",
+        "relationships",
+        "skip_logic",
+        "phi",
+        "pdf_label",
+        "pdf_subsection",
+        "format",
+        "units",
+        "precision",
+        "notes",
+    }
+
+    variables: dict[str, Any] = {}
+    for var_name, var_data in raw_variables.items():
+        if not isinstance(var_data, dict):
+            variables[var_name] = var_data
+            continue
+        variables[var_name] = {k: v for k, v in var_data.items() if k in keep_fields}
+
+    summary: dict[str, Any] = {
         "study": data.get("study", ""),
         "form": form_summary,
-        "section_count": 0,
+        "section_count": len(sections) if isinstance(sections, dict) else 0,
         "variable_count": len(variables),
         "variables": variables,
     }
+    for passthrough in ("instructions", "arrows", "discrepancies"):
+        if passthrough in data:
+            summary[passthrough] = data[passthrough]
+    return summary

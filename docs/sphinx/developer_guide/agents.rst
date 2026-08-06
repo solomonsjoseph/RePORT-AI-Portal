@@ -14,8 +14,8 @@ Orientation
 
 Privacy-first, local-first AI Assistant system for clinical research
 data. The PHI scrubber (Step 1.6) is an *honest-broker catalog* with
-nine action classes — keep / birthdate / drop / cap / generalize /
-band / suppress_small_cell / date / id — evaluated in strict priority order
+eight action classes — keep / birthdate / drop / cap / generalize /
+suppress_small_cell / date / id — evaluated in strict priority order
 against ~200 Indo-VAP-calibrated rules. See
 :mod:`scripts.security.phi_scrub` and ``scripts/security/phi_scrub.yaml``.
 The HMAC key lives at ``~/.config/report_ai_portal/phi_key`` (outside
@@ -52,7 +52,7 @@ Quick reference
    make ci            # lint → typecheck → test
    make chat          # Launch Streamlit web UI
    make chat-cli      # Launch CLI REPL
-   make study STUDY=<name>   # Run the 10-phase orchestrator (publish path runs in-lock)
+   make pipeline      # Lower-level host publish path used by dataset-to-llm-source
 
 Issue Tracker and Triage
 ------------------------
@@ -93,20 +93,18 @@ Architecture (two-world)
 **World 1 — Plugin-orchestrated study preparation**
 (``plugins/report-ai-study-pipeline/`` plus trusted host CLIs):
 
-**Full study preparation:** use ``make study STUDY=<name>`` (the
-``report-ai-study-pipeline`` orchestrator). Phase 2 runs
-``dataset-deduplication`` on raw files; phases 3–10 cover SoT generation,
-PHI classify/scrub, audit verification, PHI guard gate, promotion, cleanup,
-and snapshot commit.
+**Full study preparation:** use the ``report-ai-study-pipeline`` plugin.
+It runs ``excel-duplicate-handler`` once per study, then
+``sot-lean-generator`` per ready raw-file set, then
+``dataset-to-llm-source`` through the host repo's lock-aware publish path.
+The plugin may delegate independent raw-file sets to subagents.
 
 **SoT creation:** ``make sot-generate-all STUDY=<study>`` is the repo-local
 wrapper around the sot-lean-generator scripts. It pairs annotated PDFs with
 xlsx/csv datasets by form-code prefix, handles known duplicate-dataset
 exceptions, reads only row 1 of each dataset for binding, verifies each
-candidate, writes the policy/schema construction artifacts to the audit zone
-under ``output/{STUDY}/audit/SoT_construction/<pair>/``, and promotes only the
-derived joined query view into
-``output/{STUDY}/llm_source/SoT/<pair>/joined/``. For a single manual source pack,
+candidate, and promotes passing policy/schema/joined outputs into
+``output/{STUDY}/llm_source/SoT/<pair>/``. For a single manual source pack,
 use ``python -m scripts.source_truth.study_intake --study <study> --form <form>``.
 See :doc:`source_truth_build` for the full behavior reference.
 
@@ -118,7 +116,7 @@ Every extracted row gets a full ``_provenance`` dict (raw_sha256,
 pipeline_version, extraction_engine, source_file, sheet_name,
 row_index, study_name, extraction_utc).
 :func:`scripts.security.phi_scrub.run_scrub` (Step 1.6) scrubs staged
-datasets in place via the nine action classes in strict priority
+datasets in place via the eight action classes in strict priority
 order **BEFORE** any audit is written so no raw PHI lands in
 ``output/``. ``dataset_cleanup`` (Step 1.7) runs against staged
 datasets and emits ``audit/dataset_cleanup_report.json``. Published
@@ -132,12 +130,11 @@ operator inspection.
 
 **PDF extraction:** the PDF orchestrator and legacy raw-PDF API path are
 historical. Current LLM metadata comes from reviewed SoT policy YAMLs
-(produced by the plugin skill and retained in the audit zone under
-``audit/SoT_construction/<pair>/pdf/``); only the derived joined query view
-is published under ``llm_source/SoT/<pair>/joined/`` for the LLM to read.
+(produced by the plugin skill) and is published under
+``llm_source/SoT/<pair>/``.
 
 **World 2 — AI Assistant** (``scripts/ai_assistant/``):
-LangGraph ReAct agent with 11 tools for querying study data. Never
+LangGraph ReAct agent with 10 tools for querying study data. Never
 accesses raw data.
 
 **Output structure:**
@@ -206,8 +203,8 @@ Conversational-shortcut guard on fuzzy search tools
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * Greetings / acknowledgements / queries shorter than 3 chars are
-  short-circuited *inside* ``search_variables`` and
-  ``answer_catalog_question`` via
+  short-circuited *inside* ``search_variables``,
+  ``find_variable_candidates``, ``search_pdf_context`` via
   ``_query_looks_conversational`` in
   ``scripts/ai_assistant/agent_tools.py``. The tool returns a refusal
   (``_CONVERSATIONAL_REFUSAL_MESSAGE``) instead of surfacing noisy
@@ -236,8 +233,7 @@ Prompt-injection + at-rest defences
   vocab) must pass through
   :func:`scripts.ai_assistant.phi_safe.sanitise_untrusted_snippet`
   before it reaches the LLM. Already applied inside
-  ``read_llm_source_file`` and ``answer_catalog_question`` for
-  externally-sourced content.
+  ``search_pdf_context``.
 * **At-rest redaction.** Any surface that persists user-generated
   content (conversation JSONs, exports, future telemetry sinks) must
   run content through
@@ -320,11 +316,12 @@ Dataset discovery and analytical posture
   needs to know which forms and which columns are available before
   writing a ``run_python_analysis`` script or framing a custom
   evidence report.
-* The agent system prompts no longer treat canonical question IDs as a
-  routing gate. Questions about the study catalog hit
-  ``answer_catalog_question`` (the primary fast path using the Source Truth
-  joined query views). Ad-hoc analyses and custom computation route through
-  ``run_python_analysis``.
+* The agent system prompts no longer treat the eleven canonical
+  question IDs as a routing gate. Verbatim canonical questions still
+  hit ``produce_evidence_report`` (the IRB-attested fast path).
+  Everything else — variants of the canonical eleven, ad-hoc analyses,
+  or general / off-topic questions — routes through
+  ``produce_custom_evidence_report`` or ``run_python_analysis``.
 * For the boundary discussion (why this is safe, which gate enforces
   it, what is filtered where), see
   :doc:`phi_architecture` — section *Agent Autonomy and the PHI Gate*.
@@ -376,7 +373,8 @@ UI edit-forbidden files (hard stop)
   entry points only: ``stream_query``, ``invoke_query``,
   ``reset_agent``)
 * ``scripts/ai_assistant/agent_tools.py``, ``agent_prompts.py``,
-  ``file_access.py``, ``tool_cache.py``, ``phi_safe.py``, ``cli.py``
+  ``analytical_engine.py``, ``study_knowledge.py``, ``file_access.py``,
+  ``tool_cache.py``, ``phi_safe.py``, ``cli.py``
 * Everything under ``scripts/extraction/``, ``scripts/security/``,
   ``scripts/utils/``
 
@@ -414,9 +412,9 @@ Key files
    * - Pipeline
      - ``scripts/extraction/dataset_pipeline.py``
    * - SoT creation CLI
-     - ``python -m scripts.source_truth.study_intake``,
-       ``python -m scripts.source_truth.generate_lean_outputs``,
-       ``plugins/report-ai-study-pipeline/skills/sot-lean-generator/scripts/generate_pdf_aware_candidate.py``
+     - ``scripts/source_truth/study_intake.py``,
+       ``scripts/source_truth/generate_lean_outputs.py``,
+       ``skills/sot-lean-generator/scripts/generate_pdf_aware_candidate.py``
    * - PHI scrub + catalog
      - ``scripts/security/phi_scrub.py``,
        ``scripts/security/phi_scrub.yaml``

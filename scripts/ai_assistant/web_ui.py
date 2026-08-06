@@ -8,6 +8,7 @@ Launch:
 
 from __future__ import annotations
 
+import logging
 import shutil
 import uuid
 from datetime import UTC, datetime
@@ -39,20 +40,19 @@ from scripts.ai_assistant.ui.providers import (
     _default_provider_label,
 )
 from scripts.ai_assistant.ui.state import init_state
-from scripts.security.phi_keystore import (
-    get_phi_key as _load_phi_key,
-)
 from scripts.security.phi_scrub import (
     PHIKeyMissingError,
     PHIKeyPermissionError,
     PHIScrubError,
 )
+from scripts.security.phi_scrub import (
+    load_key as _load_phi_key,
+)
 from scripts.utils.log_hygiene import install_phi_redactor
-from scripts.utils.logging_system import get_logger
 
 _CSS_PATH = Path(__file__).parent / "ui" / "assets" / "theme.css"
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # PHI log redactor — installed once at module import time and guarded so

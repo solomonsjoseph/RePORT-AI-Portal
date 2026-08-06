@@ -240,24 +240,13 @@ def _get_log_directory(
     base_dir: Path | None = None,
     use_category: bool = True,
 ) -> Path:
-    """Return the directory where log files should be written.
-
-    Does NOT create the directory — ``_LazyDirRotatingFileHandler`` creates
-    it on first emit, so importing a module that calls ``get_logger()``
-    touches the filesystem only when something is actually logged.
-    """
+    """Return the directory where log files should be written."""
     if base_dir is None:
         logs_root = os.getenv("LOG_DIR", ".logs")
         base_dir = Path(logs_root) / "RePORT AI Portal"
-    return base_dir / category if use_category else base_dir
-
-
-class _LazyDirRotatingFileHandler(logging.handlers.RotatingFileHandler):
-    """RotatingFileHandler that creates its parent directory on first open."""
-
-    def _open(self):
-        Path(self.baseFilename).parent.mkdir(parents=True, exist_ok=True)
-        return super()._open()
+    log_dir = base_dir / category if use_category else base_dir
+    log_dir.mkdir(parents=True, exist_ok=True)
+    return log_dir
 
 
 def _append_log_path(msg: str, include_log_path: bool) -> str:
@@ -307,7 +296,7 @@ def setup_logging(
             log_file = log_dir / f"report_ai_portal_{timestamp}.log"
         _log_file_path = str(log_file)
 
-        file_handler = _LazyDirRotatingFileHandler(
+        file_handler = logging.handlers.RotatingFileHandler(
             filename=log_file,
             maxBytes=max_bytes,
             backupCount=backup_count,
@@ -343,21 +332,9 @@ def setup_logging(
             console_handler.addFilter(SuccessOrWarningFilter())
             console_handler.setFormatter(CustomFormatter("%(levelname)s: %(message)s"))
 
-        # Late-bind PHI redaction: if install_phi_redactor() already ran, its
-        # filter sits on the root logger. Logger-level filters never apply to
-        # records propagated from child loggers, so attach it to our handlers
-        # (handler filters see every record that reaches them). The reverse
-        # order (setup first, redactor later) is covered in install_phi_redactor.
-        for root_filter in logging.getLogger().filters:
-            if type(root_filter).__name__ == "PHIRedactingFilter":
-                file_handler.addFilter(root_filter)
-                console_handler.addFilter(root_filter)
-
         logger.addHandler(file_handler)
         logger.addHandler(console_handler)
-        # DEBUG so that under the default INFO level no record is emitted at
-        # setup time — keeps get_logger() free of import-time file creation.
-        logger.debug(
+        logger.info(
             "Logging initialized | mode=%s | category=%s | file=%s",
             "verbose" if resolved_verbose else "default",
             category,

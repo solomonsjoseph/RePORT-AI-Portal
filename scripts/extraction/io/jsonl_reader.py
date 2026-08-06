@@ -5,10 +5,6 @@ pipeline: trio bundle and downstream processing.  Centralizing this eliminates
 duplicate copies and provides a single place to fix JSON-parsing edge cases.
 """
 
-# SHARED UTILITY (Note 20 Gap C / Note 19): stays in scripts/, imported
-# read-only by plugin skills; never moved into a skill, never imports from
-# plugins/.
-
 from __future__ import annotations
 
 import json

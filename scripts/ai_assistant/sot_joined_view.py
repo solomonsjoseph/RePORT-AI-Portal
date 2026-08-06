@@ -1,17 +1,13 @@
-"""Joined PDF Source Truth + dataset schema query view.
+"""Derived PDF Source Truth + dataset schema query views.
 
-The joined view is built at PUBLISH time and is the SOLE LLM-facing SoT file
-(N2/N3/N17): it is the only SoT artifact promoted into ``llm_source/SoT/<pair>/``.
-The construction inputs — the policy Source Truth YAML (PDF-authoritative) and the
-per-form dataset schema JSON (dataset/runtime binding) — are written to the AUDIT
-zone (``audit/SoT_construction/<pair>/``), fenced from the LLM, and are never
-published into the read zone.
+The joined view is intentionally derived at query time. Policy Source Truth YAML
+remains the PDF-authoritative source, while per-form dataset schema JSON remains
+the dataset/runtime-binding source.
 """
 
 from __future__ import annotations
 
 import json
-import re
 from collections import Counter
 from collections.abc import Mapping
 from pathlib import Path
@@ -86,6 +82,12 @@ def _form_id_from_policy_path(path: Path) -> str:
     return path.stem
 
 
+def _form_id_from_lean_path(path: Path) -> str:
+    """Backward-compatible alias for older callers."""
+
+    return _form_id_from_policy_path(path)
+
+
 def find_dataset_schema_for_policy(policy_path: Path) -> Path | None:
     """Return the matching per-form dataset schema path when present."""
 
@@ -95,10 +97,8 @@ def find_dataset_schema_for_policy(policy_path: Path) -> Path | None:
     if policy_path.parent.name == "source_truth":
         llm_source_dir = policy_path.parent.parent
     candidates = [
-        # Construction layout: <pair>/pdf/<form>_policy.yaml with the dataset
-        # authority next to it under dataset/ (these live in the AUDIT zone,
-        # audit/SoT_construction/<pair>/, at publish time — this resolver only
-        # builds the joined view, which is the sole LLM-facing SoT file).
+        # New skill layout: llm_source/SoT/<sot-pair-name>/pdf/<form>_policy.yaml
+        # with the dataset authority next to it under dataset/.
         pair_dir / "dataset" / f"{form_id}_schema.json",
         pair_dir / f"{form_id}_schema.json",
         policy_path.with_name(f"{form_id}_schema.json"),
@@ -108,6 +108,12 @@ def find_dataset_schema_for_policy(policy_path: Path) -> Path | None:
         llm_source_dir / "dataset_schema" / form_id / f"{form_id}_schema.json",
     ]
     return next((path for path in candidates if path.is_file()), None)
+
+
+def find_dataset_schema_for_lean(lean_path: Path) -> Path | None:
+    """Backward-compatible alias for older callers."""
+
+    return find_dataset_schema_for_policy(lean_path)
 
 
 def _dataset_columns_by_name(schema: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
@@ -202,123 +208,6 @@ def build_joined_query_view(policy_path: Path, schema_path: Path) -> dict[str, A
         "variables": variables,
         "runtime_fields": _runtime_fields(schema),
     }
-
-
-_SOT_POLICY_SUFFIXES = ("_policy.yaml", "_policy.lean.yaml")
-_JOINED_VIEW_SUFFIX = "_joined_query_view.yaml"
-
-
-def _normalize_sot_form_key(name: str) -> str:
-    """Collapse separator differences for SoT pair ↔ dataset stem matching."""
-
-    return re.sub(r"[_\-\s]+", "", name.strip().lower())
-
-
-def _joined_view_path(pair_dir: Path, form_id: str) -> Path:
-    return pair_dir / "joined" / f"{form_id}{_JOINED_VIEW_SUFFIX}"
-
-
-def _joined_views_in_pair(pair_dir: Path) -> list[Path]:
-    joined_dir = pair_dir / "joined"
-    if not joined_dir.is_dir():
-        return []
-    return sorted(path for path in joined_dir.glob(f"*{_JOINED_VIEW_SUFFIX}") if path.is_file())
-
-
-def _schema_binding_stems(schema_path: Path) -> set[str]:
-    """Return dataset stem aliases recorded in a schema sidecar (metadata only)."""
-
-    try:
-        payload = json.loads(schema_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-        return set()
-    if not isinstance(payload, dict):
-        return set()
-
-    stems: set[str] = set()
-    form = payload.get("form")
-    if isinstance(form, str) and form.strip():
-        stems.add(form.strip())
-    source_dataset = payload.get("source_dataset")
-    if isinstance(source_dataset, str) and source_dataset.strip():
-        stems.add(Path(source_dataset).stem)
-    return stems
-
-
-def _resolve_sot_pair_dir(sot_root: Path, stem: str) -> Path | None:
-    """Locate the SoT pair directory for a dataset stem when names diverge."""
-
-    if not sot_root.is_dir():
-        return None
-
-    direct = sot_root / stem
-    if _joined_views_in_pair(direct):
-        return direct
-
-    # Resolve policy/schema paths for an explicit form id (construction-time only).
-    for suffix in _SOT_POLICY_SUFFIXES:
-        for policy_path in sorted(sot_root.glob(f"*/pdf/{stem}{suffix}")):
-            pair_dir = policy_path.parent.parent
-            if _joined_views_in_pair(pair_dir):
-                return pair_dir
-
-    stem_lower = stem.lower()
-    stem_key = _normalize_sot_form_key(stem)
-
-    metadata_matches: list[Path] = []
-    normalized_matches: list[Path] = []
-    case_matches: list[Path] = []
-
-    for pair_dir in sorted(path for path in sot_root.iterdir() if path.is_dir()):
-        if not _joined_views_in_pair(pair_dir):
-            continue
-        if pair_dir.name.lower() == stem_lower:
-            case_matches.append(pair_dir)
-            continue
-        if _normalize_sot_form_key(pair_dir.name) == stem_key:
-            normalized_matches.append(pair_dir)
-
-        schema_dir = pair_dir / "dataset"
-        if schema_dir.is_dir():
-            for schema_path in sorted(schema_dir.glob("*_schema.json")):
-                if stem in _schema_binding_stems(schema_path):
-                    metadata_matches.append(pair_dir)
-                    break
-
-    for bucket in (metadata_matches, case_matches, normalized_matches):
-        deduped = list(dict.fromkeys(bucket))
-        if len(deduped) == 1:
-            return deduped[0]
-    return None
-
-
-def resolve_sot_joined_view_path(sot_root: Path, form_name: str) -> Path:
-    """Return the canonical joined-query-view path for a dataset form.
-
-    Layout: ``{sot_root}/{stem}/joined/{stem}_joined_query_view.yaml``.
-    *form_name* may be a workbook filename (``6_HIV.xlsx``) or a bare stem.
-
-    When the dataset stem and SoT pair directory differ only by underscore or
-    case conventions (for example ``14_Case_Control`` vs ``14_CaseControl``),
-    fall back to policy globs, schema ``source_dataset`` metadata, and
-    conservative normalized-name matching — header/metadata only, never row values.
-    """
-    stem = Path(form_name).stem
-    canonical = _joined_view_path(sot_root / stem, stem)
-    if canonical.is_file():
-        return canonical
-
-    pair_dir = _resolve_sot_pair_dir(sot_root, stem)
-    if pair_dir is not None:
-        for form_id in (stem, pair_dir.name):
-            candidate = _joined_view_path(pair_dir, form_id)
-            if candidate.is_file():
-                return candidate
-        joined_views = _joined_views_in_pair(pair_dir)
-        if len(joined_views) == 1:
-            return joined_views[0]
-
-    return canonical
 
 
 def write_joined_query_view_yaml(path: Path, view: Mapping[str, Any]) -> None:

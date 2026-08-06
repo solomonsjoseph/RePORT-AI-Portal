@@ -12,6 +12,7 @@ Commands:
 from __future__ import annotations
 
 import getpass
+import logging
 import os
 import uuid
 from typing import Any
@@ -20,9 +21,8 @@ from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 
 import config
 from scripts.ai_assistant.agent_graph import reset_agent, stream_query
-from scripts.utils.logging_system import get_logger
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # LLM provider / model selection
@@ -325,12 +325,12 @@ def run_repl() -> None:
 
 def main() -> None:
     """Entry point for the CLI."""
-    from scripts.security.phi_keystore import get_phi_key as _load_phi_key
     from scripts.security.phi_scrub import (
         PHIKeyMissingError,
         PHIKeyPermissionError,
         PHIScrubError,
     )
+    from scripts.security.phi_scrub import load_key as _load_phi_key
     from scripts.utils.log_hygiene import install_phi_redactor
     from scripts.utils.logging_system import setup_logging
 
