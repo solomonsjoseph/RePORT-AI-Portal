@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import json
 import logging
 import os
 import shutil
@@ -22,6 +23,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
+
+import yaml
 
 import config
 from __version__ import __version__
@@ -36,6 +39,7 @@ from scripts.security.phi_scrub import (
     PHIScrubError,
 )
 from scripts.security.phi_scrub import load_key as _load_phi_key
+from scripts.security.phi_scrub import load_scrub_config as _load_phi_scrub_config
 from scripts.security.phi_scrub import run_scrub as run_phi_scrub
 from scripts.utils import logging_system as log
 from scripts.utils.errors import format_for_log, wrap
@@ -481,6 +485,114 @@ def _emit_output_signpost() -> None:
         encoding="utf-8",
     )
     log.info("Output signpost written: %s", signpost)
+
+
+_AI_ENTRYPOINT_SCHEMA_VERSION = "1"
+_AI_ENTRYPOINT_READ_ORDER = [
+    "AI_ENTRYPOINT.json",
+    "SoT",
+    "dataset_schema/files",
+    "dictionary_mapping/jsonl",
+]
+
+
+def _ai_entrypoint_deidentification() -> dict[str, str]:
+    """Describe the active de-identification posture, read live from the
+    resolved PHI scrub config so the entrypoint never claims a posture the
+    published tree was not actually built under."""
+    cfg = _load_phi_scrub_config()
+    posture = cfg.compliance_posture if cfg is not None else "disabled"
+    return {
+        "posture": posture,
+        "dates": (
+            "per-subject deterministic jitter (SANT); intervals preserved, "
+            "absolute dates shifted"
+        ),
+        "identifiers": "HMAC-SHA256 pseudonyms, format RID_<LABEL>_<alpha12>",
+    }
+
+
+def _ai_entrypoint_study_pack_name() -> str | None:
+    """Return the resolved study pack's declared name, or ``None`` when no
+    pack can be resolved for the active study."""
+    try:
+        pack_dir = config.resolve_study_pack(config.STUDY_NAME)
+    except config.StudyPackError:
+        return None
+    pack_yaml = pack_dir / "pack.yaml"
+    if not pack_yaml.is_file():
+        return None
+    pack_meta = yaml.safe_load(pack_yaml.read_text(encoding="utf-8")) or {}
+    name = pack_meta.get("name")
+    return str(name) if name else None
+
+
+def _emit_ai_entrypoint() -> None:
+    """Write ``llm_source/AI_ENTRYPOINT.json`` — the machine-readable
+    signpost any AI agent (this repo's own, or an external one consuming
+    the published tree standalone) reads first.
+
+    Unlike the README signpost (a human breadcrumb one level *above*
+    ``llm_source/``, outside the agent read zone enforced by
+    ``scripts.ai_assistant.file_access``), this file lives *inside*
+    ``llm_source/`` so every consumer of the published tree — this repo's
+    agent or an external one — sees it. Written last, and only from the
+    success path (see the Step 5b call site in :func:`main`), so a failed
+    or partial publish never leaves a stale entrypoint claiming guarantees
+    the tree does not meet.
+
+    Counts and rule descriptions only — never a cell value.
+    """
+    llm_source_dir = Path(config.STUDY_LLM_SOURCE_DIR)
+    if not llm_source_dir.is_dir():
+        log.info("AI entrypoint: %s not present — skipped", llm_source_dir)
+        return
+
+    dataset_dir = llm_source_dir / "dataset_schema" / "files"
+    dataset_files = sorted(dataset_dir.glob("*.jsonl")) if dataset_dir.is_dir() else []
+
+    dictionary_dir = llm_source_dir / "dictionary_mapping" / "jsonl"
+    dictionary_files = (
+        sorted(dictionary_dir.rglob("*.jsonl")) if dictionary_dir.is_dir() else []
+    )
+
+    sot_dir = llm_source_dir / "SoT"
+    sot_pairs = sorted(p.name for p in sot_dir.iterdir() if p.is_dir()) if sot_dir.is_dir() else []
+
+    legs: dict[str, Any] = {}
+    if dataset_files:
+        legs["dataset_schema"] = {
+            "path": "dataset_schema/files",
+            "format": "jsonl",
+            "files": len(dataset_files),
+        }
+    if dictionary_files:
+        legs["dictionary_mapping"] = {
+            "path": "dictionary_mapping/jsonl",
+            "format": "jsonl",
+            "files": len(dictionary_files),
+        }
+    if sot_pairs:
+        legs["SoT"] = {
+            "path": "SoT",
+            "format": "yaml+json",
+            "pairs": len(sot_pairs),
+        }
+
+    payload: dict[str, Any] = {
+        "schema_version": _AI_ENTRYPOINT_SCHEMA_VERSION,
+        "study": config.STUDY_NAME,
+        "study_pack": _ai_entrypoint_study_pack_name(),
+        "deidentification": _ai_entrypoint_deidentification(),
+        "legs": legs,
+        "read_order": _AI_ENTRYPOINT_READ_ORDER,
+    }
+
+    entrypoint_path = llm_source_dir / "AI_ENTRYPOINT.json"
+    entrypoint_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    log.info("AI entrypoint written: %s", entrypoint_path)
 
 
 def _cleanup_staging() -> None:
@@ -1088,8 +1200,18 @@ For detailed documentation, see the Sphinx docs or README.md
         # its prior publish.
         if args.process_datasets and not args.skip_datasets:
             staging_ds = Path(config.STAGING_DATASETS_DIR)
-            if staging_ds.is_dir() and any(staging_ds.glob("*.jsonl")):
+            if staging_ds.is_dir() and any(staging_ds.rglob("*.jsonl")):
                 scan = scan_tree_for_phi(staging_ds)
+                if not scan.ok:
+                    raise RuntimeError(f"Pre-publication PHI leak scan failed: {scan.detail}")
+            # NOTE: the dictionary staging tree is nested (Codelists/,
+            # tblDIS/, tblMED/, ...) — a non-recursive glob("*.jsonl") here
+            # would silently find zero files and never invoke the scan at
+            # all. Must be rglob, matching scan_tree_for_phi's own internal
+            # recursive walk.
+            staging_dict = Path(config.STAGING_DICTIONARY_DIR)
+            if staging_dict.is_dir() and any(staging_dict.rglob("*.jsonl")):
+                scan = scan_tree_for_phi(staging_dict)
                 if not scan.ok:
                     raise RuntimeError(f"Pre-publication PHI leak scan failed: {scan.detail}")
 
@@ -1176,6 +1298,12 @@ For detailed documentation, see the Sphinx docs or README.md
         # (IRB reviewer, sysadmin, future maintainer). Re-written on every
         # successful run so it cannot drift.
         run_step("Step 5: Emit Output Signpost", _emit_output_signpost)
+
+        # ── Step 5b: AI Entrypoint (machine-readable signpost) ──
+        # llm_source/AI_ENTRYPOINT.json — see _emit_ai_entrypoint docstring.
+        # Runs after the signpost, still only on the success path, so a
+        # failed run never leaves a stale entrypoint behind.
+        run_step("Step 5b: Emit AI Entrypoint", _emit_ai_entrypoint)
 
         log.info("RePORT AI Portal host publish path finished.")
 

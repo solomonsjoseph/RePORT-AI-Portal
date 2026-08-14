@@ -70,8 +70,16 @@ def _write_config(path: Path, **overrides: object) -> None:
         "birthdate_field": "^DOB$",
         "max_jitter_days": 30,
         "orphan_quarantine_threshold": 5,
+        # Step 5d: required whenever a run has no age variable. Defaulted
+        # here so tests unrelated to Step 5b/5d don't need to know about
+        # it; tests that specifically exercise "no age variable" pass
+        # age_reference_date=None to opt out, and tests that need
+        # age_variable_present=True add a cap_fields age rule + column.
+        "age_reference_date": "2020-01-01",
     }
     payload.update(overrides)
+    if payload.get("age_reference_date") is None:
+        payload.pop("age_reference_date", None)
     import yaml
 
     path.write_text(yaml.safe_dump(payload), encoding="utf-8")
@@ -451,10 +459,10 @@ class TestRunScrub:
         sidecar_key: Path,
         scrub_config_path: Path,
     ) -> None:
-        _write_config(scrub_config_path)  # safe_harbor default
+        _write_config(scrub_config_path, cap_fields=[{"pattern": "^IC_AGE$"}])  # safe_harbor default
         rows = [
-            {"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15"},
-            {"SUBJID": "S2", "DOB": "1975-05-20", "VISDAT": "2014-07-16"},
+            {"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15", "IC_AGE": 45},
+            {"SUBJID": "S2", "DOB": "1975-05-20", "VISDAT": "2014-07-16", "IC_AGE": 50},
         ]
         src = _seed_staging(monkeypatch_config, rows)
         phi_scrub.run_scrub(study_name="TEST")
@@ -1316,11 +1324,16 @@ class TestScrubRowPriority:
     def test_keep_wins_over_drop(
         self, scrub_config_path: Path, sidecar_key: Path, monkeypatch_config: Path
     ) -> None:
-        # ST_COMMENT matches both keep (for test) AND drop — keep wins.
+        # KEEP_ME matches both keep AND drop — keep wins, per an
+        # *acknowledged* keep_overrides entry (Step 10a hard-fails an
+        # unacknowledged keep-shadows-drop conflict).
         _write_config(
             scrub_config_path,
             keep_fields=["^KEEP_ME$"],
             drop_fields=["^KEEP_ME$"],
+            keep_overrides=[
+                {"column": "^KEEP_ME$", "shadows": "drop", "rationale": "test fixture"}
+            ],
         )
         rows: list[dict[str, object]] = [{"SUBJID": "S1", "KEEP_ME": "value-should-survive"}]
         src = _seed_staging(monkeypatch_config, rows)
@@ -1905,3 +1918,589 @@ class TestInProgressToken:
         # Call without run_id / runs_dir — must not raise and must not leave any token.
         phi_scrub.run_scrub(study_name="TEST")
         # No assertion on a specific path; just verify the call succeeds.
+
+
+# ── Step 1 — fail-closed date jitter ────────────────────────────────────────
+
+
+class TestDateFailClosed:
+    def test_unparseable_non_sentinel_redacted_to_null(self, key_bytes: bytes) -> None:
+        cfg = phi_scrub.PHIScrubConfig(
+            compliance_posture="safe_harbor",
+            subject_id_fields=("SUBJID",),
+            date_patterns=[__import__("re").compile("^VISDAT$")],
+            id_patterns=[],
+            birthdate_pattern=None,
+            max_jitter_days=30,
+            orphan_quarantine_threshold=5,
+        )
+        row = {"SUBJID": "S1", "VISDAT": "not-a-date-at-all"}
+        scrubbed, counts = phi_scrub._scrub_row(row, cfg=cfg, key=key_bytes)
+        assert scrubbed["VISDAT"] is None
+        assert any("date-unparsed-redacted" in k for k in counts)
+
+    def test_unparseable_declared_sentinel_preserved(self, key_bytes: bytes) -> None:
+        cfg = phi_scrub.PHIScrubConfig(
+            compliance_posture="safe_harbor",
+            subject_id_fields=("SUBJID",),
+            date_patterns=[__import__("re").compile("^VISDAT$")],
+            id_patterns=[],
+            birthdate_pattern=None,
+            max_jitter_days=30,
+            orphan_quarantine_threshold=5,
+            date_sentinels=frozenset({"na", "not done"}),
+        )
+        row = {"SUBJID": "S1", "VISDAT": "Not Done"}
+        scrubbed, counts = phi_scrub._scrub_row(row, cfg=cfg, key=key_bytes)
+        assert scrubbed["VISDAT"] == "Not Done"
+        assert any("date-sentinel" in k for k in counts)
+
+    def test_run_scrub_raises_past_threshold_no_value_in_message(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "VISDAT": "definitely-not-a-date"}]
+        _seed_staging(monkeypatch_config, rows)
+        with pytest.raises(phi_scrub.PHIDateParseError) as exc_info:
+            phi_scrub.run_scrub(study_name="TEST")
+        msg = str(exc_info.value)
+        assert "definitely-not-a-date" not in msg
+        assert "VISDAT" in msg
+
+    def test_run_scrub_passes_when_column_in_date_unparsed_accept(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        _write_config(
+            scrub_config_path,
+            date_unparsed_accept=["1A_ICScreening.jsonl:VISDAT"],
+        )
+        rows = [{"SUBJID": "S1", "VISDAT": "definitely-not-a-date"}]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")  # must not raise
+        loaded = [json.loads(line) for line in Path(config.STAGING_DATASETS_DIR, "1A_ICScreening.jsonl").read_text().splitlines() if line]
+        assert loaded[0]["VISDAT"] is None
+
+    def test_threshold_raise_persists_queue_so_bare_rerun_blocks_not_silently_publishes(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Regression: run #1 hits PHIDateParseError. Its own review queue
+        entry (recording the date_unparsed violation) must already be on
+        disk when it raises — staging rows are marked _phi_scrubbed by then,
+        so a bare rerun with no config change re-scans zero rows and would
+        otherwise see zero violations and publish silently. The queue
+        written by run #1 must make run #2 block via Step 11e instead."""
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "VISDAT": "definitely-not-a-date"}]
+        _seed_staging(monkeypatch_config, rows)
+
+        with pytest.raises(phi_scrub.PHIDateParseError):
+            phi_scrub.run_scrub(study_name="TEST")
+
+        audit_dir = Path(config.AUDIT_SCRUB_REPORT_PATH).parent
+        queue = json.loads((audit_dir / "phi_review_queue.json").read_text(encoding="utf-8"))
+        date_unparsed_entries = [e for e in queue["entries"] if e["trigger"] == "date_unparsed"]
+        assert date_unparsed_entries, "PHIDateParseError raised with no review-queue record of why"
+        assert date_unparsed_entries[0]["destructive"] is True
+        assert date_unparsed_entries[0]["status"] == "open"
+
+        # Bare rerun: staging rows are already _phi_scrubbed (idempotent
+        # skip), so this must NOT silently succeed — it must block on the
+        # unresolved destructive entry run #1 just persisted.
+        with pytest.raises(phi_scrub.PHIReviewPendingError):
+            phi_scrub.run_scrub(study_name="TEST")
+
+
+
+    def test_all_nines_placeholder_preserved_not_redacted(self, key_bytes: bytes) -> None:
+        cfg = phi_scrub.PHIScrubConfig(
+            compliance_posture="safe_harbor",
+            subject_id_fields=("SUBJID",),
+            date_patterns=[__import__("re").compile("^VISDAT$")],
+            id_patterns=[],
+            birthdate_pattern=None,
+            max_jitter_days=30,
+            orphan_quarantine_threshold=5,
+        )
+        for placeholder in ("99-99-9999", "9999-99-99", "99999999"):
+            row = {"SUBJID": "S1", "VISDAT": placeholder}
+            scrubbed, counts = phi_scrub._scrub_row(row, cfg=cfg, key=key_bytes)
+            assert scrubbed["VISDAT"] == placeholder
+            assert any("date-sentinel" in k for k in counts)
+            assert not any("date-unparsed-redacted" in k for k in counts)
+
+    def test_all_nines_helper_never_matches_a_real_date_string(self) -> None:
+        assert not phi_scrub._looks_like_all_nines_placeholder("2019-03-15")
+        assert not phi_scrub._looks_like_all_nines_placeholder("09-09-1999")
+        assert not phi_scrub._looks_like_all_nines_placeholder("9")
+
+    def test_date_value_sentinel_redacted_to_null_never_published_verbatim(
+        self, key_bytes: bytes
+    ) -> None:
+        cfg = phi_scrub.PHIScrubConfig(
+            compliance_posture="safe_harbor",
+            subject_id_fields=("SUBJID",),
+            date_patterns=[__import__("re").compile("^VISDAT$")],
+            id_patterns=[],
+            birthdate_pattern=None,
+            max_jitter_days=30,
+            orphan_quarantine_threshold=5,
+            date_value_sentinels=frozenset({"1900-01-01"}),
+        )
+        row = {"SUBJID": "S1", "VISDAT": "1900-01-01"}
+        scrubbed, counts = phi_scrub._scrub_row(row, cfg=cfg, key=key_bytes)
+        # Must never survive verbatim (it could coincidentally be a real
+        # date) and must never be silently jittered into a fake-but-
+        # plausible historical date either -- redacted to None is the only
+        # safe outcome, distinctly audited as date-value-sentinel-redacted.
+        assert scrubbed["VISDAT"] is None
+        assert any("date-value-sentinel-redacted" in k for k in counts)
+        assert not any(k for k in counts if k.startswith("phi-scrub-date:"))
+        assert not any("date-unparsed-redacted" in k for k in counts)
+
+    def test_date_value_sentinel_absent_from_config_still_jitters_normally(
+        self, key_bytes: bytes
+    ) -> None:
+        """1900-01-01 with no configured date_value_sentinels must jitter
+        like any other valid date -- the new check is opt-in per study, not
+        a hardcoded literal."""
+        cfg = phi_scrub.PHIScrubConfig(
+            compliance_posture="safe_harbor",
+            subject_id_fields=("SUBJID",),
+            date_patterns=[__import__("re").compile("^VISDAT$")],
+            id_patterns=[],
+            birthdate_pattern=None,
+            max_jitter_days=30,
+            orphan_quarantine_threshold=5,
+        )
+        row = {"SUBJID": "S1", "VISDAT": "1900-01-01"}
+        scrubbed, counts = phi_scrub._scrub_row(row, cfg=cfg, key=key_bytes)
+        assert scrubbed["VISDAT"] != "1900-01-01"
+        assert any(k for k in counts if k.startswith("phi-scrub-date:"))
+# ── Step 2 — compact date parsing ───────────────────────────────────────────
+
+
+class TestCompactDateParsing:
+    def test_dmy8_parses(self) -> None:
+        from scripts.extraction.io.clinical_dates import parse_date
+
+        p = parse_date("25092017", field_name="X", date_locales={"X": "DMY8"})
+        assert p is not None
+        assert (p.dt.year, p.dt.month, p.dt.day) == (2017, 9, 25)
+
+    def test_undeclared_locale_returns_none(self) -> None:
+        from scripts.extraction.io.clinical_dates import parse_date
+
+        assert parse_date("25092017", field_name="Y", date_locales={}) is None
+
+    def test_jittered_dmy8_reemits_as_8_digits(self) -> None:
+        shifted = phi_scrub.shift_date(
+            "25092017", 5, field_name="X", date_locales={"X": "DMY8"}
+        )
+        assert shifted is not None
+        assert len(shifted) == 8
+        assert shifted.isdigit()
+
+
+# ── Step 3/10a — disposition policy guards ──────────────────────────────────
+
+
+class TestDispositionPolicyGuards:
+    def test_must_drop_wins_over_keep_and_keep_overrides(self, scrub_config_path: Path) -> None:
+        """must_drop is absolute: resolve_action forces "drop" even when a
+        keep_fields pattern AND an acknowledging keep_overrides entry both
+        match — keep_overrides grants no permission against must_drop.
+        validate_rule_catalog then has nothing to raise on for this column,
+        because the resolution can never diverge from "drop" by construction."""
+        _write_config(
+            scrub_config_path,
+            keep_fields=["^SECRET_NAME$"],
+            must_drop=[{"basis": "test", "patterns": ["[-_]NAME$"]}],
+            keep_overrides=[{"column": "^SECRET_NAME$", "shadows": "drop", "rationale": "test"}],
+        )
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        assert phi_scrub.resolve_action(cfg, "SECRET_NAME") == "drop"
+        phi_scrub.validate_rule_catalog(cfg, ["SECRET_NAME"])  # must not raise
+
+    def test_must_keep_column_a_drop_rule_would_remove_raises(self, scrub_config_path: Path) -> None:
+        _write_config(
+            scrub_config_path,
+            drop_fields=["^CORE_OUTCOME$"],
+            must_keep=[{"basis": "test", "patterns": ["^CORE_OUTCOME$"]}],
+        )
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        with pytest.raises(phi_scrub.PHIPolicyViolationError):
+            phi_scrub.validate_rule_catalog(cfg, ["CORE_OUTCOME"])
+
+    def test_keep_shadowing_with_no_override_raises_rule_conflict(
+        self, scrub_config_path: Path
+    ) -> None:
+        _write_config(
+            scrub_config_path,
+            keep_fields=["^AMBIG_DAT$"],
+            date_fields=["_DAT$"],
+        )
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        with pytest.raises(phi_scrub.PHIRuleConflictError):
+            phi_scrub.validate_rule_catalog(cfg, ["AMBIG_DAT"])
+
+    def test_drop_and_id_both_match_absent_from_must_drop_resolves_pseudonymize(
+        self, scrub_config_path: Path
+    ) -> None:
+        _write_config(
+            scrub_config_path,
+            drop_fields=["FAM"],
+            id_fields=[{"pattern": "FAMID", "label": "FAM"}],
+        )
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        assert phi_scrub.resolve_action(cfg, "FAMID") == "pseudonymize"
+
+
+# ── Step 4 — redundant subject ID (value-conditional) ───────────────────────
+
+
+class TestRedundantSubjectIdEndToEnd:
+    def test_identical_copy_dropped_different_copy_pseudonymized_and_flagged(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        _write_config(
+            scrub_config_path,
+            redundant_subject_id_fields=[{"pattern": "^SUBJID2$", "label": "SUBJ"}],
+        )
+        rows = [
+            {"SUBJID": "S1", "SUBJID2": "S1"},
+            {"SUBJID": "S2", "SUBJID2": "S999"},
+        ]
+        src = _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+        loaded = [json.loads(line) for line in src.read_text().splitlines() if line]
+        assert "SUBJID2" not in loaded[0]
+        assert loaded[1]["SUBJID2"].startswith("RID_SUBJ_")
+
+        payload = json.loads(Path(config.AUDIT_SCRUB_REPORT_PATH).read_text(encoding="utf-8"))
+        scopes = {e["scope"] for e in payload["scrubbed"]}
+        assert "phi-scrub-redundant-subjid-drop" in scopes
+        assert "phi-scrub-subjid-mismatch-pseudonymize" in scopes
+
+
+# ── Step 5 — birthdate matrix across posture x age-variable-present ────────
+
+
+class TestBirthdateMatrix:
+    def _cfg(self, scrub_config_path: Path, **overrides: object) -> phi_scrub.PHIScrubConfig:
+        _write_config(scrub_config_path, **overrides)
+        cfg = phi_scrub.load_scrub_config()
+        assert cfg is not None
+        return cfg
+
+    def test_safe_harbor_with_age_var_drops(self, scrub_config_path: Path, key_bytes: bytes) -> None:
+        cfg = self._cfg(scrub_config_path, compliance_posture="safe_harbor")
+        row = {"SUBJID": "S1", "DOB": "1970-01-01"}
+        scrubbed, _ = phi_scrub._scrub_row(row, cfg=cfg, key=key_bytes, age_variable_present=True)
+        assert "DOB" not in scrubbed
+
+    def test_icmr_coded_with_age_var_drops(self, scrub_config_path: Path, key_bytes: bytes) -> None:
+        cfg = self._cfg(scrub_config_path, compliance_posture="icmr_coded_dataset")
+        row = {"SUBJID": "S1", "DOB": "1970-01-01"}
+        scrubbed, _ = phi_scrub._scrub_row(row, cfg=cfg, key=key_bytes, age_variable_present=True)
+        assert "DOB" not in scrubbed
+
+    def test_icmr_coded_no_age_var_jitters_and_preserves_age(
+        self, scrub_config_path: Path, key_bytes: bytes
+    ) -> None:
+        cfg = self._cfg(scrub_config_path, compliance_posture="icmr_coded_dataset")
+        offset = phi_scrub.date_offset_days("S1", key=key_bytes, max_days=cfg.max_jitter_days)
+        row = {"SUBJID": "S1", "DOB": "1970-01-01", "VISDAT": "2014-07-15"}
+        scrubbed, counts = phi_scrub._scrub_row(row, cfg=cfg, key=key_bytes, age_variable_present=False)
+        assert "DOB" in scrubbed
+        dob_dt = datetime.strptime(scrubbed["DOB"], "%Y-%m-%d")
+        vis_dt = datetime.strptime(scrubbed["VISDAT"], "%Y-%m-%d")
+        # age-at-event (SANT property) preserved even though DOB is jittered
+        assert (vis_dt - dob_dt).days == (datetime(2014, 7, 15) - datetime(1970, 1, 1)).days
+        assert any("date" in k and "birthdate" not in k for k in counts) or "phi-scrub-date:DOB" in counts
+
+    def test_limited_dataset_jitters_regardless_of_age_var(
+        self, scrub_config_path: Path, key_bytes: bytes, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(config, "BASE_DIR", tmp_path)
+        authority = tmp_path / "authorities" / "phi_limited_dataset.md"
+        authority.parent.mkdir(parents=True)
+        authority.write_text("IRB + DUA", encoding="utf-8")
+        cfg = self._cfg(scrub_config_path, compliance_posture="limited_dataset")
+        row = {"SUBJID": "S1", "DOB": "1970-01-01"}
+        scrubbed, _ = phi_scrub._scrub_row(row, cfg=cfg, key=key_bytes, age_variable_present=True)
+        assert "DOB" in scrubbed
+
+    def test_no_age_column_dob_over_89_dropped_via_age_cap(
+        self, scrub_config_path: Path, key_bytes: bytes
+    ) -> None:
+        cfg = self._cfg(
+            scrub_config_path,
+            compliance_posture="icmr_coded_dataset",
+            age_reference_date="2019-12-31",
+        )
+        row = {"SUBJID": "S1", "DOB": "1920-01-01"}  # ~99 years old at reference date
+        scrubbed, counts = phi_scrub._scrub_row(row, cfg=cfg, key=key_bytes, age_variable_present=False)
+        assert "DOB" not in scrubbed
+        assert any("birthdate-age-cap-drop" in k for k in counts)
+
+    def test_no_age_column_and_no_age_reference_date_raises(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        _write_config(scrub_config_path, age_reference_date=None)  # no cap_fields -> no age var
+        rows = [{"SUBJID": "S1", "DOB": "1970-01-01"}]
+        _seed_staging(monkeypatch_config, rows)
+        with pytest.raises(phi_scrub.PHIScrubError, match="age_reference_date"):
+            phi_scrub.run_scrub(study_name="TEST")
+
+    def test_icmr_coded_dataset_without_authority_raises(
+        self, scrub_config_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(config, "BASE_DIR", tmp_path)
+        _write_config(scrub_config_path, compliance_posture="icmr_coded_dataset")
+        with pytest.raises(phi_scrub.PHIScrubError, match="icmr_coded_dataset"):
+            phi_scrub.load_scrub_config()
+
+
+# ── Step 11e — destructive review-queue blocking ────────────────────────────
+
+
+class TestReviewPendingBlock:
+    def test_destructive_open_entry_blocks_next_run_signoff_clears_it(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        audit_dir = Path(config.AUDIT_SCRUB_REPORT_PATH).parent
+        audit_dir.mkdir(parents=True, exist_ok=True)
+        (audit_dir / "phi_review_queue.json").write_text(
+            json.dumps(
+                {
+                    "entries": [
+                        {
+                            "column": "SOME_COL",
+                            "file": "1A_ICScreening.jsonl",
+                            "trigger": "date_unparsed",
+                            "destructive": True,
+                            "status": "open",
+                        }
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        _write_config(scrub_config_path)
+        rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+
+        with pytest.raises(phi_scrub.PHIReviewPendingError):
+            phi_scrub.run_scrub(study_name="TEST")
+
+        # Signing off the entry clears the block.
+        import yaml as _yaml
+
+        (audit_dir / "phi_review_signoff.yaml").write_text(
+            _yaml.safe_dump(
+                [
+                    {
+                        "column": "SOME_COL",
+                        "file": "1A_ICScreening.jsonl",
+                        "decision": "accept",
+                        "rationale": "test",
+                        "signed_by": "tester",
+                        "signed_utc": "2026-01-01T00:00:00Z",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        phi_scrub.run_scrub(study_name="TEST")  # must not raise now
+
+
+# ── Step 11e — content_verification_required (manually un-shadowed drop) ───
+
+
+class TestContentVerificationRequired:
+    def test_listed_column_resolving_to_drop_queues_destructive_entry(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        _write_config(
+            scrub_config_path,
+            drop_fields=["^CXR_SIGN$"],
+            content_verification_required=["CXR_SIGN"],
+        )
+        rows = [{"SUBJID": "S1", "CXR_SIGN": "3.2", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        audit_dir = Path(config.AUDIT_SCRUB_REPORT_PATH).parent
+        queue = json.loads((audit_dir / "phi_review_queue.json").read_text(encoding="utf-8"))
+        cv_entries = [e for e in queue["entries"] if e["trigger"] == "content_verification"]
+        assert len(cv_entries) == 1
+        assert cv_entries[0]["column"] == "CXR_SIGN"
+        assert cv_entries[0]["destructive"] is True
+        assert cv_entries[0]["status"] == "open"
+
+    def test_column_not_present_in_data_is_not_queued(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        _write_config(
+            scrub_config_path,
+            drop_fields=["^CXR_SIGN$"],
+            content_verification_required=["CXR_SIGN"],
+        )
+        rows = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]  # CXR_SIGN absent
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        audit_dir = Path(config.AUDIT_SCRUB_REPORT_PATH).parent
+        queue = json.loads((audit_dir / "phi_review_queue.json").read_text(encoding="utf-8"))
+        assert not [e for e in queue["entries"] if e["trigger"] == "content_verification"]
+
+    def test_remediated_to_keep_stops_firing(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        """Once the operator's real remediation (must_keep + keep_overrides)
+        moves the column off drop, the trigger self-resolves without needing
+        a signoff file."""
+        _write_config(
+            scrub_config_path,
+            drop_fields=["^CXR_SIGN$"],
+            content_verification_required=["CXR_SIGN"],
+            must_keep=[{"basis": "test", "patterns": ["^CXR_SIGN$"]}],
+            keep_fields=["^CXR_SIGN$"],
+            keep_overrides=[{"column": "^CXR_SIGN$", "shadows": "drop", "rationale": "test"}],
+        )
+        rows = [{"SUBJID": "S1", "CXR_SIGN": "3.2", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows)
+        phi_scrub.run_scrub(study_name="TEST")
+
+        audit_dir = Path(config.AUDIT_SCRUB_REPORT_PATH).parent
+        queue = json.loads((audit_dir / "phi_review_queue.json").read_text(encoding="utf-8"))
+        assert not [e for e in queue["entries"] if e["trigger"] == "content_verification"]
+
+
+# ── Step 10a — staging header collection ────────────────────────────────────
+
+
+class TestCollectStagingHeaders:
+    def test_unions_columns_across_all_rows_not_just_first(self, tmp_path: Path) -> None:
+        """A column present only in a later, sparser row must still be
+        found — the header scan must not stop after the first row."""
+        staging = tmp_path / "datasets"
+        staging.mkdir()
+        f = staging / "1A_ICScreening.jsonl"
+        f.write_text(
+            json.dumps({"SUBJID": "S1", "VISDAT": "2014-07-15"}) + "\n"
+            + json.dumps({"SUBJID": "S2", "VISDAT": "2014-08-01", "LATE_COL": "x"}) + "\n",
+            encoding="utf-8",
+        )
+        headers = phi_scrub._collect_staging_headers(staging)
+        assert "LATE_COL" in headers
+        assert headers == {"SUBJID", "VISDAT", "LATE_COL"}
+
+
+# ── Step 12b — non_subject_datasets ─────────────────────────────────────────
+
+
+class TestNonSubjectDatasets:
+    def test_declared_non_subject_dataset_shares_one_offset(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        _write_config(scrub_config_path, non_subject_datasets=["Air_Quality"])
+        rows = [{"READING": "1", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows, filename="30_Air_Quality.jsonl")
+        phi_scrub.run_scrub(study_name="TEST")  # must not quarantine / must not raise
+        loaded_path = config.STAGING_DATASETS_DIR / "30_Air_Quality.jsonl"
+        loaded = [json.loads(line) for line in loaded_path.read_text().splitlines() if line]
+        assert len(loaded) == 1
+        assert "_phi_scrubbed" in loaded[0]
+
+    def test_undeclared_dataset_with_no_subject_id_quarantines(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        _write_config(scrub_config_path, non_subject_datasets=[])
+        rows = [{"READING": "1", "VISDAT": "2014-07-15"}]
+        _seed_staging(monkeypatch_config, rows, filename="30_Air_Quality.jsonl")
+        phi_scrub.run_scrub(study_name="TEST")
+        quarantine = config.STUDY_STAGING_DIR / "quarantine" / "30_Air_Quality.jsonl"
+        assert quarantine.is_file()
+        quarantined = [json.loads(line) for line in quarantine.read_text().splitlines() if line]
+        assert len(quarantined) == 1
+
+
+# ── Cross-file offset consistency (SANT design property) ───────────────────
+
+
+class TestCrossFileOffsetConsistency:
+    """The whole date-jitter design rests on: the same SUBJID gets an
+    identical per-subject offset in every dataset file it appears in, so an
+    interval spanning two forms remains correct. Untested until now."""
+
+    def test_same_subject_same_offset_across_two_files(
+        self,
+        monkeypatch_config: Path,
+        sidecar_key: Path,
+        scrub_config_path: Path,
+    ) -> None:
+        _write_config(scrub_config_path)
+        rows_a = [{"SUBJID": "S1", "VISDAT": "2014-07-15"}]
+        rows_b = [{"SUBJID": "S1", "VISDAT": "2014-08-01"}]
+        src_a = _seed_staging(monkeypatch_config, rows_a, filename="1A_ICScreening.jsonl")
+        src_b = _seed_staging(monkeypatch_config, rows_b, filename="2A_ICBaseline.jsonl")
+
+        phi_scrub.run_scrub(study_name="TEST")
+
+        row_a = json.loads(src_a.read_text().splitlines()[0])
+        row_b = json.loads(src_b.read_text().splitlines()[0])
+
+        # Compare a computed INTERVAL, not the dates themselves — the whole
+        # point of SANT is that (post - pre) is invariant under a shared
+        # per-subject offset even though neither individual date is.
+        original_gap = (datetime(2014, 8, 1) - datetime(2014, 7, 15)).days
+        shifted_gap = (
+            datetime.strptime(row_b["VISDAT"], "%Y-%m-%d")
+            - datetime.strptime(row_a["VISDAT"], "%Y-%m-%d")
+        ).days
+        assert shifted_gap == original_gap
+
+        # And directly: the same subject's offset is deterministic and
+        # identical regardless of which file resolved it.
+        key = phi_scrub.load_key()
+        expected_offset = phi_scrub.date_offset_days("S1", key=key, max_days=30)
+        assert row_a["VISDAT"] == phi_scrub.shift_date("2014-07-15", expected_offset)
+        assert row_b["VISDAT"] == phi_scrub.shift_date("2014-08-01", expected_offset)

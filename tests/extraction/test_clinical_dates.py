@@ -103,15 +103,17 @@ class TestParseAmbiguousRaisesWithoutManifest:
         with pytest.raises(ValueError, match=r"_forms_manifest\.yaml"):
             parse_date("07/05/2014", field_name="MY_DATE_COL")
 
-    def test_ambiguous_raises_interpolates_value(self) -> None:
-        # Regression: third f-string fragment was a plain string literal,
-        # so {value!r} appeared verbatim instead of being interpolated.
-        # Assert the repr of the actual value appears in the message.
+    def test_ambiguous_raises_never_interpolates_value(self) -> None:
+        # Step 7 (PHI pipeline hardening): the raw date VALUE must never
+        # appear in an exception message that can be folded into a
+        # published audit artifact (dataset_cleanup_report.json). Only the
+        # column name and remediation guidance may appear.
         with pytest.raises(ValueError) as exc_info:
             parse_date("07/05/2014", field_name="SOME_UNKNOWN_COL")
-        assert "'07/05/2014'" in str(exc_info.value), (
-            f"Error message must interpolate the offending value; got: {exc_info.value}"
+        assert "07/05/2014" not in str(exc_info.value), (
+            f"Error message must NOT contain the raw value; got: {exc_info.value}"
         )
+        assert "SOME_UNKNOWN_COL" in str(exc_info.value)
 
     def test_no_field_name_defaults_mdy_no_raise(self) -> None:
         # Without a field_name, ambiguous values fall back to MDY (legacy behaviour)

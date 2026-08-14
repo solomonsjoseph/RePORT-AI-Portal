@@ -27,10 +27,13 @@ from pathlib import Path
 
 import yaml
 
+import config
+
 from scripts.ai_assistant.sot_joined_view import (
     build_joined_query_view,
     write_joined_query_view_yaml,
 )
+from scripts.security.llm_source_gate import scan_tree_for_phi
 from scripts.source_truth.study_intake import (
     SOT_REVIEW_DIR,
     _find_dataset,
@@ -41,17 +44,38 @@ from scripts.source_truth.study_intake import (
 
 SUPPORTED_DATASET_SUFFIXES = (".xlsx", ".xlsm", ".csv")
 
-# Indo-VAP has a few raw datasets sharing the same leading form code. The SoT
-# runtime policy is generated for the dataset that corresponds to the printed
-# annotated CRF. The other datasets remain published under dataset_schema/files.
-PDF_FORM_DATASET_OVERRIDES: dict[str, dict[str, str]] = {
-    "Indo-VAP": {
-        "2A": "2A_ICBaseline",
-        "14": "14_CaseControl",
-        "18": "18_NonConsent",
-        "95": "95_SAE",
-    }
-}
+
+def _form_overrides_for_study(study: str) -> dict[str, str]:
+    """Return the PDF-form -> dataset-stem override table for *study*.
+
+    Sourced from the study pack's ``form_overrides.yaml`` (declared by
+    ``study_packs/<study>/pack.yaml``; see ``study_packs/Indo-VAP/`` for the
+    reference layout — a few raw datasets there share the same leading form
+    code, and the SoT runtime policy is generated for the dataset that
+    corresponds to the printed annotated CRF).
+
+    A study with no pack, or a pack that does not declare
+    ``form_overrides``, simply has no overrides: legal and silent — the
+    caller falls through to ordinary ambiguous-dataset review reporting.
+    """
+    try:
+        pack_dir = config.resolve_study_pack(study)
+    except config.StudyPackError:
+        return {}
+
+    pack_meta = yaml.safe_load((pack_dir / "pack.yaml").read_text(encoding="utf-8")) or {}
+    overrides_name = pack_meta.get("form_overrides")
+    if not overrides_name:
+        return {}
+
+    overrides_path = pack_dir / overrides_name
+    if not overrides_path.is_file():
+        return {}
+
+    data = yaml.safe_load(overrides_path.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(k): str(v) for k, v in data.items()}
 
 
 def _sot_pair_name(form: str) -> str:
@@ -152,6 +176,18 @@ def _publish_verified_sot_outputs(
         policy_path=policy_path,
     )
     write_joined_query_view_yaml(joined_path, build_joined_query_view(policy_path, schema_path))
+
+    # Step 9b — the SoT leg is inside the agent read zone
+    # (file_access.py:STUDY_LLM_SOURCE_DIR) but was never PHI-scanned at
+    # write time; a printed CRF page can carry a subject identifier or
+    # investigator name transcribed near-verbatim into pdf_question/widget.
+    # Scan what was just written and remove it on failure so nothing
+    # leaked survives in the published tree — never narrow the scan.
+    scan = scan_tree_for_phi(pair_dir)
+    if not scan.ok:
+        shutil.rmtree(pair_dir, ignore_errors=True)
+        raise RuntimeError(f"Pre-publication PHI leak scan failed for SoT pair {form!r}: {scan.detail}")
+
     return policy_path
 
 
@@ -210,7 +246,7 @@ def discover_pdf_backed_forms_with_reviews(
         for dataset in dataset_dir.glob(f"*{suffix}"):
             datasets_by_code[_form_code(dataset.stem)].append(dataset)
 
-    overrides = PDF_FORM_DATASET_OVERRIDES.get(study, {})
+    overrides = _form_overrides_for_study(study)
     forms: list[str] = []
     for code in sorted(pdf_codes, key=_natural_code_key):
         override = overrides.get(code)

@@ -128,12 +128,21 @@ AGENT_MODEL_ID: str = os.environ.get("REPORTAL_AGENT_MODEL", "claude-opus-4-7")
 # ----------------------------------------------------------------------------
 
 BASE_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
-DATA_DIR = BASE_DIR / "data"
+
+# DATA_ROOT governs where study data and output live. It defaults to BASE_DIR
+# (a source checkout behaves exactly as before) but can be repointed via
+# REPORT_AI_ROOT so an installed distribution can run against any directory —
+# the plug-and-play entry point for the console script (see
+# scripts/skills/extract_to_llm_source.py's --root flag). BASE_DIR keeps its
+# original meaning: where the *code* (and bundled study_packs/) lives.
+DATA_ROOT = Path(_get_env("REPORT_AI_ROOT", str(BASE_DIR))).resolve()
+
+DATA_DIR = DATA_ROOT / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
 
-OUTPUT_DIR = BASE_DIR / "output"
-LOGS_DIR = BASE_DIR / ".logs"
-TMP_DIR = BASE_DIR / "tmp"
+OUTPUT_DIR = DATA_ROOT / "output"
+LOGS_DIR = DATA_ROOT / ".logs"
+TMP_DIR = DATA_ROOT / "tmp"
 
 
 # ----------------------------------------------------------------------------
@@ -254,12 +263,8 @@ PHI_SWEEP_PR_DRAFTS_DIR: Path = TMP_DIR / "phi_sweep_pr_drafts"
 
 # --- Phase 2: llm_source restructure -----------------------------------------
 LLM_SOURCE_DATASET_SCHEMA_FILES_DIR: Path = STUDY_LLM_SOURCE_DIR / "dataset_schema" / "files"
-LLM_SOURCE_DATASET_SCHEMA_CATALOG_PATH: Path = (
-    STUDY_LLM_SOURCE_DIR / "dataset_schema" / "catalog.json"
-)
 LLM_SOURCE_DICTIONARY_MAPPING_DIR: Path = STUDY_LLM_SOURCE_DIR / "dictionary_mapping"
 LLM_SOURCE_DICTIONARY_MAPPING_JSONL_DIR: Path = LLM_SOURCE_DICTIONARY_MAPPING_DIR / "jsonl"
-LLM_SOURCE_DICTIONARY_CATALOG_PATH: Path = LLM_SOURCE_DICTIONARY_MAPPING_DIR / "catalog.json"
 # Compatibility-only metadata paths for legacy cleanup/redaction helpers.
 # The active Load Study flow does not produce study_metadata evidence packs or
 # a concept index; it uses plugin-published SoT sets instead.
@@ -269,11 +274,6 @@ LLM_SOURCE_EVIDENCE_PACKS_DIR: Path = LLM_SOURCE_STUDY_METADATA_DIR / "evidence_
 LLM_SOURCE_CONCEPT_DIR: Path = STUDY_LLM_SOURCE_DIR / "concept"
 LLM_SOURCE_SOT_DIR: Path = STUDY_LLM_SOURCE_DIR / "SoT"
 LLM_SOURCE_LEGACY_SOURCE_TRUTH_DIR: Path = STUDY_LLM_SOURCE_DIR / "source_truth"
-
-# Lean-catalog size thresholds (bytes). CI fails if a catalog exceeds.
-LEAN_CATALOG_DICTIONARY_MAX_BYTES: int = 20 * 1024
-LEAN_CATALOG_DATASET_SCHEMA_MAX_BYTES: int = 50 * 1024
-LEAN_CATALOG_STUDY_METADATA_MAX_BYTES: int = 200 * 1024
 
 # --- Phase 3: cross-verify ---------------------------------------------------
 # STUDY_AUDIT_DIR is defined above in the study-paths block; reuse it here.
@@ -322,14 +322,64 @@ STAGING_DATASETS_DIR: Path = STUDY_STAGING_DIR / "datasets"
 STAGING_DICTIONARY_DIR: Path = STUDY_STAGING_DIR / "dictionary"
 
 # ----------------------------------------------------------------------------
+# STUDY PACK — swappable study calibration (PHI rules, form overrides,
+# authority notes). See study_packs/Indo-VAP/ for the reference layout.
+# ----------------------------------------------------------------------------
+
+
+class StudyPackError(RuntimeError):
+    """Raised when no study pack can be resolved for a given study.
+
+    Deliberately has no fallback to another study's pack: running study
+    ``Foo`` with only an ``Indo-VAP`` pack present must fail loudly, never
+    silently de-identify with the wrong rules.
+    """
+
+
+def resolve_study_pack(study: str, pack_dir: "Path | None" = None) -> Path:
+    """Resolve the study pack directory for *study*.
+
+    Resolution order, first hit wins:
+      1. explicit *pack_dir* argument
+      2. ``REPORT_AI_STUDY_PACK_DIR`` env var
+      3. ``DATA_ROOT / "study_packs" / study``
+      4. ``BASE_DIR / "study_packs" / study``
+
+    A directory counts as a hit only when it contains ``pack.yaml``. No
+    fallback to another study's pack: raises :class:`StudyPackError` naming
+    the study and every directory tried when none qualifies.
+    """
+    candidates: list[Path] = []
+    if pack_dir is not None:
+        candidates.append(Path(pack_dir))
+    env_pack_dir = _get_env("REPORT_AI_STUDY_PACK_DIR")
+    if env_pack_dir:
+        candidates.append(Path(env_pack_dir))
+    candidates.append(DATA_ROOT / "study_packs" / study)
+    candidates.append(BASE_DIR / "study_packs" / study)
+
+    for candidate in candidates:
+        if (candidate / "pack.yaml").is_file():
+            return candidate
+
+    tried = ", ".join(str(c) for c in candidates)
+    raise StudyPackError(
+        f"No study pack found for study {study!r}. Tried: {tried}. "
+        f"Create a pack.yaml under one of those directories (see "
+        f"study_packs/Indo-VAP/ for the reference layout) — there is no "
+        f"fallback to another study's rules."
+    )
+
+
+# ----------------------------------------------------------------------------
 # PHI SCRUB
 # ----------------------------------------------------------------------------
 # Narrow PHI handling: per-subject deterministic date jitter (SANT method) +
 # HMAC-SHA256 ID pseudonymization. See scripts/security/phi_scrub.py.
 #
-# Config file lives alongside the module so study-specific regex patterns can
-# be edited without touching code.
-PHI_SCRUB_CONFIG_PATH: Path = BASE_DIR / "scripts" / "security" / "phi_scrub.yaml"
+# Config file lives inside the active study's pack so study-specific regex
+# patterns can be swapped without touching code.
+PHI_SCRUB_CONFIG_PATH: Path = resolve_study_pack(STUDY_NAME) / "phi_scrub.yaml"
 
 
 def _phi_key_path() -> Path:

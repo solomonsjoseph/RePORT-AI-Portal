@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from scripts.ai_assistant.sot_joined_view import (
+from sot_joined_view import (
     build_joined_query_view,
     write_joined_query_view_yaml,
 )

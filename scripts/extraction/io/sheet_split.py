@@ -199,8 +199,10 @@ def promote_header(
             break
 
     if header_idx is None:
-        # Fall back: if all rows have at most 1 non-null value, use row 0.
-        header_idx = 0
+        raise ValueError(
+            "No header row found: no row has more than one non-null value "
+            f"(sheet has {len(df)} row(s))."
+        )
 
     # Step 2: promote that row to columns; drop rows above it (banner rows).
     header_row = df.iloc[header_idx]

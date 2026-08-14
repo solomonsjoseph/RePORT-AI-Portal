@@ -46,6 +46,7 @@ from scripts.skills.extract_to_llm_source import (
     EXIT_OK,
     EXIT_PARTIAL_REVIEW,
     EXIT_QUARANTINE_NON_EMPTY,
+    EXIT_VERIFIER_FAIL,
     main,
 )
 
@@ -201,9 +202,15 @@ class TestVerifyStub:
         rc = main(["verify", "--study", STUDY, "--run", run_id])
         assert rc == EXIT_DESTRUCTION_INCOMPLETE
 
-    def test_verify_scans_dataset_files_not_dictionary_mappings(
+    def test_verify_scans_dictionary_leg_and_blocks_on_phi_shaped_value(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """Step 9: assertion 8 now scans the dictionary leg too. A study
+        with a clean dataset leg but a PHI-shaped value (a raw ISO date) in
+        the published dictionary JSONL must fail verification, not pass —
+        the dictionary leg is inside the agent read zone just like the
+        dataset leg.
+        """
         import hashlib
 
         import yaml as _yaml
@@ -285,6 +292,117 @@ class TestVerifyStub:
         dictionary_out.mkdir(parents=True)
         (dictionary_out / "codelist.jsonl").write_text(
             json.dumps({"display": "2020-01-01"}) + "\n",
+            encoding="utf-8",
+        )
+
+        rc = main(["verify", "--study", STUDY, "--run", run_id])
+
+        assert rc == EXIT_VERIFIER_FAIL
+        report = json.loads((run_dir / "verifier_report.json").read_text(encoding="utf-8"))
+        assert report["overall"] == "fail"
+        assertion_8 = next(a for a in report["assertions"] if a["n"] == 8)
+        assert assertion_8["result"] == "fail"
+        assert "codelist.jsonl" in assertion_8["detail"]
+        # Value-free contract: the matched date must never appear in detail.
+        assert "2020-01-01" not in assertion_8["detail"]
+
+    def test_verify_passes_with_clean_dataset_dictionary_and_sot_legs(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Step 9: with all three published legs present and PHI-free,
+        verification still passes end to end (dataset + dictionary + SoT).
+        """
+        import hashlib
+
+        import yaml as _yaml
+
+        _patch_config(monkeypatch, tmp_path)
+        monkeypatch.setattr(config, "RAW_DATA_DIR", tmp_path / "data" / "raw", raising=False)
+        scrub_config = tmp_path / "scripts" / "security" / "phi_scrub.yaml"
+        scrub_config.parent.mkdir(parents=True, exist_ok=True)
+        scrub_config.write_text("subject_id_fields: [SUBJID]\n", encoding="utf-8")
+        monkeypatch.setattr(config, "PHI_SCRUB_CONFIG_PATH", scrub_config, raising=False)
+
+        run_id = "run_all_legs_clean"
+        study_output = tmp_path / "output" / STUDY
+        run_dir = study_output / "runs" / run_id
+        run_dir.mkdir(parents=True)
+        (run_dir / "status.json").write_text(
+            json.dumps(
+                {
+                    "run_id": run_id,
+                    "study": STUDY,
+                    "exit_code": EXIT_OK,
+                    "publish_status": "complete",
+                    "started_utc": "2026-05-19T00:00:00+00:00",
+                    "completed_utc": "2026-05-19T00:01:00+00:00",
+                    "verifier_passed": None,
+                }
+            ),
+            encoding="utf-8",
+        )
+        (run_dir / "destruction_attestation.json").write_text(
+            json.dumps(
+                {
+                    "run_id": run_id,
+                    "study": STUDY,
+                    "started_utc": "2026-05-19T00:00:00+00:00",
+                    "completed_utc": "2026-05-19T00:01:00+00:00",
+                    "staging_path": str(tmp_path / "tmp" / STUDY),
+                    "removed_paths": [],
+                    "files_destroyed": 0,
+                    "cryptographic_erasure": False,
+                    "apfs_cow_disclaimer": "APFS COW acknowledged",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        audit_dir = study_output / "audit"
+        audit_dir.mkdir(parents=True)
+        (audit_dir / ".NO_LLM_ZONE").write_text("", encoding="utf-8")
+        ledger_path = dataset_phi_ledger_path(audit_dir, "approved.xlsx")
+        ledger_path.parent.mkdir(parents=True, exist_ok=True)
+        ledger_path.write_text(
+            json.dumps(
+                {
+                    "run_id": run_id,
+                    "scrub_config_hash": hashlib.sha256(scrub_config.read_bytes()).hexdigest(),
+                    "input_dataset_hash": "dataset-hash",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        study_raw = tmp_path / "data" / "raw" / STUDY
+        datasets_dir = study_raw / "datasets"
+        datasets_dir.mkdir(parents=True)
+        (datasets_dir / "approved.xlsx").write_bytes(b"synthetic")
+        (study_raw / "_forms_manifest.yaml").write_text(
+            _yaml.safe_dump({"required": ["approved.xlsx"], "optional": [], "reject": []}),
+            encoding="utf-8",
+        )
+
+        datasets_out = study_output / "llm_source" / "dataset_schema" / "files"
+        datasets_out.mkdir(parents=True)
+        (datasets_out / "approved.jsonl").write_text(
+            json.dumps({"SUBJID": "RID_SUBJ_abcdefghijkl"}) + "\n",
+            encoding="utf-8",
+        )
+        dictionary_out = study_output / "llm_source" / "dictionary_mapping" / "jsonl"
+        dictionary_out.mkdir(parents=True)
+        (dictionary_out / "codelist.jsonl").write_text(
+            json.dumps({"display": "code table entry"}) + "\n",
+            encoding="utf-8",
+        )
+        sot_out = study_output / "llm_source" / "SoT" / "approved" / "pdf"
+        sot_out.mkdir(parents=True)
+        (sot_out / "approved_policy.yaml").write_text(
+            "study: Example Study\n"
+            "variables:\n"
+            "  SUBJID:\n"
+            "    section: header\n"
+            "    pdf_question: 'Subject ID:'\n",
             encoding="utf-8",
         )
 

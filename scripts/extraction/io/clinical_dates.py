@@ -98,6 +98,12 @@ _SLASH_RE = re.compile(
     re.I,
 )
 
+# Compact 7-8 digit form: DDMMYYYY / MMDDYYYY / YYYYMMDD (declared locale
+# required — an 8-digit string is ambiguous between the three orders and
+# guessing would silently corrupt dates). 7 digits = single-digit day
+# left-padded with one leading zero by the caller before parsing.
+_COMPACT_RE = re.compile(r"^(\d{7,8})$")
+
 # Quick detection: matches any slash-date (M/D or D/M) with optional time
 _SLASH_DETECT_RE = re.compile(
     r"^\d{1,2}/\d{1,2}/\d{2,4}(?:\s+\d{1,2}:\d{2}:\d{2}(?:\s*[AP]M)?)?$",
@@ -255,6 +261,8 @@ def parse_date(
     if not value:
         return None
 
+    _COMPACT_LOCALES = ("DMY8", "MDY8", "YMD8")
+
     # ── Try ISO: YYYY-MM-DD [HH:MM:SS] ──
     m = _ISO_RE.match(value)
     if m:
@@ -270,6 +278,36 @@ def parse_date(
             format="iso",
             original=value,
         )
+
+    # ── Try compact 7-8 digit form: DDMMYYYY / MMDDYYYY / YYYYMMDD ──
+    m = _COMPACT_RE.match(value)
+    if m:
+        digits = m.group(1)
+        if len(digits) == 7:
+            digits = "0" + digits
+        locale = None
+        if date_locales and field_name is not None:
+            field_upper = field_name.upper()
+            for key, declared in date_locales.items():
+                if key.upper() == field_upper:
+                    locale = declared
+                    break
+        if locale not in _COMPACT_LOCALES:
+            return None
+        if locale == "DMY8":
+            day, month, year = int(digits[0:2]), int(digits[2:4]), int(digits[4:8])
+            fmt = "compact_dmy"
+        elif locale == "MDY8":
+            month, day, year = int(digits[0:2]), int(digits[2:4]), int(digits[4:8])
+            fmt = "compact_mdy"
+        else:  # YMD8
+            year, month, day = int(digits[0:4]), int(digits[4:6]), int(digits[6:8])
+            fmt = "compact_ymd"
+        try:
+            dt = datetime(year, month, day)
+        except (ValueError, OverflowError):
+            return None
+        return ParsedDate(dt=dt, has_time=False, ampm=None, format=fmt, original=value)
 
     # ── Try slash-delimited: A/B/C [H:M:S [AM/PM]] ──
     m = _SLASH_RE.match(value)
@@ -306,18 +344,17 @@ def parse_date(
                     raise ValueError(
                         f"Ambiguous date locale for column {field_name!r}: "
                         "declare in _forms_manifest.yaml under date_locales: "
-                        f"(values like {value!r} have both components ≤ 12)"
+                        "(value has both components <= 12)"
                     )
                 # No field_name → legacy fall-through: default MDY (no raise)
                 locale = "MDY"
             else:
                 if field_name is not None:
                     _log.info(
-                        "Date locale for %r disambiguated heuristically to %s "
-                        "(value %r); declare in _forms_manifest.yaml to silence",
+                        "Date locale for %r disambiguated heuristically to %s; "
+                        "declare in _forms_manifest.yaml to silence",
                         field_name,
                         locale,
-                        value,
                     )
 
         dmy = locale == "DMY"

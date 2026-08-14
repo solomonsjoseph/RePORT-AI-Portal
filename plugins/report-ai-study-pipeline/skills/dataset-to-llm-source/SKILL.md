@@ -26,7 +26,7 @@ Use `$sot-lean-generator` instead when the task is Source Truth YAML creation fr
 The durable entry point is the cross-LLM CLI:
 
 ```bash
-uv run --all-groups python scripts/skills/extract_to_llm_source.py
+report-ai-pipeline
 ```
 
 It drives one study through:
@@ -55,14 +55,14 @@ If a run fails because a key is missing or invalid, report the CLI failure stage
 3. Print the contract before a first run or when the scope is unclear:
 
 ```bash
-uv run --all-groups python scripts/skills/extract_to_llm_source.py status
+report-ai-pipeline status
 ```
 
 4. Confirm required inputs exist without opening dataset values:
    - `data/raw/{STUDY}/_forms_manifest.yaml`
    - `data/raw/{STUDY}/_study_privacy.yaml`
    - `data/raw/{STUDY}/datasets/`
-   - `scripts/security/phi_scrub.yaml`
+   - `study_packs/{STUDY}/phi_scrub.yaml` (or the pack resolved via `--pack-dir` / `REPORT_AI_STUDY_PACK_DIR`)
 
 Do not set `REPORTALIN_ALLOW_DISABLED_SCRUB`. The CLI fails closed when that variable is present.
 
@@ -71,21 +71,21 @@ Do not set `REPORTALIN_ALLOW_DISABLED_SCRUB`. The CLI fails closed when that var
 Run all manifest-approved forms:
 
 ```bash
-uv run --all-groups python scripts/skills/extract_to_llm_source.py run \
+report-ai-pipeline run --root <DIR> \
   --study Indo-VAP
 ```
 
 Run one dataset pilot:
 
 ```bash
-uv run --all-groups python scripts/skills/extract_to_llm_source.py run \
+report-ai-pipeline run --root <DIR> \
   --study Indo-VAP --form 6_HIV
 ```
 
 Limit header-review parallelism when needed:
 
 ```bash
-uv run --all-groups python scripts/skills/extract_to_llm_source.py run \
+report-ai-pipeline run --root <DIR> \
   --study Indo-VAP --max-workers 2
 ```
 
@@ -98,14 +98,14 @@ Always verify after a run before claiming the dataset publish is complete.
 Verify the latest successful or partial-safe run:
 
 ```bash
-uv run --all-groups python scripts/skills/extract_to_llm_source.py verify \
+report-ai-pipeline verify --root <DIR> \
   --study Indo-VAP
 ```
 
 Verify a specific run:
 
 ```bash
-uv run --all-groups python scripts/skills/extract_to_llm_source.py verify \
+report-ai-pipeline verify --root <DIR> \
   --study Indo-VAP --run RUN_ID
 ```
 

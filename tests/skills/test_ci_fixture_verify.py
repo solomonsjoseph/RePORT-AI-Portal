@@ -29,6 +29,8 @@ from pathlib import Path
 
 import pytest
 
+import config
+
 from scripts.audit.ledger import dataset_phi_ledger_path
 from scripts.skills.extract_to_llm_source import (
     EXIT_DESTRUCTION_INCOMPLETE,
@@ -50,8 +52,7 @@ from tests.skills.fixtures.build_fixture import (
 # Constants
 # ---------------------------------------------------------------------------
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_PHI_SCRUB_YAML = _REPO_ROOT / "scripts" / "security" / "phi_scrub.yaml"
+_PHI_SCRUB_YAML = config.PHI_SCRUB_CONFIG_PATH
 
 
 # ---------------------------------------------------------------------------

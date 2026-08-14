@@ -115,6 +115,32 @@ METADATA_TYPE_COLUMN_STRUCTURE: str = "column_structure"
 METADATA_NOTE_EMPTY_FILE: str = "File contains column headers but no data rows"
 """Standard message for empty files that contain only column structure."""
 
+# Reserved-key collision guard (Step 12a) — an incoming raw column literally
+# named one of these would otherwise be silently overwritten by (or, for
+# PHI_SCRUBBED_KEY, spoof) the pipeline-injected value of the same name.
+PROVENANCE_KEY: str = "_provenance"
+"""Key name for the per-row provenance object injected into JSONL records."""
+
+PHI_SCRUBBED_KEY: str = "_phi_scrubbed"
+"""Row-level PHI-scrub idempotency marker key, set later by
+:mod:`scripts.security.phi_scrub` (mirrors that module's
+``_SCRUB_MARKER_FIELD``). Reserved here too so a raw source column with this
+literal name cannot make the scrubber's idempotency guard skip a row."""
+
+RESERVED_KEYS: frozenset[str] = frozenset(
+    {SOURCE_FILE_KEY, PROVENANCE_KEY, METADATA_KEY, PHI_SCRUBBED_KEY}
+)
+"""Column names reserved for pipeline-injected provenance/PHI-scrub fields.
+
+An incoming raw column literally matching one of these is renamed with
+:data:`RESERVED_KEY_RENAME_PREFIX` before the reserved key is injected, so
+the raw value is preserved and the extractor's own provenance is never
+silently overwritten by (or confused with) source data."""
+
+RESERVED_KEY_RENAME_PREFIX: str = "src__"
+"""Prefix applied to an incoming column name that collides with a
+:data:`RESERVED_KEYS` entry."""
+
 # Return Dictionary Keys
 RESULT_FILES_FOUND: str = "files_found"
 """Key for total Excel files found in extraction results."""
@@ -526,6 +552,11 @@ def _filter_allowed_forms(files: list[Path]) -> list[Path]:
     """
     raw = os.environ.get("REPORTAL_ALLOWED_DATASET_FORMS", "").strip()
     if not raw:
+        if config.production_mode_enabled():
+            raise RuntimeError(
+                "REPORTAL_ALLOWED_DATASET_FORMS is unset; run the pipeline through "
+                "extract_to_llm_source so the header-only PHI review gate runs first."
+            )
         return files
     allowed = {item.strip() for item in raw.split(",") if item.strip()}
     if not allowed:
@@ -764,8 +795,10 @@ def extract_single_dataset(
         ``(success, record_count, error_message, dropped_events)``.
         ``dropped_events`` is always a list (possibly empty); it aggregates
         the per-column drop events reported by
-        :func:`~scripts.extraction.dedup.clean_duplicate_columns` across
-        every sheet processed from this file.
+        :func:`~scripts.extraction.dedup.clean_duplicate_columns` (scope
+        ``dataset-column``) plus any reserved-key collision rename events
+        from :func:`_write_provenance_jsonl` (scope ``reserved_key_renamed``,
+        Step 12a) across every sheet processed from this file.
     """
     start = time.time()
 
@@ -806,7 +839,7 @@ def extract_single_dataset(
         output_path = output_dir / out_name
 
         # --- write directly to the clean output directory ---
-        count_orig = _write_provenance_jsonl(
+        count_orig, _rename_events = _write_provenance_jsonl(
             df=df,
             output_path=output_path,
             source_file=file_path.name,
@@ -815,6 +848,8 @@ def extract_single_dataset(
             extraction_ts=extraction_ts,
             raw_sha256=raw_sha256,
         )
+        if _rename_events:
+            file_drop_events.extend(_rename_events)
         total_records += count_orig
 
         tqdm.write(
@@ -836,14 +871,48 @@ def _write_provenance_jsonl(
     study_name: str,
     extraction_ts: str,
     raw_sha256: str | None = None,
-) -> int:
-    """Write DataFrame rows as provenance-annotated JSONL. Returns record count."""
+) -> tuple[int, list[dict[str, Any]]]:
+    """Write DataFrame rows as provenance-annotated JSONL.
+
+    Returns
+    -------
+    tuple[int, list[dict[str, Any]]]
+        ``(record_count, rename_events)``. ``rename_events`` is always a
+        list (possibly empty); it records, one entry per colliding column,
+        that an incoming raw column name collided with a :data:`RESERVED_KEYS`
+        entry and was renamed with the :data:`RESERVED_KEY_RENAME_PREFIX`
+        prefix before the reserved key was injected below — see Step 12a.
+    """
     records: list[dict[str, Any]] = []
+    rename_events: list[dict[str, Any]] = []
+
+    # Reserved-key collision guard (Step 12a): an incoming raw column
+    # literally named "source_file", "_provenance", "_metadata" or
+    # "_phi_scrubbed" would otherwise be silently overwritten by the
+    # pipeline-injected value below, or (for "_phi_scrubbed") could make
+    # the PHI scrubber's idempotency guard skip the row entirely. Rename
+    # any such column — preserving the raw value under a "src__" prefix —
+    # before either write path below reads df.columns.
+    colliding = [str(col) for col in df.columns if str(col) in RESERVED_KEYS]
+    if colliding:
+        rename_map = {col: f"{RESERVED_KEY_RENAME_PREFIX}{col}" for col in colliding}
+        for col in colliding:
+            rename_events.append(
+                {
+                    "scope": "reserved_key_renamed",
+                    "name": col,
+                    "file": source_file,
+                    "sheet": sheet_name,
+                    "renamed_to": rename_map[col],
+                    "count": int(df[col].notna().sum()),
+                }
+            )
+        df = df.rename(columns=rename_map)
 
     if len(df) == 0 and len(df.columns) > 0:
         record: dict[str, Any] = dict.fromkeys(df.columns)
-        record["source_file"] = source_file
-        record["_provenance"] = _build_provenance(
+        record[SOURCE_FILE_KEY] = source_file
+        record[PROVENANCE_KEY] = _build_provenance(
             source_file=source_file,
             sheet_name=sheet_name,
             row_index=-1,
@@ -851,18 +920,18 @@ def _write_provenance_jsonl(
             extraction_ts=extraction_ts,
             raw_sha256=raw_sha256,
         )
-        record["_metadata"] = {
+        record[METADATA_KEY] = {
             "type": "column_structure",
             "columns": list(df.columns),
             "note": "File contains column headers but no data rows",
         }
         _atomic_write_jsonl_records(output_path, [record])
-        return 1
+        return 1, rename_events
 
     for row_idx, rec in _iter_clean_json_rows(df):
         try:
-            rec["source_file"] = source_file
-            rec["_provenance"] = _build_provenance(
+            rec[SOURCE_FILE_KEY] = source_file
+            rec[PROVENANCE_KEY] = _build_provenance(
                 source_file=source_file,
                 sheet_name=sheet_name,
                 row_index=int(row_idx),
@@ -875,7 +944,7 @@ def _write_provenance_jsonl(
             log.warning("Skipping row %d in %s[%s]: %s", row_idx, source_file, sheet_name, exc)
 
     _atomic_write_jsonl_records(output_path, records)
-    return len(records)
+    return len(records), rename_events
 
 
 # ============================================================================
@@ -909,9 +978,11 @@ def extract_datasets(
     dict
         Extraction summary with keys: ``files_found``, ``files_created``,
         ``total_records``, ``errors``, ``processing_time``, ``output_dir``,
-        and ``dropped_events`` (flat list of per-column drop events emitted
-        by :func:`~scripts.extraction.dedup.clean_duplicate_columns` across
-        every processed sheet).
+        and ``dropped_events`` (flat list combining per-column drop events
+        from :func:`~scripts.extraction.dedup.clean_duplicate_columns`,
+        scope ``dataset-column``, and reserved-key collision rename events
+        from :func:`_write_provenance_jsonl`, scope ``reserved_key_renamed``,
+        across every processed sheet).
     """
     from scripts.utils.run_context import resolve_run_id, write_extraction_timing_sidecar
 
@@ -986,8 +1057,15 @@ def extract_datasets(
     log.info("  %d total records extracted", total_records)
     log.info("  %d/%d files processed", files_created, len(files))
     log.info("  Output written to: %s", _output_dir)
-    if dropped_events:
-        log.info("  %d duplicate column(s) dropped during extraction", len(dropped_events))
+    _dup_col_dropped = sum(1 for e in dropped_events if e.get("scope") == "dataset-column")
+    _reserved_key_renamed = sum(1 for e in dropped_events if e.get("scope") == "reserved_key_renamed")
+    if _dup_col_dropped:
+        log.info("  %d duplicate column(s) dropped during extraction", _dup_col_dropped)
+    if _reserved_key_renamed:
+        log.info(
+            "  %d reserved-key column collision(s) renamed during extraction",
+            _reserved_key_renamed,
+        )
     if errors:
         log.warning("  %d errors", len(errors))
 

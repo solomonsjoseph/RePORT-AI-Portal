@@ -35,9 +35,9 @@ def test_dataset_skill_preserves_phi_boundary_and_cli_contract() -> None:
 
     required_phrases = [
         "Do not read raw or staged dataset values into the agent context.",
-        "scripts/skills/extract_to_llm_source.py status",
-        "scripts/skills/extract_to_llm_source.py run",
-        "scripts/skills/extract_to_llm_source.py verify",
+        "report-ai-pipeline status",
+        "report-ai-pipeline run",
+        "report-ai-pipeline verify",
         "--form 6_HIV",
         "REPORTALIN_ALLOW_DISABLED_SCRUB",
         "Do not read, print, hash, stat, permission-check, or existence-check",

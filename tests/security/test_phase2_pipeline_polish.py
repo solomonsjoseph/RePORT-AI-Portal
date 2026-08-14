@@ -21,6 +21,8 @@ from pathlib import Path
 
 import pytest
 
+import config
+
 WINDOWS_SKIP = pytest.mark.skipif(sys.platform == "win32", reason="POSIX modes only")
 
 
@@ -103,7 +105,7 @@ def test_phi_scrub_yaml_pseudonymises_indovap_screen_numbers() -> None:
     """``IS_SCRNNUM`` and ``IC_SCRNNUM`` (Indo-VAP screen numbers — linkable
     back to enrolment registers) must be matched by an ``id_fields`` rule
     so they get HMAC-pseudonymised, not pass through raw."""
-    yaml_text = Path("scripts/security/phi_scrub.yaml").read_text(encoding="utf-8")
+    yaml_text = config.PHI_SCRUB_CONFIG_PATH.read_text(encoding="utf-8")
     # The pattern we added handles both via ``^I[CS]_SCRNNUM$``.
     assert "I[CS]_SCRNNUM" in yaml_text or "IS_SCRNNUM" in yaml_text, (
         "phi_scrub.yaml id_fields must cover IS_SCRNNUM / IC_SCRNNUM"

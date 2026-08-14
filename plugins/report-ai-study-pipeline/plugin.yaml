@@ -6,6 +6,33 @@ description: >
   dataset handling first, Source Truth policy generation second, and PHI-safe
   dataset-to-LLM-source publishing last.
 license: MIT
+author: RePORT-AI Portal maintainers
+homepage: .
+repository: .
+keywords:
+  - report-ai
+  - source-truth
+  - phi-safe
+  - dataset-extraction
+  - llm-source
+interface:
+  displayName: RePORT-AI Study Pipeline
+  shortDescription: Duplicate handling, Source Truth, then PHI-safe llm_source publishing.
+  longDescription: >
+    A portable LLM plugin pack for RePORT-AI study preparation. It preserves the
+    ordered workflow: duplicate workbook handling first, Source Truth policy
+    generation second, and verified PHI-safe dataset-to-LLM-source publishing
+    last.
+  developerName: RePORT-AI Portal maintainers
+  category: Productivity
+  capabilities:
+    - Interactive
+    - Write
+  defaultPrompt:
+    - Run the RePORT-AI study pipeline for one form.
+    - Audit duplicate files before Source Truth.
+    - Verify PHI-safe llm_source publishing.
+  brandColor: "#2563EB"
 platforms:
   primary: generic-llm
   adapters:
@@ -116,18 +143,18 @@ host_repo_contract:
     - scripts/skills/extract_to_llm_source.py
     - scripts/source_truth/study_intake.py
     - scripts/source_truth/generate_lean_outputs.py
-    - scripts/security/phi_scrub.yaml
+    - study_packs/<STUDY>/
   expected_outputs:
     - output/<STUDY>/llm_source/SoT/<PAIR>/pdf/<FORM>_policy.yaml
     - output/<STUDY>/llm_source/dataset_schema/files/<FORM>.jsonl
     - output/<STUDY>/llm_source/dictionary_mapping/jsonl/**/*.jsonl when raw dictionary files exist
   optional_paths:
-    - .codex-plugin/plugin.json
+    - adapters/codex/plugin.json
     - .agents/plugins/marketplace.json
 adapters:
   generic_llm:
     agent_metadata: agents/llm.yaml
   codex:
-    manifest: .codex-plugin/plugin.json
+    manifest: adapters/codex/plugin.json
     skills: skills/
     agent_metadata: agents/llm.yaml

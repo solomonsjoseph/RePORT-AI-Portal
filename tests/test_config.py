@@ -8,10 +8,12 @@ import pytest
 
 import config
 from config import (
+    StudyPackError,
     _get_env_bool,
     _get_env_int,
     detect_study_name,
     ensure_directories,
+    resolve_study_pack,
     strict_study_detection_enabled,
 )
 
@@ -188,3 +190,41 @@ def test_legacy_constants_point_to_llm_source() -> None:
         f"DICTIONARY_JSON_OUTPUT_DIR still under trio_bundle/: {config.DICTIONARY_JSON_OUTPUT_DIR}"
     )
     assert str(config.DICTIONARY_JSON_OUTPUT_DIR).endswith("llm_source/dictionary_mapping/jsonl")
+
+
+class TestResolveStudyPack:
+    """Study packs are swappable, not decorative: no fallback to another
+    study's rules — a missing pack must raise, never silently substitute."""
+
+    def test_resolves_bundled_indo_vap_pack(self) -> None:
+        pack_dir = resolve_study_pack("Indo-VAP")
+        assert (pack_dir / "pack.yaml").is_file()
+        assert (pack_dir / "phi_scrub.yaml").is_file()
+
+    def test_explicit_pack_dir_wins(self, tmp_path: Path) -> None:
+        custom = tmp_path / "custom_pack"
+        custom.mkdir()
+        (custom / "pack.yaml").write_text("name: Custom\n", encoding="utf-8")
+        assert resolve_study_pack("AnyStudy", pack_dir=custom) == custom
+
+    def test_env_var_wins_over_default_lookup(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        env_pack = tmp_path / "env_pack"
+        env_pack.mkdir()
+        (env_pack / "pack.yaml").write_text("name: EnvPack\n", encoding="utf-8")
+        monkeypatch.setenv("REPORT_AI_STUDY_PACK_DIR", str(env_pack))
+        assert resolve_study_pack("Indo-VAP") == env_pack
+
+    def test_missing_study_raises_naming_study_and_directories_tried(self) -> None:
+        with pytest.raises(StudyPackError) as exc_info:
+            resolve_study_pack("Nonexistent-Study")
+        message = str(exc_info.value)
+        assert "Nonexistent-Study" in message
+        assert "study_packs" in message
+
+    def test_no_fallback_to_another_study(self, tmp_path: Path) -> None:
+        """Only an Indo-VAP pack exists; running study 'Foo' must not
+        silently resolve to Indo-VAP's rules."""
+        with pytest.raises(StudyPackError, match="Foo"):
+            resolve_study_pack("Foo")

@@ -64,6 +64,7 @@ dependencies = [
     "pandas>=2.0.0,<2.4.0",
     "openpyxl>=3.1.0,<4.0.0",
     "numpy>=2.0.0,<3.0.0",
+    "defusedxml>=0.7.0,<1.0.0",
     # -------------------------------------------------------------------------
     # User Interface & CLI
     # -------------------------------------------------------------------------
@@ -97,6 +98,7 @@ Issues = "https://github.com/solomonsjoseph/RePORT-AI-Portal/issues"
 
 [project.scripts]
 report_ai_portal = "main:main"
+report-ai-pipeline = "scripts.skills.pipeline_cli:main"
 
 # ============================================================================
 # UV Configuration
@@ -186,7 +188,7 @@ path = "__version__.py"
 pattern = '^__version__:\s*str\s*=\s*"(?P<version>[^"]+)"'
 
 [tool.hatch.build.targets.wheel]
-only-include = ["scripts", "config", "config.py", "main.py", "__version__.py"]
+only-include = ["scripts", "config", "config.py", "main.py", "__version__.py", "study_packs"]
 
 # ============================================================================
 # Tool Configurations

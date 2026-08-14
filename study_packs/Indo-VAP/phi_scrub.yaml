@@ -32,21 +32,31 @@
 # intent; leave unanchored for substring-in-column-name intent.
 #
 # IRB-grade benchmark anchors (see docs/sphinx/irb_auditor/):
-#   HIPAA §164.514(b)(2), ICMR §11, SPDI Rule 3, Aadhaar Act §29,
-#   DPDPA 2023 §2(t), NIST SP 800-188, RePORT India Common Protocol.
+#   DPDPA 2023 + DPDP Rules 2025, ICMR National Ethical Guidelines for
+#   Biomedical and Health Research Involving Human Participants 2017 §2.3,
+#   Aadhaar Act 2016 §29, HIPAA §164.514(b) (benchmark only, not binding —
+#   receiver is not a HIPAA Covered Entity), NIST SP 800-188 (technique
+#   reference only, not a compliance basis).
 #
 # Provenance: rule catalog ported from scripts/archive/phi_rules.py (1033-line
 # IN-jurisdiction field-rule registry), Indo-VAP-calibrated.
 # ---------------------------------------------------------------------------
 
 # ── Compliance posture ────────────────────────────────────────────────────
-#   "safe_harbor"     — drops birthdate_field entirely (default).
-#                        Age fidelity is lost. No IRB/DUA paperwork needed.
-#   "limited_dataset" — shifts birthdate_field with the same per-subject
-#                        offset as other dates (SANT method), preserving
-#                        age-at-event. REQUIRES authorities/phi_limited_dataset.md
-#                        with IRB approval + Data Use Agreement citations.
-compliance_posture: "safe_harbor"
+#   "safe_harbor"        — drops birthdate_field entirely. Age fidelity is
+#                          lost. HIPAA construct, used only as a benchmark.
+#   "limited_dataset"    — shifts birthdate_field with the same per-subject
+#                          offset as other dates (SANT method), preserving
+#                          age-at-event. REQUIRES authorities/phi_limited_dataset.md
+#                          with IRB approval + Data Use Agreement citations.
+#   "icmr_coded_dataset" — the binding standard for this study: ICMR 2017
+#                          §2.3 coded data with the linking key held
+#                          separately (see key management in phi_scrub.py).
+#                          Birthdate is dropped unless the study carries no
+#                          age variable, in which case it is jittered so age
+#                          fidelity is not destroyed (see Step 5b). REQUIRES
+#                          authorities/phi_icmr_coded_dataset.md.
+compliance_posture: "icmr_coded_dataset"
 
 # ── Subject-ID resolution (keys the per-subject date offset) ──────────────
 # Column names used to key the per-subject deterministic date offset.
@@ -74,8 +84,11 @@ age_cap:
   threshold: 89
   label: "90+"
 
-# ── Small-cell suppression threshold (k-anonymity proxy; ICMR §11.7) ──────
-# Contact / household counts ≥ this value are clamped to this value.
+# ── Small-cell suppression threshold (k-anonymity proxy) ──────────────────
+# Contact / household counts ≥ this value are clamped to this value. This
+# is a project-chosen k-anonymity parameter, not a specific regulatory
+# requirement — no citable ICMR small-cell rule was found; see the
+# authority note at authorities/phi_icmr_coded_dataset.md.
 small_cell_threshold: 5
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -111,7 +124,6 @@ keep_fields:
   - "URIN(?:E|A|B)"
   # ── False-positive guards for clinical lab specimen ID indicators ──
   - "^(?:CX_LABID|ZN_MBLABID\\d*|CM_MBLABID\\d*|DST_XLABID\\d*)$"
-  - "^CBC_HBAND$"
   # ── Visit labels (categorical) ──
   - "[-_]VISIT"
   - "^VISIT$"
@@ -127,7 +139,6 @@ keep_fields:
   - "(?:DOSES|DOSAGE|COMPLIANCE)[-_]?\\d*$"
   - "^PHC$"
   - "WEIGHT_?ESTIMATE"
-  - "^Image_Seq$"
   - "STORAGE\\d*$"
   - "BIDI"
   - "PRIORBID"
@@ -139,24 +150,25 @@ keep_fields:
   # ── Collection type (clinical) ──
   - "COLLTYP"
   # ── Clinical indicator groups (large lab/medication/AE/EE/TC/TB blocks) ──
-  - "^CBC_"
-  - "^CXR_"
-  - "^cxr_"
-  - "^CX_(?:DST|GROWTH|ISOLATE|LALIQUOT|LIQTTD|LRECON|MB(?:ND|SPMETH|SPSETT)|MEDIA|MTB|ND|PROCVOL|REASON|RECREFR|SOL|COLLVOL)"
-  - "^DST_(?:DST|ALI|ISOLATE|MB(?:ND|SPMETH|SPSETT)|XVISIT)"
+  - "^CBC_(?!.*(?:DAT|DATE|DTE|HBAND|INIT|SIGN)\\d*$)"
+  - "^CBC_HBAND$"
+  - "^CXR_(?!.*(?:DAT|DATE|DTE|HBAND|INIT|SIGN)\\d*$)"
+  - "^cxr_(?!.*(?:DAT|DATE|DTE|HBAND|INIT|SIGN)\\d*$)"
+  - "^CX_(?:DST(?!DAT)|GROWTH|ISOLATE(?!DAT)|LALIQUOT|LIQTTD|LRECON|MB(?:ND|SPMETH|SPSETT)|MEDIA|MTB|ND|PROCVOL|REASON|RECREFR|SOL|COLLVOL)"
+  - "^DST_(?:DST(?!DAT)|ALI|ISOLATE(?!DAT)|MB(?:ND|SPMETH|SPSETT)|XVISIT)"
   - "^ZN_(?:AFB|LIQ(?:CONTM|MTBNEG|MTBPOS|ND|NMTBPOS|TTDD)|MB(?:ND|SPMETH)|SOL(?:CONTM|MTBNEG|MTBPOS|ND|NMTBPOS|QNCAT|QNND|QUAN)|SPMETH)"
   - "^CM_(?:AFB|FEVER|MBND|SVOLM)"
-  - "^CC_(?:ALC|ARM|ARRACK|CGR|CHDRN|CIG|CNCT|CURV|DEP|DIET|DM|DRNK|DRRH|FRST|HEIGHT|HELM|HIV|HNDWSH|HOO|KNEE|LMBS|LST|LUMPS|MED|MENSES|MNET|NAUS|NOPREG|NOPRGTEST|OBS|PREG|RBS|RSH|SHOES|SMK|SWL|THRST|TOILET|TRV|URINE|VIST|WEIGHT|WHZNG|WORMS|WSH|WTR|ABDISC)"
-  - "^EE_(?:ACRES|AGLAND|AIRFLOW|BATH|BEDRM|BEDS|BICYCLE|BOAT|BULL|BWTV|CAR|CENTS|CHAIR|CK|CLOCK|COLOR|COOKER|COT|DIN|DOORS|DPW|EFAN|EX(?:DOOR|WALL|WND)|FLOOR|FUEL|KIT|LEFT|LIGHT|LIV|LRG|MATTRESS|MDW|MOPED|MOTOR|MULTI|NEW|NUM|OPEN|OTHER(?:LAND|UNITS)|OTH?RM|OWN|PUMP|RADIO|RES|ROOF|ROOMS|RUP|SCL|SCOOTER|SEW|SMK|SML|TABLE|THRESH|TOIL|TOT|TRACTOR|TYP|WATER|WIND|WND)"
+  - "^CC_(?:ALC|ARM|ARRACK|CGR|CHDRN|CIG|CNCT(?!.*SP$)|CURV|DEP|DIET|DM|DRNK|DRRH|FRST|HEIGHT|HELM|HIV(?!LOC)|HNDWSH|HOO|KNEE|LMBS|LST|LUMPS|MED|MENSES|MNET|NAUS|NOPREG(?!.*SP$)|NOPRGTEST(?!.*SP$)|OBS|PREG(?!DAT)|RBS|RSH|SHOES|SMK|SWL|THRST|TOILET|TRV|URINE|VIST|WEIGHT|WHZNG|WORMS|WSH|WTR|ABDISC)"
+  - "^EE_(?:ACRES|AGLAND|AIRFLOW|BATH|BEDRM|BEDS|BICYCLE|BOAT|BULL|BWTV|CAR|CENTS|CHAIR|CK|CLOCK|COLOR|COOKER|COT|DIN|DOORS|DPW|EFAN|EX(?:DOOR|WALL|WND)|FLOOR|FUEL|KIT|LEFT|LIGHT|LIV|LRG|MATTRESS|MDW|MOPED|MOTOR|MULTI|NEW|NUM|OPEN|OTHER(?:LAND|UNITS)|OTH?RM|OWN|PUMP|RADIO|RES|ROOF|ROOMS|RUP|SCL(?!DK)|SCOOTER|SEW|SMK|SML|TABLE|THRESH|TOIL|TOT|TRACTOR|TYP|WATER|WIND|WND)"
   - "^MEDF?_(?:ART(?:MED|ONGO|STUNK|CURR|ND)|BDIOLAT|DIA(?:CHG|ND|OTHSP|CURR)|DXYCYCL|FLRQNLN|H2RANT|INH(?:CURR|ENUNK|ONGO|STUNK)|INSULIN|METFORM|OCM(?:CHG|ND|CURR)|PPUMP|PROPH(?:ENUNK|ONGO|OTSP|STUNK)|RIF(?:CURR|ENUNK|ONGO|STUNK)|RPT(?:CURR|ENUNK|ONGO|STUNK)|STATIN|SULFON|TBPRO(?:ND|TOCHG|CURR)|THIOGLIT|VITD|WARFN)"
-  - "^AE_(?:EVENT|RELATION|SEVERITY|SEVERITYO|STATUS|SUMMARY|TMAWARE)"
+  - "^AE_(?:EVENT(?!DAT)|RELATION|SEVERITY|SEVERITYO|STATUS|SUMMARY|TMAWARE)"
   - "^EC_(?:AINCLR|ELIG|ELIGCONF)"
   - "^COE_(?:APPROVE|COENROLL|PROTCOL)"
   - "^FA_(?:FUCOMPA(?:DC)?|TBALT|TBALTDIAGSP)$"
   - "^FB_(?:ENRCOHA(?:SP|SPO)?|FUCOMPB)$"
   - "^NC_(?:COLLND|NDREA|REASON)(?:SP)?"
-  - "^SC_(?:BLD(?:DRW)|CBC|GENO(?:REC(?:GOOD)?|STOR|TYP)|HHCVST|HLMNTH|ICVST|NODRW|PAX(?:CP|GENE|REC(?:GOOD)?|STOR)|PBMC(?:REC(?:GOOD)?|STOR|TOT|VIAB|VOL)|PLASMA(?:REC(?:GOOD)?|STOR)|PROCSIG|PTCPT|QTF(?:REC(?:GOOD)?|STOR)|RECGOOD|SALIVA|SLV(?:REC(?:GOOD)?|STOR)|STORALIQ|Sputum|URINE|URN(?:REC(?:GOOD)?|STOR))"
-  - "^ST_(?:COMMENT|LALIQUOT|LINPRESV|LOUTPRESV|LRECON|LRECVIAL|PBMC|QUANT|REPOSCOND|shipvial)"
+  - "^SC_(?:BLD(?:DRW)|CBC|GENO(?:REC(?:GOOD)?(?!DAT)|STOR|TYP)|HHCVST|HLMNTH|ICVST|NODRW|PAX(?:CP|GENE|REC(?:GOOD)?(?!DAT)|STOR)|PBMC(?:REC(?:GOOD)?(?!DAT)|STOR|TOT|VIAB|VOL)|PLASMA(?:REC(?:GOOD)?(?!DAT)|STOR)|PTCPT|QTF(?:REC(?:GOOD)?(?!DAT)|STOR)|RECGOOD|SALIVA|SLV(?:REC(?:GOOD)?(?!DAT)|STOR)|STORALIQ|Sputum|URINE|URN(?:REC(?:GOOD)?(?!DAT)|STOR))"
+  - "^ST_(?:LALIQUOT|LINPRESV|LOUTPRESV|LRECON|LRECVIAL|PBMC|QUANT|REPOSCOND|shipvial)"
   - "^TBE_(?:ND|OTHLIV|OTHWHN|SPDAYS|TBTREAT)"
   - "^TC_(?:CARD|CHANGE(?:SP)?|CMONTH|DOSEFREQ|DOSNUM|EXTROT|EXTRPULM|MONTH|NOCARD|NOCARDSP|PHASE|WEIGHT|chestxna)"
   - "^(?:CGRYN|CHEWING|CIGYN|SMOYN|SNUFF|OSMOYN)$"
@@ -164,7 +176,6 @@ keep_fields:
   - "^TBKNOW"
   - "^EXTR"
   - "^F1$"
-  - "^Remote_Cmp$"
   - "^(?:Kidneyfail|COPD|Asthma|Cancer|Cough|Diet)$"
   - "^Constr_\\d+$"
   - "^RE_(?:CXR|HHTB|SPUTUM|TBDIAG|TBMED|TBSYMP|SEEKCARE|SEEKCARENA|DOTSNA|DOTSOTH)$"
@@ -172,6 +183,24 @@ keep_fields:
   - "^TST_SPLACE\\d+$"
   - "^TST_(?:BLIST|COUGH|INDUR|STREN|STRENOTH|SUBST|ND|PPDOTHER|TU)\\d*$"
   - "^TST_TUOTHER$"
+
+# ──────────────────────────────────────────────────────────────────────────
+# KEEP OVERRIDES — declared acknowledgement of a keep rule that shadows a
+# more-specific PHI rule. Consumed by validate_rule_catalog() (Step 10a):
+# a keep pattern that shadows birthdate/drop/date/id/redundant_subject_id
+# with no matching keep_overrides entry is a hard failure
+# (PHIRuleConflictError). Grants no permission against must_drop.
+# ──────────────────────────────────────────────────────────────────────────
+keep_overrides:
+  - column: "^(?:CX_LABID|ZN_MBLABID\\d*|CM_MBLABID\\d*|DST_XLABID\\d*)$"
+    shadows: "id"
+    rationale: "Aliquot/replicate index, not a lab accession number."
+  - column: "^(?:MEDF?_)?CCBLOCK$"
+    shadows: "drop"
+    rationale: "Calcium-channel-blocker medication flag, not a geographic block."
+  - column: "^CBC_HBAND$"
+    shadows: "date"
+    rationale: "Haemoglobin band indicator (categorical lab grade), not a date — confirmed by Indo-VAP real-data audit: 100% of observed values are non-date-shaped."
 
 # ──────────────────────────────────────────────────────────────────────────
 # DATE FIELDS (jittered with per-subject constant offset)
@@ -241,6 +270,9 @@ id_fields:
   - {pattern: "COE_(?:PROTOCOL|SPONSOR)\\d*$", label: "STDY"}
   # ── Specimen / sample / accession IDs ────────────────────────────────────
   - {pattern: "(?:specimen|sample|accession)[-_]?(?:id|num|no|number)", label: "SPEC"}
+  # ── Household-contact IDs (household-contact linkage is core to a TB
+  # household-contact study; Step 4 moved these out of drop_fields) ────────
+  - {pattern: "^HHC\\d+$", label: "HHC"}
 
 # ──────────────────────────────────────────────────────────────────────────
 # BIRTHDATE (posture-dependent)
@@ -250,18 +282,30 @@ id_fields:
 birthdate_field: "(?:IS_BIRTHDAT|IC_BIRTHDAT|HHC_BRTHDAT|HC_BRTHDAT|birth|dob|bday|brthdat)"
 
 # ──────────────────────────────────────────────────────────────────────────
+# REDUNDANT SUBJECT ID (value-conditional — Step 4)
+# ──────────────────────────────────────────────────────────────────────────
+# Page-level copies of the canonical subject ID (SUBJID2..SUBJID8 etc.).
+# Resolved in _scrub_row as a value-conditional rule ahead of DROP:
+#   value == resolved subject id -> drop (Class A, exact duplicate, zero
+#                                    analytic value)
+#   value != resolved subject id -> pseudonymise + flag (Class B — a
+#                                    differing page-level ID means a
+#                                    mis-collated CRF page or transcription
+#                                    error and must not be silently discarded)
+redundant_subject_id_fields:
+  - {pattern: "^SUBJID\\d+(?:_\\d+)?$", label: "SUBJ"}
+  - {pattern: "^SUBJID_\\d+$",          label: "SUBJ"}
+
+# ──────────────────────────────────────────────────────────────────────────
 # DROP FIELDS (entire column removed from every row)
 # ──────────────────────────────────────────────────────────────────────────
 # Archive catalog: 93 rules across 14 categories. HIPAA §164.514(b)(2)(i)(A-R)
-# coverage + DPDPA §2(t) identifier categories + India-government-ID catalog.
+# coverage + Aadhaar Act 2016 §29 + Indian-government-ID catalog.
 # Each rule drops fields where the column NAME matches; values are removed
 # from every row. Former FREE_TEXT_PHI whole-hash rules converted to DROP
 # because whole-value hashing of narrative strings did not remove
 # embedded PHI tokens — it only obscured the containing string.
 drop_fields:
-  # ── Duplicate/redundant subject IDs (Excel artefacts) ────────────────────
-  - "^SUBJID\\d+(?:_\\d+)?$"
-  - "^SUBJID_\\d+$"
   # ── Site IDs / treatment-unit IDs ─────────────────────────────────────────
   - "[-_]?TUID(?:CHG)?$"
   - "[-_]?DMCID(?:CHG)?$"
@@ -272,7 +316,6 @@ drop_fields:
   - "^FormIDMthd$"
   - "^Remote[-_]?(?:Bid|Uid)(?:_PRESENT)?$"
   - "^Remote[-_]?(?:Bid|Uid)$"
-  - "^HHC\\d+$"
   # ── Batch/scan metadata (no clinical value) ──────────────────────────────
   - "^Batch"
   - "^Verify_Wks$"
@@ -431,6 +474,9 @@ drop_fields:
   - "^CC_CNCTNDSP$"
   - "(?:^ST_COMMENT$|^sc_COMMENT$)"
   - "(?:COMMENT|REMARK|NOTE)$"
+  # ── Un-shadowed Class A columns with no drop pattern (Step 6b) ───────────
+  - "^Image_Seq$"
+  - "^Remote_Cmp$"
 
 # ──────────────────────────────────────────────────────────────────────────
 # CAP FIELDS (numeric values above threshold replaced with a label)
@@ -504,6 +550,182 @@ suppress_small_cell_fields:
   - "^IS_CONTACTS$"
   - "^IS_CONTACTS_(?:TOTAL|6YRS)$"
   - "(?:contacts?_?(?:total|count|6yrs)?$)"
+
+# ──────────────────────────────────────────────────────────────────────────
+# DATE SENTINELS (Step 1 — fail-closed date jitter)
+# ──────────────────────────────────────────────────────────────────────────
+# Declared non-date literals allowed to survive unparsed in a date column
+# (case-insensitive, whitespace-stripped exact match). Any other unparseable
+# value in a date column is redacted to null and counted against
+# date_unparsed_threshold — no built-in default is shipped; an undeclared
+# sentinel must surface in review rather than silently pass through.
+date_sentinels:
+  - "na"
+  - "n/a"
+  - "nd"
+  - "not done"
+  - "date not recorded"
+  - "unknown"
+  - "/  /"
+  - "-"
+  - "."
+
+# Documented placeholder dates that ARE syntactically valid (unlike the
+# date_sentinels above, which only ever apply after shift_date has already
+# failed to parse the value). Checked BEFORE shift_date is attempted, so a
+# value listed here is never jittered into a plausible-looking fake
+# historical date — it is redacted to null instead (not preserved raw: a
+# value here could coincidentally be a genuine calendar date, so it must
+# never appear verbatim in the published bundle). Source: data dictionary
+# Codelists table 2, "Variable Endings" — "Use 1900-01-01 as an Unknown
+# date" (2026-08-10 dictionary-leg review). Add another entry here only
+# when the study's own dictionary documents it as a placeholder convention.
+date_value_sentinels:
+  - "1900-01-01"
+
+# Per-(file, column) tolerance for non-sentinel unparseable date values.
+# 0 = zero tolerance (default). run_scrub raises PHIDateParseError when any
+# (file, column) exceeds this and is absent from date_unparsed_accept.
+date_unparsed_threshold: 0
+# Exact "<file>:<COLUMN>" opt-outs. The column is still redacted and
+# audited under phi-scrub-date-unparsed-redacted — this only silences the
+# hard-fail for a column with a known, accepted data-quality issue.
+date_unparsed_accept:
+  # Confirmed via Indo-VAP end-to-end audit (2026-08-10): each is either a
+  # genuine minority-mixed-locale data-entry inconsistency (a handful of
+  # rows using the opposite day/month order from the column's declared
+  # locale — guessing per-row would risk silently corrupting a real date,
+  # so these are redacted to null instead) or a categorical/reason field
+  # swept into date_fields by a generic suffix pattern
+  # (7_Culture.jsonl:CX_PROCDAT_ND — "procedure not done" reason, not a
+  # date at all; content type unknown without reading raw values, so it
+  # stays date-classified and fail-closed rather than being reclassified
+  # as keep). All values are still redacted to null and recorded under
+  # phi-scrub-date-unparsed-redacted; this list only silences the
+  # publish-blocking hard-fail. Reviewed via phi_review_queue.json.
+  - "101_HHC_Recontact.jsonl:RE_COMPDAT"
+  - "101_HHC_Recontact.jsonl:RE_VISDAT"
+  - "12A_FUA.jsonl:FUA_PREGOUTDAT_2"
+  - "12A_FUA.jsonl:FUA_VISDAT"
+  - "12B_FUB.jsonl:FUB_COMPDAT_2"
+  - "12B_FUB.jsonl:FUB_VISDAT"
+  - "13_TxCompliance.jsonl:TC_COMPDAT"
+  - "13_TxCompliance.jsonl:TC_xraydat"
+  - "18_1_TargConcom.jsonl:MED_VISDAT"
+  - "18_2_TargConcom.jsonl:MEDF_VISDAT"
+  - "1A_ICScreening.jsonl:IS_COMPDAT"
+  - "1A_ICScreening.jsonl:IS_VISDAT"
+  - "1B_HCScreening.jsonl:HHC_COMPDTE"
+  - "1B_HCScreening.jsonl:HHC_ICFDT"
+  - "1B_HCScreening.jsonl:HHC_VISDAT"
+  - "2A_ICBaseline.jsonl:IC_COMPDAT"
+  - "2B_HCBaseline.jsonl:HC_VISDAT"
+  - "3_Specimen_Collection.jsonl:SC_BLDDAT"
+  - "3_Specimen_Collection.jsonl:SC_COMPDAT"
+  - "3_Specimen_Collection.jsonl:SC_GENOPROC80DAT"
+  - "3_Specimen_Collection.jsonl:SC_GENOPROCDAT"
+  - "3_Specimen_Collection.jsonl:SC_LNDAT"
+  - "3_Specimen_Collection.jsonl:SC_PAXPROC80DAT"
+  - "3_Specimen_Collection.jsonl:SC_PAXPROCDAT"
+  - "3_Specimen_Collection.jsonl:SC_PAXRECDAT"
+  - "3_Specimen_Collection.jsonl:SC_PBMCPROCDAT"
+  - "3_Specimen_Collection.jsonl:SC_PLASMAPROC80DAT"
+  - "3_Specimen_Collection.jsonl:SC_PLASMAPROCDAT"
+  - "3_Specimen_Collection.jsonl:SC_PLASMARECDAT"
+  - "3_Specimen_Collection.jsonl:SC_PROCDAT"
+  - "3_Specimen_Collection.jsonl:SC_PROCDAT_2"
+  - "3_Specimen_Collection.jsonl:SC_QTFGITRECDAT"
+  - "3_Specimen_Collection.jsonl:SC_RECDAT"
+  - "3_Specimen_Collection.jsonl:SC_SLVPROC80DAT"
+  - "3_Specimen_Collection.jsonl:SC_SLVPROCDAT"
+  - "3_Specimen_Collection.jsonl:SC_SLVRECDAT"
+  - "3_Specimen_Collection.jsonl:SC_URNPROC80DAT"
+  - "3_Specimen_Collection.jsonl:SC_URNPROCDAT"
+  - "4_Smear.jsonl:ZN_COMPDAT"
+  - "4_Smear.jsonl:ZN_MBRECDAT"
+  - "4_Smear.jsonl:ZN_RECDAT2"
+  - "5_CBC.jsonl:CBC_COMPDAT"
+  - "7_Culture.jsonl:CX_MBRECDAT"
+  - "7_Culture.jsonl:CX_PROCDAT_ND"
+  - "8_CXR.jsonl:CXR_COMPDTE"
+  - "96_Specimen_Tracking.jsonl:ST_LNDAT"
+  - "96_Specimen_Tracking.jsonl:ST_LOUTDAT"
+  - "96_Specimen_Tracking.jsonl:ST_VISDAT"
+  - "99A_FSA.jsonl:FA_VISDAT"
+  - "99B_FSB.jsonl:FB_COMPDAT"
+
+# ──────────────────────────────────────────────────────────────────────────
+# NON-SUBJECT DATASETS (Step 12b)
+# ──────────────────────────────────────────────────────────────────────────
+# Datasets with no subject column, matched as substrings against the
+# dataset file name. Rows in these files share a per-file offset (keyed on
+# source_file) instead of a per-subject one. Absent/empty -> every dataset
+# is treated as subject-bearing and rows without a resolvable subject ID
+# are quarantined (fail-closed).
+non_subject_datasets:
+  - "Air_Quality"
+
+# ──────────────────────────────────────────────────────────────────────────
+# CONTENT VERIFICATION REQUIRED (Step 11e — one-time destructive sign-off)
+# ──────────────────────────────────────────────────────────────────────────
+# Columns un-shadowed from keep to drop (Step 6b) because the field name
+# alone can't settle whether the content is a genuine signature (drop
+# stands) or a numeric/clinical measurement mislabeled "SIGN" (should be
+# must_keep + keep_overrides instead). Each listed column raises a
+# destructive review-queue entry on every run until phi_review_signoff.yaml
+# records a decision, or the config remediation below removes it from drop.
+content_verification_required:
+  - "CXR_SIGN"
+  - "SC_PROCSIG"
+
+# ──────────────────────────────────────────────────────────────────────────
+# MUST DROP (Class A — non-negotiable; Step 3)
+# ──────────────────────────────────────────────────────────────────────────
+# No keep rule, keep_overrides entry, or SoT declaration may resolve a
+# matching column to anything but drop. Enforced by validate_rule_catalog()
+# (Step 10a) as a hard failure (PHIPolicyViolationError). Restates the
+# Class A rows of the plan's disposition-policy table as an explicit,
+# citation-tagged guard over the same drop_fields/keep_fields catalog —
+# it does not replace drop_fields.
+must_drop:
+  - basis: "HIPAA 164.514(b)(2)(i)(A) names, initials, signatures"
+    patterns: ["[-_]NAME$", "[-_]INIT(?:IAL)?S?(?:[-_]?\\d+)?$", "[-_]SIGN(?:[-_]?\\d+)?$"]
+  - basis: "HIPAA 164.514(b)(2)(i)(B) geography below state and facility names"
+    patterns:
+      - "(?:VILLAGE|CITY|TOWN|DISTRICT|TALUK|WARD|LOCALITY|PANCHAYAT|MANDAL|TEHSIL|STATE|PROVINCE|REGION|AREA|ZONE)"
+      - "(?:ADDR|ADDRESS|RESIDENCE)"
+      - "(?:pin_?code|postal|zip)"
+      - "CLINNAME"
+      - "(?:CC_HIVLOC$|CC_HIVLOCSP$|HC_HIVLOC$|HC_HIVLOCSP$|IC_HIVLOC$|IC_HIVLOCSP$)"
+  - basis: "HIPAA 164.514(b)(2)(i)(C) death dates and place of death"
+    patterns: ["(?:DTH|DEATH)[-_]?(?:DAT|DATE)", "(?:PLACE_?OF_?DEATH|DEATH_?PLACE)"]
+  - basis: "Aadhaar Act 2016 s29"
+    patterns: ["(?:aadhaar|aadhar|uid_no)"]
+  - basis: "free-text narrative — embedded PHI survives hashing"
+    patterns: ["(?:COMMENT|REMARK|NOTE)$", "(?:WITHDRAWEXPLAIN|WITHDRAW_?EXPLAIN)", "SP$"]
+  - basis: "ICMR 2017 s2.3 group-identifying attributes"
+    patterns: ["RELIG", "(?:CASTE|TRIBE|COMMUNITY)"]
+  - basis: "un-shadowed Class A columns with no other drop pattern (Step 6b)"
+    patterns: ["^Image_Seq$", "^Remote_Cmp$"]
+
+# ──────────────────────────────────────────────────────────────────────────
+# MUST KEEP (Class B/E — Step 3)
+# ──────────────────────────────────────────────────────────────────────────
+# Core variables the study requires. No rule may resolve a matching column
+# to drop or null. Violation = hard failure (PHIPolicyViolationError).
+# Seeded from config/study_knowledge.yaml plus the Step 6c keep-override
+# columns.
+must_keep:
+  - basis: "core clinical outcome and exposure variables"
+    patterns:
+      - "^CBC_(?!.*(?:INIT|SIGN)$)"
+      - "^CXR_(?!.*(?:INIT|SIGN)$)"
+      - "^TST_INDUR\\d*$"
+      - "^(?:IS_SEX|HHC_SEX|HC_SEX|IC_SEX)$"
+  - basis: "Step 6c keep_overrides — declared false-positive guards"
+    patterns:
+      - "^(?:CX_LABID|ZN_MBLABID\\d*|CM_MBLABID\\d*|DST_XLABID\\d*)$"
+      - "^(?:MEDF?_)?CCBLOCK$"
 
 # ──────────────────────────────────────────────────────────────────────────
 # FILE EXCLUSIONS — DOCUMENTATION ONLY (not consumed by this scrubber)

@@ -90,9 +90,9 @@ settled. Run the repo CLI and verifier instead of lower-level extraction
 shortcuts:
 
 ```bash
-uv run --all-groups python scripts/skills/extract_to_llm_source.py status
-uv run --all-groups python scripts/skills/extract_to_llm_source.py run --study <STUDY>
-uv run --all-groups python scripts/skills/extract_to_llm_source.py verify --study <STUDY>
+report-ai-pipeline status
+report-ai-pipeline run --root <DIR> --study <STUDY>
+report-ai-pipeline verify --root <DIR> --study <STUDY>
 ```
 
 This phase delegates to the host repo's pipeline. It must preserve the
@@ -128,11 +128,11 @@ proceed because the lock is held or verifier output fails, mark that set
 
 ## Portability
 
-This plugin is not Codex-only. Any LLM platform can use it by reading
-`plugin.yaml`, this orchestrator, and the child `SKILL.md` files.
-
-Codex can also load `.codex-plugin/plugin.json`, but that file is an adapter,
-not the source of truth for the workflow.
+Any LLM platform can use this plugin by reading `plugin.yaml`, this
+orchestrator, and the child `SKILL.md` files. Vendor-specific manifests are
+generated from `plugin.yaml` into `adapters/<vendor>/` by
+`tools/gen_adapters.py`; they are adapters, not the source of truth for the
+workflow.
 
 Bundled skill agent metadata uses `agents/llm.yaml` as the platform-neutral
 filename. Platform adapters may map that file into their native discovery

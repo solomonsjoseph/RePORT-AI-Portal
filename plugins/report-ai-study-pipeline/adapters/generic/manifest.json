@@ -1,0 +1,38 @@
+{
+  "agentMetadata": "agents/llm.yaml",
+  "author": {
+    "name": "RePORT-AI Portal maintainers"
+  },
+  "description": "Platform-neutral RePORT-AI study preparation plugin pack. It runs duplicate dataset handling first, Source Truth policy generation second, and PHI-safe dataset-to-LLM-source publishing last.",
+  "homepage": ".",
+  "interface": {
+    "brandColor": "#2563EB",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "category": "Productivity",
+    "defaultPrompt": [
+      "Run the RePORT-AI study pipeline for one form.",
+      "Audit duplicate files before Source Truth.",
+      "Verify PHI-safe llm_source publishing."
+    ],
+    "developerName": "RePORT-AI Portal maintainers",
+    "displayName": "RePORT-AI Study Pipeline",
+    "longDescription": "A portable LLM plugin pack for RePORT-AI study preparation. It preserves the ordered workflow: duplicate workbook handling first, Source Truth policy generation second, and verified PHI-safe dataset-to-LLM-source publishing last.",
+    "shortDescription": "Duplicate handling, Source Truth, then PHI-safe llm_source publishing."
+  },
+  "keywords": [
+    "report-ai",
+    "source-truth",
+    "phi-safe",
+    "dataset-extraction",
+    "llm-source"
+  ],
+  "kind": "llm-plugin-pack",
+  "license": "MIT",
+  "name": "report-ai-study-pipeline",
+  "repository": ".",
+  "skills": "./skills/",
+  "version": "0.1.0"
+}

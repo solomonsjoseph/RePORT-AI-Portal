@@ -1,8 +1,8 @@
 # RePORT-AI Study Pipeline Plugin
 
-This is a platform-neutral LLM plugin pack. Codex can load it through the
-included `.codex-plugin/plugin.json`, but the source of truth is the portable
-`plugin.yaml` plus the skill files under `skills/`.
+This is a platform-neutral LLM plugin pack. `plugin.yaml` plus the skill
+files under `skills/` are the source of truth; generated manifests under
+`adapters/` let specific tools load it without any tool being privileged.
 
 ## Workflow Order
 
@@ -58,8 +58,8 @@ Set statuses:
 - `skills/dataset-to-llm-source/SKILL.md` publishes verified PHI-safe dataset JSONL.
 
 Each bundled skill may include platform-neutral agent metadata at
-`agents/llm.yaml`. Platform adapters, including Codex, should read or map that
-file instead of relying on vendor-specific names such as `openai.yaml`.
+`agents/llm.yaml`. Platform adapters should read or map that file instead of
+relying on vendor-specific names such as `openai.yaml`.
 
 ## Porting Contract
 
@@ -83,13 +83,17 @@ be processed inside the trusted extraction, scrub, cleanup, merge, and publish
 code paths. Reports exposed to agents must stay limited to filenames, headers,
 counts, provenance, verifier status, and other metadata.
 
-## Codex Adapter
+## Generated Vendor Adapters
 
-For Codex, the plugin manifest is:
+`plugin.yaml` is the only hand-maintained manifest. Every vendor-specific
+manifest under `adapters/` (`codex/plugin.json`, `claude/plugin.json`,
+`cursor/plugin.json`, `gemini/plugin.json`, `generic/manifest.json`) is
+generated from it by `tools/gen_adapters.py` — never hand-edited:
 
-```text
-plugins/report-ai-study-pipeline/.codex-plugin/plugin.json
+```bash
+python plugins/report-ai-study-pipeline/tools/gen_adapters.py         # regenerate
+python plugins/report-ai-study-pipeline/tools/gen_adapters.py --check # verify no drift
 ```
 
-If a repo-level Codex marketplace is desired, add a local marketplace entry
+If a repo-level plugin marketplace is desired, add a local marketplace entry
 that points to `./plugins/report-ai-study-pipeline`.

@@ -1,0 +1,8 @@
+# Indo-VAP has a few raw datasets sharing the same leading form code. The SoT
+# runtime policy is generated for the dataset that corresponds to the printed
+# annotated CRF. The other datasets remain published under dataset_schema/files.
+# Consumed by scripts/source_truth/generate_lean_outputs.py.
+"2A": "2A_ICBaseline"
+"14": "14_CaseControl"
+"18": "18_NonConsent"
+"95": "95_SAE"

@@ -124,6 +124,52 @@ EXIT_DESTRUCTION_INCOMPLETE: int = 7
 EXIT_PARTIAL_REVIEW: int = 8
 
 # ---------------------------------------------------------------------------
+# --root / --pack-dir honoring guard
+# ---------------------------------------------------------------------------
+
+
+def _root_or_pack_dir_mismatch(args: argparse.Namespace, config: Any) -> str | None:
+    """Return an error message when ``--root``/``--pack-dir`` could not
+    actually be honored, or ``None`` when they were (or were not requested).
+
+    ``config``'s ``DATA_ROOT`` and ``PHI_SCRUB_CONFIG_PATH`` are resolved
+    ONCE, at this process's first import of the ``config`` module — and
+    that import already happened (transitively, via this file's own
+    module-level imports) before either CLI subcommand handler runs. The
+    ``report-ai-pipeline`` console script (``scripts.skills.pipeline_cli``)
+    exports ``REPORT_AI_ROOT``/``REPORT_AI_STUDY_PACK_DIR`` before importing
+    this module at all, so it always wins the race. A caller that imports
+    this module directly (bypassing that wrapper) and passes ``--root``
+    after the fact loses the race silently unless we check here — running
+    against the wrong data root, or the wrong study's PHI rules, is a
+    correctness bug this module must never produce quietly.
+    """
+    root = getattr(args, "root", None)
+    if root and Path(root).resolve() != Path(config.DATA_ROOT).resolve():
+        return (
+            f"--root {root!r} was requested but config already resolved "
+            f"DATA_ROOT={config.DATA_ROOT} in this process — REPORT_AI_ROOT "
+            "was not exported before scripts.skills.extract_to_llm_source "
+            "was first imported. Invoke via the 'report-ai-pipeline' "
+            "console script, or export REPORT_AI_ROOT yourself before "
+            "importing this module."
+        )
+
+    pack_dir = getattr(args, "pack_dir", None)
+    if pack_dir and Path(pack_dir).resolve() != Path(config.PHI_SCRUB_CONFIG_PATH).parent.resolve():
+        return (
+            f"--pack-dir {pack_dir!r} was requested but config already "
+            f"resolved the study pack to {Path(config.PHI_SCRUB_CONFIG_PATH).parent} "
+            "in this process — REPORT_AI_STUDY_PACK_DIR was not exported "
+            "before scripts.skills.extract_to_llm_source was first "
+            "imported. Invoke via the 'report-ai-pipeline' console script, "
+            "or export REPORT_AI_STUDY_PACK_DIR yourself before importing "
+            "this module."
+        )
+
+    return None
+
+# ---------------------------------------------------------------------------
 # Destruction helper (P0.6) — kept verbatim
 # ---------------------------------------------------------------------------
 
@@ -515,15 +561,22 @@ def _verify_assertion_7_no_quarantine(
     return "pass", ""
 
 
-def _verify_assertion_8_phi_absence(dataset_files_dir: Path) -> _AssertionResult:
-    """Assertion 8: no published dataset JSONL matches PHI patterns (blocking).
+def _verify_assertion_8_phi_absence(
+    dataset_files_dir: Path, dictionary_dir: Path, sot_dir: Path
+) -> _AssertionResult:
+    """Assertion 8: no published dataset, dictionary, or SoT artifact matches
+    PHI patterns (blocking).
 
-    Streams files line-by-line to avoid large memory allocation.
-    Detail string names file path + line number + pattern — never the matched text.
+    Scans all three LLM-readable published legs — ``dataset_schema/files/``,
+    ``dictionary_mapping/jsonl/``, and ``SoT/`` — since each is inside the
+    agent read zone (``file_access.py``). Streams files line-by-line to avoid
+    large memory allocation. Detail string names file path + line number +
+    pattern — never the matched text.
     """
-    result = scan_tree_for_phi(dataset_files_dir)
-    if not result.ok:
-        return "fail", result.detail
+    for tree in (dataset_files_dir, dictionary_dir, sot_dir):
+        result = scan_tree_for_phi(tree)
+        if not result.ok:
+            return "fail", result.detail
     return "pass", ""
 
 
@@ -648,6 +701,11 @@ def _cmd_verify(args: argparse.Namespace) -> int:
     """
     import config  # lazy — keeps module testable without full config bootstrap
 
+    mismatch = _root_or_pack_dir_mismatch(args, config)
+    if mismatch:
+        print(mismatch, file=sys.stderr)
+        return EXIT_NEEDS_ADVICE
+
     study = args.study
     run_id_arg: str | None = getattr(args, "run_id", None)
 
@@ -667,6 +725,8 @@ def _cmd_verify(args: argparse.Namespace) -> int:
     run_dir = study_output_dir / "runs" / run_id
     llm_source_dir = study_output_dir / "llm_source"
     dataset_files_dir = llm_source_dir / "dataset_schema" / "files"
+    dictionary_dir = llm_source_dir / "dictionary_mapping" / "jsonl"
+    sot_dir = llm_source_dir / "SoT"
     audit_dir = study_output_dir / "audit"
     manifest_path = study_raw_dir / "_forms_manifest.yaml"
 
@@ -720,7 +780,9 @@ def _cmd_verify(args: argparse.Namespace) -> int:
         (
             8,
             "llm_source_phi_absence",
-            lambda: _verify_assertion_8_phi_absence(dataset_files_dir),
+            lambda: _verify_assertion_8_phi_absence(
+                dataset_files_dir, dictionary_dir, sot_dir
+            ),
             EXIT_VERIFIER_FAIL,
         ),
         (
@@ -1057,6 +1119,11 @@ def _cmd_run(args: argparse.Namespace) -> int:
         scan_for_in_progress_scrubs,
     )
 
+    mismatch = _root_or_pack_dir_mismatch(args, config)
+    if mismatch:
+        print(mismatch, file=sys.stderr)
+        return EXIT_NEEDS_ADVICE
+
     study = args.study
     started_utc = datetime.now(UTC).isoformat()
 
@@ -1206,7 +1273,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
         # the subprocess so main.py's _acquire_pipeline_lock skips re-acquisition
         # rather than racing itself on the same fcntl flock.
         env["REPORTAL_PIPELINE_LOCK_HELD_BY_PARENT"] = "1"
-        repo_root = Path(__file__).parent.parent.parent
+        repo_root = Path(config.BASE_DIR)
         # stdout/stderr are not captured here; main.py installs its own PHI log
         # redactor at startup. If that install fails non-fatally (non-production
         # mode), raw log lines bypass this process's redactor and go directly to
@@ -1373,6 +1440,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Study name matching data/raw/{STUDY}/ (e.g. Indo-VAP)",
     )
     run_p.add_argument(
+        "--root",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Data root containing data/, output/, .logs/, tmp/ (sets "
+            "REPORT_AI_ROOT). Defaults to the code checkout directory."
+        ),
+    )
+    run_p.add_argument(
+        "--pack-dir",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Explicit study pack directory (sets REPORT_AI_STUDY_PACK_DIR), "
+            "overriding the default <root>/study_packs/<study> lookup."
+        ),
+    )
+    run_p.add_argument(
         "--max-workers",
         type=int,
         default=None,
@@ -1404,6 +1489,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Study name to verify.",
     )
     verify_p.add_argument(
+        "--root",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Data root containing data/, output/, .logs/, tmp/ (sets "
+            "REPORT_AI_ROOT). Defaults to the code checkout directory."
+        ),
+    )
+    verify_p.add_argument(
+        "--pack-dir",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Explicit study pack directory (sets REPORT_AI_STUDY_PACK_DIR), "
+            "overriding the default <root>/study_packs/<study> lookup."
+        ),
+    )
+    verify_p.add_argument(
         "--run",
         dest="run_id",
         default=None,
@@ -1422,7 +1525,18 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Argparse entry point.  Returns an integer exit code (does not call sys.exit)."""
+    """Argparse entry point.  Returns an integer exit code (does not call sys.exit).
+
+    ``--root``/``--pack-dir`` are parsed here for validation and help text,
+    but must already be exported as ``REPORT_AI_ROOT``/
+    ``REPORT_AI_STUDY_PACK_DIR`` by the time this module is first imported —
+    ``config`` is pulled in eagerly by this module's own top-level imports
+    (``scripts.audit.ledger``, ``scripts.extraction.dataset_pipeline``), so
+    setting the env vars from inside this function is too late; Python has
+    already finished running those imports before ``main()`` can execute.
+    The console-script entry point (``scripts.skills.pipeline_cli:main``)
+    does the pre-scan-and-export before importing this module at all.
+    """
     parser = _build_parser()
     args = parser.parse_args(argv)
 

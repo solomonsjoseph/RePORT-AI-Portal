@@ -307,6 +307,7 @@ docs/plans/
 !skills/excel-duplicate-handler/SKILL.md
 !plugins/report-ai-study-pipeline/skills/*/SKILL.md
 !plugins/report-ai-study-pipeline/skills/sot-lean-generator/references/*.md
+!study_packs/**/authorities/*.md
 
 # GitHub instructions (local copilot config — not tracked)
 .github/instructions/
@@ -392,3 +393,8 @@ test-results/
 # ============================================================================
 .antigravitycli/
 scratch/
+
+# Rendered outputs of phi_pipeline_lab_review.Rmd (regenerable via knit)
+phi_pipeline_lab_review.html
+phi_pipeline_lab_review_complete_disposition.csv
+phi_pipeline_lab_review_files/

@@ -177,7 +177,7 @@ def _merge_duplicate_pair(
         df_a = _read_jsonl_df(file_a)
         df_b = _read_jsonl_df(file_b)
     except Exception as exc:
-        msg = f"Failed to read duplicate pair ({stem_a}, {stem_b}): {exc}"
+        msg = f"Failed to read duplicate pair ({stem_a}, {stem_b}): {type(exc).__name__}"
         report.errors.append(msg)
         logger.warning(msg)
         return

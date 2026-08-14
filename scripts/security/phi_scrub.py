@@ -107,8 +107,8 @@ import os
 import re
 import secrets
 import sys
-from collections.abc import Iterable
-from datetime import UTC, datetime, timedelta
+from collections.abc import Callable, Iterable
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -129,24 +129,38 @@ from scripts.utils.integrity import hash_file
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "PHI_DISPOSITION_BASELINE_FILENAME",
+    "PHI_DISPOSITION_FILENAME",
+    "PHI_REVIEW_QUEUE_FILENAME",
+    "PHI_REVIEW_SIGNOFF_FILENAME",
+    "PHI_TRANSFORMED_FILENAME",
     "CapRule",
     "GeneralizeRule",
     "IdRule",
+    "KeepOverrideRule",
+    "MustRule",
+    "PHIDateParseError",
     "PHIKeyMissingError",
     "PHIKeyPermissionError",
+    "PHIPolicyViolationError",
     "PHIQuarantineOverflowError",
+    "PHIReviewPendingError",
+    "PHIRuleConflictError",
     "PHIScrubConfig",
     "PHIScrubError",
     "bootstrap_key",
     "cap_numeric",
+    "crosscheck_sot_policy",
     "date_offset_days",
     "generalize_value",
     "load_key",
     "load_scrub_config",
     "pseudo_id",
+    "resolve_action",
     "run_scrub",
     "shift_date",
     "suppress_small_cell",
+    "validate_rule_catalog",
 ]
 
 # ── Constants ────────────────────────────────────────────────────────────────
@@ -166,6 +180,15 @@ _SCRUB_VERSION = "v3"
 _SCRUB_MARKER_FIELD = "_phi_scrubbed"
 _SENTINEL_NAME = ".phi_scrub_complete"
 
+# Step 8/11 artifacts, written beside the audit envelope
+# (config.AUDIT_SCRUB_REPORT_PATH.parent).
+PHI_TRANSFORMED_FILENAME = "phi_scrub_transformed.json"
+PHI_DISPOSITION_FILENAME = "phi_scrub_disposition.json"
+PHI_REVIEW_QUEUE_FILENAME = "phi_review_queue.json"
+PHI_DISPOSITION_BASELINE_FILENAME = "phi_disposition_baseline.json"
+# Operator-maintained sign-off file, also beside the audit envelope.
+PHI_REVIEW_SIGNOFF_FILENAME = "phi_review_signoff.yaml"
+
 _DEFAULT_MAX_JITTER_DAYS = 30
 _DEFAULT_ORPHAN_THRESHOLD = 10
 _DEFAULT_AGE_CAP_THRESHOLD = 89
@@ -177,12 +200,16 @@ _HEX_TO_ALPHA = str.maketrans("0123456789abcdef", "abcdefghijklmnop")
 
 _POSTURE_SAFE_HARBOR = "safe_harbor"
 _POSTURE_LIMITED_DATASET = "limited_dataset"
-_VALID_POSTURES = frozenset({_POSTURE_SAFE_HARBOR, _POSTURE_LIMITED_DATASET})
+_POSTURE_ICMR_CODED = "icmr_coded_dataset"
+_VALID_POSTURES = frozenset(
+    {_POSTURE_SAFE_HARBOR, _POSTURE_LIMITED_DATASET, _POSTURE_ICMR_CODED}
+)
 
 _KEY_FILE_MODE = 0o600
 _KEY_HEX_LEN = 64  # 32 bytes = 64 hex chars
 
 _LIMITED_DATASET_AUTHORITY = "authorities/phi_limited_dataset.md"
+_ICMR_CODED_AUTHORITY = "authorities/phi_icmr_coded_dataset.md"
 
 # Action priority (first match wins when walking a row's fields).
 # keep > birthdate > drop > cap > generalize > suppress > date > id
@@ -214,6 +241,25 @@ class PHIKeyPermissionError(PHIScrubError):
 class PHIQuarantineOverflowError(PHIScrubError):
     """Raised when orphan-row count exceeds the configured threshold."""
 
+
+class PHIDateParseError(PHIScrubError):
+    """Raised when a date-classified column holds unparseable non-sentinel
+    values past ``date_unparsed_threshold`` (Step 1 — fail-closed jitter)."""
+
+
+class PHIPolicyViolationError(PHIScrubError):
+    """Raised when a resolved action violates a ``must_drop`` or
+    ``must_keep`` guard (Step 3 — disposition policy)."""
+
+
+class PHIRuleConflictError(PHIScrubError):
+    """Raised when a ``keep`` rule shadows birthdate/drop/date/id/
+    redundant_subject_id with no acknowledging ``keep_overrides`` entry."""
+
+
+class PHIReviewPendingError(PHIScrubError):
+    """Raised when an unresolved destructive review-queue entry from the
+    previous run blocks this run until an operator signs off (Step 11e)."""
 
 # ── Config ───────────────────────────────────────────────────────────────────
 
@@ -287,6 +333,46 @@ class GeneralizeRule:
         return bool(self.pattern.search(name))
 
 
+class MustRule:
+    """Compiled ``must_drop`` / ``must_keep`` guard — citation + patterns.
+
+    Absolute: :func:`validate_rule_catalog` raises when a matching column
+    resolves to anything other than the mandated action. Never overridable
+    by ``keep_overrides`` or an SoT declaration.
+    """
+
+    __slots__ = ("basis", "patterns")
+
+    def __init__(self, basis: str, patterns: list[re.Pattern[str]]) -> None:
+        self.basis = basis
+        self.patterns = patterns
+
+    def matches(self, name: str) -> bool:
+        return any(p.search(name) for p in self.patterns)
+
+
+class KeepOverrideRule:
+    """Declared acknowledgement that a ``keep`` rule shadows a more-specific
+    PHI rule for *column* — a genuine false-positive guard, not an oversight.
+
+    Consumed by :func:`validate_rule_catalog`: a keep rule shadowing
+    birthdate/drop/date/id/redundant_subject_id with no matching
+    ``keep_overrides`` entry (same column pattern *and* matching
+    ``shadows`` value) is a hard failure. Grants no permission against
+    ``must_drop``.
+    """
+
+    __slots__ = ("pattern", "rationale", "shadows")
+
+    def __init__(self, pattern: re.Pattern[str], shadows: str, rationale: str) -> None:
+        self.pattern = pattern
+        self.shadows = shadows
+        self.rationale = rationale
+
+    def matches(self, name: str) -> bool:
+        return bool(self.pattern.search(name))
+
+
 class PHIScrubConfig:
     """Parsed + compiled scrub configuration.
 
@@ -294,29 +380,45 @@ class PHIScrubConfig:
     throwaway struct (not persisted beyond the host publish run).
 
     Rule priority (first match wins within :func:`_scrub_row`):
-        1. ``keep_patterns`` — allowlist, short-circuits every other rule
-        2. ``birthdate_pattern`` — posture-dependent drop or jitter
-        3. ``drop_patterns`` — field removed from row
-        4. ``cap_rules`` — numeric capped to label
-        5. ``generalize_rules`` — value mapped to broad category
-        6. ``suppress_small_cell_patterns`` — numeric clamped to threshold
-        7. ``date_patterns`` — jitter via SANT
-        8. ``id_patterns`` — HMAC-SHA256 pseudonymize
+        1. ``keep_patterns``       — allowlist, short-circuits every other rule
+        2. ``birthdate_pattern``   — posture-dependent drop or jitter
+        3. ``redundant_subject_id_patterns`` — value-conditional drop/pseudonymize
+        4. ``drop_patterns``       — field removed from row
+        5. ``cap_rules``           — numeric capped to label
+        6. ``generalize_rules``    — value mapped to broad category
+        7. ``suppress_small_cell_patterns`` — numeric clamped to threshold
+        8. ``date_patterns``       — jitter via SANT
+        9. ``id_patterns``         — HMAC-SHA256 pseudonymize
+
+    ``must_drop_rules`` / ``must_keep_rules`` are absolute guards evaluated
+    by :func:`resolve_action` / :func:`validate_rule_catalog` ahead of
+    everything else — see the Disposition Policy in the hardening plan.
     """
 
     __slots__ = (
         "age_cap_label",
         "age_cap_threshold",
+        "age_reference_date",
         "birthdate_pattern",
         "cap_rules",
         "compliance_posture",
+        "content_verification_required",
         "date_patterns",
+        "date_sentinels",
+        "date_value_sentinels",
+        "date_unparsed_accept",
+        "date_unparsed_threshold",
         "drop_patterns",
         "generalize_rules",
         "id_patterns",
+        "keep_override_rules",
         "keep_patterns",
         "max_jitter_days",
+        "must_drop_rules",
+        "must_keep_rules",
+        "non_subject_datasets",
         "orphan_quarantine_threshold",
+        "redundant_subject_id_patterns",
         "small_cell_threshold",
         "subject_id_fields",
         "suppress_small_cell_patterns",
@@ -340,6 +442,17 @@ class PHIScrubConfig:
         age_cap_threshold: int = _DEFAULT_AGE_CAP_THRESHOLD,
         age_cap_label: str = _DEFAULT_AGE_CAP_LABEL,
         small_cell_threshold: int = _DEFAULT_SMALL_CELL_THRESHOLD,
+        date_sentinels: frozenset[str] = frozenset(),
+        date_value_sentinels: frozenset[str] = frozenset(),
+        date_unparsed_threshold: int = 0,
+        date_unparsed_accept: frozenset[str] = frozenset(),
+        non_subject_datasets: tuple[str, ...] = (),
+        must_drop_rules: list[MustRule] | None = None,
+        must_keep_rules: list[MustRule] | None = None,
+        keep_override_rules: list[KeepOverrideRule] | None = None,
+        redundant_subject_id_patterns: list[IdRule] | None = None,
+        age_reference_date: date | None = None,
+        content_verification_required: tuple[str, ...] = (),
     ) -> None:
         if compliance_posture not in _VALID_POSTURES:
             raise PHIScrubError(
@@ -354,6 +467,10 @@ class PHIScrubConfig:
             raise PHIScrubError(f"age_cap_threshold must be >= 0, got {age_cap_threshold}")
         if small_cell_threshold < 1:
             raise PHIScrubError(f"small_cell_threshold must be >= 1, got {small_cell_threshold}")
+        if date_unparsed_threshold < 0:
+            raise PHIScrubError(
+                f"date_unparsed_threshold must be >= 0, got {date_unparsed_threshold}"
+            )
         self.compliance_posture = compliance_posture
         self.subject_id_fields = subject_id_fields
         self.date_patterns = date_patterns
@@ -369,6 +486,17 @@ class PHIScrubConfig:
         self.age_cap_threshold = age_cap_threshold
         self.age_cap_label = age_cap_label
         self.small_cell_threshold = small_cell_threshold
+        self.date_sentinels = date_sentinels
+        self.date_value_sentinels = date_value_sentinels
+        self.date_unparsed_threshold = date_unparsed_threshold
+        self.date_unparsed_accept = date_unparsed_accept
+        self.non_subject_datasets = non_subject_datasets
+        self.must_drop_rules = must_drop_rules or []
+        self.must_keep_rules = must_keep_rules or []
+        self.keep_override_rules = keep_override_rules or []
+        self.redundant_subject_id_patterns = redundant_subject_id_patterns or []
+        self.age_reference_date = age_reference_date
+        self.content_verification_required = content_verification_required
 
     def field_is_keep(self, name: str) -> bool:
         """Return True if *name* matches any ``keep_fields`` pattern.
@@ -402,8 +530,7 @@ class PHIScrubConfig:
         """Return True if *name* matches any ``date_fields`` pattern.
 
         Birthdate fields are excluded here — they are handled separately via
-        :meth:`field_is_birthdate` so Safe Harbor drops can be distinguished
-        from jitter events.
+        :meth:`field_is_birthdate` so drop can be distinguished from jitter.
         """
         if self.birthdate_pattern is not None and self.birthdate_pattern.search(name):
             return False
@@ -429,6 +556,79 @@ class PHIScrubConfig:
     def field_is_birthdate(self, name: str) -> bool:
         return self.birthdate_pattern is not None and bool(self.birthdate_pattern.search(name))
 
+    def value_is_date_sentinel(self, value: Any) -> bool:
+        """True when *value* is a declared non-date literal allowed in a
+        date column (Step 1). Absent config -> empty set -> always False."""
+        if not isinstance(value, str):
+            return False
+        return value.strip().lower() in self.date_sentinels
+
+    def value_is_date_value_sentinel(self, value: Any) -> bool:
+        """True when *value* is a documented placeholder date that IS
+        syntactically valid (e.g. ``1900-01-01`` for "unknown date") — checked
+        BEFORE ``shift_date`` is attempted, because a value this recognizes
+        would otherwise parse successfully and be silently jittered into a
+        plausible-looking fake historical date. The caller redacts a match
+        to ``None`` rather than preserving it raw — unlike a string sentinel
+        such as ``"na"``, this value could coincidentally be a genuine
+        calendar date, so it must never appear verbatim in published output.
+        Distinct from ``date_sentinels``, which only ever applies after a
+        parse failure. Absent config -> empty set -> always False."""
+        if not isinstance(value, str):
+            return False
+        return value.strip().lower() in self.date_value_sentinels
+
+    def redundant_subject_id_label_for(self, name: str) -> str | None:
+        """Return the semantic label for *name* if it matches a
+        ``redundant_subject_id_fields`` pattern, else None (Step 4)."""
+        for rule in self.redundant_subject_id_patterns:
+            if rule.matches(name):
+                return rule.label
+        return None
+
+    def must_drop_match(self, name: str) -> MustRule | None:
+        """Return the first matching ``must_drop`` :class:`MustRule`, or None."""
+        for rule in self.must_drop_rules:
+            if rule.matches(name):
+                return rule
+        return None
+
+    def must_keep_match(self, name: str) -> MustRule | None:
+        """Return the first matching ``must_keep`` :class:`MustRule`, or None."""
+        for rule in self.must_keep_rules:
+            if rule.matches(name):
+                return rule
+        return None
+
+    def keep_override_for(self, name: str) -> KeepOverrideRule | None:
+        """Return the first matching :class:`KeepOverrideRule`, or None."""
+        for rule in self.keep_override_rules:
+            if rule.matches(name):
+                return rule
+        return None
+
+    def dataset_has_subject_column(self, dataset_file_name: str) -> bool:
+        """False when *dataset_file_name* matches a ``non_subject_datasets``
+        substring (Step 12b) — such datasets share one per-file date offset
+        instead of a per-subject offset."""
+        return not any(token in dataset_file_name for token in self.non_subject_datasets)
+
+
+def _resolve_authority_note(path: Path, suffix: str) -> Path:
+    """Resolve an authority-note path for the study pack that *path* lives in.
+
+    Tries *path*'s own directory first — the natural location when *path*
+    was itself resolved from a study pack (``config.resolve_study_pack``
+    returns the pack dir; ``phi_scrub.yaml`` and ``authorities/`` are
+    siblings there). Falls back to the active study's pack under
+    ``config.BASE_DIR`` for callers that pass a scrub config living outside
+    any pack layout (e.g. a bare tmp-path config in tests).
+    """
+    candidate = path.parent / suffix
+    if candidate.is_file():
+        return candidate
+    return Path(config.BASE_DIR) / "study_packs" / config.STUDY_NAME / suffix
+
 
 def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
     """Load + compile the scrub config. Returns ``None`` if file is absent.
@@ -438,7 +638,8 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
     dropping a YAML file in place.
 
     When ``compliance_posture: limited_dataset`` is set, the function also
-    verifies the authority note exists at :data:`_LIMITED_DATASET_AUTHORITY`.
+    verifies the authority note exists alongside *path* (the study pack
+    directory) at :data:`_LIMITED_DATASET_AUTHORITY`.
 
     Loads the full rule set: keep / drop / cap / generalize / suppress /
     date / id patterns plus generalization_maps, age_cap, and
@@ -456,12 +657,21 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
 
     posture = str(raw.get("compliance_posture", _POSTURE_SAFE_HARBOR))
     if posture == _POSTURE_LIMITED_DATASET:
-        authority = Path(config.BASE_DIR) / _LIMITED_DATASET_AUTHORITY
+        authority = _resolve_authority_note(path, _LIMITED_DATASET_AUTHORITY)
         if not authority.is_file():
             raise PHIScrubError(
                 f"compliance_posture is 'limited_dataset' but the required "
                 f"authority note is missing: {authority}. Create it to document "
                 f"IRB approval + Data Use Agreement before running."
+            )
+    elif posture == _POSTURE_ICMR_CODED:
+        authority = _resolve_authority_note(path, _ICMR_CODED_AUTHORITY)
+        if not authority.is_file():
+            raise PHIScrubError(
+                f"compliance_posture is 'icmr_coded_dataset' but the required "
+                f"authority note is missing: {authority}. Create it to document "
+                f"the ICMR 2017 s2.3 basis, key-separation practice, and "
+                f"small_cell_threshold rationale before running."
             )
 
     # Accept either `subject_id_fields` (plural, list) or legacy
@@ -596,6 +806,134 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
             )
         )
 
+    # must_drop / must_keep — absolute guards (Step 3). Each entry is a
+    # mapping with 'basis' (citation string) + 'patterns' (list of regex).
+    def _compile_must_rules(key: str) -> list[MustRule]:
+        raw_rules = raw.get(key) or []
+        if not isinstance(raw_rules, list):
+            raise PHIScrubError(f"{key} must be a list of {{basis, patterns}} mappings")
+        rules: list[MustRule] = []
+        for idx, entry in enumerate(raw_rules):
+            if not isinstance(entry, dict):
+                raise PHIScrubError(f"{key}[{idx}] must be a mapping with 'basis' + 'patterns'")
+            basis = entry.get("basis")
+            raw_patterns = entry.get("patterns")
+            if not basis or not isinstance(raw_patterns, list) or not raw_patterns:
+                raise PHIScrubError(
+                    f"{key}[{idx}] requires 'basis' (citation string) and a "
+                    f"non-empty 'patterns' list"
+                )
+            rules.append(
+                MustRule(
+                    basis=str(basis),
+                    patterns=[re.compile(str(p), re.IGNORECASE) for p in raw_patterns],
+                )
+            )
+        return rules
+
+    must_drop_rules = _compile_must_rules("must_drop")
+    must_keep_rules = _compile_must_rules("must_keep")
+
+    # keep_overrides — declared acknowledgement of a keep-shadows-PHI-rule
+    # conflict (Step 6c / consumed by validate_rule_catalog, Step 10a).
+    raw_keep_overrides = raw.get("keep_overrides") or []
+    if not isinstance(raw_keep_overrides, list):
+        raise PHIScrubError("keep_overrides must be a list of {column, shadows, rationale} mappings")
+    keep_override_rules: list[KeepOverrideRule] = []
+    for idx, entry in enumerate(raw_keep_overrides):
+        if not isinstance(entry, dict):
+            raise PHIScrubError(f"keep_overrides[{idx}] must be a mapping")
+        column = entry.get("column")
+        shadows = entry.get("shadows")
+        rationale = entry.get("rationale")
+        if not column or not shadows or not rationale:
+            raise PHIScrubError(
+                f"keep_overrides[{idx}] requires 'column' (regex), 'shadows' "
+                f"(the action it shadows), and 'rationale'"
+            )
+        keep_override_rules.append(
+            KeepOverrideRule(
+                pattern=re.compile(str(column), re.IGNORECASE),
+                shadows=str(shadows),
+                rationale=str(rationale),
+            )
+        )
+
+    # redundant_subject_id_fields — value-conditional (Step 4). Same shape
+    # as id_fields: {pattern, label}.
+    raw_redundant = raw.get("redundant_subject_id_fields") or []
+    if not isinstance(raw_redundant, list):
+        raise PHIScrubError("redundant_subject_id_fields must be a list of {pattern, label} mappings")
+    redundant_subject_id_patterns: list[IdRule] = []
+    for idx, entry in enumerate(raw_redundant):
+        if not isinstance(entry, dict):
+            raise PHIScrubError(f"redundant_subject_id_fields[{idx}] must be a mapping")
+        pat_str = entry.get("pattern")
+        label = entry.get("label")
+        if not pat_str or not label:
+            raise PHIScrubError(
+                f"redundant_subject_id_fields[{idx}] requires 'pattern' and 'label'"
+            )
+        redundant_subject_id_patterns.append(
+            IdRule(pattern=re.compile(str(pat_str), re.IGNORECASE), label=str(label))
+        )
+
+    # date_sentinels — declared non-date literals (Step 1). No built-in
+    # default; absent key -> empty set -> every unparsed value is redacted.
+    raw_sentinels = raw.get("date_sentinels") or []
+    if not isinstance(raw_sentinels, list):
+        raise PHIScrubError("date_sentinels must be a list of strings")
+    date_sentinels = frozenset(str(s).strip().lower() for s in raw_sentinels)
+
+    # date_value_sentinels — documented placeholder dates that ARE
+    # syntactically valid (Step 1 hardening follow-up). Checked before
+    # shift_date, unlike date_sentinels which only applies post-parse-failure.
+    raw_value_sentinels = raw.get("date_value_sentinels") or []
+    if not isinstance(raw_value_sentinels, list):
+        raise PHIScrubError("date_value_sentinels must be a list of strings")
+    date_value_sentinels = frozenset(str(s).strip().lower() for s in raw_value_sentinels)
+
+    date_unparsed_threshold = int(raw.get("date_unparsed_threshold", 0))
+    raw_accept = raw.get("date_unparsed_accept") or []
+    if not isinstance(raw_accept, list):
+        raise PHIScrubError("date_unparsed_accept must be a list of '<file>:<COLUMN>' strings")
+    date_unparsed_accept = frozenset(str(s) for s in raw_accept)
+
+    # non_subject_datasets — Step 12b. Absent -> every dataset is treated
+    # as subject-bearing (fail-closed: unresolvable rows quarantine).
+    raw_non_subject = raw.get("non_subject_datasets") or []
+    if not isinstance(raw_non_subject, list):
+        raise PHIScrubError("non_subject_datasets must be a list of filename substrings")
+    non_subject_datasets = tuple(str(s) for s in raw_non_subject)
+
+    # content_verification_required — Step 11e. Columns that were manually
+    # un-shadowed from `keep` to `drop` because content ambiguity could not
+    # be resolved by pattern alone (e.g. CXR_SIGN / SC_PROCSIG: signature
+    # field by name, but may hold a numeric measurement). Drop is applied
+    # now; each listed column still surfaces a one-time destructive review
+    # entry until an operator's phi_review_signoff.yaml confirms the drop
+    # (or the column moves to must_keep + keep_overrides instead).
+    raw_content_verify = raw.get("content_verification_required") or []
+    if not isinstance(raw_content_verify, list):
+        raise PHIScrubError("content_verification_required must be a list of column names")
+    content_verification_required = tuple(str(s) for s in raw_content_verify)
+
+    # age_reference_date — only required when the Step 5b no-age-column
+    # branch activates; a missing value there is a hard failure at scrub
+    # time (not here, since load_scrub_config has no header knowledge yet).
+    raw_age_ref = raw.get("age_reference_date")
+    age_reference_date: date | None = None
+    if raw_age_ref is not None:
+        if isinstance(raw_age_ref, date):
+            age_reference_date = raw_age_ref if not isinstance(raw_age_ref, datetime) else raw_age_ref.date()
+        else:
+            try:
+                age_reference_date = datetime.strptime(str(raw_age_ref), "%Y-%m-%d").date()
+            except ValueError as exc:
+                raise PHIScrubError(
+                    f"age_reference_date must be an ISO date (YYYY-MM-DD), got {raw_age_ref!r}"
+                ) from exc
+
     return PHIScrubConfig(
         compliance_posture=posture,
         subject_id_fields=subject_id_fields,
@@ -612,7 +950,158 @@ def load_scrub_config(path: Path | None = None) -> PHIScrubConfig | None:
         age_cap_threshold=default_cap_threshold,
         age_cap_label=default_cap_label,
         small_cell_threshold=small_cell_threshold,
+        date_sentinels=date_sentinels,
+        date_value_sentinels=date_value_sentinels,
+        date_unparsed_threshold=date_unparsed_threshold,
+        date_unparsed_accept=date_unparsed_accept,
+        non_subject_datasets=non_subject_datasets,
+        must_drop_rules=must_drop_rules,
+        must_keep_rules=must_keep_rules,
+        keep_override_rules=keep_override_rules,
+        redundant_subject_id_patterns=redundant_subject_id_patterns,
+        age_reference_date=age_reference_date,
+        content_verification_required=content_verification_required,
     )
+
+# ── Disposition policy resolution (Step 3, Step 10a) ───────────────────────
+
+_RESOLVE_BIRTHDATE_DROP = "birthdate_drop"
+_RESOLVE_JITTER_DATE = "jitter_date"
+_RESOLVE_PSEUDONYMIZE = "pseudonymize"
+_RESOLVE_REDUNDANT_SUBJECT_ID = "redundant_subject_id"
+_RESOLVE_NONE = "none"
+
+
+def _would_jitter_birthdate(cfg: PHIScrubConfig, *, age_variable_present: bool) -> bool:
+    """Whether birthdate is jittered rather than dropped — mirrors the
+    Step 5c decision applied per-row in :func:`_scrub_row`."""
+    return cfg.compliance_posture == _POSTURE_LIMITED_DATASET or not age_variable_present
+
+
+def resolve_action(
+    cfg: PHIScrubConfig,
+    name: str,
+    *,
+    age_variable_present: bool = True,
+) -> str:
+    """Resolve the column-NAME-only disposition for *name* — never reads a
+    dataset value.
+
+    Mirrors the row-level rule priority in :func:`_scrub_row` for every
+    rule that is name-only. The one value-conditional rule
+    (redundant-subject-id drop-vs-pseudonymize) resolves here to the
+    constant tag ``"redundant_subject_id"`` since the actual choice depends
+    on a row value this function never sees. Used by
+    :func:`validate_rule_catalog` (Step 10a) and
+    :func:`crosscheck_sot_policy` (Step 10b).
+
+    Resolution order: must_drop -> keep -> birthdate -> redundant_subject_id
+    -> drop -> cap -> generalize -> suppress -> date -> id -> none.
+
+    Class B preference: when the raw resolution is "drop" *and* an
+    ``id_fields`` pattern also matches *and* ``must_drop`` does not match,
+    the resolution upgrades to "pseudonymize" — a Class A/B disagreement
+    never resolves to deletion.
+    """
+    if cfg.must_drop_match(name) is not None:
+        return _ACTION_DROP
+
+    if cfg.field_is_keep(name):
+        action = _ACTION_KEEP
+    elif cfg.field_is_birthdate(name):
+        jitter = _would_jitter_birthdate(cfg, age_variable_present=age_variable_present)
+        action = _RESOLVE_JITTER_DATE if jitter else _RESOLVE_BIRTHDATE_DROP
+    elif cfg.redundant_subject_id_label_for(name) is not None:
+        action = _RESOLVE_REDUNDANT_SUBJECT_ID
+    elif cfg.field_is_drop(name):
+        action = _ACTION_DROP
+    elif cfg.cap_rule_for(name) is not None:
+        action = _ACTION_CAP
+    elif cfg.generalize_rule_for(name) is not None:
+        action = _ACTION_GENERALIZE
+    elif cfg.field_is_suppress_small_cell(name):
+        action = _ACTION_SUPPRESS
+    elif cfg.field_is_date(name):
+        action = _RESOLVE_JITTER_DATE
+    elif cfg.id_label_for(name) is not None:
+        action = _RESOLVE_PSEUDONYMIZE
+    else:
+        action = _RESOLVE_NONE
+
+    if action == _ACTION_DROP and cfg.id_label_for(name) is not None:
+        action = _RESOLVE_PSEUDONYMIZE
+
+    return action
+
+
+def _shadowed_action_for(
+    cfg: PHIScrubConfig, name: str, *, age_variable_present: bool
+) -> str | None:
+    """What action would apply to *name* if ``keep`` did not short-circuit
+    it, or None when nothing more specific would have matched (an
+    unremarkable false-positive-guard keep). Restricted to
+    birthdate/redundant_subject_id/drop/date/id per the plan — cap /
+    generalize / suppress shadows are not guarded here."""
+    if cfg.field_is_birthdate(name):
+        jitter = _would_jitter_birthdate(cfg, age_variable_present=age_variable_present)
+        return "date" if jitter else "birthdate"
+    if cfg.redundant_subject_id_label_for(name) is not None:
+        return "redundant_subject_id"
+    if cfg.field_is_drop(name):
+        return "drop"
+    if cfg.field_is_date(name):
+        return "date"
+    if cfg.id_label_for(name) is not None:
+        return "id"
+    return None
+
+
+def validate_rule_catalog(
+    cfg: PHIScrubConfig,
+    headers: Iterable[str],
+    *,
+    age_variable_present: bool = True,
+) -> None:
+    """Validate the compiled rule catalog against *headers* — column NAMES
+    only, never dataset values — before any row is scrubbed (Step 10a).
+
+    Raises:
+        PHIPolicyViolationError: a ``must_drop`` name resolves to anything
+            but drop, or a ``must_keep`` name resolves to drop / birthdate
+            drop / no rule at all.
+        PHIRuleConflictError: a ``keep`` rule shadows birthdate/drop/date/
+            id/redundant_subject_id with no matching ``keep_overrides``
+            entry (same column, matching ``shadows`` tag).
+    """
+    for name in headers:
+        must_drop_rule = cfg.must_drop_match(name)
+        must_keep_rule = cfg.must_keep_match(name)
+        action = resolve_action(cfg, name, age_variable_present=age_variable_present)
+
+        if must_drop_rule is not None and action != _ACTION_DROP:
+            raise PHIPolicyViolationError(
+                f"must_drop violation: column={name!r} guard={must_drop_rule.basis!r} "
+                f"resolved_action={action!r} (must resolve to drop)"
+            )
+        if must_keep_rule is not None and action in (
+            _ACTION_DROP,
+            _RESOLVE_BIRTHDATE_DROP,
+            _RESOLVE_NONE,
+        ):
+            raise PHIPolicyViolationError(
+                f"must_keep violation: column={name!r} guard={must_keep_rule.basis!r} "
+                f"resolved_action={action!r} (must not resolve to drop/null)"
+            )
+
+        if cfg.field_is_keep(name):
+            shadowed = _shadowed_action_for(cfg, name, age_variable_present=age_variable_present)
+            if shadowed is not None:
+                override = cfg.keep_override_for(name)
+                if override is None or override.shadows != shadowed:
+                    raise PHIRuleConflictError(
+                        f"column={name!r} keep_pattern shadows a {shadowed!r} rule with "
+                        f"no matching keep_overrides entry (shadows={shadowed!r})"
+                    )
 
 
 # ── Key management ──────────────────────────────────────────────────────────
@@ -740,6 +1229,12 @@ def _format_date(dt: datetime, *, fmt: str, has_time: bool, ampm: str | None) ->
         date_part = f"{dt.month}/{dt.day}/{dt.year:04d}"
     elif fmt == "dmy":
         date_part = f"{dt.day}/{dt.month}/{dt.year:04d}"
+    elif fmt == "compact_dmy":
+        return f"{dt.day:02d}{dt.month:02d}{dt.year:04d}"
+    elif fmt == "compact_mdy":
+        return f"{dt.month:02d}{dt.day:02d}{dt.year:04d}"
+    elif fmt == "compact_ymd":
+        return f"{dt.year:04d}{dt.month:02d}{dt.day:02d}"
     else:
         raise PHIScrubError(f"unsupported date format: {fmt}")
 
@@ -971,6 +1466,60 @@ def _now_utc_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+# Legacy "all nines" missing/unknown-value convention extended to dates
+# (e.g. "99-99-9999", "9999-99-99", "99999999"). Every one of these is
+# already guaranteed unparseable as a calendar date (99 is never a valid
+# month or day), so this only ever matches inside the post-parse-failure
+# branch below — it can never misclassify a real date, since a real date
+# always has at least one non-9 digit somewhere in day/month/year.
+_ALL_NINES_SENTINEL_MIN_DIGITS = 2
+
+
+def _looks_like_all_nines_placeholder(value: str) -> bool:
+    """True when *value*'s digits are ALL '9' (e.g. '99-99-9999',
+    '99999999') — the classic legacy missing/unknown-date convention."""
+    digits_only = re.sub(r"\D", "", value)
+    return len(digits_only) >= _ALL_NINES_SENTINEL_MIN_DIGITS and set(digits_only) == {"9"}
+
+
+def _jitter_or_redact_date(
+    raw_val: Any,
+    *,
+    field: str,
+    offset: int,
+    date_locales: dict[str, str] | None,
+    cfg: PHIScrubConfig,
+    bump: Callable[[str, str], None],
+) -> Any:
+    """Shared Step-1 fail-closed date transform.
+
+    Four-way outcome: a documented placeholder that would otherwise parse
+    successfully (e.g. "1900-01-01" for "unknown date") -> redacted to
+    ``None`` before shift_date is even tried — never preserved raw, because
+    unlike a string sentinel this value COULD coincidentally be a genuine
+    calendar date, so nothing about this path may ever publish it verbatim;
+    parses -> jittered value; unparsed but a declared string sentinel or an
+    all-nines placeholder (e.g. "99-99-9999", structurally never a valid
+    calendar date under any locale) -> value preserved unchanged; unparsed
+    and undeclared -> redacted to ``None``. The raw value never survives a
+    failed parse silently — that was the fail-open behind 24,669 raw
+    published dates.
+    """
+    raw_str = str(raw_val)
+    if cfg.value_is_date_value_sentinel(raw_val):
+        bump("date-value-sentinel-redacted", field)
+        return None
+    shifted = shift_date(raw_str, offset, field_name=field, date_locales=date_locales)
+    if shifted is not None:
+        bump("date", field)
+        return shifted
+    if cfg.value_is_date_sentinel(raw_val) or _looks_like_all_nines_placeholder(raw_str):
+        bump("date-sentinel", field)
+        return raw_val
+    bump("date-unparsed-redacted", field)
+    return None
+
+
 def _scrub_row(
     row: dict[str, Any],
     *,
@@ -978,22 +1527,28 @@ def _scrub_row(
     key: bytes,
     date_locales: dict[str, str] | None = None,
     dataset_has_subject_col: bool = True,
+    age_variable_present: bool = True,
 ) -> tuple[dict[str, Any] | None, dict[str, int]]:
     """Scrub a single row. Return (scrubbed_row_or_None, per-field-counts).
 
     Priority (first match wins per field):
-        1. keep_patterns       — allowlist, short-circuits every other rule
-        2. birthdate_pattern   — posture-dependent drop or jitter
-        3. drop_patterns       — field removed from row entirely
-        4. cap_rules           — numeric > threshold → label
-        5. generalize_rules    — value looked up in mapping
-        6. suppress_small_cell — numeric > threshold → threshold
-        7. date_patterns       — jitter via SANT per-subject offset
-        8. id_patterns         — HMAC-SHA256 pseudonymize
+        1. keep_patterns          — allowlist, short-circuits every other rule
+        2. birthdate_pattern      — posture-dependent drop or jitter
+        3. redundant_subject_id_patterns — value-conditional drop/pseudonymize
+        4. drop_patterns          — field removed from row entirely
+        5. cap_rules              — numeric > threshold -> label
+        6. generalize_rules       — value looked up in mapping
+        7. suppress_small_cell    — numeric > threshold -> threshold
+        8. date_patterns          — jitter via SANT per-subject offset,
+                                     fail-closed: unparsed + undeclared -> null
+        9. id_patterns            — HMAC-SHA256 pseudonymize
 
     Returns ``None`` for the row when no resolvable subject_id — caller
     quarantines. Per-field counts are keyed by scope label
     (``phi-scrub-drop:FIELD``, ``phi-scrub-cap:FIELD`` etc.).
+
+    *age_variable_present* is computed once per study (Step 5b, study
+    scope) and passed through unchanged for every row.
     """
     if "_metadata" in row and isinstance(row["_metadata"], dict) and row["_metadata"].get("type") == "column_structure":
         row[_SCRUB_MARKER_FIELD] = _SCRUB_VERSION
@@ -1010,6 +1565,8 @@ def _scrub_row(
         k = f"phi-scrub-{scope}:{field}"
         counts[k] = counts.get(k, 0) + 1
 
+    jitter_birthdate = _would_jitter_birthdate(cfg, age_variable_present=age_variable_present)
+
     # Iterate a snapshot of keys so we can mutate row in place.
     for field in list(row.keys()):
         # Skip pipeline-internal metadata
@@ -1018,22 +1575,65 @@ def _scrub_row(
 
         # 1. KEEP — allowlist short-circuits every other rule
         if cfg.field_is_keep(field):
+            if cfg.keep_override_for(field) is not None:
+                _bump("keep-override", field)
             continue
 
-        # 2. BIRTHDATE — posture-dependent drop or jitter.
-        # Safe Harbor drops; Limited Dataset falls through to rule 7 (date jitter).
-        if cfg.field_is_birthdate(field) and cfg.compliance_posture == _POSTURE_SAFE_HARBOR:
-            del row[field]
-            _bump("birthdate-drop", field)
+        # 2. BIRTHDATE — posture-dependent drop or jitter (Step 5c). Under
+        # icmr_coded_dataset/safe_harbor with an age variable present the
+        # field is dropped; under limited_dataset, or when the study has no
+        # separate age variable at all, it is jittered like any other date
+        # (dropping it in that case would destroy age entirely).
+        if cfg.field_is_birthdate(field):
+            if not jitter_birthdate:
+                del row[field]
+                _bump("birthdate-drop", field)
+                continue
+            raw_val = row[field]
+            if raw_val is None or (isinstance(raw_val, str) and not raw_val.strip()):
+                continue
+            if not age_variable_present and cfg.age_reference_date is not None:
+                # Step 5d: age is no longer separately capped once DOB is
+                # jittered instead of dropped — recompute it from the RAW
+                # DOB against the fixed reference date and drop the row's
+                # DOB outright when the derived age exceeds the HIPAA cap,
+                # instead of jittering it.
+                parsed_dob = parse_date(str(raw_val), field_name=field, date_locales=date_locales)
+                if parsed_dob is not None:
+                    age_years = (cfg.age_reference_date - parsed_dob.dt.date()).days // 365
+                    if age_years > cfg.age_cap_threshold:
+                        del row[field]
+                        _bump("birthdate-age-cap-drop", field)
+                        continue
+            row[field] = _jitter_or_redact_date(
+                raw_val, field=field, offset=offset, date_locales=date_locales, cfg=cfg, bump=_bump
+            )
             continue
 
-        # 3. DROP — field removed entirely from this row
+        # 3. REDUNDANT SUBJECT ID — value-conditional (Step 4). Identical to
+        # the row's resolved subject id -> pure duplicate, drop (Class A).
+        # Different -> a mis-collated CRF page or transcription error;
+        # pseudonymise and flag rather than silently discard the discrepancy.
+        rsid_label = cfg.redundant_subject_id_label_for(field)
+        if rsid_label is not None:
+            raw_val = row[field]
+            if raw_val is None or not str(raw_val).strip():
+                continue
+            if str(raw_val).strip().casefold() == subj_id.strip().casefold():
+                del row[field]
+                _bump("redundant-subjid-drop", field)
+            else:
+                row[field] = pseudo_id(str(raw_val).strip(), key=key, label=rsid_label)
+                _bump("subjid-mismatch-pseudonymize", field)
+            continue
+
+        # 4. DROP — field removed entirely from this row
         if cfg.field_is_drop(field):
             del row[field]
             _bump("drop", field)
             continue
 
-        # 4. CAP — numeric > threshold collapsed to label
+        # 5. CAP — numeric > threshold collapsed to label
         cap_rule = cfg.cap_rule_for(field)
         if cap_rule is not None:
             raw_val = row[field]
@@ -1047,7 +1647,7 @@ def _scrub_row(
                 _bump("cap", field)
             continue
 
-        # 5. GENERALIZE — value mapped to broader category
+        # 6. GENERALIZE — value mapped to broader category
         gen_rule = cfg.generalize_rule_for(field)
         if gen_rule is not None:
             raw_val = row[field]
@@ -1059,7 +1659,7 @@ def _scrub_row(
                 _bump("generalize", field)
             continue
 
-        # 6. SUPPRESS_SMALL_CELL — numeric > threshold clamped to threshold
+        # 7. SUPPRESS_SMALL_CELL — numeric > threshold clamped to threshold
         if cfg.field_is_suppress_small_cell(field):
             raw_val = row[field]
             if raw_val is None or (isinstance(raw_val, str) and not raw_val.strip()):
@@ -1072,21 +1672,19 @@ def _scrub_row(
                 _bump("suppress-small-cell", field)
             continue
 
-        # 7. DATE — per-subject constant-offset jitter (includes birthdate
-        # when posture = limited_dataset)
-        if cfg.field_is_date(field) or (
-            cfg.field_is_birthdate(field) and cfg.compliance_posture == _POSTURE_LIMITED_DATASET
-        ):
+        # 8. DATE — per-subject constant-offset jitter, fail-closed: a
+        # value that neither parses nor is a declared sentinel is redacted
+        # to null rather than published raw (Step 1).
+        if cfg.field_is_date(field):
             raw_val = row[field]
             if raw_val is None or (isinstance(raw_val, str) and not raw_val.strip()):
                 continue
-            shifted = shift_date(str(raw_val), offset, field_name=field, date_locales=date_locales)
-            if shifted is not None:
-                row[field] = shifted
-                _bump("date", field)
+            row[field] = _jitter_or_redact_date(
+                raw_val, field=field, offset=offset, date_locales=date_locales, cfg=cfg, bump=_bump
+            )
             continue
 
-        # 8. ID — HMAC-SHA256 pseudonymize with domain-separated label
+        # 9. ID — HMAC-SHA256 pseudonymize with domain-separated label
         id_label = cfg.id_label_for(field)
         if id_label is not None:
             raw_val = row[field]
@@ -1105,14 +1703,17 @@ def _scrub_file(
     cfg: PHIScrubConfig,
     key: bytes,
     date_locales: dict[str, str] | None = None,
+    age_variable_present: bool = True,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
     """Read *jsonl_path*, scrub each row, return (kept, orphans, counts)."""
     kept: list[dict[str, Any]] = []
     orphans: list[dict[str, Any]] = []
     counts: dict[str, int] = {}
 
-    # A dataset is subject-specific unless it is explicitly the non-subject Air Quality dataset.
-    dataset_has_subject_col = "Air_Quality" not in jsonl_path.name
+    # A dataset is subject-specific unless declared otherwise via
+    # non_subject_datasets (Step 12b) — study-portable, not a hard-coded
+    # study name.
+    dataset_has_subject_col = cfg.dataset_has_subject_column(jsonl_path.name)
 
     with jsonl_path.open("r", encoding="utf-8") as fh:
         for line in fh:
@@ -1137,6 +1738,7 @@ def _scrub_file(
                 key=key,
                 date_locales=date_locales,
                 dataset_has_subject_col=dataset_has_subject_col,
+                age_variable_present=age_variable_present,
             )
             if scrubbed is None:
                 orphans.append(row)
@@ -1286,6 +1888,319 @@ def _emit_as_written_ledger(
             )
         writer.flush()
 
+# ── Step 5b/8/11 helpers ────────────────────────────────────────────────────
+
+
+def _collect_staging_headers(staging_datasets: Path) -> set[str]:
+    """Union of column names across every row of every staged dataset file.
+
+    Reads only ``.keys()`` — never a value. Feeds :func:`validate_rule_catalog`
+    (Step 10a) and the ``age_variable_present`` computation (Step 5b), both of
+    which are column-name-only operations.
+
+    Unions across *all* rows in a file, not just the first, because JSONL
+    rows are not guaranteed to carry identical key sets (a column present
+    only in a later, sparser row must still be validated).
+    """
+    headers: set[str] = set()
+    for jsonl_file in sorted(staging_datasets.glob("*.jsonl")):
+        with jsonl_file.open("r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(row, dict):
+                    headers.update(k for k in row if not k.startswith("__"))
+    return headers
+
+
+_TRANSFORMED_SCOPE_GROUPS: dict[str, str] = {
+    "date": "date",
+    "date-sentinel": "date",
+    "date-unparsed-redacted": "date",
+    "date-value-sentinel-redacted": "date",
+    "id": "id",
+    "subjid-mismatch-pseudonymize": "id",
+}
+
+
+def _build_transformed_manifest(
+    counts_by_file: dict[str, dict[str, int]],
+) -> dict[str, dict[str, list[str]]]:
+    """Per-file sets of fields the scrubber actually TRANSFORMED a value
+    for, grouped by action family (Step 8) — evidence the publish gate
+    consults instead of trusting "classified by a date rule" as a proxy
+    for "transformed". A field appears in the "date" group whether it was
+    jittered, sentinel-preserved, or redacted-to-null — all three are
+    fail-closed outcomes of the Step 1 date branch, never a raw
+    passthrough."""
+    manifest: dict[str, dict[str, set[str]]] = {}
+    for file_name, scope_counts in counts_by_file.items():
+        for scope_field in scope_counts:
+            scope, _, field = scope_field.partition(":")
+            scope = scope.removeprefix("phi-scrub-")
+            group = _TRANSFORMED_SCOPE_GROUPS.get(scope)
+            if group is None:
+                continue
+            manifest.setdefault(file_name, {}).setdefault(group, set()).add(field)
+    return {
+        file_name: {group: sorted(fields) for group, fields in groups.items()}
+        for file_name, groups in manifest.items()
+    }
+
+
+def _class_for_action(action: str) -> str:
+    """Map a resolved action string to its Disposition-Policy class letter."""
+    if action in (_ACTION_DROP, "birthdate_drop"):
+        return "A"
+    if action in ("pseudonymize", "redundant_subject_id"):
+        return "B"
+    if action == "jitter_date":
+        return "C"
+    if action in (_ACTION_CAP, _ACTION_GENERALIZE, _ACTION_SUPPRESS):
+        return "D"
+    if action == _ACTION_KEEP:
+        return "E"
+    return "none"
+
+
+def _build_disposition_manifest(
+    cfg: PHIScrubConfig,
+    headers: Iterable[str],
+    counts_by_file: dict[str, dict[str, int]],
+    *,
+    age_variable_present: bool,
+    sot_declarations: dict[str, tuple[str, str]] | None = None,
+) -> dict[str, Any]:
+    """Emit an explicit, per-column disposition record for every observed
+    header (Step 11b) — the coverage argument for "no leak" on columns
+    that match no scrub rule at all: an explicit ``none`` disposition plus
+    the value-level publish-gate sweep (Steps 8/9), rather than silent
+    trust. ``value_count`` sums the scrub-time event counts recorded for
+    that field across every dataset file — names, rule text, and counts
+    only, never a value (built from :func:`_scrub_file`'s already-computed
+    counts; the data is never re-read)."""
+    field_counts: dict[str, int] = {}
+    field_rule: dict[str, str] = {}
+    for scope_counts in counts_by_file.values():
+        for scope_field, n in scope_counts.items():
+            scope, _, field = scope_field.partition(":")
+            scope = scope.removeprefix("phi-scrub-")
+            field_counts[field] = field_counts.get(field, 0) + n
+            field_rule.setdefault(field, scope)
+
+    sot_declarations = sot_declarations or {}
+    columns: dict[str, Any] = {}
+    for name in sorted(set(headers)):
+        action = resolve_action(cfg, name, age_variable_present=age_variable_present)
+        declared = sot_declarations.get(name)
+        columns[name] = {
+            "resolved_action": action,
+            "class": _class_for_action(action),
+            "matched_rule": field_rule.get(name),
+            "sot_declared": declared[0] if declared else None,
+            "value_count": field_counts.get(name, 0),
+        }
+    return {
+        "generated_utc": _now_utc_iso(),
+        "age_variable_present": age_variable_present,
+        "compliance_posture": cfg.compliance_posture,
+        "columns": columns,
+    }
+
+
+def _build_review_queue(
+    cfg: PHIScrubConfig,
+    headers: Iterable[str],
+    counts_by_file: dict[str, dict[str, int]],
+    *,
+    age_variable_present: bool,
+    sot_disagreements: list[Any],
+    baseline: dict[str, str] | None,
+) -> list[dict[str, Any]]:
+    """Build the Step 11c review queue from six deterministic triggers.
+
+    A column already present in *baseline* with an unchanged resolved
+    action is skipped (Step 11d) — steady-state review is empty; only new
+    or changed columns surface.
+    """
+    baseline = baseline or {}
+    entries: list[dict[str, Any]] = []
+
+    def _is_new_or_changed(column: str, action: str) -> bool:
+        return baseline.get(column) != action
+
+    # keep_shadow — every acknowledged keep_overrides entry that actually
+    # fired for an observed header. Per the plan's 11c table this trigger
+    # is never destructive: the un-shadowed action itself (drop/date/id)
+    # never applies here since keep already won — the entry is purely a
+    # one-time confirmation surface for the operator, not a live conflict.
+    # A genuinely ambiguous shadow (content unclear enough to need a
+    # human decision before publish) is Class A un-shadowed to *drop*
+    # directly in phi_scrub.yaml, which raises PHIRuleConflictError until
+    # explicitly reconciled with a keep_overrides entry.
+    for name in sorted(set(headers)):
+        if not cfg.field_is_keep(name):
+            continue
+        shadowed = _shadowed_action_for(cfg, name, age_variable_present=age_variable_present)
+        if shadowed is None:
+            continue
+        action = resolve_action(cfg, name, age_variable_present=age_variable_present)
+        if not _is_new_or_changed(name, action):
+            continue
+        entries.append(
+            {
+                "column": name,
+                "file": None,
+                "trigger": "keep_shadow",
+                "destructive": False,
+                "count": None,
+                "competing_rules": ["keep", shadowed],
+                "resolution_options": ["add keep_overrides", "narrow the keep"],
+                "status": "open",
+            }
+        )
+
+    # date_unparsed — non-sentinel unparseable values redacted this run.
+    for file_name, scope_counts in counts_by_file.items():
+        for scope_field, n in scope_counts.items():
+            scope, _, field = scope_field.partition(":")
+            if scope.removeprefix("phi-scrub-") != "date-unparsed-redacted":
+                continue
+            entries.append(
+                {
+                    "column": field,
+                    "file": file_name,
+                    "trigger": "date_unparsed",
+                    "destructive": True,
+                    "count": n,
+                    "competing_rules": ["date"],
+                    "resolution_options": [
+                        "declare date_locales",
+                        "add date_sentinels",
+                        "add date_unparsed_accept",
+                    ],
+                    "status": "open",
+                }
+            )
+
+    # sot_disagreement
+    for d in sot_disagreements:
+        entries.append(
+            {
+                "column": d.column,
+                "file": d.form,
+                "trigger": "sot_disagreement",
+                "destructive": d.resolved in (_ACTION_DROP, "birthdate_drop"),
+                "count": None,
+                "competing_rules": [f"sot:{d.declared}", f"scrubber:{d.resolved}"],
+                "resolution_options": ["reconcile the SoT declaration", "add must_keep"],
+                "status": "open",
+            }
+        )
+
+    # subjid_mismatch — a page-level SUBJID<n> copy differed from the
+    # canonical subject id this run.
+    for file_name, scope_counts in counts_by_file.items():
+        for scope_field, n in scope_counts.items():
+            scope, _, field = scope_field.partition(":")
+            if scope.removeprefix("phi-scrub-") != "subjid-mismatch-pseudonymize":
+                continue
+            entries.append(
+                {
+                    "column": field,
+                    "file": file_name,
+                    "trigger": "subjid_mismatch",
+                    "destructive": False,
+                    "count": n,
+                    "competing_rules": ["redundant_subject_id"],
+                    "resolution_options": ["investigate the mis-collated CRF page"],
+                    "status": "open",
+                }
+            )
+
+    # content_verification — a column explicitly listed in
+    # content_verification_required (Step 11e) still resolves to drop this
+    # run. Regenerated every run (no baseline dedup, matching date_unparsed)
+    # so a plain unchanged config keeps requiring a live
+    # phi_review_signoff.yaml entry; the trigger stops firing on its own
+    # once the operator's real remediation (must_keep + keep_overrides)
+    # changes the resolved action away from drop.
+    header_set = set(headers)
+    for name in cfg.content_verification_required:
+        if name not in header_set:
+            continue
+        if resolve_action(cfg, name, age_variable_present=age_variable_present) != _ACTION_DROP:
+            continue
+        entries.append(
+            {
+                "column": name,
+                "file": None,
+                "trigger": "content_verification",
+                "destructive": True,
+                "count": None,
+                "competing_rules": ["drop", "ambiguous-content"],
+                "resolution_options": [
+                    "confirm free text (drop stands)",
+                    "confirm numeric/clinical content (add must_keep + keep_overrides shadows: drop)",
+                ],
+                "status": "open",
+            }
+        )
+
+    return entries
+
+
+def _load_json_if_present(path: Path) -> Any:
+    if not path.is_file():
+        return None
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _check_review_pending(audit_dir: Path) -> None:
+    """Step 11e — block this run when the previous run's review queue
+    still has an unresolved ``destructive: true`` entry with no matching
+    ``phi_review_signoff.yaml`` entry."""
+    queue = _load_json_if_present(audit_dir / PHI_REVIEW_QUEUE_FILENAME)
+    entries = queue.get("entries", []) if isinstance(queue, dict) else []
+    destructive_open = [
+        e for e in entries if isinstance(e, dict) and e.get("destructive") and e.get("status") == "open"
+    ]
+    if not destructive_open:
+        return
+
+    signoff_path = audit_dir / PHI_REVIEW_SIGNOFF_FILENAME
+    signed: set[tuple[str, str | None]] = set()
+    if signoff_path.is_file():
+        with signoff_path.open("r", encoding="utf-8") as fh:
+            signoff_raw = yaml.safe_load(fh) or []
+        if isinstance(signoff_raw, list):
+            for item in signoff_raw:
+                if isinstance(item, dict) and item.get("column"):
+                    signed.add((str(item["column"]), str(item.get("file")) if item.get("file") else None))
+
+    still_pending = [
+        e for e in destructive_open
+        if (str(e.get("column")), str(e.get("file")) if e.get("file") else None) not in signed
+    ]
+    if still_pending:
+        cols = ", ".join(f"{e.get('column')}@{e.get('file')}" for e in still_pending[:10])
+        raise PHIReviewPendingError(
+            f"{len(still_pending)} destructive PHI review entr"
+            f"{'y' if len(still_pending) == 1 else 'ies'} unresolved from the "
+            f"previous run: {cols}. Add matching entries to "
+            f"{signoff_path.name} (column, file, decision, rationale, signed_by, "
+            f"signed_utc) to proceed."
+        )
+
 
 def run_scrub(
     study_name: str | None = None,
@@ -1394,6 +2309,12 @@ def run_scrub(
     # Config is present — seal its hash into every subsequent ledger write.
     scrub_config_hash: str = hash_file(Path(config.PHI_SCRUB_CONFIG_PATH))
 
+    # Step 11e: a destructive review-queue entry left unresolved by the
+    # previous run blocks this run until an operator signs off. Checked
+    # before the sentinel short-circuit so a re-run attempt still surfaces
+    # the block rather than silently no-op'ing.
+    _check_review_pending(audit_path.parent)
+
     # Sentinel short-circuit — prevents accidental double-scrub on restart.
     if sentinel.is_file():
         logger.info(
@@ -1439,6 +2360,21 @@ def run_scrub(
         )
         return
 
+    # Step 5b/10a: column-name-only header union across staging, computed
+    # once per study before any row is scrubbed — never reads a value.
+    headers = _collect_staging_headers(staging_datasets)
+    age_variable_present = any(cfg.cap_rule_for(n) is not None for n in headers)
+    if not age_variable_present and cfg.age_reference_date is None:
+        raise PHIScrubError(
+            "This study has no age variable (no cap_fields pattern matches "
+            "any staged column), so birthdate must be jittered instead of "
+            "dropped to preserve age fidelity (Step 5b) — but "
+            "age_reference_date is not set in phi_scrub.yaml. Add "
+            "age_reference_date: \"YYYY-MM-DD\" (the study's data-cut date) "
+            "before running."
+        )
+    validate_rule_catalog(cfg, headers, age_variable_present=age_variable_present)
+
     # Snapshot the raw input manifest BEFORE any in-place scrub rewrites so
     # the hash reflects the pre-scrub state, not the post-scrub state.
     dataset_files = sorted(p.name for p in staging_datasets.glob("*.jsonl"))
@@ -1468,7 +2404,13 @@ def run_scrub(
     orphan_totals: dict[str, int] = {}
 
     for jsonl_file in sorted(staging_datasets.glob("*.jsonl")):
-        kept, orphans, counts = _scrub_file(jsonl_file, cfg=cfg, key=key, date_locales=date_locales)
+        kept, orphans, counts = _scrub_file(
+            jsonl_file,
+            cfg=cfg,
+            key=key,
+            date_locales=date_locales,
+            age_variable_present=age_variable_present,
+        )
 
         if orphans:
             orphan_totals[jsonl_file.name] = len(orphans)
@@ -1501,6 +2443,21 @@ def run_scrub(
             len(counts),
         )
 
+    # Step 1: fail-closed budget — any (file, column) with more
+    # non-sentinel unparseable date values than date_unparsed_threshold,
+    # and not explicitly accepted, hard-fails the run. Values are already
+    # redacted to null in the written output regardless of this check —
+    # it only decides whether the run may proceed silently or must stop.
+    _unparsed_violations: list[str] = []
+    for _file_name, _scope_counts in counts_by_file.items():
+        for _scope_field, _n in _scope_counts.items():
+            _scope, _, _field = _scope_field.partition(":")
+            if _scope.removeprefix("phi-scrub-") != "date-unparsed-redacted":
+                continue
+            _accept_key = f"{_file_name}:{_field}"
+            if _n > cfg.date_unparsed_threshold and _accept_key not in cfg.date_unparsed_accept:
+                _unparsed_violations.append(f"{_accept_key}={_n}")
+
     events = _events_from_counts(counts_by_file)
     _emit_audit(
         study_name=study_name,
@@ -1518,6 +2475,79 @@ def run_scrub(
         scrub_config_hash=scrub_config_hash,
         input_dataset_hash=input_dataset_hash,
     )
+
+    # Step 8: per-file transformed-field manifest — evidence the publish
+    # gate consults instead of trusting rule membership as a
+    # transformation proxy.
+    assert_output_zone(audit_path.parent)
+    transformed_manifest = _build_transformed_manifest(counts_by_file)
+    atomic_write_json(audit_path.parent / PHI_TRANSFORMED_FILENAME, transformed_manifest)
+
+    # Step 10b: cross-check SoT phi: declarations against the compiled
+    # catalog. Lazy import — policy_crosscheck imports resolve_action from
+    # this module, so a module-level import would be circular.
+    from scripts.security.policy_crosscheck import collect_sot_declarations, crosscheck_sot_policy
+
+    sot_root = Path(config.LLM_SOURCE_SOT_DIR)
+    sot_disagreements = crosscheck_sot_policy(cfg, sot_root, age_variable_present=age_variable_present)
+    sot_declarations = collect_sot_declarations(sot_root)
+
+    # Step 11b: explicit disposition record for every observed column —
+    # the coverage argument for "no leak" on columns matching no rule.
+    disposition_manifest = _build_disposition_manifest(
+        cfg,
+        headers,
+        counts_by_file,
+        age_variable_present=age_variable_present,
+        sot_declarations=sot_declarations,
+    )
+    atomic_write_json(audit_path.parent / PHI_DISPOSITION_FILENAME, disposition_manifest)
+
+    # Step 11d: baseline — a column already present with an unchanged
+    # resolved action never re-enters the review queue on a later run.
+    baseline_path = audit_path.parent / PHI_DISPOSITION_BASELINE_FILENAME
+    previous_baseline_raw = _load_json_if_present(baseline_path)
+    previous_baseline: dict[str, str] = (
+        previous_baseline_raw.get("columns", {}) if isinstance(previous_baseline_raw, dict) else {}
+    )
+
+    # Step 11c: review queue from the five deterministic triggers.
+    review_entries = _build_review_queue(
+        cfg,
+        headers,
+        counts_by_file,
+        age_variable_present=age_variable_present,
+        sot_disagreements=sot_disagreements,
+        baseline=previous_baseline,
+    )
+    atomic_write_json(
+        audit_path.parent / PHI_REVIEW_QUEUE_FILENAME,
+        {"generated_utc": _now_utc_iso(), "study": study_name, "entries": review_entries},
+    )
+
+    new_baseline = {
+        name: col["resolved_action"] for name, col in disposition_manifest["columns"].items()
+    }
+    atomic_write_json(
+        baseline_path,
+        {"generated_utc": _now_utc_iso(), "study": study_name, "columns": new_baseline},
+    )
+    # Raised here — after every audit/disposition/queue artifact is on disk —
+    # rather than immediately after computing _unparsed_violations. Staging
+    # rows are already marked _phi_scrubbed (idempotent) by this point, so a
+    # bare rerun with no config change would re-scan zero rows and see zero
+    # violations. Writing phi_review_queue.json's date_unparsed entries
+    # first means Step 11e's _check_review_pending — called at the top of
+    # the *next* invocation — finds the still-open destructive entry and
+    # blocks with PHIReviewPendingError instead of silently publishing.
+    if _unparsed_violations:
+        raise PHIDateParseError(
+            f"{len(_unparsed_violations)} date column(s) exceeded "
+            f"date_unparsed_threshold={cfg.date_unparsed_threshold}: "
+            f"{', '.join(sorted(_unparsed_violations))}. Declare the correct "
+            f"date_locales, add a date_sentinels entry, or add an explicit "
+            f"date_unparsed_accept opt-out."
+        )
 
     with sentinel.open("w", encoding="utf-8") as _sf:
         _sf.write(_SCRUB_VERSION)

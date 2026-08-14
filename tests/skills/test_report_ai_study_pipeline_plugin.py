@@ -96,7 +96,7 @@ def test_plugin_bundles_entrypoint_and_child_skills() -> None:
     assert "1. `$excel-duplicate-handler`" in orchestrator
     assert "2. `$sot-lean-generator`" in orchestrator
     assert "3. `$dataset-to-llm-source`" in orchestrator
-    assert "This plugin is not Codex-only." in orchestrator
+    assert "Any LLM platform can use this plugin by reading" in orchestrator
     assert "Do not read raw dataset row values into the agent context." in orchestrator
     assert "This phase runs once for the study" in orchestrator
     assert "Source Truth may run in parallel across independent ready sets." in orchestrator
@@ -137,39 +137,26 @@ def test_plugin_readme_documents_single_and_batch_modes() -> None:
     assert "data-dictionary leg remains a host-repo responsibility" in readme
 
 
-def test_bundled_child_skills_match_repo_level_skills() -> None:
-    copied_skills = [
-        "excel-duplicate-handler",
-        "sot-lean-generator",
-        "dataset-to-llm-source",
-    ]
-
-    for skill_name in copied_skills:
-        repo_skill_dir = REPO_ROOT / "plugins" / "report-ai-study-pipeline" / "skills" / skill_name
-        plugin_skill_dir = PLUGIN_ROOT / "skills" / skill_name
-        repo_files = sorted(
-            path.relative_to(repo_skill_dir)
-            for path in repo_skill_dir.rglob("*")
-            if path.is_file() and "__pycache__" not in path.parts
-        )
-        plugin_files = sorted(
-            path.relative_to(plugin_skill_dir)
-            for path in plugin_skill_dir.rglob("*")
-            if path.is_file() and "__pycache__" not in path.parts
-        )
-        assert plugin_files == repo_files
-        for relative_path in repo_files:
-            assert (plugin_skill_dir / relative_path).read_bytes() == (
-                repo_skill_dir / relative_path
-            ).read_bytes()
-
-
 def test_codex_adapter_points_to_bundled_skills_without_being_primary_manifest() -> None:
     codex_manifest = json.loads(
-        (PLUGIN_ROOT / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8")
+        (PLUGIN_ROOT / "adapters" / "codex" / "plugin.json").read_text(encoding="utf-8")
     )
 
     assert codex_manifest["name"] == "report-ai-study-pipeline"
     assert codex_manifest["skills"] == "./skills/"
     assert "Codex" not in codex_manifest["description"]
     assert (PLUGIN_ROOT / "plugin.yaml").is_file()
+
+
+def test_generated_adapters_match_plugin_yaml() -> None:
+    """adapters/ is derived, never hand-edited — gen_adapters.py --check must
+    find the committed tree byte-for-byte identical to a fresh regeneration."""
+    import importlib.util
+
+    module_path = PLUGIN_ROOT / "tools" / "gen_adapters.py"
+    spec = importlib.util.spec_from_file_location("gen_adapters", module_path)
+    assert spec is not None and spec.loader is not None
+    gen_adapters = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gen_adapters)
+
+    assert gen_adapters.check(PLUGIN_ROOT / "adapters") == 0

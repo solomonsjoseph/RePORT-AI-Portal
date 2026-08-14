@@ -157,11 +157,23 @@ def _process_and_save_tables(
             log.debug(f"Table {i + 1} from sheet '{sheet_name}' is empty after cleanup. Skipping.")
             continue
 
-        # Promote first row to column headers
+        # Promote first row to column headers.
+        #
+        # Not reused from sheet_split.promote_header: that helper scans for the
+        # first row with >1 non-null value and does not deduplicate repeated
+        # column names, while this loader always promotes row 0 (post
+        # ignore-marker/dropna cleanup above) and requires _deduplicate_columns
+        # for JSONL key uniqueness. Same non-null-count guard, inline.
         try:
-            table_df.columns = _deduplicate_columns(table_df.iloc[0])
+            header_row = table_df.iloc[0]
+            if header_row.notna().sum() <= 1:
+                raise ValueError(
+                    "No header row found: no row has more than one non-null value "
+                    f"(table has {len(table_df)} row(s))."
+                )
+            table_df.columns = _deduplicate_columns(header_row)
             table_df = table_df.iloc[1:].reset_index(drop=True)
-        except IndexError as e:
+        except (IndexError, ValueError) as e:
             log.error(f"Cannot process table {i + 1} from sheet '{sheet_name}': {e}")
             all_ok = False
             continue

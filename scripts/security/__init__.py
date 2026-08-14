@@ -25,6 +25,13 @@ from __future__ import annotations
 from .kanon_gate import KAnonResult, kanon_check, mask_small_cell, suppress_small_cells
 from .phi_gate import PHIGateConfigError, PHIGateResult, phi_gate_check
 from .phi_scrub import (
+    PHIDateParseError,
+    PHIKeyMissingError,
+    PHIKeyPermissionError,
+    PHIPolicyViolationError,
+    PHIQuarantineOverflowError,
+    PHIReviewPendingError,
+    PHIRuleConflictError,
     PHIScrubConfig,
     PHIScrubError,
     bootstrap_key,
@@ -52,6 +59,13 @@ __all__ = [  # noqa: RUF022 — grouped by concept for readability, not alphabet
     "assert_write_zone",
     "validate_paths",
     # PHI scrub (8-action catalog)
+    "PHIDateParseError",
+    "PHIKeyMissingError",
+    "PHIKeyPermissionError",
+    "PHIPolicyViolationError",
+    "PHIQuarantineOverflowError",
+    "PHIReviewPendingError",
+    "PHIRuleConflictError",
     "PHIScrubConfig",
     "PHIScrubError",
     "bootstrap_key",

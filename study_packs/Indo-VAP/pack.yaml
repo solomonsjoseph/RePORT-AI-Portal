@@ -1,0 +1,6 @@
+name: Indo-VAP
+calibrated_for: Indo-VAP
+provenance: "Derived from the Indo-VAP CRF vocabulary; audited 2026-08-10."
+phi_scrub_config: phi_scrub.yaml
+form_overrides: form_overrides.yaml
+authorities_dir: authorities

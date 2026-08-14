@@ -337,12 +337,26 @@ class TestPromoteHeader:
         assert list(result.columns) == ["col_a", "col_b", "col_c"]
         assert len(result) == 2
 
-    def test_fallback_when_all_single_value_rows(self):
-        """If no row has >1 non-null values, row 0 is used as the header."""
+    def test_raises_when_all_single_value_rows(self):
+        """If no row has >1 non-null values, promote_header raises ValueError."""
         df = pd.DataFrame({0: ["only_one", None], 1: [None, None]})
-        result = promote_header(df)
-        # row 0 has only 1 non-null — still used as fallback header
-        assert "only_one" in result.columns or "Unnamed" in result.columns
+        with pytest.raises(ValueError, match="No header row found"):
+            promote_header(df)
+
+    def test_raises_with_row_count_but_no_values(self):
+        """The error message names the row count only, never a cell value."""
+        df = pd.DataFrame({0: ["only_one", None], 1: [None, None]})
+        with pytest.raises(ValueError) as exc_info:
+            promote_header(df)
+        message = str(exc_info.value)
+        assert "2 row(s)" in message
+        assert "only_one" not in message
+
+    def test_raises_when_entirely_null(self):
+        """A single, entirely-null row also raises (no data at all)."""
+        df = pd.DataFrame({0: [None], 1: [None]})
+        with pytest.raises(ValueError, match="No header row found"):
+            promote_header(df)
 
     def test_nan_col_name_becomes_unnamed(self):
         """NaN values in the header row become 'Unnamed'."""

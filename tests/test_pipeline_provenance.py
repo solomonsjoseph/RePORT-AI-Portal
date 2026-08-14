@@ -81,7 +81,7 @@ class TestWriteProvenanceJsonl:
             ]
         )
         out_path = tmp_path / "out.jsonl"
-        count = dataset_pipeline._write_provenance_jsonl(
+        count, rename_events = dataset_pipeline._write_provenance_jsonl(
             df=df,
             output_path=out_path,
             source_file="src.xlsx",
@@ -91,6 +91,7 @@ class TestWriteProvenanceJsonl:
             raw_sha256="abc123",
         )
         assert count == 2
+        assert rename_events == []
         lines = [json.loads(line) for line in out_path.read_text().splitlines()]
         for row in lines:
             assert row["_provenance"]["raw_sha256"] == "abc123"

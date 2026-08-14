@@ -1,0 +1,175 @@
+#!/usr/bin/env python3
+"""Generate vendor adapter manifests from ``plugin.yaml``.
+
+``plugin.yaml`` is the only hand-maintained manifest for this plugin. Every
+vendor-specific manifest under ``adapters/`` is *derived* from it by this
+script — never hand-edited. Run with ``--check`` in CI to confirm the
+committed ``adapters/`` tree still matches what this generator would produce.
+
+Usage
+-----
+Regenerate the committed adapters/ tree in place::
+
+    python plugins/report-ai-study-pipeline/tools/gen_adapters.py
+
+Verify the committed tree is not stale (exits non-zero + prints a diff on
+drift; used by tests/skills/test_report_ai_study_pipeline_plugin.py)::
+
+    python plugins/report-ai-study-pipeline/tools/gen_adapters.py --check
+"""
+
+from __future__ import annotations
+
+import argparse
+import difflib
+import json
+import shutil
+import sys
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+PLUGIN_ROOT = Path(__file__).resolve().parent.parent
+PLUGIN_YAML_PATH = PLUGIN_ROOT / "plugin.yaml"
+ADAPTERS_DIR = PLUGIN_ROOT / "adapters"
+
+# One uniform manifest shape across every vendor adapter: this plugin makes
+# no vendor-specific behavioral distinctions, so there is nothing for a
+# per-vendor schema to carry beyond the fields already declared once in
+# plugin.yaml.
+_VENDOR_ADAPTERS = ("codex", "claude", "cursor", "gemini")
+
+
+def _load_plugin_yaml(path: Path = PLUGIN_YAML_PATH) -> dict[str, Any]:
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"{path} must contain a top-level mapping")
+    return data
+
+
+def _build_vendor_manifest(plugin: dict[str, Any]) -> dict[str, Any]:
+    """Build the shared vendor-plugin manifest shape from plugin.yaml."""
+    interface = plugin.get("interface", {})
+    return {
+        "name": plugin["name"],
+        "version": plugin["version"],
+        "description": " ".join(plugin["description"].split()),
+        "author": {"name": plugin.get("author", "")},
+        "homepage": plugin.get("homepage", "."),
+        "repository": plugin.get("repository", "."),
+        "license": plugin.get("license", ""),
+        "keywords": list(plugin.get("keywords", [])),
+        "skills": "./skills/",
+        "interface": {
+            "displayName": interface.get("displayName", ""),
+            "shortDescription": interface.get("shortDescription", ""),
+            "longDescription": " ".join(interface.get("longDescription", "").split()),
+            "developerName": interface.get("developerName", ""),
+            "category": interface.get("category", ""),
+            "capabilities": list(interface.get("capabilities", [])),
+            "defaultPrompt": list(interface.get("defaultPrompt", [])),
+            "brandColor": interface.get("brandColor", ""),
+        },
+    }
+
+
+def _build_generic_manifest(plugin: dict[str, Any]) -> dict[str, Any]:
+    """Build the platform-neutral manifest for consumers with no adapter."""
+    manifest = _build_vendor_manifest(plugin)
+    manifest["kind"] = plugin.get("kind", "llm-plugin-pack")
+    manifest["agentMetadata"] = plugin.get("adapters", {}).get("generic_llm", {}).get(
+        "agent_metadata", "agents/llm.yaml"
+    )
+    return manifest
+
+
+def _render(payload: dict[str, Any]) -> str:
+    return json.dumps(payload, indent=2, sort_keys=True) + "\n"
+
+
+def generate() -> dict[Path, str]:
+    """Return {relative_path: file_content} for the full adapters/ tree."""
+    plugin = _load_plugin_yaml()
+    files: dict[Path, str] = {}
+    for vendor in _VENDOR_ADAPTERS:
+        files[Path(vendor) / "plugin.json"] = _render(_build_vendor_manifest(plugin))
+    files[Path("generic") / "manifest.json"] = _render(_build_generic_manifest(plugin))
+    return files
+
+
+def write(out_dir: Path) -> None:
+    files = generate()
+    if out_dir.exists():
+        shutil.rmtree(out_dir)
+    for rel_path, content in files.items():
+        dest = out_dir / rel_path
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(content, encoding="utf-8")
+
+
+def check(committed_dir: Path = ADAPTERS_DIR) -> int:
+    """Regenerate into a temp dir and diff against *committed_dir*.
+
+    Returns 0 and prints nothing when they match; returns 1 and prints a
+    unified diff per drifted/missing/extra file otherwise.
+    """
+    files = generate()
+    diffs: list[str] = []
+
+    committed_files = (
+        {p.relative_to(committed_dir) for p in committed_dir.rglob("*") if p.is_file()}
+        if committed_dir.is_dir()
+        else set()
+    )
+    generated_files = set(files)
+
+    for rel_path in sorted(generated_files | committed_files):
+        generated = files.get(rel_path)
+        committed_path = committed_dir / rel_path
+        committed_text = committed_path.read_text(encoding="utf-8") if committed_path.is_file() else None
+
+        if generated is None:
+            diffs.append(f"EXTRA (not generated by gen_adapters.py): {rel_path}")
+            continue
+        if committed_text is None:
+            diffs.append(f"MISSING (generated but not committed): {rel_path}")
+            continue
+        if generated != committed_text:
+            diff = "".join(
+                difflib.unified_diff(
+                    committed_text.splitlines(keepends=True),
+                    generated.splitlines(keepends=True),
+                    fromfile=f"committed/{rel_path}",
+                    tofile=f"generated/{rel_path}",
+                )
+            )
+            diffs.append(diff)
+
+    if diffs:
+        print("adapters/ is stale — run gen_adapters.py to regenerate:\n", file=sys.stderr)
+        for d in diffs:
+            print(d, file=sys.stderr)
+        return 1
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Diff the committed adapters/ tree against a fresh regeneration instead of writing.",
+    )
+    args = parser.parse_args(argv)
+
+    if args.check:
+        return check(ADAPTERS_DIR)
+
+    write(ADAPTERS_DIR)
+    print(f"adapters/ regenerated at {ADAPTERS_DIR}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
